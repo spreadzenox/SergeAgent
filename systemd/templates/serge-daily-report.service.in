@@ -1,0 +1,25 @@
+[Unit]
+Description=Serge deterministic daily executive report
+
+[Service]
+Type=oneshot
+WorkingDirectory=__SYSTEM_ROOT__
+Environment=HOME=__HOME__
+Environment=USER=__USER__
+Environment=SERGE_INSTANCE_FILE=__INSTANCE_FILE__
+Environment=SERGE_HOME=__HOME__
+Environment=SERGE_SYSTEM_ROOT=__SYSTEM_ROOT__
+Environment=SERGE_MANDATE_PATH=__POLICY__
+Environment=SERGE_POLICY_PATH=__POLICY__
+ExecStart=__PYTHON__ __SYSTEM_ROOT__/orchestrator/daily_reporter.py generate-and-deliver
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=__SYSTEM_ROOT__/reports __SYSTEM_ROOT__/state/reporter
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+UMask=0077
+TimeoutStartSec=5min
+
+[Install]
+WantedBy=default.target

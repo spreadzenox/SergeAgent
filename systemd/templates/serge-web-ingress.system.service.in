@@ -1,0 +1,44 @@
+[Unit]
+Description=Serge generic multi-venture web ingress (Caddy)
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=__SYSTEM_ROOT__/state/web-ingress/Caddyfile
+
+[Service]
+Type=simple
+User=__USER__
+Group=__USER__
+WorkingDirectory=__SYSTEM_ROOT__
+Environment=HOME=__HOME__
+Environment=USER=__USER__
+Environment=SERGE_INSTANCE_FILE=__INSTANCE_FILE__
+Environment=SERGE_HOME=__HOME__
+Environment=SERGE_SYSTEM_ROOT=__SYSTEM_ROOT__
+Environment=SERGE_MANDATE_PATH=__POLICY__
+Environment=SERGE_POLICY_PATH=__POLICY__
+Environment=SERGE_INGRESS_LISTEN=privileged
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStartPre=__PYTHON__ __SYSTEM_ROOT__/orchestrator/web_ingress.py render
+ExecStart=__CADDY__ run --config __SYSTEM_ROOT__/state/web-ingress/Caddyfile --adapter caddyfile
+ExecReload=__CADDY__ reload --config __SYSTEM_ROOT__/state/web-ingress/Caddyfile --adapter caddyfile
+Restart=on-failure
+RestartSec=3
+SyslogIdentifier=serge-web-ingress
+NoNewPrivileges=yes
+PrivateTmp=yes
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=__SYSTEM_ROOT__/state/web-ingress
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=yes
+LockPersonality=yes
+RestrictSUIDSGID=yes
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target

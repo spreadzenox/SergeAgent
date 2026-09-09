@@ -1,0 +1,26 @@
+[Unit]
+Description=Serge voice bridge (broker-gated originate + trunk health)
+After=network.target serge-asterisk.service
+Wants=serge-asterisk.service
+ConditionPathExists=__SYSTEM_ROOT__/serge/voice/bridge.py
+
+[Service]
+Type=simple
+WorkingDirectory=__SYSTEM_ROOT__
+Environment=HOME=__HOME__
+Environment=USER=__USER__
+Environment=PYTHONUNBUFFERED=1
+Environment=SERGE_INSTANCE_FILE=__INSTANCE_FILE__
+Environment=SERGE_HOME=__HOME__
+Environment=SERGE_SYSTEM_ROOT=__SYSTEM_ROOT__
+Environment=SERGE_MANDATE_PATH=__POLICY__
+Environment=SERGE_POLICY_PATH=__POLICY__
+Environment=SERGE_VOICE_BRIDGE_LISTEN=127.0.0.1:8791
+ExecStart=__PYTHON__ __SYSTEM_ROOT__/serge/voice/bridge.py serve
+Restart=always
+RestartSec=3
+NoNewPrivileges=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=default.target

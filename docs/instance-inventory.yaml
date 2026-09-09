@@ -1,0 +1,537 @@
+# Machine-readable Serge instance inventory (julien-vps catalogue).
+# Paths and kinds only — no secret values, no Discord snowflake digits, no sk_ tokens.
+schema_version: 1
+scanned_at: "2026-09-08"
+observed_instance_id: julien-vps
+
+scan_policy:
+  secret_values_included: false
+
+boot_classes:
+  refuse_without:
+    - SERGE_INSTANCE_FILE
+    - serge.secrets.age
+    - secret.openrouter
+    - path.system_root
+    - path.policy_mandate
+    - path.writable_runtime
+    - path.canon_db
+    - host_dep.python3
+    - host_dep.pyyaml
+  required_when_feature:
+    ingress:
+      - path.caddy_bin
+      - path.caddyfile
+      - secret.cloudflare_infra
+      - secret.cloudflare_registrar
+      - path.cloudflare_account_id
+      - optional.public_hostname
+      - unit.web_ingress
+    stripe:
+      - secret.stripe_test
+      - secret.stripe_webhook_test
+    payments_live:
+      - secret.stripe_live
+      - secret.stripe_webhook_live
+      - secret.credential_vault
+      - secret.payment_card_enc
+      - path.payment_card_meta
+      - path.legal_entity_owner
+    owner_ui:
+      - secret.owner_dashboard_token
+      - unit.public_dashboard
+    gmail:
+      - path.openclaw_gog_env
+      - path.gmail_provider
+      - path.gog_binary
+    openclaw:
+      - path.openclaw_home
+      - path.openclaw_config
+      - secret.browserbase
+      - path.browserbase_project_id
+    voice:
+      - secret.xai_voice
+      - secret.openai_direct
+    discord:
+      - secret.discord_bot_token
+      - optional.owner_discord_snowflake
+    phone_sms:
+      - secret.sms_gateway
+      - unit.sms_receiver
+      - path.sms_route
+    phone_voice:
+      - secret.sip_trunk
+      - unit.asterisk
+      - unit.voice_bridge
+      - path.asterisk_conf
+      - host_dep.asterisk
+    metagrok:
+      - path.metagrok_workspace
+      - path.metagrok_runs
+      - path.metagrok_release
+      - path.metagrok_compute_state
+      - unit.metagrok
+  transition_today: hardcoded_/home/serge_still_boots
+
+entries:
+  - id: path.system_root
+    kind: path
+    current_location: /home/serge/serge-system
+    required_for: kernel
+    portable: "yes"
+    notes: Git checkout root; orchestrator still hardcodes ROOT until SERGE_INSTANCE_FILE is wired.
+
+  - id: path.serge_home
+    kind: path
+    current_location: /home/serge
+    required_for: kernel
+    portable: "yes"
+    notes: SERGE_HOME; HOME for pipeline units. Builder derives from paths.home in instance TOML.
+
+  - id: path.policy_mandate
+    kind: path
+    current_location: /opt/serge-policy/mandate.yaml
+    required_for: kernel
+    portable: "no"
+    notes: Root-owned mandate; Julien-only production policy. Third-party instances supply their own mandate.
+
+  - id: path.policy_hash
+    kind: path
+    current_location: /home/serge/serge-system/policy-reference/mandate.sha256
+    required_for: kernel
+    portable: "yes"
+    notes: SHA256 pin checked at boot via verify_policy_hash(); must match path.policy_mandate.
+
+  - id: path.canon_db
+    kind: path
+    current_location: /home/serge/serge-system/state/serge.db
+    required_for: kernel
+    portable: "no"
+    notes: Production canonical SQLite; kit seeds empty DB. Same git HEAD does not share canon.
+
+  - id: path.queue
+    kind: path
+    current_location: /home/serge/serge-system/queue
+    required_for: pipeline
+    portable: "yes"
+    notes: Task queue tree (pending, running, review, rework, done, failed, human_block).
+
+  - id: path.evidence
+    kind: path
+    current_location: /home/serge/serge-system/evidence
+    required_for: pipeline
+    portable: "yes"
+    notes: Run evidence and broker artifacts; excluded from kit seed.
+
+  - id: path.logs
+    kind: path
+    current_location: /home/serge/serge-system/logs
+    required_for: pipeline
+    portable: "yes"
+    notes: Pipeline and orchestrator logs; excluded from kit seed.
+
+  - id: path.writable_runtime
+    kind: path
+    current_location: /home/serge/serge-system/orchestrator/runtime
+    required_for: kernel
+    portable: "yes"
+    notes: Locks, routing cache, live-health.json; builder must create writable.
+
+  - id: path.kill_switch_state
+    kind: path
+    current_location: /home/serge/serge-system/orchestrator/runtime/KILL_SWITCH
+    required_for: kernel
+    portable: "yes"
+    notes: Primary kill marker; state/KILL_SWITCH also honored by pipeline unit conditions.
+
+  - id: path.config_serge
+    kind: path
+    current_location: /home/serge/.config/serge
+    required_for: kernel
+    portable: "yes"
+    notes: Config root (secrets/, private/, provider ids); default paths.config_root in instance TOML.
+
+  - id: path.openclaw_home
+    kind: path
+    current_location: /home/serge/.openclaw
+    required_for: pipeline
+    portable: "yes"
+    notes: Leftover optional adapter tree; default runtime is direct_llm; units no longer Wants openclaw-gateway once builder lands.
+
+  - id: path.openclaw_config
+    kind: path
+    current_location: /home/serge/.openclaw/openclaw.json
+    required_for: pipeline
+    portable: "yes"
+    notes: OpenClaw adapter config; optional when features.openclaw is false.
+
+  - id: path.openclaw_gog_env
+    kind: secret
+    current_location: /home/serge/.config/openclaw/gog.env
+    required_for: pipeline
+    portable: "yes"
+    notes: Gmail OAuth env file for gog; outside ~/.config/serge/secrets/. Required when features.gmail is true.
+
+  - id: path.gmail_provider
+    kind: path
+    current_location: /home/serge/.local/bin/serge-gmail-provider
+    required_for: pipeline
+    portable: "yes"
+    notes: Local Gmail broker wrapper executable invoked by adapters/gmail.py.
+
+  - id: path.gog_binary
+    kind: host_dep
+    current_location: /usr/local/bin/gog
+    required_for: pipeline
+    portable: "yes"
+    notes: Upstream gog CLI for Gmail API; required when features.gmail is true.
+
+  - id: path.caddy_bin
+    kind: path
+    current_location: /home/serge/.local/bin/caddy
+    required_for: ingress
+    portable: "yes"
+    notes: User-local Caddy binary for web ingress unit.
+
+  - id: path.caddyfile
+    kind: path
+    current_location: /home/serge/serge-system/state/web-ingress/Caddyfile
+    required_for: ingress
+    portable: "yes"
+    notes: Rendered ingress config; serge-web-ingress.service ConditionPathExists gate.
+
+  - id: path.metagrok_workspace
+    kind: path
+    current_location: /home/serge/.meta-grok/v2
+    required_for: metagrok_bridge
+    portable: "no"
+    notes: Meta-Grok V2 workspace (control, comm, engineering); Julien-only checkout.
+
+  - id: path.metagrok_runs
+    kind: path
+    current_location: /home/serge/.meta-grok/v2-runs
+    required_for: metagrok_bridge
+    portable: "no"
+    notes: Meta-Grok run history and owner-surface inputs; not transported by kit.
+
+  - id: path.metagrok_release
+    kind: path
+    current_location: /opt/serge-meta-grok-v2/current
+    required_for: metagrok_bridge
+    portable: "no"
+    notes: Symlinked release checkout for Meta-Grok V2; root-managed Julien host.
+
+  - id: path.metagrok_compute_state
+    kind: optional
+    current_location: /etc/serge/meta-grok-v2/compute-state.json
+    required_for: metagrok_bridge
+    portable: "no"
+    notes: Cursor compute budget state read by monitoring/snapshot.py; optional bridge telemetry.
+
+  - id: secret.openrouter
+    kind: secret
+    current_location: /home/serge/.config/serge/secrets/openrouter-api-key
+    required_for: llm
+    portable: "yes"
+    notes: Always required in sidecar; maps to openrouter_api_key in serge.secrets.manifest.yaml.
+
+  - id: owner_dashboard_token
+    kind: secret
+    current_location: /home/serge/.config/serge/secrets/owner-dashboard.token
+    required_for: owner_ui
+    portable: "yes"
+    notes: Owner Mission Control bearer token; required when features.owner_ui is true.
+
+  - id: xai_voice
+    kind: secret
+    current_location: /home/serge/.config/serge/secrets/xai-voice.env
+    required_for: owner_ui
+    portable: "yes"
+    notes: xAI voice env file (XAI_API_KEY inside); required when features.voice is true.
+
+  - id: openai_direct
+    kind: secret
+    current_location: /home/serge/.config/serge/secrets/openai-direct.env
+    required_for: owner_ui
+    portable: "yes"
+    notes: Optional OpenAI direct voice fallback; manifest allows sibling to xai_voice.
+
+  - id: stripe_live
+    kind: secret
+    current_location: /home/serge/.config/serge/secrets/stripe-live.key
+    required_for: payments
+    portable: "yes"
+    notes: Live Stripe secret key; required when features.payments_live is true.
+
+  - id: stripe_test
+    kind: secret
+    current_location: /home/serge/.config/serge/secrets/stripe-test.key
+    required_for: payments
+    portable: "yes"
+    notes: Test-mode Stripe key; required when features.stripe is true.
+
+  - id: stripe_webhook_live
+    kind: secret
+    current_location: /home/serge/.config/serge/secrets/stripe-webhook-live.key
+    required_for: payments
+    portable: "yes"
+    notes: Live webhook signing secret; referenced by payment_ingestion and live_monitor.
+
+  - id: stripe_webhook_test
+    kind: secret
+    current_location: /home/serge/.config/serge/secrets/stripe-webhook-test.key
+    required_for: payments
+    portable: "yes"
+    notes: Test webhook signing secret; required when features.stripe is true.
+
+  - id: discord_bot_token
+    kind: secret
+    current_location: /home/serge/.config/serge/secrets/discord-bot-token
+    required_for: owner_ui
+    portable: "yes"
+    notes: Discord bot token (v0 gateway bot); required when features.discord is true.
+
+  - id: browserbase
+    kind: secret
+    current_location: /home/serge/.config/serge/secrets/browserbase.key
+    required_for: pipeline
+    portable: "yes"
+    notes: Browserbase API key; manifest ties to features.openclaw for web operator paths.
+
+  - id: path.browserbase_project_id
+    kind: path
+    current_location: /home/serge/.config/serge/browserbase-project-id
+    required_for: pipeline
+    portable: "yes"
+    notes: Non-secret project id file paired with secret.browserbase.
+
+  - id: secret.cloudflare_infra
+    kind: secret
+    current_location: /home/serge/.config/serge/secrets/cloudflare-infra.key
+    required_for: ingress
+    portable: "yes"
+    notes: Cloudflare infra API token for DNS/deploy brokers.
+
+  - id: cloudflare_registrar
+    kind: secret
+    current_location: /home/serge/.config/serge/secrets/cloudflare-registrar.key
+    required_for: ingress
+    portable: "yes"
+    notes: Cloudflare registrar API token for domain operations.
+
+  - id: path.cloudflare_account_id
+    kind: path
+    current_location: /home/serge/.config/serge/cloudflare-account-id
+    required_for: ingress
+    portable: "yes"
+    notes: Cloudflare account id file; non-secret companion to Cloudflare tokens.
+
+  - id: secret.credential_vault
+    kind: secret
+    current_location: /home/serge/.config/serge/secrets/credential-vault.key
+    required_for: payments
+    portable: "yes"
+    notes: Vault encryption key for stored credentials; required for payments_live.
+
+  - id: payment_card_enc
+    kind: secret
+    current_location: /home/serge/.config/serge/secrets/payment-card.enc
+    required_for: payments
+    portable: "yes"
+    notes: Encrypted payment card blob; ciphertext not a token string.
+
+  - id: path.payment_card_meta
+    kind: path
+    current_location: /home/serge/.config/serge/payment-card-provisioning.json
+    required_for: payments
+    portable: "no"
+    notes: Card provisioning metadata; Julien live provisioning state.
+
+  - id: path.legal_entity_owner
+    kind: path
+    current_location: /home/serge/.config/serge/private/legal-entity-owner.json
+    required_for: payments
+    portable: "no"
+    notes: Owner-provisioned legal identity; required for payments_live and economic gates.
+
+  - id: unit.pipeline
+    kind: unit
+    current_location: /home/serge/.config/systemd/user/serge-pipeline.service
+    required_for: pipeline
+    portable: "yes"
+    notes: SERGE_AGENT_RUNTIME=direct_llm target; deployed unit still Wants openclaw-gateway until builder refresh removes leftover dependency.
+
+  - id: unit.pipeline_timer
+    kind: unit
+    current_location: /home/serge/.config/systemd/user/serge-pipeline.timer
+    required_for: pipeline
+    portable: "yes"
+    notes: Schedules bounded run-once cycles via sergectl.py.
+
+  - id: unit.daily_report
+    kind: unit
+    current_location: /home/serge/.config/systemd/user/serge-daily-report.service
+    required_for: pipeline
+    portable: "yes"
+    notes: Daily report generate-and-deliver; Discord delivery via OpenClaw fail-soft when gateway absent.
+
+  - id: unit.web_ingress
+    kind: unit
+    current_location: /home/serge/.config/systemd/user/serge-web-ingress.service
+    required_for: ingress
+    portable: "yes"
+    notes: Caddy front for public-hostname routes; active when features.ingress is true.
+
+  - id: unit.public_dashboard
+    kind: unit
+    current_location: /home/serge/.config/systemd/user/serge-public-dashboard.service
+    required_for: owner_ui
+    portable: "yes"
+    notes: Public Mission Control HTTP surface behind ingress.
+
+  - id: unit.openclaw_gateway
+    kind: unit
+    current_location: /home/serge/.config/systemd/user/openclaw-gateway.service
+    required_for: pipeline
+    portable: "yes"
+    notes: Leftover optional unit; not required for direct_llm runtime once pipeline Wants is removed.
+
+  - id: secret.sms_gateway
+    kind: secret
+    current_location: /home/serge/.config/serge/secrets/sms-gateway.token
+    required_for: phone_sms
+    portable: "yes"
+    notes: Owner-generated webhook secret; maps to sms_gateway_token in serge.secrets.manifest.yaml.
+
+  - id: secret.sip_trunk
+    kind: secret
+    current_location: /home/serge/.config/serge/secrets/sip-trunk-password
+    required_for: phone_voice
+    portable: "yes"
+    notes: SIP trunk password; rendered into asterisk pjsip.conf (0600) by builder.
+
+  - id: unit.sms_receiver
+    kind: unit
+    current_location: /home/serge/.config/systemd/user/serge-sms-receiver.service
+    required_for: phone_sms
+    portable: "yes"
+    notes: Loopback 127.0.0.1:8787 Android webhook -> SmsInbox; seeded from systemd/templates.
+
+  - id: unit.asterisk
+    kind: unit
+    current_location: /home/serge/.config/systemd/user/serge-asterisk.service
+    required_for: phone_voice
+    portable: "yes"
+    notes: User-space asterisk -f -C; ConditionPathExists on binary + rendered asterisk.conf.
+
+  - id: unit.voice_bridge
+    kind: unit
+    current_location: /home/serge/.config/systemd/user/serge-voice-bridge.service
+    required_for: phone_voice
+    portable: "yes"
+    notes: Loopback 127.0.0.1:8791 broker-gated originate + trunk health.
+
+  - id: path.asterisk_conf
+    kind: path
+    current_location: /home/serge/.config/serge/asterisk
+    required_for: phone_voice
+    portable: "yes"
+    notes: Builder-rendered asterisk.conf/pjsip/extensions/rtp/modules; pjsip 0600.
+
+  - id: path.sms_route
+    kind: path
+    current_location: /home/serge/serge-system/state/web-ingress/inventory.json
+    required_for: phone_sms
+    portable: "yes"
+    notes: Builder-seeded sms.<public_hostname> route to 127.0.0.1:8787 (serge-phone-sms venture).
+
+  - id: host_dep.asterisk
+    kind: host_dep
+    current_location: /usr/sbin/asterisk
+    required_for: phone_voice
+    portable: "yes"
+    notes: System Asterisk package (apt install asterisk); unit skips cleanly when absent.
+
+  - id: unit.metagrok
+    kind: optional
+    current_location: /home/serge/.config/systemd/user/serge-meta-grok-v2-comm.service
+    required_for: metagrok_bridge
+    portable: "no"
+    notes: Meta-Grok V2 comm unit; paired timers/interactions units on Julien host only.
+
+  - id: host_dep.python3
+    kind: host_dep
+    current_location: /usr/bin/python3
+    required_for: kernel
+    portable: "yes"
+    notes: Pipeline, sergectl, and orchestrator interpreter.
+
+  - id: host_dep.pyyaml
+    kind: host_dep
+    current_location: python3:import yaml
+    required_for: kernel
+    portable: "yes"
+    notes: PyYAML for policy and manifest parsing.
+
+  - id: host_dep.systemd_user
+    kind: host_dep
+    current_location: /home/serge/.config/systemd/user
+    required_for: kernel
+    portable: "yes"
+    notes: User systemd unit directory; builder installs enabled units here.
+
+  - id: host_dep.sqlite3
+    kind: host_dep
+    current_location: python3:import sqlite3
+    required_for: kernel
+    portable: "yes"
+    notes: Canon DB and ledger access via stdlib sqlite3.
+
+  - id: host_dep.flock
+    kind: host_dep
+    current_location: /usr/bin/flock
+    required_for: pipeline
+    portable: "yes"
+    notes: systemd.lock overlap guard in serge-pipeline.service ExecStart.
+
+  - id: host_dep.chromium
+    kind: host_dep
+    current_location: /usr/bin/chromium
+    required_for: pipeline
+    portable: "yes"
+    notes: Headless browser for managed-browser and burn-in paths.
+
+  - id: host_dep.docker_rootless
+    kind: host_dep
+    current_location: /home/serge/.local/share/docker
+    required_for: pipeline
+    portable: "yes"
+    notes: Rootless Docker data root; user docker.service for container workloads.
+
+  - id: optional.public_hostname
+    kind: optional
+    current_location: owner-live.example.net
+    required_for: ingress
+    portable: "no"
+    notes: Owner public DNS identity (example); ingress aliases and OpenRouter referer default.
+
+  - id: optional.unix_user_serge
+    kind: optional
+    current_location: "unix user serge uid=1002 gid=1002"
+    required_for: kernel
+    portable: "no"
+    notes: Production VPS Unix identity hardcoded in units (XDG_RUNTIME_DIR=/run/user/1002).
+
+  - id: optional.owner_discord_snowflake
+    kind: optional
+    current_location: "hardcoded OWNER_USER_ID constant in owner_dashboard.py and owner_console_discord.py"
+    required_for: owner_ui
+    portable: "no"
+    notes: Owner Discord user id for approval authority; numeric snowflake must not appear in inventory.
+
+  - id: optional.backups_dir
+    kind: optional
+    current_location: /home/serge/backups
+    required_for: kernel
+    portable: "no"
+    notes: Ad-hoc backups and migration staging; referenced by sergectl and llm_routing.

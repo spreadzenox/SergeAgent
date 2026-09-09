@@ -1,0 +1,23 @@
+[Unit]
+Description=Fail closed a Serge burn-in after pipeline service failure
+# Sandbox helper only. Always-on production pipeline must not OnFailure= this
+# unit, and the builder must not enable it.
+
+[Service]
+Type=oneshot
+WorkingDirectory=__SYSTEM_ROOT__
+Environment=HOME=__HOME__
+Environment=USER=__USER__
+Environment=LOGNAME=__USER__
+Environment=SERGE_INSTANCE_FILE=__INSTANCE_FILE__
+Environment=SERGE_HOME=__HOME__
+Environment=SERGE_SYSTEM_ROOT=__SYSTEM_ROOT__
+Environment=SERGE_MANDATE_PATH=__POLICY__
+Environment=SERGE_POLICY_PATH=__POLICY__
+ExecStart=__PYTHON__ __SYSTEM_ROOT__/orchestrator/sergectl.py burn-in pipeline-failed
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=__SYSTEM_ROOT__/state __SYSTEM_ROOT__/logs __SYSTEM_ROOT__/orchestrator/runtime
+LockPersonality=yes

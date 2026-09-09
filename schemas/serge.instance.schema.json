@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://serge.local/schemas/serge.instance.schema.json",
+  "title": "SergeInstanceFileV1",
+  "description": "Cleartext instance contract. Secret values are forbidden; they live in serge.secrets.age. Kernel and builder refuse to boot or instantiate without this file plus a complete sidecar for every feature=true (openrouter_api_key always).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "instance_id", "mode", "paths"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "instance_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+    },
+    "mode": {"enum": ["live", "staging", "sandbox"]},
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "hostname": {"type": "string"},
+        "public_hostname": {"type": "string"},
+        "phone_sms_number": {"type": "string"},
+        "phone_voice_number": {"type": "string"}
+      }
+    },
+    "paths": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["home", "system_root", "policy"],
+      "properties": {
+        "home": {"type": "string", "minLength": 1},
+        "system_root": {"type": "string", "minLength": 1},
+        "policy": {"type": "string", "minLength": 1},
+        "config_root": {"type": "string"},
+        "secrets_age": {"type": "string"}
+      }
+    },
+    "features": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ingress": {"type": "boolean"},
+        "stripe": {"type": "boolean"},
+        "voice": {"type": "boolean"},
+        "metagrok": {"type": "boolean"},
+        "gmail": {"type": "boolean"},
+        "discord": {"type": "boolean"},
+        "openclaw": {"type": "boolean"},
+        "owner_ui": {"type": "boolean"},
+        "payments_live": {"type": "boolean"},
+        "phone_sms": {"type": "boolean"},
+        "phone_voice": {"type": "boolean"}
+      }
+    },
+    "llm": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "provider": {"enum": ["openrouter"]},
+        "referer": {"type": "string"},
+        "t1_model": {"type": "string"},
+        "t2_model": {"type": "string"},
+        "t3_model": {"type": "string"},
+        "guide_model": {"type": "string"}
+      }
+    },
+    "ingress": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "listen": {"enum": ["loopback", "privileged"]},
+        "aliases": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      }
+    },
+    "phone_voice": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sip_server": {"type": "string"},
+        "sip_username": {"type": "string"},
+        "sip_transport": {"enum": ["udp", "tcp", "tls"]},
+        "max_calls_per_day": {"type": "integer", "minimum": 1}
+      }
+    },
+    "testing": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "n_smoke_min": {"type": "integer", "minimum": 1},
+        "n_smoke_max": {"type": "integer", "minimum": 1},
+        "n_full_min": {"type": "integer", "minimum": 1},
+        "n_full_target": {"type": "integer", "minimum": 1},
+        "kill_max_positives": {"type": "integer", "minimum": 0},
+        "scale_min_positives": {"type": "integer", "minimum": 1},
+        "scale_min_meetings": {"type": "integer", "minimum": 1},
+        "extend_max": {"type": "integer", "minimum": 1}
+      }
+    }
+  }
+}

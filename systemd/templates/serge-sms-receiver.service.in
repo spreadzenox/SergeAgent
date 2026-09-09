@@ -1,0 +1,25 @@
+[Unit]
+Description=Serge SMS webhook receiver (Android gateway -> SmsInbox)
+After=network.target
+ConditionPathExists=__SYSTEM_ROOT__/serge/sms/receiver.py
+
+[Service]
+Type=simple
+WorkingDirectory=__SYSTEM_ROOT__
+Environment=HOME=__HOME__
+Environment=USER=__USER__
+Environment=PYTHONUNBUFFERED=1
+Environment=SERGE_INSTANCE_FILE=__INSTANCE_FILE__
+Environment=SERGE_HOME=__HOME__
+Environment=SERGE_SYSTEM_ROOT=__SYSTEM_ROOT__
+Environment=SERGE_MANDATE_PATH=__POLICY__
+Environment=SERGE_POLICY_PATH=__POLICY__
+Environment=SERGE_SMS_RECEIVER_LISTEN=127.0.0.1:8787
+ExecStart=__PYTHON__ __SYSTEM_ROOT__/serge/sms/receiver.py serve
+Restart=always
+RestartSec=3
+NoNewPrivileges=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=default.target

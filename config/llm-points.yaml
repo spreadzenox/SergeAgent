@@ -1,0 +1,422 @@
+# Registre des points LLM (matrice C). Versionné.
+# Chaque point : verdict + tier + checklist P2 + contrat de contexte
+# (fixed/retrieved/couche-5/forbidden/enveloppe) + garde-fou + repli.
+# Tiers (modèles dans slots.json) : T1 reflexe, T2 rédacteur, T3 stratège.
+# Nouveau point en phase autonome = ticket obligatoire.
+# Enveloppes = dimensionnement initial, ajusté empiriquement (jamais des caps).
+schema_version: 1
+
+points:
+  # ---- Méta-funnel venture ----
+  draft_hypothesis_smoke:
+    verdict: LLM-B
+    tier: T2
+    checklist: {entree: partial, sortie: template, info_externe: true, derive: true}
+    context:
+      fixed: [template_smoke, serge_md, seuils_A, policy]
+      retrieved: [ecoute_top5_1200t, lecons_hypothesis_top3_800t, benchmarks_canal_400t]
+      couche5: {allowed: true, budget_tokens: 1500}
+      forbidden: [secrets, pii_tiers, autres_ventures, montants_non_catalogue]
+      envelope_tokens: 5000
+    garde_fou: schéma dét (N 30-50, seuils A, fenêtre ≤ 10j, prix draft non-owné) ; smokes auto + FYI
+    repli: template min + ticket QNA
+    enabled: true
+  draft_hypothesis_full:
+    verdict: LLM-B
+    tier: T2
+    checklist: {entree: true, sortie: template_jugement_seuils, info_externe: true, derive: partial}
+    context:
+      fixed: [template_full, serge_md, seuils_A, gate_collect, etats_sortie]
+      retrieved: [resultats_smoke_2000t, lecons_full_test_top3_800t, etat_collect_300t]
+      couche5: {allowed: true, budget_tokens: 1500}
+      forbidden: [secrets, pii_tiers, autres_ventures, montants_inventes]
+      envelope_tokens: 6000
+    garde_fou: schéma + ticket HYPOTHESIS bloquant (version précise) ; gate collect vérifié dét avant ticket
+    repli: template min + ticket QNA
+    enabled: true
+  plan_scale:
+    verdict: LLM-L
+    tier: T3
+    checklist: {entree: true, sortie: true, info_externe: true, derive: true}
+    propagation: maximale
+    context:
+      fixed: [template_plan, resultats_full, budget_restant, policy]
+      retrieved: [playbooks_scale_top3_1000t, pitfalls_scale_top3_800t, standing_500t]
+      couche5: {allowed: true, budget_tokens: 3000}
+      forbidden: [engagements_contractuels]
+      envelope_tokens: 12000
+    garde_fou: dans bornes → auto + FYI ; hors bornes → VETO_AMONT bloquant ; justification par section
+    repli: rejouer le test gagnant à l'identique + FYI
+    enabled: true
+  options_pivot:
+    verdict: LLM-L
+    tier: T3
+    checklist: {entree: true, sortie: true, info_externe: true, derive: true}
+    propagation: maximale
+    context:
+      fixed: [template_option_x3, serge_md]
+      retrieved: [objections_top10_1500t, lecons_pivot_top3_800t, playbooks_domaine_600t]
+      couche5: {allowed: true, budget_tokens: 2500}
+      forbidden: [refaire_pareil]
+      envelope_tokens: 10000
+    garde_fou: chaque option = pré-enregistrement → ticket HYPOTHESIS ; diff non vide vérifiée dét ; jamais d'auto-pivot
+    repli: PIVOT → EXTEND (variation min) + FYI + QNA optionnel
+    enabled: true
+  resume_test:
+    verdict: LLM-R
+    tier: T1
+    checklist: {entree: structuree, sortie: template, info_externe: false, derive: false}
+    context:
+      fixed: [template_resume]
+      retrieved: [compteurs_verdict_preuves_800t, top_objections_800t, lecons_candidates_400t]
+      couche5: {allowed: false}
+      forbidden: [pii_non_anonymisee, autres_ventures]
+      envelope_tokens: 3000
+    garde_fou: lecture seule mécanique (pas d'outil d'écriture) ; chiffres = DB ou rien
+    repli: chiffres bruts sans résumé
+    enabled: true
+
+  # ---- Prospection ----
+  qualify_prospect:
+    verdict: LLM-1
+    tier: T1
+    checklist: {entree: true, sortie: binaire, info_externe: false, derive: true}
+    context:
+      fixed: [icp_venture_600t, serge_md]
+      retrieved: [fiche_prospect_800t, exemples_proches_2_600t]
+      couche5: {allowed: false}
+      forbidden: [pii_inutile, autres_ventures]
+      envelope_tokens: 2500
+    garde_fou: binaire strict + confiance ; < 0,6 → REJECT conservateur + log + candidat-leçon
+    repli: règles ICP de base
+    enabled: true
+  fill_slots:
+    verdict: LLM-B
+    tier: T1
+    checklist: {entree: true, sortie: bornee, info_externe: partial, derive: true}
+    context:
+      fixed: [template, contraintes_longueur_ton, mots_interdits, serge_md]
+      retrieved: [fiche_600t, slots_convertis_2_600t, objection_a_eviter_200t]
+      couche5: {allowed: true, budget_tokens: 800, timeout_s: 2, max_calls: 1}
+      forbidden: [secrets, prix_non_catalogue, allegations_non_sourcees, autres_prospects]
+      envelope_tokens: 3000
+    garde_fou: checkers dét post-génération ; échec → regen 1× puis template brut
+    repli: template brut (envoyé quand même)
+    enabled: true
+  write_followup:
+    verdict: LLM-B
+    tier: T2
+    checklist: {entree: true, sortie: true, info_externe: true, derive: true}
+    context:
+      fixed: [template_followup, contraintes_non_agressif, patterns_interdits, serge_md]
+      retrieved: [historique_ou_resume_2000t, objections_playbook_800t, lecons_followup_top3_600t]
+      couche5: {allowed: true, budget_tokens: 1500}
+      forbidden: [secrets, prix_non_catalogue, autres_prospects, culpabilisation, faux_ultimatum]
+      envelope_tokens: 5000
+    garde_fou: checkers P2 + détecteur agressivité + N follow-ups (séquence dét)
+    repli: template générique
+    enabled: true
+  voice_script:
+    verdict: LLM-B
+    tier: T2
+    checklist: {entree: true, sortie: structuree_creative, info_externe: true, derive: true}
+    context:
+      fixed: [template_script, patterns_interdits, serge_md]
+      retrieved: [fiche_600t, objections_segment_1000t, pitfalls_voix_400t]
+      couche5: {allowed: true, budget_tokens: 1500}
+      forbidden: [passer_pour_humain, engagements, prix_non_catalogue]
+      envelope_tokens: 4500
+    garde_fou: checkers dét (durée, disclosure, interdites, prix) + ticket initial par type, puis trust zone
+    repli: script validé précédent (pinné)
+    enabled: true
+  voice_dialog:
+    verdict: LLM-B
+    tier: T2
+    note: Point temps réel comptant le speech-to-speech (xAI/OpenAI Realtime) ; tour-par-tour = repli.
+    checklist: {entree: true, sortie: true, info_externe: true, derive: true}
+    context:
+      fixed: [script_P4, regles_dures, serge_md_min]
+      retrieved: [fiche_600t, historique_400t, objections_600t]
+      couche5: {allowed: false}
+      tools: [agenda, catalogue, fiches]
+      forbidden: [engagements, prix_non_catalogue, autres_prospects, hors_sujet]
+      envelope_tokens: 4000
+    garde_fou: tours/durée max (coupure gracieuse) ; détecteur dérive (recentrage 1× puis raccrochage propre) ; enregistrement ; DTMF1 → ticket ; kill manuel
+    repli: message secours pré-enregistré + répondeur + ticket + rappel planifié
+    enabled: true
+  summarize_thread:
+    verdict: LLM-R
+    tier: T1
+    note: Fusionné P6+O5 (un seul point paramétré par usage).
+    checklist: {entree: structuree, sortie: template, info_externe: false, derive: false}
+    context:
+      fixed: [template_resume]
+      retrieved: [historique_borne_5000t]
+      couche5: {allowed: false}
+      forbidden: [pii_en_clair]
+      envelope_tokens: 6000
+    garde_fou: lecture seule ; régénérable
+    repli: brut tronqué (derniers K)
+    enabled: true
+  score_lead_departage:
+    verdict: LLM-1
+    tier: T1
+    note: 'Hybride (P7) : score DET par défaut, LLM-1 seulement en zone grise + décision coûteuse.'
+    checklist: {entree: structuree, sortie: score, info_externe: false, derive: false}
+    context:
+      fixed: [historique_resume, options_allouer_vs_abandonner]
+      retrieved: []
+      couche5: {allowed: false}
+      forbidden: [pii_inutile]
+      envelope_tokens: 2000
+    garde_fou: seuil zone grise en policy
+    repli: score DET seul
+    enabled: true
+
+  # ---- Builder ----
+  build_artifact:
+    verdict: LLM-L
+    tier: T3
+    note: Cœur opérationnel — pas d'économie de modèle (validé).
+    checklist: {entree: true, sortie: true, info_externe: partial, derive: true}
+    context:
+      fixed: [spec_complete_1500t, contraintes_stack, serge_md]
+      retrieved: [playbooks_builder_top2_800t, pitfalls_400t, version_precedente_1000t]
+      couche5: {allowed: true, budget_tokens: 2000}
+      forbidden: [secrets, pii_reelle, prix_non_spec, code_reseau_non_allowliste, trackers_non_declares]
+      envelope_tokens: 6000
+    garde_fou: sandbox (pas secret/mutation externe, réseau allowlist) ; sortie = artifact versionné ; 3 passes max partagées avec review_build
+    repli: ticket QNA (spec + tentatives + recommandation) — pas de repli dét pour créer
+    enabled: true
+  review_build:
+    verdict: LLM-1
+    tier: T2
+    note: Multimodal obligatoire (screenshots + interaction sandboxée). Juge DISTINCT du builder.
+    checklist: {entree: visuelle_variable, sortie: enum, info_externe: false, derive: visuelle}
+    context:
+      fixed: [spec_criteres_1500t, rubric_poids_800t, numero_passe, serge_md]
+      retrieved: [verdicts_passes_precedentes_800t, pitfalls_review_300t]
+      entrees_multimodales: [screenshots_desktop_mobile, session_interaction_sandbox]
+      couche5: {allowed: false}
+      forbidden: [comparaisons_concurrents_non_fournis]
+      envelope_tokens: 4000
+    garde_fou: verdict enum strict (malformé → 2 recalls puis code) ; FIX ≤ 5 localisés ; passe 3 = binaire + dette ; contradiction non justifiée = candidat-leçon ; FAIL-CLOSED (pas de review = pas de publish, ALERT + file)
+    repli: aucun (fail-closed)
+    enabled: true
+  summarize_build_debt:
+    verdict: LLM-R
+    tier: T1
+    checklist: {entree: structuree, sortie: template, info_externe: false, derive: false}
+    context:
+      fixed: [template_dette]
+      retrieved: [verdict_passe3_500t, dettes_existantes_300t]
+      couche5: {allowed: false}
+      forbidden: [pii, autres_ventures]
+      envelope_tokens: 1500
+    garde_fou: lecture seule (écriture DB dét) ; dédupliqué dét
+    repli: réserves brutes copiées
+    enabled: true
+
+  # ---- Observation ----
+  classify_reply:
+    verdict: LLM-1
+    tier: T1
+    checklist: {entree: variable_multicanal, sortie: enum, info_externe: false, derive: true}
+    context:
+      fixed: [taxonomie_2exemples_1200t, serge_md]
+      retrieved: [message_2000t_tronque, contexte_micro_300t]
+      couche5: {allowed: true, budget_tokens: 800, timeout_s: 2, max_calls: 1}
+      forbidden: [pii_inutile, autres_prospects, autres_ventures, secrets]
+      envelope_tokens: 3500
+    garde_fou: enum strict P3 + requested ; confiance < 0,6 → file review groupée ; UNSUBSCRIBE/SPAM = double-check dét, doute → opt-out (P0)
+    repli: règles mots-clés + confiance basse forcée → review
+    enabled: true
+  extract_meeting:
+    verdict: LLM-1
+    tier: T1
+    checklist: {entree: variable_naturel, sortie: structuree, info_externe: false, derive: true}
+    context:
+      fixed: [schema_sortie, fuseau_Europe_Paris, datetime_actuel, serge_md]
+      retrieved: [message_800t, historique_micro_200t]
+      couche5: {allowed: false}
+      forbidden: [pii_inutile, autres_ventures]
+      envelope_tokens: 2000
+    garde_fou: vérif agenda dét ; confiance < 0,8 OU ambiguïté → clarification, jamais de booking deviné ; booking = 3 actes dét idempotents
+    repli: clarification générique (2-3 créneaux)
+    enabled: true
+  reply_intent:
+    verdict: LLM-B
+    tier: T2
+    checklist: {entree: true, sortie: true, info_externe: true, derive: true}
+    context:
+      fixed: [contraintes_ton, serge_md]
+      retrieved: [historique_2000t, classe_confiance_verbatim_400t, playbook_objection_600t, fiche_offre_prix_400t]
+      couche5: {allowed: true, budget_tokens: 1200}
+      forbidden: [autres_prospects, prix_delais_inventes, engagements, hors_scope]
+      envelope_tokens: 5000
+    garde_fou: détecteur d'engagement (doute → ticket + accusé Xh) ; prix/délai = catalogue vérifié dét ; full auto + traçabilité post-hoc
+    repli: accusé + ticket QNA
+    enabled: true
+  review_other:
+    verdict: LLM-1
+    tier: T1
+    note: Batch quotidien, jamais bloquant temps réel.
+    checklist: {entree: heterogene, sortie: contrainte, info_externe: partial, derive: true}
+    context:
+      fixed: [taxonomie_8_signaux, template_proposition]
+      retrieved: [batch_other_20items_3000t]
+      couche5: {allowed: true, budget_tokens: 1500}
+      forbidden: [pii, secrets, autres_ventures]
+      envelope_tokens: 5000
+    garde_fou: proposition catégorie = ticket ; reclassements logués + confiance (basse → reste OTHER)
+    repli: OTHER s'accumule (alerte si > 50) + traités REPLIED conservateur
+    enabled: true
+  score_call:
+    verdict: LLM-R
+    tier: T1
+    note: Scoring post-appel F4b (note 1-5 + flags à réécouter).
+    checklist: {entree: structuree, sortie: notee, info_externe: false, derive: false}
+    context:
+      fixed: [rubric_notation]
+      retrieved: [transcription_3000t, metadonnees_appel_400t]
+      couche5: {allowed: false}
+      forbidden: [pii_en_clair]
+      envelope_tokens: 4000
+    garde_fou: lecture seule ; note + flags vers file écoute
+    repli: pas de score (file chronologique)
+    enabled: true
+
+  # ---- Collect ----
+  draft_price:
+    verdict: LLM-L
+    tier: T2
+    checklist: {entree: true, sortie: structuree_ouverte, info_externe: true, derive: true}
+    propagation: amont (ticket bloquant)
+    context:
+      fixed: [template_proposition, serge_md, bornes_policy]
+      retrieved: [benchmarks_1000t, couts_300t, objections_prix_800t, offre_600t]
+      couche5: {allowed: true, budget_tokens: 2500}
+      forbidden: [prix_autres_clients, pii, engagements_garantie_ventes]
+      envelope_tokens: 5000
+    garde_fou: ticket VETO_AMONT bloquant ; bornes vérifiées dét avant ticket ; conditions de révision incluses
+    repli: ticket QNA avec données brutes
+    enabled: true
+
+  # ---- Alloueur ----
+  judge_allocator:
+    verdict: LLM-1
+    tier: T3
+    note: Quotidien + déclenché (budget 80 %, seuils, ALERT, signal chaud, oscillation).
+    checklist: {entree: etat_complet, sortie: allocation, info_externe: true, derive: true}
+    propagation: maximale (allocation des semaines suivantes)
+    context:
+      fixed: [bornes_A, template_decision, serge_md]
+      retrieved: [U1_U5_campagnes_4000t, lecons, opportunites, proposition_bandit]
+      couche5: {allowed: true, budget_tokens: 2000}
+      forbidden: [ordres_irreversibles_directs, engagements]
+      envelope_tokens: 8000
+    garde_fou: bornes A (clamp + log) + justification revirements + écart > 15 pts vs B justifié + tickets irréversible
+    repli: proposition B brute
+    enabled: true
+
+  # ---- Mémoire ----
+  consolidate:
+    verdict: LLM-B
+    tier: T2
+    note: Batch 3 jours. Le plus gros contexte batch.
+    checklist: {entree: episodes, sortie: templatée, info_externe: true, derive: true}
+    context:
+      fixed: [templates_lecon_playbook_pitfall, K_max, policy]
+      retrieved: [episodes_periode, OTHER, requested, recherches_recurrentes, pertes_standing_6000t]
+      couche5: {allowed: true, budget_tokens: 3000}
+      forbidden: [pii_en_clair, secrets, autres_ventures_sauf_global]
+      envelope_tokens: 12000
+    garde_fou: K max, budget mesuré, ticket MEMORY (disposition par leçon) ; jamais d'écriture directe
+    repli: pas de nouvelles leçons (+ FYI)
+    enabled: true
+  edit_serge_md:
+    verdict: LLM-B
+    tier: T1
+    checklist: {entree: diff, sortie: templatée, info_externe: false, derive: false}
+    context:
+      fixed: [template_sections, constitution, version_actuelle, limite_100_lignes]
+      retrieved: [changements_1000t]
+      couche5: {allowed: false}
+      forbidden: [pii, secrets]
+      envelope_tokens: 3000
+    garde_fou: diff visible, rollback 1 clic, constitution injectée
+    repli: version précédente
+    enabled: true
+
+  # ---- Interactivité ----
+  render_context_fr:
+    verdict: LLM-R
+    tier: T1
+    checklist: {entree: structuree, sortie: template, info_externe: false, derive: false}
+    context:
+      fixed: [template_ou_enjeu_attente]
+      retrieved: [ticket_thread_venture_1500t]
+      couche5: {allowed: false}
+      forbidden: [ids_opaques_affiches, pii, secrets]
+      envelope_tokens: 2500
+    garde_fou: lecture seule mécanique
+    repli: champs bruts (titre + état + lien)
+    enabled: true
+  classify_owner_intent:
+    verdict: LLM-1
+    tier: T1
+    checklist: {entree: libre, sortie: route, info_externe: false, derive: true}
+    context:
+      fixed: [taxonomie_intents, serge_md]
+      retrieved: [message_thread_1000t]
+      couche5: {allowed: false}
+      forbidden: [pii_tierce_inutile]
+      envelope_tokens: 2000
+    garde_fou: ambigu + irréversible → clarification, jamais d'exécution devinée
+    repli: ticket QNA "précise ta demande"
+    enabled: true
+  judge_consequence:
+    verdict: LLM-1
+    tier: T2
+    checklist: {entree: ordre_contexte, sortie: binaire, info_externe: partial, derive: true}
+    context:
+      fixed: [criteres_5, exemples, seuils]
+      retrieved: [ordre_contexte_1500t]
+      couche5: {allowed: true, budget_tokens: 800, max_calls: 1}
+      forbidden: []
+      envelope_tokens: 3000
+    garde_fou: doute → confirmation ; bypass respecté ; §14.1a jamais bypassé (check dét après)
+    repli: confirmation systématique
+    enabled: true
+
+  # ---- Écoute ----
+  cluster_demand:
+    verdict: HYB
+    tier: T2
+    note: Embeddings = outil dét ; labeling/scoring = LLM-1. Batch hebdo.
+    checklist: {entree: verbatims, sortie: clusters, info_externe: true, derive: true}
+    context:
+      fixed: [rubric_volume_intensite_recurrence_willingness, template_cluster]
+      retrieved: [verbatims_echantillonnes_3000t]
+      couche5: {allowed: true, budget_tokens: 2500}
+      forbidden: [pii_verbatims_anonymises, secrets]
+      envelope_tokens: 7000
+    garde_fou: batch hebdo, jamais bloquant ; opportunité chaude (seuils policy) → ALERT/FYI dét
+    repli: clusters bruts sans labels
+    enabled: true
+
+  # ---- Guide installateur (kit, pas runtime) ----
+  install_guide:
+    verdict: LLM-R
+    tier: T2
+    note: Guide FR de serge-install. Réponses courtes, aucun état modifié, secours local.
+    checklist: {entree: question_libre, sortie: explication, info_externe: false, derive: true}
+    context:
+      fixed: [system_prompt_guide]
+      retrieved: [etape_courante, resume_non_secret]
+      couche5: {allowed: false}
+      forbidden: [secrets, pii]
+      envelope_tokens: 1500
+    garde_fou: lecture seule ; échec → hint statique (jamais bloquant)
+    repli: hints statiques TOPIC_HINTS
+    enabled: true

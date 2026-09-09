@@ -1,0 +1,28 @@
+# Serge pre-commit: lint + format + type-check + secrets scan.
+# Install: uv tool install pre-commit && pre-commit install
+# Scope = périmètre charte : tout serge-v2 est sous charte dès le jour 1.
+# orchestrator/ n'existe plus (runtime phone déplacé vers serge/, C19).
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.6
+    hooks:
+      - id: ruff
+        args: [--fix]
+        files: &charte-files ^(kit/|serge/|scripts/serge-|tests/)
+      - id: ruff-format
+        files: *charte-files
+
+  - repo: local
+    hooks:
+      - id: ty-check
+        name: ty check (périmètre charte)
+        entry: uvx --with ty ty check kit serge scripts/serge-builder.py scripts/serge-instance-wizard.py scripts/serge-mandate-wizard.py
+        language: system
+        types: [python]
+        files: *charte-files
+        pass_filenames: false
+      - id: scan-secrets
+        name: scan repo secrets
+        entry: python3 scripts/scan-repo-secrets.py
+        language: system
+        pass_filenames: false

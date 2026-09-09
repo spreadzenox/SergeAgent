@@ -1,0 +1,13 @@
+# Séquences de prospection (B §2.6). Versionné. Étapes : canal + délai
+# en jours après la touche précédente (étape 0 = dès QUALIFIED).
+# Campagne : thresholds_json.sequence = nom ou étapes inline.
+schema_version: 1
+
+sequences:
+  # v1 : canaux avec guards (email/sms/voix). LinkedIn revient avec
+  # son adaptateur (phase 2) — le séquenceur refuse l'inconnu (loud).
+  default_named:
+    - {channel: email, delay_days: 0}
+    - {channel: email, delay_days: 3}
+    - {channel: voice, delay_days: 4}
+    - {channel: email, delay_days: 3}

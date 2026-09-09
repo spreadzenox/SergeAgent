@@ -1,0 +1,12 @@
+[Unit]
+Description=Schedule continuous Serge pipeline cycles
+
+[Timer]
+OnBootSec=1min
+OnUnitInactiveSec=1min
+RandomizedDelaySec=10s
+Persistent=true
+AccuracySec=10s
+
+[Install]
+WantedBy=timers.target

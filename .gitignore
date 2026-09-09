@@ -1,0 +1,86 @@
+# État mutable
+state/*.db
+state/*.db-*
+state/*.sqlite
+state/*.sqlite-*
+
+# Files de travail
+queue/pending/*.json
+queue/running/*.json
+queue/review/*.json
+queue/rework/*.json
+queue/done/*.json
+queue/failed/*.json
+
+# Preuves et journaux générés
+evidence/*
+!evidence/.gitkeep
+logs/*
+!logs/.gitkeep
+
+# Secrets (jamais commités : clés live, allowlists PII, sidecars)
+.env
+.env.*
+!.env.test.example
+.env.test
+secrets/
+private/
+*.pem
+*.key
+config/*.local.yaml
+config/*.local.json
+# Instance sidecar (never commit a decrypted or production age file)
+serge.secrets.age
+*.secrets.age
+serge.secrets
+*.instance.toml
+!schemas/serge.instance.example.toml
+/serge.instance.toml
+instances/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+.ty/
+.ruff_cache/
+state/serge.db
+state/serge.db-*
+state/snapshots/*.json
+orchestrator/runtime/
+archive/
+workspaces/
+orchestrator/*.before-*
+queue/pending/**
+queue/running/**
+queue/review/**
+queue/rework/**
+queue/done/**
+queue/failed/**
+queue/human_block/**
+state/action-ledger.db*
+state/cycles/
+state/releases/
+state/capabilities/
+state/burn-in/
+build/
+dist/
+tmp/
+reports/
+state/maintenance/
+state/reporter/
+
+# Runtime projections and working trees (canonical facts live in sqlite / live
+# policy, not in these untracked sidecars). Keep tracked examples.
+state/**
+!state/README.md
+!state/canonical.sqlite.DEPRECATED.txt
+!state/canonical/
+!state/canonical/DEPRECATED.txt
+!state/provisioning/
+!state/provisioning/*.example.json
+queue/archived/
+projects/
+scripts/*.bak*
+scripts/*.bak-*

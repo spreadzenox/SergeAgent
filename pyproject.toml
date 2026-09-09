@@ -1,0 +1,40 @@
+[project]
+name = "serge-kit"
+version = "0.1.0"
+description = "Serge instance kit: contract, wizards, builder, telephony"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "pyyaml",
+]
+
+[dependency-groups]
+dev = [
+    "pre-commit",
+    "ruff",
+    "ty",
+]
+
+[tool.ruff]
+line-length = 79
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP"]
+ignore = [
+    "E501",  # line length: format handles it, legacy code has long lines
+    "N818",  # error suffix on exceptions: legacy *Denied/*Error names kept
+]
+
+[tool.ruff.lint.per-file-ignores]
+# tests: prose method names + sys.path bootstrap before imports are intentional
+"tests/*" = ["N802", "N803", "E402"]
+
+[tool.ruff.format]
+quote-style = "single"
+
+[tool.ty.environment]
+python-version = "3.12"
+
+[tool.uv]
+package = false

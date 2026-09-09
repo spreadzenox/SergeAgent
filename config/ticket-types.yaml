@@ -1,0 +1,142 @@
+# Types de tickets (H §0, §7). Versionné. Ajouter un type = ajouter
+# un bloc ici (P1 : données, pas code). Le moteur ne connaît que le
+# lifecycle générique (DRAFT→OPEN→DISCUSSING→DECIDED→EXECUTED→CLOSED,
+# EXPIRED, CANCELLED). Expiries/défauts validés en H §4.
+schema_version: 1
+
+types:
+  HYPOTHESIS:
+    role: Co-rédaction + validation des hypothèses de market tests (full)
+    render: {color: 10181046, emoji: "🔬"}
+    urgency: normale
+    expiry_hours: 48
+    default: refus_conservateur
+    default_detail: Pas de test sans hypothèse validée.
+    fields: [hypothese, niveau, N, canaux, seuils_kill_scale, fenetre, prix_draft]
+    versioned: true
+    buttons: [approuver_version, rejeter, discuter]
+    forum_tag: hypothèse
+  VETO_AMONT:
+    role: Création venture, verticale, prix, décisions propagatives
+    render: {color: 15158332, emoji: "🛑"}
+    urgency: normale
+    expiry_hours: 24
+    default: refus
+    default_detail: Ne pas créer sans validation.
+    fields: [decision, alternatives_ecartees, risque_propagation, irreversibilite]
+    buttons: [approuver, rejeter, discuter]
+    forum_tag: veto
+  GUICHET:
+    role: Étapes déléguées humaines (CAPTCHA stream, KYC, signature, 3DS)
+    render: {color: 16711680, emoji: "🔴"}
+    urgency: urgente
+    expiry_minutes: [10, 30]
+    default: pause_propre_reproposee
+    default_detail: Tâche en pause propre, re-proposée au prochain cycle (max 3, backoff 1/3/7j).
+    fields: [contexte, progres, action_requise, lien_stream, ttl]
+    mirror_urgent: true
+    buttons: [cest_fait, abandonner, discuter]
+    forum_tag: guichet
+  PUBLICATION:
+    role: Drafts Reddit/LinkedIn/forums + contexte + risque
+    render: {color: 3447003, emoji: "📣"}
+    urgency: normale
+    expiry_hours: 24
+    default: non_publie
+    default_detail: Rien ne part sans validation (hors trust zones).
+    fields: [draft, venue, regles_lieu, historique_compte, risque]
+    buttons: [approuver, editer, rejeter, discuter]
+    forum_tag: publication
+  MEMORY:
+    role: Consolidation 3 jours — N leçons à garder/modifier/jeter
+    render: {color: 1752220, emoji: "🧠"}
+    urgency: fenetre_48h
+    expiry_hours: 48
+    default: auto_accepte_sauf_veto
+    default_detail: Semi-interactif validé (D).
+    fields: [lecons]
+    items_per_lesson: [garder, modifier, jeter]
+    buttons: [tout_approuver, discuter]
+    forum_tag: mémoire
+  POLICY:
+    role: Propositions R4 (diff seuils/quotas + justification + impact)
+    render: {color: 15844367, emoji: "📜"}
+    urgency: normale
+    expiry_hours: 72
+    default: pas_de_changement
+    default_detail: La policy actuelle reste.
+    fields: [diff_avant_apres, justification, impact, blast_radius]
+    buttons: [approuver, rejeter, discuter]
+    forum_tag: policy
+  R1_OVERRIDE:
+    role: Dépassement 300 lignes (pourquoi indécoupable + risques)
+    render: {color: 15105570, emoji: "📏"}
+    urgency: normale
+    expiry_hours: 24
+    default: decoupage_impose
+    default_detail: Sans validation, le changement doit être découpé.
+    fields: [diff_resume, pourquoi_indecoupable, risques]
+    buttons: [approuver, rejeter, discuter]
+    forum_tag: R1
+  FYI:
+    role: Digest, résultats, signaux, rapports (pas de réponse)
+    render: {color: 9807270, emoji: "ℹ️"}
+    urgency: aucune
+    expiry_hours: null
+    default: rien
+    default_detail: Lecture seule.
+    fields: [contenu]
+    buttons: [discuter_fil]
+    forum_tag: null
+  REQUESTED:
+    role: Demandes d'évolution P3 des LLM (lecture seule owner, batch Meta-Grok)
+    render: {color: 5793266, emoji: "💡"}
+    urgency: lecture_seule
+    expiry_hours: null
+    default: rien
+    default_detail: Relu en batch consolidation, jamais bloquant.
+    fields: [demande, contexte, point_llm]
+    buttons: [discuter_fil]
+    forum_tag: null
+  OWNER_ORDER:
+    role: Ordres/questions/veto/infos owner vers Serge (sens inverse)
+    render: {color: 5763719, emoji: "📢"}
+    urgency: variable
+    expiry_hours: 24
+    default: ordre_non_execute
+    default_detail: Sans confirmation (si requise), rien ne s'exécute.
+    fields: [ordre, discussion_serge, consequences]
+    bypass: {prefix: '!', suffix: --force, phrases: ['sans confirmation'], slash: '/serge order --force'}
+    buttons: [confirmer, annuler, discuter]
+    forum_tag: null
+  QNA:
+    role: Questions générales de Serge — QCM + libre + Discuter. Jamais bloquant.
+    render: {color: 16705372, emoji: "❓"}
+    urgency: normale
+    expiry_hours: 72
+    default: serge_decide_seul_logue
+    default_detail: Jamais un veto déguisé.
+    fields: [question, options_qcm, contexte]
+    buttons: [choix_qcm, reponse_libre, discuter]
+    forum_tag: question
+  ALERT:
+    role: Incidents graves (panne trunk, suspension, anomalie financière). Tracé, pas de décision.
+    render: {color: 15548997, emoji: "🚨"}
+    urgency: haute
+    expiry_hours: null
+    default: trace
+    default_detail: Actions déjà exécutées loguées ; notifie, n'attend pas.
+    fields: [incident, actions_executees, impact]
+    mirror_urgent: true
+    buttons: [accuse_reception, discuter]
+    forum_tag: alerte
+  COLLECT_READINESS:
+    role: Ouverture capacités collect (checklist + preuves). Séparé du VETO prix (E).
+    render: {color: 3066993, emoji: "💰"}
+    urgency: normale
+    expiry_hours: 72
+    default: capacites_fermees
+    default_detail: Pas d'encaissement sans ouverture explicite.
+    fields: [prix_owné_version, catalogue_ids, e2e_sandbox_vert, canary_1eur_receipt]
+    buttons: [ouvrir, refuser, discuter]
+    forum_tag: policy

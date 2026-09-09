@@ -1,0 +1,53 @@
+# Paths the kit and builder must never copy from a live Serge.
+# A new instance is virgin: empty canon, no Julien memory, no secrets.
+# Seed = `git archive` of a SHA, not rsync of a running checkout.
+schema_version: 1
+secret_values_included: false
+never_copy:
+  - serge.secrets.age
+  - "*.secrets.age"
+  - serge.instance.toml
+  - state/
+  - queue/pending/
+  - queue/running/
+  - queue/review/
+  - queue/rework/
+  - queue/done/
+  - queue/failed/
+  - queue/human_block/
+  - queue/archived/
+  - evidence/
+  - logs/
+  - reports/
+  - projects/
+  - archive/
+  - orchestrator/runtime/
+  - state/provisioning/
+  - state/web-ingress/
+  - "~/.config/serge/"
+  - "~/.openclaw/"
+  - "~/.config/openclaw/"
+  - "~/.meta-grok/"
+  - /opt/serge-policy/
+  - /opt/serge-meta-grok-v2/
+  - /etc/serge/meta-grok/
+  - /etc/serge/meta-grok-v2/
+  - backups/
+allowed_seed_examples:
+  - state/README.md
+  - state/provisioning/*.example.json
+  - queue/*/.gitkeep
+  - evidence/.gitkeep
+  - logs/.gitkeep
+  - schemas/serge.instance.example.toml
+forbidden_in_kit_seed:
+  - owner Discord snowflakes
+  - domain inventory (live-owner.example.net and similar live records)
+  - portfolio-guidance / leftover / occupancy memory
+  - legal entity facts
+  - payment-card material
+  - any file under ~/.config/serge/secrets
+notes: >-
+  Inventory YAML and secrets manifest may name julien-vps paths.
+  That is a catalogue, not a payload. The builder derives destinations
+  from the new instance TOML. maps_to is never copied as a file.

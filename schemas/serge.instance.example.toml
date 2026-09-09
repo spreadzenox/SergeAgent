@@ -1,0 +1,61 @@
+# Virgin instance template for the kit. No secrets. No owner memory.
+# Observed production host paths belong in the inventory, not in this seed.
+
+schema_version = 1
+instance_id = "example-sandbox"
+mode = "sandbox"
+
+[identity]
+hostname = "localhost"
+public_hostname = "serge.example.net"
+phone_sms_number = "+33600000001"
+phone_voice_number = "+33162000001"
+
+[paths]
+home = "/home/owner"
+system_root = "/home/owner/serge-system"
+policy = "/home/owner/.config/serge/mandate.yaml"
+config_root = "/home/owner/.config/serge"
+secrets_age = "serge.secrets.age"
+
+[features]
+# All-or-nothing Serge. Token features on. metagrok stays off (no sidecar key).
+ingress = true
+stripe = true
+voice = true
+metagrok = false
+gmail = true
+discord = true
+openclaw = true
+owner_ui = true
+payments_live = true
+phone_sms = true
+phone_voice = true
+
+[llm]
+provider = "openrouter"
+referer = ""
+t1_model = "xiaomi/mimo-v2.5"
+t2_model = "deepseek/deepseek-v4-flash-0731"
+t3_model = "z-ai/glm-5.3-flash"
+guide_model = "deepseek/deepseek-v4-flash-0731"
+
+[ingress]
+listen = "loopback"
+aliases = []
+
+[phone_voice]
+sip_server = "sip.example.com"
+sip_username = "example-trunk"
+sip_transport = "tls"
+max_calls_per_day = 50
+
+[testing]
+n_smoke_min = 30
+n_smoke_max = 50
+n_full_min = 150
+n_full_target = 200
+kill_max_positives = 1
+scale_min_positives = 5
+scale_min_meetings = 2
+extend_max = 1

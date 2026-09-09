@@ -1,0 +1,25 @@
+[Unit]
+Description=Serge user-space Asterisk (SIP trunk voice)
+After=network.target
+ConditionPathExists=/usr/sbin/asterisk
+ConditionPathExists=__CONFIG_ROOT__/asterisk/asterisk.conf
+
+[Service]
+Type=simple
+WorkingDirectory=__SYSTEM_ROOT__
+Environment=HOME=__HOME__
+Environment=USER=__USER__
+Environment=SERGE_INSTANCE_FILE=__INSTANCE_FILE__
+Environment=SERGE_HOME=__HOME__
+Environment=SERGE_SYSTEM_ROOT=__SYSTEM_ROOT__
+Environment=SERGE_MANDATE_PATH=__POLICY__
+Environment=SERGE_POLICY_PATH=__POLICY__
+ExecStartPre=/bin/mkdir -p /run/user/__UID__/serge-asterisk __SYSTEM_ROOT__/logs/asterisk __CONFIG_ROOT__/asterisk/var/lib/keys
+ExecStart=/usr/sbin/asterisk -f -C __CONFIG_ROOT__/asterisk/asterisk.conf
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=default.target

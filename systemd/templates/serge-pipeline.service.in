@@ -1,0 +1,34 @@
+[Unit]
+Description=Serge bounded autonomous pipeline
+ConditionPathExists=!__SYSTEM_ROOT__/orchestrator/runtime/KILL_SWITCH
+ConditionPathExists=!__SYSTEM_ROOT__/state/KILL_SWITCH
+__OPENCLAW_UNIT_LINES__
+
+[Service]
+Type=oneshot
+WorkingDirectory=__SYSTEM_ROOT__
+Environment=HOME=__HOME__
+Environment=USER=__USER__
+Environment=LOGNAME=__USER__
+Environment=PYTHONUNBUFFERED=1
+Environment=SERGE_AGENT_RUNTIME=__AGENT_RUNTIME__
+Environment=SERGE_OPENCLAW_ADAPTER=__OPENCLAW_ADAPTER__
+Environment=SERGE_INSTANCE_FILE=__INSTANCE_FILE__
+Environment=SERGE_HOME=__HOME__
+Environment=SERGE_SYSTEM_ROOT=__SYSTEM_ROOT__
+Environment=SERGE_MANDATE_PATH=__POLICY__
+Environment=SERGE_POLICY_PATH=__POLICY__
+Environment=XDG_RUNTIME_DIR=/run/user/__UID__
+Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/__UID__/bus
+# Production path: one governed run-batch cycle (not burn-in scheduled-run).
+ExecStart=/bin/bash -c '/usr/bin/flock -n __SYSTEM_ROOT__/orchestrator/runtime/systemd.lock __PYTHON__ __SYSTEM_ROOT__/orchestrator/sergectl.py run-once; c=$?; if [ "$c" -eq 1 ]; then echo "{\"status\":\"ok\",\"skipped\":\"orchestrator_overlap\",\"pipeline_exit\":{\"terminal_class\":\"OVERLAP_SKIPPED\",\"exit_code\":0,\"systemd_outcome\":\"success\"}}"; exit 0; fi; exit "$c"'
+TimeoutStartSec=15min
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=__SYSTEM_ROOT__/queue __SYSTEM_ROOT__/evidence __SYSTEM_ROOT__/logs __SYSTEM_ROOT__/state __SYSTEM_ROOT__/orchestrator/runtime __SYSTEM_ROOT__/projects __OPENCLAW_RW____CONFIG_ROOT__ __HOME__/.local/share /tmp
+LockPersonality=yes
+
+[Install]
+WantedBy=default.target

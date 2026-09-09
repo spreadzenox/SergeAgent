@@ -1,0 +1,9 @@
+# Normalisation fins de ligne (checkouts Windows sains, scripts LF).
+* text=auto
+*.sh text eol=lf
+bin/* text eol=lf
+*.py text eol=lf
+*.toml text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.md text eol=lf

@@ -1,0 +1,6 @@
+[Timer]
+OnUnitInactiveSec=1min
+OnBootSec=1min
+RandomizedDelaySec=10s
+Persistent=true
+AccuracySec=10s

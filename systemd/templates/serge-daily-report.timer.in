@@ -1,0 +1,11 @@
+[Unit]
+Description=Serge daily report at 20:00 Europe/Paris
+
+[Timer]
+OnCalendar=*-*-* 20:00:00 Europe/Paris
+Persistent=true
+RandomizedDelaySec=2min
+Unit=serge-daily-report.service
+
+[Install]
+WantedBy=timers.target

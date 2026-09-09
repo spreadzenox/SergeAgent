@@ -1,0 +1,30 @@
+# Policy de test live-prudent (B8 acté). Surcharge policy.yaml
+# quand SERGE_ENV=test. Tous les boutons au plancher.
+# Allowlist = variables d'environnement (.env.test, JAMAIS commité).
+schema_version: 1
+extends: policy.yaml
+
+budget:
+  monthly_eur: 2.0                   # cap €/session de test
+  llm_daily_eur: 2.0
+  browserbase_monthly_cap_eur: 0.0   # pas de navigateur managé en test
+
+quotas:
+  email_per_mailbox_per_day: 2
+  voice_max_calls_per_day: 0         # voix exclue du scope live (B8)
+  sms_per_sender_per_min: 2
+  sms_global_per_min: 4
+  linkedin_connect_per_day: 0
+  linkedin_inmail_per_month: 0
+
+voice:
+  quality_window: 4
+
+observation:
+  other_batch_max_items: 5
+
+memory:
+  consolidation_days: 1              # consolidation testable en session
+
+tickets:
+  digest_hour: 8
