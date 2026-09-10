@@ -23,6 +23,11 @@ def read_secret_file(path: Path) -> str:
     if not text:
         return ''
     first = text.splitlines()[0].strip()
-    if re.match(r'^[A-Za-z_][A-Za-z0-9_]*=', first):
-        return first.split('=', 1)[1].strip().strip('"').strip("'")
+    match = re.match(r'^([A-Za-z_][A-Za-z0-9_]*)=(.*)$', first)
+    if match:
+        key, rest = match.group(1), match.group(2)
+        if rest.strip():
+            return rest.strip().strip('"').strip("'")
+        if re.fullmatch(r'[A-Z_][A-Z0-9_]*', key):
+            return ''
     return first
