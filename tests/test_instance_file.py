@@ -18,7 +18,10 @@ from kit.instance_file import (  # noqa: E402
     apply_env,
     command_requires_instance,
     default_features,
+    escape_sidecar_value,
     load_instance,
+    multiline_secret_names,
+    parse_dotenv,
     require_instance,
     required_secret_names,
     validate_toml,
@@ -539,6 +542,32 @@ class InstanceFileTests(unittest.TestCase):
         ):
             with self.assertRaises(InstanceError, msg=testing):
                 validate_toml({**base, 'testing': testing})
+
+
+class SidecarMultilineTests(unittest.TestCase):
+    def test_escape_then_parse_restores_multiline(self) -> None:
+        blob = 'ALPHA=un\nBETA=deux\nGAMMA=trois'
+        # Marqueur en littéral : verrouille le contrat inter-versions.
+        text = (
+            '# serge-sidecar v2 (multiline \\n-escaped)\n'
+            f'gog_env={escape_sidecar_value(blob)}\n'
+            f'plain={escape_sidecar_value("a\\b")}\n'
+            f'tricky={escape_sidecar_value("x\\ny")}\n'
+        )
+        back = parse_dotenv(text)
+        self.assertEqual(back['gog_env'], blob)
+        self.assertEqual(back['plain'], 'a\\b')
+        self.assertEqual(back['tricky'], 'x\\ny')
+
+    def test_parse_legacy_keeps_raw_text(self) -> None:
+        back = parse_dotenv('k=v\nXKEY=\nodd=a\\nb\n')
+        self.assertEqual(back, {'k': 'v', 'XKEY': '', 'odd': 'a\\nb'})
+
+    def test_multiline_names_follow_feature(self) -> None:
+        features = default_features()
+        self.assertIn('gog_env', multiline_secret_names(features))
+        features['gmail'] = False
+        self.assertNotIn('gog_env', multiline_secret_names(features))
 
 
 if __name__ == '__main__':

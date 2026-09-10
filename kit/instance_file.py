@@ -295,14 +295,72 @@ def required_secret_names(
     return list(dict.fromkeys(needed))
 
 
+def multiline_secret_names(
+    features: Mapping[str, bool],
+    manifest: Mapping[str, Any] | None = None,
+) -> list[str]:
+    """Secrets marqués multiline au manifeste (feature on).
+
+    Args:
+        features: Features activées.
+        manifest: Manifeste (défaut : chargé du repo).
+
+    Returns:
+        Noms à saisir/injecter sur plusieurs lignes (ex. gog_env).
+    """
+    payload = manifest or load_manifest()
+    names: list[str] = []
+    for item in payload.get('keys') or []:
+        if not isinstance(item, dict) or not item.get('multiline'):
+            continue
+        feature = str(item.get('required_when_feature') or '')
+        name = str(item.get('name') or '')
+        if feature and name and features.get(feature):
+            names.append(name)
+    return names
+
+
+SIDECAR_V2_MARKER = '# serge-sidecar v2 (multiline \\n-escaped)'
+_UNESCAPE_RE = re.compile(r'\\\\|\\n')
+
+
+def escape_sidecar_value(value: str) -> str:
+    """Échappe une valeur sidecar (\\ puis \n, \r supprimés).
+
+    Args:
+        value: Valeur brute (mono ou multiligne).
+
+    Returns:
+        Valeur sûre sur une ligne dotenv (round-trip via parse_dotenv).
+    """
+    return value.replace('\\', '\\\\').replace('\n', '\\n').replace('\r', '')
+
+
+def _unescape_sidecar(value: str) -> str:
+    """Déséchappe une valeur sidecar v2 (\\n -> LF, \\\\ -> \\)."""
+    return _UNESCAPE_RE.sub(
+        lambda m: '\\' if m.group(0) == '\\\\' else '\n', value
+    )
+
+
 def parse_dotenv(text: str) -> dict[str, str]:
+    """Parse un sidecar dotenv (v2 si marqueur en tête, legacy sinon).
+
+    Args:
+        text: Contenu du sidecar (déchiffré ou clair).
+
+    Returns:
+        Noms → valeurs (multiligne restauré en v2, brut en legacy).
+    """
     values: dict[str, str] = {}
+    v2 = text.startswith(SIDECAR_V2_MARKER)
     for raw in text.splitlines():
         line = raw.strip()
         if not line or line.startswith('#') or '=' not in line:
             continue
         key, value = line.split('=', 1)
-        values[key.strip()] = value.strip().strip('"').strip("'")
+        cleaned = value.strip().strip('"').strip("'")
+        values[key.strip()] = _unescape_sidecar(cleaned) if v2 else cleaned
     return values
 
 

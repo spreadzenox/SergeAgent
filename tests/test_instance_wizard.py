@@ -3,11 +3,13 @@
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -18,11 +20,13 @@ from kit.instance_file import (
     InstanceError,
     default_features,  # noqa: E402
     load_instance,  # noqa: E402
+    load_secret_map,
 )
 from kit.instance_wizard import (  # noqa: E402
     WizardError,
     default_answers,
     empty_features,
+    render_dotenv,
     render_toml,
     write_couple,
 )
@@ -220,6 +224,49 @@ class InstanceWizardTests(unittest.TestCase):
             self.assertTrue((dest / 'serge.secrets').is_file())
             mode = oct((dest / 'serge.secrets').stat().st_mode & 0o777)
             self.assertEqual(mode, '0o600')
+
+    def test_render_dotenv_marks_and_escapes(self) -> None:
+        blob = 'ALPHA=un\nBETA=deux'
+        text = render_dotenv({'plain': 'tok', 'gog_env': blob})
+        lines = text.splitlines()
+        self.assertTrue(lines[0].startswith('# serge-sidecar v2'))
+        self.assertIn('gog_env=ALPHA=un\\nBETA=deux', lines)
+        self.assertIn('plain=tok', lines)
+
+    def test_gmail_couple_round_trip_multiline(self) -> None:
+        answers = _answers(features={'gmail': True})
+        blob = 'ALPHA=un\nBETA=deux\nGAMMA=trois'
+        answers['secrets'] = {
+            'openrouter_api_key': 'test-openrouter',
+            'gog_env': blob,
+        }
+        with tempfile.TemporaryDirectory() as raw:
+            dest = Path(raw) / 'couple'
+            written = write_couple(answers, dest, allow_plaintext=True)
+            back = load_secret_map(Path(written['secrets']))
+            self.assertEqual(back['gog_env'], blob)
+            toml = Path(written['instance']).read_text(encoding='utf-8')
+            self.assertNotIn('ALPHA=un', toml)
+
+
+def _load_interactive_wizard():
+    spec = importlib.util.spec_from_file_location(
+        'serge_instance_wizard',
+        str(ROOT / 'scripts' / 'serge-instance-wizard.py'),
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+class InteractiveWizardTests(unittest.TestCase):
+    def test_multiline_secret_reads_until_blank(self) -> None:
+        wizard = _load_interactive_wizard()
+        with mock.patch.object(
+            wizard.getpass, 'getpass', side_effect=['L1', 'L2', '']
+        ):
+            self.assertEqual(wizard._read_multiline_secret('Blob'), 'L1\nL2')
 
 
 if __name__ == '__main__':

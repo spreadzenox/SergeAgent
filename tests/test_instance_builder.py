@@ -21,6 +21,7 @@ from kit.builder import (  # noqa: E402
     BuilderError,
     build_instance,
     secret_destination,
+    secret_file_body,
 )
 from kit.instance_wizard import (  # noqa: E402
     default_answers,
@@ -436,6 +437,43 @@ class InstanceBuilderTests(unittest.TestCase):
             payload = json.loads(completed.stdout)
             self.assertEqual(payload['instance_id'], 'alice-laptop')
             self.assertEqual(payload['units_enabled'], [])
+
+    def test_gmail_build_injects_multiline_gog_env(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            tmp = Path(raw)
+            source = tmp / 'source'
+            sha = _seed_repo(source)
+            answers = _answers(tmp, gmail=True)
+            blob = 'ALPHA=un\nBETA=deux\nGAMMA=trois'
+            answers['secrets']['gog_env'] = blob
+            couple = tmp / 'couple'
+            write_couple(answers, couple, allow_plaintext=True)
+            mandate = _write_mandate(tmp / 'mandate.yaml')
+            receipt = build_instance(
+                instance_file=couple / 'serge.instance.toml',
+                mandate=mandate,
+                source_repo=source,
+                git_sha=sha,
+                kit_root=ROOT,
+                uid=1000,
+            )
+            gog = tmp / 'home/.config/openclaw/gog.env'
+            self.assertTrue(gog.is_file())
+            self.assertEqual(gog.read_text(encoding='utf-8'), blob + '\n')
+            mode = oct(gog.stat().st_mode & 0o777)
+            self.assertEqual(mode, '0o600')
+            self.assertIn('gog_env', receipt['secret_names_written'])
+
+    def test_secret_file_body_prefixes_only_monoline(self) -> None:
+        item = {'name': 'gog_env', 'maps_to': 'x/openclaw/gog.env'}
+        self.assertEqual(
+            secret_file_body('gog_env', 'ALPHA=un', item),
+            'GOG_ENV=ALPHA=un\n',
+        )
+        self.assertEqual(
+            secret_file_body('gog_env', 'ALPHA=un\nBETA=deux', item),
+            'ALPHA=un\nBETA=deux\n',
+        )
 
 
 if __name__ == '__main__':

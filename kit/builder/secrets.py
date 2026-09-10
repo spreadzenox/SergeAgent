@@ -27,6 +27,8 @@ def secret_destination(
 def secret_file_body(name: str, value: str, item: Mapping[str, Any]) -> str:
     env_name = str(item.get('env_name_inside_file') or '').strip()
     dest_name = Path(str(item.get('maps_to') or name)).name
+    if '\n' in value.rstrip('\n'):
+        return value if value.endswith('\n') else f'{value}\n'
     if env_name:
         return f'{env_name}={value}\n'
     if dest_name.endswith('.env'):

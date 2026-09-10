@@ -12,9 +12,11 @@ from typing import Any
 from kit.instance_file import (
     ALWAYS_REQUIRED_SECRETS,
     FEATURE_KEYS,
+    SIDECAR_V2_MARKER,
     InstanceError,
     assert_secrets_complete,
     default_features,
+    escape_sidecar_value,
     load_manifest,
     validate_toml,
 )
@@ -338,10 +340,17 @@ def render_toml(answers: Mapping[str, Any]) -> str:
 
 
 def render_dotenv(secrets: Mapping[str, str]) -> str:
-    lines = []
+    """Rend le sidecar dotenv v2 (marqueur + valeurs échappées).
+
+    Args:
+        secrets: Noms → valeurs brutes (mono ou multiligne).
+
+    Returns:
+        Texte dotenv avec marqueur v2 en tête (round-trip parse_dotenv).
+    """
+    lines = [SIDECAR_V2_MARKER]
     for key in sorted(secrets):
-        value = str(secrets[key]).replace('\n', '').replace('\r', '')
-        lines.append(f'{key}={value}')
+        lines.append(f'{key}={escape_sidecar_value(str(secrets[key]))}')
     return '\n'.join(lines) + '\n'
 
 

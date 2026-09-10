@@ -16,7 +16,10 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from kit.guide import Guide  # noqa: E402
-from kit.instance_file import FEATURE_KEYS  # noqa: E402
+from kit.instance_file import (  # noqa: E402
+    FEATURE_KEYS,
+    multiline_secret_names,
+)
 from kit.instance_wizard import (  # noqa: E402
     SECRET_LABELS,
     WizardError,
@@ -128,6 +131,17 @@ def _choose_model(
         if pick in ids:
             return pick
         print('Choix non reconnu — nouvelle recherche ci-dessous.')
+
+
+def _read_multiline_secret(label: str) -> str:
+    print(f'{label} (multiligne — ligne vide pour terminer) :')
+    chunks = []
+    while True:
+        chunk = getpass.getpass('> ').replace('\r', '')
+        if not chunk.strip():
+            break
+        chunks.append(chunk)
+    return '\n'.join(chunks).strip()
 
 
 def ask_interactive() -> dict[str, Any]:
@@ -309,6 +323,7 @@ def ask_interactive() -> dict[str, Any]:
     print('=== Étape 3/3 : secrets (non affichés, jamais dans le TOML) ===')
     print('Clé OpenRouter déjà saisie à l’étape 1 — non redemandée.')
     collected: dict[str, str] = {'openrouter_api_key': openrouter_key}
+    multiline = set(multiline_secret_names(features))
     for name in required_secret_prompts(features):
         if name == 'openrouter_api_key':
             continue
@@ -318,7 +333,10 @@ def ask_interactive() -> dict[str, Any]:
         generated = ''
         if name == 'sms_gateway_token':
             suffix = ' (vide = générer)'
-        value = getpass.getpass(f'{label}{suffix}: ').strip()
+        if name in multiline:
+            value = _read_multiline_secret(label)
+        else:
+            value = getpass.getpass(f'{label}{suffix}: ').strip()
         if not value and name == 'sms_gateway_token':
             generated = secrets.token_hex(32)
             print(
