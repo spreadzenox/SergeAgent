@@ -176,3 +176,11 @@ erreur si FAILED 24 h, degrade si RUNNING > 30 min ; collect erreur si
 overdue ; email erreur si FAILED email.* 24 h. Allocator/discord/voix =
 'inconnu' (fail-soft — câblages lots 6/12/11). 4 goldens (dont file
 coincée et RUNNING suspect).
+
+## Système P1 — campagnes (lot 5b)
+
+`proj_campagnes.py` (125 lignes, style inline) : campagnes (état +
+envoyés/touches par campagne) + cooldowns (`accounts_standing`), population
+(contacts par funnel_state, ventures par lifecycle), email (volumes par
+statut + dernière activité). Fixtures partagées via `ProjSystemFixtures`
+(héritage, 0 duplication). 2 goldens.
