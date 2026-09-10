@@ -6,6 +6,7 @@ from __future__ import annotations
 import sys
 import time
 import unittest
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -70,18 +71,27 @@ class McFrontTests(McServerCase):
         self.addCleanup(lambda: self.assertEqual(errors, []))
         return errors
 
-    def test_page_affiche_version_boot(self) -> None:
+    def test_page_live_etats_vides(self) -> None:
+        from playwright.sync_api import expect
+
         page = self._auth_context().new_page()
         self._watch_errors(page)
         page.goto(f'{self.base}/owner')
-        page.get_by_text('MC v1 — miroir temps réel.').wait_for(timeout=10000)
+        for text in (
+            'Rien en cours',
+            'Aucun urgent',
+            'File vide',
+            'Aucune activité',
+            'Budgets du jour',
+        ):
+            expect(page.locator('#page')).to_contain_text(text)
 
     def test_snapshot_sans_stream(self) -> None:
         page = self._auth_context().new_page()
         self._watch_errors(page)
         page.goto(f'{self.base}/owner?snapshot=1')
         _wait_for(page, "window.__MC && window.__MC.stats.mode === 'snapshot'")
-        page.get_by_text('MC v1').wait_for(timeout=10000)
+        page.get_by_text('File vide').wait_for(timeout=10000)
 
     def test_tick_identique_skippe(self) -> None:
         page = self._auth_context().new_page()
@@ -106,15 +116,70 @@ class McFrontTests(McServerCase):
         self.assertEqual(active.count(), 1)
         self.assertEqual(active.first.text_content().strip(), 'Système')
         links.nth(0).click()
-        page.get_by_text('MC v1 — miroir temps réel.').wait_for(timeout=5000)
+        page.get_by_text('File vide').wait_for(timeout=5000)
         self.assertEqual(page.evaluate('window.__MC.stats.page'), 'p0')
 
     def test_hash_inconnu_retombe_live(self) -> None:
         page = self._auth_context().new_page()
         self._watch_errors(page)
         page.goto(f'{self.base}/owner#/nope')
-        page.get_by_text('MC v1 — miroir temps réel.').wait_for(timeout=5000)
+        page.get_by_text('File vide').wait_for(timeout=5000)
         self.assertEqual(page.evaluate('location.hash'), '#/live')
+
+    def test_page_live_donnees(self) -> None:
+        import sqlite3
+
+        from playwright.sync_api import expect
+
+        now = datetime.now(UTC)
+        iso = now.isoformat()
+        soon = (now + timedelta(minutes=5)).isoformat()
+        conn = sqlite3.connect(self.db_path)
+        try:
+            conn.execute(
+                'INSERT INTO contacts(id, venture_id, display, email,'
+                " created_at, updated_at) VALUES('p1','v1','Ada',"
+                "'ada@x.io',?,?)",
+                (iso, iso),
+            )
+            conn.execute(
+                'INSERT INTO work_items(id, kind, venture_id, status,'
+                ' priority, idempotency_key, created_at, updated_at)'
+                " VALUES('w1','email.send','v1','RUNNING',0,'k1',?,?)",
+                (iso, iso),
+            )
+            conn.execute(
+                'INSERT INTO tickets(id, type, title, state, expiry_at,'
+                " created_at, updated_at) VALUES('t1','GUICHET','Captcha',"
+                "'OPEN',?,?,?)",
+                (soon, iso, iso),
+            )
+            conn.execute(
+                'INSERT INTO touches(id, campaign_id, contact_id, channel,'
+                ' status, idempotency_key, created_at, updated_at)'
+                " VALUES('t1','c1','p1','email','sent','k-t1',?,?)",
+                (iso, iso),
+            )
+            conn.execute(
+                'INSERT INTO llm_usage(point, tier, model, tokens_in,'
+                ' tokens_out, latency_ms, verdict, created_at)'
+                " VALUES('classify','T1','m',2000,1000,10,'ok',?)",
+                (iso,),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+        page = self._auth_context().new_page()
+        self._watch_errors(page)
+        page.goto(f'{self.base}/owner')
+        for text in (
+            'email.send',
+            'Captcha',
+            'Guichet',
+            'Ada',
+            '3000 jetons',
+        ):
+            expect(page.locator('#page')).to_contain_text(text)
 
     def test_composants_hud(self) -> None:
         page = self._auth_context().new_page()

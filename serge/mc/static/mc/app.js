@@ -49,8 +49,11 @@ function apply(section, sig, payload) {
 }
 
 let stream = null;
+let unmount = null;
+let generation = 0;
 
-function render() {
+async function render() {
+  const mine = ++generation;
   const page = current();
   if (!ROUTES[(location.hash || '').replace(/^#\//, '')]) {
     location.hash = '#/live';
@@ -60,15 +63,20 @@ function render() {
     link.classList.toggle('actif', link.dataset.page === page);
   });
   const main = document.getElementById('page');
+  if (unmount) {
+    unmount();
+    unmount = null;
+  }
   if (page === 'p0') {
-    main.replaceChildren(template('page-live'));
+    const {mount} = await import('./pages/live.js');
+    if (mine !== generation) {
+      return;
+    }
+    unmount = mount(main, store);
   } else {
     const node = template('page-bientot');
     node.querySelector('h2').textContent = LABELS[page];
     main.replaceChildren(node);
-  }
-  for (const [section, env] of store.all()) {
-    patchSection(document, section, env.sig, env.payload);
   }
   if (stream) {
     stream.close();

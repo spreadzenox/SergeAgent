@@ -26,8 +26,9 @@ mêmes actes, mêmes `decision_id`), DB = vérité, UI = projections.
 | 2b | CSS HUD + sidebar + routeur hash + tests nav | ✅ |
 | 2c | Composants + gate FR + CSP systématisée | ✅ |
 | 3a | Events cycle + guard (R-a/R-b) + tests | ✅ |
-| 3b | Projecteur P0 (hero/urgents/file/feed/jauges) + goldens | ✅ (ce commit) |
-| 3c-14 | Page live.js, timeline, puis 8 pages → polish | ⏳ |
+| 3b | Projecteur P0 (hero/urgents/file/feed/jauges) + goldens | ✅ |
+| 3c | Page live.js + routeur + E2E navigateur | ✅ (ce commit) |
+| 3d-14 | Timeline, puis 8 pages → polish | ⏳ |
 
 ### Routes lot 0
 
@@ -63,17 +64,6 @@ Erreurs : HTML FR (navigations) / JSON FR (API), jamais de traceback.
 
 ### Décisions lot 3 (rappels opposables)
 
-- D7. Events cycle/guard **dans les commits existants** (pas de commit
-  séparé) ; `ValueError` appelant non loggée (bug, déjà visible).
-- D8. Urgents = GUICHET <15 min + VETO <1 h + ALERT OPENISH ; champ
-  `message_id` neutre (plus `gmail_id`), dédup compatible historique (OR).
-- D9. Feed/jauges **sans CDR voix** (ledger séparé → lot 7) ; estimation €
-  LLM = **taux garde policy** (même calcul que le runtime, coûts fins lot 9).
-- D10. **Croissance `events` sans purge documentée** : vigilance (pas de
-  code — trancher rétention/archivage avant la prod).
-
-### Décisions lot 3 (rappels opposables)
-
 - D7. Events cycle/guard **dans les commits existants** (pas de commit séparé) ;
   `check()` journalise (docstring « lecture seule » corrigée), `ValueError`
   appelant non loggée (bug, déjà visible).
@@ -83,6 +73,12 @@ Erreurs : HTML FR (navigations) / JSON FR (API), jamais de traceback.
   séparé) ; jauges = LLM (estimation garde) + email (CDR voix au lot 7).
 - D10. **Croissance `events` sans purge documentée** : point de vigilance
   (pas de code lot 3 — à trancher : rétention/archivage).
+- D11. Actes urgents inline → **lot 7** (avec l'endpoint actions + parité
+  Discord) ; la page Live v1 est lecture + navigation.
+- D12. Timeline lot 3d = fiche + contexte (pas de chaînage causal fin :
+  `llm_usage` sans `task_id` — noté, pas perdu).
+- D13. Libellés FR + dates relatives en dur côté front → `i18n.js` lot 8.
+- D14. Hero sans canvas (→ `hud.js` lot 4) ; milliers non formatés (→ lot 8).
 
 ## Glossaire FR des enums (annexe A — source pour `i18n.py`)
 

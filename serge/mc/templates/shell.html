@@ -23,13 +23,33 @@
 </nav>
 </aside>
 <div class="contenu">
-<header><h1>Mission Control</h1><p id="health">…</p></header>
+<header><h1>Mission Control</h1><p id="health">…</p><p data-section="meta" data-sig="">MC v<span data-field="mc_version">…</span></p></header>
 <main id="page"></main>
 </div>
 </div>
 <template id="page-live">
-<section data-section="meta" data-sig="">
-<p>MC v<span data-field="mc_version">…</span> — miroir temps réel.</p>
+<section class="panneau" data-section="hero" data-sig="">
+<p id="live-headline">…</p>
+<p>File : <span data-field="ready">…</span> prêts</p>
+</section>
+<section class="panneau" data-section="urgents" data-sig="">
+<h2>Urgents</h2>
+<ul data-list="items"></ul>
+</section>
+<section class="panneau" data-section="file" data-sig="">
+<h2>File d’exécution</h2>
+<ul data-list="running"></ul>
+<p>Prêts : <span data-field="ready_count">…</span></p>
+<p id="file-next"></p>
+</section>
+<section class="panneau" data-section="feed" data-sig="">
+<h2>Activité</h2>
+<ul data-list="items"></ul>
+</section>
+<section class="panneau" data-section="jauges" data-sig="">
+<h2>Budgets du jour</h2>
+<div data-gauge="llm"></div>
+<div data-gauge="email"></div>
 </section>
 </template>
 <template id="page-bientot">
