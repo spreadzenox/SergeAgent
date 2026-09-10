@@ -10,7 +10,14 @@ from pathlib import Path
 from typing import Any
 
 from serge.db.store import open_db, utcnow
-from serge.mc.projectors import LIVE_TTL_S, PROJECTORS, SnapshotCache, sig
+from serge.mc.projectors import (
+    LIVE_TTL_S,
+    PROJECTORS,
+    SLOW_SECTIONS,
+    SLOW_TTL_S,
+    SnapshotCache,
+    sig,
+)
 
 
 def format_event(
@@ -73,10 +80,11 @@ def stream_page(
         with closing(open_db(db_path)) as conn:
             for section in sections:
                 projector = PROJECTORS[section]
+                ttl = SLOW_TTL_S if section in SLOW_SECTIONS else LIVE_TTL_S
                 payload, digest, age = cache.get(
                     page,
                     section,
-                    LIVE_TTL_S,
+                    ttl,
                     lambda p=projector: p(conn, policy, utcnow()),
                 )
                 wfile.write(format_event(section, digest, age, payload))

@@ -10,9 +10,17 @@ from collections.abc import Callable
 from typing import Any
 
 from serge.mc import MC_VERSION
+from serge.mc.proj_live import (
+    project_feed,
+    project_file,
+    project_hero,
+    project_jauges,
+    project_urgents,
+)
 
 LIVE_TTL_S = 2.0
 SLOW_TTL_S = 30.0
+SLOW_SECTIONS = frozenset({'jauges'})
 
 
 def canonical(payload: Any) -> str:
@@ -99,8 +107,13 @@ def project_meta(conn: object, policy: object, now_iso: str) -> dict[str, Any]:
 
 PROJECTORS: dict[str, Callable[..., dict[str, Any]]] = {
     'meta': project_meta,
+    'hero': project_hero,
+    'urgents': project_urgents,
+    'file': project_file,
+    'feed': project_feed,
+    'jauges': project_jauges,
 }
 
 PAGE_SECTIONS: dict[str, list[str]] = {
-    'p0': ['meta'],
+    'p0': ['meta', 'hero', 'urgents', 'file', 'feed', 'jauges'],
 }

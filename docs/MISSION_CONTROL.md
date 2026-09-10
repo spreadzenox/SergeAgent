@@ -24,8 +24,10 @@ mêmes actes, mêmes `decision_id`), DB = vérité, UI = projections.
 | 1b | Front store/sse/patch + E2E navigateur + A4 | ✅ |
 | 2a | Design system CSS base + validation skin Q2 (10/09) | ✅ |
 | 2b | CSS HUD + sidebar + routeur hash + tests nav | ✅ |
-| 2c | Composants + gate FR + CSP systématisée | ✅ (ce commit) |
-| 3-14 | 9 pages → public → polish | ⏳ |
+| 2c | Composants + gate FR + CSP systématisée | ✅ |
+| 3a | Events cycle + guard (R-a/R-b) + tests | ✅ |
+| 3b | Projecteur P0 (hero/urgents/file/feed/jauges) + goldens | ✅ (ce commit) |
+| 3c-14 | Page live.js, timeline, puis 8 pages → polish | ⏳ |
 
 ### Routes lot 0
 
@@ -58,6 +60,29 @@ Erreurs : HTML FR (navigations) / JSON FR (API), jamais de traceback.
 - D5. **Zéro HTML dans `serge/mc/*.py`** (test A1) : erreurs login = blocs cachés
   révélés (`data-error`), pas de markup injecté.
 - D6. Statiques **sans auth** (assets génériques, pas de données).
+
+### Décisions lot 3 (rappels opposables)
+
+- D7. Events cycle/guard **dans les commits existants** (pas de commit
+  séparé) ; `ValueError` appelant non loggée (bug, déjà visible).
+- D8. Urgents = GUICHET <15 min + VETO <1 h + ALERT OPENISH ; champ
+  `message_id` neutre (plus `gmail_id`), dédup compatible historique (OR).
+- D9. Feed/jauges **sans CDR voix** (ledger séparé → lot 7) ; estimation €
+  LLM = **taux garde policy** (même calcul que le runtime, coûts fins lot 9).
+- D10. **Croissance `events` sans purge documentée** : vigilance (pas de
+  code — trancher rétention/archivage avant la prod).
+
+### Décisions lot 3 (rappels opposables)
+
+- D7. Events cycle/guard **dans les commits existants** (pas de commit séparé) ;
+  `check()` journalise (docstring « lecture seule » corrigée), `ValueError`
+  appelant non loggée (bug, déjà visible).
+- D8. Urgents = GUICHET <15 min + VETO <1 h + ALERT OPENISH ; `message_id`
+  renommé (plus `gmail_id`) ; dédup compatible historique (OR).
+- D9. Feed = events + ticket_events + touches (calls voix au lot 7, ledger
+  séparé) ; jauges = LLM (estimation garde) + email (CDR voix au lot 7).
+- D10. **Croissance `events` sans purge documentée** : point de vigilance
+  (pas de code lot 3 — à trancher : rétention/archivage).
 
 ## Glossaire FR des enums (annexe A — source pour `i18n.py`)
 

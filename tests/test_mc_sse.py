@@ -4,17 +4,20 @@
 from __future__ import annotations
 
 import http.client
+import io
 import json
 import re
 import sys
+import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from serge.mc.projectors import SnapshotCache, sig  # noqa: E402
-from serge.mc.sse import format_event  # noqa: E402
+from serge.mc.projectors import PROJECTORS, SnapshotCache, sig  # noqa: E402
+from serge.mc.sse import format_event, stream_page  # noqa: E402
 from tests.mc_server_case import McServerCase  # noqa: E402
 
 
@@ -54,6 +57,35 @@ class SseUnitTests(unittest.TestCase):
         now[0] = 111.0
         cache.get('p0', 'meta', 10.0, _compute)
         self.assertEqual(len(calls), 2)
+
+    def test_stream_ttl_lent_et_live(self) -> None:
+        calls = {'meta': 0, 'jauges': 0}
+
+        def _count(name):
+            calls[name] += 1
+            return {'n': calls[name]}
+
+        with tempfile.TemporaryDirectory() as raw:
+            out = io.BytesIO()
+            cache = SnapshotCache()
+            stubs = {
+                'meta': lambda *a: _count('meta'),
+                'jauges': lambda *a: _count('jauges'),
+            }
+            with mock.patch.dict(PROJECTORS, stubs):
+                ticks = stream_page(
+                    out,
+                    Path(raw) / 't.db',
+                    {},
+                    'p0',
+                    ['meta', 'jauges'],
+                    cache,
+                    tick_s=3,
+                    max_ticks=2,
+                )
+        self.assertEqual(ticks, 2)
+        self.assertEqual(calls['meta'], 2)
+        self.assertEqual(calls['jauges'], 1)
 
 
 class SseE2ETests(McServerCase):
