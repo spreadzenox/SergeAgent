@@ -127,6 +127,13 @@ class CharterTests(unittest.TestCase):
                     f'{path.name} : HTML/JS interdit (A1)',
                 )
 
+    def test_mc_innerhtml_dans_patch_uniquement(self) -> None:
+        for path in sorted((ROOT / 'serge/mc/static').rglob('*.js')):
+            if path.name == 'patch.js':
+                continue
+            text = path.read_text(encoding='utf-8')
+            self.assertNotIn('innerHTML', text, f'{path.name} (A4)')
+
 
 if __name__ == '__main__':
     unittest.main()

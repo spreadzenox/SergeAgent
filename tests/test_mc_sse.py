@@ -24,7 +24,7 @@ class SseUnitTests(unittest.TestCase):
         self.assertEqual(
             raw,
             b'event: section\n'
-            b'data: {"sig": "abc", "age_ms": 12,'
+            b'data: {"section": "meta", "sig": "abc", "age_ms": 12,'
             b' "payload": {"v": 1}}\n\n',
         )
 
@@ -96,6 +96,7 @@ class SseE2ETests(McServerCase):
         state = json.loads(raw.decode('utf-8'))
         self.assertEqual(boot, state)
         event = self._first_event(cookie)
+        self.assertEqual(event['section'], 'meta')
         self.assertEqual(event['sig'], state['sections']['meta']['sig'])
         self.assertEqual(
             event['payload'], state['sections']['meta']['payload']

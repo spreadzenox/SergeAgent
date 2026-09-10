@@ -14,13 +14,15 @@ mêmes actes, mêmes `decision_id`), DB = vérité, UI = projections.
 **entonnoir général → spécifique** (tout chiffre fore vers sa source, 0 JSON nu,
 0 cul-de-sac). Détail : prompt §1 + §5 + §6.
 
-## État : lot 0b ✅ (socle + auth + shell)
+## État : lot 1b ✅ (temps réel complet)
 
 | Lot | Contenu | État |
 |---|---|---|
 | 0a | Sessions + auth token/cookie + rate-limit + tests | ✅ |
-| 0b | Serveur + templates + statiques + tests E2E + ce doc | ✅ (ce commit) |
-| 1-14 | Voir prompt §11 (temps réel → design → 9 pages → public → polish) | ⏳ |
+| 0b | Serveur + shell/login + E2E HTTP + doc + prompt versionné | ✅ |
+| 1a | Projecteurs + SSE + boot (T1/T2/A10) | ✅ |
+| 1b | Front store/sse/patch + E2E navigateur + A4 | ✅ (ce commit) |
+| 2-14 | Voir prompt §11 (design → 9 pages → public → polish) | ⏳ |
 
 ### Routes lot 0
 
@@ -99,5 +101,19 @@ consentements, liste noire.
 
 ## Lots suivants
 
-Voir prompt §11 (phasage), §12 (tests), §13 (acceptation). Prochain : lot 1
-(SSE + projecteurs + store/sse/patch front + `?snapshot=1`).
+Voir prompt §11 (phasage), §12 (tests), §13 (acceptation). Prochain : lot 2
+(design system + routeur + gabarits FR).
+
+## Temps réel (lot 1a/1b)
+
+- Enveloppe SSE : `event: section` + `{section, sig, age_ms, payload}`.
+  Le nom voyage dans l'enveloppe (type unique, prompt §8.3).
+- `sig` = SHA256 du JSON canonique (16 hex) ; **jamais de temps dans un
+  payload signé** (l'âge voyage dans l'enveloppe, hors signature).
+- Client : `store.apply` skip si sig égale (C3) → `patch` remplit les
+  `[data-field]` (notation pointée) ; `?snapshot=1` = 1 fetch sans stream ;
+  `window.__MC.stats` (applied/skipped/mode) pour debug et tests.
+- Reconnect : backoff 1→30 s, fallback poll 5 s après 3 échecs, pause en
+  onglet caché. DB rouverte par tick (vue fraîche, coût négligeable).
+- Tests navigateur : skip gracieux si Chromium indisponible ; `wait_for_*`
+  string interdit (eval bloqué par notre propre CSP — polling `evaluate`).

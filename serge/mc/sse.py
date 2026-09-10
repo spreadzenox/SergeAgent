@@ -16,10 +16,10 @@ from serge.mc.projectors import LIVE_TTL_S, PROJECTORS, SnapshotCache, sig
 def format_event(
     section: str, digest: str, age_ms: int, payload: Any
 ) -> bytes:
-    """Formate un event SSE (1 section, JSON sur 1 ligne).
+    """Formate un event SSE (nom + sig + âge + payload, JSON 1 ligne).
 
     Args:
-        section: Nom de la section.
+        section: Nom de la section (routage client).
         digest: Signature du payload.
         age_ms: Âge du snapshot (hors signature).
         payload: Données (sans temps).
@@ -28,7 +28,12 @@ def format_event(
         Octets `event: section\\ndata: {...}\\n\\n`.
     """
     body = json.dumps(
-        {'sig': digest, 'age_ms': age_ms, 'payload': payload},
+        {
+            'section': section,
+            'sig': digest,
+            'age_ms': age_ms,
+            'payload': payload,
+        },
         ensure_ascii=False,
     )
     return f'event: section\ndata: {body}\n\n'.encode()

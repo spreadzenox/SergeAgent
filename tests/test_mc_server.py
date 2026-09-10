@@ -25,10 +25,17 @@ class McServerTests(McServerCase):
         self.assertEqual(status, 204)
 
     def test_statiques_et_traversal(self) -> None:
-        status, headers, body = self._request('GET', '/static/mc/app.js')
-        self.assertEqual(status, 200)
-        self.assertIn('javascript', headers.get('content-type', ''))
-        self.assertTrue(body)
+        for path, kind in (
+            ('/static/mc/app.js', 'javascript'),
+            ('/static/mc/store.js', 'javascript'),
+            ('/static/mc/sse.js', 'javascript'),
+            ('/static/mc/patch.js', 'javascript'),
+            ('/static/mc/style.css', 'text/css'),
+        ):
+            status, headers, body = self._request('GET', path)
+            self.assertEqual(status, 200, path)
+            self.assertIn(kind, headers.get('content-type', ''), path)
+            self.assertTrue(body, path)
         status, _, _ = self._request('GET', '/static/mc/../../x')
         self.assertEqual(status, 404)
         status, _, _ = self._request('GET', '/static/mc/%2e%2e/x')
