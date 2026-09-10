@@ -204,3 +204,12 @@ triés), email (volumes + dernière activité). Mutualisation P4 : `li`,
 `fillList`, `rel` déménagent dans `components.js` (live.js migre, −42
 lignes nettes). 2 E2E (données + vides gracieux). P1 DONE : îlots animés
 + drill-down (fores externes aux lots fiches).
+
+## Cerveau P2 — projecteurs lecture (lot 6a)
+
+`proj_cerveau.py` : signaux (30 derniers inbound classés), clusters (hot
+24 h, hors-cluster exclus), décisions (30 derniers appels LLM + verdicts),
+pensées (stub fail-soft — aucun émetteur dans le kit), usage par point 7 j
+(appels/tokens/latence/verdicts — base de la matrice). `proj_outils.py` :
+`avant_iso` partagé (3e usage — `proj_ilots` migre, goldens verts).
+Registre llm-points.yaml + dérives + kills M8 = lot 6b.

@@ -9,15 +9,10 @@ from __future__ import annotations
 import json
 import sqlite3
 from collections.abc import Mapping
-from datetime import datetime, timedelta
 from typing import Any
 
+from serge.mc.proj_outils import avant_iso
 from serge.scheduler import next_ready
-
-
-def _avant(now_iso: str, **duree: int) -> str:
-    moment = datetime.fromisoformat(now_iso)
-    return (moment - timedelta(**duree)).isoformat()
 
 
 def _compte(conn: sqlite3.Connection, sql: str, params: tuple = ()) -> int:
@@ -81,7 +76,7 @@ def _ilot_workers(
         conn,
         "SELECT COUNT(*) FROM work_items WHERE status='RUNNING'"
         ' AND updated_at<?',
-        (_avant(now, minutes=30),),
+        (avant_iso(now, minutes=30),),
     )
     if failed24 > 0:
         sante = 'erreur'
@@ -243,7 +238,7 @@ def project_ilots(
         Dict {items: [{id, label, sante, activite, resume}]}.
     """
     _ = policy
-    depuis = _avant(now, hours=24)
+    depuis = avant_iso(now, hours=24)
     items = [
         _ilot_scheduler(conn, now),
         _ilot_workers(conn, now, depuis),
