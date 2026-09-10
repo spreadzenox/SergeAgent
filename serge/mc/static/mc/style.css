@@ -356,6 +356,26 @@ button:disabled {
   border-radius: var(--rayon);
   display: block;
   width: 100%;
+  height: auto;
+}
+
+.hero[data-etat='urgent'] {
+  border: 1px solid var(--orange);
+}
+
+.hero[data-etat='erreur'] {
+  border: 1px solid var(--rouge);
+}
+
+.hero-layout {
+  align-items: center;
+  display: flex;
+  gap: 1rem;
+}
+
+.hero-layout .hud-canvas {
+  flex: 0 0 auto;
+  width: 120px;
 }
 
 .sparkline {

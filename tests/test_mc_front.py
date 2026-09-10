@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import sys
-import time
 import unittest
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -12,65 +11,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from tests.mc_server_case import McServerCase  # noqa: E402
+from tests.mc_server_case import McBrowserCase  # noqa: E402
 
 
-def _browser_ok() -> bool:
-    try:
-        from playwright.sync_api import sync_playwright
-    except ImportError:
-        return False
-    try:
-        with sync_playwright() as handle:
-            browser = handle.chromium.launch(timeout=15000)
-            browser.close()
-        return True
-    except Exception:
-        return False
-
-
-def _wait_for(page, expression: str, timeout_s: float = 10.0) -> None:
-    """Polling via evaluate (wait_for_function string = eval = bloqué CSP)."""
-    deadline = time.monotonic() + timeout_s
-    while True:
-        if page.evaluate(expression):
-            return
-        if time.monotonic() > deadline:
-            raise AssertionError(f'timeout: {expression}')
-        time.sleep(0.1)
-
-
-class McFrontTests(McServerCase):
-    @classmethod
-    def setUpClass(cls) -> None:
-        if not _browser_ok():
-            raise unittest.SkipTest(
-                'navigateur indisponible (playwright install-deps ?)'
-            )
-        from playwright.sync_api import sync_playwright
-
-        cls._pw = sync_playwright().start()
-        cls._browser = cls._pw.chromium.launch()
-        cls.addClassCleanup(cls._pw.stop)
-        cls.addClassCleanup(cls._browser.close)
-
-    def _auth_context(self):
-        status, headers, _ = self._login()
-        self.assertEqual(status, 302)
-        cookie = self._cookie(headers).split('=', 1)[1]
-        ctx = self._browser.new_context()
-        self.addCleanup(ctx.close)
-        ctx.add_cookies(
-            [{'name': 'serge_mc', 'value': cookie, 'url': self.base}]
-        )
-        return ctx
-
-    def _watch_errors(self, page) -> list:
-        errors: list = []
-        page.on('pageerror', lambda err: errors.append(err))
-        self.addCleanup(lambda: self.assertEqual(errors, []))
-        return errors
-
+class McFrontTests(McBrowserCase):
     def test_page_live_etats_vides(self) -> None:
         from playwright.sync_api import expect
 
@@ -90,15 +34,17 @@ class McFrontTests(McServerCase):
         page = self._auth_context().new_page()
         self._watch_errors(page)
         page.goto(f'{self.base}/owner?snapshot=1')
-        _wait_for(page, "window.__MC && window.__MC.stats.mode === 'snapshot'")
+        self._wait_for(
+            page, "window.__MC && window.__MC.stats.mode === 'snapshot'"
+        )
         page.get_by_text('File vide').wait_for(timeout=10000)
 
     def test_tick_identique_skippe(self) -> None:
         page = self._auth_context().new_page()
         self._watch_errors(page)
         page.goto(f'{self.base}/owner')
-        _wait_for(page, 'window.__MC && window.__MC.stats.applied >= 1')
-        _wait_for(page, 'window.__MC && window.__MC.stats.skipped >= 1')
+        self._wait_for(page, 'window.__MC && window.__MC.stats.applied >= 1')
+        self._wait_for(page, 'window.__MC && window.__MC.stats.skipped >= 1')
 
     def test_sidebar_navigation(self) -> None:
         page = self._auth_context().new_page()

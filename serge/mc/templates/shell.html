@@ -28,9 +28,14 @@
 </div>
 </div>
 <template id="page-live">
-<section class="panneau" data-section="hero" data-sig="">
+<section class="panneau hero" data-section="hero" data-sig="">
+<div class="hero-layout">
+<canvas data-hud="noyau" class="hud-canvas" width="120" height="120"></canvas>
+<div>
 <p id="live-headline">…</p>
 <p>File : <span data-field="ready">…</span> prêts</p>
+</div>
+</div>
 </section>
 <section class="panneau" data-section="urgents" data-sig="">
 <h2>Urgents</h2>
@@ -44,6 +49,7 @@
 </section>
 <section class="panneau" data-section="feed" data-sig="">
 <h2>Activité</h2>
+<canvas data-hud="wave" class="hud-canvas" width="600" height="60"></canvas>
 <ul data-list="items"></ul>
 </section>
 <section class="panneau" data-section="jauges" data-sig="">

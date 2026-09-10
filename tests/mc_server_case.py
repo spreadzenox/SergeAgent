@@ -6,6 +6,7 @@ from __future__ import annotations
 import sys
 import tempfile
 import threading
+import time
 import unittest
 import urllib.error
 import urllib.parse
@@ -85,3 +86,62 @@ class McServerCase(unittest.TestCase):
             body,
             {'Content-Type': 'application/x-www-form-urlencoded'},
         )
+
+
+def browser_ok() -> bool:
+    """Chromium pilotable ? (skip gracieux sinon)."""
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError:
+        return False
+    try:
+        with sync_playwright() as handle:
+            browser = handle.chromium.launch(timeout=15000)
+            browser.close()
+        return True
+    except Exception:
+        return False
+
+
+class McBrowserCase(McServerCase):
+    """McServerCase + Chromium partagé (classe) + helpers front."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        if not browser_ok():
+            raise unittest.SkipTest('navigateur indisponible')
+        from playwright.sync_api import sync_playwright
+
+        cls._pw = sync_playwright().start()
+        cls._browser = cls._pw.chromium.launch()
+        cls.addClassCleanup(cls._pw.stop)
+        cls.addClassCleanup(cls._browser.close)
+
+    def _auth_context(self):
+        status, headers, _ = self._login()
+        self.assertEqual(status, 302)
+        cookie = self._cookie(headers).split('=', 1)[1]
+        ctx = self._browser.new_context()
+        self.addCleanup(ctx.close)
+        ctx.add_cookies(
+            [{'name': 'serge_mc', 'value': cookie, 'url': self.base}]
+        )
+        return ctx
+
+    def _watch_errors(self, page) -> list:
+        errors: list = []
+        page.on('pageerror', lambda err: errors.append(err))
+        self.addCleanup(lambda: self.assertEqual(errors, []))
+        return errors
+
+    def _wait_for(
+        self, page, expression: str, timeout_s: float = 10.0
+    ) -> None:
+        """Polling via evaluate (wait_for_function string = bloqué CSP)."""
+        deadline = time.monotonic() + timeout_s
+        while True:
+            if page.evaluate(expression):
+                return
+            if time.monotonic() > deadline:
+                raise AssertionError(f'timeout: {expression}')
+            time.sleep(0.1)

@@ -1,6 +1,13 @@
 // Page P0 En direct : hero + urgents + file + feed + jauges.
 // Libellés FR en dur (centralisation i18n.js au lot 8).
 import {createGauge, updateGauge, openDrawer, toast} from '../components.js';
+import {
+  densite24h,
+  dessineWaveform,
+  etatSysteme,
+  startNoyau,
+  tweenNumber,
+} from '../hud.js';
 import {patchSection} from '../patch.js';
 
 const KINDS_FR = {
@@ -193,6 +200,20 @@ function renderFeed(main, payload, sig) {
     return li(`${rel(item.ts)} · ${kind}${what}`);
   });
   main.querySelector('[data-section="feed"]').dataset.sig = sig;
+  const wave = main.querySelector('[data-hud="wave"]');
+  if (wave) {
+    dessineWaveform(wave, densite24h(payload.items || [], Date.now()));
+  }
+}
+
+function tweenNombre(node, cible, format) {
+  const prev = parseFloat(node.dataset.v || '0');
+  node.dataset.v = String(cible);
+  if (prev === cible) {
+    node.textContent = format(cible);
+    return;
+  }
+  tweenNumber(node, prev, cible, {format, duration: 400});
 }
 
 function renderJauges(main, payload, sig, gauges) {
@@ -202,13 +223,34 @@ function renderJauges(main, payload, sig, gauges) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
-  gauges.llm.label.textContent =
-    `${llm.tokens_jour} jetons (~${euros} € / ${llm.plafond_eur} €)`;
+  tweenNombre(
+    gauges.llm.label,
+    llm.tokens_jour,
+    (v) => `${Math.round(v)} jetons (~${euros} € / ${llm.plafond_eur} €)`,
+  );
   const email = payload.email;
   updateGauge(gauges.email.node, email.ratio || 0, email.ratio > 0.8 ? 'alerte' : '');
-  gauges.email.label.textContent =
-    `${email.envoyes} / ${email.quota} envoyés`;
+  tweenNombre(
+    gauges.email.label,
+    email.envoyes,
+    (v) => `${Math.round(v)} / ${email.quota} envoyés`,
+  );
   main.querySelector('[data-section="jauges"]').dataset.sig = sig;
+}
+
+// Dérive l'état système depuis le store (hero + urgents + tête de feed).
+function etatDepuisStore(store) {
+  const hero = store.get('hero');
+  const urgents = store.get('urgents');
+  const feed = store.get('feed');
+  const items = feed && feed.payload ? feed.payload.items || [] : [];
+  const urgentsItems =
+    urgents && urgents.payload ? urgents.payload.items || [] : [];
+  return {
+    urgents: urgentsItems.length,
+    running: hero && hero.payload ? hero.payload.running : null,
+    echecRecent: items.length > 0 && items[0].kind === 'work.failed',
+  };
 }
 
 export function mount(main, store) {
@@ -222,6 +264,9 @@ export function mount(main, store) {
     slot.replaceChildren(label, node);
     gauges[name] = {label, node};
   }
+  const noyau = startNoyau(main.querySelector('[data-hud="noyau"]'), () =>
+    etatDepuisStore(store),
+  );
   const renderers = {
     hero: (payload, sg) => renderHero(main, payload, sg),
     urgents: (payload, sg) => renderUrgents(main, payload, sg),
@@ -229,15 +274,26 @@ export function mount(main, store) {
     feed: (payload, sg) => renderFeed(main, payload, sg),
     jauges: (payload, sg) => renderJauges(main, payload, sg, gauges),
   };
+  const majEtat = () => {
+    const tete = main.querySelector('.hero');
+    if (tete) {
+      tete.dataset.etat = etatSysteme(etatDepuisStore(store));
+    }
+  };
   const unsubs = Object.keys(renderers).map((section) =>
-    store.subscribe(section, (payload, sg) => renderers[section](payload, sg)),
+    store.subscribe(section, (payload, sg) => {
+      renderers[section](payload, sg);
+      majEtat();
+    }),
   );
   for (const [section, env] of store.all()) {
     if (renderers[section]) {
       renderers[section](env.payload, env.sig);
     }
   }
+  majEtat();
   return () => {
     unsubs.forEach((unsub) => unsub());
+    noyau.stop();
   };
 }

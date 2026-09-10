@@ -153,3 +153,16 @@ Voir prompt §11 (phasage), §12 (tests), §13 (acceptation). Prochain : lot 2
 en dur (centralisation `i18n.js` au lot 8). Gate A5/A9 (`test_charter`) :
 34 mots EN interdits dans le texte visible des templates + littéraux JS
 (hors contextes techniques) — prouvé rouge→vert.
+
+## HUD (lot 4)
+
+`hud.js` : `etatSysteme` (calme/travail/urgent/erreur depuis hero +
+urgents + tête de feed, `work.failed` en premier = erreur), noyau canvas
+rAF piloté par valeurs cibles (jamais par tick — T1), `densite24h` +
+waveform 24 h, `tweenNumber` (WeakMap, 1 tween/élément), `hudActives`
+(testabilité). `data-etat` sur `.hero` (bordure orange/rouge si
+urgent/erreur). T3 : tick rejoué sur DB figée = 0 mutation DOM
+(MutationObserver, 2 ticks) ; T4 : zones stables pixel-identiques,
+canvas animé diffère. Anti-fuite : `stop()` au unmount, navigations
+p0→p1→p0 → compteur 1→0→1. Socle : `McBrowserCase` (Chromium partagé +
+helpers — `McFrontTests` migre dessus, −57 lignes).
