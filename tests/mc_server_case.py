@@ -50,6 +50,7 @@ class McServerCase(unittest.TestCase):
         self.thread.start()
         self.addCleanup(self._shutdown)
         port = self.server.server_address[1]
+        self.port = port
         self.base = f'http://127.0.0.1:{port}'
         self.opener = urllib.request.build_opener(_NoRedirect)
 

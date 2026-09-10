@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import hmac
+import json
 import sys
 import urllib.parse
 from collections.abc import Iterator
@@ -23,6 +24,9 @@ from serge.mc.auth import (
     create_session,
     revoke_session,
 )
+from serge.mc.projectors import PAGE_SECTIONS, SnapshotCache
+from serge.mc.sse import state_payload, stream_page
+from serge.policy import PolicyError, load_policy
 
 STATIC_TYPES = {
     '.html': 'text/html; charset=utf-8',
@@ -52,6 +56,7 @@ class McConfig:
     static_dir: Path
     templates_dir: Path
     limiter: RateLimiter
+    policy_dir: Path | None = None
 
 
 class McHandler(BaseHTTPRequestHandler):
@@ -60,6 +65,7 @@ class McHandler(BaseHTTPRequestHandler):
     app_config: McConfig
     server_version = 'SergeMC/1'
     sys_version = ''
+    protocol_version = 'HTTP/1.1'
 
     def log_message(self, format: str, *args: object) -> None:
         print(f'mc {self.command} {self.path.split("?")[0]}', file=sys.stderr)
@@ -93,6 +99,25 @@ class McHandler(BaseHTTPRequestHandler):
         return (self.app_config.templates_dir / name).read_text(
             encoding='utf-8'
         )
+
+    def _send_json(self, code: int, obj: dict) -> None:
+        self._send(
+            code,
+            json.dumps(obj, ensure_ascii=False).encode('utf-8'),
+            'application/json',
+        )
+
+    def _query(self) -> dict[str, str]:
+        parsed = urllib.parse.parse_qs(
+            urllib.parse.urlsplit(self.path).query, keep_blank_values=True
+        )
+        return {key: values[0] for key, values in parsed.items() if values}
+
+    def _policy(self) -> dict | None:
+        try:
+            return load_policy(self.app_config.policy_dir)
+        except PolicyError:
+            return None
 
     def _cookies(self) -> dict[str, str]:
         jar = SimpleCookie()
@@ -129,6 +154,7 @@ class McHandler(BaseHTTPRequestHandler):
             404: 'Page introuvable.',
             413: 'Requête trop volumineuse.',
             429: 'Trop d’essais — attends une minute.',
+            500: 'Service momentanément indisponible.',
         }
         html = self._template('error.html')
         html = html.replace('{code}', str(code))
@@ -141,7 +167,7 @@ class McHandler(BaseHTTPRequestHandler):
             urllib.parse.urlsplit(self.path).path or '/'
         )
         if path == '/healthz':
-            self._send(200, b'{"status":"ok"}', 'application/json')
+            self._send_json(200, {'status': 'ok'})
             return
         if path == '/robots.txt':
             self._send(
@@ -161,12 +187,95 @@ class McHandler(BaseHTTPRequestHandler):
                 self.send_header('Location', '/owner/login')
                 self.end_headers()
                 return
-            self._send_html(200, self._template('shell.html'))
+            policy = self._policy()
+            if policy is None:
+                self._error(500)
+                return
+            payload = state_payload(
+                self.app_config.db_path, policy, 'p0', PAGE_SECTIONS['p0']
+            )
+            blob = json.dumps(payload, ensure_ascii=False).replace(
+                '<', '\\u003c'
+            )
+            html = self._template('shell.html').replace('<!--BOOT-->', blob)
+            self._send_html(200, html)
+            return
+        if path == '/owner/api/state':
+            self._api_state()
+            return
+        if path == '/owner/api/stream':
+            self._api_stream()
             return
         if path == '/static/' or path.startswith('/static/'):
             self._serve_static(path[len('/static/') :])
             return
         self._error(404)
+
+    def _api_common(self) -> tuple[str, list[str], dict] | None:
+        if not self._is_owner():
+            self._send_json(
+                401,
+                {
+                    'erreur': 'Authentification requise.',
+                    'code': 'auth',
+                    'aide': 'Reconnecte-toi via /owner/login.',
+                },
+            )
+            return None
+        page = self._query().get('page', '')
+        sections = PAGE_SECTIONS.get(page)
+        if sections is None:
+            self._send_json(
+                400,
+                {
+                    'erreur': f'Page inconnue : {page}.',
+                    'code': 'page',
+                    'aide': 'Pages : p0.',
+                },
+            )
+            return None
+        policy = self._policy()
+        if policy is None:
+            self._send_json(
+                500,
+                {
+                    'erreur': 'Policy illisible.',
+                    'code': 'policy',
+                    'aide': 'Vérifie config/policy.yaml.',
+                },
+            )
+            return None
+        return page, sections, policy
+
+    def _api_state(self) -> None:
+        ready = self._api_common()
+        if ready is None:
+            return
+        page, sections, policy = ready
+        payload = state_payload(
+            self.app_config.db_path, policy, page, sections
+        )
+        self._send_json(200, payload)
+
+    def _api_stream(self) -> None:
+        ready = self._api_common()
+        if ready is None:
+            return
+        page, sections, policy = ready
+        self.send_response(200)
+        self.send_header('Content-Type', 'text/event-stream')
+        self.end_headers()
+        try:
+            stream_page(
+                self.wfile,
+                self.app_config.db_path,
+                policy,
+                page,
+                sections,
+                SnapshotCache(),
+            )
+        except (BrokenPipeError, ConnectionResetError):
+            return
 
     def do_POST(self) -> None:  # noqa: N802 (nom imposé http.server)
         """Route POST (login, logout)."""

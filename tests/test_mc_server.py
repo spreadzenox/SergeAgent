@@ -17,7 +17,7 @@ from tests.mc_server_case import McServerCase  # noqa: E402
 class McServerTests(McServerCase):
     def test_healthz_robots_favicon(self) -> None:
         status, _, body = self._request('GET', '/healthz')
-        self.assertEqual((status, body), (200, b'{"status":"ok"}'))
+        self.assertEqual((status, body), (200, b'{"status": "ok"}'))
         status, _, body = self._request('GET', '/robots.txt')
         self.assertEqual(status, 200)
         self.assertIn(b'Disallow: /owner/', body)
