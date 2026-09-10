@@ -14,6 +14,7 @@ import time
 from collections.abc import Callable, Mapping
 from typing import Any
 
+from serge.discord.rest import USER_AGENT
 from serge.voice.ws import WsClient, WsError
 
 GATEWAY_URL = 'wss://gateway.discord.gg/?v=10&encoding=json'
@@ -78,7 +79,7 @@ class Gateway:
             raise GatewayError('AUTH: token Discord manquant')
         maker = factory or WsClient.connect
         try:
-            self.ws = maker(self.url, {}, timeout)
+            self.ws = maker(self.url, {'User-Agent': USER_AGENT}, timeout)
         except WsError as exc:
             raise GatewayError(f'NETWORK: gateway ({exc})') from exc
         hello = self._wait_hello(timeout)

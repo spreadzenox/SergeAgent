@@ -18,6 +18,10 @@ from serge.paths import config_root
 from serge.secrets import read_secret_file
 
 DISCORD_API = 'https://discord.com/api/v10'
+# UA distinctif exigé : Python-urllib générique = 403 Cloudflare/Discord
+# (prouvé bêta WSL : 403 vs 200 selon le seul User-Agent). Sans version
+# (ne se périme pas ; l'important est qu'il soit distinctif).
+USER_AGENT = 'DiscordBot (https://github.com/spreadzenox/SergeAgent)'
 MAX_429_RETRIES = 2
 
 
@@ -61,6 +65,7 @@ def _request(
             headers={
                 'Authorization': f'Bot {token}',
                 'Content-Type': 'application/json',
+                'User-Agent': USER_AGENT,
             },
             method=method,
         )

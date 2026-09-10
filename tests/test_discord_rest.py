@@ -66,6 +66,16 @@ class DiscordRestTests(unittest.TestCase):
             channel = get_channel('tok-fake-2', '1')
         self.assertEqual(channel['name'], 'urgent')
 
+    def test_user_agent_distinctif(self) -> None:
+        with mock.patch(
+            'urllib.request.urlopen',
+            return_value=_response({'id': '999'}),
+        ) as mocked:
+            verify_token('tok-fake-1')
+        agent = mocked.call_args[0][0].get_header('User-agent')
+        self.assertTrue(agent.startswith('DiscordBot ('))
+        self.assertNotIn('Python-urllib', agent)
+
     def test_send_edit_delete(self) -> None:
         with mock.patch(
             'urllib.request.urlopen',

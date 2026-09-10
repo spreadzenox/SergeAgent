@@ -53,6 +53,18 @@ class GatewayTests(unittest.TestCase):
         self.assertTrue(gateway.connected)
         self.assertNotIn('tok-fake-30', str(gateway.state()))
 
+    def test_connect_envoie_user_agent(self) -> None:
+        seen: dict[str, object] = {}
+
+        def _factory(url, headers, timeout):
+            seen['headers'] = dict(headers)
+            return FakeWs([row for batch in HELLO for row in [batch]][:1])
+
+        gateway = Gateway('tok-fake-31', on_event=lambda _t, _d: None)
+        gateway.connect(factory=_factory)
+        agent = str(seen['headers'].get('User-Agent'))
+        self.assertTrue(agent.startswith('DiscordBot ('))
+
     def test_heartbeat_et_ack(self) -> None:
         fake = FakeWs(
             [
