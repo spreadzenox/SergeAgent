@@ -40,6 +40,9 @@ class LiveCollectTests(unittest.TestCase):
                 1.0,
                 description='serge canary E (test-mode, refundé)',
                 idempotency_key=f'canary-{intent_id}',
+                # Exigé par Stripe quand le compte a des moyens à
+                # redirection (jamais visité en test sans 3DS).
+                return_url='https://example.com/stripe-test-return',
             )
             self.assertEqual(intent['status'], 'succeeded')
             to_issued(conn, intent_id, intent['id'])

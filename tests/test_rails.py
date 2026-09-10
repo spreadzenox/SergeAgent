@@ -98,6 +98,16 @@ class RailTests(unittest.TestCase):
         with self.assertRaises(RailError):
             rail.create_payment_intent(0)
 
+    def test_create_avec_return_url(self) -> None:
+        rail = StripeRail(KEY)
+        with mock.patch(
+            'urllib.request.urlopen',
+            return_value=_response({'id': 'pi_1', 'status': 'succeeded'}),
+        ) as mocked:
+            rail.create_payment_intent(1.0, return_url='https://example.com/r')
+        body = mocked.call_args[0][0].data.decode('utf-8')
+        self.assertIn('return_url=', body)
+
     def test_get_et_refund(self) -> None:
         rail = StripeRail(KEY)
         with mock.patch(

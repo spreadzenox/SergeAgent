@@ -145,22 +145,26 @@ class StripeRail:
         confirm: bool = True,
         description: str = '',
         idempotency_key: str = '',
+        return_url: str = '',
     ) -> dict[str, Any]:
         """Crée (+ confirme) un PaymentIntent. Retourne l'objet Stripe.
 
         Raises:
             RailError: AUTH, NETWORK, API, MODE.
         """
+        params: dict[str, Any] = {
+            'amount': _cents(amount_eur),
+            'currency': currency.lower(),
+            'payment_method': payment_method,
+            'confirm': 'true' if confirm else 'false',
+            'description': description[:200],
+        }
+        if return_url:
+            params['return_url'] = return_url
         return self._request(
             'POST',
             '/payment_intents',
-            {
-                'amount': _cents(amount_eur),
-                'currency': currency.lower(),
-                'payment_method': payment_method,
-                'confirm': 'true' if confirm else 'false',
-                'description': description[:200],
-            },
+            params,
             idempotency_key,
         )
 
