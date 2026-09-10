@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import os
 import re
+import sys
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
@@ -64,16 +65,27 @@ def host_facts_from_instance(
     loaded: Mapping[str, Any],
     *,
     uid: int | None = None,
-    python: str = '/usr/bin/python3',
+    python: str | None = None,
     user: str | None = None,
 ) -> dict[str, str]:
+    """Faits hôte pour le rendu des units (user, uid, python, caddy).
+
+    Args:
+        loaded: Instance validée (paths).
+        uid: UID cible (défaut : courant).
+        python: Interpréteur des units (défaut : celui du build).
+        user: Utilisateur Unix (défaut : nom du home).
+
+    Returns:
+        Dict user/uid/python/caddy (chaînes).
+    """
     home = Path(str(loaded['paths']['home']))
     unix_user = user or home.name or 'owner'
     caddy = str(home / '.local/bin/caddy')
     return {
         'user': unix_user,
         'uid': str(uid if uid is not None else os.getuid()),
-        'python': python,
+        'python': python or sys.executable,
         'caddy': caddy,
     }
 
@@ -103,7 +115,7 @@ def substitutions(
         ),
         'POLICY': str(paths['policy']),
         'INSTANCE_FILE': str(loaded['instance_file']),
-        'PYTHON': str(facts.get('python') or '/usr/bin/python3'),
+        'PYTHON': str(facts.get('python') or sys.executable),
         'CADDY': str(
             facts.get('caddy') or Path(paths['home']) / '.local/bin/caddy'
         ),

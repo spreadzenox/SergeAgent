@@ -196,6 +196,28 @@ class InstanceUnitTests(unittest.TestCase):
         self.assertNotIn('SERGE_EMAIL_BACKEND', without)
         self.assertNotIn('EMAIL_BACKEND_LINES', pipeline + without)
 
+    def test_units_use_given_python(self) -> None:
+        facts = {
+            'user': 'owner',
+            'uid': '1000',
+            'python': '/x/py',
+            'caddy': '/x/caddy',
+        }
+        rendered = render_units(_loaded(features={'discord': True}), facts)
+        pipeline = rendered['files']['serge-pipeline.service']
+        self.assertIn('/x/py ', pipeline)
+        bot = rendered['files']['serge-discord-bot.service']
+        self.assertIn('ExecStart=/x/py ', bot)
+        self.assertNotIn('/usr/bin/python3', pipeline + bot)
+
+    def test_shims_use_path_python(self) -> None:
+        for shim in sorted((ROOT / 'bin').iterdir()):
+            if not shim.is_file():
+                continue
+            text = shim.read_text(encoding='utf-8')
+            self.assertNotIn('/usr/bin/python3', text, shim.name)
+            self.assertIn('exec python3', text, shim.name)
+
 
 if __name__ == '__main__':
     unittest.main()
