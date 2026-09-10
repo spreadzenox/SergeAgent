@@ -92,7 +92,7 @@ class McHudTests(McBrowserCase):
         )
         self.assertEqual(page.evaluate(compte), 1)
         liens = page.locator('.barre-laterale nav a')
-        liens.nth(1).click()
+        liens.nth(2).click()  # Cerveau (page neutre, sans boucle)
         page.get_by_text('Cette page arrive dans un prochain lot.').wait_for(
             timeout=5000
         )

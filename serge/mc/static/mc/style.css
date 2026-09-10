@@ -382,6 +382,66 @@ button:disabled {
   display: block;
 }
 
+.system-layout {
+  align-items: flex-start;
+  display: flex;
+  gap: 1rem;
+}
+
+.system-layout .hud-canvas {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.panneau-ilot {
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon);
+  flex: 0 0 220px;
+  padding: 0.75rem;
+}
+
+.panneau-ilot h3 {
+  font-size: 1rem;
+  margin: 0 0 0.5rem;
+}
+
+[data-ilot='sante'] {
+  font-weight: bold;
+}
+
+[data-ilot='sante'][data-niveau='ok'] {
+  color: var(--vert);
+}
+
+[data-ilot='sante'][data-niveau='degrade'] {
+  color: var(--orange);
+}
+
+[data-ilot='sante'][data-niveau='erreur'] {
+  color: var(--rouge);
+}
+
+[data-ilot='sante'][data-niveau='inconnu'] {
+  color: var(--texte-doux);
+}
+
+.ilots-liste {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  list-style: none;
+  padding: 0;
+}
+
+.ilot-btn {
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon);
+}
+
+.ilot-btn.actif {
+  border-color: var(--cyan);
+}
+
 kbd {
   background: var(--fond-2);
   border: 1px solid var(--bordure);

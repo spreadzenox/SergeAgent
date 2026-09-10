@@ -42,11 +42,32 @@ export function hudActives() {
   return boucles;
 }
 
-export function startNoyau(canvas, getEtat) {
-  const ctx = canvas.getContext('2d');
+function boucle(dessiner) {
   const statique = mouvementReduit();
   let actif = true;
   boucles += 1;
+  function frame(t) {
+    if (!actif) {
+      return;
+    }
+    dessiner(t);
+    if (!statique) {
+      requestAnimationFrame(frame);
+    }
+  }
+  requestAnimationFrame(frame);
+  return {
+    stop() {
+      if (actif) {
+        actif = false;
+        boucles -= 1;
+      }
+    },
+  };
+}
+
+export function startNoyau(canvas, getEtat) {
+  const ctx = canvas.getContext('2d');
   function dessin(t) {
     const box = canvas.width;
     const centre = box / 2;
@@ -72,24 +93,66 @@ export function startNoyau(canvas, getEtat) {
     ctx.stroke();
     ctx.globalAlpha = 1;
   }
-  function frame(t) {
-    if (!actif) {
-      return;
-    }
-    dessin(t);
-    if (!statique) {
-      requestAnimationFrame(frame);
-    }
+  return boucle(dessin);
+}
+
+const COULEURS_SANTE = {
+  ok: '#3fb950',
+  degrade: '#ff9a3c',
+  erreur: '#ff7b72',
+  inconnu: '#8b949e',
+};
+
+export function dispositionIlots(n, largeur, hauteur) {
+  const cols = 4;
+  const lignes = Math.ceil(n / cols);
+  const pos = [];
+  for (let i = 0; i < n; i += 1) {
+    pos.push({
+      x: ((i % cols + 0.5) / cols) * largeur,
+      y: ((Math.floor(i / cols) + 0.5) / lignes) * hauteur,
+    });
   }
-  requestAnimationFrame(frame);
-  return {
-    stop() {
-      if (actif) {
-        actif = false;
-        boucles -= 1;
+  return pos;
+}
+
+export function startIlots(canvas, getEtat) {
+  const ctx = canvas.getContext('2d');
+  function dessin(t) {
+    const {items, choisi} = getEtat();
+    const {width, height} = canvas;
+    const pos = dispositionIlots(items.length, width, height);
+    ctx.clearRect(0, 0, width, height);
+    ctx.textAlign = 'center';
+    ctx.font = '11px system-ui, sans-serif';
+    items.forEach((ilot, i) => {
+      const rayon = 26 + (ilot.activite || 0) * 14;
+      const pulse = 1 + 0.06 * Math.sin(t / 350 + i * 0.7);
+      const couleur = COULEURS_SANTE[ilot.sante] || COULEURS_SANTE.inconnu;
+      ctx.beginPath();
+      ctx.arc(pos[i].x, pos[i].y, (rayon + 10) * pulse, 0, Math.PI * 2);
+      ctx.fillStyle = couleur;
+      ctx.globalAlpha = 0.16;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.beginPath();
+      ctx.arc(pos[i].x, pos[i].y, rayon, 0, Math.PI * 2);
+      ctx.fillStyle = '#0d1117';
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = couleur;
+      ctx.stroke();
+      if (ilot.id === choisi) {
+        ctx.beginPath();
+        ctx.arc(pos[i].x, pos[i].y, rayon + 4, 0, Math.PI * 2);
+        ctx.strokeStyle = '#e6edf3';
+        ctx.stroke();
       }
-    },
-  };
+      ctx.fillStyle = '#e6edf3';
+      ctx.fillText(ilot.label, pos[i].x, pos[i].y + rayon + 14);
+    });
+  }
+  return boucle(dessin);
 }
 
 export function densite24h(items, nowMs) {

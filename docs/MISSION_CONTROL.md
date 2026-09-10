@@ -184,3 +184,14 @@ envoyés/touches par campagne) + cooldowns (`accounts_standing`), population
 (contacts par funnel_state, ventures par lifecycle), email (volumes par
 statut + dernière activité). Fixtures partagées via `ProjSystemFixtures`
 (héritage, 0 duplication). 2 goldens.
+
+## Système P1 — page îlots (lot 5c)
+
+Route p1 : `system.js` (canvas 11 îlots + panneau + liste accessible).
+`hud.js` : `startIlots` (1 boucle rAF, halo pulsé, taille = activité,
+couleur = santé) + `dispositionIlots` pure (grille 4 colonnes, hit-test
+clic) — boucle `boucle()` partagée avec le noyau (refactor, compteur
+`hudActives` commun). Panneau : label + santé FR + résumé + détails
+ordonnanceur (next/kind brut — libellés lot 8). Stream : sections p1
+câblées (`population` lente 30 s). 5 tests (registre, rendu, clic bouton,
+anti-fuite, clic canvas réel).

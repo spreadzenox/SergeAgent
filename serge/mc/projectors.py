@@ -10,6 +10,12 @@ from collections.abc import Callable
 from typing import Any
 
 from serge.mc import MC_VERSION
+from serge.mc.proj_campagnes import (
+    project_campagnes,
+    project_email,
+    project_population,
+)
+from serge.mc.proj_ilots import project_ilots, project_scheduler
 from serge.mc.proj_live import (
     project_feed,
     project_file,
@@ -20,7 +26,7 @@ from serge.mc.proj_live import (
 
 LIVE_TTL_S = 2.0
 SLOW_TTL_S = 30.0
-SLOW_SECTIONS = frozenset({'jauges'})
+SLOW_SECTIONS = frozenset({'jauges', 'population'})
 
 
 def canonical(payload: Any) -> str:
@@ -112,8 +118,14 @@ PROJECTORS: dict[str, Callable[..., dict[str, Any]]] = {
     'file': project_file,
     'feed': project_feed,
     'jauges': project_jauges,
+    'ilots': project_ilots,
+    'scheduler': project_scheduler,
+    'campagnes': project_campagnes,
+    'population': project_population,
+    'email': project_email,
 }
 
 PAGE_SECTIONS: dict[str, list[str]] = {
     'p0': ['meta', 'hero', 'urgents', 'file', 'feed', 'jauges'],
+    'p1': ['meta', 'ilots', 'scheduler', 'campagnes', 'population', 'email'],
 }
