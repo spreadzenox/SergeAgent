@@ -166,3 +166,13 @@ urgent/erreur). T3 : tick rejoué sur DB figée = 0 mutation DOM
 canvas animé diffère. Anti-fuite : `stop()` au unmount, navigations
 p0→p1→p0 → compteur 1→0→1. Socle : `McBrowserCase` (Chromium partagé +
 helpers — `McFrontTests` migre dessus, −57 lignes).
+
+## Système P1 — îlots (lot 5a)
+
+`proj_ilots.py` (299 lignes, R1) : 11 îlots {id, label, sante, activite,
+resume} + scheduler (`next_ready` + compteurs). Santé : scheduler erreur
+si READY débloqué non servi (ventures non schedulables, B5) ; workers
+erreur si FAILED 24 h, degrade si RUNNING > 30 min ; collect erreur si
+overdue ; email erreur si FAILED email.* 24 h. Allocator/discord/voix =
+'inconnu' (fail-soft — câblages lots 6/12/11). 4 goldens (dont file
+coincée et RUNNING suspect).
