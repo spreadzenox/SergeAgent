@@ -173,13 +173,42 @@ class McFrontTests(McServerCase):
         self._watch_errors(page)
         page.goto(f'{self.base}/owner')
         for text in (
-            'email.send',
+            'Envoi email',
             'Captcha',
             'Guichet',
             'Ada',
             '3000 jetons',
         ):
             expect(page.locator('#page')).to_contain_text(text)
+
+    def test_drawer_trace_au_clic(self) -> None:
+        import sqlite3
+
+        from playwright.sync_api import expect
+
+        conn = sqlite3.connect(self.db_path)
+        try:
+            conn.execute(
+                'INSERT INTO work_items(id, kind, venture_id, status,'
+                ' priority, idempotency_key, payload_json, created_at,'
+                " updated_at) VALUES('w9','email.send','v1','RUNNING',0,"
+                "'k9',?,?,?)",
+                (
+                    '{"result": {"note": "Appel propre."}}',
+                    '2026-09-10T10:00:00+00:00',
+                    '2026-09-10T10:00:00+00:00',
+                ),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+        page = self._auth_context().new_page()
+        self._watch_errors(page)
+        page.goto(f'{self.base}/owner')
+        page.locator('[data-section="file"] li.cliquable').first.click()
+        drawer = page.locator('.drawer')
+        expect(drawer).to_contain_text('Envoi email')
+        expect(drawer).to_contain_text('Appel propre.')
 
     def test_composants_hud(self) -> None:
         page = self._auth_context().new_page()

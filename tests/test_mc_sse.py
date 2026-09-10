@@ -7,6 +7,7 @@ import http.client
 import io
 import json
 import re
+import sqlite3
 import sys
 import tempfile
 import unittest
@@ -153,6 +154,40 @@ class SseE2ETests(McServerCase):
         )
         self.assertEqual(status, 400)
         self.assertIn('inconnue', body.decode('utf-8'))
+
+    def test_trace_auth_et_introuvable(self) -> None:
+        status, _, _ = self._request('GET', '/owner/api/trace?item=w1')
+        self.assertEqual(status, 401)
+        status, headers, _ = self._login()
+        cookie = self._cookie(headers)
+        authed = {'Cookie': cookie}
+        status, _, _ = self._request('GET', '/owner/api/trace', headers=authed)
+        self.assertEqual(status, 400)
+        status, _, _ = self._request(
+            'GET', '/owner/api/trace?item=wZZ', headers=authed
+        )
+        self.assertEqual(status, 404)
+
+    def test_trace_trouvee(self) -> None:
+        conn = sqlite3.connect(self.db_path)
+        try:
+            conn.execute(
+                'INSERT INTO work_items(id, kind, venture_id, status,'
+                ' priority, idempotency_key, payload_json, created_at,'
+                " updated_at) VALUES('w1','email.send','v1','DONE',0,"
+                "'k1','{}','t','t')"
+            )
+            conn.commit()
+        finally:
+            conn.close()
+        status, headers, _ = self._login()
+        cookie = self._cookie(headers)
+        status, _, body = self._request(
+            'GET', '/owner/api/trace?item=w1', headers={'Cookie': cookie}
+        )
+        self.assertEqual(status, 200)
+        payload = json.loads(body.decode('utf-8'))
+        self.assertEqual(payload['item']['kind'], 'email.send')
 
 
 if __name__ == '__main__':

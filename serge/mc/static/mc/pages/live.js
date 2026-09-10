@@ -1,6 +1,6 @@
 // Page P0 En direct : hero + urgents + file + feed + jauges.
 // Libellés FR en dur (centralisation i18n.js au lot 8).
-import {createGauge, updateGauge} from '../components.js';
+import {createGauge, updateGauge, openDrawer, toast} from '../components.js';
 import {patchSection} from '../patch.js';
 
 const KINDS_FR = {
@@ -9,6 +9,29 @@ const KINDS_FR = {
   created: 'Créé',
   sent: 'Envoyé',
   'email.sent': 'Email envoyé',
+  'work.completed': 'Tâche terminée',
+  'work.failed': 'Tâche échouée',
+};
+
+const WORKERS_FR = {
+  'email.send': 'Envoi email',
+  'email.poll': 'Collecte email',
+  'voice.send': 'Appel voix',
+  'voice.score': 'Évaluation appel',
+  'inbound.classify': 'Classification',
+  'inbound.reply_priority': 'Réponse prioritaire',
+  'inbound.judge_other': 'Arbitrage autre',
+  'listen.collect': 'Collecte écoute',
+  'listen.cluster': 'Regroupement écoute',
+  'memory.consolidate': 'Consolidation mémoire',
+  'memory.apply': 'Application mémoire',
+};
+
+const ETATS_FR = {
+  READY: 'Prêt',
+  RUNNING: 'En cours',
+  DONE: 'Terminé',
+  FAILED: 'Échoué',
 };
 
 // TODO lot 8 : migrer vers i18n.js (dates relatives + libellés).
@@ -60,9 +83,11 @@ function renderHero(main, payload, sig) {
   const running = payload.running;
   const headline = main.querySelector('#live-headline');
   if (running) {
+    const since = rel(running.since);
     headline.textContent =
-      `En cours : ${running.kind} (${running.venture_id || 'sans venture'})`
-      + ` — depuis ${rel(running.since)}.`;
+      `En cours : ${WORKERS_FR[running.kind] || running.kind}`
+      + ` (${running.venture_id || 'sans venture'})`
+      + (since ? ` — depuis ${since}.` : '.');
   } else if (payload.ready > 0) {
     headline.textContent = `${payload.ready} prêts, en attente de traitement.`;
   } else {
@@ -83,17 +108,80 @@ function renderUrgents(main, payload, sig) {
 function renderFile(main, payload, sig) {
   patchSection(main, 'file', sig, payload);
   const list = main.querySelector('[data-section="file"] [data-list]');
-  fillList(list, payload.running, 'File vide.', (item) =>
-    li(`${item.kind} (${item.venture_id || 'sans venture'})`, item.id),
-  );
+  fillList(list, payload.running, 'File vide.', (item) => {
+    const node = li(
+      `${WORKERS_FR[item.kind] || item.kind} (${item.venture_id || 'sans venture'})`,
+      item.id,
+    );
+    node.classList.add('cliquable');
+    node.dataset.traceId = item.id;
+    node.addEventListener('click', () => showTrace(item.id));
+    return node;
+  });
   const next = main.querySelector('#file-next');
   if (payload.next) {
-    next.textContent = `Prochain : ${payload.next.kind}.`;
+    next.textContent = `Prochain : ${WORKERS_FR[payload.next.kind] || payload.next.kind}.`;
   } else {
     next.textContent =
       payload.running.length === 0 && payload.ready_count === 0
         ? ''
         : 'Rien de plus en attente.';
+  }
+}
+
+function buildTrace(trace) {
+  const wrap = document.createElement('div');
+  const item = trace.item;
+  const title = document.createElement('p');
+  title.textContent =
+    `${WORKERS_FR[item.kind] || item.kind} — ${ETATS_FR[item.statut] || item.statut}`;
+  wrap.append(title);
+  if (trace.note) {
+    const note = document.createElement('p');
+    note.textContent = `Note : ${trace.note}`;
+    wrap.append(note);
+  }
+  if (trace.ticket) {
+    const ticket = document.createElement('p');
+    ticket.textContent = `Ticket : ${trace.ticket.titre} (${trace.ticket.etat}).`;
+    wrap.append(ticket);
+  }
+  if (trace.contact) {
+    const contact = document.createElement('p');
+    const who = trace.contact.display || trace.contact.email;
+    contact.textContent = `Contact : ${who}.`;
+    wrap.append(contact);
+  }
+  const sub = document.createElement('h3');
+  sub.textContent = 'Événements';
+  wrap.append(sub);
+  const list = document.createElement('ul');
+  if (trace.evenements.length === 0) {
+    list.append(li('Aucun événement lié.'));
+  }
+  for (const event of trace.evenements) {
+    list.append(
+      li(`${rel(event.ts)} · ${KINDS_FR[event.type] || event.type}`),
+    );
+  }
+  wrap.append(list);
+  return wrap;
+}
+
+async function showTrace(id) {
+  try {
+    const res = await fetch(
+      `/owner/api/trace?item=${encodeURIComponent(id)}`,
+      {cache: 'no-store'},
+    );
+    if (!res.ok) {
+      toast(document.body, 'Trace introuvable.', 'erreur');
+      return;
+    }
+    const trace = await res.json();
+    openDrawer(document.body, 'Détail d’exécution', buildTrace(trace));
+  } catch {
+    toast(document.body, 'Trace injoignable.', 'erreur');
   }
 }
 

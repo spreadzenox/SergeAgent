@@ -24,6 +24,7 @@ from serge.mc.auth import (
     create_session,
     revoke_session,
 )
+from serge.mc.proj_trace import project_trace
 from serge.mc.projectors import PAGE_SECTIONS, SnapshotCache
 from serge.mc.sse import state_payload, stream_page
 from serge.policy import PolicyError, load_policy
@@ -206,21 +207,29 @@ class McHandler(BaseHTTPRequestHandler):
         if path == '/owner/api/stream':
             self._api_stream()
             return
+        if path == '/owner/api/trace':
+            self._api_trace()
+            return
         if path == '/static/' or path.startswith('/static/'):
             self._serve_static(path[len('/static/') :])
             return
         self._error(404)
 
+    def _require_owner(self) -> bool:
+        if self._is_owner():
+            return True
+        self._send_json(
+            401,
+            {
+                'erreur': 'Authentification requise.',
+                'code': 'auth',
+                'aide': 'Reconnecte-toi via /owner/login.',
+            },
+        )
+        return False
+
     def _api_common(self) -> tuple[str, list[str], dict] | None:
-        if not self._is_owner():
-            self._send_json(
-                401,
-                {
-                    'erreur': 'Authentification requise.',
-                    'code': 'auth',
-                    'aide': 'Reconnecte-toi via /owner/login.',
-                },
-            )
+        if not self._require_owner():
             return None
         page = self._query().get('page', '')
         sections = PAGE_SECTIONS.get(page)
@@ -276,6 +285,34 @@ class McHandler(BaseHTTPRequestHandler):
             )
         except (BrokenPipeError, ConnectionResetError):
             return
+
+    def _api_trace(self) -> None:
+        if not self._require_owner():
+            return
+        item_id = self._query().get('item', '')
+        if not item_id:
+            self._send_json(
+                400,
+                {
+                    'erreur': 'Paramètre item requis.',
+                    'code': 'item',
+                    'aide': 'Exemple : …/api/trace?item=w1.',
+                },
+            )
+            return
+        with self._db() as conn:
+            trace = project_trace(conn, item_id)
+        if trace is None:
+            self._send_json(
+                404,
+                {
+                    'erreur': 'Tâche introuvable.',
+                    'code': 'trace',
+                    'aide': 'Vérifie l’identifiant.',
+                },
+            )
+            return
+        self._send_json(200, trace)
 
     def do_POST(self) -> None:  # noqa: N802 (nom imposé http.server)
         """Route POST (login, logout)."""

@@ -27,8 +27,9 @@ mêmes actes, mêmes `decision_id`), DB = vérité, UI = projections.
 | 2c | Composants + gate FR + CSP systématisée | ✅ |
 | 3a | Events cycle + guard (R-a/R-b) + tests | ✅ |
 | 3b | Projecteur P0 (hero/urgents/file/feed/jauges) + goldens | ✅ |
-| 3c | Page live.js + routeur + E2E navigateur | ✅ (ce commit) |
-| 3d-14 | Timeline, puis 8 pages → polish | ⏳ |
+| 3c | Page live.js + routeur + E2E navigateur | ✅ |
+| 3d | Endpoint trace + drawer timeline + tests | ✅ (ce commit) |
+| 4-14 | HUD canvas, puis 8 pages → polish | ⏳ |
 
 ### Routes lot 0
 
@@ -79,6 +80,8 @@ Erreurs : HTML FR (navigations) / JSON FR (API), jamais de traceback.
   `llm_usage` sans `task_id` — noté, pas perdu).
 - D13. Libellés FR + dates relatives en dur côté front → `i18n.js` lot 8.
 - D14. Hero sans canvas (→ `hud.js` lot 4) ; milliers non formatés (→ lot 8).
+- D15. Timeline = drawer générique réutilisé ; erreurs fetch = toast,
+  jamais de page (cohérence lot 2c).
 
 ## Glossaire FR des enums (annexe A — source pour `i18n.py`)
 

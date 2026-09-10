@@ -186,6 +186,14 @@ button:disabled {
   color: var(--rouge);
 }
 
+.cliquable {
+  cursor: pointer;
+}
+
+.cliquable:hover {
+  color: var(--cyan);
+}
+
 /* Badges d'état (texte + pastille). */
 .badge {
   border-radius: 999px;
