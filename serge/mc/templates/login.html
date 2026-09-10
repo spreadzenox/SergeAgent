@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Serge — Connexion owner</title>
+<link rel="stylesheet" href="/static/mc/style.css">
+</head>
+<body>
+<main class="login">
+<h1>Serge — Mission Control</h1>
+<p>Espace owner. Saisis ton jeton de tableau de bord.</p>
+<p class="error" data-error="auth" hidden>Jeton incorrect — réessaie.</p>
+<p class="error" data-error="rate" hidden>Trop d’essais — attends une minute.</p>
+<form method="post" action="/owner/login">
+<label for="token">Jeton owner</label>
+<input id="token" name="token" type="password" autocomplete="off" required>
+<button type="submit">Se connecter</button>
+</form>
+</main>
+</body>
+</html>

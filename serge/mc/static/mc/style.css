@@ -1,0 +1,30 @@
+/* MC lot 0 : base lisible. Design system au lot 2. */
+:root {
+  color-scheme: dark;
+}
+body {
+  background: #0b1220;
+  color: #e6edf3;
+  font-family: system-ui, -apple-system, sans-serif;
+  margin: 0;
+}
+main {
+  max-width: 42rem;
+  margin: 4rem auto;
+  padding: 0 1rem;
+}
+a {
+  color: #35e0ff;
+}
+.error {
+  color: #ff7b72;
+}
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 24rem;
+}
+button {
+  align-self: flex-start;
+}

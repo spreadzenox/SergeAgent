@@ -117,6 +117,16 @@ class CharterTests(unittest.TestCase):
             visit(name, [])
         self.assertEqual(cycle, [])
 
+    def test_mc_python_sans_html(self) -> None:
+        patterns = [re.compile(r'<[A-Za-z]'), re.compile(r'innerHTML')]
+        for path in sorted((ROOT / 'serge/mc').rglob('*.py')):
+            text = path.read_text(encoding='utf-8')
+            for pattern in patterns:
+                self.assertIsNone(
+                    pattern.search(text),
+                    f'{path.name} : HTML/JS interdit (A1)',
+                )
+
 
 if __name__ == '__main__':
     unittest.main()
