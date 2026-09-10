@@ -15,7 +15,7 @@ from collections.abc import Mapping
 from datetime import datetime, timedelta
 from typing import Any
 
-from serge.db.store import utcnow
+from serge.db.store import append_event, utcnow
 from serge.guards.reasons import Reason, Verdict
 from serge.policy import PolicyError
 from serge.privacy import subject_hash
@@ -64,10 +64,10 @@ def check(
     action: Mapping[str, Any],
     now: str | None = None,
 ) -> Verdict:
-    """Décide une exposition sortante. Refus enregistrés, jamais levés.
+    """Décide une exposition sortante + journalise (commit appelant).
 
     Args:
-        connection: Connexion canon (lecture seule ici).
+        connection: Connexion canon (écrit l'event verdict).
         policy: Policy validée (ou sous-ensemble : consent + calling_zones).
         action: channel, subject, idempotency_key (+ contact_id, zone).
         now: ISO UTC (défaut : maintenant).
@@ -79,6 +79,30 @@ def check(
         PolicyError: Policy ou horodatage malformé (fail-closed au boot).
     """
     moment = now or utcnow()
+    verdict = _decide(connection, policy, action, moment)
+    append_event(
+        connection,
+        actor='guards',
+        type='guard',
+        payload={
+            'allowed': verdict.allowed,
+            'code': verdict.reason.value,
+            'channel': str(action.get('channel') or ''),
+            'subject_hash': subject_hash(str(action.get('subject') or '')),
+            'duplicate': verdict.duplicate,
+            'retry_at': verdict.retry_at,
+        },
+    )
+    return verdict
+
+
+def _decide(
+    connection: sqlite3.Connection,
+    policy: Mapping[str, Any],
+    action: Mapping[str, Any],
+    moment: str,
+) -> Verdict:
+    """Décision pure (sans journal — voir check())."""
     current = _as_dt(moment)
     channel = str(action.get('channel') or '')
     if channel not in KNOWN_CHANNELS:

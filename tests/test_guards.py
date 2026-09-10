@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import sqlite3
 import sys
 import unittest
@@ -225,6 +226,44 @@ class GuardTests(unittest.TestCase):
             TUESDAY,
         )
         self.assertTrue(verdict.allowed)
+
+    def test_verdict_journalise_sans_pii(self) -> None:
+        check(
+            self.connection,
+            POLICY,
+            {
+                'channel': 'email',
+                'subject': 'Lead@Example.com',
+                'idempotency_key': 'k-log',
+                'contact_id': 'p1',
+            },
+            TUESDAY,
+        )
+        check(
+            self.connection,
+            POLICY,
+            {
+                'channel': 'sms',
+                'subject': '+33612345678',
+                'idempotency_key': 'k-log2',
+            },
+            TUESDAY,
+        )
+        self.connection.commit()
+        rows = self.connection.execute(
+            "SELECT payload_json FROM events WHERE type='guard'"
+        ).fetchall()
+        self.assertEqual(len(rows), 2)
+        first = json.loads(rows[0][0])
+        self.assertEqual((first['allowed'], first['code']), (True, 'OK'))
+        self.assertEqual(first['subject_hash'], _digest('Lead@Example.com'))
+        second = json.loads(rows[1][0])
+        self.assertEqual(
+            (second['allowed'], second['code']), (False, 'NO_CONSENT')
+        )
+        blob = ' '.join(row[0] for row in rows)
+        self.assertNotIn('Lead@Example.com', blob)
+        self.assertNotIn('+33612345678', blob)
 
 
 if __name__ == '__main__':

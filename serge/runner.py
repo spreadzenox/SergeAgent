@@ -9,11 +9,12 @@ pause → FYI. Un commit par cycle (atomicité). Zéro LLM direct.
 from __future__ import annotations
 
 import sqlite3
+import time
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
-from serge.db.store import utcnow
+from serge.db.store import append_event, utcnow
 from serge.memory.consolidate import due_for_consolidation
 from serge.registry import load_ticket_types
 from serge.scheduler import claim, complete, enqueue, fail, next_ready
@@ -70,6 +71,7 @@ def run_once(
         Dict processed/done/failed/retried/expired/consolidation.
     """
     moment = now or utcnow()
+    started = time.monotonic()
     expired = expire_due(conn, moment)
     consolidation = _ensure_consolidation(conn, policy, moment)
     done = failed = retried = 0
@@ -105,6 +107,20 @@ def run_once(
         else:
             fail(conn, str(item['id']), str(result.get('error') or 'error'))
             failed += 1
+    append_event(
+        conn,
+        actor='runner',
+        type='cycle',
+        payload={
+            'processed': processed,
+            'done': done,
+            'failed': failed,
+            'retried': retried,
+            'expired': len(expired),
+            'consolidation': consolidation,
+            'duration_ms': int((time.monotonic() - started) * 1000),
+        },
+    )
     conn.commit()
     return {
         'processed': processed,

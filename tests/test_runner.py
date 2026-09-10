@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import sqlite3
 import sys
 import unittest
@@ -64,6 +65,20 @@ class RunnerTests(unittest.TestCase):
             row[0] for row in self.conn.execute('SELECT kind FROM work_items')
         ]
         self.assertIn('memory.consolidate', kinds)
+
+    def test_cycle_ecrit_event_resume(self) -> None:
+        result = run_once(self.conn, POLICY, now=NOW)
+        row = self.conn.execute(
+            "SELECT payload_json FROM events WHERE type='cycle'"
+            ' ORDER BY id DESC LIMIT 1'
+        ).fetchone()
+        payload = json.loads(row[0])
+        self.assertEqual(
+            (payload['processed'], payload['done'], payload['failed']),
+            (result['processed'], result['done'], result['failed']),
+        )
+        self.assertEqual(payload['expired'], result['expired'])
+        self.assertGreaterEqual(payload['duration_ms'], 0)
 
     def test_dispatch_done_et_failed(self) -> None:
         enqueue(
