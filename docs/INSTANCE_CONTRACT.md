@@ -155,6 +155,7 @@ stripe = true
 voice = true
 metagrok = false                # pas de token ; pont hôte seulement
 gmail = true
+mailbox = true                  # SMTP/IMAP confiance (cohabite avec gmail)
 discord = true
 openclaw = true
 owner_ui = true
@@ -179,6 +180,14 @@ sip_server = ""
 sip_username = ""
 sip_transport = "tls"           # udp | tcp | tls
 max_calls_per_day = 50
+
+[mailbox]                       # requis si mailbox on (login + preset)
+preset = "infomaniak"           # infomaniak | gmail | fastmail | custom
+login = ""                      # adresse complète (mot de passe = sidecar)
+smtp_host = ""                  # vide = preset (custom : obligatoire)
+smtp_port = 587                 # 587 STARTTLS | 465 SSL
+imap_host = ""                  # vide = preset (custom : obligatoire)
+imap_port = 993                 # 993 SSL | 143 STARTTLS
 
 [testing]                       # topologie à froid (B4) : N + seuils kill/scale
 n_smoke_min = 30                # modifiable via Mission Control uniquement

@@ -12,6 +12,7 @@ from typing import Any
 
 import yaml
 
+from kit.mailbox_config import MailboxError, resolve_mailbox
 from serge.e164 import E164_RE
 
 FEATURE_KEYS = (
@@ -20,6 +21,7 @@ FEATURE_KEYS = (
     'voice',
     'metagrok',
     'gmail',
+    'mailbox',
     'discord',
     'openclaw',
     'owner_ui',
@@ -183,6 +185,12 @@ def validate_toml(data: Mapping[str, Any]) -> dict[str, Any]:
                     f'discord.{key} must be a Discord snowflake id '
                     'when features.discord is true'
                 )
+    mailbox = as_table(data.get('mailbox'))
+    if normalized.get('mailbox'):
+        try:
+            resolve_mailbox(mailbox)
+        except MailboxError as exc:
+            raise InstanceError(f'mailbox invalide : {exc}') from exc
     testing = _validate_testing(as_table(data.get('testing')))
     return {
         'schema_version': 1,
@@ -213,6 +221,7 @@ def validate_toml(data: Mapping[str, Any]) -> dict[str, Any]:
             'max_calls_per_day': max_calls,
         },
         'discord': discord,
+        'mailbox': mailbox,
         'testing': testing,
     }
 

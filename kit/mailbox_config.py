@@ -28,6 +28,15 @@ PRESETS = {
 }
 DEFAULT_PRESET = 'infomaniak'
 
+MAILBOX_DEFAULTS = {
+    'preset': 'infomaniak',
+    'login': '',
+    'smtp_host': '',
+    'smtp_port': 587,
+    'imap_host': '',
+    'imap_port': 993,
+}
+
 
 class MailboxError(ValueError):
     pass
@@ -87,3 +96,41 @@ def resolve_mailbox(raw: Mapping[str, Any]) -> dict[str, Any]:
         'imap_port': imap_port,
         'imap_ssl': imap_port == 993,
     }
+
+
+def merge_mailbox(base: Mapping[str, Any], incoming: Any) -> dict[str, Any]:
+    """Fusionne la section [mailbox] (brut, validé par resolve en aval).
+
+    Args:
+        base: Défauts (MAILBOX_DEFAULTS).
+        incoming: Section entrante (partielle admise).
+
+    Returns:
+        Dict fusionné (nouvel objet, base non mutée).
+    """
+    merged = dict(base)
+    merged.update(dict(incoming or {}))
+    return merged
+
+
+def mailbox_toml_lines(mailbox: Mapping[str, Any], quote: Any) -> list[str]:
+    """Lignes TOML [mailbox] (section déjà validée par resolve).
+
+    Args:
+        mailbox: Section normalisée (preset/login/hosts/ports).
+        quote: Fonction str -> littéral TOML (ex. _toml_str du wizard).
+
+    Returns:
+        Lignes '[mailbox]' + 6 champs + vide.
+    """
+    box = mailbox or {}
+    return [
+        '[mailbox]',
+        f'preset = {quote(str(box.get("preset") or "infomaniak"))}',
+        f'login = {quote(str(box.get("login") or ""))}',
+        f'smtp_host = {quote(str(box.get("smtp_host") or ""))}',
+        f'smtp_port = {int(box.get("smtp_port") or 587)}',
+        f'imap_host = {quote(str(box.get("imap_host") or ""))}',
+        f'imap_port = {int(box.get("imap_port") or 993)}',
+        '',
+    ]

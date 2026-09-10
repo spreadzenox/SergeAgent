@@ -144,6 +144,7 @@ class InstanceWizardTests(unittest.TestCase):
         answers['discord'] = {
             key: '123456789012345678' for key in answers['discord']
         }
+        answers['mailbox']['login'] = 'serge@example.net'
         answers['secrets'] = {'openrouter_api_key': 'test-openrouter'}
         with tempfile.TemporaryDirectory() as raw:
             dest = Path(raw)
@@ -247,6 +248,39 @@ class InstanceWizardTests(unittest.TestCase):
             self.assertEqual(back['gog_env'], blob)
             toml = Path(written['instance']).read_text(encoding='utf-8')
             self.assertNotIn('ALPHA=un', toml)
+
+    def test_mailbox_section_renders_and_round_trip(self) -> None:
+        answers = _answers(features={'mailbox': True})
+        answers['mailbox']['login'] = 'serge@example.net'
+        answers['secrets'] = {
+            'openrouter_api_key': 'test-openrouter',
+            'mailbox_password': 'pw-fake-2',
+        }
+        text = render_toml(answers)
+        self.assertIn('[mailbox]', text)
+        self.assertIn('preset = "infomaniak"', text)
+        self.assertIn('login = "serge@example.net"', text)
+        self.assertNotIn('pw-fake-2', text)
+        with tempfile.TemporaryDirectory() as raw:
+            dest = Path(raw) / 'couple'
+            written = write_couple(answers, dest, allow_plaintext=True)
+            back = load_secret_map(Path(written['secrets']))
+            self.assertEqual(back['mailbox_password'], 'pw-fake-2')
+
+    def test_mailbox_incomplete_refuses(self) -> None:
+        missing_secret = _answers(features={'mailbox': True})
+        missing_secret['mailbox']['login'] = 'serge@example.net'
+        with tempfile.TemporaryDirectory() as raw:
+            with self.assertRaises(WizardError):
+                write_couple(missing_secret, Path(raw) / 'c1')
+        missing_login = _answers(features={'mailbox': True})
+        missing_login['secrets'] = {
+            'openrouter_api_key': 'test-openrouter',
+            'mailbox_password': 'pw-fake-2',
+        }
+        with tempfile.TemporaryDirectory() as raw:
+            with self.assertRaises(WizardError):
+                write_couple(missing_login, Path(raw) / 'c2')
 
 
 def _load_interactive_wizard():

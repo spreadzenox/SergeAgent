@@ -188,6 +188,14 @@ class InstanceUnitTests(unittest.TestCase):
         self.assertNotIn('EnvironmentFile', without)
         self.assertNotIn('GMAIL_UNIT_LINES', pipeline + without)
 
+    def test_pipeline_mailbox_backend(self) -> None:
+        with_box = render_units(_loaded(features={'mailbox': True}))
+        pipeline = with_box['files']['serge-pipeline.service']
+        self.assertIn('SERGE_EMAIL_BACKEND=smtp', pipeline)
+        without = render_units(_loaded())['files']['serge-pipeline.service']
+        self.assertNotIn('SERGE_EMAIL_BACKEND', without)
+        self.assertNotIn('EMAIL_BACKEND_LINES', pipeline + without)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Worker email.poll : Gmail → ingest ROUTER (dédup gmail_id).
+"""Worker email.poll : backend actif → ingest ROUTER (dédup message_id).
 
-Recherche (syntaxe Gmail), lecture complète, extraction From/corps,
+Recherche (syntaxe du backend), lecture complète, extraction From/corps,
 match contact par email, ingest RECEIVED. Erreur search = fatale ;
-erreur message = ignorée + comptée. Dédup persistante (gmail_id).
+erreur message = ignorée + comptée. Dédup persistante (message_id).
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any
 
-from serge.channels.email_gog import MailError, get_message, search_emails
+from serge.channels import MailError, get_message, search_emails
 from serge.observe.router import ingest
 
 DEFAULT_QUERY = 'newer_than:1d -in:sent'
@@ -75,11 +75,11 @@ def _match_contact(conn: sqlite3.Connection, from_header: str) -> str:
     return str(row[0]) if row else ''
 
 
-def _seen(conn: sqlite3.Connection, gmail_id: str) -> bool:
+def _seen(conn: sqlite3.Connection, message_id: str) -> bool:
     row = conn.execute(
         'SELECT 1 FROM inbound_events WHERE json_extract(payload_json,'
-        "'$.gmail_id')=?",
-        (gmail_id,),
+        "'$.message_id')=? OR json_extract(payload_json, '$.gmail_id')=?",
+        (message_id, message_id),
     ).fetchone()
     return row is not None
 
@@ -102,7 +102,7 @@ def run_email_poll(
         item: Work_item (payload account/query/max_results).
         root: Inutilisé (contrat workers).
         caller: Inutilisé (zéro LLM).
-        searcher: Recherche Gmail (injectable).
+        searcher: Recherche email (injectable).
         getter: Lecture message (injectable).
 
     Returns:
@@ -127,12 +127,12 @@ def run_email_poll(
     fresh = 0
     skipped = 0
     for entry in found:
-        gmail_id = str(entry.get('id') or '')
-        if not gmail_id or _seen(conn, gmail_id):
+        message_id = str(entry.get('id') or '')
+        if not message_id or _seen(conn, message_id):
             skipped += 1
             continue
         try:
-            message = getter(gmail_id, account=account)
+            message = getter(message_id, account=account)
         except MailError:
             skipped += 1
             continue
@@ -154,7 +154,7 @@ def run_email_poll(
                 'venture_id': str(item.get('venture_id') or ''),
                 'payload': {
                     'text': text[:4000],
-                    'gmail_id': gmail_id,
+                    'message_id': message_id,
                     'subject': headers.get('subject', '')[:200],
                 },
             },

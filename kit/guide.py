@@ -61,6 +61,11 @@ TOPIC_HINTS = {
         'Le mandat dit ce que Serge a le droit de faire. En sandbox, argent '
         'et voix sortante sont coupés même si demandés.'
     ),
+    'mailbox': (
+        'Boîte email de confiance en SMTP/IMAP (Infomaniak par défaut) : '
+        'envoi direct + lecture des réponses, sans OAuth ni navigateur. '
+        'Le mot de passe (ou app password) est demandé à l’étape secrets.'
+    ),
 }
 
 

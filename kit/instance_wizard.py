@@ -20,6 +20,11 @@ from kit.instance_file import (
     load_manifest,
     validate_toml,
 )
+from kit.mailbox_config import (
+    MAILBOX_DEFAULTS,
+    mailbox_toml_lines,
+    merge_mailbox,
+)
 from kit.mandate import (
     MandateError,
     build_mandate,
@@ -45,6 +50,7 @@ SECRET_LABELS = {
     'credential_vault_key': 'Credential vault key',
     'payment_card_enc': 'Payment card ciphertext blob',
     'gog_env': 'Gmail provider env blob',
+    'mailbox_password': 'Mailbox password (SMTP/IMAP)',
     'sms_gateway_token': 'SMS gateway webhook secret (generated if empty)',
     'sip_trunk_password': 'SIP trunk password',
 }
@@ -98,6 +104,7 @@ def default_answers() -> dict[str, Any]:
             'digest_channel_id': '',
             'owner_user_id': '',
         },
+        'mailbox': dict(MAILBOX_DEFAULTS),
         'testing': {
             'n_smoke_min': 30,
             'n_smoke_max': 50,
@@ -130,6 +137,7 @@ def normalize_answers(raw: Mapping[str, Any] | None) -> dict[str, Any]:
         **base['discord'],
         **dict(incoming.get('discord') or {}),
     }
+    mailbox = merge_mailbox(base['mailbox'], incoming.get('mailbox'))
     testing = {
         **base['testing'],
         **dict(incoming.get('testing') or {}),
@@ -233,6 +241,7 @@ def normalize_answers(raw: Mapping[str, Any] | None) -> dict[str, Any]:
         'discord': {
             key: str(discord.get(key) or '').strip() for key in base['discord']
         },
+        'mailbox': mailbox,
         'testing': {
             key: testing.get(key, base['testing'][key])
             for key in base['testing']
@@ -256,6 +265,7 @@ def toml_payload(answers: Mapping[str, Any]) -> dict[str, Any]:
         'ingress': normalized['ingress'],
         'phone_voice': normalized['phone_voice'],
         'discord': normalized['discord'],
+        'mailbox': normalized['mailbox'],
         'testing': normalized['testing'],
     }
 
@@ -324,6 +334,7 @@ def render_toml(answers: Mapping[str, Any]) -> str:
             f'digest_channel_id = {_toml_str(str(data["discord"].get("digest_channel_id") or ""))}',
             f'owner_user_id = {_toml_str(str(data["discord"].get("owner_user_id") or ""))}',
             '',
+            *mailbox_toml_lines(data['mailbox'], _toml_str),
             '[testing]',
             f'n_smoke_min = {int(data["testing"].get("n_smoke_min") or 30)}',
             f'n_smoke_max = {int(data["testing"].get("n_smoke_max") or 50)}',

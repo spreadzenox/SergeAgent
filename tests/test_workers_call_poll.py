@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Workers voice.send (broker) + email.poll (Gmail → ingest)."""
+"""Workers voice.send (broker) + email.poll (backend email → ingest)."""
 
 from __future__ import annotations
 
@@ -181,6 +181,41 @@ class CallPollTests(unittest.TestCase):
             searcher=_boom,
         )
         self.assertIn('recherche', result['error'])
+
+    def test_poll_shape_smtp_ingere(self) -> None:
+        from serge.workers.poll import run_email_poll
+
+        message = {
+            'id': '<m1@x>',
+            'snippet': 'Bonjour, intéressé !',
+            'payload': {
+                'headers': [
+                    {'name': 'From', 'value': 'Ada <ada@x.io>'},
+                    {'name': 'Subject', 'value': 'Re: offre'},
+                ],
+            },
+        }
+        result = run_email_poll(
+            self.conn,
+            POLICY,
+            self._item('email.poll', 'k-p4', {}),
+            searcher=lambda *a, **k: [{'id': '<m1@x>'}],
+            getter=lambda *a, **k: dict(message),
+        )
+        self.assertEqual((result['status'], result['new']), ('done', 1))
+        stored = self.conn.execute(
+            'SELECT payload_json FROM inbound_events'
+        ).fetchone()[0]
+        self.assertIn('<m1@x>', stored)
+        self.assertIn('message_id', stored)
+        again = run_email_poll(
+            self.conn,
+            POLICY,
+            self._item('email.poll', 'k-p5', {}),
+            searcher=lambda *a, **k: [{'id': '<m1@x>'}],
+            getter=lambda *a, **k: dict(message),
+        )
+        self.assertEqual((again['new'], again['skipped']), (0, 1))
 
 
 if __name__ == '__main__':

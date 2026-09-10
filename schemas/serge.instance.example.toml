@@ -25,6 +25,7 @@ stripe = true
 voice = true
 metagrok = false
 gmail = true
+mailbox = true
 discord = true
 openclaw = true
 owner_ui = true
@@ -49,6 +50,14 @@ sip_server = "sip.example.com"
 sip_username = "example-trunk"
 sip_transport = "tls"
 max_calls_per_day = 50
+
+[mailbox]
+preset = "infomaniak"
+login = "serge@example.net"
+smtp_host = ""
+smtp_port = 587
+imap_host = ""
+imap_port = 993
 
 [testing]
 n_smoke_min = 30

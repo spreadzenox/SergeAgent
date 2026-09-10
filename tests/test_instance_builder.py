@@ -475,6 +475,37 @@ class InstanceBuilderTests(unittest.TestCase):
             'ALPHA=un\nBETA=deux\n',
         )
 
+    def test_mailbox_build_injects_password_and_backend(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            tmp = Path(raw)
+            source = tmp / 'source'
+            sha = _seed_repo(source)
+            answers = _answers(tmp, mailbox=True)
+            answers['mailbox']['login'] = 'serge@example.net'
+            answers['secrets']['mailbox_password'] = 'pw-fake-2'
+            couple = tmp / 'couple'
+            write_couple(answers, couple, allow_plaintext=True)
+            mandate = _write_mandate(tmp / 'mandate.yaml')
+            receipt = build_instance(
+                instance_file=couple / 'serge.instance.toml',
+                mandate=mandate,
+                source_repo=source,
+                git_sha=sha,
+                kit_root=ROOT,
+                uid=1000,
+            )
+            secret = tmp / 'home/.config/serge/secrets/mailbox-password'
+            self.assertTrue(secret.is_file())
+            self.assertEqual(secret.read_text(encoding='utf-8'), 'pw-fake-2\n')
+            mode = oct(secret.stat().st_mode & 0o777)
+            self.assertEqual(mode, '0o600')
+            unit = tmp / 'home/.config/systemd/user/serge-pipeline.service'
+            self.assertIn(
+                'Environment=SERGE_EMAIL_BACKEND=smtp',
+                unit.read_text(encoding='utf-8'),
+            )
+            self.assertIn('mailbox_password', receipt['secret_names_written'])
+
 
 if __name__ == '__main__':
     unittest.main()

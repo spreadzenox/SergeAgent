@@ -150,7 +150,8 @@ rate-limits respectés, dédup), clustering (Jaccard + union-find), filtre
 signal » en tables, routeur déterministe aveugle au canal. Canaux
 [`serge/channels/`](serge/channels/) : contrat `can_send`/`send`/`poll`,
 email via CLI `gog` (Gmail API, binaire externe requis). Guide Gmail :
-[`docs/GMAIL_SETUP.md`](docs/GMAIL_SETUP.md).
+[`docs/GMAIL_SETUP.md`](docs/GMAIL_SETUP.md). Boîte de confiance SMTP/IMAP
+(sans OAuth, clé en main) : [`docs/MAILBOX_SETUP.md`](docs/MAILBOX_SETUP.md).
 
 Code : [`serge/listen/`](serge/listen/) · [`serge/observe/`](serge/observe/) ·
 [`serge/channels/`](serge/channels/) (écoute/routeur : doc à venir)

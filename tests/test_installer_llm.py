@@ -226,6 +226,7 @@ class LlmWizardTests(unittest.TestCase):
         answers['discord'] = {
             key: '123456789012345678' for key in answers['discord']
         }
+        answers['mailbox']['login'] = 'serge@example.net'
         text = render_toml(answers)
         self.assertIn('[llm]', text)
         self.assertIn('t1_model = "xiaomi/mimo-v2.5"', text)

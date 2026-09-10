@@ -65,10 +65,12 @@ def _instance_config() -> dict[str, Any]:
         )
     except MailboxError as exc:
         raise MailError(f'API: {exc}') from exc
-    password = read_secret_file(config_root() / 'secrets/mailbox-password')
-    if not password:
+    password_value = read_secret_file(
+        config_root() / 'secrets/mailbox-password'
+    )
+    if not password_value:
         raise MailError('API: secret mailbox-password manquant')
-    return {**resolved, 'password': password}
+    return {**resolved, 'password': password_value}
 
 
 def _imap_error(exc: Exception) -> str:

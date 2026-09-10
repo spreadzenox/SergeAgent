@@ -231,6 +231,7 @@ def ask_interactive() -> dict[str, Any]:
         'voice': 'Voix temps réel (xAI ou OpenAI)',
         'metagrok': 'Pont Meta-Grok déjà présent sur cet hôte',
         'gmail': 'Gmail provider',
+        'mailbox': 'Boîte email SMTP/IMAP (confiance)',
         'discord': 'Discord owner console',
         'openclaw': 'Adaptateur OpenClaw',
         'owner_ui': 'Dashboard owner / Mission Control',
@@ -319,6 +320,37 @@ def ask_interactive() -> dict[str, Any]:
                 guide,
                 'discord',
             )
+    if features['mailbox']:
+        preset = _prompt_guided(
+            'Preset mailbox (infomaniak|gmail|fastmail|custom)',
+            answers['mailbox']['preset'],
+            guide,
+            'mailbox',
+        ).lower()
+        answers['mailbox']['preset'] = (
+            preset
+            if preset in {'infomaniak', 'gmail', 'fastmail', 'custom'}
+            else 'infomaniak'
+        )
+        answers['mailbox']['login'] = _prompt_guided(
+            'Login boîte (adresse complète)',
+            answers['mailbox']['login'],
+            guide,
+            'mailbox',
+        )
+        if answers['mailbox']['preset'] == 'custom':
+            for key, label in (
+                ('smtp_host', 'Serveur SMTP'),
+                ('smtp_port', 'Port SMTP (587 ou 465)'),
+                ('imap_host', 'Serveur IMAP'),
+                ('imap_port', 'Port IMAP (993 ou 143)'),
+            ):
+                answers['mailbox'][key] = _prompt_guided(
+                    label,
+                    str(answers['mailbox'][key] or ''),
+                    guide,
+                    'mailbox',
+                )
     print()
     print('=== Étape 3/3 : secrets (non affichés, jamais dans le TOML) ===')
     print('Clé OpenRouter déjà saisie à l’étape 1 — non redemandée.')

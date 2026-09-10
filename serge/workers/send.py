@@ -15,7 +15,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from serge.channels.email_gog import MailError, send_email
+from serge.channels import MailError, send_email
 from serge.funnels import contacts as contact_mod
 from serge.funnels.campaigns import thresholds as campaign_thresholds
 from serge.guards import check
@@ -99,7 +99,7 @@ def run_email_send(
         item: Work_item (contact_id, campaign_id, draft|template, step...).
         root: config_root (défaut : instance).
         caller: Appel LLM (défaut : client réel).
-        sender: Transport (défaut : gog, injectable en test).
+        sender: Transport (défaut : backend actif, injectable en test).
         now: ISO (défaut : maintenant, tests).
 
     Returns:

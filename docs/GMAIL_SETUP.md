@@ -6,6 +6,9 @@ est un **keyring fichier** déverrouillé par `gog.env` (3 variables : backend,
 mot de passe, compte) — les tokens OAuth vivent dans le store
 `~/.local/share/gogcli/`, jamais dans `gog.env`.
 
+> Alternative sans OAuth (boîte partagée clé en main) :
+> [`MAILBOX_SETUP.md`](MAILBOX_SETUP.md) (SMTP/IMAP, presets fournisseurs).
+
 ## 1. Binaire (5 min)
 
 1. Télécharge la release [`openclaw/gogcli`](https://github.com/openclaw/gogcli)
