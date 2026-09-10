@@ -20,7 +20,7 @@ Environment=SERGE_MANDATE_PATH=__POLICY__
 Environment=SERGE_POLICY_PATH=__POLICY__
 Environment=XDG_RUNTIME_DIR=/run/user/__UID__
 Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/__UID__/bus
-# Production path: one governed run-batch cycle (not burn-in scheduled-run).
+__GMAIL_UNIT_LINES__# Production path: one governed run-batch cycle (not burn-in scheduled-run).
 ExecStart=/bin/bash -c '/usr/bin/flock -n __SYSTEM_ROOT__/orchestrator/runtime/systemd.lock __PYTHON__ __SYSTEM_ROOT__/orchestrator/sergectl.py run-once; c=$?; if [ "$c" -eq 1 ]; then echo "{\"status\":\"ok\",\"skipped\":\"orchestrator_overlap\",\"pipeline_exit\":{\"terminal_class\":\"OVERLAP_SKIPPED\",\"exit_code\":0,\"systemd_outcome\":\"success\"}}"; exit 0; fi; exit "$c"'
 TimeoutStartSec=15min
 NoNewPrivileges=yes

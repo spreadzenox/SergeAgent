@@ -149,10 +149,11 @@ rate-limits respectés, dédup), clustering (Jaccard + union-find), filtre
 8 signaux universels + OTHER (enum fermé), normaliseurs « physique du canal →
 signal » en tables, routeur déterministe aveugle au canal. Canaux
 [`serge/channels/`](serge/channels/) : contrat `can_send`/`send`/`poll`,
-email via CLI `gog` (Gmail API, binaire externe requis).
+email via CLI `gog` (Gmail API, binaire externe requis). Guide Gmail :
+[`docs/GMAIL_SETUP.md`](docs/GMAIL_SETUP.md).
 
 Code : [`serge/listen/`](serge/listen/) · [`serge/observe/`](serge/observe/) ·
-[`serge/channels/`](serge/channels/) (doc d'architecture à venir)
+[`serge/channels/`](serge/channels/) (écoute/routeur : doc à venir)
 
 
 ### 10. Allocation de budget inter-familles (A/B/C)

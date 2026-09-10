@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 from typing import Any
 
@@ -20,9 +21,13 @@ class MailError(ValueError):
 
 
 def _gog_bin(override: str = '') -> str:
+    """Binaire gog : override > SERGE_GOG_BIN > PATH > défaut."""
     if override:
         return override
-    return os.environ.get('SERGE_GOG_BIN', DEFAULT_GOG_BIN)
+    explicit = os.environ.get('SERGE_GOG_BIN', '').strip()
+    if explicit:
+        return explicit
+    return shutil.which('gog') or DEFAULT_GOG_BIN
 
 
 def _run(

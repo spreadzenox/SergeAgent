@@ -85,6 +85,7 @@ def substitutions(
     paths = loaded['paths']
     features = loaded.get('features') or {}
     openclaw = bool(features.get('openclaw'))
+    gmail = bool(features.get('gmail'))
     listen = 'unprivileged'
     ingress = as_table(loaded.get('ingress'))
     if str(ingress.get('listen') or '') == 'privileged':
@@ -114,6 +115,13 @@ def substitutions(
             else ''
         ),
         'OPENCLAW_RW': (f'{paths["home"]}/.openclaw ' if openclaw else ''),
+        # Miroir kit/builder/secrets.py::secret_destination (cas gog) :
+        # l'import direct ferait un cycle units<->builder.
+        'GMAIL_UNIT_LINES': (
+            f'EnvironmentFile=-{paths["home"]}/.config/openclaw/gog.env\n'
+            if gmail
+            else ''
+        ),
     }
 
 

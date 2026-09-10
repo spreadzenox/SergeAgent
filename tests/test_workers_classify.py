@@ -7,6 +7,7 @@ import json
 import sqlite3
 import sys
 import unittest
+from datetime import datetime, timedelta
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -116,7 +117,11 @@ class ClassifyWorkerTests(unittest.TestCase):
         self.assertEqual(state, 'OPTED_OUT')
 
     def test_meeting_avec_creneau(self) -> None:
-        self._event('e3', 'Jeudi 14h en visio ?')
+        self._event('e3', 'Demain 14h en visio ?')
+        slot = (datetime.now().astimezone() + timedelta(days=1)).replace(
+            hour=14, minute=0, second=0, microsecond=0
+        )
+        slot_iso = slot.isoformat()
         caller = _caller_for(
             json.dumps(
                 {
@@ -127,7 +132,7 @@ class ClassifyWorkerTests(unittest.TestCase):
             ),
             json.dumps(
                 {
-                    'datetime_iso': '2026-09-10T14:00:00+02:00',
+                    'datetime_iso': slot_iso,
                     'duree_min': 30,
                     'moyen': 'visio',
                     'confiance': 0.9,
@@ -140,7 +145,7 @@ class ClassifyWorkerTests(unittest.TestCase):
         payload = self.conn.execute(
             "SELECT payload_json FROM work_items WHERE kind='inbound.reply_priority'"
         ).fetchone()[0]
-        self.assertIn('2026-09-10T14:00:00+02:00', payload)
+        self.assertIn(slot_iso, payload)
 
     def test_evenement_inconnu(self) -> None:
         result = execute(

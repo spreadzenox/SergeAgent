@@ -177,6 +177,17 @@ class InstanceUnitTests(unittest.TestCase):
                 continue
             self.assertIn('SERGE_INSTANCE_FILE=', text, name)
 
+    def test_pipeline_gmail_environment_file(self) -> None:
+        with_gmail = render_units(_loaded(features={'gmail': True}))
+        pipeline = with_gmail['files']['serge-pipeline.service']
+        self.assertIn(
+            'EnvironmentFile=-/home/owner/.config/openclaw/gog.env',
+            pipeline,
+        )
+        without = render_units(_loaded())['files']['serge-pipeline.service']
+        self.assertNotIn('EnvironmentFile', without)
+        self.assertNotIn('GMAIL_UNIT_LINES', pipeline + without)
+
 
 if __name__ == '__main__':
     unittest.main()

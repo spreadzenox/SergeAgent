@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import unittest
@@ -69,6 +70,24 @@ class EmailGogTests(unittest.TestCase):
         ):
             message = get_message('m1')
         self.assertEqual(message['snippet'], 'hi')
+
+    def test_send_uses_resolved_gog_binary(self) -> None:
+        cases = [
+            ({'SERGE_GOG_BIN': '/x/gog'}, '/p/gog', '/x/gog'),
+            ({}, '/p/gog', '/p/gog'),
+            ({}, None, '/usr/local/bin/gog'),
+        ]
+        for env, found, expected in cases:
+            with (
+                mock.patch.dict(os.environ, env, clear=True),
+                mock.patch('shutil.which', return_value=found),
+                mock.patch(
+                    'subprocess.run',
+                    return_value=_completed({'id': 'm1'}),
+                ) as mocked,
+            ):
+                send_email('a@x.io', 'Sujet', 'Corps')
+            self.assertEqual(mocked.call_args[0][0][0], expected)
 
 
 if __name__ == '__main__':
