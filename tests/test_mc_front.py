@@ -116,6 +116,48 @@ class McFrontTests(McServerCase):
         page.get_by_text('MC v1 — miroir temps réel.').wait_for(timeout=5000)
         self.assertEqual(page.evaluate('location.hash'), '#/live')
 
+    def test_composants_hud(self) -> None:
+        page = self._auth_context().new_page()
+        self._watch_errors(page)
+        page.goto(f'{self.base}/owner')
+        result = page.evaluate("""(async () => {
+          const ui = await import('/static/mc/components.js');
+          const out = {};
+          const shown = ui.toast(document.body, 'Enregistré', 'succes');
+          out.toast = shown.className;
+          const gauge = ui.createGauge();
+          document.body.append(gauge);
+          ui.updateGauge(gauge, 0.5, 'alerte');
+          out.gauge = gauge.querySelector('span').style.width;
+          out.gaugeLevel = gauge.className;
+          const spark = ui.sparkline([1, 2, 3]);
+          out.spark = spark.tagName.toLowerCase() + ':'
+            + spark.querySelector('polyline').getAttribute('points')
+              .split(' ').length;
+          const done = ui.confirmModal(document.body, {
+            title: 'T', message: 'M',
+          });
+          document.querySelector('.fond-modale button').click();
+          out.modal = await done;
+          const close = ui.openDrawer(
+            document.body, 'Détails', document.createElement('div')
+          );
+          await new Promise((r) => requestAnimationFrame(() => r()));
+          out.drawer = !!document.querySelector('.drawer.ouvert');
+          close();
+          out.drawerClosed = !document.body.contains(
+            document.querySelector('.drawer')
+          );
+          return out;
+        })()""")
+        self.assertEqual(result['toast'], 'toast toast-succes')
+        self.assertEqual(result['gauge'], '50%')
+        self.assertIn('alerte', result['gaugeLevel'])
+        self.assertEqual(result['spark'], 'svg:3')
+        self.assertTrue(result['modal'])
+        self.assertTrue(result['drawer'])
+        self.assertTrue(result['drawerClosed'])
+
 
 if __name__ == '__main__':
     unittest.main()

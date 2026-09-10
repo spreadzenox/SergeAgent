@@ -134,6 +134,64 @@ class CharterTests(unittest.TestCase):
             text = path.read_text(encoding='utf-8')
             self.assertNotIn('innerHTML', text, f'{path.name} (A4)')
 
+    def test_mc_francais_sans_anglais(self) -> None:
+        interdits = (
+            'yes',
+            'no',
+            'loading',
+            'submit',
+            'cancel',
+            'close',
+            'save',
+            'delete',
+            'error',
+            'errors',
+            'warning',
+            'warn',
+            'success',
+            'succeeded',
+            'failed',
+            'failure',
+            'retry',
+            'search',
+            'settings',
+            'dashboard',
+            'welcome',
+            'hello',
+            'apply',
+            'persistent',
+            'temporary',
+            'validating',
+            'unexpected',
+            'missing',
+            'invalid',
+            'forbidden',
+            'unauthorized',
+            'recommended',
+            'optional',
+            'readonly',
+            'selected',
+        )
+        for path in sorted((ROOT / 'serge/mc/templates').rglob('*.html')):
+            visible = re.sub(r'<[^>]*>', ' ', path.read_text(encoding='utf-8'))
+            self._assert_pas_anglais(path, visible, interdits)
+        litteral = re.compile(r""""([^"\\]*)"|'([^'\\]*)' """)
+        for path in sorted((ROOT / 'serge/mc/static').rglob('*.js')):
+            code = re.sub(r'//[^\n]*', ' ', path.read_text(encoding='utf-8'))
+            texte = ' '.join(
+                m.group(1) if m.group(1) is not None else m.group(2)
+                for m in litteral.finditer(code)
+            )
+            self._assert_pas_anglais(path, texte, interdits)
+
+    def _assert_pas_anglais(self, path, texte, interdits) -> None:
+        lowered = texte.lower()
+        for word in interdits:
+            match = re.search(rf'(?<![\w$.#-]){word}(?![\w])', lowered)
+            self.assertIsNone(
+                match, f'{path.name} : anglais « {word} » (A5/A9)'
+            )
+
 
 if __name__ == '__main__':
     unittest.main()

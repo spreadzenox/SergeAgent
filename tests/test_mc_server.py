@@ -96,12 +96,23 @@ class McServerTests(McServerCase):
         self.assertIn('introuvable', body.decode('utf-8'))
 
     def test_csp_sans_unsafe(self) -> None:
-        for path in ('/owner/login', '/healthz'):
-            _, headers, _ = self._request('GET', path)
-            csp = headers.get('content-security-policy', '')
-            self.assertIn("default-src 'self'", csp)
-            self.assertNotIn('unsafe-inline', csp)
-            self.assertNotIn('unsafe-eval', csp)
+        status, headers, _ = self._login()
+        authed = {'Cookie': self._cookie(headers)}
+        for path, heads in (
+            ('/owner/login', {}),
+            ('/healthz', {}),
+            ('/robots.txt', {}),
+            ('/favicon.ico', {}),
+            ('/owner', authed),
+            ('/owner/api/state?page=p0', authed),
+            ('/static/mc/app.js', {}),
+            ('/nope', {}),
+        ):
+            _, found, _ = self._request('GET', path, headers=heads)
+            csp = found.get('content-security-policy', '')
+            self.assertIn("default-src 'self'", csp, path)
+            self.assertNotIn('unsafe-inline', csp, path)
+            self.assertNotIn('unsafe-eval', csp, path)
 
 
 if __name__ == '__main__':

@@ -23,8 +23,9 @@ mêmes actes, mêmes `decision_id`), DB = vérité, UI = projections.
 | 1a | Projecteurs + SSE + boot (T1/T2/A10) | ✅ |
 | 1b | Front store/sse/patch + E2E navigateur + A4 | ✅ |
 | 2a | Design system CSS base + validation skin Q2 (10/09) | ✅ |
-| 2b | CSS HUD + sidebar + routeur hash + tests nav | ✅ (ce commit) |
-| 2c-14 | Composants + gate FR, puis 9 pages → polish | ⏳ |
+| 2b | CSS HUD + sidebar + routeur hash + tests nav | ✅ |
+| 2c | Composants + gate FR + CSP systématisée | ✅ (ce commit) |
+| 3-14 | 9 pages → public → polish | ⏳ |
 
 ### Routes lot 0
 
@@ -119,3 +120,12 @@ Voir prompt §11 (phasage), §12 (tests), §13 (acceptation). Prochain : lot 2
   onglet caché. DB rouverte par tick (vue fraîche, coût négligeable).
 - Tests navigateur : skip gracieux si Chromium indisponible ; `wait_for_*`
   string interdit (eval bloqué par notre propre CSP — polling `evaluate`).
+
+## Composants (lot 2c)
+
+`components.js` : toast (auto 4 s), drawer, modale de confirmation (Promise,
+Échap/clic-fond = non), sparkline SVG, jauge (create/update). DOM via
+`createElement` uniquement (jamais `innerHTML` — A4, testé). Libellés FR
+en dur (centralisation `i18n.js` au lot 8). Gate A5/A9 (`test_charter`) :
+34 mots EN interdits dans le texte visible des templates + littéraux JS
+(hors contextes techniques) — prouvé rouge→vert.
