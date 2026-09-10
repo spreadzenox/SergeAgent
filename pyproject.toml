@@ -10,6 +10,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "playwright>=1.62.0",
     "pre-commit",
     "ruff",
     "ty",

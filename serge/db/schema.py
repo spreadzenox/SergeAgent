@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import sqlite3
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS schema_version (
@@ -193,6 +193,9 @@ CREATE TABLE IF NOT EXISTS listen_docs (
     url TEXT NOT NULL DEFAULT '', title TEXT NOT NULL DEFAULT '',
     excerpt TEXT NOT NULL DEFAULT '', published TEXT NOT NULL DEFAULT '',
     fetched_at TEXT NOT NULL, cluster_id TEXT NOT NULL DEFAULT '');
+CREATE TABLE IF NOT EXISTS mc_sessions (
+    token_hash TEXT PRIMARY KEY, created_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL, last_seen_at TEXT NOT NULL DEFAULT '');
 """
 
 TABLES = (
@@ -221,6 +224,7 @@ TABLES = (
     'llm_usage',
     'episode_archives',
     'listen_docs',
+    'mc_sessions',
 )
 
 
