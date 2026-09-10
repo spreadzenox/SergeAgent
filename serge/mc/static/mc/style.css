@@ -442,6 +442,15 @@ button:disabled {
   border-color: var(--cyan);
 }
 
+.panneau h3 {
+  font-size: 0.95rem;
+  margin: 0.75rem 0 0.25rem;
+}
+
+#sys-next {
+  font-weight: bold;
+}
+
 kbd {
   background: var(--fond-2);
   border: 1px solid var(--bordure);

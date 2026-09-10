@@ -124,3 +124,45 @@ export function updateGauge(node, ratio, level = '') {
   node.classList.toggle('danger', level === 'danger');
   node.setAttribute('aria-valuenow', String(Math.round(clamped * 100)));
 }
+
+export function li(text, title = '') {
+  const node = document.createElement('li');
+  node.textContent = text;
+  if (title) {
+    node.title = title;
+  }
+  return node;
+}
+
+export function fillList(list, items, empty, render) {
+  list.replaceChildren();
+  if (items.length === 0) {
+    list.append(li(empty));
+    return;
+  }
+  for (const item of items) {
+    list.append(render(item));
+  }
+}
+
+// TODO lot 8 : migrer vers i18n.js (dates relatives + libellés).
+export function rel(ts) {
+  const diff = Date.now() - Date.parse(ts);
+  if (Number.isNaN(diff)) {
+    return '';
+  }
+  const abs = Math.abs(diff);
+  const min = Math.floor(abs / 60000);
+  const words =
+    min < 1
+      ? "à l'instant"
+      : min < 60
+        ? `${min} min`
+        : Math.floor(min / 60) < 24
+          ? `${Math.floor(min / 60)} h`
+          : `${Math.floor(min / 1440)} j`;
+  if (words === "à l'instant") {
+    return words;
+  }
+  return diff < 0 ? `dans ${words}` : `il y a ${words}`;
+}

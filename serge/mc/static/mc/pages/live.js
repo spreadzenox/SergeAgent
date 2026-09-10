@@ -1,6 +1,6 @@
 // Page P0 En direct : hero + urgents + file + feed + jauges.
 // Libellés FR en dur (centralisation i18n.js au lot 8).
-import {createGauge, updateGauge, openDrawer, toast} from '../components.js';
+import {createGauge, updateGauge, openDrawer, toast, li, fillList, rel} from '../components.js';
 import {
   densite24h,
   dessineWaveform,
@@ -40,48 +40,6 @@ const ETATS_FR = {
   DONE: 'Terminé',
   FAILED: 'Échoué',
 };
-
-// TODO lot 8 : migrer vers i18n.js (dates relatives + libellés).
-function rel(ts) {
-  const diff = Date.now() - Date.parse(ts);
-  if (Number.isNaN(diff)) {
-    return '';
-  }
-  const abs = Math.abs(diff);
-  const min = Math.floor(abs / 60000);
-  const words =
-    min < 1
-      ? "à l'instant"
-      : min < 60
-        ? `${min} min`
-        : Math.floor(min / 60) < 24
-          ? `${Math.floor(min / 60)} h`
-          : `${Math.floor(min / 1440)} j`;
-  if (words === "à l'instant") {
-    return words;
-  }
-  return diff < 0 ? `dans ${words}` : `il y a ${words}`;
-}
-
-function li(text, title = '') {
-  const node = document.createElement('li');
-  node.textContent = text;
-  if (title) {
-    node.title = title;
-  }
-  return node;
-}
-
-function fillList(list, items, empty, render) {
-  list.replaceChildren();
-  if (items.length === 0) {
-    list.append(li(empty));
-    return;
-  }
-  for (const item of items) {
-    list.append(render(item));
-  }
-}
 
 const TYPES_FR = {GUICHET: 'Guichet', VETO_AMONT: 'Veto amont', ALERT: 'Alerte'};
 

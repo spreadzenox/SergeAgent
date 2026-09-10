@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import sys
 import unittest
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -35,13 +35,32 @@ class McSystemTests(McBrowserCase):
     def _fixtures(self) -> None:
         import sqlite3
 
-        iso = datetime.now(UTC).isoformat()
+        now = datetime.now(UTC)
+        iso = now.isoformat()
         conn = sqlite3.connect(self.db_path)
         try:
             conn.execute(
                 'INSERT INTO ventures(id, lifecycle, schedulable,'
                 " created_at, updated_at) VALUES('v1','SMOKE_RUNNING',"
                 '1,?,?)',
+                (iso, iso),
+            )
+            conn.execute(
+                'INSERT INTO ventures(id, lifecycle, schedulable,'
+                " created_at, updated_at) VALUES('v2','CANDIDATE',0,?,?)",
+                (iso, iso),
+            )
+            conn.execute(
+                'INSERT INTO contacts(id, venture_id, display, email,'
+                ' regime, funnel_state, created_at, updated_at)'
+                " VALUES('p1','v1','Ada','ada@x.io','OUTBOUND',"
+                "'CONTACTING',?,?)",
+                (iso, iso),
+            )
+            conn.execute(
+                'INSERT INTO contacts(id, venture_id, display, email,'
+                ' regime, funnel_state, created_at, updated_at)'
+                " VALUES('p2','v1','Bob','bob@x.io','OUTBOUND','NEW',?,?)",
                 (iso, iso),
             )
             conn.execute(
@@ -67,6 +86,15 @@ class McSystemTests(McBrowserCase):
                 ' priority, idempotency_key, created_at, updated_at)'
                 " VALUES('w1','email.send','v1','READY',0,'k-w1',?,?)",
                 (iso, iso),
+            )
+            conn.execute(
+                'INSERT INTO accounts_standing(id, venue, handle,'
+                ' cooldown_until, updated_at) VALUES'
+                "('s1','gmail','a@x.io',?,?)",
+                (
+                    (now + timedelta(hours=3)).isoformat(),  # → 'dans 2 h'
+                    iso,
+                ),
             )
             conn.commit()
         finally:
@@ -141,3 +169,60 @@ class McSystemTests(McBrowserCase):
         })()""")
         page.mouse.click(cible['x'], cible['y'])
         expect(page.locator('[data-ilot="label"]')).to_have_text('Collecte')
+
+    def test_sections_systeme_donnees(self) -> None:
+        from playwright.sync_api import expect
+
+        page = self._page_systeme()
+        page.get_by_text('c1 — En cours').wait_for(timeout=10000)
+        expect(page.locator('#sys-next')).to_have_text(
+            'Prochain : email.send (v1).'
+        )
+        expect(page.locator('[data-section="scheduler"]')).to_contain_text(
+            '1 prêts, 0 en cours, 0 bloqués.'
+        )
+        expect(page.locator('[data-section="campagnes"]')).to_contain_text(
+            'c1 — En cours (email, 1/1 envoyés)'
+        )
+        expect(page.locator('[data-section="campagnes"]')).to_contain_text(
+            'gmail a@x.io — dans 2 h.'
+        )
+        for text in (
+            'CONTACTING : 1',
+            'NEW : 1',
+            'SMOKE_RUNNING : 1',
+            'CANDIDATE : 1',
+        ):
+            expect(
+                page.locator('[data-section="population"]')
+            ).to_contain_text(text)
+        expect(page.locator('[data-section="email"]')).to_contain_text(
+            'sent : 1'
+        )
+        expect(page.locator('#sys-email-acti')).to_contain_text(
+            'Dernière activité'
+        )
+
+    def test_sections_vides_gracieuses(self) -> None:
+        from playwright.sync_api import expect
+
+        page = self._auth_context().new_page()
+        self._watch_errors(page)
+        page.goto(f'{self.base}/owner#/system')
+        page.locator('.ilot-btn').first.wait_for(timeout=10000)
+        expect(page.locator('#sys-next')).to_have_text(
+            'File vide, rien en attente.'
+        )
+        for section, text in (
+            ('campagnes', 'Aucune campagne pour le moment.'),
+            ('campagnes', 'Aucun compte en cooldown.'),
+            ('population', 'Aucun contact.'),
+            ('population', 'Aucune venture.'),
+            ('email', 'Aucun volume.'),
+        ):
+            expect(
+                page.locator(f'[data-section="{section}"]')
+            ).to_contain_text(text)
+        expect(page.locator('#sys-email-acti')).to_have_text(
+            'Aucune activité.'
+        )

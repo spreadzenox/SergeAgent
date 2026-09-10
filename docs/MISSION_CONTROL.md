@@ -195,3 +195,12 @@ clic) — boucle `boucle()` partagée avec le noyau (refactor, compteur
 ordonnanceur (next/kind brut — libellés lot 8). Stream : sections p1
 câblées (`population` lente 30 s). 5 tests (registre, rendu, clic bouton,
 anti-fuite, clic canvas réel).
+
+## Système P1 — sections (lot 5d)
+
+`system.js` : rendus ordonnanceur (phrase next + compteurs data-field),
+campagnes (états FR + cooldowns relatifs), population (contacts/ventures
+triés), email (volumes + dernière activité). Mutualisation P4 : `li`,
+`fillList`, `rel` déménagent dans `components.js` (live.js migre, −42
+lignes nettes). 2 E2E (données + vides gracieux). P1 DONE : îlots animés
++ drill-down (fores externes aux lots fiches).
