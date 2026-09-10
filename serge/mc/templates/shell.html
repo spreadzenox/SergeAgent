@@ -7,15 +7,38 @@
 <link rel="stylesheet" href="/static/mc/style.css">
 </head>
 <body>
-<div id="app">
+<div id="app" class="coquille">
 <script type="application/json" id="serge-boot"><!--BOOT--></script>
+<aside class="barre-laterale">
+<nav aria-label="Pages">
+<a href="#/live" data-page="p0">En direct</a>
+<a href="#/system" data-page="p1">Système</a>
+<a href="#/mind" data-page="p2">Cerveau</a>
+<a href="#/tickets" data-page="p3">Décisions</a>
+<a href="#/memory" data-page="p4">Mémoire</a>
+<a href="#/policy" data-page="p5">Politique</a>
+<a href="#/economy" data-page="p6">Économie</a>
+<a href="#/voice" data-page="p7">Voix</a>
+<a href="#/health" data-page="p8">Santé</a>
+</nav>
+</aside>
+<div class="contenu">
 <header><h1>Mission Control</h1><p id="health">…</p></header>
-<main>
+<main id="page"></main>
+</div>
+</div>
+<template id="page-live">
 <section data-section="meta" data-sig="">
 <p>MC v<span data-field="mc_version">…</span> — miroir temps réel.</p>
 </section>
-</main>
-</div>
+</template>
+<template id="page-bientot">
+<section class="panneau">
+<h2></h2>
+<p>Cette page arrive dans un prochain lot. Le socle temps réel est prêt.</p>
+<p><a href="#/live">Retour à En direct</a></p>
+</section>
+</template>
 <script type="module" src="/static/mc/app.js"></script>
 </body>
 </html>

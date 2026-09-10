@@ -241,3 +241,145 @@ button:disabled {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ---- HUD lot 2b : toasts, drawer, modale, jauges, canvas, tableaux. --- */
+
+.toasts {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  position: fixed;
+  right: 1rem;
+  top: 1rem;
+  z-index: 50;
+  max-width: 22rem;
+}
+
+.toast {
+  background: var(--verre);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon);
+  padding: 0.65rem 0.9rem;
+}
+
+.toast-succes {
+  border-color: rgb(63 185 80 / 45%);
+}
+
+.toast-erreur {
+  border-color: rgb(255 123 114 / 45%);
+}
+
+.drawer {
+  background: var(--verre);
+  backdrop-filter: blur(14px);
+  border-left: 1px solid var(--bordure);
+  bottom: 0;
+  overflow-y: auto;
+  padding: 1.25rem;
+  position: fixed;
+  right: 0;
+  top: 0;
+  transform: translateX(105%);
+  transition: transform 200ms ease-out;
+  width: min(32rem, 92vw);
+  z-index: 40;
+}
+
+.drawer.ouvert {
+  transform: none;
+}
+
+.fond-modale {
+  align-items: center;
+  background: rgb(7 11 22 / 70%);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  position: fixed;
+  z-index: 60;
+}
+
+.fond-modale[hidden] {
+  display: none;
+}
+
+.modale {
+  background: var(--fond-1);
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon);
+  max-width: 28rem;
+  padding: 1.25rem 1.5rem;
+  width: calc(100vw - 2rem);
+}
+
+.modale .actions {
+  display: flex;
+  gap: 0.6rem;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+.jauge {
+  background: rgb(159 176 195 / 14%);
+  border-radius: 999px;
+  height: 0.5rem;
+  overflow: hidden;
+}
+
+.jauge > span {
+  background: var(--cyan);
+  display: block;
+  height: 100%;
+  transition: width 200ms ease-out;
+}
+
+.jauge.alerte > span {
+  background: var(--orange);
+}
+
+.jauge.danger > span {
+  background: var(--rouge);
+}
+
+.hud-canvas {
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon);
+  display: block;
+  width: 100%;
+}
+
+.sparkline {
+  display: block;
+}
+
+kbd {
+  background: var(--fond-2);
+  border: 1px solid var(--bordure);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  font-family: var(--police-chiffres);
+  font-size: 0.8em;
+  padding: 0.1rem 0.4rem;
+}
+
+table.tableau {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+table.tableau th,
+table.tableau td {
+  border-bottom: 1px solid rgb(159 176 195 / 16%);
+  padding: 0.45rem 0.6rem;
+  text-align: left;
+}
+
+table.tableau th {
+  color: var(--texte-doux);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}

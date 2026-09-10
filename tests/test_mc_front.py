@@ -90,6 +90,32 @@ class McFrontTests(McServerCase):
         _wait_for(page, 'window.__MC && window.__MC.stats.applied >= 1')
         _wait_for(page, 'window.__MC && window.__MC.stats.skipped >= 1')
 
+    def test_sidebar_navigation(self) -> None:
+        page = self._auth_context().new_page()
+        self._watch_errors(page)
+        page.goto(f'{self.base}/owner')
+        links = page.locator('.barre-laterale nav a')
+        self.assertEqual(links.count(), 9)
+        self.assertEqual(links.nth(1).text_content().strip(), 'Système')
+        links.nth(1).click()
+        page.get_by_text('Cette page arrive dans un prochain lot.').wait_for(
+            timeout=5000
+        )
+        self.assertEqual(page.evaluate('window.__MC.stats.page'), 'p1')
+        active = page.locator('.barre-laterale a.actif')
+        self.assertEqual(active.count(), 1)
+        self.assertEqual(active.first.text_content().strip(), 'Système')
+        links.nth(0).click()
+        page.get_by_text('MC v1 — miroir temps réel.').wait_for(timeout=5000)
+        self.assertEqual(page.evaluate('window.__MC.stats.page'), 'p0')
+
+    def test_hash_inconnu_retombe_live(self) -> None:
+        page = self._auth_context().new_page()
+        self._watch_errors(page)
+        page.goto(f'{self.base}/owner#/nope')
+        page.get_by_text('MC v1 — miroir temps réel.').wait_for(timeout=5000)
+        self.assertEqual(page.evaluate('location.hash'), '#/live')
+
 
 if __name__ == '__main__':
     unittest.main()

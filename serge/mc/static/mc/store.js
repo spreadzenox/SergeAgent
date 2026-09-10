@@ -30,5 +30,8 @@ export function createStore() {
     get(section) {
       return sections.get(section);
     },
+    all() {
+      return [...sections.entries()];
+    },
   };
 }

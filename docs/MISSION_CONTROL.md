@@ -22,8 +22,9 @@ mêmes actes, mêmes `decision_id`), DB = vérité, UI = projections.
 | 0b | Serveur + shell/login + E2E HTTP + doc + prompt versionné | ✅ |
 | 1a | Projecteurs + SSE + boot (T1/T2/A10) | ✅ |
 | 1b | Front store/sse/patch + E2E navigateur + A4 | ✅ |
-| 2a | Design system CSS base + validation skin Q2 (10/09) | ✅ (ce commit) |
-| 2b-14 | HUD + composants + routeur, puis 9 pages → polish | ⏳ |
+| 2a | Design system CSS base + validation skin Q2 (10/09) | ✅ |
+| 2b | CSS HUD + sidebar + routeur hash + tests nav | ✅ (ce commit) |
+| 2c-14 | Composants + gate FR, puis 9 pages → polish | ⏳ |
 
 ### Routes lot 0
 
