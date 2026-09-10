@@ -25,7 +25,7 @@ les chemins live (l’installeur le propose explicitement).
 2. **Catalogue live** : l’installeur liste les modèles OpenRouter
    (`GET /models`, ~400). Hors-ligne → saisie manuelle.
 3. **Choix T1/T2/T3** : Entrée = recommandations live Julien
-   (T1 `xiaomi/mimo-v2.5`, T2 `deepseek/deepseek-v4-flash-0731`,
+   (T1 `mistralai/mistral-nemo`, T2 `deepseek/deepseek-v4-flash-0731`,
    T3 `z-ai/glm-5.3-flash`), ou recherche par sous-chaîne + prix affichés.
    Le modèle guide = T2 par défaut.
 4. **Référent** (optionnel) : URL affichée côté OpenRouter.

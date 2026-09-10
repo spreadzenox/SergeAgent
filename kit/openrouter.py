@@ -13,7 +13,7 @@ OPENROUTER_REFERER = 'https://github.com/serge-kit'
 
 # Live Julien slots (llm-routing.json 2026-09-04): CHEAP/DEFAULT/SMART.
 RECOMMENDED_TIERS = {
-    't1': 'xiaomi/mimo-v2.5',
+    't1': 'mistralai/mistral-nemo',
     't2': 'deepseek/deepseek-v4-flash-0731',
     't3': 'z-ai/glm-5.3-flash',
 }

@@ -166,7 +166,7 @@ phone_voice = true              # trunk SIP NPV, voix commerciale
 [llm]
 provider = "openrouter"         # la clé est dans le sidecar
 referer = ""
-t1_model = "xiaomi/mimo-v2.5"                 # rapide/économique
+t1_model = "mistralai/mistral-nemo"          # rapide/économique
 t2_model = "deepseek/deepseek-v4-flash-0731"  # défaut (+ guide)
 t3_model = "z-ai/glm-5.3-flash"               # stratège
 guide_model = "deepseek/deepseek-v4-flash-0731"

@@ -39,7 +39,9 @@ class LiveLlmTests(unittest.TestCase):
                     {
                         'referer': 'https://serge.test',
                         'slots': {
-                            'CHEAP': {'openrouter_id': 'xiaomi/mimo-v2.5'}
+                            'CHEAP': {
+                                'openrouter_id': 'mistralai/mistral-nemo'
+                            }
                         },
                     }
                 ),

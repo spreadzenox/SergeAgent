@@ -35,7 +35,7 @@ from kit.openrouter import (  # noqa: E402
 )
 
 LIVE_TIERS = {
-    't1': 'xiaomi/mimo-v2.5',
+    't1': 'mistralai/mistral-nemo',
     't2': 'deepseek/deepseek-v4-flash-0731',
     't3': 'z-ai/glm-5.3-flash',
 }
@@ -43,7 +43,7 @@ LIVE_TIERS = {
 MODELS_PAYLOAD = {
     'data': [
         {
-            'id': 'xiaomi/mimo-v2.5',
+            'id': 'mistralai/mistral-nemo',
             'name': 'Xiaomi: MiMo-V2.5',
             'context_length': 1050000,
             'pricing': {'prompt': '0.00000014', 'completion': '0.00000028'},
@@ -136,7 +136,7 @@ class OpenRouterTests(unittest.TestCase):
         ):
             models = fetch_models('dummy-key')
         self.assertEqual(len(models), 2)
-        self.assertEqual(models[0]['id'], 'xiaomi/mimo-v2.5')
+        self.assertEqual(models[0]['id'], 'mistralai/mistral-nemo')
         self.assertAlmostEqual(models[0]['prompt_usd'], 0.14)
         self.assertAlmostEqual(models[0]['completion_usd'], 0.28)
 
@@ -154,10 +154,12 @@ class OpenRouterTests(unittest.TestCase):
             return_value=_FakeResponse(MODELS_PAYLOAD),
         ):
             models = fetch_models()
-        hits = search_models(models, 'mimo')
-        self.assertEqual([item['id'] for item in hits], ['xiaomi/mimo-v2.5'])
+        hits = search_models(models, 'nemo')
+        self.assertEqual(
+            [item['id'] for item in hits], ['mistralai/mistral-nemo']
+        )
         line = format_model_line(models[0])
-        self.assertIn('xiaomi/mimo-v2.5', line)
+        self.assertIn('mistralai/mistral-nemo', line)
         self.assertIn('$0.14', line)
 
     def test_chat_completion_returns_text(self) -> None:
@@ -229,7 +231,7 @@ class LlmWizardTests(unittest.TestCase):
         answers['mailbox']['login'] = 'serge@example.net'
         text = render_toml(answers)
         self.assertIn('[llm]', text)
-        self.assertIn('t1_model = "xiaomi/mimo-v2.5"', text)
+        self.assertIn('t1_model = "mistralai/mistral-nemo"', text)
         self.assertIn('t2_model = "deepseek/deepseek-v4-flash-0731"', text)
         self.assertIn('t3_model = "z-ai/glm-5.3-flash"', text)
         self.assertIn('guide_model = "deepseek/deepseek-v4-flash-0731"', text)

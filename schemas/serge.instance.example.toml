@@ -36,7 +36,7 @@ phone_voice = true
 [llm]
 provider = "openrouter"
 referer = ""
-t1_model = "xiaomi/mimo-v2.5"
+t1_model = "mistralai/mistral-nemo"
 t2_model = "deepseek/deepseek-v4-flash-0731"
 t3_model = "z-ai/glm-5.3-flash"
 guide_model = "deepseek/deepseek-v4-flash-0731"
