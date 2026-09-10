@@ -75,10 +75,12 @@ class StripeRail:
     ):
         if mode not in {'test', 'live'}:
             raise RailError('MODE: test|live')
-        if mode == 'test' and not api_key.startswith('sk_test_'):
-            raise RailError('MODE: clé live refusée en mode test')
-        if mode == 'live' and not api_key.startswith('sk_live_'):
-            raise RailError('MODE: clé test refusée en mode live')
+        prefixes = {
+            'test': ('sk_test_', 'rk_test_'),
+            'live': ('sk_live_', 'rk_live_'),
+        }
+        if not api_key.startswith(prefixes[mode]):
+            raise RailError(f'MODE: clé {mode} requise (sk_|rk_)')
         self.api_key = api_key
         self.webhook_secret = webhook_secret
         self.mode = mode

@@ -21,7 +21,9 @@ from serge.collect.rails import (  # noqa: E402
     stripe_keys,
 )
 
-KEY = 'sk_test_' + '0' * 24  # fausse clé mockée (construite pour éviter push-protection)
+KEY = (
+    'sk_test_' + '0' * 24
+)  # fausse clé mockée (construite pour éviter push-protection)
 WHSEC = 'whsec_' + 'test_secret'  # faux secret mocké
 
 
@@ -65,11 +67,15 @@ class RailTests(unittest.TestCase):
         with self.assertRaises(RailError):
             StripeRail('sk_live_abc', mode='test')
         with self.assertRaises(RailError):
+            StripeRail('rk_live_abc', mode='test')
+        with self.assertRaises(RailError):
             StripeRail(KEY, mode='live')
         with self.assertRaises(RailError):
             StripeRail(KEY, mode='prod')
         rail = StripeRail(KEY, mode='test')
         self.assertEqual(rail.mode, 'test')
+        restrained = StripeRail('rk_test_' + '0' * 24, mode='test')
+        self.assertEqual(restrained.mode, 'test')
 
     def test_create_payment_intent(self) -> None:
         rail = StripeRail(KEY)

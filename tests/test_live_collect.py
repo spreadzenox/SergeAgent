@@ -29,8 +29,8 @@ class LiveCollectTests(unittest.TestCase):
     def test_canary_1eur_puis_refund(self) -> None:
         require_live()
         key = os.environ.get('SERGE_STRIPE_TEST_KEY', '').strip()
-        if not key.startswith('sk_test_'):
-            self.skipTest('SERGE_STRIPE_TEST_KEY (sk_test_) requise')
+        if not key.startswith(('sk_test_', 'rk_test_')):
+            self.skipTest('SERGE_STRIPE_TEST_KEY (sk_test_/rk_test_) requise')
         cap = SessionCap(4)
         rail = StripeRail(key, mode='test')
         with temp_canon() as (conn, _):
