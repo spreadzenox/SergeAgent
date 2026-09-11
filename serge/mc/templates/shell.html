@@ -165,6 +165,36 @@
 <p id="digest-info">…</p>
 </section>
 </template>
+<template id="page-memory">
+<section class="panneau" data-section="couches" data-sig="">
+<h2>Cinq couches de mémoire</h2>
+<div class="tickets-filtres memory-tabs">
+<button type="button" class="ilot-btn actif" data-couche="c1">C1 Épisodes</button>
+<button type="button" class="ilot-btn" data-couche="c2">C2 Playbooks</button>
+<button type="button" class="ilot-btn" data-couche="c3">C3 Pièges</button>
+<button type="button" class="ilot-btn" data-couche="c4">C4 Leçons</button>
+<button type="button" class="ilot-btn" data-couche="c5">C5 SERGE.md</button>
+</div>
+<div data-couche-vue="contenu"></div>
+</section>
+<section class="panneau" data-section="recherche-memory">
+<h2>Recherche plein-texte (FTS)</h2>
+<form data-form="recherche" class="carte-actes">
+<input type="search" data-input="recherche" placeholder="Rechercher dans la mémoire…" aria-label="Recherche">
+<button type="button" data-action="lancer-recherche">Rechercher</button>
+</form>
+<div data-recherche="resultats"></div>
+</section>
+<section class="panneau" data-section="consolidation" data-sig="">
+<h2>Moteur de consolidation</h2>
+<p id="cons-status">…</p>
+<ul data-list="events"></ul>
+</section>
+<section class="panneau" data-section="requested" data-sig="">
+<h2>Demandes d’évolution (requested)</h2>
+<ul data-list="items"></ul>
+</section>
+</template>
 <template id="page-bientot">
 <section class="panneau">
 <h2></h2>

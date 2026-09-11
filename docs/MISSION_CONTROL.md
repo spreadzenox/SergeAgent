@@ -371,3 +371,16 @@ Page P3 DONE (607 tests verts).
   et typage des mixins via `TYPE_CHECKING Protocol` pour immunité MRO.
   Tous les fichiers sous 480 lignes.
 - 3 tests unitaires et d'API (+24 assertions, 614 tests verts).
+
+## Mémoire P4 — page memory (lot 8c)
+
+`memory.js` :
+- Navigation interactive entre les 5 couches (C1 Épisodes, C2 Playbooks,
+  C3 Pièges, C4 Leçons, C5 SERGE.md + previous).
+- Recherche plein-texte FTS en direct via input et touche Entrée / bouton
+  sur `/owner/api/memory/search?q=...`.
+- Panneau consolidation (`last_run`, statut due / à jour, événements récents).
+- Panneau requested (demandes d'évolution P3 des LLM).
+- Câblage stream p4 (`couches`, `consolidation`, `requested`) et routeur p4.
+- 3 tests E2E navigateur (rendu 5 couches, FTS UI).
+- Page P4 Mémoire DONE (617 tests verts).

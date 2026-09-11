@@ -35,12 +35,27 @@ from serge.mc.proj_live import (
     project_jauges,
     project_urgents,
 )
+from serge.mc.proj_memory import (
+    project_consolidation,
+    project_couches,
+    project_requested,
+)
 from serge.mc.proj_tickets import project_tickets
 
 LIVE_TTL_S = 2.0
 SLOW_TTL_S = 30.0
 SLOW_SECTIONS = frozenset(
-    {'jauges', 'population', 'matrice', 'clusters', 'diffs', 'metriques'}
+    {
+        'jauges',
+        'population',
+        'matrice',
+        'clusters',
+        'diffs',
+        'metriques',
+        'couches',
+        'consolidation',
+        'requested',
+    }
 )
 
 
@@ -147,6 +162,9 @@ PROJECTORS: dict[str, Callable[..., dict[str, Any]]] = {
     'diffs': project_diffs,
     'metriques': project_metriques_tickets,
     'digest': project_digest,
+    'couches': project_couches,
+    'consolidation': project_consolidation,
+    'requested': project_requested,
 }
 
 PAGE_SECTIONS: dict[str, list[str]] = {
@@ -154,4 +172,5 @@ PAGE_SECTIONS: dict[str, list[str]] = {
     'p1': ['meta', 'ilots', 'scheduler', 'campagnes', 'population', 'email'],
     'p2': ['meta', 'pensees', 'decisions', 'matrice', 'signaux', 'clusters'],
     'p3': ['meta', 'tickets', 'diffs', 'metriques', 'digest'],
+    'p4': ['meta', 'couches', 'consolidation', 'requested'],
 }

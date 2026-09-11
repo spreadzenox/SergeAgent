@@ -13,6 +13,18 @@ from serge.memory.summaries import get_summary
 from serge.points.interact import strip_ids
 
 
+def _liste_json(raw: object) -> list:
+    import json
+
+    if not isinstance(raw, str):
+        return []
+    try:
+        val = json.loads(raw or '[]')
+    except ValueError:
+        return []
+    return val if isinstance(val, list) else []
+
+
 def project_couches(
     conn: sqlite3.Connection, policy: Mapping[str, Any], now: str
 ) -> dict[str, Any]:
@@ -64,9 +76,7 @@ def project_couches(
                 'id': str(row[0]),
                 'nom': strip_ids(str(row[1])),
                 'conditions': strip_ids(str(row[2])),
-                'etapes': charge_json(row[3])
-                if isinstance(row[3], str)
-                else [],
+                'etapes': _liste_json(row[3]),
                 'scope': str(row[4]),
                 'updated_at': str(row[5]),
             }
