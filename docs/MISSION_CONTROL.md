@@ -424,3 +424,16 @@ Page P3 DONE (607 tests verts).
 - Stream p5 câblé (`politique_active`, `policy_snapshots`, `testing_froid`, `trust_candidates`).
 - 4 tests E2E navigateur (rendu, édition testing UI, proposition ticket POLICY UI).
 - Page P5 Politique DONE (628 tests verts).
+
+## Économie P6 — projecteurs (lot 10a)
+
+`proj_economy.py` :
+- `project_entonnoir` : agrégat evidence-strict (ventures x U1-U5 via
+  `campaign_metrics` x transactions réglées/paid sans jamais inventer de revenu).
+- `project_transactions_subscriptions` : 30 dernières transactions et 20
+  derniers abonnements récurrents, calcul du MRR mensuel en EUR.
+- `project_couts_cognitifs` : total tokens LLM, total dépensé en EUR
+  selon `policy.budget`, total encaissé, ratio cognitif `tokens/€ de revenu` (E6).
+- `project_audit_reponses` : traçabilité des réponses générées (E10) et
+  dette technique builder (artifacts en attente E9).
+- 4 tests unitaires et goldens (632 tests verts).
