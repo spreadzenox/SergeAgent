@@ -2,6 +2,7 @@
 import {createStore} from './store.js';
 import {connectStream} from './sse.js';
 import {patchSection} from './patch.js';
+import {initCmdk} from './cmdk.js';
 
 const ROUTES = {
   live: 'p0',
@@ -148,6 +149,7 @@ if (bootTag) {
   }
 }
 render();
+initCmdk(store);
 
 const target = document.getElementById('health');
 try {

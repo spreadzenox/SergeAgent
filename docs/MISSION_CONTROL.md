@@ -538,3 +538,17 @@ Page P3 DONE (607 tests verts).
   `docs/INSTANCE_CONTRACT.md`.
 - Test E2E navigateur validant la page publique `/` et la redirection vers `/owner/login`.
 - 654 tests verts. Surface publique P9 terminée.
+
+## Palette de commande Ctrl+K (lot 14a)
+
+`cmdk.js` :
+- Raccourci global `Ctrl+K` (ou `Cmd+K`) ouvrant une palette modale
+  flottante au premier plan.
+- Commandes de navigation vers toutes les 9 pages (`#/live`, `#/system`,
+  `#/mind`, `#/tickets`, `#/memory`, `#/policy`, `#/economy`, `#/voice`, `#/health`).
+- Raccourcis d'actions rapides : bascule du Kill Switch Voix, proposition en POLICY.
+- Intégration dynamique des tickets en attente depuis le store (`#/tickets`).
+- Navigation clavier intégrale : flèches Haut / Bas pour changer de sélection,
+  Entrée pour exécuter, Échap ou clic fond pour fermer.
+- 1 test E2E navigateur complet (ouverture, filtrage, exécution, fermeture).
+- 655 tests verts.
