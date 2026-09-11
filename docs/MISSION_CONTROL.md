@@ -410,3 +410,17 @@ Page P3 DONE (607 tests verts).
 - `POST /owner/api/policy/propose` (M12) : création d'un ticket `POLICY`
   en `DRAFT` depuis la zone de confiance ou une dérive constatée.
 - 3 tests d'actes complets (passant, erreurs, verrouillage froid, 624 verts).
+
+## Politique P5 — page policy (lot 9c)
+
+`policy.js` :
+- Affichage de la politique active par section YAML en blocs lisibles.
+- Formulaire testing à froid E3 avec verrouillage dynamique (bouton désactivé
+  et message d'alerte orange si campagnes RUNNING en cours).
+- Historique des snapshots avec bouton de rollback immédiat (confirmModal).
+- Tableau des candidats à la zone de confiance (Trust Candidates).
+- Bouton "Proposer en POLICY" (M12) ouvrant une modale de saisie de diff/justification
+  et créant un ticket POLICY DRAFT en base.
+- Stream p5 câblé (`politique_active`, `policy_snapshots`, `testing_froid`, `trust_candidates`).
+- 4 tests E2E navigateur (rendu, édition testing UI, proposition ticket POLICY UI).
+- Page P5 Politique DONE (628 tests verts).

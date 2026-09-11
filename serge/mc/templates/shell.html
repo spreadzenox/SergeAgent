@@ -195,6 +195,32 @@
 <ul data-list="items"></ul>
 </section>
 </template>
+<template id="page-policy">
+<section class="panneau" data-section="politique_active" data-sig="">
+<h2>Politique active</h2>
+<div class="carte-actes">
+<button type="button" data-action="proposer-policy">Proposer en POLICY</button>
+</div>
+<div data-policy="sections"></div>
+</section>
+<section class="panneau" data-section="testing_froid" data-sig="">
+<h2>Testing à froid (E3)</h2>
+<p id="testing-lock-status">…</p>
+<form data-form="testing" class="carte-actes">
+<label>n_smoke_min: <input type="number" data-testing="n_smoke_min" style="width: 80px;"></label>
+<label>n_full_target: <input type="number" data-testing="n_full_target" style="width: 80px;"></label>
+<button type="button" data-btn="enregistrer-testing">Enregistrer testing</button>
+</form>
+</section>
+<section class="panneau" data-section="policy_snapshots" data-sig="">
+<h2>Historique des snapshots</h2>
+<ul data-list="snapshots"></ul>
+</section>
+<section class="panneau" data-section="trust_candidates" data-sig="">
+<h2>Zone de confiance (Trust Candidates)</h2>
+<ul data-list="candidates"></ul>
+</section>
+</template>
 <template id="page-bientot">
 <section class="panneau">
 <h2></h2>
