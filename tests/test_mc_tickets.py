@@ -71,6 +71,24 @@ class McTicketsTests(McBrowserCase):
                 "('t3','GUICHET','Captcha','APPROVED','{}','', ?,?)",
                 (iso, iso),
             )
+            conn.execute(
+                'INSERT INTO tickets(id, type, title, state, payload_json,'
+                ' expiry_at, created_at, updated_at) VALUES'
+                "('t4','POLICY','Plafond','OPEN',"
+                '\'{"diff_avant_apres": "diff-5-7", "justification": "pic-conso"}\','
+                "'', ?,?)",
+                (iso, iso),
+            )
+            conn.execute(
+                'INSERT INTO ticket_items(id, ticket_id, kind, label, state, payload_json)'
+                " VALUES('i-edit','t2','MEMORY','avant-vieux','edit','{\"label\": \"apres-neuf\"}')"
+            )
+            for n in range(1, 12):
+                conn.execute(
+                    'INSERT INTO ticket_items(id, ticket_id, kind, label, state)'
+                    " VALUES(?,'t2','MEMORY',?,'open')",
+                    (f'm{n}', f'Leçon extra {n}'),
+                )
             conn.commit()
         finally:
             conn.close()
@@ -87,7 +105,7 @@ class McTicketsTests(McBrowserCase):
         from playwright.sync_api import expect
 
         page = self._page_tickets()
-        expect(page.locator('.lien-ticket')).to_have_count(3)
+        expect(page.locator('.lien-ticket')).to_have_count(4)
         expect(page.locator('[data-section="tickets"]')).to_contain_text(
             'VETO_AMONT — Prix du lot [OPEN]'
         )
@@ -186,3 +204,31 @@ class McTicketsTests(McBrowserCase):
         finally:
             conn.close()
         self.assertEqual(etat, 'keep')
+
+    def test_diffs_et_metriques(self) -> None:
+        from playwright.sync_api import expect
+
+        page = self._page_tickets()
+        diffs = page.locator('[data-section="diffs"]')
+        expect(diffs).to_contain_text('Plafond — diff-5-7')
+        expect(diffs).to_contain_text('avant-vieux → apres-neuf')
+        metriques = page.locator('[data-section="metriques"]')
+        expect(metriques).to_contain_text('Backlog en cours : 3 ouverts')
+        expect(metriques).to_contain_text('Taux d’approbation :')
+        digest = page.locator('[data-section="digest"]')
+        expect(digest).to_contain_text('Digest quotidien :')
+
+    def test_memory_pagination_front(self) -> None:
+        from playwright.sync_api import expect
+
+        page = self._page_tickets()
+        info = page.locator('[data-memory="info"]')
+        expect(info).to_contain_text('Page 1 / 2 (14 leçons)')
+        btn_next = page.locator('[data-memory="next"]')
+        btn_prev = page.locator('[data-memory="prev"]')
+        expect(btn_prev).to_be_disabled()
+        expect(btn_next).to_be_enabled()
+        btn_next.click()
+        expect(info).to_contain_text('Page 2 / 2 (14 leçons)')
+        expect(btn_prev).to_be_enabled()
+        expect(btn_next).to_be_disabled()

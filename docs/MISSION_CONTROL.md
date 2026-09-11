@@ -327,3 +327,19 @@ Extraction de la logique d'actes (modales, requêtes POST `agirTicket`,
 `agirItem`, `toutApprouver`, `chargerCarte`, `renderCarte`) dans
 `tickets_actes.js` (270 lignes). `tickets.js` allégé à 135 lignes
 (charter < 500 et R1 < 300 par commit strictement respectés).
+
+## Tickets P3 — diffs, MEMORY paginé, métriques et digest (lot 7g)
+
+`tickets.js` :
+- Panneau diffs : propositions POLICY ouvertes (diff, justification,
+  impact), historique des versions EDITED, et modifications d'items
+  MEMORY (avant/après).
+- Panneau MEMORY : navigation paginée serveur (E12) via
+  `/owner/api/memory/items?page=X&size=10` avec boutons Précédent /
+  Suivant et compteur de page.
+- Panneau métriques E5 : semaine (tickets, expirations), backlog,
+  taux d'approbation global, délais médians de réponse par type,
+  actes automatiques, guichet résolus/expirés.
+- Panneau digest : heure du digest quotidien et plages silencieuses.
+- 2 tests E2E supplémentaires (diffs/métriques et pagination mémoire).
+Page P3 DONE (607 tests verts).
