@@ -21,7 +21,7 @@ from kit.openrouter import RECOMMENDED_TIERS
 from serge.db.store import append_event, utcnow
 from serge.llm.client import ChatResult, LlmError, chat
 from serge.paths import config_root
-from serge.registry import load_llm_points
+from serge.registry import load_llm_points, runtime_allows
 from serge.secrets import read_secret_file
 
 TIER_TO_SLOT = {'T1': 'CHEAP', 'T2': 'DEFAULT', 'T3': 'SMART'}
@@ -169,6 +169,9 @@ def run_point(
     """
     tier = str(spec.get('tier') or 'T1')
     verdict_kind = str(spec.get('verdict') or 'LLM-1')
+    if not runtime_allows(conn, point_name):
+        _record(conn, point_name, tier, '', 0, 0, 0, 'killed')
+        return RunResult(False, '', 'killed', 0, 0, '', 0)
     if spec.get('enabled') is not True:
         _record(conn, point_name, tier, '', 0, 0, 0, 'killed')
         return RunResult(False, '', 'killed', 0, 0, '', 0)

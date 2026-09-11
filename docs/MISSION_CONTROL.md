@@ -222,3 +222,17 @@ J-8..J-2 (ratio > 3, volume puis tokens ; médiane nulle = activation,
 pas dérive). Fail-soft registre illisible (`erreur`, prouvé). Fixtures
 registre tmp via `SERGE_CONFIG_DIR`. 2 goldens (dont dérive volume).
 Kills M8 + page Cerveau = lots 6c/6d.
+
+## Cerveau P2 — kills M8 (lot 6c)
+
+`runtime_flags` (table B5) + `registry.py` : `runtime_allows`,
+`poser_kill` (flag + ticket POLICY auto + event `mc_act`,
+idempotent `decision_id`), `retirer_kill`, `llm_enabled`
+override runtime AVANT YAML. `run_point` court-circuite
+(verdict `killed`, les 2 chemins). Endpoints `POST
+/owner/api/kill|unkill` (401/400/404 FR via `_refus`, B7 ;
+1 méthode fusionnée). Dette : `server.py` à 500 pile —
+extraction `actions.py` (§8) au prochain endpoint.
+Écart §8 documenté : logique dans `registry.py` (B3 — jamais
+de métier dans `mc/`), pas de `mc/flags.py`. 10 tests.
+Page Cerveau = lot 6d.

@@ -196,6 +196,11 @@ CREATE TABLE IF NOT EXISTS listen_docs (
 CREATE TABLE IF NOT EXISTS mc_sessions (
     token_hash TEXT PRIMARY KEY, created_at TEXT NOT NULL,
     expires_at TEXT NOT NULL, last_seen_at TEXT NOT NULL DEFAULT '');
+CREATE TABLE IF NOT EXISTS runtime_flags (
+    name TEXT PRIMARY KEY, value TEXT NOT NULL,
+    set_by TEXT NOT NULL DEFAULT '',
+    set_at TEXT NOT NULL, expires_at TEXT NOT NULL DEFAULT '',
+    reason TEXT NOT NULL DEFAULT '');
 """
 
 TABLES = (
@@ -225,6 +230,7 @@ TABLES = (
     'episode_archives',
     'listen_docs',
     'mc_sessions',
+    'runtime_flags',
 )
 
 

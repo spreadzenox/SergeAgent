@@ -28,6 +28,7 @@ from serge.mc.proj_trace import project_trace
 from serge.mc.projectors import PAGE_SECTIONS, SnapshotCache
 from serge.mc.sse import state_payload, stream_page
 from serge.policy import PolicyError, load_policy
+from serge.registry import KillError, poser_kill, retirer_kill
 
 STATIC_TYPES = {
     '.html': 'text/html; charset=utf-8',
@@ -325,7 +326,93 @@ class McHandler(BaseHTTPRequestHandler):
         if path == '/owner/logout':
             self._logout()
             return
+        if path == '/owner/api/kill':
+            self._api_kill()
+            return
+        if path == '/owner/api/unkill':
+            self._api_unkill()
+            return
         self._error(404)
+
+    def _json_body(self) -> dict | None:
+        try:
+            length = int(self.headers.get('Content-Length') or 0)
+        except (TypeError, ValueError):
+            return None
+        if length <= 0 or length > MAX_FORM_BYTES:
+            return None
+        try:
+            data = json.loads(self.rfile.read(length).decode('utf-8'))
+        except (ValueError, UnicodeDecodeError):
+            return None
+        return data if isinstance(data, dict) else None
+
+    def _refus(self, http: int, erreur: str, code: str, aide: str) -> None:
+        self._send_json(http, {'erreur': erreur, 'code': code, 'aide': aide})
+
+    def _api_kill(self) -> None:
+        self._mutation_kill(False)
+
+    def _api_unkill(self) -> None:
+        self._mutation_kill(True)
+
+    def _mutation_kill(self, annuler: bool) -> None:
+        if not self._require_owner():
+            return
+        body = self._json_body()
+        if body is None:
+            self._refus(
+                400, 'Corps JSON requis.', 'json', 'Envoie {"point": "x"}.'
+            )
+            return
+        point = str(body.get('point') or '')
+        decision = str(body.get('decision_id') or '')
+        ttl_h = 24
+        if not annuler:
+            try:
+                ttl_h = int(body.get('ttl_h', 24))
+            except (TypeError, ValueError):
+                ttl_h = -1
+            if ttl_h <= 0:
+                self._refus(400, 'TTL invalide.', 'ttl', 'ttl_h : entier > 0.')
+                return
+        with self._db() as conn:
+            try:
+                if annuler:
+                    resultat = retirer_kill(conn, point, decision_id=decision)
+                else:
+                    resultat = poser_kill(
+                        conn,
+                        point,
+                        str(body.get('raison') or ''),
+                        decision_id=decision,
+                        ttl_h=ttl_h,
+                    )
+            except KillError as exc:
+                message = str(exc)
+                if 'pas de kill' in message:
+                    self._refus(
+                        404,
+                        'Aucun kill actif pour ce point.',
+                        'kill',
+                        'Rien à retirer (expiré ou jamais posé).',
+                    )
+                elif 'inconnu' in message:
+                    self._refus(
+                        404,
+                        f'Point inconnu : {point}.',
+                        'point',
+                        'Vois la matrice P2 (noms exacts).',
+                    )
+                else:
+                    self._refus(
+                        400,
+                        'Raison requise.',
+                        'raison',
+                        'Explique pourquoi (traçabilité).',
+                    )
+                return
+        self._send_json(200, {'ok': True, **resultat})
 
     def _form(self) -> dict[str, str] | None:
         try:
