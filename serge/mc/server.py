@@ -209,6 +209,9 @@ class McHandler(ActionsMixin, BaseHTTPRequestHandler):
         if path == '/owner/api/trace':
             self._api_trace()
             return
+        if path == '/owner/api/ticket/carte':
+            self._api_ticket_carte()
+            return
         if path == '/static/' or path.startswith('/static/'):
             self._serve_static(path[len('/static/') :])
             return

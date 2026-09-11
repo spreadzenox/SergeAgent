@@ -278,3 +278,14 @@ d'état ticket pour M2 (Discord n'en fait pas) ; `set_item`
 écrase le payload dans les 2 canaux (comportement partagé).
 M3 : pas de POST Discord (MC ne poste jamais — le mirror
 reflète les états ; décision actée). 7 tests (+ parité item).
+
+## Tickets P3 — liste + carte (lot 7c)
+
+`champs_carte` → `tickets/shared.py` (E14/B3 — `render.py`
+migre à rendu identique, 15/15 Discord verts). `proj_outils` :
+`apres_iso` (migre `proj_live`) + `charge_json` (3 usages).
+`proj_tickets.py` : liste (ouverts d'abord, cap 50, flag
+urgent miroir P0, boutons registre) + carte §17 (champs,
+boutons, `items_actes`, items, historique, versions, strip
+IDs). Endpoint `GET ticket/carte` (401/400/404). 5 tests.
+Analyse (diffs/mesures/digest) = lot 7d.

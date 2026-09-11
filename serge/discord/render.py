@@ -13,6 +13,7 @@ from datetime import datetime
 from typing import Any
 
 from serge.points.interact import strip_ids
+from serge.tickets.shared import champs_carte
 
 BUTTONS: dict[str, dict[str, Any]] = {
     'approuver': {'label': 'Approuver', 'style': 3, 'emoji': '✅'},
@@ -131,15 +132,9 @@ def _fields(
                 'value': str(h1.get('attente') or '—')[:1024],
             },
         ]
-    payload = ticket.get('payload') or {}
-    if not isinstance(payload, dict):
-        payload = {}
-    shown = []
-    for key in list(spec.get('fields') or [])[:5]:
-        value = payload.get(key, '—')
-        if isinstance(value, (dict, list)):
-            value = f'{len(value)} élément(s)'
-        shown.append(f'**{key} :** {value}')
+    shown = [
+        f'**{key} :** {value}' for key, value in champs_carte(ticket, spec)
+    ]
     return [
         {
             'name': f'{ticket.get("type")} • {ticket.get("state")}',

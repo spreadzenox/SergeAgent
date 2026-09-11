@@ -6,17 +6,12 @@ from __future__ import annotations
 import json
 import sqlite3
 from collections.abc import Mapping
-from datetime import datetime, timedelta
 from typing import Any
 
 from serge.llm.runtime import daily_tokens
+from serge.mc.proj_outils import apres_iso
 from serge.scheduler import next_ready
 from serge.tickets.lifecycle import OPENISH
-
-
-def _plus_minutes(now_iso: str, minutes: int) -> str:
-    moment = datetime.fromisoformat(now_iso)
-    return (moment + timedelta(minutes=minutes)).isoformat()
 
 
 def project_hero(
@@ -65,8 +60,8 @@ def project_urgents(
         Dict {items: [{id, type, titre, expiry_at}]} (cap 20, expiries first).
     """
     _ = policy
-    soon_15 = _plus_minutes(now, 15)
-    soon_60 = _plus_minutes(now, 60)
+    soon_15 = apres_iso(now, minutes=15)
+    soon_60 = apres_iso(now, minutes=60)
     placeholders = ','.join('?' * len(OPENISH))
     rows = conn.execute(
         'SELECT id, type, title, expiry_at FROM tickets WHERE state IN'

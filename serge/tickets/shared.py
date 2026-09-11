@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import uuid
+from collections.abc import Mapping
 from typing import Any
 
 from serge.db.store import utcnow
@@ -72,3 +73,32 @@ def already_applied(
         (ticket_id, decision_id),
     ).fetchone()
     return row is not None
+
+
+def champs_carte(
+    ticket: Mapping[str, Any], spec: Mapping[str, Any]
+) -> list[tuple[str, str]]:
+    """Champs carte §17 bruts (registre fields × payload) — E14/B3.
+
+    Args:
+        ticket: Ticket (payload dict ou payload_json str).
+        spec: Déclaration registre (fields).
+
+    Returns:
+        Liste [(titre, texte)] (cap 5, vide = '—').
+    """
+    payload = ticket.get('payload')
+    if payload is None and isinstance(ticket.get('payload_json'), str):
+        try:
+            payload = json.loads(str(ticket.get('payload_json')) or '{}')
+        except ValueError:
+            payload = {}
+    if not isinstance(payload, dict):
+        payload = {}
+    champs = []
+    for key in list(spec.get('fields') or [])[:5]:
+        value = payload.get(key, '—')
+        if isinstance(value, (dict, list)):
+            value = f'{len(value)} élément(s)'
+        champs.append((str(key), str(value)))
+    return champs

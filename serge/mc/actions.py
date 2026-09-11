@@ -12,6 +12,7 @@ from sqlite3 import Connection
 from typing import Any, Protocol
 
 from serge.db.store import append_event
+from serge.mc.proj_tickets import project_carte
 from serge.mc.proj_trace import project_trace
 from serge.registry import KillError, poser_kill, retirer_kill
 from serge.tickets import (
@@ -90,6 +91,30 @@ class ActionsMixin(_Handler):
             )
             return
         self._send_json(200, trace)
+
+    def _api_ticket_carte(self) -> None:
+        if not self._require_owner():
+            return
+        ticket_id = self._query().get('ticket', '')
+        if not ticket_id:
+            self._refus(
+                400,
+                'Paramètre ticket requis.',
+                'ticket',
+                'Exemple : …/api/ticket/carte?ticket=t1.',
+            )
+            return
+        with self._db() as conn:
+            carte = project_carte(conn, ticket_id)
+        if carte is None:
+            self._refus(
+                404,
+                'Ticket introuvable.',
+                'ticket',
+                'Vérifie l’identifiant.',
+            )
+            return
+        self._send_json(200, carte)
 
     def _api_kill(self) -> None:
         self._mutation_kill(False)
