@@ -504,6 +504,12 @@ button:disabled {
   text-decoration: underline;
 }
 
+.carte-actes {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+}
+
 kbd {
   background: var(--fond-2);
   border: 1px solid var(--bordure);

@@ -310,3 +310,13 @@ d'échéance vs récents). Stream p3 câblé (`tickets`, `diffs`,
 (refactor partagé avec `mind.js`). `llm_enabled` accepte
 `now_iso` (robustesse temporelle testée). 3 tests E2E.
 Carte détaillée et actes interactifs = lot 7f.
+
+## Tickets P3 — carte interactive et actes (lot 7f)
+
+`tickets.js` : ouverture et rendu de la carte §17 (méta, champs
+dynamiques, boutons d'actes, items, historique). Câblage des
+actes interactifs M1 (approuver/rejeter avec modale de confirmation,
+éditer/discuter avec promptModal), M2 (items garder/modifier/jeter
++ tout-approuver), et rafraîchissement ciblé via `fetchState('p3')`
+avec rechargement en place de la carte. 3 tests E2E interactifs
+(actes complets vérifiés en DOM et en DB). 605 tests verts.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""MC P3 Décisions : registre + liste/filtres dynamiques (carte en 7f)."""
+"""MC P3 Décisions : registre + liste/filtres + carte interactive (M1/M2/M3)."""
 
 from __future__ import annotations
 
@@ -116,3 +116,73 @@ class McTicketsTests(McBrowserCase):
         expect(page.locator('[data-section="tickets"]')).to_contain_text(
             'Prix du lot'
         )
+
+    def test_carte_et_acte(self) -> None:
+        import sqlite3
+
+        from playwright.sync_api import expect
+
+        page = self._page_tickets()
+        page.locator('.lien-ticket[data-ticket="t1"]').click()
+        carte = page.locator('[data-carte="panneau"]')
+        expect(carte).to_contain_text('VETO_AMONT — Prix du lot')
+        expect(carte).to_contain_text('decision : augmenter')
+        carte.get_by_role('button', name='Approuver').click()
+        modale = page.locator('.modale')
+        modale.get_by_role('button', name='Approuver').click()
+        expect(page.locator('.toast-succes')).to_contain_text(
+            'Ticket approuvé.'
+        )
+        expect(carte).to_contain_text('État : APPROVED')
+        conn = sqlite3.connect(self.db_path)
+        try:
+            etat = conn.execute(
+                'SELECT state FROM tickets WHERE id=?', ('t1',)
+            ).fetchone()[0]
+        finally:
+            conn.close()
+        self.assertEqual(etat, 'APPROVED')
+
+    def test_discuter(self) -> None:
+        import sqlite3
+
+        from playwright.sync_api import expect
+
+        page = self._page_tickets()
+        page.locator('.lien-ticket[data-ticket="t1"]').click()
+        carte = page.locator('[data-carte="panneau"]')
+        carte.get_by_role('button', name='Discuter').click()
+        modale = page.locator('.modale')
+        modale.locator('input').fill('On en parle ?')
+        modale.get_by_role('button', name='Envoyer').click()
+        expect(page.locator('.toast-succes')).to_contain_text(
+            'Message envoyé.'
+        )
+        expect(carte).to_contain_text('État : DISCUSSING')
+        conn = sqlite3.connect(self.db_path)
+        try:
+            etat = conn.execute(
+                'SELECT state FROM tickets WHERE id=?', ('t1',)
+            ).fetchone()[0]
+        finally:
+            conn.close()
+        self.assertEqual(etat, 'DISCUSSING')
+
+    def test_item_garder(self) -> None:
+        import sqlite3
+
+        from playwright.sync_api import expect
+
+        page = self._page_tickets()
+        page.locator('.lien-ticket[data-ticket="t2"]').click()
+        carte = page.locator('[data-carte="panneau"]')
+        carte.locator('button[data-item="i1"]').first.click()
+        expect(page.locator('.toast-succes')).to_contain_text('Item gardé.')
+        conn = sqlite3.connect(self.db_path)
+        try:
+            etat = conn.execute(
+                'SELECT state FROM ticket_items WHERE id=?', ('i1',)
+            ).fetchone()[0]
+        finally:
+            conn.close()
+        self.assertEqual(etat, 'keep')
