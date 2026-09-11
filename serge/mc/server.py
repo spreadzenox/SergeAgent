@@ -215,6 +215,9 @@ class McHandler(ActionsMixin, BaseHTTPRequestHandler):
         if path == '/owner/api/memory/items':
             self._api_memory_items()
             return
+        if path == '/owner/api/memory/search':
+            self._api_memory_search()
+            return
         if path == '/static/' or path.startswith('/static/'):
             self._serve_static(path[len('/static/') :])
             return

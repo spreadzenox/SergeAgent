@@ -70,25 +70,18 @@ class ActionsMixin(_Handler):
             return
         item_id = self._query().get('item', '')
         if not item_id:
-            self._send_json(
+            self._refus(
                 400,
-                {
-                    'erreur': 'Paramètre item requis.',
-                    'code': 'item',
-                    'aide': 'Exemple : …/api/trace?item=w1.',
-                },
+                'Paramètre item requis.',
+                'item',
+                'Exemple : …/api/trace?item=w1.',
             )
             return
         with self._db() as conn:
             trace = project_trace(conn, item_id)
         if trace is None:
-            self._send_json(
-                404,
-                {
-                    'erreur': 'Tâche introuvable.',
-                    'code': 'trace',
-                    'aide': 'Vérifie l’identifiant.',
-                },
+            self._refus(
+                404, 'Tâche introuvable.', 'trace', 'Vérifie l’identifiant.'
             )
             return
         self._send_json(200, trace)
@@ -109,10 +102,7 @@ class ActionsMixin(_Handler):
             carte = project_carte(conn, ticket_id)
         if carte is None:
             self._refus(
-                404,
-                'Ticket introuvable.',
-                'ticket',
-                'Vérifie l’identifiant.',
+                404, 'Ticket introuvable.', 'ticket', 'Vérifie l’identifiant.'
             )
             return
         self._send_json(200, carte)
@@ -131,11 +121,32 @@ class ActionsMixin(_Handler):
                 400,
                 'Pagination invalide.',
                 'page',
-                'page et size : entiers >= 1 (size <= 100).',
+                'page et size : entiers >= 1.',
             )
             return
         with self._db() as conn:
             resultat = project_memory_items(conn, page, taille)
+        self._send_json(200, resultat)
+
+    def _api_memory_search(self) -> None:
+        if not self._require_owner():
+            return
+        query = self._query().get('q', '').strip()
+        if not query:
+            self._refus(
+                400,
+                'Paramètre q requis.',
+                'query',
+                'Exemple : …/api/memory/search?q=tarifs.',
+            )
+            return
+        with self._db() as conn:
+            from serge.memory.search import memory_search
+
+            try:
+                resultat = memory_search(conn, query, point='mc_search')
+            except Exception:
+                resultat = {'results': [], 'tokens_used': 0}
         self._send_json(200, resultat)
 
     def _api_kill(self) -> None:

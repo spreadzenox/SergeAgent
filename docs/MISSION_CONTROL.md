@@ -343,3 +343,18 @@ Extraction de la logique d'actes (modales, requêtes POST `agirTicket`,
 - Panneau digest : heure du digest quotidien et plages silencieuses.
 - 2 tests E2E supplémentaires (diffs/métriques et pagination mémoire).
 Page P3 DONE (607 tests verts).
+
+## Mémoire P4 — projecteurs et recherche (lot 8a)
+
+`proj_memory.py` :
+- `project_couches` : synthèse des 5 couches de mémoire de Serge
+  (C1 épisodes & archives, C2 playbooks, C3 pièges / pitfalls,
+  C4 leçons / lessons, C5 SERGE.md + previous pour diff/rollback).
+- `project_consolidation` : cadence et état du moteur de consolidation
+  (`last_run`, `due_for_consolidation`, derniers événements d'audit).
+- `project_requested` : demandes d'évolution P3 des agents (tickets
+  `type='REQUESTED'`).
+- `GET /owner/api/memory/search?q=...` : recherche plein-texte FTS
+  câblée sur `memory_search` (fail-soft, 401/400).
+- Actions mémoire (curation leçons, rollback SERGE.md) = lot 8b.
+- 4 tests (goldens C1-C5, consolidation, requested, search endpoint). 611 verts.
