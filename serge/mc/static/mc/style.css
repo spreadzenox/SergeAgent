@@ -469,6 +469,24 @@ button:disabled {
   font-weight: bold;
 }
 
+.lien-point {
+  background: none;
+  border: none;
+  color: var(--cyan);
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.modale label {
+  display: block;
+  margin: 0.5rem 0;
+}
+
+.modale input {
+  margin-left: 0.5rem;
+}
+
 kbd {
   background: var(--fond-2);
   border: 1px solid var(--bordure);

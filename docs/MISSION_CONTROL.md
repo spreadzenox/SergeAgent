@@ -245,3 +245,12 @@ signaux, clusters + 3 titres). Matrice : table dense (tier,
 registre. Stream p2 (`matrice`/`clusters` lentes 30 s).
 `project_clusters` enrichi (titres) ; `project_matrice` expose
 `tue_runtime`. Fiche point + kills UI = lot 6e. 3 tests E2E.
+
+## Cerveau P2 — fiche + kills UI (lot 6e)
+
+`promptModal` (champs + requis) ; matrice cliquable → drawer
+fiche (registre + usage 7 j + checklist) ; boutons Tuer
+(modale raison + ttl) / Relancer (confirm) → POST kill|unkill
++ toast FR + refresh ciblé (`/owner/api/state?p2`, drawer
+rouvert frais). Bouton désactivé pendant le flow. 2 E2E
+(kill complet + unkill, DB vérifiée). P2 DONE.

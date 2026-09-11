@@ -166,3 +166,74 @@ export function rel(ts) {
   }
   return diff < 0 ? `dans ${words}` : `il y a ${words}`;
 }
+
+export function promptModal(
+  root,
+  {title, message, fields, confirm = 'Valider', cancel = 'Annuler'},
+) {
+  return new Promise((resolve) => {
+    const fond = document.createElement('div');
+    fond.className = 'fond-modale';
+    const node = document.createElement('div');
+    node.className = 'modale';
+    node.setAttribute('role', 'alertdialog');
+    const heading = document.createElement('h2');
+    heading.textContent = title;
+    const text = document.createElement('p');
+    text.textContent = message;
+    const inputs = {};
+    const etiquettes = [];
+    for (const field of fields) {
+      const label = document.createElement('label');
+      label.textContent = field.label;
+      const input = document.createElement('input');
+      input.name = field.nom;
+      input.value = field.defaut || '';
+      label.append(input);
+      etiquettes.push(label);
+      inputs[field.nom] = {input, requis: field.requis || false};
+    }
+    const actions = document.createElement('div');
+    actions.className = 'actions';
+    const okBtn = document.createElement('button');
+    okBtn.type = 'button';
+    okBtn.textContent = confirm;
+    okBtn.classList.add('danger');
+    const koBtn = document.createElement('button');
+    koBtn.type = 'button';
+    koBtn.textContent = cancel;
+    const done = (value) => {
+      document.removeEventListener('keydown', onKey);
+      fond.remove();
+      resolve(value);
+    };
+    const onKey = (event) => {
+      if (event.key === 'Escape') {
+        done(null);
+      }
+    };
+    okBtn.addEventListener('click', () => {
+      const valeurs = {};
+      for (const [nom, {input, requis}] of Object.entries(inputs)) {
+        if (requis && !input.value.trim()) {
+          input.focus();
+          return;
+        }
+        valeurs[nom] = input.value;
+      }
+      done(valeurs);
+    });
+    koBtn.addEventListener('click', () => done(null));
+    fond.addEventListener('click', (event) => {
+      if (event.target === fond) {
+        done(null);
+      }
+    });
+    document.addEventListener('keydown', onKey);
+    actions.append(okBtn, koBtn);
+    node.append(heading, text, ...etiquettes, actions);
+    fond.append(node);
+    root.appendChild(fond);
+    node.querySelector('input').focus();
+  });
+}

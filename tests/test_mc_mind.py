@@ -125,3 +125,63 @@ class McMindTests(McBrowserCase):
             expect(
                 page.locator(f'[data-section="{section}"]')
             ).to_contain_text(text)
+
+    def test_fiche_et_kill(self) -> None:
+        import sqlite3
+
+        from playwright.sync_api import expect
+
+        page = self._page_cerveau()
+        page.get_by_role('button', name='qualify_prospect').click()
+        tiroir = page.locator('.drawer')
+        expect(tiroir).to_contain_text('Point qualify_prospect')
+        expect(tiroir).to_contain_text('Garde-fou')
+        expect(tiroir).to_contain_text('En service')
+        tiroir.get_by_role('button', name='Tuer').click()
+        modale = page.locator('.modale')
+        modale.locator('input[name="raison"]').fill('dérive vue en matrice')
+        modale.get_by_role('button', name='Tuer').click()
+        expect(page.locator('.toast-succes')).to_contain_text(
+            'qualify_prospect tué'
+        )
+        expect(tiroir).to_contain_text('Tué (temporaire)')
+        conn = sqlite3.connect(self.db_path)
+        try:
+            flag = conn.execute(
+                'SELECT value FROM runtime_flags'
+                " WHERE name='llm.qualify_prospect'"
+            ).fetchone()
+            ticket = conn.execute(
+                "SELECT type FROM tickets WHERE type='POLICY'"
+            ).fetchone()
+        finally:
+            conn.close()
+        self.assertEqual(flag[0], 'kill')
+        self.assertEqual(ticket[0], 'POLICY')
+
+    def test_unkill(self) -> None:
+        import sqlite3
+
+        from playwright.sync_api import expect
+
+        page = self._page_cerveau()
+        page.get_by_role('button', name='judge_allocator').click()
+        tiroir = page.locator('.drawer')
+        expect(tiroir).to_contain_text('Tué (temporaire)')
+        tiroir.get_by_role('button', name='Relancer').click()
+        modale = page.locator('.modale')
+        expect(modale).to_contain_text('Relancer judge_allocator ?')
+        modale.get_by_role('button', name='Relancer').click()
+        expect(page.locator('.toast-succes')).to_contain_text(
+            'judge_allocator relancé'
+        )
+        expect(tiroir).to_contain_text('En service')
+        conn = sqlite3.connect(self.db_path)
+        try:
+            flag = conn.execute(
+                'SELECT value FROM runtime_flags'
+                " WHERE name='llm.judge_allocator'"
+            ).fetchone()
+        finally:
+            conn.close()
+        self.assertIsNone(flag)

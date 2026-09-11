@@ -1,6 +1,13 @@
-// Page P2 Cerveau : stream, décisions, matrice, signaux, clusters.
-// Fiche point + kills au lot 6e.
-import {fillList, li, rel} from '../components.js';
+// Page P2 Cerveau : stream, décisions, matrice, signaux, clusters + kills.
+import {
+  confirmModal,
+  fillList,
+  li,
+  openDrawer,
+  promptModal,
+  rel,
+  toast,
+} from '../components.js';
 
 function etatPoint(item) {
   if (item.tue_runtime) {
@@ -46,7 +53,7 @@ function renderDecisions(main, payload, sig) {
   section.dataset.sig = sig;
 }
 
-function renderMatrice(main, payload, sig) {
+function renderMatrice(main, payload, sig, store) {
   const conteneur = main.querySelector('[data-matrice="table"]');
   conteneur.replaceChildren();
   if (payload.erreur) {
@@ -76,8 +83,15 @@ function renderMatrice(main, payload, sig) {
     const corps = document.createElement('tbody');
     for (const item of payload.points) {
       const tr = document.createElement('tr');
+      const tdNom = document.createElement('td');
+      const bouton = document.createElement('button');
+      bouton.type = 'button';
+      bouton.className = 'lien-point';
+      bouton.textContent = item.nom;
+      bouton.addEventListener('click', () => ouvrirFiche(store, item));
+      tdNom.append(bouton);
+      tr.append(tdNom);
       const cellules = [
-        item.nom,
         item.tier,
         String(item.appels_7j),
         item.tokens_7j.toLocaleString('fr-FR'),
@@ -88,7 +102,7 @@ function renderMatrice(main, payload, sig) {
       cellules.forEach((texte, i) => {
         const td = document.createElement('td');
         td.textContent = texte;
-        if ((i === 5 && item.derive) || (i === 6 && texte !== 'En service')) {
+        if ((i === 4 && item.derive) || (i === 5 && texte !== 'En service')) {
           td.classList.add('alerte');
         }
         tr.append(td);
@@ -139,15 +153,150 @@ export function mount(main, store) {
   };
   const unsubs = Object.keys(rendus).map((section) =>
     store.subscribe(section, (payload, sg) => {
-      rendus[section](main, payload, sg);
+      rendus[section](main, payload, sg, store);
     }),
   );
   for (const [section, env] of store.all()) {
     if (rendus[section]) {
-      rendus[section](main, env.payload, env.sig);
+      rendus[section](main, env.payload, env.sig, store);
     }
   }
   return () => {
     unsubs.forEach((unsub) => unsub());
   };
+}
+
+async function rafraichir(store) {
+  try {
+    const res = await fetch('/owner/api/state?page=p2', {cache: 'no-store'});
+    if (!res.ok) {
+      return;
+    }
+    const data = await res.json();
+    for (const [section, env] of Object.entries(data.sections || {})) {
+      store.apply(section, env.sig, env.payload);
+    }
+  } catch {
+    // le stream reprendra au prochain tick
+  }
+}
+
+async function poster(chemin, charge) {
+  const res = await fetch(chemin, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(charge),
+  });
+  return {ok: res.ok, data: await res.json()};
+}
+
+async function tuerPoint(store, item, rouvrir) {
+  const valeurs = await promptModal(document.body, {
+    title: `Tuer ${item.nom} ?`,
+    message: 'Coupure à chaud : flag temporaire + ticket POLICY auto.',
+    fields: [
+      {nom: 'raison', label: 'Raison : ', defaut: '', requis: true},
+      {nom: 'ttl_h', label: 'Durée (heures) : ', defaut: '24'},
+    ],
+    confirm: 'Tuer',
+  });
+  if (!valeurs) {
+    return;
+  }
+  try {
+    const {ok, data} = await poster('/owner/api/kill', {
+      point: item.nom,
+      raison: valeurs.raison,
+      ttl_h: valeurs.ttl_h,
+      decision_id: `mc-${Date.now()}-${item.nom}`,
+    });
+    if (!ok) {
+      toast(document.body, `Échec : ${data.erreur || 'refusé'}.`, 'erreur');
+      return;
+    }
+    toast(document.body, `${item.nom} tué (ticket ${data.ticket_id}).`, 'succes');
+    await rafraichir(store);
+    rouvrir();
+  } catch {
+    toast(document.body, 'Kill injoignable.', 'erreur');
+  }
+}
+
+async function retirerPoint(store, item, rouvrir) {
+  const confirmer = await confirmModal(document.body, {
+    title: `Relancer ${item.nom} ?`,
+    message: 'Le flag temporaire sera retiré (registre inchangé).',
+    confirm: 'Relancer',
+  });
+  if (!confirmer) {
+    return;
+  }
+  try {
+    const {ok, data} = await poster('/owner/api/unkill', {
+      point: item.nom,
+      decision_id: `mc-${Date.now()}-${item.nom}`,
+    });
+    if (!ok) {
+      toast(document.body, `Échec : ${data.erreur || 'refusé'}.`, 'erreur');
+      return;
+    }
+    toast(document.body, `${item.nom} relancé.`, 'succes');
+    await rafraichir(store);
+    rouvrir();
+  } catch {
+    toast(document.body, 'Action injoignable.', 'erreur');
+  }
+}
+
+function ouvrirFiche(store, item) {
+  const corps = document.createElement('div');
+  const cochees = Object.keys(item.checklist || {}).filter((k) => item.checklist[k]);
+  const lignes = [
+    ['État', etatPoint(item)],
+    ['Tier', item.tier],
+    ['Verdict', item.verdict],
+    ['Garde-fou', item.garde_fou],
+    ['Repli', item.repli],
+    ['Enveloppe', `${item.enveloppe} jetons`],
+    [
+      '7 jours',
+      `${item.appels_7j} appels, ${item.tokens_7j.toLocaleString('fr-FR')} jetons, ${item.latence_ms} ms`,
+    ],
+    ['Verdicts', verdictsCompacts(item.verdicts)],
+    ['Dérive', item.derive ? `Dérive ${item.derive}` : 'Aucune'],
+    ['Checklist', cochees.join(', ') || '—'],
+  ];
+  for (const [cle, valeur] of lignes) {
+    const p = document.createElement('p');
+    p.textContent = `${cle} : ${valeur}`;
+    corps.append(p);
+  }
+  const bouton = document.createElement('button');
+  bouton.type = 'button';
+  bouton.textContent = item.tue_runtime ? 'Relancer' : 'Tuer';
+  if (!item.tue_runtime) {
+    bouton.classList.add('danger');
+  }
+  const ferme = openDrawer(document.body, `Point ${item.nom}`, corps);
+  function rouvrir() {
+    ferme();
+    const env = store.get('matrice');
+    const items = env && env.payload ? env.payload.points || [] : [];
+    const frais = items.find((p) => p.nom === item.nom);
+    if (frais) {
+      ouvrirFiche(store, frais);
+    }
+  }
+  bouton.addEventListener('click', () => {
+    bouton.disabled = true;
+    const fin = () => {
+      bouton.disabled = false;
+    };
+    if (item.tue_runtime) {
+      retirerPoint(store, item, rouvrir).finally(fin);
+    } else {
+      tuerPoint(store, item, rouvrir).finally(fin);
+    }
+  });
+  corps.append(bouton);
 }
