@@ -26,6 +26,7 @@ from serge.mc.auth import (
     create_session,
     revoke_session,
 )
+from serge.mc.policy_actions import PolicyActionsMixin
 from serge.mc.projectors import PAGE_SECTIONS, SnapshotCache
 from serge.mc.sse import state_payload, stream_page
 from serge.policy import PolicyError, load_policy
@@ -60,7 +61,9 @@ class McConfig:
     policy_dir: Path | None = None
 
 
-class McHandler(ApiViewsMixin, ActionsMixin, BaseHTTPRequestHandler):
+class McHandler(
+    ApiViewsMixin, PolicyActionsMixin, ActionsMixin, BaseHTTPRequestHandler
+):
     """Routes MC (config via create_server, jamais de global mutable)."""
 
     app_config: McConfig
@@ -333,6 +336,18 @@ class McHandler(ApiViewsMixin, ActionsMixin, BaseHTTPRequestHandler):
             return
         if path == '/owner/api/memory/rollback':
             self._api_memory_rollback()
+            return
+        if path == '/owner/api/policy/edit':
+            self._api_policy_edit()
+            return
+        if path == '/owner/api/policy/rollback':
+            self._api_policy_rollback()
+            return
+        if path == '/owner/api/policy/testing':
+            self._api_policy_testing()
+            return
+        if path == '/owner/api/policy/propose':
+            self._api_policy_propose()
             return
         self._error(404)
 

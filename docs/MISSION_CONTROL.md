@@ -396,3 +396,17 @@ Page P3 DONE (607 tests verts).
   - `project_testing_froid` : état testing et détection de campagnes en cours (lock).
   - `project_trust_candidates` : détection des types candidats (>95% sur >=20 tickets).
 - 4 tests unitaires et goldens (621 tests verts).
+
+## Politique P5 — actions et mutations (lot 9b)
+
+`policy_actions.py` :
+- `POST /owner/api/policy/edit` (M4) : validation `validate_policy`,
+  enregistrement d'un snapshot append-only, événement `mc_act`.
+- `POST /owner/api/policy/rollback` (M5) : récupération du snapshot
+  antérieur et écriture d'un nouveau snapshot (jamais d'écrasement).
+- `POST /owner/api/policy/testing` (M6, E3) : validation `_validate_testing`,
+  verrouillage strict à froid (409 si au moins une campagne `RUNNING`),
+  événement `mc_act`.
+- `POST /owner/api/policy/propose` (M12) : création d'un ticket `POLICY`
+  en `DRAFT` depuis la zone de confiance ou une dérive constatée.
+- 3 tests d'actes complets (passant, erreurs, verrouillage froid, 624 verts).
