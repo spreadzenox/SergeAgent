@@ -228,6 +228,9 @@ class McHandler(
         if path == '/owner/api/memory/search':
             self._api_memory_search()
             return
+        if path == '/owner/api/voice/audio':
+            self._api_voice_audio()
+            return
         if path == '/static/' or path.startswith('/static/'):
             self._serve_static(path[len('/static/') :])
             return
@@ -348,6 +351,9 @@ class McHandler(
             return
         if path == '/owner/api/policy/propose':
             self._api_policy_propose()
+            return
+        if path == '/owner/api/voice/kill':
+            self._api_voice_kill()
             return
         self._error(404)
 

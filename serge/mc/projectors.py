@@ -53,6 +53,11 @@ from serge.mc.proj_policy import (
     project_trust_candidates,
 )
 from serge.mc.proj_tickets import project_tickets
+from serge.mc.proj_voice import (
+    project_bridge_statut,
+    project_cdr_appels,
+    project_qualite_voix,
+)
 
 LIVE_TTL_S = 2.0
 SLOW_TTL_S = 30.0
@@ -75,6 +80,9 @@ SLOW_SECTIONS = frozenset(
         'transactions_subscriptions',
         'couts_cognitifs',
         'audit_reponses',
+        'cdr_appels',
+        'qualite_voix',
+        'bridge_statut',
     }
 )
 
@@ -193,6 +201,9 @@ PROJECTORS: dict[str, Callable[..., dict[str, Any]]] = {
     'transactions_subscriptions': project_transactions_subscriptions,
     'couts_cognitifs': project_couts_cognitifs,
     'audit_reponses': project_audit_reponses,
+    'cdr_appels': project_cdr_appels,
+    'qualite_voix': project_qualite_voix,
+    'bridge_statut': project_bridge_statut,
 }
 
 PAGE_SECTIONS: dict[str, list[str]] = {
@@ -214,5 +225,11 @@ PAGE_SECTIONS: dict[str, list[str]] = {
         'transactions_subscriptions',
         'couts_cognitifs',
         'audit_reponses',
+    ],
+    'p7': [
+        'meta',
+        'cdr_appels',
+        'qualite_voix',
+        'bridge_statut',
     ],
 }

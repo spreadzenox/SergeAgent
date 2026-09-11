@@ -471,3 +471,19 @@ Page P3 DONE (607 tests verts).
 - `project_bridge_statut` : lecture de l'état du bridge voix,
   du trunk Asterisk et de l'activation du fichier `KILL_SWITCH`.
 - 3 tests unitaires et goldens (639 tests verts).
+
+## Voix P7 — page voice et actions (lot 11c)
+
+`voice.js` :
+- `bridge_statut` : affichage de l'état du bridge et bouton d'action
+  `toggle-kill-voice` (confirmModal avant bascule, toast de succès, rafraîchissement).
+- `cdr_appels` : liste des 30 derniers appels du ledger avec lien sécurisé
+  `🔊 Écouter` vers l'audio signée HMAC (E7).
+- `qualite_voix` : restitution des scores F4c et de la note moyenne.
+- `GET /owner/api/voice/audio?cdr=...` (E7, E11) : vérification du lien
+  signé HMAC ou session owner, streaming audio `.wav`.
+- `POST /owner/api/voice/kill` (M9, M11) : activation / désactivation
+  du fichier `KILL_SWITCH` (audité dans `events` type `mc_act`).
+- Stream p7 câblé (`cdr_appels`, `qualite_voix`, `bridge_statut`).
+- 3 tests E2E navigateur (rendu, toggle kill switch, écoute).
+- Page P7 Voix DONE (642 tests verts).

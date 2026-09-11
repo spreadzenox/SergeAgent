@@ -3,8 +3,10 @@
 
 from __future__ import annotations
 
+import os
 import sqlite3
 from collections.abc import Mapping
+from pathlib import Path
 from typing import Any
 
 from serge.mc.signedlinks import signer_url
@@ -112,8 +114,18 @@ def project_bridge_statut(
         Dict {kill_switch_active, mode, trunk_status}.
     """
     _ = (conn, policy, now)
-    root = system_root()
-    is_killed = kill_switch_active(root)
+    root = (
+        Path(os.environ.get('SERGE_SYSTEM_ROOT', ''))
+        if os.environ.get('SERGE_SYSTEM_ROOT')
+        else system_root()
+    )
+    db_root = conn.execute('PRAGMA database_list').fetchone()
+    db_parent = Path(db_root[2]).parent if db_root and db_root[2] else root
+    is_killed = (
+        kill_switch_active(root)
+        or (Path(system_root()) / 'state/KILL_SWITCH').exists()
+        or kill_switch_active(db_parent)
+    )
 
     # Récupération fail-soft du statut bridge
     from serge.voice.bridge import health as bridge_health

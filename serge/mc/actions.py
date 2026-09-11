@@ -38,6 +38,7 @@ ACTES_ITEM = {'garder': 'keep', 'modifier': 'edit', 'jeter': 'drop'}
 class _Handler(Protocol):
     headers: Any
     rfile: Any
+    app_config: Any
 
     def _require_owner(self) -> bool: ...
     def _db(self) -> AbstractContextManager[Connection]: ...
@@ -134,17 +135,11 @@ class ActionsMixin(_Base):
     def _refus_ticket(self, exc: TicketError, quoi: str) -> None:
         if 'inconnu' in str(exc):
             self._refus(
-                404,
-                f'{quoi} introuvable.',
-                'ticket',
-                'Vérifie l’identifiant.',
+                404, f'{quoi} introuvable.', 'ticket', 'Vérifie l’identifiant.'
             )
         else:
             self._refus(
-                409,
-                'Action impossible.',
-                'etat',
-                'État incompatible (décidé, expiré, clôturé ou pas ouvert).',
+                409, 'Action impossible.', 'etat', 'État incompatible.'
             )
 
     def _api_ticket_acte(self) -> None:

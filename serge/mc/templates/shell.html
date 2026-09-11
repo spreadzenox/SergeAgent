@@ -248,6 +248,25 @@
 <ul data-list="dette_builder"></ul>
 </section>
 </template>
+<template id="page-voice">
+<section class="panneau" data-section="bridge_statut" data-sig="">
+<h2>Bridge voix & Trunk Asterisk</h2>
+<p id="voice-bridge-info">…</p>
+<div class="carte-actes">
+<button type="button" data-action="toggle-kill-voice" class="danger">Basculer Kill Switch Voix</button>
+</div>
+</section>
+<section class="panneau" data-section="cdr_appels" data-sig="">
+<h2>Journal des appels (CDR)</h2>
+<p id="voice-cdr-total">…</p>
+<ul data-list="calls"></ul>
+</section>
+<section class="panneau" data-section="qualite_voix" data-sig="">
+<h2>Qualité & Scoring (F4c)</h2>
+<p id="voice-qualite-moyenne">…</p>
+<ul data-list="scores"></ul>
+</section>
+</template>
 <template id="page-bientot">
 <section class="panneau">
 <h2></h2>

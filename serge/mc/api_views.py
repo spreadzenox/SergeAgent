@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from contextlib import AbstractContextManager
+from pathlib import Path
 from sqlite3 import Connection
 from typing import TYPE_CHECKING, Any, Protocol
 
@@ -20,6 +21,10 @@ class _ViewHandler(Protocol):
     def _send_json(self, code: int, obj: dict) -> None: ...
     def _query(self) -> dict[str, str]: ...
     def _refus(self, http: int, erreur: str, code: str, aide: str) -> None: ...
+    def _is_owner(self) -> bool: ...
+    def _send(self, code: int, body: bytes, content_type: str) -> None: ...
+
+    path: str
 
 
 if TYPE_CHECKING:
@@ -114,3 +119,64 @@ class ApiViewsMixin(_Base):
             except Exception:
                 resultat = {'results': [], 'tokens_used': 0}
         self._send_json(200, resultat)
+
+    def _api_voice_audio(self) -> None:
+        from serge.mc.signedlinks import verifier_url
+
+        # Vérification du lien signé HMAC E7 ou auth owner
+        path_query = f'{self.path}'
+        secret = 'serge_mc_voice_signed_audio'
+        if not verifier_url(path_query, secret) and not self._is_owner():
+            self._refus(
+                401,
+                'Lien audio expiré ou signature invalide.',
+                'audio_auth',
+                'Redemande le lien.',
+            )
+            return
+
+        query = self._query()
+        cdr_id = query.get('cdr', '').strip()
+        if not cdr_id:
+            self._refus(
+                400, 'Paramètre cdr requis.', 'cdr', 'Identifiant appel.'
+            )
+            return
+
+        import sqlite3
+
+        from serge.voice.policy import default_ledger_path
+
+        ledger_p = default_ledger_path()
+        rec_path = None
+        if ledger_p.is_file():
+            try:
+                conn = sqlite3.connect(ledger_p, timeout=5)
+                row = conn.execute(
+                    'SELECT recording_path FROM calls WHERE cdr_id=?',
+                    (cdr_id,),
+                ).fetchone()
+                if row and row[0]:
+                    rec_path = Path(str(row[0]))
+                conn.close()
+            except sqlite3.OperationalError:
+                pass
+
+        if not rec_path or not rec_path.is_file():
+            self._refus(
+                404,
+                'Enregistrement audio introuvable ou purgé.',
+                'audio_404',
+                'Fichier inexistant.',
+            )
+            return
+
+        try:
+            audio_bytes = rec_path.read_bytes()
+        except OSError:
+            self._refus(
+                500, 'Lecture audio impossible.', 'audio_io', 'Erreur disque.'
+            )
+            return
+
+        self._send(200, audio_bytes, 'audio/wav')

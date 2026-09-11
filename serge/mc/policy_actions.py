@@ -13,6 +13,8 @@ from serge.tickets.lifecycle import create_ticket
 
 
 class _PolicyHandler(Protocol):
+    app_config: Any
+
     def _require_owner(self) -> bool: ...
     def _json_body(self) -> dict | None: ...
     def _refus(self, http: int, erreur: str, code: str, aide: str) -> None: ...
@@ -233,3 +235,52 @@ class PolicyActionsMixin(_Base):
                 },
             )
         self._send_json(200, {'ok': True, 'ticket_id': ticket_id})
+
+    def _api_voice_kill(self) -> None:
+        if not self._require_owner():
+            return
+        body = self._json_body() or {}
+        activer = bool(body.get('activer', True))
+        decision = str(body.get('decision_id') or '')
+
+        from serge.paths import system_root
+
+        root = system_root()
+        kill_file = root / 'state/KILL_SWITCH'
+        try:
+            kill_file_sys = self.app_config.db_path.parent / 'state/KILL_SWITCH'
+            kill_file_sys.parent.mkdir(parents=True, exist_ok=True)
+            if activer:
+                kill_file_sys.write_text(
+                    'VOICE_KILL_SWITCH_ACTIVE\n', encoding='utf-8'
+                )
+            else:
+                if kill_file_sys.exists():
+                    kill_file_sys.unlink()
+        except Exception:
+            pass
+        try:
+            kill_file.parent.mkdir(parents=True, exist_ok=True)
+            if activer:
+                kill_file.write_text(
+                    'VOICE_KILL_SWITCH_ACTIVE\n', encoding='utf-8'
+                )
+            else:
+                if kill_file.exists():
+                    kill_file.unlink()
+        except Exception:
+            pass
+
+        with self._db() as conn:
+            append_event(
+                conn,
+                actor='owner',
+                type='mc_act',
+                payload={
+                    'acte': 'voice_kill_toggle',
+                    'actif': activer,
+                    'decision_id': decision,
+                },
+            )
+
+        self._send_json(200, {'ok': True, 'kill_switch': activer})
