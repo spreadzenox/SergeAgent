@@ -384,3 +384,15 @@ Page P3 DONE (607 tests verts).
 - Câblage stream p4 (`couches`, `consolidation`, `requested`) et routeur p4.
 - 3 tests E2E navigateur (rendu 5 couches, FTS UI).
 - Page P4 Mémoire DONE (617 tests verts).
+
+## Politique P5 — projecteurs et snapshots (lot 9a)
+
+- `policy_snapshots.py` (invariant B4) : `snapshot_policy` (validation
+  `validate_policy` + hash SHA256 16 hex + append-only dans `policy_snapshots`),
+  `list_snapshots`, `get_snapshot`.
+- `proj_policy.py` :
+  - `project_politique_active` : politique runtime en vigueur.
+  - `project_policy_snapshots` : historique 20 derniers snapshots.
+  - `project_testing_froid` : état testing et détection de campagnes en cours (lock).
+  - `project_trust_candidates` : détection des types candidats (>95% sur >=20 tickets).
+- 4 tests unitaires et goldens (621 tests verts).
