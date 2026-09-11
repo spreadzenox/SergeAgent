@@ -213,3 +213,12 @@ pensées (stub fail-soft — aucun émetteur dans le kit), usage par point 7 j
 (appels/tokens/latence/verdicts — base de la matrice). `proj_outils.py` :
 `avant_iso` partagé (3e usage — `proj_ilots` migre, goldens verts).
 Registre llm-points.yaml + dérives + kills M8 = lot 6b.
+
+## Cerveau P2 — matrice (lot 6b)
+
+`project_matrice` : registre `llm-points.yaml` (29 points réels) × usage
+7 j complets (appels/tokens/latence/verdicts) + dérives J-1 vs médiane
+J-8..J-2 (ratio > 3, volume puis tokens ; médiane nulle = activation,
+pas dérive). Fail-soft registre illisible (`erreur`, prouvé). Fixtures
+registre tmp via `SERGE_CONFIG_DIR`. 2 goldens (dont dérive volume).
+Kills M8 + page Cerveau = lots 6c/6d.
