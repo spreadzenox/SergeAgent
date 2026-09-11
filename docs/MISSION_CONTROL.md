@@ -487,3 +487,17 @@ Page P3 DONE (607 tests verts).
 - Stream p7 câblé (`cdr_appels`, `qualite_voix`, `bridge_statut`).
 - 3 tests E2E navigateur (rendu, toggle kill switch, écoute).
 - Page P7 Voix DONE (642 tests verts).
+
+## Santé & Audit P8 — projecteurs (lot 12a)
+
+`proj_health.py` :
+- `project_charte_metriques` : comptage des LOC (fichiers kit/ et serge/),
+  identification du plus gros fichier du repo, demandes requested en attente,
+  ratio tokens/€ de revenu (E6).
+- `project_audit_trail` : liste ordonnée des 50 derniers actes owner/MC
+  (events `type='mc_act'`).
+- `project_versions_drift` : versions logicielles (MC, schéma SQLite attendu
+  vs appliqué, version CLI `gog`).
+- `project_units_systemd` : sonde lente des services systemd (`is-active`,
+  fail-soft, timeout court).
+- 4 tests unitaires et goldens (646 tests verts).
