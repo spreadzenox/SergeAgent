@@ -73,6 +73,7 @@ def llm_enabled(
     name: str,
     conn: sqlite3.Connection | None = None,
     directory: Path | None = None,
+    now_iso: str | None = None,
 ) -> bool:
     """Kill-switch par point (matrice C §0 + override runtime M8).
 
@@ -80,11 +81,12 @@ def llm_enabled(
         name: Nom du point (ex. qualify_prospect).
         conn: Connexion canon (None = YAML seul, legacy).
         directory: Dossier config (défaut : config du repo).
+        now_iso: Maintenant ISO (défaut : horloge canon).
 
     Returns:
         True si activé (ni kill runtime ni enabled=false), else False.
     """
-    if conn is not None and not runtime_allows(conn, name):
+    if conn is not None and not runtime_allows(conn, name, now_iso=now_iso):
         return False
     try:
         points = load_llm_points(directory)

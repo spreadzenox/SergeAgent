@@ -10,6 +10,11 @@ from collections.abc import Callable
 from typing import Any
 
 from serge.mc import MC_VERSION
+from serge.mc.proj_analyse import (
+    project_diffs,
+    project_digest,
+    project_metriques_tickets,
+)
 from serge.mc.proj_campagnes import (
     project_campagnes,
     project_email,
@@ -30,10 +35,13 @@ from serge.mc.proj_live import (
     project_jauges,
     project_urgents,
 )
+from serge.mc.proj_tickets import project_tickets
 
 LIVE_TTL_S = 2.0
 SLOW_TTL_S = 30.0
-SLOW_SECTIONS = frozenset({'jauges', 'population', 'matrice', 'clusters'})
+SLOW_SECTIONS = frozenset(
+    {'jauges', 'population', 'matrice', 'clusters', 'diffs', 'metriques'}
+)
 
 
 def canonical(payload: Any) -> str:
@@ -135,10 +143,15 @@ PROJECTORS: dict[str, Callable[..., dict[str, Any]]] = {
     'matrice': project_matrice,
     'signaux': project_signaux,
     'clusters': project_clusters,
+    'tickets': project_tickets,
+    'diffs': project_diffs,
+    'metriques': project_metriques_tickets,
+    'digest': project_digest,
 }
 
 PAGE_SECTIONS: dict[str, list[str]] = {
     'p0': ['meta', 'hero', 'urgents', 'file', 'feed', 'jauges'],
     'p1': ['meta', 'ilots', 'scheduler', 'campagnes', 'population', 'email'],
     'p2': ['meta', 'pensees', 'decisions', 'matrice', 'signaux', 'clusters'],
+    'p3': ['meta', 'tickets', 'diffs', 'metriques', 'digest'],
 }

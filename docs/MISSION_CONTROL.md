@@ -299,3 +299,14 @@ approbation globale/par type, rejets, auto, bypass = expirés
 avec défaut, GUICHET, réponse médiane/délais draft→décidé),
 digest (config pure — prochain calculé front, C2). Endpoint
 `GET memory/items` (401/400 + clamp). 5 tests. Page = lot 7e.
+
+## Tickets P3 — liste et filtres (lot 7e)
+
+Route p3 : `tickets.js` (liste des tickets avec tri, état urgent
+miroir P0, et filtres dynamiques par type, état 'à traiter' /
+'terminés', urgents seuls, recherche textuelle, et tri date
+d'échéance vs récents). Stream p3 câblé (`tickets`, `diffs`,
+`metriques`, `digest`). `fetchState` exporté depuis `sse.js`
+(refactor partagé avec `mind.js`). `llm_enabled` accepte
+`now_iso` (robustesse temporelle testée). 3 tests E2E.
+Carte détaillée et actes interactifs = lot 7f.

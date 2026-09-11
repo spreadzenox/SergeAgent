@@ -487,6 +487,23 @@ button:disabled {
   margin-left: 0.5rem;
 }
 
+.tickets-filtres {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.lien-ticket {
+  background: none;
+  border: none;
+  color: var(--texte);
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+  text-decoration: underline;
+}
+
 kbd {
   background: var(--fond-2);
   border: 1px solid var(--bordure);

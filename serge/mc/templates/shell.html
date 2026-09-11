@@ -118,6 +118,28 @@
 <ul data-list="items"></ul>
 </section>
 </template>
+<template id="page-tickets">
+<section class="panneau" data-section="tickets" data-sig="">
+<h2>Tickets</h2>
+<div class="tickets-filtres">
+<select data-filtre="type" aria-label="Filtrer par type">
+<option value="">Tous types</option>
+</select>
+<select data-filtre="etat" aria-label="Filtrer par état">
+<option value="">Tous états</option>
+<option value="atraiter">À traiter</option>
+<option value="termines">Terminés</option>
+</select>
+<label><input type="checkbox" data-filtre="urgents"> Urgents seuls</label>
+<input type="search" data-filtre="recherche" placeholder="Rechercher…" aria-label="Rechercher">
+<select data-filtre="tri" aria-label="Trier">
+<option value="recents">Récents d'abord</option>
+<option value="expiry">Échéance proche</option>
+</select>
+</div>
+<ul data-list="items"></ul>
+</section>
+</template>
 <template id="page-bientot">
 <section class="panneau">
 <h2></h2>

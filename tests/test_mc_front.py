@@ -63,10 +63,13 @@ class McFrontTests(McBrowserCase):
         page.locator('table.matrice tbody tr').first.wait_for(timeout=10000)
         self.assertEqual(page.evaluate('window.__MC.stats.page'), 'p2')
         links.nth(3).click()
+        page.locator('[data-section="tickets"]').wait_for(timeout=10000)
+        self.assertEqual(page.evaluate('window.__MC.stats.page'), 'p3')
+        links.nth(4).click()
         page.get_by_text('Cette page arrive dans un prochain lot.').wait_for(
             timeout=5000
         )
-        self.assertEqual(page.evaluate('window.__MC.stats.page'), 'p3')
+        self.assertEqual(page.evaluate('window.__MC.stats.page'), 'p4')
         links.nth(0).click()
         page.get_by_text('File vide').wait_for(timeout=5000)
         self.assertEqual(page.evaluate('window.__MC.stats.page'), 'p0')

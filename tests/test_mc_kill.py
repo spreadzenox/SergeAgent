@@ -9,6 +9,7 @@ import sqlite3
 import sys
 import tempfile
 import unittest
+from datetime import datetime, timedelta
 from pathlib import Path
 from unittest import mock
 
@@ -16,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from serge.db.schema import init_schema  # noqa: E402
+from serge.db.store import utcnow  # noqa: E402
 from serge.llm.client import ChatResult  # noqa: E402
 from serge.llm.runtime import run_registered_point  # noqa: E402
 from serge.registry import (  # noqa: E402
@@ -27,7 +29,7 @@ from serge.registry import (  # noqa: E402
 )
 from tests.mc_server_case import McServerCase  # noqa: E402
 
-NOW = '2026-09-10T12:00:00+00:00'
+NOW = utcnow()
 POLICY: dict = {}
 
 REGISTRE = """schema_version: 1
@@ -97,14 +99,17 @@ class KillBackendTests(unittest.TestCase):
             decision_id='d1',
             now_iso=NOW,
         )
-        self.assertEqual(resultat['expires_at'], '2026-09-11T12:00:00+00:00')
+        attendue = (
+            datetime.fromisoformat(NOW) + timedelta(hours=24)
+        ).isoformat()
+        self.assertEqual(resultat['expires_at'], attendue)
         flag = self.conn.execute(
             'SELECT value, reason, expires_at FROM runtime_flags'
             " WHERE name='llm.qualify'"
         ).fetchone()
         self.assertEqual(
             (flag[0], flag[1], flag[2]),
-            ('kill', 'dérive test', '2026-09-11T12:00:00+00:00'),
+            ('kill', 'dérive test', attendue),
         )
         ticket = self.conn.execute(
             'SELECT type, state, title FROM tickets WHERE id=?',

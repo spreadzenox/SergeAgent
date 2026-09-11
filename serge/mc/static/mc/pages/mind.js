@@ -8,6 +8,7 @@ import {
   rel,
   toast,
 } from '../components.js';
+import {fetchState} from '../sse.js';
 
 function etatPoint(item) {
   if (item.tue_runtime) {
@@ -168,11 +169,7 @@ export function mount(main, store) {
 
 async function rafraichir(store) {
   try {
-    const res = await fetch('/owner/api/state?page=p2', {cache: 'no-store'});
-    if (!res.ok) {
-      return;
-    }
-    const data = await res.json();
+    const data = await fetchState('p2');
     for (const [section, env] of Object.entries(data.sections || {})) {
       store.apply(section, env.sig, env.payload);
     }

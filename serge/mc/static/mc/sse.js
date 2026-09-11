@@ -1,4 +1,15 @@
 // SSE MC : stream + backoff + fallback poll + ?snapshot + visibilité.
+
+export async function fetchState(page) {
+  const res = await fetch(
+    `/owner/api/state?page=${encodeURIComponent(page)}`,
+    {cache: 'no-store'},
+  );
+  if (!res.ok) {
+    throw new Error(`state ${res.status}`);
+  }
+  return res.json();
+}
 const BACKOFF_S = [1, 2, 5, 10, 30];
 const POLL_MS = 5000;
 
@@ -11,14 +22,7 @@ export function connectStream({page, onEvent, onStatus}) {
     }
   }
   async function fetchOnce() {
-    const res = await fetch(
-      `/owner/api/state?page=${encodeURIComponent(page)}`,
-      {cache: 'no-store'},
-    );
-    if (!res.ok) {
-      throw new Error(`state ${res.status}`);
-    }
-    const data = await res.json();
+    const data = await fetchState(page);
     for (const [section, env] of Object.entries(data.sections || {})) {
       onEvent({section, sig: env.sig, age_ms: env.age_ms, payload: env.payload});
     }
