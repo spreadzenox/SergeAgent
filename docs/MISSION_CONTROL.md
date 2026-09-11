@@ -320,3 +320,10 @@ actes interactifs M1 (approuver/rejeter avec modale de confirmation,
 + tout-approuver), et rafraîchissement ciblé via `fetchState('p3')`
 avec rechargement en place de la carte. 3 tests E2E interactifs
 (actes complets vérifiés en DOM et en DB). 605 tests verts.
+
+## Tickets P3 — extraction tickets_actes (lot 7f1 / refactor)
+
+Extraction de la logique d'actes (modales, requêtes POST `agirTicket`,
+`agirItem`, `toutApprouver`, `chargerCarte`, `renderCarte`) dans
+`tickets_actes.js` (270 lignes). `tickets.js` allégé à 135 lignes
+(charter < 500 et R1 < 300 par commit strictement respectés).
