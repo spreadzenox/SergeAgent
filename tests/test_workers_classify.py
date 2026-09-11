@@ -117,10 +117,12 @@ class ClassifyWorkerTests(unittest.TestCase):
         self.assertEqual(state, 'OPTED_OUT')
 
     def test_meeting_avec_creneau(self) -> None:
-        self._event('e3', 'Demain 14h en visio ?')
+        self._event('e3', 'Un créneau 14h en visio ?')
         slot = (datetime.now().astimezone() + timedelta(days=1)).replace(
             hour=14, minute=0, second=0, microsecond=0
         )
+        while slot.weekday() >= 5:  # week-end : pas de créneau (métier)
+            slot += timedelta(days=1)
         slot_iso = slot.isoformat()
         caller = _caller_for(
             json.dumps(
