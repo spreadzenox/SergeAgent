@@ -27,6 +27,12 @@ from serge.mc.proj_cerveau import (
     project_pensees,
     project_signaux,
 )
+from serge.mc.proj_economy import (
+    project_audit_reponses,
+    project_couts_cognitifs,
+    project_entonnoir,
+    project_transactions_subscriptions,
+)
 from serge.mc.proj_ilots import project_ilots, project_scheduler
 from serge.mc.proj_live import (
     project_feed,
@@ -65,6 +71,10 @@ SLOW_SECTIONS = frozenset(
         'policy_snapshots',
         'testing_froid',
         'trust_candidates',
+        'entonnoir',
+        'transactions_subscriptions',
+        'couts_cognitifs',
+        'audit_reponses',
     }
 )
 
@@ -179,6 +189,10 @@ PROJECTORS: dict[str, Callable[..., dict[str, Any]]] = {
     'policy_snapshots': project_policy_snapshots,
     'testing_froid': project_testing_froid,
     'trust_candidates': project_trust_candidates,
+    'entonnoir': project_entonnoir,
+    'transactions_subscriptions': project_transactions_subscriptions,
+    'couts_cognitifs': project_couts_cognitifs,
+    'audit_reponses': project_audit_reponses,
 }
 
 PAGE_SECTIONS: dict[str, list[str]] = {
@@ -193,5 +207,12 @@ PAGE_SECTIONS: dict[str, list[str]] = {
         'policy_snapshots',
         'testing_froid',
         'trust_candidates',
+    ],
+    'p6': [
+        'meta',
+        'entonnoir',
+        'transactions_subscriptions',
+        'couts_cognitifs',
+        'audit_reponses',
     ],
 }

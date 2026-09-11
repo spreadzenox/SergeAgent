@@ -437,3 +437,14 @@ Page P3 DONE (607 tests verts).
 - `project_audit_reponses` : traçabilité des réponses générées (E10) et
   dette technique builder (artifacts en attente E9).
 - 4 tests unitaires et goldens (632 tests verts).
+
+## Économie P6 — page economy (lot 10b)
+
+`economy.js` :
+- Entonnoir unifié evidence-strict (U1-U5 par venture et totalisateurs).
+- Tableau des transactions et abonnements avec calcul dynamique du MRR.
+- Panneau coûts cognitifs : tokens totaux, dépenses EUR, ratio `tokens/€ de revenu` (E6).
+- Audit des réponses automatiques (E10) et de la dette technique builder (E9).
+- Stream p6 câblé (`entonnoir`, `transactions_subscriptions`, `couts_cognitifs`, `audit_reponses`).
+- 2 tests E2E navigateur.
+- Page P6 Économie DONE (634 tests verts).

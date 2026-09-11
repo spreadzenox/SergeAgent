@@ -74,10 +74,13 @@ class McFrontTests(McBrowserCase):
         )
         self.assertEqual(page.evaluate('window.__MC.stats.page'), 'p5')
         links.nth(6).click()
+        page.locator('[data-section="entonnoir"]').wait_for(timeout=10000)
+        self.assertEqual(page.evaluate('window.__MC.stats.page'), 'p6')
+        links.nth(7).click()
         page.get_by_text('Cette page arrive dans un prochain lot.').wait_for(
             timeout=5000
         )
-        self.assertEqual(page.evaluate('window.__MC.stats.page'), 'p6')
+        self.assertEqual(page.evaluate('window.__MC.stats.page'), 'p7')
         links.nth(0).click()
         page.get_by_text('File vide').wait_for(timeout=5000)
         self.assertEqual(page.evaluate('window.__MC.stats.page'), 'p0')

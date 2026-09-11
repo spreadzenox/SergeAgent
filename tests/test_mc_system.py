@@ -144,7 +144,7 @@ class McSystemTests(McBrowserCase):
         )
         self.assertEqual(page.evaluate(compte), 1)
         liens = page.locator('.barre-laterale nav a')
-        liens.nth(6).click()  # Économie (page neutre, sans boucle)
+        liens.nth(7).click()  # Voix (page neutre, sans boucle)
         page.get_by_text('Cette page arrive dans un prochain lot.').wait_for(
             timeout=5000
         )
