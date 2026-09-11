@@ -15,6 +15,13 @@ from serge.mc.proj_campagnes import (
     project_email,
     project_population,
 )
+from serge.mc.proj_cerveau import (
+    project_clusters,
+    project_decisions,
+    project_matrice,
+    project_pensees,
+    project_signaux,
+)
 from serge.mc.proj_ilots import project_ilots, project_scheduler
 from serge.mc.proj_live import (
     project_feed,
@@ -26,7 +33,7 @@ from serge.mc.proj_live import (
 
 LIVE_TTL_S = 2.0
 SLOW_TTL_S = 30.0
-SLOW_SECTIONS = frozenset({'jauges', 'population'})
+SLOW_SECTIONS = frozenset({'jauges', 'population', 'matrice', 'clusters'})
 
 
 def canonical(payload: Any) -> str:
@@ -123,9 +130,15 @@ PROJECTORS: dict[str, Callable[..., dict[str, Any]]] = {
     'campagnes': project_campagnes,
     'population': project_population,
     'email': project_email,
+    'pensees': project_pensees,
+    'decisions': project_decisions,
+    'matrice': project_matrice,
+    'signaux': project_signaux,
+    'clusters': project_clusters,
 }
 
 PAGE_SECTIONS: dict[str, list[str]] = {
     'p0': ['meta', 'hero', 'urgents', 'file', 'feed', 'jauges'],
     'p1': ['meta', 'ilots', 'scheduler', 'campagnes', 'population', 'email'],
+    'p2': ['meta', 'pensees', 'decisions', 'matrice', 'signaux', 'clusters'],
 }

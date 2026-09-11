@@ -79,6 +79,12 @@ async function render() {
       return;
     }
     unmount = mount(main, store);
+  } else if (page === 'p2') {
+    const {mount} = await import('./pages/mind.js');
+    if (mine !== generation) {
+      return;
+    }
+    unmount = mount(main, store);
   } else {
     const node = template('page-bientot');
     node.querySelector('h2').textContent = LABELS[page];

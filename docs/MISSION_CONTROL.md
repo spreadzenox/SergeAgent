@@ -236,3 +236,12 @@ extraction `actions.py` (§8) au prochain endpoint.
 Écart §8 documenté : logique dans `registry.py` (B3 — jamais
 de métier dans `mc/`), pas de `mc/flags.py`. 10 tests.
 Page Cerveau = lot 6d.
+
+## Cerveau P2 — page lecture (lot 6d)
+
+Route p2 : `mind.js` (pensées, décisions, matrice 29 points,
+signaux, clusters + 3 titres). Matrice : table dense (tier,
+7 j, verdicts, dérive, état runtime/registre) + fail-soft
+registre. Stream p2 (`matrice`/`clusters` lentes 30 s).
+`project_clusters` enrichi (titres) ; `project_matrice` expose
+`tue_runtime`. Fiche point + kills UI = lot 6e. 3 tests E2E.

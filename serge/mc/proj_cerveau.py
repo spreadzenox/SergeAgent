@@ -13,7 +13,7 @@ from typing import Any
 
 from serge.mc.proj_outils import avant_iso
 from serge.policy import PolicyError
-from serge.registry import load_llm_points
+from serge.registry import load_llm_points, runtime_allows
 
 
 def project_signaux(
@@ -62,10 +62,20 @@ def project_clusters(
         now: Maintenant ISO UTC.
 
     Returns:
-        Dict {items: [{id, docs, dernier}]} (hors cluster exclus).
+        Dict {items: [{id, docs, dernier, titres}]} (hors cluster exclus,
+        3 derniers titres par cluster).
     """
     _ = policy
     depuis = avant_iso(now, hours=24)
+    titres: dict[str, list[str]] = {}
+    for row in conn.execute(
+        'SELECT cluster_id, title FROM listen_docs'
+        ' WHERE fetched_at>? ORDER BY fetched_at DESC',
+        (depuis,),
+    ).fetchall():
+        cid = str(row[0])
+        if cid and len(titres.setdefault(cid, [])) < 3:
+            titres[cid].append(str(row[1]))
     items = []
     for row in conn.execute(
         'SELECT cluster_id, COUNT(*) AS n, MAX(fetched_at)'
@@ -73,8 +83,14 @@ def project_clusters(
         " AND cluster_id<>'' GROUP BY cluster_id ORDER BY n DESC",
         (depuis,),
     ).fetchall():
+        cid = str(row[0])
         items.append(
-            {'id': str(row[0]), 'docs': int(row[1]), 'dernier': str(row[2])}
+            {
+                'id': cid,
+                'docs': int(row[1]),
+                'dernier': str(row[2]),
+                'titres': titres.get(cid, []),
+            }
         )
     return {'items': items}
 
@@ -191,7 +207,7 @@ def project_matrice(
     Returns:
         Dict {points: [{nom, tier, verdict, enabled, checklist,
         garde_fou, repli, enveloppe, appels_7j, tokens_7j,
-        latence_ms, verdicts, derive}]} (triés, fail-soft registre).
+        latence_ms, verdicts, derive, tue_runtime}]} (triés, fail-soft).
     """
     _ = policy
     try:
@@ -264,6 +280,7 @@ def project_matrice(
                 'latence_ms': round(total_lat / total_n) if total_n else 0,
                 'verdicts': verdicts.get(nom, {}),
                 'derive': derive,
+                'tue_runtime': not runtime_allows(conn, nom, now),
             }
         )
     return {'points': points}

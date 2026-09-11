@@ -451,6 +451,24 @@ button:disabled {
   font-weight: bold;
 }
 
+.matrice {
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  width: 100%;
+}
+
+.matrice th,
+.matrice td {
+  border-bottom: 1px solid var(--bordure);
+  padding: 0.3rem 0.5rem;
+  text-align: left;
+}
+
+.matrice td.alerte {
+  color: var(--rouge);
+  font-weight: bold;
+}
+
 kbd {
   background: var(--fond-2);
   border: 1px solid var(--bordure);

@@ -96,16 +96,16 @@ class ProjCerveauTests(unittest.TestCase):
             " signal, class, score, received_at) VALUES('b2','p2','email',"
             "'reply','bounce','',0,'2026-09-10T11:10:00+00:00')"
         )
-        for did, cluster, fetched in (
-            ('d1', 'cA', '2026-09-10T11:00:00+00:00'),
-            ('d2', 'cA', '2026-09-10T11:30:00+00:00'),
-            ('d3', 'cB', '2026-09-08T11:00:00+00:00'),
-            ('d4', '', '2026-09-10T11:00:00+00:00'),
+        for did, cluster, fetched, titre in (
+            ('d1', 'cA', '2026-09-10T11:00:00+00:00', 'Bruit prix'),
+            ('d2', 'cA', '2026-09-10T11:30:00+00:00', 'Bug synchro'),
+            ('d3', 'cB', '2026-09-08T11:00:00+00:00', 'Vieux sujet'),
+            ('d4', '', '2026-09-10T11:00:00+00:00', 'Orphelin'),
         ):
             conn.execute(
-                'INSERT INTO listen_docs(id, source, cluster_id, fetched_at)'
-                " VALUES(?,'rss',?,?)",
-                (did, cluster, fetched),
+                'INSERT INTO listen_docs(id, source, cluster_id, fetched_at,'
+                " title) VALUES(?,'rss',?,?,?)",
+                (did, cluster, fetched, titre),
             )
 
     def test_signaux_golden(self) -> None:
@@ -144,6 +144,7 @@ class ProjCerveauTests(unittest.TestCase):
                         'id': 'cA',
                         'docs': 2,
                         'dernier': '2026-09-10T11:30:00+00:00',
+                        'titres': ['Bug synchro', 'Bruit prix'],
                     }
                 ]
             },
@@ -277,6 +278,7 @@ class ProjMatriceTests(unittest.TestCase):
                         'latence_ms': 10,
                         'verdicts': {'ok': 3},
                         'derive': '',
+                        'tue_runtime': False,
                     },
                     {
                         'nom': 'score',
@@ -292,9 +294,23 @@ class ProjMatriceTests(unittest.TestCase):
                         'latence_ms': 10,
                         'verdicts': {'ok': 8},
                         'derive': 'volume',
+                        'tue_runtime': False,
                     },
                 ]
             },
+        )
+
+    def test_matrice_flag_runtime(self) -> None:
+        self.conn.execute(
+            'INSERT INTO runtime_flags(name, value, set_by, set_at,'
+            " expires_at, reason) VALUES('llm.score','kill','test',?,"
+            "'2026-09-11T12:00:00+00:00','x')",
+            (NOW,),
+        )
+        points = project_matrice(self.conn, POLICY, NOW)['points']
+        self.assertEqual(
+            [(p['nom'], p['tue_runtime']) for p in points],
+            [('qualify', False), ('score', True)],
         )
 
     def test_matrice_registre_absent(self) -> None:
