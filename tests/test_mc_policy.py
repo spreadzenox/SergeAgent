@@ -97,9 +97,11 @@ class McPolicyTests(McBrowserCase):
         from playwright.sync_api import expect
 
         page = self._page_policy()
+        btn = page.locator('button[data-btn="enregistrer-testing"]')
+        expect(btn).to_be_enabled()
         page.locator('input[data-testing="n_smoke_min"]').fill('42')
-        page.locator('button[data-btn="enregistrer-testing"]').click()
-        expect(page.locator('.toast-succes')).to_contain_text(
+        btn.click()
+        expect(page.locator('.toast-succes').last).to_contain_text(
             'Testing mis à jour.'
         )
 

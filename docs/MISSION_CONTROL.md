@@ -448,3 +448,13 @@ Page P3 DONE (607 tests verts).
 - Stream p6 câblé (`entonnoir`, `transactions_subscriptions`, `couts_cognitifs`, `audit_reponses`).
 - 2 tests E2E navigateur.
 - Page P6 Économie DONE (634 tests verts).
+
+## Voix P7 — infrastructure (lot 11a)
+
+- `signedlinks.py` (E7, §8.1) : génération (`signer_url`) et vérification
+  (`verifier_url`) de liens signés HMAC-SHA256 avec date d'expiration pour
+  l'accès sécurisé et temporaire aux flux audio et écrans sensibles.
+- `voice_retention.py` : purge RGPD et rétention (`purger_audio_voix`)
+  avec mise à jour des CDR, suppression physique des fichiers et événement
+  d'audit `voice.purged`.
+- 2 tests unitaires complets (+ robustesse test UI policy, 636 tests verts).
