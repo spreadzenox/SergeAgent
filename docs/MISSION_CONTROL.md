@@ -358,3 +358,16 @@ Page P3 DONE (607 tests verts).
   câblée sur `memory_search` (fail-soft, 401/400).
 - Actions mémoire (curation leçons, rollback SERGE.md) = lot 8b.
 - 4 tests (goldens C1-C5, consolidation, requested, search endpoint). 611 verts.
+
+## Mémoire P4 — actions et curation (lot 8b)
+
+- `lessons.py` : `update_lesson` (modifier l'énoncé) + `delete_lesson`
+  (suppression), audité et validé.
+- `POST /owner/api/memory/lesson` : curation de leçons (actions
+  `modifier` et `supprimer`, 401/400/404, audit `mc_act`).
+- `POST /owner/api/memory/rollback` : rollback SERGE.md à sa version
+  précédente via `rollback_summary` (401/404, audit `mc_act`).
+- Architecture : extraction des vues GET dans `api_views.py` (98 l.)
+  et typage des mixins via `TYPE_CHECKING Protocol` pour immunité MRO.
+  Tous les fichiers sous 480 lignes.
+- 3 tests unitaires et d'API (+24 assertions, 614 tests verts).

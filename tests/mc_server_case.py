@@ -62,8 +62,9 @@ class McServerCase(unittest.TestCase):
         self.thread.join(timeout=5)
 
     def _request(self, method, path, body=None, headers=None):
+        all_headers = {'Connection': 'close', **(headers or {})}
         req = urllib.request.Request(
-            self.base + path, data=body, headers=headers or {}, method=method
+            self.base + path, data=body, headers=all_headers, method=method
         )
         try:
             with self.opener.open(req, timeout=5) as resp:

@@ -17,10 +17,12 @@ from serge.memory.lessons import (  # noqa: E402
     add_pitfall,
     add_playbook,
     confirm_lesson,
+    delete_lesson,
     expire_lessons,
     infirm_lesson,
     set_lesson_status,
     top_lessons,
+    update_lesson,
 )
 
 
@@ -112,6 +114,28 @@ class LessonsTests(unittest.TestCase):
             0
         ]
         self.assertEqual(count, 1)
+
+    def test_curation_update_delete(self) -> None:
+        lid = add_lesson(self.conn, 'Leçon initiale', confidence=0.6)
+        update_lesson(self.conn, lid, 'Leçon corrigée')
+        row = self.conn.execute(
+            'SELECT statement FROM lessons WHERE id=?', (lid,)
+        ).fetchone()
+        self.assertEqual(row[0], 'Leçon corrigée')
+
+        with self.assertRaises(ValueError):
+            update_lesson(self.conn, lid, '   ')
+        with self.assertRaises(ValueError):
+            update_lesson(self.conn, 'les_inconnue', 'Texte')
+
+        delete_lesson(self.conn, lid)
+        deleted = self.conn.execute(
+            'SELECT 1 FROM lessons WHERE id=?', (lid,)
+        ).fetchone()
+        self.assertIsNone(deleted)
+
+        with self.assertRaises(ValueError):
+            delete_lesson(self.conn, lid)
 
 
 if __name__ == '__main__':

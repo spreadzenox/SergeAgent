@@ -17,6 +17,7 @@ from sqlite3 import Connection
 
 from serge.db.store import open_db
 from serge.mc.actions import MAX_FORM_BYTES, ActionsMixin
+from serge.mc.api_views import ApiViewsMixin
 from serge.mc.auth import (
     COOKIE_NAME,
     SESSION_TTL_S,
@@ -59,7 +60,7 @@ class McConfig:
     policy_dir: Path | None = None
 
 
-class McHandler(ActionsMixin, BaseHTTPRequestHandler):
+class McHandler(ApiViewsMixin, ActionsMixin, BaseHTTPRequestHandler):
     """Routes MC (config via create_server, jamais de global mutable)."""
 
     app_config: McConfig
@@ -89,6 +90,8 @@ class McHandler(ActionsMixin, BaseHTTPRequestHandler):
         self.send_response(code)
         self.send_header('Content-Type', content_type)
         self.send_header('Content-Length', str(len(body)))
+        if self.close_connection:
+            self.send_header('Connection', 'close')
         self.end_headers()
         self.wfile.write(body)
 
@@ -106,6 +109,9 @@ class McHandler(ActionsMixin, BaseHTTPRequestHandler):
             json.dumps(obj, ensure_ascii=False).encode('utf-8'),
             'application/json',
         )
+
+    def _refus(self, http: int, erreur: str, code: str, aide: str) -> None:
+        self._send_json(http, {'erreur': erreur, 'code': code, 'aide': aide})
 
     def _query(self) -> dict[str, str]:
         parsed = urllib.parse.parse_qs(
@@ -185,6 +191,7 @@ class McHandler(ActionsMixin, BaseHTTPRequestHandler):
             if not self._is_owner():
                 self.send_response(302)
                 self.send_header('Location', '/owner/login')
+                self.send_header('Content-Length', '0')
                 self.end_headers()
                 return
             policy = self._policy()
@@ -226,6 +233,7 @@ class McHandler(ActionsMixin, BaseHTTPRequestHandler):
     def _require_owner(self) -> bool:
         if self._is_owner():
             return True
+        self.close_connection = True
         self._send_json(
             401,
             {
@@ -295,7 +303,7 @@ class McHandler(ActionsMixin, BaseHTTPRequestHandler):
             return
 
     def do_POST(self) -> None:  # noqa: N802 (nom imposé http.server)
-        """Route POST (login, logout)."""
+        """Route POST (login, logout, mutations)."""
         path = urllib.parse.unquote(
             urllib.parse.urlsplit(self.path).path or '/'
         )
@@ -319,6 +327,12 @@ class McHandler(ActionsMixin, BaseHTTPRequestHandler):
             return
         if path == '/owner/api/ticket/discuter':
             self._api_ticket_discuter()
+            return
+        if path == '/owner/api/memory/lesson':
+            self._api_memory_lesson()
+            return
+        if path == '/owner/api/memory/rollback':
+            self._api_memory_rollback()
             return
         self._error(404)
 
@@ -363,6 +377,7 @@ class McHandler(ActionsMixin, BaseHTTPRequestHandler):
             session, _ = create_session(conn)
         self.send_response(302)
         self.send_header('Location', '/owner')
+        self.send_header('Content-Length', '0')
         self.send_header(
             'Set-Cookie',
             f'{COOKIE_NAME}={session}; HttpOnly; Path=/owner;'
@@ -376,6 +391,7 @@ class McHandler(ActionsMixin, BaseHTTPRequestHandler):
             revoke_session(conn, token)
         self.send_response(302)
         self.send_header('Location', '/owner/login')
+        self.send_header('Content-Length', '0')
         self.send_header(
             'Set-Cookie',
             f'{COOKIE_NAME}=; HttpOnly; Path=/owner; SameSite=Lax; Max-Age=0',

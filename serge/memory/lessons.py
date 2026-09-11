@@ -90,6 +90,39 @@ def set_lesson_status(
         raise ValueError(f'leçon inconnue : {lesson_id}')
 
 
+def update_lesson(
+    conn: sqlite3.Connection, lesson_id: str, statement: str
+) -> None:
+    """Modifie l'énoncé d'une leçon (curation owner).
+
+    Raises:
+        ValueError: Énoncé vide ou leçon inconnue.
+    """
+    clean = statement.strip()
+    if not clean:
+        raise ValueError('énoncé requis')
+    cursor = conn.execute(
+        'UPDATE lessons SET statement=?, updated_at=? WHERE id=?',
+        (clean, utcnow(), lesson_id),
+    )
+    if not cursor.rowcount:
+        raise ValueError(f'leçon inconnue : {lesson_id}')
+
+
+def delete_lesson(conn: sqlite3.Connection, lesson_id: str) -> None:
+    """Supprime une leçon (curation owner).
+
+    Raises:
+        ValueError: Leçon inconnue.
+    """
+    cursor = conn.execute(
+        'DELETE FROM lessons WHERE id=?',
+        (lesson_id,),
+    )
+    if not cursor.rowcount:
+        raise ValueError(f'leçon inconnue : {lesson_id}')
+
+
 def confirm_lesson(conn: sqlite3.Connection, lesson_id: str) -> float:
     """Confirme (+1, confiance → 1). Retourne la confiance.
 
