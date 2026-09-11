@@ -305,6 +305,12 @@ class McHandler(ActionsMixin, BaseHTTPRequestHandler):
         if path == '/owner/api/ticket/acte':
             self._api_ticket_acte()
             return
+        if path == '/owner/api/ticket/item':
+            self._api_ticket_item()
+            return
+        if path == '/owner/api/ticket/discuter':
+            self._api_ticket_discuter()
+            return
         self._error(404)
 
     def _form(self) -> dict[str, str] | None:

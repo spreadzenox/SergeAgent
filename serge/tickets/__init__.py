@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from serge.tickets.items import add_item, get_ticket, set_item
+from serge.tickets.items import add_item, get_ticket, set_item, tout_approuver
 from serge.tickets.lifecycle import (
     cancel,
     close,
@@ -32,4 +32,5 @@ __all__ = [
     'publish',
     'reopen',
     'set_item',
+    'tout_approuver',
 ]

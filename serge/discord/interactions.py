@@ -12,7 +12,7 @@ import sqlite3
 from collections.abc import Mapping
 from typing import Any
 
-from serge.tickets.items import set_item
+from serge.tickets.items import set_item, tout_approuver
 from serge.tickets.lifecycle import decide, discuss
 from serge.tickets.shared import TicketError, already_applied, record_event
 
@@ -78,18 +78,6 @@ def _stamp(
     )
 
 
-def _tout_approuver(connection: sqlite3.Connection, ticket_id: str) -> int:
-    from serge.tickets import get_ticket
-
-    ticket = get_ticket(connection, ticket_id)
-    done = 0
-    for item in ticket.get('items') or []:
-        if str(item.get('state') or '') == 'open':
-            set_item(connection, str(item['id']), 'keep')
-            done += 1
-    return done
-
-
 def route_interaction(
     connection: sqlite3.Connection,
     interaction: Mapping[str, Any],
@@ -122,7 +110,7 @@ def route_interaction(
     try:
         if action in APPROVE:
             if action == 'tout_approuver':
-                _tout_approuver(connection, ticket_id)
+                tout_approuver(connection, ticket_id)
             decide(connection, ticket_id, 'APPROVED')
         elif action in REJECT:
             decide(connection, ticket_id, 'REJECTED')

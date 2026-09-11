@@ -266,3 +266,15 @@ commune). M1 : `POST /owner/api/ticket/acte`
 409 FR, stamp `mc.*` + audit `mc_act`). Socle tests :
 `_auth_cookie` + `_api_post` (`test_mc_kill` migre). 4 tests
 (dont parité E1 : même état Discord ≡ MC + garde 409 croisée).
+
+## Tickets P3 — M2/M3 (lot 7b)
+
+`tout_approuver` → `tickets/items.py` (E14) ; `POST
+ticket/item` (garder/modifier/jeter + valeur, tout-approuver,
+`mc.item`, 404/400/401) et `POST ticket/discuter` (DISCUSSING
++ `mc.fil`, 409 si déjà en discussion). `_refus_ticket`
+partagé (M1 migre). Parité Discord exacte : pas de vérif
+d'état ticket pour M2 (Discord n'en fait pas) ; `set_item`
+écrase le payload dans les 2 canaux (comportement partagé).
+M3 : pas de POST Discord (MC ne poste jamais — le mirror
+reflète les états ; décision actée). 7 tests (+ parité item).

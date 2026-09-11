@@ -72,3 +72,22 @@ def get_ticket(
         )
     ]
     return ticket
+
+
+def tout_approuver(connection: sqlite3.Connection, ticket_id: str) -> int:
+    """Passe tous les items 'open' en 'keep' (M2, tool partagé).
+
+    Args:
+        connection: Connexion canon (commit par l'appelant).
+        ticket_id: Ticket visé.
+
+    Returns:
+        Nombre d'items basculés.
+    """
+    ticket = get_ticket(connection, ticket_id)
+    done = 0
+    for item in ticket.get('items') or []:
+        if str(item.get('state') or '') == 'open':
+            set_item(connection, str(item['id']), 'keep')
+            done += 1
+    return done
