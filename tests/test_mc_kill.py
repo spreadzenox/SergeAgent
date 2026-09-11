@@ -203,23 +203,9 @@ class KillBackendTests(unittest.TestCase):
 class KillEndpointTests(McServerCase):
     POINT = 'qualify_prospect'
 
-    def _poste(self, chemin, charge, cookie=None):
-        headers = {'Content-Type': 'application/json'}
-        if cookie:
-            headers['Cookie'] = cookie
-        corps = charge.encode('utf-8') if isinstance(charge, str) else None
-        if corps is None:
-            corps = json.dumps(charge).encode('utf-8')
-        return self._request('POST', chemin, corps, headers)
-
-    def _auth(self):
-        status, headers, _ = self._login()
-        self.assertEqual(status, 302)
-        return self._cookie(headers)
-
     def test_kill_ok(self) -> None:
-        cookie = self._auth()
-        status, _, corps = self._poste(
+        cookie = self._auth_cookie()
+        status, _, corps = self._api_post(
             '/owner/api/kill',
             {
                 'point': self.POINT,
@@ -244,7 +230,7 @@ class KillEndpointTests(McServerCase):
         self.assertEqual(flag[0], 'kill')
 
     def test_kill_refus(self) -> None:
-        cookie = self._auth()
+        cookie = self._auth_cookie()
         cas = [
             ({'point': 'nope', 'raison': 'x'}, 404),
             ({'point': self.POINT, 'raison': ''}, 400),
@@ -253,22 +239,24 @@ class KillEndpointTests(McServerCase):
         ]
         for charge, code in cas:
             with self.subTest(charge=charge):
-                status, _, _ = self._poste('/owner/api/kill', charge, cookie)
+                status, _, _ = self._api_post(
+                    '/owner/api/kill', charge, cookie
+                )
                 self.assertEqual(status, code)
-        status, _, _ = self._poste(
+        status, _, _ = self._api_post(
             '/owner/api/kill', {'point': self.POINT, 'raison': 'x'}
         )
         self.assertEqual(status, 401)
 
     def test_kill_idempotent_endpoint(self) -> None:
-        cookie = self._auth()
+        cookie = self._auth_cookie()
         charge = {
             'point': self.POINT,
             'raison': 'x',
             'decision_id': 'e2',
         }
         for _ in range(2):
-            status, _, _ = self._poste('/owner/api/kill', charge, cookie)
+            status, _, _ = self._api_post('/owner/api/kill', charge, cookie)
             self.assertEqual(status, 200)
         conn = sqlite3.connect(self.db_path)
         try:
@@ -280,19 +268,19 @@ class KillEndpointTests(McServerCase):
         self.assertEqual(total, 1)
 
     def test_unkill_endpoint(self) -> None:
-        cookie = self._auth()
-        status, _, _ = self._poste(
+        cookie = self._auth_cookie()
+        status, _, _ = self._api_post(
             '/owner/api/kill',
             {'point': self.POINT, 'raison': 'x'},
             cookie,
         )
         self.assertEqual(status, 200)
-        status, _, corps = self._poste(
+        status, _, corps = self._api_post(
             '/owner/api/unkill', {'point': self.POINT}, cookie
         )
         self.assertEqual(status, 200)
         self.assertEqual(json.loads(corps.decode('utf-8'))['retire'], 'true')
-        status, _, _ = self._poste(
+        status, _, _ = self._api_post(
             '/owner/api/unkill', {'point': self.POINT}, cookie
         )
         self.assertEqual(status, 404)

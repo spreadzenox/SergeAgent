@@ -15,11 +15,12 @@ from serge.tickets.lifecycle import (
     publish,
     reopen,
 )
-from serge.tickets.shared import TicketError
+from serge.tickets.shared import TicketError, already_applied
 
 __all__ = [
     'TicketError',
     'add_item',
+    'already_applied',
     'cancel',
     'close',
     'create_ticket',

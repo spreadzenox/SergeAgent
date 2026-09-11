@@ -254,3 +254,15 @@ fiche (registre + usage 7 j + checklist) ; boutons Tuer
 + toast FR + refresh ciblé (`/owner/api/state?p2`, drawer
 rouvert frais). Bouton désactivé pendant le flow. 2 E2E
 (kill complet + unkill, DB vérifiée). P2 DONE.
+
+## Tickets P3 — actions + M1 (lot 7a)
+
+`actions.py` : mixin `ActionsMixin` (handlers API extraits de
+`server.py` : 500 → 393 ; `MAX_FORM_BYTES` suit ; `Protocol`
+ty-safe). `already_applied` déménage dans `tickets/shared.py`
+(E14 — tool partagé Discord ↔ MC, table `ticket_events`
+commune). M1 : `POST /owner/api/ticket/acte`
+(approuver/rejeter/editer + note + `decision_id`, 401/400/404/
+409 FR, stamp `mc.*` + audit `mc_act`). Socle tests :
+`_auth_cookie` + `_api_post` (`test_mc_kill` migre). 4 tests
+(dont parité E1 : même état Discord ≡ MC + garde 409 croisée).

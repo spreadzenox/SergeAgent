@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import sys
 import tempfile
 import threading
@@ -86,6 +87,21 @@ class McServerCase(unittest.TestCase):
             body,
             {'Content-Type': 'application/x-www-form-urlencoded'},
         )
+
+    def _auth_cookie(self) -> str:
+        status, headers, _ = self._login()
+        self.assertEqual(status, 302)
+        return self._cookie(headers)
+
+    def _api_post(self, chemin, charge, cookie=None):
+        headers = {'Content-Type': 'application/json'}
+        if cookie:
+            headers['Cookie'] = cookie
+        if isinstance(charge, str):
+            corps = charge.encode('utf-8')
+        else:
+            corps = json.dumps(charge).encode('utf-8')
+        return self._request('POST', chemin, corps, headers)
 
 
 def browser_ok() -> bool:

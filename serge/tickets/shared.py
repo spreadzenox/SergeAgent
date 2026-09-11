@@ -51,3 +51,24 @@ def fetch_ticket(
     if not row:
         raise TicketError(f'ticket inconnu : {ticket_id}')
     return row
+
+
+def already_applied(
+    connection: sqlite3.Connection, ticket_id: str, decision_id: str
+) -> bool:
+    """Dédup double-clic (decision_id partagé Discord ↔ MC, ticket_events).
+
+    Args:
+        connection: Connexion canon (lecture).
+        ticket_id: Ticket visé.
+        decision_id: Id d'acte (interaction Discord ou mc-…).
+
+    Returns:
+        True si cet acte a déjà été appliqué.
+    """
+    row = connection.execute(
+        'SELECT 1 FROM ticket_events WHERE ticket_id=?'
+        " AND json_extract(payload_json,'$.decision_id')=?",
+        (ticket_id, decision_id),
+    ).fetchone()
+    return row is not None

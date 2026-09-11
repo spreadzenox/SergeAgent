@@ -14,7 +14,7 @@ from typing import Any
 
 from serge.tickets.items import set_item
 from serge.tickets.lifecycle import decide, discuss
-from serge.tickets.shared import TicketError, record_event
+from serge.tickets.shared import TicketError, already_applied, record_event
 
 APPROVE = frozenset(
     {
@@ -60,27 +60,6 @@ def actor_id(interaction: Mapping[str, Any]) -> str:
     member = interaction.get('member') or {}
     user = member.get('user') or interaction.get('user') or {}
     return str(user.get('id') or '')
-
-
-def already_applied(
-    connection: sqlite3.Connection, ticket_id: str, decision_id: str
-) -> bool:
-    """Dédup double-clic (decision_id = interaction id, ticket_events).
-
-    Args:
-        connection: Connexion canon (lecture).
-        ticket_id: Ticket visé.
-        decision_id: Id d'interaction Discord.
-
-    Returns:
-        True si cet acte a déjà été appliqué.
-    """
-    row = connection.execute(
-        'SELECT 1 FROM ticket_events WHERE ticket_id=?'
-        " AND json_extract(payload_json,'$.decision_id')=?",
-        (ticket_id, decision_id),
-    ).fetchone()
-    return row is not None
 
 
 def _stamp(
