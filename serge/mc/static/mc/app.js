@@ -115,6 +115,12 @@ async function render() {
       return;
     }
     unmount = mount(main, store);
+  } else if (page === 'p8') {
+    const {mount} = await import('./pages/health.js');
+    if (mine !== generation) {
+      return;
+    }
+    unmount = mount(main, store);
   } else {
     const node = template('page-bientot');
     node.querySelector('h2').textContent = LABELS[page];

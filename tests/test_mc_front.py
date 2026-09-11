@@ -80,8 +80,8 @@ class McFrontTests(McBrowserCase):
         page.locator('[data-section="bridge_statut"]').wait_for(timeout=10000)
         self.assertEqual(page.evaluate('window.__MC.stats.page'), 'p7')
         links.nth(8).click()
-        page.get_by_text('Cette page arrive dans un prochain lot.').wait_for(
-            timeout=5000
+        page.locator('[data-section="charte_metriques"]').wait_for(
+            timeout=10000
         )
         self.assertEqual(page.evaluate('window.__MC.stats.page'), 'p8')
         links.nth(0).click()

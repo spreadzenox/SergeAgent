@@ -93,8 +93,8 @@ class McHudTests(McBrowserCase):
         self.assertEqual(page.evaluate(compte), 1)
         liens = page.locator('.barre-laterale nav a')
         liens.nth(8).click()  # Santé (page neutre, sans boucle)
-        page.get_by_text('Cette page arrive dans un prochain lot.').wait_for(
-            timeout=5000
+        page.locator('[data-section="charte_metriques"]').wait_for(
+            timeout=10000
         )
         self.assertEqual(page.evaluate(compte), 0)
         liens.nth(0).click()

@@ -33,6 +33,12 @@ from serge.mc.proj_economy import (
     project_entonnoir,
     project_transactions_subscriptions,
 )
+from serge.mc.proj_health import (
+    project_audit_trail,
+    project_charte_metriques,
+    project_units_systemd,
+    project_versions_drift,
+)
 from serge.mc.proj_ilots import project_ilots, project_scheduler
 from serge.mc.proj_live import (
     project_feed,
@@ -83,6 +89,10 @@ SLOW_SECTIONS = frozenset(
         'cdr_appels',
         'qualite_voix',
         'bridge_statut',
+        'charte_metriques',
+        'audit_trail',
+        'versions_drift',
+        'units_systemd',
     }
 )
 
@@ -204,6 +214,10 @@ PROJECTORS: dict[str, Callable[..., dict[str, Any]]] = {
     'cdr_appels': project_cdr_appels,
     'qualite_voix': project_qualite_voix,
     'bridge_statut': project_bridge_statut,
+    'charte_metriques': project_charte_metriques,
+    'audit_trail': project_audit_trail,
+    'versions_drift': project_versions_drift,
+    'units_systemd': project_units_systemd,
 }
 
 PAGE_SECTIONS: dict[str, list[str]] = {
@@ -231,5 +245,12 @@ PAGE_SECTIONS: dict[str, list[str]] = {
         'cdr_appels',
         'qualite_voix',
         'bridge_statut',
+    ],
+    'p8': [
+        'meta',
+        'charte_metriques',
+        'audit_trail',
+        'versions_drift',
+        'units_systemd',
     ],
 }

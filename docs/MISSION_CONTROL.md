@@ -501,3 +501,16 @@ Page P3 DONE (607 tests verts).
 - `project_units_systemd` : sonde lente des services systemd (`is-active`,
   fail-soft, timeout court).
 - 4 tests unitaires et goldens (646 tests verts).
+
+## Santé & Audit P8 — page health (lot 12b)
+
+`health.js` :
+- Métriques charte E6 (LOC total, nom et taille du plus gros fichier,
+  requested en attente, coût cognitif par euro).
+- Liste des units systemd avec coloration de statut (vert, orange, gris).
+- Dérive versions : version MC, version schéma SQLite (alerte rouge si
+  divergent), version du binaire CLI gog.
+- Piste d'audit (audit trail) des 50 derniers actes owner/MC.
+- Stream p8 câblé (`charte_metriques`, `units_systemd`, `versions_drift`, `audit_trail`).
+- 2 tests E2E navigateur.
+- Page P8 Santé & Audit DONE (648 tests verts).
