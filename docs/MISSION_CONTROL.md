@@ -289,3 +289,13 @@ urgent miroir P0, boutons registre) + carte §17 (champs,
 boutons, `items_actes`, items, historique, versions, strip
 IDs). Endpoint `GET ticket/carte` (401/400/404). 5 tests.
 Analyse (diffs/mesures/digest) = lot 7d.
+
+## Tickets P3 — analyse (lot 7d)
+
+`proj_analyse.py` : diffs (POLICY + versions EDITED + items
+edit avant/après), MEMORY paginé serveur (E12 — page, clamp
+100, hors bornes = vide), métriques E5+§12 (volumes, backlog,
+approbation globale/par type, rejets, auto, bypass = expirés
+avec défaut, GUICHET, réponse médiane/délais draft→décidé),
+digest (config pure — prochain calculé front, C2). Endpoint
+`GET memory/items` (401/400 + clamp). 5 tests. Page = lot 7e.
