@@ -514,3 +514,16 @@ Page P3 DONE (607 tests verts).
 - Stream p8 câblé (`charte_metriques`, `units_systemd`, `versions_drift`, `audit_trail`).
 - 2 tests E2E navigateur.
 - Page P8 Santé & Audit DONE (648 tests verts).
+
+## Surface publique P9 — fail-closed et assertions (lot 13a)
+
+`proj_public.py` (E13, §2.8, §6 P9) :
+- `assert_public_safe` : vérification récursive anti-fuite (détection de
+  patterns de secrets, tokens `Bearer`, clés d'API, clés privées,
+  emails/téléphones PII, identifiants opaques `t_`, `w_`, `e_`, `c_`).
+- `project_public_statut` : projection publique ultra-minimaliste
+  (statut opérationnel / travail en cours) soumise à `assert_public_safe`,
+  avec repli fail-closed absolu en cas d'exception.
+- Serveur HTTP : routes publiques `/` (template `public.html`),
+  `/robots.txt` (interdisant `/owner/`) et `/api/state` accessible sans auth.
+- 5 tests unitaires et d'API (tests adversariaux secrets & PII, 653 tests verts).

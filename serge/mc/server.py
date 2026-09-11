@@ -46,7 +46,7 @@ SECURITY_HEADERS = {
     'X-Content-Type-Options': 'nosniff',
     'Referrer-Policy': 'no-referrer',
 }
-REQUIRED_TEMPLATES = ('login.html', 'shell.html', 'error.html')
+REQUIRED_TEMPLATES = ('login.html', 'shell.html', 'error.html', 'public.html')
 
 
 @dataclass(frozen=True)
@@ -183,6 +183,9 @@ class McHandler(
                 200, b'User-agent: *\nDisallow: /owner/\n', 'text/plain'
             )
             return
+        if path == '/':
+            self._serve_public()
+            return
         if path == '/favicon.ico':
             self.send_response(204)
             self.end_headers()
@@ -213,6 +216,9 @@ class McHandler(
         if path == '/owner/api/state':
             self._api_state()
             return
+        if path == '/api/state':
+            self._api_public_state()
+            return
         if path == '/owner/api/stream':
             self._api_stream()
             return
@@ -235,6 +241,23 @@ class McHandler(
             self._serve_static(path[len('/static/') :])
             return
         self._error(404)
+
+    def _serve_public(self) -> None:
+        from serge.mc.proj_public import project_public_statut
+
+        with self._db() as conn:
+            data = project_public_statut(conn, {}, '')
+        html = self._template('public.html').replace(
+            '<!--STATUT-->', data.get('message', 'Systèmes opérationnels.')
+        )
+        self._send_html(200, html)
+
+    def _api_public_state(self) -> None:
+        from serge.mc.proj_public import project_public_statut
+
+        with self._db() as conn:
+            data = project_public_statut(conn, {}, '')
+        self._send_json(200, data)
 
     def _require_owner(self) -> bool:
         if self._is_owner():
