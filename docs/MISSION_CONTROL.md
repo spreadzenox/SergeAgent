@@ -552,3 +552,15 @@ Page P3 DONE (607 tests verts).
   Entrée pour exécuter, Échap ou clic fond pour fermer.
 - 1 test E2E navigateur complet (ouverture, filtrage, exécution, fermeture).
 - 655 tests verts.
+
+## Design System Polish et QA Visuelle (lot 14b / FINAL)
+
+- Finitions CSS et Design System :
+  - Transitions fluides (150ms) sur les liens, boutons, formulaires et panneaux.
+  - Hover lumineux subtil sur les panneaux en verre dépoli (`rgb(53 224 255 / 35%)`).
+  - Media queries adaptatives pour mobile (< 768px) : sidebar réorganisée horizontalement,
+    layout système empilé verticalement, pleine largeur pour les modales et la palette Ctrl+K.
+- QA visuelle et non-régression responsive testée en conditions réelles avec Playwright
+  (`desktop 1280x800` vs `mobile 375x667`).
+- 656 tests automatisés au vert.
+Mission Control V2 entièrement implémenté de P0 à P9 (Lots 0 à 14).

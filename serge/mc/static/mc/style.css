@@ -618,3 +618,56 @@ table.tableau th {
 .cmdk-hint {
   margin-left: auto;
 }
+
+/* Animations et transitions globales */
+button,
+a,
+input,
+select {
+  transition: all var(--transition);
+}
+
+.panneau {
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.panneau:hover {
+  border-color: rgb(53 224 255 / 35%);
+}
+
+/* Responsive mobile-first adjustments */
+@media (max-width: 768px) {
+  .coquille {
+    grid-template-columns: 1fr;
+  }
+
+  .barre-laterale {
+    border-bottom: 1px solid var(--bordure);
+    border-right: none;
+    overflow-x: auto;
+    padding: 0.5rem;
+  }
+
+  .barre-laterale nav {
+    flex-direction: row;
+    gap: 0.5rem;
+  }
+
+  .contenu {
+    padding: 1rem 0.75rem 3rem;
+  }
+
+  .system-layout {
+    flex-direction: column;
+  }
+
+  .panneau-ilot {
+    flex: 1 1 auto;
+    width: 100%;
+  }
+
+  .cmdk-boite {
+    margin: 0 1rem;
+    max-width: 100%;
+  }
+}
