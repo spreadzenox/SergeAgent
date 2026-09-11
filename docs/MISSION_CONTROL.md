@@ -458,3 +458,16 @@ Page P3 DONE (607 tests verts).
   avec mise à jour des CDR, suppression physique des fichiers et événement
   d'audit `voice.purged`.
 - 2 tests unitaires complets (+ robustesse test UI policy, 636 tests verts).
+
+## Voix P7 — projecteurs (lot 11b)
+
+`proj_voice.py` :
+- `project_cdr_appels` : lecture des 30 derniers CDR d'appels depuis
+  le ledger voix `state/voice/voice.db` (fail-soft si inexistant),
+  avec injection d'une URL d'audio signée HMAC via `signer_url`
+  lorsqu'un enregistrement `.wav` est présent.
+- `project_qualite_voix` : récupération des 20 derniers scores d'appels
+  via `recent_scores`, calcul de la note moyenne et détection des alertes qualité.
+- `project_bridge_statut` : lecture de l'état du bridge voix,
+  du trunk Asterisk et de l'activation du fichier `KILL_SWITCH`.
+- 3 tests unitaires et goldens (639 tests verts).
