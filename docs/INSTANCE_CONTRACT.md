@@ -281,3 +281,10 @@ rsync du working tree VPS. Canon = SQLite créé vide. Un dump de prod
 n’entre que sur ordre explicite, hors kit par défaut.
 
 L’exemple tracké est `example-sandbox` (vierge), pas `julien-vps`.
+
+## Mission Control
+
+Service HTTP unifié (`serge-public-dashboard.service` / port 8790) :
+- Surface publique `/` : statut fail-closed sans aucune PII ou secret.
+- Surface propriétaire `/owner` : dashboard complet derrière authentification token ou cookie 12 h.
+- Spécification : [`MISSION_CONTROL.md`](MISSION_CONTROL.md).

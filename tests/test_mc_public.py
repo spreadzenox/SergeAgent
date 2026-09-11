@@ -18,7 +18,7 @@ from serge.mc.proj_public import (  # noqa: E402
     assert_public_safe,
     project_public_statut,
 )
-from tests.mc_server_case import McServerCase  # noqa: E402
+from tests.mc_server_case import McBrowserCase, McServerCase  # noqa: E402
 
 
 class PublicSafetyTests(unittest.TestCase):
@@ -101,6 +101,25 @@ class PublicEndpointTests(McServerCase):
             self.assertNotIn('+33699887766', str(payload))
         finally:
             conn.close()
+
+
+class McPublicBrowserTests(McBrowserCase):
+    def test_navigateur_public_et_lien_owner(self) -> None:
+        from playwright.sync_api import expect
+
+        ctx = self._browser.new_context()
+        self.addCleanup(ctx.close)
+        page = ctx.new_page()
+        self._watch_errors(page)
+        page.goto(f'{self.base}/')
+        expect(page.locator('h1')).to_have_text('Serge')
+        expect(page.locator('#public-message')).to_contain_text(
+            'opérationnels'
+        )
+        lien_owner = page.locator('a[href="/owner/login"]')
+        expect(lien_owner).to_be_visible()
+        lien_owner.click()
+        expect(page.locator('h1')).to_have_text('Serge — Mission Control')
 
 
 if __name__ == '__main__':

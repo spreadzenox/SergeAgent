@@ -39,10 +39,7 @@ STATIC_TYPES = {
     '.ico': 'image/x-icon',
 }
 SECURITY_HEADERS = {
-    'Content-Security-Policy': (
-        "default-src 'self'; base-uri 'self';"
-        " frame-ancestors 'none'; form-action 'self'"
-    ),
+    'Content-Security-Policy': "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'",
     'X-Content-Type-Options': 'nosniff',
     'Referrer-Policy': 'no-referrer',
 }
@@ -466,3 +463,33 @@ def create_server(
     server = ThreadingHTTPServer((host, port), McHandler)
     server.daemon_threads = True
     return server
+
+
+def main() -> None:
+    import argparse
+    import os
+
+    from serge.paths import system_root
+    from serge.secrets import read_secret_file
+
+    p = argparse.ArgumentParser(description='Serge Mission Control HTTP')
+    p.add_argument('--host', default='127.0.0.1')
+    p.add_argument('--port', type=int, default=8790)
+    args = p.parse_args()
+    root = system_root()
+    t = read_secret_file(root / 'secrets/owner_dashboard_token') or os.environ.get(
+        'SERGE_MC_TOKEN', 'token-inconnu'
+    )
+    d = Path(__file__).resolve().parent
+    cfg = McConfig(
+        root / 'state/canon.db',
+        t,
+        d / 'static/mc',
+        d / 'templates',
+        RateLimiter(),
+    )
+    create_server(cfg, host=args.host, port=args.port).serve_forever()
+
+
+if __name__ == '__main__':
+    main()

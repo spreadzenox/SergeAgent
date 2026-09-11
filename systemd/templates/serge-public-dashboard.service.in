@@ -1,7 +1,7 @@
 [Unit]
-Description=Serge public mission-control dashboard
+Description=Serge Mission Control HTTP service (public & owner)
 After=network.target
-ConditionPathExists=__SYSTEM_ROOT__/orchestrator/public_dashboard.py
+ConditionPathExists=__SYSTEM_ROOT__/serge/mc/server.py
 
 [Service]
 Type=simple
@@ -14,9 +14,9 @@ Environment=SERGE_HOME=__HOME__
 Environment=SERGE_SYSTEM_ROOT=__SYSTEM_ROOT__
 Environment=SERGE_MANDATE_PATH=__POLICY__
 Environment=SERGE_POLICY_PATH=__POLICY__
-Environment=SERGE_PUBLIC_DASHBOARD_HOST=127.0.0.1
-Environment=SERGE_PUBLIC_DASHBOARD_PORT=8790
-ExecStart=__PYTHON__ __SYSTEM_ROOT__/orchestrator/public_dashboard.py --host 127.0.0.1 --port 8790
+Environment=SERGE_MC_HOST=127.0.0.1
+Environment=SERGE_MC_PORT=8790
+ExecStart=__PYTHON__ -m serge.mc.server --host 127.0.0.1 --port 8790
 Restart=always
 RestartSec=3
 NoNewPrivileges=yes

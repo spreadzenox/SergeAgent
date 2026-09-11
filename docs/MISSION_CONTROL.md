@@ -527,3 +527,14 @@ Page P3 DONE (607 tests verts).
 - Serveur HTTP : routes publiques `/` (template `public.html`),
   `/robots.txt` (interdisant `/owner/`) et `/api/state` accessible sans auth.
 - 5 tests unitaires et d'API (tests adversariaux secrets & PII, 653 tests verts).
+
+## Déploiement et intégration systemd (lot 13b)
+
+- Réécriture du template systemd `systemd/templates/serge-public-dashboard.service.in` :
+  remplacement de l'ancien script orchestrateur legacy par `python3 -m serge.mc.server --host 127.0.0.1 --port 8790`.
+- Implémentation du CLI `main()` dans `serge/mc/server.py` (`argparse --host/--port`,
+  chargement du token dashboard sidecar `secrets/owner_dashboard_token`).
+- Documentation de déploiement et contrat dans `docs/INSTALL.md` et
+  `docs/INSTANCE_CONTRACT.md`.
+- Test E2E navigateur validant la page publique `/` et la redirection vers `/owner/login`.
+- 654 tests verts. Surface publique P9 terminée.
