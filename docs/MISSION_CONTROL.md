@@ -413,17 +413,18 @@ Page P3 DONE (607 tests verts).
 
 ## Politique P5 — page policy (lot 9c)
 
-`policy.js` :
-- Affichage de la politique active par section YAML en blocs lisibles.
-- Formulaire testing à froid E3 avec verrouillage dynamique (bouton désactivé
-  et message d'alerte orange si campagnes RUNNING en cours).
-- Historique des snapshots avec bouton de rollback immédiat (confirmModal).
-- Tableau des candidats à la zone de confiance (Trust Candidates).
-- Bouton "Proposer en POLICY" (M12) ouvrant une modale de saisie de diff/justification
-  et créant un ticket POLICY DRAFT en base.
-- Stream p5 câblé (`politique_active`, `policy_snapshots`, `testing_froid`, `trust_candidates`).
-- 4 tests E2E navigateur (rendu, édition testing UI, proposition ticket POLICY UI).
-- Page P5 Politique DONE (628 tests verts).
+`policy.js` + `policy_champs.js` + `policy_form.js` :
+- Règles par famille cadrée (sommaire + carte) : Argent, plafonds,
+  horaires, pays, etc. Titres et aides en français, plus de clés YAML
+  brutes.
+- Le bon contrôle : curseur (€, %, comptes), oui/non, jours, plages
+  horaires, listes, canaux à cocher.
+- Taille des essais (ex-testing à froid) avec verrou si un essai tourne.
+- Versions précédentes + « Revenir à cette version ».
+- Confiance : types assez réguliers pour proposer l’auto.
+- « Demander un changement » → ticket POLICY (Serge propose, toi tu
+  appliques).
+- Stream p5 inchangé.
 
 ## Économie P6 — projecteurs (lot 10a)
 
@@ -564,3 +565,21 @@ Page P3 DONE (607 tests verts).
   (`desktop 1280x800` vs `mobile 375x667`).
 - 656 tests automatisés au vert.
 Mission Control V2 entièrement implémenté de P0 à P9 (Lots 0 à 14).
+
+## Carte live — étapes et jugements
+
+L’épine (Écoute → … → Caisse) n’affiche plus un nuage de losanges LLM.
+Survol d’une étape : panneau avec le rôle + les jugements **dans l’ordre
+d’exécution** (le reste à part). Clic : le panneau se verrouille.
+« Plus de détails sur cette étape » → fiche `#/objet/etape/{id}`
+(pourquoi, dépendance à l’étape d’avant, fonctionnement réel, jugements
+cliquables). Chaque jugement du panneau ouvre `#/objet/llm/{point}`.
+Écoute n’envoie plus vers le seul miroir des pages lues : ce miroir
+reste un lien « voir aussi » sur la fiche étape.
+
+Pas de slider « 24 h » ni de bouton « Suivre l’euro » : trop de théâtre
+sans la base. La pensée sous la carte est un **cadre** : jugement,
+étape, tâche en file, venture — chacun cliquable — puis le texte.
+Budgets du jour = plafonds **quotidiens** de la Policy : € LLM,
+e-mails, appels, invitations LinkedIn. SMS est à la minute ; Reddit
+n’a pas de quota/j. Lien vers `#/policy`.

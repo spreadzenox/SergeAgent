@@ -66,18 +66,13 @@ NOTIONS = {
 OUTILS = {
     'memory_search': (
         'Chercher dans la mémoire',
-        'L’outil prévu pour fouiller la mémoire : leçons,'
-        ' vieux échanges, pages lues. Aujourd’hui le contrat dit'
-        ' quoi aller chercher. La recherche libre'
-        ' (tu poses une question, il ramène 5 extraits) est dans'
-        ' l’architecture ; le câblage runtime se complète.',
-    ),
-    'couche5': (
-        'Demander un complément',
-        'Si le dossier prévu ne suffit pas, le jugement a le droit'
-        ' de demander un peu plus — dans un budget (jetons, délai).'
-        ' C’est la soupape : il n’est pas prisonnier d’une page figée.'
-        ' Lecture seule : ça informe, ça n’écrit pas.',
+        'Un seul outil pour fouiller la mémoire. Si le dossier prévu'
+        ' ne suffit pas, le jugement pose une question (« objections'
+        ' prix artisans ») et ramène'
+        ' quelques extraits — dans un budget. Lecture seule : ça informe,'
+        ' ça n’écrit pas. Certains jugements n’y ont pas droit'
+        ' (un appel, un résumé chiffré) : ils restent sur le dossier figé.'
+        ' Le câblage runtime se complète.',
     ),
     'navigateur': (
         'Ouvrir le web (navigateur)',
@@ -172,21 +167,17 @@ def _liens_materiel(spec: dict) -> list[dict[str, str]]:
 def _outils(spec: dict) -> list[dict[str, str]]:
     ctx = spec.get('context') or {}
     couche = ctx.get('couche5') or {}
-    liens = [
-        {'type': 'outil', 'id': 'memory_search', 'titre': 'Chercher dans la mémoire'},
+    autorise = isinstance(couche, dict) and bool(couche.get('allowed'))
+    titre = (
+        'Chercher dans la mémoire (autorisé ici)'
+        if autorise
+        else 'Chercher dans la mémoire (interdit ici)'
+    )
+    return [
+        {'type': 'outil', 'id': 'memory_search', 'titre': titre},
         {'type': 'outil', 'id': 'navigateur', 'titre': 'Ouvrir le web (pas encore branché)'},
         {'type': 'outil', 'id': 'demande_capacite', 'titre': 'Demander une nouvelle capacité'},
     ]
-    if isinstance(couche, dict) and couche.get('allowed'):
-        liens.insert(
-            1,
-            {
-                'type': 'outil',
-                'id': 'couche5',
-                'titre': 'Demander un complément (autorisé ici)',
-            },
-        )
-    return liens
 
 
 def project_llm(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
@@ -296,10 +287,10 @@ def project_llm(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
             {
                 'titre': 'Outils',
                 'texte': (
-                    'Oui : Serge a une boîte à outils, ce n’est pas'
-                    ' juste un pavé de texte. Chercher dans la mémoire,'
-                    ' demander un complément, et plus tard un navigateur.'
-                    ' Demander une capacité manquante plutôt qu’inventer.'
+                    'Chaque ligne est un outil, une page. Chercher dans'
+                    ' la mémoire (si ce jugement en a le droit), ouvrir'
+                    ' le web plus tard, ou demander une capacité manquante'
+                    ' plutôt qu’inventer.'
                 ),
                 'liens': _outils(spec),
             },
@@ -437,7 +428,9 @@ def project_ecoute(conn: sqlite3.Connection, ident: str = '') -> dict[str, Any]:
 
 
 def project_outil(_conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
-    """Une fiche d’outil (mémoire, complément, navigateur…)."""
+    """Une fiche d’outil — un id, une page (couche 5 = chercher)."""
+    if ident == 'couche5':
+        ident = 'memory_search'
     found = OUTILS.get(ident)
     if not found:
         return None

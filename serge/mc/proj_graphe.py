@@ -7,6 +7,8 @@ import sqlite3
 from collections.abc import Mapping
 from typing import Any
 
+import json
+
 from serge.mc.libelles import (
     LLM_ETAPE,
     NOEUDS,
@@ -16,6 +18,7 @@ from serge.mc.libelles import (
     titre_llm,
     verbe,
 )
+from serge.mc.proj_etape import ETAPES, lister_jugements
 from serge.registry import load_llm_points
 from serge.tickets.lifecycle import OPENISH
 
@@ -32,20 +35,58 @@ def _llm_live(conn: sqlite3.Connection) -> set[str]:
     return {str(r[0]) for r in rows}
 
 
-def _dernier_io(conn: sqlite3.Connection) -> dict[str, Any] | None:
-    row = conn.execute(
-        "SELECT payload_json FROM events WHERE type='llm.io'"
-        ' ORDER BY id DESC LIMIT 1'
-    ).fetchone()
-    if not row:
-        return None
-    import json
+def _nom_venture(conn: sqlite3.Connection, ident: str) -> str:
+    if not ident:
+        return ''
+    row = conn.execute('SELECT name FROM ventures WHERE id=?', (ident,)).fetchone()
+    return str(row[0] or ident) if row else ident
 
-    try:
-        data = json.loads(row[0] or '{}')
-    except ValueError:
+
+def _pensee(conn: sqlite3.Connection) -> dict[str, Any] | None:
+    """Dernier jugement + tâche RUNNING : de quoi cadrer le texte."""
+    row = conn.execute(
+        'SELECT payload_json, venture_id, actor FROM events'
+        " WHERE type='llm.io' ORDER BY id DESC LIMIT 1"
+    ).fetchone()
+    run = conn.execute(
+        'SELECT id, kind, venture_id FROM work_items'
+        " WHERE status='RUNNING' ORDER BY created_at DESC LIMIT 1"
+    ).fetchone()
+    if row is None and run is None:
         return None
-    return data if isinstance(data, dict) else None
+    data: dict[str, Any] = {}
+    vid = ''
+    if row:
+        try:
+            blob = json.loads(row[0] or '{}')
+        except ValueError:
+            blob = {}
+        if isinstance(blob, dict):
+            data.update(blob)
+        point = str(data.get('point') or row[2] or '')
+        etape = LLM_ETAPE.get(point, '')
+        spec = ETAPES.get(etape) or {}
+        hors = {'memoire': 'Mémoire', 'policy': 'Policy'}
+        data['point'] = point
+        data['jugement'] = titre_llm(point) if point else ''
+        data['etape'] = etape
+        data['etape_titre'] = spec.get('titre') or hors.get(etape, etape)
+        vid = str(row[1] or '')
+    else:
+        data['point'] = ''
+        data['jugement'] = ''
+        data['etape'] = ''
+        data['etape_titre'] = ''
+    if run:
+        data['tache'] = verbe(str(run[1]))
+        data['tache_id'] = str(run[0])
+        vid = vid or str(run[2] or '')
+    else:
+        data['tache'] = ''
+        data['tache_id'] = ''
+    data['venture_id'] = vid
+    data['venture'] = _nom_venture(conn, vid)
+    return data
 
 
 def project_graphe(
@@ -138,19 +179,13 @@ def project_graphe(
             'libelle': 'factures',
         },
     ]
-    evts = [
-        {'ts': r[0], 'kind': r[1], 'titre': verbe(str(r[1]))}
-        for r in conn.execute(
-            'SELECT ts, type FROM events ORDER BY id DESC LIMIT 80'
-        ).fetchall()
-    ]
     return {
         'epine': [
             {
                 'id': key,
                 **val,
-                'objet': {'type': 'noeud', 'id': key},
-                'cible': _cible_epine(conn, key),
+                'objet': {'type': 'etape', 'id': key},
+                'jugements': lister_jugements(key, live | kinds_run),
             }
             for key, val in NOEUDS.items()
         ],
@@ -161,15 +196,14 @@ def project_graphe(
         'llm': llm_nodes,
         'flux': flux,
         'blocages': blocages,
-        'timeline': evts,
-        'io': _dernier_io(conn),
+        'io': _pensee(conn),
     }
 
 
 def project_business(
     conn: sqlite3.Connection, policy: Mapping[str, Any], now: str
 ) -> dict[str, Any]:
-    """Venture active, tests, U1–U3, phrase noyau, lignée euro."""
+    """Venture active, tests, U1–U3, phrase noyau."""
     _ = (policy, now)
     from serge.funnels.metrics import campaign_metrics
 
@@ -240,7 +274,6 @@ def project_business(
         "SELECT COUNT(*) FROM tickets WHERE state IN ('OPEN','DRAFT')"
         " AND type IN ('GUICHET','VETO_AMONT','ALERT')",
     )
-    lignage = _lignage_euro(conn)
     return {
         'venture': venture,
         'tests': tests,
@@ -251,83 +284,4 @@ def project_business(
         'voix': phrase_noyau(urgents, running, paid),
         'recit': recit,
         'running': running,
-        'lignage': lignage,
     }
-
-
-def _premier(conn: sqlite3.Connection, sql: str, args: tuple = ()) -> str:
-    row = conn.execute(sql, args).fetchone()
-    return str(row[0]) if row and row[0] else ''
-
-
-def _cible_epine(conn: sqlite3.Connection, noeud: str) -> dict[str, str] | None:
-    if noeud == 'ecoute':
-        return {'type': 'ecoute', 'id': 'pages'}
-    mapping = {
-        'hypothese': (
-            'ticket',
-            "SELECT id FROM tickets WHERE type='HYPOTHESIS' ORDER BY updated_at DESC LIMIT 1",
-        ),
-        'test': (
-            'campagne',
-            'SELECT id FROM campaigns ORDER BY updated_at DESC LIMIT 1',
-        ),
-        'qualif': (
-            'prospect',
-            "SELECT id FROM contacts WHERE funnel_state != 'CUSTOMER' ORDER BY updated_at DESC LIMIT 1",
-        ),
-        'conversation': (
-            'inbound_event',
-            'SELECT id FROM inbound_events ORDER BY received_at DESC LIMIT 1',
-        ),
-        'intent': (
-            'prospect',
-            "SELECT id FROM contacts WHERE funnel_state IN ('INTENT','MEETING') LIMIT 1",
-        ),
-        'caisse': (
-            'facture',
-            "SELECT id FROM transactions WHERE status='paid' ORDER BY updated_at DESC LIMIT 1",
-        ),
-    }
-    spec = mapping.get(noeud)
-    if not spec:
-        return None
-    ident = _premier(conn, spec[1])
-    if not ident:
-        return None
-    return {'type': spec[0], 'id': ident}
-
-
-def _lignage_euro(conn: sqlite3.Connection) -> list[dict[str, str]]:
-    tx = conn.execute(
-        "SELECT id, venture_id, intent_id FROM transactions"
-        " WHERE status='paid' ORDER BY updated_at DESC LIMIT 1"
-    ).fetchone()
-    if not tx:
-        return []
-    chain = [{'type': 'facture', 'id': str(tx[0])}]
-    if tx[1]:
-        chain.insert(0, {'type': 'venture', 'id': str(tx[1])})
-    camp = conn.execute(
-        'SELECT id FROM campaigns WHERE venture_id=? LIMIT 1', (tx[1],)
-    ).fetchone()
-    if camp:
-        chain.insert(-1, {'type': 'campagne', 'id': str(camp[0])})
-        touch = conn.execute(
-            'SELECT id, contact_id FROM touches WHERE campaign_id=? LIMIT 1',
-            (camp[0],),
-        ).fetchone()
-        if touch:
-            chain.insert(-1, {'type': 'touch', 'id': str(touch[0])})
-            if touch[1]:
-                etat = conn.execute(
-                    'SELECT funnel_state FROM contacts WHERE id=?',
-                    (touch[1],),
-                ).fetchone()
-                typ = (
-                    'client'
-                    if etat and etat[0] == 'CUSTOMER'
-                    else 'prospect'
-                )
-                chain.insert(-1, {'type': typ, 'id': str(touch[1])})
-    return chain

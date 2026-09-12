@@ -251,25 +251,80 @@ function tweenNombre(node, cible, format) {
   tweenNumber(node, prev, cible, {format, duration: 400});
 }
 
+function lignePensee(fil, libelle, texte, type, id) {
+  const dt = document.createElement('dt');
+  dt.textContent = libelle;
+  const dd = document.createElement('dd');
+  if (type && id && texte) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'clic-ligne';
+    btn.textContent = texte;
+    btn.addEventListener('click', () => allerObjet(type, id));
+    dd.append(btn);
+  } else {
+    dd.textContent = texte || '—';
+  }
+  fil.append(dt, dd);
+}
+
+function renderPensee(main, io) {
+  const box = main.querySelector('[data-pensee]');
+  if (!box) {
+    return;
+  }
+  const titre = box.querySelector('[data-pensee="titre"]');
+  const fil = box.querySelector('[data-pensee="fil"]');
+  const tw = box.querySelector('[data-typewriter]');
+  const cle = io ? `${io.point || ''}|${io.tache_id || ''}` : '';
+  if (box.dataset.cle !== cle) {
+    box.dataset.cle = cle;
+    if (tw) {
+      tw.textContent = '';
+    }
+  }
+  fil.replaceChildren();
+  if (!io) {
+    titre.textContent = 'Pensée';
+    fil.append(document.createTextNode('Personne ne réfléchit pour l’instant.'));
+    return;
+  }
+  titre.textContent = io.sortie ? 'Dernière réflexion' : 'En train d’écrire';
+  lignePensee(fil, 'Jugement', io.jugement, 'llm', io.point);
+  lignePensee(fil, 'Étape', io.etape_titre, 'etape', io.etape);
+  lignePensee(fil, 'Tâche', io.tache, 'work_item', io.tache_id);
+  lignePensee(fil, 'Venture', io.venture, 'venture', io.venture_id);
+  if (tw && !io.sortie && io.prompt && !tw.textContent) {
+    tw.textContent = io.prompt;
+  }
+}
+
 function renderJauges(main, payload, sig, gauges) {
-  const llm = payload.llm;
+  const llm = payload.llm || {};
   updateGauge(gauges.llm.node, llm.ratio || 0, llm.ratio > 0.8 ? 'alerte' : '');
-  const euros = llm.eur_estimes.toLocaleString('fr-FR', {
+  const euros = Number(llm.eur_estimes || 0).toLocaleString('fr-FR', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
   tweenNombre(
     gauges.llm.label,
-    llm.tokens_jour,
-    (v) => `${Math.round(v)} jetons (~${euros} € / ${llm.plafond_eur} €)`,
+    llm.tokens_jour || 0,
+    (v) => `${llm.libelle || 'Jugements'} : ${Math.round(v)} jetons (~${euros} € / ${llm.plafond_eur || 0} €)`,
   );
-  const email = payload.email;
-  updateGauge(gauges.email.node, email.ratio || 0, email.ratio > 0.8 ? 'alerte' : '');
-  tweenNombre(
-    gauges.email.label,
-    email.envoyes,
-    (v) => `${Math.round(v)} / ${email.quota} envoyés`,
-  );
+  for (const nom of ['email', 'voix', 'linkedin']) {
+    const barre = payload[nom] || {};
+    const slot = gauges[nom];
+    if (!slot) {
+      continue;
+    }
+    updateGauge(slot.node, barre.ratio || 0, barre.ratio > 0.8 ? 'alerte' : '');
+    const lib = barre.libelle || nom;
+    tweenNombre(
+      slot.label,
+      barre.faits || barre.envoyes || 0,
+      (v) => `${lib} : ${Math.round(v)} / ${barre.quota || 0}`,
+    );
+  }
   main.querySelector('[data-section="jauges"]').dataset.sig = sig;
 }
 
@@ -291,7 +346,7 @@ export function mount(main, store) {
   const tpl = document.getElementById('page-live');
   main.replaceChildren(tpl.content.cloneNode(true));
   const gauges = {};
-  for (const name of ['llm', 'email']) {
+  for (const name of ['llm', 'email', 'voix', 'linkedin']) {
     const slot = main.querySelector(`[data-gauge="${name}"]`);
     const label = document.createElement('p');
     const node = createGauge();
@@ -330,7 +385,7 @@ export function mount(main, store) {
       const base = g && g.payload ? g.payload : {};
       return {
         ...base,
-        lignage: b && b.payload ? b.payload.lignage : [],
+        running: b && b.payload ? b.payload.running : null,
       };
     },
     stoppers,
@@ -343,12 +398,7 @@ export function mount(main, store) {
       if (sec) {
         sec.dataset.sig = sg;
       }
-      if (payload.io && main.querySelector('[data-typewriter]')) {
-        const tw = main.querySelector('[data-typewriter]');
-        if (!tw.textContent) {
-          tw.textContent = payload.io.sortie ? '' : (payload.io.prompt || '');
-        }
-      }
+      renderPensee(main, payload.io);
       rafGraphe();
     },
     urgents: (payload, sg) => renderUrgents(main, payload, sg),

@@ -26,7 +26,11 @@ from serge.scheduler import claim, enqueue  # noqa: E402
 NOW = '2026-09-10T12:00:00+00:00'
 POLICY = {
     'budget': {'llm_daily_eur': 5.0, 'llm_eur_per_1k_tokens': 0.004},
-    'quotas': {'email_per_mailbox_per_day': 40},
+    'quotas': {
+        'email_per_mailbox_per_day': 40,
+        'voice_max_calls_per_day': 50,
+        'linkedin_connect_per_day': 20,
+    },
 }
 
 
@@ -165,7 +169,12 @@ class ProjLiveTests(unittest.TestCase):
         self.assertAlmostEqual(llm['ratio'], 0.0012)
         email = jauges['email']
         self.assertEqual((email['envoyes'], email['quota']), (1, 40))
+        self.assertEqual(email['libelle'], 'E-mails')
         self.assertAlmostEqual(email['ratio'], 0.025)
+        self.assertEqual(jauges['voix']['libelle'], 'Appels')
+        self.assertEqual((jauges['voix']['faits'], jauges['voix']['quota']), (0, 50))
+        self.assertEqual(jauges['linkedin']['libelle'], 'Invitations LinkedIn')
+        self.assertEqual(jauges['linkedin']['quota'], 20)
 
 
 if __name__ == '__main__':

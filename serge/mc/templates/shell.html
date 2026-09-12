@@ -50,16 +50,16 @@
 </section>
 <section class="panneau carte-serge" data-section="graphe" data-sig="">
 <h2>Comment Serge gagne de l’argent</h2>
-<p class="legende-carte">De l’écoute du web jusqu’à Stripe : chaque nœud est un objet réel. Survole, clique, suis l’euro.</p>
+<p class="legende-carte">De l’écoute jusqu’à Stripe. Survole une étape : les jugements apparaissent. Clique pour les garder, puis ouvre une page.</p>
 <div class="scene-graphe">
 <canvas data-hud="carte" class="hud-canvas" width="960" height="380"></canvas>
 <div class="noeuds" data-graphe="noeuds"></div>
 </div>
-<div class="scrubber">
-<label>24 h <input type="range" min="0" max="100" value="100" data-scrubber></label>
-<button type="button" data-euro>Suivre l’euro</button>
-</div>
-<pre class="typewriter" data-typewriter></pre>
+<aside class="cadre-pensee" data-pensee>
+<p class="titre-pensee" data-pensee="titre">Pensée</p>
+<dl class="fil-pensee" data-pensee="fil"></dl>
+<pre class="texte-pensee" data-typewriter></pre>
+</aside>
 </section>
 <section class="panneau" data-section="file" data-sig="">
 <h2><button type="button" class="btn-file" data-file="ouvrir">File d’exécution</button></h2>
@@ -74,8 +74,11 @@
 </section>
 <section class="panneau" data-section="jauges" data-sig="">
 <h2>Budgets du jour</h2>
+<p class="legende-jauges">Plafonds du jour, réglables dans <a href="#/policy">Policy</a> (Budget et Quotas). SMS est à la minute ; pas de quota quotidien Reddit.</p>
 <div data-gauge="llm"></div>
 <div data-gauge="email"></div>
+<div data-gauge="voix"></div>
+<div data-gauge="linkedin"></div>
 </section>
 </template>
 <template id="page-system">
@@ -219,29 +222,34 @@
 </section>
 </template>
 <template id="page-policy">
-<p class="page-intro">Les nombres qui autorisent ou refusent un acte. Un champ = une règle, pas un JSON.</p>
-<section class="panneau" data-section="politique_active" data-sig="">
-<h2>Politique active</h2>
-<div class="carte-actes">
-<button type="button" data-action="proposer-policy">Proposer en POLICY</button>
+<p class="page-intro">Les règles du jeu. Chaque curseur autorise ou refuse un acte. Tu changes, tu enregistres. Serge propose, il n’applique jamais tout seul.</p>
+<section class="panneau atelier-policy" data-section="politique_active" data-sig="">
+<div class="entete-policy">
+<div>
+<h2>Les règles</h2>
+<p class="sous-titre-policy">Une famille à gauche, les champs à droite. Le bon contrôle pour chaque type de choix.</p>
 </div>
-<div data-policy="sections"></div>
+<button type="button" data-action="proposer-policy">Demander un changement</button>
+</div>
+<div data-policy="atelier"></div>
 </section>
 <section class="panneau" data-section="testing_froid" data-sig="">
-<h2>Testing à froid</h2>
+<h2>Taille des essais</h2>
 <p id="testing-lock-status">…</p>
-<form data-form="testing" class="carte-actes">
-<label>Personnes min. pour un smoke : <input type="number" data-testing="n_smoke_min" style="width: 80px;"></label>
-<label>Personnes cibles pour un full : <input type="number" data-testing="n_full_target" style="width: 80px;"></label>
-<button type="button" data-btn="enregistrer-testing">Enregistrer testing</button>
+<form data-form="testing" class="grille-essais">
+<label>Personnes min. pour le petit essai <input type="number" data-testing="n_smoke_min" min="1" max="500"></label>
+<label>Personnes pour l’essai plus large <input type="number" data-testing="n_full_target" min="10" max="5000"></label>
+<button type="button" data-btn="enregistrer-testing">Enregistrer la taille</button>
 </form>
 </section>
 <section class="panneau" data-section="policy_snapshots" data-sig="">
-<h2>Historique des snapshots</h2>
+<h2>Versions précédentes</h2>
+<p class="sous-titre-policy">Chaque enregistrement pose une version. Tu peux revenir en arrière.</p>
 <ul data-list="snapshots"></ul>
 </section>
 <section class="panneau" data-section="trust_candidates" data-sig="">
-<h2>Zone de confiance</h2>
+<h2>Ce qui pourrait passer tout seul</h2>
+<p class="sous-titre-policy">Si tu dis toujours oui au même type de question, Serge peut proposer de ne plus te demander. Toi tu valides encore.</p>
 <ul data-list="candidates"></ul>
 </section>
 </template>

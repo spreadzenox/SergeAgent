@@ -57,6 +57,9 @@ def project_objet(conn: sqlite3.Connection, typ: str, ident: str) -> dict[str, A
             'outil': project_outil,
             'notion': project_notion,
         }[typ](conn, ident)
+    if typ == 'etape':
+        from serge.mc.proj_etape import project_etape
+        return project_etape(conn, ident)
     if typ in ('sqlite', 'table'):
         from serge.mc.proj_sqlite import project_sqlite, project_table
         if typ == 'sqlite':

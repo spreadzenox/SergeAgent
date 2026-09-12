@@ -158,6 +158,7 @@ export const TYPES_OBJET = {
   ecoute: 'Pages lues',
   outil: 'Outil',
   notion: 'Pour comprendre',
+  etape: 'Étape',
 };
 
 export function verbe(kind) {

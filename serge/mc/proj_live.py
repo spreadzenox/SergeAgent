@@ -232,10 +232,34 @@ def project_feed(
     return {'items': items[:30]}
 
 
+def _quota_jour(quotas: Mapping[str, Any], cle: str) -> int:
+    try:
+        return int(quotas.get(cle, 0) or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _touches_jour(conn: sqlite3.Connection, canal: str, jour: str) -> int:
+    row = conn.execute(
+        'SELECT COUNT(*) FROM touches WHERE channel=?'
+        " AND status='sent' AND created_at LIKE ?",
+        (canal, f'{jour}%'),
+    ).fetchone()
+    return int(row[0] if row else 0)
+
+
+def _barre(faits: int, quota: int) -> dict[str, Any]:
+    return {
+        'faits': faits,
+        'quota': quota,
+        'ratio': (faits / quota) if quota > 0 else None,
+    }
+
+
 def project_jauges(
     conn: sqlite3.Connection, policy: Mapping[str, Any], now: str
 ) -> dict[str, Any]:
-    """Budgets du jour : LLM (tokens + estimation garde) + email (P0).
+    """Budgets du jour : LLM € + quotas quotidiens de la Policy.
 
     Args:
         conn: Connexion canon (lecture).
@@ -243,8 +267,7 @@ def project_jauges(
         now: Maintenant ISO UTC.
 
     Returns:
-        Dict {llm: {...}, email: {...}} (ratios ou None si incalculable).
-        Coûts fins au lot 9 (tarifs) ; voix au lot 7 (CDR séparé).
+        Dict llm / email / voix / linkedin (ratio None si plafond 0).
     """
     day = now[:10]
     spent_in, spent_out = daily_tokens(conn, day)
@@ -253,28 +276,37 @@ def project_jauges(
     cap = float(budget.get('llm_daily_eur', 0) or 0)
     rate = float(budget.get('llm_eur_per_1k_tokens', 0) or 0)
     eur = tokens / 1000 * rate
-    sent = conn.execute(
-        "SELECT COUNT(*) FROM touches WHERE channel='email'"
-        " AND status='sent' AND created_at LIKE ?",
-        (f'{day}%',),
-    ).fetchone()[0]
     quotas = policy.get('quotas') or {}
-    email_cap = quotas.get('email_per_mailbox_per_day', 0)
-    try:
-        email_cap = int(email_cap)
-    except (TypeError, ValueError):
-        email_cap = 0
+    email = _barre(
+        _touches_jour(conn, 'email', day),
+        _quota_jour(quotas, 'email_per_mailbox_per_day'),
+    )
     return {
         'llm': {
             'tokens_jour': tokens,
             'eur_estimes': round(eur, 4),
             'plafond_eur': cap,
             'ratio': (eur / cap) if cap > 0 else None,
+            'libelle': 'Jugements (plafond € du jour)',
         },
         'email': {
-            'envoyes': int(sent),
-            'quota': email_cap,
-            'ratio': (int(sent) / email_cap) if email_cap > 0 else None,
+            **email,
+            'envoyes': email['faits'],
+            'libelle': 'E-mails',
+        },
+        'voix': {
+            **_barre(
+                _touches_jour(conn, 'voice', day),
+                _quota_jour(quotas, 'voice_max_calls_per_day'),
+            ),
+            'libelle': 'Appels',
+        },
+        'linkedin': {
+            **_barre(
+                _touches_jour(conn, 'linkedin', day),
+                _quota_jour(quotas, 'linkedin_connect_per_day'),
+            ),
+            'libelle': 'Invitations LinkedIn',
         },
     }
 

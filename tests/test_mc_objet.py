@@ -96,6 +96,18 @@ class ProjObjetTests(unittest.TestCase):
         self.assertIn('vraiment lues', pages['titre'])
         outil = project_objet(self.conn, 'outil', 'memory_search')
         self.assertIn('mémoire', outil['pourquoi'])
+        self.assertEqual(
+            project_objet(self.conn, 'outil', 'couche5')['id'], 'memory_search'
+        )
+        fiche = project_objet(self.conn, 'llm', 'cluster_demand')
+        ids_outils = [
+            lien['id']
+            for c in fiche['cadres']
+            if c['titre'] == 'Outils'
+            for lien in c['liens']
+        ]
+        self.assertEqual(ids_outils.count('memory_search'), 1)
+        self.assertNotIn('couche5', ids_outils)
         nav = project_objet(self.conn, 'outil', 'navigateur')
         self.assertTrue(nav['cadres'][0].get('todo'))
         notion = project_objet(self.conn, 'notion', 'score_volume')
@@ -149,6 +161,25 @@ class ProjObjetTests(unittest.TestCase):
         self.assertEqual(fiche['id'], 'canon')
         self.assertTrue(fiche['tableau']['lignes'])
         self.assertNotIn('inbound.classify', str(fiche['tableau']))
+
+
+    def test_etape_ecoute(self) -> None:
+        fiche = project_objet(self.conn, 'etape', 'ecoute')
+        self.assertEqual(fiche['type'], 'etape')
+        self.assertIn('demande réelle', fiche['pourquoi'])
+        titres = [c['titre'] for c in fiche['cadres']]
+        self.assertIn('Jugements, dans l’ordre', titres)
+        self.assertIn('Pourquoi ça dépend de avant', titres)
+        liens = [
+            lien['id']
+            for cadre in fiche['cadres']
+            for lien in cadre.get('liens') or []
+        ]
+        self.assertIn('cluster_demand', liens)
+        self.assertIn('pages', liens)
+
+    def test_etape_inconnue(self) -> None:
+        self.assertIsNone(project_objet(self.conn, 'etape', 'dragon'))
 
 
 class ApiObjetTests(McServerCase):

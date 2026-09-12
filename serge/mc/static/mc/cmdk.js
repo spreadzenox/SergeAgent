@@ -24,7 +24,7 @@ const COMMANDES_FIXES = [
   },
   {
     id: 'act-propose-policy',
-    titre: 'Action : Proposer en POLICY',
+    titre: 'Action : Demander un changement Policy',
     type: 'action',
     run: async () => {
       location.hash = '#/policy';

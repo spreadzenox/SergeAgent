@@ -82,16 +82,16 @@ class McPolicyTests(McBrowserCase):
         page = self._page_policy()
         expect(
             page.locator('[data-section="politique_active"]')
-        ).to_contain_text('budget')
+        ).to_contain_text('Argent')
         expect(page.locator('#testing-lock-status')).to_contain_text(
-            'Déverrouillé'
+            'Aucun essai en cours'
         )
         expect(
             page.locator('[data-section="policy_snapshots"]')
-        ).to_contain_text('owner_init')
+        ).to_contain_text('Version')
         expect(
             page.locator('[data-section="trust_candidates"]')
-        ).to_contain_text('VETO_AMONT — ÉLIGIBLE AUTO')
+        ).to_contain_text('Veto amont')
 
     def test_testing_edit_ui(self) -> None:
         from playwright.sync_api import expect
@@ -102,7 +102,7 @@ class McPolicyTests(McBrowserCase):
         page.locator('input[data-testing="n_smoke_min"]').fill('42')
         btn.click()
         expect(page.locator('.toast-succes').last).to_contain_text(
-            'Testing mis à jour.'
+            'Taille des essais mise à jour.'
         )
 
     def test_proposer_policy_ui(self) -> None:
@@ -113,5 +113,5 @@ class McPolicyTests(McBrowserCase):
         modale = page.locator('.modale')
         modale.locator('input[name="titre"]').fill('Hausse budget LLM')
         modale.locator('input[name="diff"]').fill('llm_daily_eur: 5 -> 15')
-        modale.get_by_role('button', name='Créer ticket').click()
+        modale.get_by_role('button', name='Créer la question').click()
         expect(page.locator('.toast-succes')).to_contain_text('Ticket POLICY')

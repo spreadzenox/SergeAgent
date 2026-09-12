@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Goldens graphe + business (épine, LLM, lignée euro)."""
+"""Goldens graphe + business (épine, LLM, pensée cadrée)."""
 
 from __future__ import annotations
 
@@ -12,7 +12,9 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from serge.db.schema import init_schema  # noqa: E402
+from serge.db.store import append_event  # noqa: E402
 from serge.mc.proj_graphe import project_business, project_graphe  # noqa: E402
+from serge.scheduler import claim, enqueue  # noqa: E402
 
 NOW = '2026-09-11T12:00:00+00:00'
 
@@ -72,8 +74,11 @@ class ProjGrapheTests(unittest.TestCase):
         self.assertGreaterEqual(len(data['llm']), 10)
         self.assertTrue(any(f['id'] == 'intent-caisse' for f in data['flux']))
         ecoute = next(n for n in data['epine'] if n['id'] == 'ecoute')
-        self.assertEqual(ecoute['cible'], {'type': 'ecoute', 'id': 'pages'})
+        self.assertEqual(ecoute['objet'], {'type': 'etape', 'id': 'ecoute'})
         self.assertEqual(ecoute['titre'], 'Écoute')
+        ids_j = [j['id'] for j in ecoute['jugements']]
+        self.assertIn('cluster_demand', ids_j)
+        self.assertTrue(ecoute['jugements'][0]['ordre'])
 
     def test_business_venture_et_voix(self) -> None:
         data = project_business(self.conn, {}, NOW)
@@ -82,6 +87,34 @@ class ProjGrapheTests(unittest.TestCase):
         self.assertIn('encaissé', data['voix'])
         self.assertIn('personnes touchées', data['recit'])
         self.assertTrue(any(n.get('titre') for n in project_graphe(self.conn, {}, NOW)['llm']))
-        types = [item['type'] for item in data['lignage']]
-        self.assertIn('facture', types)
-        self.assertIn('venture', types)
+        self.assertNotIn('lignage', data)
+        self.assertNotIn('timeline', project_graphe(self.conn, {}, NOW))
+
+    def test_pensee_cadre(self) -> None:
+        wid = enqueue(
+            self.conn,
+            kind='inbound.classify',
+            idempotency_key='k-run',
+            venture_id='v1',
+        )
+        claim(self.conn, wid)
+        append_event(
+            self.conn,
+            actor='classify_reply',
+            type='llm.io',
+            venture_id='v1',
+            payload={
+                'point': 'classify_reply',
+                'prompt': 'Classe ce message.',
+                'sortie': 'Classe : positive.',
+            },
+        )
+        io = project_graphe(self.conn, {}, NOW)['io']
+        self.assertEqual(io['point'], 'classify_reply')
+        self.assertEqual(io['jugement'], 'Classer une réponse')
+        self.assertEqual(io['etape'], 'conversation')
+        self.assertEqual(io['etape_titre'], 'Conversation')
+        self.assertEqual(io['tache'], 'Classification d’une réponse')
+        self.assertEqual(io['tache_id'], wid)
+        self.assertEqual(io['venture'], 'Atelier')
+        self.assertEqual(io['sortie'], 'Classe : positive.')
