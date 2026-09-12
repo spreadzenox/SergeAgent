@@ -169,11 +169,8 @@ def _avec_testing(
     """Garantit un bloc testing dans la policy (semence si manquant)."""
     from kit.instance_file import _validate_testing
 
-    raw = (
-        policy.get('testing')
-        if isinstance(policy.get('testing'), dict)
-        else {}
-    )
+    bloc = policy.get('testing')
+    raw: dict[str, Any] = bloc if isinstance(bloc, dict) else {}
     propre = _validate_testing(raw)
     if policy.get('testing') == propre and not ecrire:
         return policy

@@ -189,9 +189,9 @@ smtp_port = 587                 # 587 STARTTLS | 465 SSL
 imap_host = ""                  # vide = preset (custom : obligatoire)
 imap_port = 993                 # 993 SSL | 143 STARTTLS
 
-[testing]                       # topologie à froid (B4) : N + seuils kill/scale
-n_smoke_min = 30                # modifiable via Mission Control uniquement
-n_smoke_max = 50                # à froid (0 campagne RUNNING), jamais à chaud
+[testing]                       # semence N + seuils (runtime = snapshot)
+n_smoke_min = 30
+n_smoke_max = 50
 n_full_min = 150
 n_full_target = 200
 kill_max_positives = 1
@@ -199,6 +199,11 @@ scale_min_positives = 5
 scale_min_meetings = 2
 extend_max = 1
 ```
+
+`[testing]` du TOML n’est plus écrit par Mission Control. Au premier
+snapshot, ces valeurs (ou celles de `config/policy.yaml`) sont copiées
+dans le canon. Ensuite : MC à froid seulement ; `ouvrir_essai` et le
+runner lisent `policy_en_vigueur`.
 
 Contraintes téléphonie (refusées au load, au wizard et au builder) :
 

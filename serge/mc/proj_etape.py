@@ -180,8 +180,18 @@ def _points() -> dict[str, dict]:
         return {}
 
 
-def lister_jugements(etape: str, chauds: set[str] | None = None) -> list[dict[str, Any]]:
-    """Jugements d’une étape : d’abord l’ordre, puis le reste à part."""
+def lister_jugements(
+    etape: str, chauds: set[str] | None = None
+) -> list[dict[str, Any]]:
+    """Jugements d’une étape : d’abord l’ordre, puis le reste à part.
+
+    Args:
+        etape: Id d’étape (`ecoute`, `hypothese`, …).
+        chauds: Points vus récemment (badge).
+
+    Returns:
+        Lignes `{id, titre, detail, rang, ordre, chaud}`.
+    """
     chauds = chauds or set()
     registres = _points()
     suite = [n for n in ORDRE.get(etape, []) if n in registres]
@@ -215,8 +225,18 @@ def lister_jugements(etape: str, chauds: set[str] | None = None) -> list[dict[st
     return lignes
 
 
-def project_etape(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
-    """Fiche d’une étape du pipe : rôle, dépendance, jugements cliquables."""
+def project_etape(
+    conn: sqlite3.Connection, ident: str
+) -> dict[str, Any] | None:
+    """Fiche d’une étape du pipe : rôle, dépendance, jugements cliquables.
+
+    Args:
+        conn: Canon (lecture des points chauds).
+        ident: Id d’étape.
+
+    Returns:
+        Payload fiche MC, ou None si l’étape est inconnue.
+    """
     spec = ETAPES.get(ident)
     if spec is None:
         return None
@@ -233,7 +253,9 @@ def project_etape(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None
         {
             'type': 'llm',
             'id': j['id'],
-            'titre': f'{j["rang"]}. {j["titre"]}' if j['ordre'] else j['titre'],
+            'titre': f'{j["rang"]}. {j["titre"]}'
+            if j['ordre']
+            else j['titre'],
         }
         for j in jugs
         if j['ordre']
@@ -246,7 +268,11 @@ def project_etape(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None
     extra = []
     if ident == 'ecoute':
         extra.append(
-            {'type': 'ecoute', 'id': 'pages', 'titre': 'Pages vraiment lues (miroir)'}
+            {
+                'type': 'ecoute',
+                'id': 'pages',
+                'titre': 'Pages vraiment lues (miroir)',
+            }
         )
     cadres = [
         {'titre': 'À quoi ça sert', 'texte': spec['pourquoi']},
@@ -254,7 +280,13 @@ def project_etape(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None
             'titre': 'Pourquoi ça dépend de avant',
             'texte': spec['dependance'],
             'liens': (
-                [{'type': 'etape', 'id': prec, 'titre': f'Étape d’avant : {titre_prec}'}]
+                [
+                    {
+                        'type': 'etape',
+                        'id': prec,
+                        'titre': f'Étape d’avant : {titre_prec}',
+                    }
+                ]
                 if prec
                 else []
             ),

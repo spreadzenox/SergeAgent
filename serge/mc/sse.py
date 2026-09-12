@@ -50,7 +50,6 @@ def format_event(
 def stream_page(
     wfile: Any,
     db_path: Path,
-    policy: dict[str, Any],
     page: str,
     sections: list[str],
     cache: SnapshotCache,
@@ -62,7 +61,6 @@ def stream_page(
     Args:
         wfile: Flux d'écriture (flush après chaque tick).
         db_path: Canon (rouvert à chaque tick : vue fraîche).
-        policy: Ignoré — la policy vient du dernier snapshot.
         page: Page MC (clé de cache).
         sections: Sections à envoyer (ordre stable).
         cache: Cache TTL de la connexion.
@@ -76,7 +74,6 @@ def stream_page(
         BrokenPipeError: Client parti (normal).
         ConnectionResetError: Client parti (normal).
     """
-    _ = policy
     ticks = 0
     while True:
         with closing(open_db(db_path)) as conn:
@@ -100,7 +97,6 @@ def stream_page(
 
 def state_payload(
     db_path: Path,
-    policy: dict[str, Any],
     page: str,
     sections: list[str],
 ) -> dict[str, Any]:
@@ -108,14 +104,12 @@ def state_payload(
 
     Args:
         db_path: Canon.
-        policy: Ignoré — la policy vient du dernier snapshot.
         page: Page MC.
         sections: Sections à projeter.
 
     Returns:
         Dict {page, sections: {nom: {sig, age_ms: 0, payload}}}.
     """
-    _ = policy
     out: dict[str, Any] = {'page': page, 'sections': {}}
     with closing(open_db(db_path)) as conn:
         live = policy_en_vigueur(conn)

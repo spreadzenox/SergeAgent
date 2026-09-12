@@ -227,10 +227,11 @@ def validate_toml(data: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def _validate_testing(raw: dict[str, Any]) -> dict[str, int]:
-    """Topologie à froid des market tests (B4) : N + seuils kill/scale.
+    """Valide le bloc testing (N + seuils kill/scale).
 
-    Absente = défauts validés en A. Modifiable via Mission Control
-    uniquement à froid (0 campagne RUNNING) — lock ailleurs.
+    Absente = défauts. Le TOML d’instance n’est qu’une semence : la
+    vérité runtime est le snapshot policy. MC n’écrit qu’à froid
+    (0 campagne RUNNING).
     """
     defaults = {
         'n_smoke_min': 30,

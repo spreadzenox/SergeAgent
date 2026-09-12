@@ -6,7 +6,6 @@ from __future__ import annotations
 from serge.funnels import (
     campaigns,
     contacts,
-    essai,
     lifecycle,
     metrics,
     rules,
@@ -16,7 +15,6 @@ from serge.funnels import (
 __all__ = [
     'campaigns',
     'contacts',
-    'essai',
     'lifecycle',
     'metrics',
     'rules',

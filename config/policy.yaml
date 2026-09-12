@@ -1,7 +1,6 @@
-# Policy Serge — nombres tunables à chaud (R4). Versionné.
-# Tout nombre métier vit ici (ou TOML topologie / llm-points).
-# Modifiable via ticket POLICY ou Mission Control (historique + rollback).
-# Zéro nombre magique ailleurs — vérifié par test R4.
+# Policy Serge — semence git (R4). Runtime = dernier snapshot du canon.
+# Tout nombre métier vit ici. MC / ticket POLICY écrivent un snapshot,
+# jamais ce fichier. Zéro nombre magique ailleurs — test R4.
 schema_version: 1
 
 budget:
@@ -114,3 +113,13 @@ listen:
   hot_min_volume: 0.7                # opportunité chaude (J1 + seuils)
   hot_min_willingness: 0.7
   cluster_jaccard_min: 0.25          # clustering dét v1
+
+testing:                             # taille des essais (semence ; MC à froid)
+  n_smoke_min: 30
+  n_smoke_max: 50
+  n_full_min: 150
+  n_full_target: 200
+  kill_max_positives: 1
+  scale_min_positives: 5
+  scale_min_meetings: 2
+  extend_max: 1

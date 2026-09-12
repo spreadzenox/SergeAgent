@@ -14,9 +14,17 @@ from serge.policy_snapshots import policy_en_vigueur
 
 
 def testing_en_vigueur(conn: sqlite3.Connection) -> dict[str, int]:
-    """Bloc testing du dernier snapshot (défauts si absent)."""
+    """Bloc testing du dernier snapshot (défauts si absent).
+
+    Args:
+        conn: Canon (lecture, éventuellement semence).
+
+    Returns:
+        N et seuils validés (`n_smoke_min`, `n_full_target`, …).
+    """
     pol = policy_en_vigueur(conn)
-    raw = pol.get('testing') if isinstance(pol.get('testing'), dict) else {}
+    bloc = pol.get('testing')
+    raw: dict[str, Any] = bloc if isinstance(bloc, dict) else {}
     return _validate_testing(raw)
 
 
@@ -31,6 +39,9 @@ def n_et_seuils(
 
     Returns:
         (n_target, thresholds) à poser sur la campagne.
+
+    Raises:
+        ValueError: Phase autre que ``smoke`` ou ``full``.
     """
     if phase == 'smoke':
         return testing['n_smoke_min'], {
@@ -54,7 +65,17 @@ def taille_et_seuils(
     n_target: int,
     thresholds: dict[str, Any] | None,
 ) -> tuple[int, dict[str, Any]]:
-    """Complète N/seuils depuis la policy si l’appelant n’a rien posé."""
+    """Complète N/seuils depuis la policy si l’appelant n’a rien posé.
+
+    Args:
+        conn: Canon.
+        phase: ``smoke`` ou ``full``.
+        n_target: N demandé (0 = prendre le défaut policy).
+        thresholds: Seuils déjà posés (fusionnés par-dessus les défauts).
+
+    Returns:
+        (n_target, thresholds) prêts pour `create_campaign`.
+    """
     n_def, th_def = n_et_seuils(testing_en_vigueur(conn), phase)
     if n_target <= 0:
         n_target = n_def
@@ -70,13 +91,32 @@ def ouvrir_essai(
     phase: str,
     **kwargs: Any,
 ) -> str:
-    """Crée un essai dont le N et les seuils viennent de MC."""
+    """Crée un essai dont le N et les seuils viennent de MC.
+
+    Args:
+        conn: Canon.
+        venture_id: Venture porteuse.
+        family: ``named`` / ``ads`` / ``place``.
+        channel: Canal (email, …).
+        phase: ``smoke`` ou ``full``.
+        **kwargs: Passé à `create_campaign` (`n_target` / `thresholds`
+            optionnels : 0 ou absent = policy).
+
+    Returns:
+        Id de campagne DRAFT.
+    """
+    n_req = int(kwargs.pop('n_target', 0) or 0)
+    th_req = kwargs.pop('thresholds', None)
+    if th_req is not None and not isinstance(th_req, dict):
+        th_req = None
+    n_target, thresholds = taille_et_seuils(conn, phase, n_req, th_req)
     return create_campaign(
         conn,
         venture_id,
         family,
         channel,
-        phase=phase,
+        n_target=n_target,
+        thresholds=thresholds,
         **kwargs,
     )
 
@@ -89,7 +129,18 @@ def evaluer_campagne(
     fenetre_ecoulee: bool,
     etendu: bool = False,
 ) -> str:
-    """Verdict smoke/full avec les seuils stampés (ceux de MC)."""
+    """Verdict smoke/full avec les seuils stampés (ceux de MC).
+
+    Args:
+        conn: Canon.
+        campaign_id: Campagne à juger.
+        n_atteint: N cible atteint.
+        fenetre_ecoulee: Fenêtre de test close.
+        etendu: Déjà prolongé (full seulement).
+
+    Returns:
+        Code règle (`FULL`, `KILL`, `SCALE`, `EXTEND`, …).
+    """
     from serge.funnels.campaigns import thresholds
 
     th = thresholds(conn, campaign_id)

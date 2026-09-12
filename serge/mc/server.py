@@ -199,12 +199,11 @@ class McHandler(
                 self.send_header('Content-Length', '0')
                 self.end_headers()
                 return
-            policy = self._policy()
-            if policy is None:
+            if self._policy() is None:
                 self._error(500)
                 return
             payload = state_payload(
-                self.app_config.db_path, policy, 'p0', PAGE_SECTIONS['p0']
+                self.app_config.db_path, 'p0', PAGE_SECTIONS['p0']
             )
             blob = json.dumps(payload, ensure_ascii=False).replace(
                 '<', '\\u003c'
@@ -275,7 +274,7 @@ class McHandler(
         )
         return False
 
-    def _api_common(self) -> tuple[str, list[str], dict] | None:
+    def _api_common(self) -> tuple[str, list[str]] | None:
         if not self._require_owner():
             return None
         page = self._query().get('page', '')
@@ -290,34 +289,31 @@ class McHandler(
                 },
             )
             return None
-        policy = self._policy()
-        if policy is None:
+        if self._policy() is None:
             self._send_json(
                 500,
                 {
                     'erreur': 'Policy illisible.',
                     'code': 'policy',
-                    'aide': 'Vérifie config/policy.yaml.',
+                    'aide': 'Vérifie le dernier snapshot policy du canon.',
                 },
             )
             return None
-        return page, sections, policy
+        return page, sections
 
     def _api_state(self) -> None:
         ready = self._api_common()
         if ready is None:
             return
-        page, sections, policy = ready
-        payload = state_payload(
-            self.app_config.db_path, policy, page, sections
-        )
+        page, sections = ready
+        payload = state_payload(self.app_config.db_path, page, sections)
         self._send_json(200, payload)
 
     def _api_stream(self) -> None:
         ready = self._api_common()
         if ready is None:
             return
-        page, sections, policy = ready
+        page, sections = ready
         self.send_response(200)
         self.send_header('Content-Type', 'text/event-stream')
         self.end_headers()
@@ -325,7 +321,6 @@ class McHandler(
             stream_page(
                 self.wfile,
                 self.app_config.db_path,
-                policy,
                 page,
                 sections,
                 SnapshotCache(),

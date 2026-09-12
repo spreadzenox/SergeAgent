@@ -178,7 +178,7 @@ Idempotence : chaque décision porte `decision_id` ; double-clic = 1 acte.
 
 Page `/owner/tickets` : même liste, états, actes que Discord, plus : vue diff
 (policy, R1), historique complet, recherche/filtres, fenêtre `requested` P3
-(lecture + contexte), fenêtre `config/policy.yaml` (R4, à designer).
+(lecture + contexte), fenêtre Policy Mission Control (dernier snapshot, R4).
 **Règle : tout ce qui est faisable sur Discord est faisable sur /owner, et
 inversement.** Discord = rapide/mobile ; /owner = confortable/complet.
 Même source (DB), mêmes outils, mises à jour temps réel des deux côtés.

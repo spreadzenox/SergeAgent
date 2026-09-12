@@ -29,6 +29,7 @@ class PolicyTests(unittest.TestCase):
         self.assertEqual(policy['quotas']['voice_max_calls_per_day'], 50)
         self.assertEqual(policy['calling_zones']['default'], 'FR')
         self.assertIn('mon', policy['calling_zones']['FR']['voice_days'])
+        self.assertEqual(policy['testing']['n_smoke_min'], 30)
 
     def test_test_overlay_applies_plancher(self) -> None:
         with mock.patch.dict(os.environ, {'SERGE_ENV': 'test'}):

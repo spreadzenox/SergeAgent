@@ -181,6 +181,14 @@ def validate_policy(data: Mapping[str, Any]) -> dict[str, Any]:
         'tickets.digest_hour',
         'tickets.trust_min_approvals',
         'listen.cluster_jaccard_min',
+        'testing.n_smoke_min',
+        'testing.n_smoke_max',
+        'testing.n_full_min',
+        'testing.n_full_target',
+        'testing.kill_max_positives',
+        'testing.scale_min_positives',
+        'testing.scale_min_meetings',
+        'testing.extend_max',
     ):
         _need_number(data, key)
     for key in (

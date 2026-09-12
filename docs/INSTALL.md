@@ -62,6 +62,8 @@ Résumé humain + receipt JSON à la fin (`state/instance-build.json`).
 TOML, rien dans git — le scan pre-commit le vérifie.
 
 Détail contrat : [`INSTANCE_CONTRACT.md`](INSTANCE_CONTRACT.md).
-Mission Control : [`MISSION_CONTROL.md`](MISSION_CONTROL.md) (port 8790, public / et owner /owner).
+Mission Control : [`MISSION_CONTROL.md`](MISSION_CONTROL.md) (port 8790,
+public / et owner /owner). Jeton owner :
+`~/.config/serge/secrets/owner-dashboard.token` (sinon `SERGE_MC_TOKEN`).
 Téléphonie : [`PHONE_OPTIONS.md`](PHONE_OPTIONS.md).
 Discord : [`DISCORD_SETUP.md`](DISCORD_SETUP.md).

@@ -180,11 +180,11 @@ function renderTesting(main, payload, sig) {
   const cfg = payload.config || {};
   const inSmoke = main.querySelector('[data-testing="n_smoke_min"]');
   const inFull = main.querySelector('[data-testing="n_full_target"]');
-  if (inSmoke && !inSmoke.matches(':focus')) {
-    inSmoke.value = cfg.n_smoke_min || 30;
+  if (inSmoke && !inSmoke.matches(':focus') && cfg.n_smoke_min != null) {
+    inSmoke.value = cfg.n_smoke_min;
   }
-  if (inFull && !inFull.matches(':focus')) {
-    inFull.value = cfg.n_full_target || 200;
+  if (inFull && !inFull.matches(':focus') && cfg.n_full_target != null) {
+    inFull.value = cfg.n_full_target;
   }
   main.querySelector('[data-section="testing_froid"]').dataset.sig = sig;
 }

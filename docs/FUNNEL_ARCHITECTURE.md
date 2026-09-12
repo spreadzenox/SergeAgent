@@ -247,11 +247,12 @@ LinkedIn (modifiable par venture). Follow-ups : *quand* déterministe,
 ### §2.7 Budget dynamique (principe transverse validé)
 
 Le budget mensuel (et tous plafonds/seuils/fenêtres/quotas/pourcentages)
-est lu depuis `config/policy.yaml` à chaque cycle, **jamais codé en dur**.
-Passer de 50 € à 200 € = 1 changement policy (ticket POLICY si proposé par
-Serge, direct si Julien) + propagation automatique. Test R4 : aucun montant
-codé en dur hors policy. **Tout le décisionnel est paramétrique** — le code
-ne contient que de la logique.
+est lu depuis la policy en vigueur (`policy_en_vigueur` = dernier snapshot
+du canon) à chaque cycle, **jamais codé en dur**. `config/policy.yaml` n’est
+que la semence git si le canon est vide. Passer de 50 € à 200 € = 1 snapshot
+(ticket POLICY si proposé par Serge, direct si Julien) + propagation
+automatique. Test R4 : aucun montant codé en dur hors policy. **Tout le
+décisionnel est paramétrique** — le code ne contient que de la logique.
 
 ---
 
