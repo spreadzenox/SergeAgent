@@ -70,27 +70,32 @@ export function startNoyau(canvas, getEtat) {
   const ctx = canvas.getContext('2d');
   function dessin(t) {
     const box = canvas.width;
-    const centre = box / 2;
+    const c = box / 2;
     const params = noyauParams(getEtat(), t);
     ctx.clearRect(0, 0, box, box);
+    for (let i = 5; i >= 0; i -= 1) {
+      ctx.beginPath();
+      ctx.arc(c, c, c * (0.22 + i * 0.12) * (0.7 + params.rayon * 0.35), 0, Math.PI * 2);
+      ctx.strokeStyle = i % 2 ? params.couleur : '#f0c45a';
+      ctx.globalAlpha = 0.08 + i * 0.04;
+      ctx.lineWidth = 1 + (i === 0 ? 1.4 : 0);
+      ctx.stroke();
+    }
+    const spin = (t / 1800) * Math.PI * 2;
     ctx.beginPath();
-    ctx.arc(
-      centre,
-      centre,
-      centre * 0.55 * (0.5 + params.rayon),
-      0,
-      Math.PI * 2,
-    );
-    ctx.fillStyle = params.couleur;
-    ctx.globalAlpha = 0.85;
-    ctx.fill();
-    ctx.globalAlpha = 1;
-    ctx.beginPath();
-    ctx.arc(centre, centre, centre * 0.8, 0, Math.PI * 2);
-    ctx.strokeStyle = params.couleur;
-    ctx.globalAlpha = 0.35;
-    ctx.lineWidth = 2;
+    ctx.ellipse(c, c, c * 0.62, c * 0.22, spin, 0, Math.PI * 2);
+    ctx.strokeStyle = '#f0c45a';
+    ctx.globalAlpha = 0.45;
     ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(c, c, c * 0.62, c * 0.22, -spin, 0, Math.PI * 2);
+    ctx.strokeStyle = params.couleur;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(c, c, c * 0.18 * (0.85 + params.rayon * 0.3), 0, Math.PI * 2);
+    ctx.fillStyle = params.couleur;
+    ctx.globalAlpha = 0.9;
+    ctx.fill();
     ctx.globalAlpha = 1;
   }
   return boucle(dessin);

@@ -51,35 +51,32 @@ class McFrontTests(McBrowserCase):
         self._watch_errors(page)
         page.goto(f'{self.base}/owner')
         links = page.locator('.barre-laterale nav a')
-        self.assertEqual(links.count(), 9)
-        self.assertEqual(links.nth(1).text_content().strip(), 'Système')
+        self.assertEqual(links.count(), 8)
+        self.assertEqual(links.nth(1).text_content().strip(), 'Cerveau')
         links.nth(1).click()
-        page.locator('.ilot-btn').first.wait_for(timeout=10000)
-        self.assertEqual(page.evaluate('window.__MC.stats.page'), 'p1')
-        active = page.locator('.barre-laterale a.actif')
-        self.assertEqual(active.count(), 1)
-        self.assertEqual(active.first.text_content().strip(), 'Système')
-        links.nth(2).click()
         page.locator('table.matrice tbody tr').first.wait_for(timeout=10000)
         self.assertEqual(page.evaluate('window.__MC.stats.page'), 'p2')
-        links.nth(3).click()
+        active = page.locator('.barre-laterale a.actif')
+        self.assertEqual(active.count(), 1)
+        self.assertEqual(active.first.text_content().strip(), 'Cerveau')
+        links.nth(2).click()
         page.locator('[data-section="tickets"]').wait_for(timeout=10000)
         self.assertEqual(page.evaluate('window.__MC.stats.page'), 'p3')
-        links.nth(4).click()
+        links.nth(3).click()
         page.locator('.memory-tabs').wait_for(timeout=10000)
         self.assertEqual(page.evaluate('window.__MC.stats.page'), 'p4')
-        links.nth(5).click()
+        links.nth(4).click()
         page.locator('[data-section="politique_active"]').wait_for(
             timeout=10000
         )
         self.assertEqual(page.evaluate('window.__MC.stats.page'), 'p5')
-        links.nth(6).click()
+        links.nth(5).click()
         page.locator('[data-section="entonnoir"]').wait_for(timeout=10000)
         self.assertEqual(page.evaluate('window.__MC.stats.page'), 'p6')
-        links.nth(7).click()
+        links.nth(6).click()
         page.locator('[data-section="bridge_statut"]').wait_for(timeout=10000)
         self.assertEqual(page.evaluate('window.__MC.stats.page'), 'p7')
-        links.nth(8).click()
+        links.nth(7).click()
         page.locator('[data-section="charte_metriques"]').wait_for(
             timeout=10000
         )
@@ -142,7 +139,7 @@ class McFrontTests(McBrowserCase):
         self._watch_errors(page)
         page.goto(f'{self.base}/owner')
         for text in (
-            'Envoi email',
+            'Envoi d’e-mail',
             'Captcha',
             'Guichet',
             'Ada',
@@ -174,10 +171,12 @@ class McFrontTests(McBrowserCase):
         page = self._auth_context().new_page()
         self._watch_errors(page)
         page.goto(f'{self.base}/owner')
-        page.locator('[data-section="file"] li.cliquable').first.click()
-        drawer = page.locator('.drawer')
-        expect(drawer).to_contain_text('Envoi email')
-        expect(drawer).to_contain_text('Appel propre.')
+        page.locator('[data-section="file"] .clic-ligne').first.click()
+        page.get_by_text('Preuve — jusqu’au dernier caractère').wait_for(
+            timeout=10000
+        )
+        expect(page.locator('#page')).to_contain_text('Envoi d’e-mail')
+        expect(page.locator('#page')).to_contain_text('Appel propre.')
 
     def test_composants_hud(self) -> None:
         page = self._auth_context().new_page()

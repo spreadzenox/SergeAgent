@@ -40,9 +40,9 @@ body {
 
 /* Coquille : barre latérale + contenu. */
 main {
-  max-width: 42rem;
-  margin: 4rem auto;
-  padding: 0 1rem;
+  max-width: none;
+  margin: 0;
+  padding: 0;
 }
 
 .coquille {
@@ -184,6 +184,45 @@ button:disabled {
 
 .error {
   color: var(--rouge);
+}
+
+body:has(> main.login) {
+  display: grid;
+  min-height: 100vh;
+  padding: 1.5rem;
+  place-items: center;
+}
+
+main.login {
+  background: var(--verre);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon);
+  box-shadow: 0 0 40px rgb(53 224 255 / 8%);
+  max-width: 24rem;
+  padding: 2rem 1.75rem;
+  width: 100%;
+}
+
+main.login h1 {
+  font-size: 1.25rem;
+  margin: 0 0 0.45rem;
+  text-align: center;
+}
+
+main.login > p {
+  color: var(--texte-doux);
+  margin: 0 0 1.25rem;
+  text-align: center;
+}
+
+main.login form {
+  max-width: none;
+  width: 100%;
+}
+
+main.login button {
+  align-self: stretch;
 }
 
 .cliquable {

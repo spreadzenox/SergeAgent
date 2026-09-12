@@ -85,22 +85,152 @@ async function rollbackSnap(store, snapId) {
   }
 }
 
+const TITRES_SEC = {
+  budget: 'Budget',
+  quotas: 'Quotas',
+  windows: 'Fenêtres horaires',
+  calling_zones: 'Zones d’appel',
+  cooldowns: 'Temps de pause',
+  voice: 'Voix',
+  observation: 'Observation',
+  builder: 'Builder',
+  prospection: 'Prospection',
+  collect: 'Encaissement',
+  memory: 'Mémoire',
+  tickets: 'Tickets',
+  consent: 'Consentement',
+  listen: 'Écoute',
+};
+
+function champInput(chemin, val) {
+  const wrap = document.createElement('div');
+  wrap.className = 'champ';
+  const lab = document.createElement('label');
+  lab.textContent = chemin.split('.').pop().replace(/_/g, ' ');
+  let input;
+  if (typeof val === 'boolean') {
+    input = document.createElement('input');
+    input.type = 'checkbox';
+    input.checked = val;
+  } else if (typeof val === 'number') {
+    input = document.createElement('input');
+    input.type = 'number';
+    input.step = 'any';
+    input.value = String(val);
+  } else {
+    input = document.createElement('input');
+    input.type = 'text';
+    input.value = typeof val === 'string' ? val : JSON.stringify(val);
+    input.dataset.json = typeof val === 'string' ? '' : '1';
+  }
+  input.dataset.chemin = chemin;
+  lab.append(input);
+  wrap.append(lab);
+  const aide = document.createElement('p');
+  aide.className = 'aide';
+  aide.textContent = `${chemin} — ce nombre autorise ou refuse un acte.`;
+  wrap.append(aide);
+  return wrap;
+}
+
+function aplatir(obj, prefix, acc) {
+  if (obj === null || typeof obj !== 'object' || Array.isArray(obj)) {
+    acc.push([prefix, obj]);
+    return;
+  }
+  for (const [k, v] of Object.entries(obj)) {
+    const next = prefix ? `${prefix}.${k}` : k;
+    if (v && typeof v === 'object' && !Array.isArray(v)) {
+      aplatir(v, next, acc);
+    } else {
+      acc.push([next, v]);
+    }
+  }
+}
+
+function poser(cible, chemin, val) {
+  const parts = chemin.split('.');
+  let cur = cible;
+  for (let i = 0; i < parts.length - 1; i += 1) {
+    if (!(parts[i] in cur) || typeof cur[parts[i]] !== 'object') {
+      cur[parts[i]] = {};
+    }
+    cur = cur[parts[i]];
+  }
+  cur[parts[parts.length - 1]] = val;
+}
+
+function lireChamps(conteneur, base) {
+  const out = structuredClone(base);
+  conteneur.querySelectorAll('[data-chemin]').forEach((input) => {
+    const c = input.dataset.chemin;
+    let val;
+    if (input.type === 'checkbox') {
+      val = input.checked;
+    } else if (input.type === 'number') {
+      val = Number(input.value);
+    } else if (input.dataset.json) {
+      try {
+        val = JSON.parse(input.value);
+      } catch {
+        val = input.value;
+      }
+    } else {
+      val = input.value;
+    }
+    poser(out, c, val);
+  });
+  return out;
+}
+
 function renderPolitiqueActive(main, payload, sig, store) {
   const conteneur = main.querySelector('[data-policy="sections"]');
   conteneur.replaceChildren();
   const pol = payload.policy || {};
-
+  const form = document.createElement('form');
+  form.className = 'form-policy';
+  form.addEventListener('submit', (ev) => ev.preventDefault());
   for (const [secNom, secVal] of Object.entries(pol)) {
-    if (secNom === 'schema_version') {
+    if (secNom === 'schema_version' || typeof secVal !== 'object') {
       continue;
     }
-    const h3 = document.createElement('h3');
-    h3.textContent = secNom;
-    const pre = document.createElement('div');
-    pre.className = 'diff-bloc';
-    pre.textContent = JSON.stringify(secVal, null, 2);
-    conteneur.append(h3, pre);
+    const bloc = document.createElement('details');
+    bloc.className = 'sec-policy';
+    if (secNom === 'budget') {
+      bloc.open = true;
+    }
+    const sum = document.createElement('summary');
+    sum.textContent = TITRES_SEC[secNom] || secNom;
+    bloc.append(sum);
+    const plats = [];
+    aplatir(secVal, secNom, plats);
+    for (const [chemin, val] of plats) {
+      bloc.append(champInput(chemin, val));
+    }
+    form.append(bloc);
   }
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.textContent = 'Enregistrer les réglages';
+  btn.addEventListener('click', async () => {
+    const body = lireChamps(form, pol);
+    try {
+      const {ok, data} = await poster('/owner/api/policy/edit', {
+        policy: body,
+        decision_id: `mc-${Date.now()}-edit`,
+      });
+      if (!ok) {
+        toast(document.body, `Échec : ${data.erreur || 'refusé'}.`, 'erreur');
+        return;
+      }
+      toast(document.body, 'Policy enregistrée.', 'succes');
+      await rafraichir(store);
+    } catch {
+      toast(document.body, 'Action injoignable.', 'erreur');
+    }
+  });
+  form.append(btn);
+  conteneur.append(form);
   main.querySelector('[data-section="politique_active"]').dataset.sig = sig;
 }
 

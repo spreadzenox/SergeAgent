@@ -222,6 +222,9 @@ class McHandler(
         if path == '/owner/api/trace':
             self._api_trace()
             return
+        if path == '/owner/api/objet':
+            self._api_objet()
+            return
         if path == '/owner/api/ticket/carte':
             self._api_ticket_carte()
             return

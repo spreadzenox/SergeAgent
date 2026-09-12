@@ -1,6 +1,13 @@
-// Page P0 En direct : hero + urgents + file + feed + jauges.
-// Libellés FR en dur (centralisation i18n.js au lot 8).
-import {createGauge, updateGauge, openDrawer, toast, li, fillList, rel} from '../components.js';
+// Home : récit + graphe + urgents cliquables + activité humaine.
+import {
+  createGauge,
+  fillList,
+  li,
+  openDrawer,
+  toast,
+  updateGauge,
+} from '../components.js';
+import {monterGraphe} from '../graphe.js';
 import {
   densite24h,
   dessineWaveform,
@@ -8,154 +15,224 @@ import {
   startNoyau,
   tweenNumber,
 } from '../hud.js';
+import {
+  LIFECYCLE,
+  TYPES_TICKET,
+  allerObjet,
+  depuis,
+  rel,
+  verbe,
+} from '../libelles.js';
+import {chargerObjet, renderFiche} from '../objets.js';
 import {patchSection} from '../patch.js';
 
-const KINDS_FR = {
-  cycle: 'Cycle',
-  guard: 'Garde',
-  created: 'Créé',
-  sent: 'Envoyé',
-  'email.sent': 'Email envoyé',
-  'work.completed': 'Tâche terminée',
-  'work.failed': 'Tâche échouée',
-};
-
-const WORKERS_FR = {
-  'email.send': 'Envoi email',
-  'email.poll': 'Collecte email',
-  'voice.send': 'Appel voix',
-  'voice.score': 'Évaluation appel',
-  'inbound.classify': 'Classification',
-  'inbound.reply_priority': 'Réponse prioritaire',
-  'inbound.judge_other': 'Arbitrage autre',
-  'listen.collect': 'Collecte écoute',
-  'listen.cluster': 'Regroupement écoute',
-  'memory.consolidate': 'Consolidation mémoire',
-  'memory.apply': 'Application mémoire',
-};
-
-const ETATS_FR = {
-  READY: 'Prêt',
-  RUNNING: 'En cours',
-  DONE: 'Terminé',
-  FAILED: 'Échoué',
-};
-
-const TYPES_FR = {GUICHET: 'Guichet', VETO_AMONT: 'Veto amont', ALERT: 'Alerte'};
-
-function renderHero(main, payload, sig) {
+function renderHero(main, payload, sig, store) {
   patchSection(main, 'hero', sig, payload);
   const running = payload.running;
   const headline = main.querySelector('#live-headline');
   if (running) {
-    const since = rel(running.since);
     headline.textContent =
-      `En cours : ${WORKERS_FR[running.kind] || running.kind}`
-      + ` (${running.venture_id || 'sans venture'})`
-      + (since ? ` — depuis ${since}.` : '.');
+      `En cours : ${verbe(running.kind)}`
+      + ` (${nomVenture(store, running.venture_id)})`
+      + (running.since ? ` — ${depuis(running.since)}.` : '.');
   } else if (payload.ready > 0) {
     headline.textContent = `${payload.ready} prêts, en attente de traitement.`;
   } else {
     headline.textContent = 'Rien en cours — système calme.';
   }
+  const prochain = main.querySelector('.file-hero [data-file="prochain"]');
+  if (prochain) {
+    if (payload.next) {
+      prochain.hidden = false;
+      prochain.textContent = `Prochain : ${verbe(payload.next.kind)}`;
+    } else {
+      prochain.hidden = true;
+      prochain.textContent = '';
+    }
+  }
+}
+
+function canalFr(canal) {
+  if (canal === 'email') {
+    return 'e-mail';
+  }
+  if (canal === 'voice') {
+    return 'voix';
+  }
+  return canal || 'canal';
+}
+
+function etatCampagne(etat) {
+  if (etat === 'RUNNING') {
+    return 'en cours';
+  }
+  if (etat === 'PAUSED') {
+    return 'en pause';
+  }
+  if (etat === 'DRAFT') {
+    return 'brouillon';
+  }
+  return etat || '';
+}
+
+function ligneMetriques(u1, u2, u3, paid) {
+  const t = u1 || 0;
+  const r = u2 || 0;
+  const touch = t <= 1 ? `${t} touchée` : `${t} touchées`;
+  const rep = r <= 1 ? `${r} réponse` : `${r} réponses`;
+  return `${touch} · ${rep} · ${u3 || 0} oui · ${paid || 0} € encaissés`;
+}
+
+function renderBusiness(main, payload, sig) {
+  const sec = main.querySelector('[data-section="business"]');
+  if (!sec) {
+    return;
+  }
+  const voix = main.querySelector('#voix-noyau');
+  if (voix) {
+    voix.textContent = payload.voix || 'Je scrute.';
+  }
+  const slot = main.querySelector('[data-biz="bandeau"]');
+  if (slot) {
+    slot.replaceChildren();
+    if (payload.venture) {
+      const cadre = document.createElement('div');
+      cadre.className = 'cadre-venture';
+      const etiq = document.createElement('p');
+      etiq.className = 'etiq-venture';
+      etiq.textContent = 'Venture en cours';
+      const titre = document.createElement('button');
+      titre.type = 'button';
+      titre.className = 'titre-venture';
+      titre.textContent = payload.venture.nom;
+      titre.addEventListener('click', () =>
+        allerObjet('venture', payload.venture.id),
+      );
+      const cycle = document.createElement('p');
+      cycle.className = 'cycle-venture';
+      cycle.textContent = LIFECYCLE[payload.venture.lifecycle] || '';
+      const met = document.createElement('p');
+      met.className = 'met-venture';
+      met.textContent = ligneMetriques(
+        payload.u1,
+        payload.u2,
+        payload.u3,
+        payload.paid_eur,
+      );
+      cadre.append(etiq, titre, cycle, met);
+      if ((payload.tests || []).length) {
+        const rang = document.createElement('div');
+        rang.className = 'tests-venture';
+        const sous = document.createElement('p');
+        sous.className = 'etiq-tests';
+        sous.textContent = 'Campagnes de cette venture';
+        rang.append(sous);
+        payload.tests.forEach((t) => {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'puce-test';
+          const n = t.u1 || 0;
+          const touch = n <= 1 ? `${n} touchée` : `${n} touchées`;
+          b.textContent =
+            `Test ${canalFr(t.canal)} · ${etatCampagne(t.etat)} · ${touch}`;
+          b.addEventListener('click', () => allerObjet('campagne', t.id));
+          rang.append(b);
+        });
+        cadre.append(rang);
+      }
+      slot.append(cadre);
+    }
+  }
+  sec.dataset.sig = sig;
 }
 
 function renderUrgents(main, payload, sig) {
   const list = main.querySelector('[data-section="urgents"] [data-list]');
   fillList(list, payload.items, 'Aucun urgent. Tout est calme.', (item) => {
-    const type = TYPES_FR[item.type] || item.type;
+    const type = TYPES_TICKET[item.type] || item.type;
     const when = item.expiry_at ? ` — ${rel(item.expiry_at)}` : '';
-    return li(`${item.titre} (${type}${when})`, item.id);
+    const node = li('', item.id);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'lien-urgent';
+    btn.textContent = `${item.titre} (${type}${when})`;
+    btn.addEventListener('click', () => allerObjet('ticket', item.id));
+    node.append(btn);
+    return node;
   });
   main.querySelector('[data-section="urgents"]').dataset.sig = sig;
 }
 
-function renderFile(main, payload, sig) {
+function nomVenture(store, id) {
+  if (!id) {
+    return 'sans venture';
+  }
+  const env = store.get('business');
+  const v = env && env.payload ? env.payload.venture : null;
+  if (v && v.id === id) {
+    return v.nom;
+  }
+  return id;
+}
+
+function renderFile(main, payload, sig, store) {
   patchSection(main, 'file', sig, payload);
   const list = main.querySelector('[data-section="file"] [data-list]');
   fillList(list, payload.running, 'File vide.', (item) => {
-    const node = li(
-      `${WORKERS_FR[item.kind] || item.kind} (${item.venture_id || 'sans venture'})`,
-      item.id,
-    );
-    node.classList.add('cliquable');
-    node.dataset.traceId = item.id;
-    node.addEventListener('click', () => showTrace(item.id));
+    const node = li('', item.id);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'clic-ligne';
+    btn.textContent = `${verbe(item.kind)} (${nomVenture(store, item.venture_id)})`;
+    btn.addEventListener('click', () => allerObjet('work_item', item.id));
+    node.append(btn);
     return node;
   });
   const next = main.querySelector('#file-next');
   if (payload.next) {
-    next.textContent = `Prochain : ${WORKERS_FR[payload.next.kind] || payload.next.kind}.`;
+    next.hidden = false;
+    next.textContent = `Prochain : ${verbe(payload.next.kind)}`;
   } else {
-    next.textContent =
-      payload.running.length === 0 && payload.ready_count === 0
-        ? ''
-        : 'Rien de plus en attente.';
+    next.hidden = true;
+    next.textContent = '';
   }
 }
 
-function buildTrace(trace) {
-  const wrap = document.createElement('div');
-  const item = trace.item;
-  const title = document.createElement('p');
-  title.textContent =
-    `${WORKERS_FR[item.kind] || item.kind} — ${ETATS_FR[item.statut] || item.statut}`;
-  wrap.append(title);
-  if (trace.note) {
-    const note = document.createElement('p');
-    note.textContent = `Note : ${trace.note}`;
-    wrap.append(note);
+async function ouvrirFeuille(type, id) {
+  const data = await chargerObjet(type, id);
+  if (!data) {
+    toast(document.body, 'Détail introuvable.', 'erreur');
+    return;
   }
-  if (trace.ticket) {
-    const ticket = document.createElement('p');
-    ticket.textContent = `Ticket : ${trace.ticket.titre} (${trace.ticket.etat}).`;
-    wrap.append(ticket);
-  }
-  if (trace.contact) {
-    const contact = document.createElement('p');
-    const who = trace.contact.display || trace.contact.email;
-    contact.textContent = `Contact : ${who}.`;
-    wrap.append(contact);
-  }
-  const sub = document.createElement('h3');
-  sub.textContent = 'Événements';
-  wrap.append(sub);
-  const list = document.createElement('ul');
-  if (trace.evenements.length === 0) {
-    list.append(li('Aucun événement lié.'));
-  }
-  for (const event of trace.evenements) {
-    list.append(
-      li(`${rel(event.ts)} · ${KINDS_FR[event.type] || event.type}`),
-    );
-  }
-  wrap.append(list);
-  return wrap;
-}
-
-async function showTrace(id) {
-  try {
-    const res = await fetch(
-      `/owner/api/trace?item=${encodeURIComponent(id)}`,
-      {cache: 'no-store'},
-    );
-    if (!res.ok) {
-      toast(document.body, 'Trace introuvable.', 'erreur');
-      return;
-    }
-    const trace = await res.json();
-    openDrawer(document.body, 'Détail d’exécution', buildTrace(trace));
-  } catch {
-    toast(document.body, 'Trace injoignable.', 'erreur');
-  }
+  openDrawer(document.body, data.titre || id, renderFiche(data));
 }
 
 function renderFeed(main, payload, sig) {
   const list = main.querySelector('[data-section="feed"] [data-list]');
   fillList(list, payload.items, 'Aucune activité pour le moment.', (item) => {
-    const kind = KINDS_FR[item.kind] || item.kind;
-    const what = item.titre ? ` — ${item.titre}` : '';
-    return li(`${rel(item.ts)} · ${kind}${what}`);
+    const node = li('');
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'clic-ligne';
+    const extra = item.extra || {};
+    let cible = null;
+    if (extra.ticket_id) {
+      cible = ['ticket', extra.ticket_id];
+    } else if (extra.touch_id) {
+      cible = ['touch', extra.touch_id];
+    } else if (extra.event_id) {
+      cible = ['event', extra.event_id];
+    } else if (extra.id && String(item.kind || '').startsWith('work.')) {
+      cible = ['work_item', extra.id];
+    }
+    btn.textContent = `${rel(item.ts)} · ${verbe(item.kind)}${item.titre ? ` — ${item.titre}` : ''}`;
+    if (cible) {
+      btn.addEventListener('click', () => allerObjet(cible[0], cible[1]));
+    } else {
+      btn.addEventListener('click', () => ouvrirFeuille('event', extra.event_id || item.ts));
+    }
+    node.append(btn);
+    return node;
   });
   main.querySelector('[data-section="feed"]').dataset.sig = sig;
   const wave = main.querySelector('[data-hud="wave"]');
@@ -196,7 +273,6 @@ function renderJauges(main, payload, sig, gauges) {
   main.querySelector('[data-section="jauges"]').dataset.sig = sig;
 }
 
-// Dérive l'état système depuis le store (hero + urgents + tête de feed).
 function etatDepuisStore(store) {
   const hero = store.get('hero');
   const urgents = store.get('urgents');
@@ -222,18 +298,66 @@ export function mount(main, store) {
     slot.replaceChildren(label, node);
     gauges[name] = {label, node};
   }
+  main.addEventListener('click', (ev) => {
+    const cible = ev.target.closest('[data-file]');
+    if (!cible || !main.contains(cible)) {
+      return;
+    }
+    if (cible.dataset.file === 'ouvrir') {
+      allerObjet('file', 'canon');
+      return;
+    }
+    if (cible.dataset.file === 'prochain') {
+      const hero = store.get('hero');
+      const file = store.get('file');
+      const nxt =
+        (hero && hero.payload && hero.payload.next)
+        || (file && file.payload && file.payload.next);
+      if (nxt) {
+        allerObjet('work_item', nxt.id);
+      }
+    }
+  });
   const noyau = startNoyau(main.querySelector('[data-hud="noyau"]'), () =>
     etatDepuisStore(store),
   );
+  const stoppers = [];
+  const rafGraphe = monterGraphe(
+    main,
+    () => {
+      const g = store.get('graphe');
+      const b = store.get('business');
+      const base = g && g.payload ? g.payload : {};
+      return {
+        ...base,
+        lignage: b && b.payload ? b.payload.lignage : [],
+      };
+    },
+    stoppers,
+  );
   const renderers = {
-    hero: (payload, sg) => renderHero(main, payload, sg),
+    hero: (payload, sg) => renderHero(main, payload, sg, store),
+    business: (payload, sg) => renderBusiness(main, payload, sg),
+    graphe: (payload, sg) => {
+      const sec = main.querySelector('[data-section="graphe"]');
+      if (sec) {
+        sec.dataset.sig = sg;
+      }
+      if (payload.io && main.querySelector('[data-typewriter]')) {
+        const tw = main.querySelector('[data-typewriter]');
+        if (!tw.textContent) {
+          tw.textContent = payload.io.sortie ? '' : (payload.io.prompt || '');
+        }
+      }
+      rafGraphe();
+    },
     urgents: (payload, sg) => renderUrgents(main, payload, sg),
-    file: (payload, sg) => renderFile(main, payload, sg),
+    file: (payload, sg) => renderFile(main, payload, sg, store),
     feed: (payload, sg) => renderFeed(main, payload, sg),
     jauges: (payload, sg) => renderJauges(main, payload, sg, gauges),
   };
   const majEtat = () => {
-    const tete = main.querySelector('.hero');
+    const tete = main.querySelector('.recit') || main.querySelector('.hero');
     if (tete) {
       tete.dataset.etat = etatSysteme(etatDepuisStore(store));
     }
@@ -253,5 +377,6 @@ export function mount(main, store) {
   return () => {
     unsubs.forEach((unsub) => unsub());
     noyau.stop();
+    stoppers.forEach((fn) => fn());
   };
 }

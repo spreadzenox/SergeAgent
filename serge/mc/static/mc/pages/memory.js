@@ -1,5 +1,6 @@
 // Page P4 Mémoire : 5 couches C1-C5, recherche FTS, consolidation, requested.
 import {fillList, li, rel} from '../components.js';
+import {allerObjet} from '../libelles.js';
 
 let coucheActive = 'c1';
 
@@ -35,9 +36,15 @@ const RENDUS_COUCHES = {
     const ul = document.createElement('ul');
     fillList(ul, c.items || [], 'Aucun playbook.', (pb) => {
       const etp = Array.isArray(pb.etapes) ? pb.etapes.join(' → ') : '';
-      return li(
-        `${pb.nom} [${pb.scope}] — ${pb.conditions} (étapes: ${etp})`,
-      );
+      const node = li('');
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'clic-ligne';
+      btn.textContent =
+        `${pb.nom} [${pb.scope}] — ${pb.conditions} (étapes: ${etp})`;
+      btn.addEventListener('click', () => allerObjet('playbook', pb.id));
+      node.append(btn);
+      return node;
     });
     vue.append(ul);
   },
@@ -52,9 +59,17 @@ const RENDUS_COUCHES = {
   c4: (vue, c) => {
     vue.append(p(`${c.total || 0} leçon(s) répertoriée(s).`));
     const ul = document.createElement('ul');
-    fillList(ul, c.items || [], 'Aucune leçon.', (l) =>
-      li(`${l.lecon} [confiance: ${Math.round(l.confiance * 100)} %]`),
-    );
+    fillList(ul, c.items || [], 'Aucune leçon.', (l) => {
+      const node = li('');
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'clic-ligne';
+      btn.textContent =
+        `${l.lecon} [confiance: ${Math.round(l.confiance * 100)} %]`;
+      btn.addEventListener('click', () => allerObjet('lesson', l.id));
+      node.append(btn);
+      return node;
+    });
     vue.append(ul);
   },
   c5: (vue, c) => {

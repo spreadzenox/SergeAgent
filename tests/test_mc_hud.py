@@ -92,7 +92,7 @@ class McHudTests(McBrowserCase):
         )
         self.assertEqual(page.evaluate(compte), 1)
         liens = page.locator('.barre-laterale nav a')
-        liens.nth(8).click()  # Santé (page neutre, sans boucle)
+        liens.nth(7).click()  # Health (page neutre, sans boucle)
         page.locator('[data-section="charte_metriques"]').wait_for(
             timeout=10000
         )

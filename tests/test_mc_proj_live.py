@@ -16,6 +16,7 @@ from serge.db.store import append_event  # noqa: E402
 from serge.mc.proj_live import (  # noqa: E402
     project_feed,
     project_file,
+    project_file_detail,
     project_hero,
     project_jauges,
     project_urgents,
@@ -118,6 +119,7 @@ class ProjLiveTests(unittest.TestCase):
         self.assertEqual(hero['running']['kind'], 'email.send')
         self.assertEqual(hero['running']['venture_id'], 'v1')
         self.assertEqual(hero['ready'], 2)
+        self.assertEqual(hero['next']['kind'], 'inbound.classify')
 
     def test_urgents_ordonnes(self) -> None:
         items = project_urgents(self.conn, POLICY, NOW)['items']
@@ -134,6 +136,17 @@ class ProjLiveTests(unittest.TestCase):
             "SELECT id FROM work_items WHERE created_at LIKE '2026-09-10T10%'"
         ).fetchone()[0]
         self.assertEqual(file['next']['id'], conn)
+
+    def test_file_detail_ordre_et_libelles(self) -> None:
+        fiche = project_file_detail(self.conn, NOW)
+        self.assertEqual(fiche['type'], 'file')
+        lignes = fiche['tableau']['lignes']
+        self.assertEqual(len(lignes), 3)
+        self.assertEqual(lignes[0]['cellules'][1], 'Envoi d’e-mail')
+        self.assertEqual(lignes[0]['cellules'][2], 'En cours')
+        self.assertEqual(lignes[1]['cellules'][2], 'Prochain')
+        self.assertEqual(lignes[1]['cellules'][1], 'Classification d’une réponse')
+        self.assertEqual(lignes[2]['cellules'][2], 'Prêt')
 
     def test_feed_tri_et_sources(self) -> None:
         items = project_feed(self.conn, POLICY, NOW)['items']

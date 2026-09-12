@@ -6,6 +6,7 @@ import {
   rel,
   toast,
 } from '../components.js';
+import {allerObjet} from '../libelles.js';
 import {fetchState} from '../sse.js';
 
 const OUTCOME_FR = {APPROVED: 'approuvé', REJECTED: 'rejeté', EDITED: 'édité'};
@@ -212,6 +213,11 @@ export function renderCarte(main, store, carte) {
     );
     barre.append(bouton);
   }
+  const fiche = document.createElement('button');
+  fiche.type = 'button';
+  fiche.textContent = 'Fiche complète';
+  fiche.addEventListener('click', () => allerObjet('ticket', carte.ticket.id));
+  barre.append(fiche);
   corps.append(barre);
   if (carte.items.length > 0) {
     const titre = document.createElement('h3');

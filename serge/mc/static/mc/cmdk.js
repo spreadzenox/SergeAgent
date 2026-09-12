@@ -3,14 +3,13 @@ import {confirmModal, promptModal, toast} from './components.js';
 
 const COMMANDES_FIXES = [
   {id: 'nav-live', titre: 'Aller à En direct', type: 'page', hash: '#/live'},
-  {id: 'nav-system', titre: 'Aller à Système', type: 'page', hash: '#/system'},
   {id: 'nav-mind', titre: 'Aller à Cerveau', type: 'page', hash: '#/mind'},
   {id: 'nav-tickets', titre: 'Aller à Décisions', type: 'page', hash: '#/tickets'},
   {id: 'nav-memory', titre: 'Aller à Mémoire', type: 'page', hash: '#/memory'},
-  {id: 'nav-policy', titre: 'Aller à Politique', type: 'page', hash: '#/policy'},
+  {id: 'nav-policy', titre: 'Aller à Policy', type: 'page', hash: '#/policy'},
   {id: 'nav-economy', titre: 'Aller à Économie', type: 'page', hash: '#/economy'},
   {id: 'nav-voice', titre: 'Aller à Voix', type: 'page', hash: '#/voice'},
-  {id: 'nav-health', titre: 'Aller à Santé', type: 'page', hash: '#/health'},
+  {id: 'nav-health', titre: 'Aller à Health', type: 'page', hash: '#/health'},
   {
     id: 'act-kill-voice',
     titre: 'Action : Basculer Kill Switch Voix',

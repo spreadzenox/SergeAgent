@@ -1,10 +1,31 @@
 // Page P8 Santé : charte E6, services systemd, versions drift, audit trail.
 import {fillList, li, rel} from '../components.js';
 
+function tuile(n, libelle) {
+  const box = document.createElement('div');
+  box.className = 'tuile';
+  const strong = document.createElement('strong');
+  strong.textContent = String(n);
+  const span = document.createElement('span');
+  span.textContent = libelle;
+  box.append(strong, span);
+  return box;
+}
+
 function renderCharte(main, payload, sig) {
   const pLoc = main.querySelector('#health-loc');
   const plusGros = payload.plus_gros_fichier || {};
   pLoc.textContent = `LOC total (kit + serge) : ${payload.loc_total || 0} lignes | Plus gros fichier : ${plusGros.nom || '—'} (${plusGros.lignes || 0} l.)`;
+  const chips = main.querySelector('[data-tuiles="sante"]');
+  if (chips) {
+    const ratio = payload.tokens_par_euro !== null ? String(payload.tokens_par_euro) : '—';
+    chips.replaceChildren(
+      tuile(payload.loc_total || 0, 'Lignes de code'),
+      tuile(ratio, 'Jetons / €'),
+      tuile(payload.requested_pending || 0, 'Demandes en attente'),
+      tuile(plusGros.lignes || 0, plusGros.nom || 'Plus gros fichier'),
+    );
+  }
 
   const pRatio = main.querySelector('#health-ratio-cognitif');
   const ratioTxt = payload.tokens_par_euro !== null ? `${payload.tokens_par_euro} jetons / €` : 'N/A';
@@ -45,8 +66,12 @@ function renderVersions(main, payload, sig) {
 function renderAudit(main, payload, sig) {
   const ul = main.querySelector('[data-section="audit_trail"] [data-list="actes"]');
   fillList(ul, payload.actes || [], 'Aucun acte d’audit enregistré.', (a) => {
-    const details = a.details ? JSON.stringify(a.details) : '';
-    return li(`${rel(a.ts)} · [${a.acteur}] ${a.acte} : ${details}`);
+    const details = a.details
+      ? Object.entries(a.details)
+        .map(([k, v]) => `${k} ${v}`)
+        .join(' · ')
+      : '';
+    return li(`${rel(a.ts)} · ${a.acteur} — ${a.acte}${details ? ` : ${details}` : ''}`);
   });
   main.querySelector('[data-section="audit_trail"]').dataset.sig = sig;
 }

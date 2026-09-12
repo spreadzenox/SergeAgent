@@ -9,6 +9,7 @@ from sqlite3 import Connection
 from typing import TYPE_CHECKING, Any, Protocol
 
 from serge.mc.proj_analyse import project_memory_items
+from serge.mc.proj_objet import project_objet
 from serge.mc.proj_tickets import project_carte
 from serge.mc.proj_trace import project_trace
 
@@ -35,6 +36,31 @@ else:
 
 class ApiViewsMixin(_Base):
     """Endpoints API en lecture (GET) pour l'owner."""
+
+    def _api_objet(self) -> None:
+        if not self._require_owner():
+            return
+        typ = self._query().get('type', '').strip()
+        ident = self._query().get('id', '').strip()
+        if not typ or not ident:
+            self._refus(
+                400,
+                'Paramètres type et id requis.',
+                'objet',
+                'Exemple : …/api/objet?type=venture&id=v1.',
+            )
+            return
+        with self._db() as conn:
+            fiche = project_objet(conn, typ, ident)
+        if fiche is None:
+            self._refus(
+                404,
+                'Objet introuvable.',
+                'objet',
+                'Vérifie le type et l’identifiant.',
+            )
+            return
+        self._send_json(200, fiche)
 
     def _api_trace(self) -> None:
         if not self._require_owner():

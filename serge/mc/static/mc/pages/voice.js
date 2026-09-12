@@ -88,11 +88,16 @@ function renderCdr(main, payload, sig) {
 
   const ul = main.querySelector('[data-section="cdr_appels"] [data-list="calls"]');
   fillList(ul, payload.calls || [], 'Aucun appel enregistré.', (c) => {
-    const liEl = li(`${c.direction} → ${c.to} [${c.outcome}] (${c.duration_s}s, ${rel(c.created_at)}) `);
+    const sens = c.direction === 'out' || c.direction === 'outbound'
+      ? 'sortant'
+      : c.direction === 'in' || c.direction === 'inbound'
+        ? 'entrant'
+        : c.direction;
+    const liEl = li(`${sens} → ${c.to} [${c.outcome}] (${c.duration_s}s, ${rel(c.created_at)}) `);
     if (c.has_recording && c.audio_url) {
       const a = document.createElement('a');
       a.href = c.audio_url;
-      a.textContent = '🔊 Écouter';
+      a.textContent = 'Écouter';
       a.target = '_blank';
       a.style.marginLeft = '0.5rem';
       liEl.append(a);
@@ -105,7 +110,7 @@ function renderCdr(main, payload, sig) {
 function renderQualite(main, payload, sig) {
   const pMoy = main.querySelector('#voice-qualite-moyenne');
   const note = payload.note_moyenne !== null ? `${payload.note_moyenne} / 5` : 'Aucune note';
-  pMoy.textContent = `Score moyen récents (F4c) : ${note} (${payload.total_notes || 0} notés)`;
+  pMoy.textContent = `Score moyen récent : ${note} (${payload.total_notes || 0} notés)`;
 
   const ul = main.querySelector('[data-section="qualite_voix"] [data-list="scores"]');
   fillList(ul, payload.scores || [], 'Aucun score d’appel récent.', (s) =>

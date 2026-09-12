@@ -33,6 +33,7 @@ from serge.mc.proj_economy import (
     project_entonnoir,
     project_transactions_subscriptions,
 )
+from serge.mc.proj_graphe import project_business, project_graphe
 from serge.mc.proj_health import (
     project_audit_trail,
     project_charte_metriques,
@@ -181,6 +182,8 @@ def project_meta(conn: object, policy: object, now_iso: str) -> dict[str, Any]:
 
 PROJECTORS: dict[str, Callable[..., dict[str, Any]]] = {
     'meta': project_meta,
+    'graphe': project_graphe,
+    'business': project_business,
     'hero': project_hero,
     'urgents': project_urgents,
     'file': project_file,
@@ -221,7 +224,16 @@ PROJECTORS: dict[str, Callable[..., dict[str, Any]]] = {
 }
 
 PAGE_SECTIONS: dict[str, list[str]] = {
-    'p0': ['meta', 'hero', 'urgents', 'file', 'feed', 'jauges'],
+    'p0': [
+        'meta',
+        'graphe',
+        'business',
+        'hero',
+        'urgents',
+        'file',
+        'feed',
+        'jauges',
+    ],
     'p1': ['meta', 'ilots', 'scheduler', 'campagnes', 'population', 'email'],
     'p2': ['meta', 'pensees', 'decisions', 'matrice', 'signaux', 'clusters'],
     'p3': ['meta', 'tickets', 'diffs', 'metriques', 'digest'],

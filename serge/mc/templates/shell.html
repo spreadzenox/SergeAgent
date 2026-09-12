@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Serge — Mission Control</title>
 <link rel="stylesheet" href="/static/mc/style.css">
+<link rel="stylesheet" href="/static/mc/style-hud.css">
+<link rel="stylesheet" href="/static/mc/style-pages.css">
 </head>
 <body>
 <div id="app" class="coquille">
@@ -12,40 +14,58 @@
 <aside class="barre-laterale">
 <nav aria-label="Pages">
 <a href="#/live" data-page="p0">En direct</a>
-<a href="#/system" data-page="p1">Système</a>
 <a href="#/mind" data-page="p2">Cerveau</a>
 <a href="#/tickets" data-page="p3">Décisions</a>
 <a href="#/memory" data-page="p4">Mémoire</a>
-<a href="#/policy" data-page="p5">Politique</a>
+<a href="#/policy" data-page="p5">Policy</a>
 <a href="#/economy" data-page="p6">Économie</a>
 <a href="#/voice" data-page="p7">Voix</a>
-<a href="#/health" data-page="p8">Santé</a>
+<a href="#/health" data-page="p8">Health</a>
 </nav>
 </aside>
 <div class="contenu">
-<header><h1>Mission Control</h1><p id="health">…</p><p data-section="meta" data-sig="">MC v<span data-field="mc_version">…</span></p><kbd class="cmdk-hint">Ctrl+K</kbd></header>
+<header class="entete-mc"><h1>Mission Control</h1><span id="health" class="pastille" data-etat="ok" title="Connexion"></span><kbd class="cmdk-hint">Ctrl+K</kbd></header>
 <main id="page"></main>
+<footer class="pied-mc" data-section="meta" data-sig="">MC v<span data-field="mc_version">…</span></footer>
 </div>
 </div>
 <template id="page-live">
-<section class="panneau hero" data-section="hero" data-sig="">
-<div class="hero-layout">
-<canvas data-hud="noyau" class="hud-canvas" width="120" height="120"></canvas>
-<div>
-<p id="live-headline">…</p>
-<p>File : <span data-field="ready">…</span> prêts</p>
-</div>
-</div>
-</section>
-<section class="panneau" data-section="urgents" data-sig="">
+<section class="panneau rail-urgents" data-section="urgents" data-sig="">
 <h2>Urgents</h2>
 <ul data-list="items"></ul>
 </section>
+<section class="panneau recit hero" data-section="hero" data-sig="">
+<canvas data-hud="noyau" class="hud-canvas" width="160" height="160"></canvas>
+<div>
+<p id="voix-noyau" class="voix-noyau">…</p>
+<p id="live-headline">…</p>
+<div class="file-hero">
+<button type="button" class="btn-file" data-file="ouvrir">File : <span data-field="ready">…</span> prêts</button>
+<button type="button" class="btn-file" data-file="prochain" hidden></button>
+</div>
+<div class="bandeau-biz" data-section="business" data-sig="">
+<div data-biz="bandeau"></div>
+</div>
+</div>
+</section>
+<section class="panneau carte-serge" data-section="graphe" data-sig="">
+<h2>Comment Serge gagne de l’argent</h2>
+<p class="legende-carte">De l’écoute du web jusqu’à Stripe : chaque nœud est un objet réel. Survole, clique, suis l’euro.</p>
+<div class="scene-graphe">
+<canvas data-hud="carte" class="hud-canvas" width="960" height="380"></canvas>
+<div class="noeuds" data-graphe="noeuds"></div>
+</div>
+<div class="scrubber">
+<label>24 h <input type="range" min="0" max="100" value="100" data-scrubber></label>
+<button type="button" data-euro>Suivre l’euro</button>
+</div>
+<pre class="typewriter" data-typewriter></pre>
+</section>
 <section class="panneau" data-section="file" data-sig="">
-<h2>File d’exécution</h2>
+<h2><button type="button" class="btn-file" data-file="ouvrir">File d’exécution</button></h2>
 <ul data-list="running"></ul>
 <p>Prêts : <span data-field="ready_count">…</span></p>
-<p id="file-next"></p>
+<button type="button" class="btn-file" id="file-next" data-file="prochain" hidden></button>
 </section>
 <section class="panneau" data-section="feed" data-sig="">
 <h2>Activité</h2>
@@ -97,6 +117,7 @@
 </section>
 </template>
 <template id="page-mind">
+<p class="page-intro">Le cerveau : chaque point est un jugement. Clique pour voir le prompt, tuer ou relancer.</p>
 <section class="panneau" data-section="pensees" data-sig="">
 <h2>Pensées</h2>
 <ul data-list="items"></ul>
@@ -106,7 +127,7 @@
 <ul data-list="items"></ul>
 </section>
 <section class="panneau" data-section="matrice" data-sig="">
-<h2>Matrice des points</h2>
+<h2>Les jugements LLM</h2>
 <div data-matrice="table"></div>
 </section>
 <section class="panneau" data-section="signaux" data-sig="">
@@ -119,8 +140,9 @@
 </section>
 </template>
 <template id="page-tickets">
+<p class="page-intro">Tu tranches ici. Tant qu’un urgent est ouvert, Serge attend.</p>
 <section class="panneau" data-section="tickets" data-sig="">
-<h2>Tickets</h2>
+<h2>À trancher</h2>
 <div class="tickets-filtres">
 <select data-filtre="type" aria-label="Filtrer par type">
 <option value="">Tous types</option>
@@ -144,11 +166,11 @@
 <div data-carte="corps"></div>
 </section>
 <section class="panneau" data-section="diffs" data-sig="">
-<h2>Différences & révisions</h2>
+<h2>Ce qui a changé</h2>
 <div data-diffs="contenu"></div>
 </section>
 <section class="panneau" data-section="memory-browse">
-<h2>Toutes les leçons (MEMORY)</h2>
+<h2>Toutes les leçons</h2>
 <div class="memory-nav">
 <button type="button" data-memory="prev">Précédent</button>
 <span data-memory="info">Page 1 / 1</span>
@@ -157,7 +179,7 @@
 <ul data-list="memory-items"></ul>
 </section>
 <section class="panneau" data-section="metriques" data-sig="">
-<h2>Métriques de décision (E5)</h2>
+<h2>Rythme des décisions</h2>
 <div data-metriques="contenu"></div>
 </section>
 <section class="panneau" data-section="digest" data-sig="">
@@ -166,6 +188,7 @@
 </section>
 </template>
 <template id="page-memory">
+<p class="page-intro">Ce que Serge a appris : playbooks, pièges, leçons. Clique une leçon pour voir ses sources.</p>
 <section class="panneau" data-section="couches" data-sig="">
 <h2>Cinq couches de mémoire</h2>
 <div class="tickets-filtres memory-tabs">
@@ -178,7 +201,7 @@
 <div data-couche-vue="contenu"></div>
 </section>
 <section class="panneau" data-section="recherche-memory">
-<h2>Recherche plein-texte (FTS)</h2>
+<h2>Chercher dans la mémoire</h2>
 <form data-form="recherche" class="carte-actes">
 <input type="search" data-input="recherche" placeholder="Rechercher dans la mémoire…" aria-label="Recherche">
 <button type="button" data-action="lancer-recherche">Rechercher</button>
@@ -186,16 +209,17 @@
 <div data-recherche="resultats"></div>
 </section>
 <section class="panneau" data-section="consolidation" data-sig="">
-<h2>Moteur de consolidation</h2>
+<h2>Consolidation</h2>
 <p id="cons-status">…</p>
 <ul data-list="events"></ul>
 </section>
 <section class="panneau" data-section="requested" data-sig="">
-<h2>Demandes d’évolution (requested)</h2>
+<h2>Demandes d’évolution</h2>
 <ul data-list="items"></ul>
 </section>
 </template>
 <template id="page-policy">
+<p class="page-intro">Les nombres qui autorisent ou refusent un acte. Un champ = une règle, pas un JSON.</p>
 <section class="panneau" data-section="politique_active" data-sig="">
 <h2>Politique active</h2>
 <div class="carte-actes">
@@ -204,11 +228,11 @@
 <div data-policy="sections"></div>
 </section>
 <section class="panneau" data-section="testing_froid" data-sig="">
-<h2>Testing à froid (E3)</h2>
+<h2>Testing à froid</h2>
 <p id="testing-lock-status">…</p>
 <form data-form="testing" class="carte-actes">
-<label>n_smoke_min: <input type="number" data-testing="n_smoke_min" style="width: 80px;"></label>
-<label>n_full_target: <input type="number" data-testing="n_full_target" style="width: 80px;"></label>
+<label>Personnes min. pour un smoke : <input type="number" data-testing="n_smoke_min" style="width: 80px;"></label>
+<label>Personnes cibles pour un full : <input type="number" data-testing="n_full_target" style="width: 80px;"></label>
 <button type="button" data-btn="enregistrer-testing">Enregistrer testing</button>
 </form>
 </section>
@@ -217,18 +241,20 @@
 <ul data-list="snapshots"></ul>
 </section>
 <section class="panneau" data-section="trust_candidates" data-sig="">
-<h2>Zone de confiance (Trust Candidates)</h2>
+<h2>Zone de confiance</h2>
 <ul data-list="candidates"></ul>
 </section>
 </template>
 <template id="page-economy">
+<p class="page-intro">L’argent : qui a été touché, qui a répondu, qui a payé. Chaque chiffre mène à l’objet.</p>
 <section class="panneau" data-section="entonnoir" data-sig="">
-<h2>Entonnoir de conversion (Evidence-strict)</h2>
+<h2>De la touche à l’euro</h2>
+<div class="tuiles" data-tuiles="entonnoir"></div>
 <p id="eco-totaux">…</p>
 <ul data-list="ventures"></ul>
 </section>
 <section class="panneau" data-section="transactions_subscriptions" data-sig="">
-<h2>Intents, Transactions & Abonnements</h2>
+<h2>Factures et abonnements</h2>
 <p id="eco-mrr">MRR estimé : … €</p>
 <h3>Transactions récentes</h3>
 <ul data-list="transactions"></ul>
@@ -236,12 +262,12 @@
 <ul data-list="subscriptions"></ul>
 </section>
 <section class="panneau" data-section="couts_cognitifs" data-sig="">
-<h2>Coûts cognitifs LLM & Revenu (E6)</h2>
+<h2>Coût des jugements LLM</h2>
 <p id="eco-couts-detail">…</p>
 <p id="eco-ratio-tokens">…</p>
 </section>
 <section class="panneau" data-section="audit_reponses" data-sig="">
-<h2>Traçabilité des réponses & Dette Builder (E10, E9)</h2>
+<h2>Réponses et dette builder</h2>
 <h3>Dernières réponses</h3>
 <ul data-list="reponses"></ul>
 <h3>Dette Builder (artifacts)</h3>
@@ -249,41 +275,44 @@
 </section>
 </template>
 <template id="page-voice">
+<p class="page-intro">Les appels : pont, journal, notes. Le kill switch coupe tout de suite.</p>
 <section class="panneau" data-section="bridge_statut" data-sig="">
-<h2>Bridge voix & Trunk Asterisk</h2>
+<h2>Pont voix</h2>
 <p id="voice-bridge-info">…</p>
 <div class="carte-actes">
 <button type="button" data-action="toggle-kill-voice" class="danger">Basculer Kill Switch Voix</button>
 </div>
 </section>
 <section class="panneau" data-section="cdr_appels" data-sig="">
-<h2>Journal des appels (CDR)</h2>
+<h2>Journal des appels</h2>
 <p id="voice-cdr-total">…</p>
 <ul data-list="calls"></ul>
 </section>
 <section class="panneau" data-section="qualite_voix" data-sig="">
-<h2>Qualité & Scoring (F4c)</h2>
+<h2>Qualité des appels</h2>
 <p id="voice-qualite-moyenne">…</p>
 <ul data-list="scores"></ul>
 </section>
 </template>
 <template id="page-health">
+<p class="page-intro">Santé de la machine : services, versions, piste d’audit. Rien d’inventé.</p>
 <section class="panneau" data-section="charte_metriques" data-sig="">
-<h2>Charte & Métriques globales (E6)</h2>
+<h2>Charte et métriques</h2>
+<div class="tuiles" data-tuiles="sante"></div>
 <p id="health-loc">…</p>
 <p id="health-ratio-cognitif">…</p>
 <p id="health-requested">…</p>
 </section>
 <section class="panneau" data-section="units_systemd" data-sig="">
-<h2>Services systemd (Units)</h2>
+<h2>Services</h2>
 <ul data-list="units"></ul>
 </section>
 <section class="panneau" data-section="versions_drift" data-sig="">
-<h2>Versions logicielles & Dérive schéma</h2>
+<h2>Versions</h2>
 <p id="health-versions">…</p>
 </section>
 <section class="panneau" data-section="audit_trail" data-sig="">
-<h2>Piste d’audit (Audit Trail MC)</h2>
+<h2>Piste d’audit</h2>
 <ul data-list="actes"></ul>
 </section>
 </template>

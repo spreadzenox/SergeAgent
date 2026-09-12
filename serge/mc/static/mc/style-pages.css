@@ -1,0 +1,103 @@
+/* Peau des pages satellites : tuiles, listes, intros, breakpoints 15". */
+.page-intro {
+  color: var(--texte-doux);
+  font-size: 0.95rem;
+  grid-column: 1 / -1;
+  margin: 0 0 0.85rem;
+  max-width: 46rem;
+}
+
+.tuiles {
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0 0 1rem;
+}
+
+.tuile {
+  background: rgb(5 10 20 / 55%);
+  border: 1px solid rgb(53 224 255 / 18%);
+  border-radius: 10px;
+  padding: 0.7rem 0.85rem;
+}
+
+.tuile strong {
+  color: var(--or);
+  display: block;
+  font-family: var(--police-chiffres);
+  font-size: 1.45rem;
+}
+
+.tuile span {
+  color: var(--texte-doux);
+  font-size: 0.78rem;
+}
+
+.table-scroll {
+  margin: 0 -0.25rem;
+  overflow-x: auto;
+}
+
+table.matrice {
+  min-width: 40rem;
+}
+
+#page [data-list] {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+#page [data-list] > li {
+  border-bottom: 1px solid rgb(53 224 255 / 8%);
+  padding: 0.4rem 0;
+}
+
+#page [data-list] > li:last-child {
+  border-bottom: 0;
+}
+
+.lien-ticket,
+.lien-point,
+.lien-urgent {
+  background: rgb(5 10 20 / 40%);
+  border: 1px solid rgb(53 224 255 / 16%);
+  border-radius: 8px;
+  display: block;
+  padding: 0.45rem 0.7rem;
+  text-align: left;
+  width: 100%;
+}
+
+.tickets-filtres,
+.memory-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+@media (max-width: 1100px) {
+  .tuiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .coquille {
+    grid-template-columns: 10rem 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .tuiles {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .coquille {
+    grid-template-columns: 1fr;
+  }
+
+  .barre-laterale nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}

@@ -25,9 +25,9 @@ def project_hero(
         now: Maintenant ISO (ignoré, uniformité).
 
     Returns:
-        Dict {running: {id, kind, venture_id, since} | None, ready: int}.
+        Dict {running, ready, next}.
     """
-    _ = (policy, now)
+    _ = policy
     row = conn.execute(
         'SELECT id, kind, venture_id, created_at FROM work_items'
         " WHERE status='RUNNING' ORDER BY created_at DESC LIMIT 1"
@@ -43,7 +43,15 @@ def project_hero(
     ready = conn.execute(
         "SELECT COUNT(*) FROM work_items WHERE status='READY'"
     ).fetchone()[0]
-    return {'running': running, 'ready': int(ready)}
+    nxt = next_ready(conn, now)
+    following = None
+    if nxt is not None:
+        following = {
+            'id': nxt['id'],
+            'kind': nxt['kind'],
+            'venture_id': nxt['venture_id'],
+        }
+    return {'running': running, 'ready': int(ready), 'next': following}
 
 
 def project_urgents(
@@ -139,20 +147,23 @@ def project_file(
 def _feed_events(conn: sqlite3.Connection) -> list[dict[str, Any]]:
     items = []
     for row in conn.execute(
-        'SELECT ts, type, actor, payload_json FROM events'
+        'SELECT id, ts, type, actor, payload_json FROM events'
         ' ORDER BY id DESC LIMIT 30'
     ).fetchall():
         try:
-            extra = json.loads(row[3] or '{}')
+            extra = json.loads(row[4] or '{}')
         except ValueError:
             extra = {}
+        if not isinstance(extra, dict):
+            extra = {}
+        extra['event_id'] = str(row[0])
         items.append(
             {
-                'ts': row[0],
+                'ts': row[1],
                 'source': 'event',
-                'kind': row[1],
+                'kind': row[2],
                 'titre': '',
-                'extra': extra if isinstance(extra, dict) else {},
+                'extra': extra,
             }
         )
     return items
@@ -180,18 +191,22 @@ def _feed_tickets(conn: sqlite3.Connection) -> list[dict[str, Any]]:
 def _feed_touches(conn: sqlite3.Connection) -> list[dict[str, Any]]:
     items = []
     for row in conn.execute(
-        'SELECT t.created_at, t.channel, t.kind, t.status,'
-        ' COALESCE(c.display, c.email, t.contact_id)'
+        'SELECT t.id, t.created_at, t.channel, t.kind, t.status,'
+        ' COALESCE(c.display, c.email, t.contact_id), t.contact_id'
         ' FROM touches t LEFT JOIN contacts c ON c.id=t.contact_id'
         ' ORDER BY t.created_at DESC LIMIT 30'
     ).fetchall():
         items.append(
             {
-                'ts': row[0],
+                'ts': row[1],
                 'source': 'touche',
-                'kind': f'{row[1]}.{row[3]}',
-                'titre': str(row[4] or ''),
-                'extra': {'contact_kind': row[2]},
+                'kind': f'{row[2]}.{row[4]}',
+                'titre': str(row[5] or ''),
+                'extra': {
+                    'contact_kind': row[3],
+                    'touch_id': str(row[0]),
+                    'contact_id': str(row[6] or ''),
+                },
             }
         )
     return items
@@ -261,4 +276,93 @@ def project_jauges(
             'quota': email_cap,
             'ratio': (int(sent) / email_cap) if email_cap > 0 else None,
         },
+    }
+
+
+def project_file_detail(conn: sqlite3.Connection, now: str) -> dict[str, Any]:
+    """File complète : en cours puis prêts (priorité, FIFO), y compris en pause."""
+    from serge.mc.libelles import CANAUX, ETATS_WORK, verbe
+
+    nxt = next_ready(conn, now)
+    prochain_id = str(nxt['id']) if nxt else ''
+    rows = conn.execute(
+        'SELECT w.id, w.kind, w.status, w.priority, w.blocked_until,'
+        ' w.created_at, w.attempts, w.campaign_id, w.contact_id,'
+        ' v.name, c.display, camp.channel FROM work_items w'
+        ' LEFT JOIN ventures v ON v.id=w.venture_id'
+        ' LEFT JOIN contacts c ON c.id=w.contact_id'
+        ' LEFT JOIN campaigns camp ON camp.id=w.campaign_id'
+        " WHERE w.status IN ('READY','RUNNING')"
+        " ORDER BY CASE w.status WHEN 'RUNNING' THEN 0 ELSE 1 END,"
+        ' w.priority DESC, w.created_at ASC'
+    ).fetchall()
+    lignes = []
+    enfants = []
+    for i, row in enumerate(rows, start=1):
+        ident, kind, statut, prio, pause, created, essais = row[:7]
+        campagne, contact, nom, qui, canal = row[7:]
+        etat = ETATS_WORK.get(statut, statut)
+        if ident == prochain_id:
+            etat = 'Prochain'
+        elif statut == 'READY' and pause and pause > now:
+            etat = 'En pause'
+        titre = verbe(str(kind))
+        canal_fr = CANAUX.get(canal, canal) if canal else '—'
+        lignes.append(
+            {
+                'id': ident,
+                'type': 'work_item',
+                'cellules': [
+                    str(i),
+                    titre,
+                    etat,
+                    str(prio),
+                    nom or '—',
+                    canal_fr if campagne else '—',
+                    qui or '—',
+                    pause if pause and pause > now else '—',
+                    created or '—',
+                    str(essais),
+                ],
+            }
+        )
+        enfants.append(
+            {'type': 'work_item', 'id': ident, 'titre': f'{i}. {titre}'}
+        )
+    return {
+        'type': 'file',
+        'id': 'canon',
+        'titre': 'File d’exécution',
+        'pourquoi': (
+            'Ordre réel de l’ordonnanceur : d’abord ce qui tourne,'
+            ' puis les prêts par priorité, le plus ancien d’abord.'
+        ),
+        'champs': [
+            {'k': 'Prêts', 'v': str(sum(1 for r in rows if r[2] == 'READY'))},
+            {
+                'k': 'En cours',
+                'v': str(sum(1 for r in rows if r[2] == 'RUNNING')),
+            },
+            {
+                'k': 'Prochain',
+                'v': verbe(str(nxt['kind'])) if nxt else '—',
+            },
+        ],
+        'tableau': {
+            'colonnes': [
+                'Rang',
+                'Travail',
+                'État',
+                'Priorité',
+                'Venture',
+                'Campagne',
+                'Contact',
+                'Pause',
+                'Depuis',
+                'Essais',
+            ],
+            'lignes': lignes,
+        },
+        'enfants': enfants,
+        'preuve': '',
     }

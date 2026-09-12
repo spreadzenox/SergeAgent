@@ -1,5 +1,6 @@
 // Page P3 Décisions : liste, filtres, carte (actes), diffs, MEMORY, E5, digest.
 import {fillList, li, rel} from '../components.js';
+import {TYPES_TICKET, allerObjet} from '../libelles.js';
 import {chargerCarte} from './tickets_actes.js';
 
 const OUVERTS = ['DRAFT', 'OPEN', 'DISCUSSING'];
@@ -65,7 +66,7 @@ function majOptionsTypes(main, items) {
   for (const type of types) {
     const opt = document.createElement('option');
     opt.value = type;
-    opt.textContent = type;
+    opt.textContent = TYPES_TICKET[type] || type;
     select.append(opt);
   }
   if (types.includes(courant)) {
@@ -217,9 +218,18 @@ function initMemory(main) {
       info.textContent = `Page ${data.page} / ${data.pages} (${data.total} leçons)`;
       btnPrev.disabled = page <= 1;
       btnNext.disabled = page >= data.pages;
-      fillList(liste, data.items, 'Aucune leçon enregistrée.', (it) =>
-        li(`${it.label} [${it.etat}]`)
-      );
+      fillList(liste, data.items, 'Aucune leçon enregistrée.', (it) => {
+        const node = li('');
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'clic-ligne';
+        btn.textContent = `${it.label} [${it.etat}]`;
+        if (it.id) {
+          btn.addEventListener('click', () => allerObjet('lesson', it.id));
+        }
+        node.append(btn);
+        return node;
+      });
     } catch {
       // réessai ultérieur
     }

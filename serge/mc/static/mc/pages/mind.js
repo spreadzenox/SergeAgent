@@ -8,6 +8,7 @@ import {
   rel,
   toast,
 } from '../components.js';
+import {titreLlm} from '../libelles.js';
 import {fetchState} from '../sse.js';
 
 function etatPoint(item) {
@@ -89,6 +90,7 @@ function renderMatrice(main, payload, sig, store) {
       bouton.type = 'button';
       bouton.className = 'lien-point';
       bouton.textContent = item.nom;
+      bouton.title = titreLlm(item.nom);
       bouton.addEventListener('click', () => ouvrirFiche(store, item));
       tdNom.append(bouton);
       tr.append(tdNom);
@@ -111,7 +113,10 @@ function renderMatrice(main, payload, sig, store) {
       corps.append(tr);
     }
     table.append(corps);
-    conteneur.append(table);
+    const scroll = document.createElement('div');
+    scroll.className = 'table-scroll';
+    scroll.append(table);
+    conteneur.append(scroll);
   }
   main.querySelector('[data-section="matrice"]').dataset.sig = sig;
 }
@@ -295,5 +300,12 @@ function ouvrirFiche(store, item) {
       tuerPoint(store, item, rouvrir).finally(fin);
     }
   });
-  corps.append(bouton);
+  const fiche = document.createElement('button');
+  fiche.type = 'button';
+  fiche.textContent = 'Fiche complète';
+  fiche.addEventListener('click', () => {
+    ferme();
+    location.hash = `#/objet/llm/${encodeURIComponent(item.nom)}`;
+  });
+  corps.append(bouton, fiche);
 }

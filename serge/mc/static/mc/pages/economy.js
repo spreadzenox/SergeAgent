@@ -1,15 +1,45 @@
 // Page P6 Économie : entonnoir evidence-strict, transactions & MRR, coûts cognitifs, audit.
 import {fillList, li, rel} from '../components.js';
+import {allerObjet} from '../libelles.js';
+
+function tuile(n, libelle) {
+  const box = document.createElement('div');
+  box.className = 'tuile';
+  const strong = document.createElement('strong');
+  strong.textContent = String(n);
+  const span = document.createElement('span');
+  span.textContent = libelle;
+  box.append(strong, span);
+  return box;
+}
 
 function renderEntonnoir(main, payload, sig) {
   const tot = payload.totaux || {};
   const pTot = main.querySelector('#eco-totaux');
-  pTot.textContent = `Total : ${tot.u1 || 0} envoyés (U1) → ${tot.u2 || 0} engagés (U2) → ${tot.u3 || 0} positifs (U3) | Encaissé : ${tot.paid_eur || 0} €`;
+  pTot.textContent =
+    `Total : ${tot.u1 || 0} envoyés (U1) → ${tot.u2 || 0} engagés (U2) → ${tot.u3 || 0} positifs (U3) | Encaissé : ${tot.paid_eur || 0} €`;
+  const chips = main.querySelector('[data-tuiles="entonnoir"]');
+  if (chips) {
+    chips.replaceChildren(
+      tuile(tot.u1 || 0, 'Touchées (U1)'),
+      tuile(tot.u2 || 0, 'Ont répondu (U2)'),
+      tuile(tot.u3 || 0, 'Ont dit oui (U3)'),
+      tuile(`${tot.paid_eur || 0} €`, 'Encaissé'),
+    );
+  }
 
   const ul = main.querySelector('[data-section="entonnoir"] [data-list="ventures"]');
-  fillList(ul, payload.ventures || [], 'Aucune venture enregistrée.', (v) =>
-    li(`${v.name || v.id} [${v.lifecycle}] : ${v.u1} U1 → ${v.u2} U2 → ${v.u3} U3 | ${v.paid_eur} €`)
-  );
+  fillList(ul, payload.ventures || [], 'Aucune venture enregistrée.', (v) => {
+    const node = li('');
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'clic-ligne';
+    btn.textContent =
+      `${v.name || v.id} [${v.lifecycle}] : ${v.u1} U1 → ${v.u2} U2 → ${v.u3} U3 | ${v.paid_eur} €`;
+    btn.addEventListener('click', () => allerObjet('venture', v.id));
+    node.append(btn);
+    return node;
+  });
   main.querySelector('[data-section="entonnoir"]').dataset.sig = sig;
 }
 
@@ -18,9 +48,19 @@ function renderTransactions(main, payload, sig) {
   pMrr.textContent = `MRR récurrent mensuel : ${payload.mrr_eur || 0} €`;
 
   const ulTx = main.querySelector('[data-section="transactions_subscriptions"] [data-list="transactions"]');
-  fillList(ulTx, payload.transactions || [], 'Aucune transaction enregistrée.', (tx) =>
-    li(`${tx.kind} ${tx.amount_eur} ${tx.currency} [${tx.status}] (${rel(tx.created_at)})`)
-  );
+  fillList(ulTx, payload.transactions || [], 'Aucune transaction enregistrée.', (tx) => {
+    const node = li('');
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'clic-ligne';
+    btn.textContent =
+      `${tx.kind} ${tx.amount_eur} ${tx.currency} [${tx.status}] (${rel(tx.created_at)})`;
+    if (tx.id) {
+      btn.addEventListener('click', () => allerObjet('facture', tx.id));
+    }
+    node.append(btn);
+    return node;
+  });
 
   const ulSub = main.querySelector('[data-section="transactions_subscriptions"] [data-list="subscriptions"]');
   fillList(ulSub, payload.subscriptions || [], 'Aucun abonnement récurrent.', (sub) =>

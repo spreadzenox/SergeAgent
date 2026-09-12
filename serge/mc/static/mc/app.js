@@ -6,7 +6,6 @@ import {initCmdk} from './cmdk.js';
 
 const ROUTES = {
   live: 'p0',
-  system: 'p1',
   mind: 'p2',
   tickets: 'p3',
   memory: 'p4',
@@ -16,14 +15,13 @@ const ROUTES = {
   health: 'p8',
 };
 const LABELS = {
-  p1: 'Système',
   p2: 'Cerveau',
   p3: 'Décisions',
   p4: 'Mémoire',
-  p5: 'Politique',
+  p5: 'Policy',
   p6: 'Économie',
   p7: 'Voix',
-  p8: 'Santé',
+  p8: 'Health',
 };
 
 const store = createStore();
@@ -31,8 +29,15 @@ const stats = {applied: 0, skipped: 0, mode: 'boot', page: 'p0'};
 window.__MC = {stats};
 
 function current() {
-  const name = (location.hash || '').replace(/^#\//, '');
-  return ROUTES[name] || 'p0';
+  const raw = (location.hash || '').replace(/^#\//, '');
+  if (raw === 'system') {
+    location.hash = '#/live';
+    return 'p0';
+  }
+  if (raw.startsWith('objet/')) {
+    return 'objet';
+  }
+  return ROUTES[raw] || 'p0';
 }
 
 function template(id) {
@@ -56,7 +61,12 @@ let generation = 0;
 async function render() {
   const mine = ++generation;
   const page = current();
-  if (!ROUTES[(location.hash || '').replace(/^#\//, '')]) {
+  const raw = (location.hash || '').replace(/^#\//, '');
+  if (raw === 'system') {
+    location.hash = '#/live';
+    return;
+  }
+  if (!raw.startsWith('objet/') && !ROUTES[raw]) {
     location.hash = '#/live';
   }
   stats.page = page;
@@ -68,14 +78,15 @@ async function render() {
     unmount();
     unmount = null;
   }
-  if (page === 'p0') {
-    const {mount} = await import('./pages/live.js');
+  if (page === 'objet') {
+    const {monterObjet} = await import('./objets.js');
     if (mine !== generation) {
       return;
     }
-    unmount = mount(main, store);
-  } else if (page === 'p1') {
-    const {mount} = await import('./pages/system.js');
+    const parts = raw.split('/');
+    unmount = await monterObjet(main, parts[1], decodeURIComponent(parts[2] || ''));
+  } else if (page === 'p0') {
+    const {mount} = await import('./pages/live.js');
     if (mine !== generation) {
       return;
     }
@@ -129,6 +140,11 @@ async function render() {
   }
   if (stream) {
     stream.close();
+    stream = null;
+  }
+  if (page === 'objet') {
+    stats.mode = 'objet';
+    return;
   }
   stream = connectStream({
     page,
@@ -155,8 +171,11 @@ const target = document.getElementById('health');
 try {
   const response = await fetch('/healthz', {cache: 'no-store'});
   const data = await response.json();
-  target.textContent =
-    data.status === 'ok' ? 'Serveur : en ligne' : 'Serveur : ?';
+  target.dataset.etat = data.status === 'ok' ? 'ok' : 'ko';
+  target.title = data.status === 'ok' ? 'Connecté' : 'Coupe';
+  target.textContent = '';
 } catch {
-  target.textContent = 'Serveur : injoignable';
+  target.dataset.etat = 'ko';
+  target.title = 'Injoignable';
+  target.textContent = '';
 }

@@ -100,108 +100,50 @@ class McSystemTests(McBrowserCase):
         finally:
             conn.close()
 
-    def _page_systeme(self):
+    def _page_home(self):
         self._fixtures()
         page = self._auth_context().new_page()
         self._watch_errors(page)
         page.goto(f'{self.base}/owner#/system')
-        page.locator('.ilot-btn').first.wait_for(timeout=10000)
+        page.wait_for_url('**/owner#/live', timeout=10000)
+        page.locator('.noeud').first.wait_for(timeout=10000)
         return page
 
-    def test_page_systeme_rendu(self) -> None:
+    def test_system_redirige_live(self) -> None:
         from playwright.sync_api import expect
 
-        page = self._page_systeme()
-        expect(page.locator('.ilot-btn')).to_have_count(11)
-        expect(page.locator('[data-ilot="label"]')).to_have_text(
-            'Ordonnanceur'
-        )
-        expect(page.locator('[data-ilot="sante"]')).to_have_text('En forme')
-        expect(page.locator('[data-ilot="resume"]')).to_have_text(
-            '1 prêts, 0 en cours'
-        )
-        expect(
-            page.get_by_role('button', name='Collecte — En erreur')
-        ).to_be_visible()
-
-    def test_clic_bouton_maj_panneau(self) -> None:
-        from playwright.sync_api import expect
-
-        page = self._page_systeme()
-        page.get_by_role('button', name='Exécution — En forme').click()
-        expect(page.locator('[data-ilot="label"]')).to_have_text('Exécution')
-        expect(page.locator('[data-ilot="resume"]')).to_have_text(
-            '0 en cours, 1 prêts'
-        )
-        actif = page.locator('.ilot-btn.actif')
-        expect(actif).to_have_count(1)
-        expect(actif).to_contain_text('Exécution')
+        page = self._page_home()
+        expect(page.locator('[data-section="graphe"]')).to_be_visible()
+        expect(page.get_by_text('Comment Serge gagne de l’argent')).to_be_visible()
+        self.assertGreaterEqual(page.locator('.noeud').count(), 7)
 
     def test_pas_de_fuite_boucle_ilots(self) -> None:
-        page = self._page_systeme()
+        page = self._page_home()
         compte = (
             "(async () => (await import('/static/mc/hud.js')).hudActives())()"
         )
         self.assertEqual(page.evaluate(compte), 1)
         liens = page.locator('.barre-laterale nav a')
-        liens.nth(8).click()  # Santé (page neutre, sans boucle)
+        liens.nth(7).click()
         page.locator('[data-section="charte_metriques"]').wait_for(
             timeout=10000
         )
         self.assertEqual(page.evaluate(compte), 0)
-        liens.nth(1).click()
-        page.locator('.ilot-btn').first.wait_for(timeout=10000)
+        liens.nth(0).click()
+        page.locator('.noeud').first.wait_for(timeout=10000)
         self.assertEqual(page.evaluate(compte), 1)
-
-    def test_clic_canvas_selectionne_ilot(self) -> None:
-        from playwright.sync_api import expect
-
-        page = self._page_systeme()
-        cible = page.evaluate("""(async () => {
-          const hud = await import('/static/mc/hud.js');
-          const c = document.querySelector('[data-hud="ilots"]');
-          const r = c.getBoundingClientRect();
-          const pos = hud.dispositionIlots(11, c.width, c.height)[4];
-          return {
-            x: r.x + (pos.x / c.width) * r.width,
-            y: r.y + (pos.y / c.height) * r.height,
-          };
-        })()""")
-        page.mouse.click(cible['x'], cible['y'])
-        expect(page.locator('[data-ilot="label"]')).to_have_text('Collecte')
 
     def test_sections_systeme_donnees(self) -> None:
         from playwright.sync_api import expect
 
-        page = self._page_systeme()
-        page.get_by_text('c1 — En cours').wait_for(timeout=10000)
-        expect(page.locator('#sys-next')).to_have_text(
-            'Prochain : email.send (v1).'
+        page = self._page_home()
+        expect(page.locator('[data-section="business"]')).to_contain_text(
+            'Smoke en cours'
         )
-        expect(page.locator('[data-section="scheduler"]')).to_contain_text(
-            '1 prêts, 0 en cours, 0 bloqués.'
+        expect(page.locator('[data-section="business"]')).not_to_contain_text(
+            'SMOKE_RUNNING'
         )
-        expect(page.locator('[data-section="campagnes"]')).to_contain_text(
-            'c1 — En cours (email, 1/1 envoyés)'
-        )
-        expect(page.locator('[data-section="campagnes"]')).to_contain_text(
-            'gmail a@x.io — dans 2 h.'
-        )
-        for text in (
-            'CONTACTING : 1',
-            'NEW : 1',
-            'SMOKE_RUNNING : 1',
-            'CANDIDATE : 1',
-        ):
-            expect(
-                page.locator('[data-section="population"]')
-            ).to_contain_text(text)
-        expect(page.locator('[data-section="email"]')).to_contain_text(
-            'sent : 1'
-        )
-        expect(page.locator('#sys-email-acti')).to_contain_text(
-            'Dernière activité'
-        )
+        expect(page.locator('#voix-noyau')).not_to_have_text('…')
 
     def test_sections_vides_gracieuses(self) -> None:
         from playwright.sync_api import expect
@@ -209,20 +151,6 @@ class McSystemTests(McBrowserCase):
         page = self._auth_context().new_page()
         self._watch_errors(page)
         page.goto(f'{self.base}/owner#/system')
-        page.locator('.ilot-btn').first.wait_for(timeout=10000)
-        expect(page.locator('#sys-next')).to_have_text(
-            'File vide, rien en attente.'
-        )
-        for section, text in (
-            ('campagnes', 'Aucune campagne pour le moment.'),
-            ('campagnes', 'Aucun compte en cooldown.'),
-            ('population', 'Aucun contact.'),
-            ('population', 'Aucune venture.'),
-            ('email', 'Aucun volume.'),
-        ):
-            expect(
-                page.locator(f'[data-section="{section}"]')
-            ).to_contain_text(text)
-        expect(page.locator('#sys-email-acti')).to_have_text(
-            'Aucune activité.'
-        )
+        page.locator('#live-headline').wait_for(timeout=10000)
+        expect(page.locator('#page')).to_contain_text('Rien en cours')
+        expect(page.locator('#page')).to_contain_text('File vide')
