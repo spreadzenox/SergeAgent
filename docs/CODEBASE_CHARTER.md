@@ -7,6 +7,7 @@ Objectif : le maximum de capacité économique avec le minimum de code, lisible,
 
 Les 5 principes (P1-P5) ci-dessous sont FIGÉS avec Julien le 2026-09-09.
 Les 5 règles opérationnelles (R1-R5) sont FIGÉES avec Julien le 2026-09-09 — voir §7.
+R6 (doc vivante) ajoutée par Julien le 2026-09-12.
 
 ---
 
@@ -266,7 +267,7 @@ Si le refus manque, on écrit le test manquant AVANT de supprimer.
 
 ---
 
-## §7 — Règles opérationnelles R1-R5 (FIGÉES le 2026-09-09)
+## §7 — Règles opérationnelles R1-R6 (R1-R5 FIGÉES le 2026-09-09 ; R6 le 2026-09-12)
 
 ### R1 — Diffs < 300 lignes, dépassement interactif obligatoire
 
@@ -277,9 +278,10 @@ de déplacer ses 400 lignes d'un coup, sinon les imports sont cassés entre
 deux commits"). Pour les agents autonomes (plus tard) : ticket d'approbation,
 même règle — ça rejoint l'architecture d'interactivité.
 
-- **Tests exclus du plafond.** Le plafond s'applique au code prod. Si les
-  tests dépassent 300 lignes, le codeur dit en une ligne pourquoi (ex.
-  "couvre 6 capacités × passant/refusé").
+- **Tests et documentation exclus du plafond.** Le plafond s'applique au
+  code prod. Si les tests dépassent 300 lignes, le codeur dit en une ligne
+  pourquoi (ex. "couvre 6 capacités × passant/refusé"). La doc (R6) non plus
+  ne compte pas — on ne saute pas un paragraphe pour tenir les 300.
 - **Migrations mécaniques exclues** (renommage global, extraction pure sans
   changement de comportement) si et seulement si prouvées mécaniques : diff
   relue + E2E verts avant/après identiques. Sinon, approbation comme le reste.
@@ -374,9 +376,41 @@ P1-P5 review:
 - P3: nouvelle structure échangée ? non (ou: oui, enum fermé + requested)
 - P4: nouveau fait stocké ? non (ou: oui, table X, tool Y)
 - P5: E2E couvrent passant + refusé ? oui (tests: ...)
+- R6: doc vivant à jour ? oui (docs/X.md §…) / écart + ticket
 Cleanup: imports/branches mortes/commentaires périmés — fait.
 ```
 
 Si une case révèle un problème (ex. "ce fix fait passer le fichier à
 600 lignes"), le refactor suit dans le même changement ou fait l'objet
 d'un ticket explicite — jamais ignoré silencieusement.
+
+### R6 — La documentation vivante part dans le même changement
+
+**Règle.** Un changement qui modifie un comportement, une surface (API, UI,
+CLI), un contrat, un point LLM, une table, ou une procédure d'install
+**met à jour le document qui le décrit**, dans le même commit — ou le
+commit suivant immédiat du même lot si R1 force le découpage.
+
+Ce n'est pas un journal de bord. C'est le **doc qu'un étranger lirait
+aujourd'hui** pour comprendre l'état réel. On corrige le paragraphe qui
+ment ; on n'empile pas une note « aussi, on a changé X ».
+
+**Quel document.** Celui que lirait quelqu'un qui n'a pas le diff :
+
+- Mission Control → `docs/MISSION_CONTROL.md`
+- un point de jugement → `docs/LLM_MATRIX.md` (+ prompts si P2)
+- mémoire / funnel / interaction → le `*_ARCHITECTURE.md` concerné
+- install, secrets, contrat d'instance → `docs/INSTALL.md` et le contrat
+- une capacité nouvelle sans doc → on écrit le paragraphe manquant
+
+**Pas de doc ?** On l'écrit (un paragraphe suffit) ou on pose un ticket
+explicite « doc manquante : … ». Jamais silencieux.
+
+**Hors périmètre.** `scripts/` et `tools/` (déjà hors charte, P5).
+Commentaires de code. Cette charte : Julien seul amende.
+
+**Hors plafond R1.** Comme les tests : la doc ne compte pas dans les
+300 lignes prod. On ne « gagne » pas un commit en laissant le doc périmé.
+
+**Écart.** Code sans doc à jour = « écart R6 : … » dans le commit + ticket.
+Sinon c'est un bug P4 : deux vérités (le code, et un markdown qui ment).
