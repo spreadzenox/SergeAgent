@@ -3,14 +3,16 @@
 
 from __future__ import annotations
 
+import os
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from serge.secrets import read_secret_file  # noqa: E402
+from serge.secrets import owner_dashboard_token, read_secret_file  # noqa: E402
 
 
 class SecretsTests(unittest.TestCase):
@@ -52,6 +54,41 @@ class SecretsTests(unittest.TestCase):
             self.assertEqual(
                 read_secret_file(self._write(tmp, 'f', 'XKEY=\n')), ''
             )
+
+    def test_jeton_mc_sidecar_puis_env(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            tmp = Path(raw)
+            secrets = tmp / 'cfg' / 'secrets'
+            secrets.mkdir(parents=True)
+            (secrets / 'owner-dashboard.token').write_text(
+                'jeton-sidecar\n', encoding='utf-8'
+            )
+            with mock.patch.dict(
+                os.environ,
+                {
+                    'SERGE_SYSTEM_ROOT': str(tmp / 'sys'),
+                    'SERGE_MC_TOKEN': 'jeton-env',
+                },
+            ):
+                with mock.patch(
+                    'serge.secrets.config_root', return_value=tmp / 'cfg'
+                ):
+                    self.assertEqual(
+                        owner_dashboard_token(tmp / 'sys'), 'jeton-sidecar'
+                    )
+            with mock.patch.dict(
+                os.environ,
+                {
+                    'SERGE_SYSTEM_ROOT': str(tmp / 'sys'),
+                    'SERGE_MC_TOKEN': 'jeton-env',
+                },
+            ):
+                with mock.patch(
+                    'serge.secrets.config_root', return_value=tmp / 'vide'
+                ):
+                    self.assertEqual(
+                        owner_dashboard_token(tmp / 'sys'), 'jeton-env'
+                    )
 
 
 if __name__ == '__main__':

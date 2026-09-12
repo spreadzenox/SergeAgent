@@ -534,7 +534,8 @@ Page P3 DONE (607 tests verts).
 - Réécriture du template systemd `systemd/templates/serge-public-dashboard.service.in` :
   remplacement de l'ancien script orchestrateur legacy par `python3 -m serge.mc.server --host 127.0.0.1 --port 8790`.
 - Implémentation du CLI `main()` dans `serge/mc/server.py` (`argparse --host/--port`,
-  chargement du token dashboard sidecar `secrets/owner_dashboard_token`).
+  canon = `state/serge.db` via `default_canon_path`, jeton sidecar
+  `config_root/secrets/owner-dashboard.token`).
 - Documentation de déploiement et contrat dans `docs/INSTALL.md` et
   `docs/INSTANCE_CONTRACT.md`.
 - Test E2E navigateur validant la page publique `/` et la redirection vers `/owner/login`.
@@ -583,3 +584,13 @@ sans la base. La pensée sous la carte est un **cadre** : jugement,
 Budgets du jour = plafonds **quotidiens** de la Policy : € LLM,
 e-mails, appels, invitations LinkedIn. SMS est à la minute ; Reddit
 n’a pas de quota/j. Lien vers `#/policy`.
+
+## Miroir live (instance réelle)
+
+MC lit le même canon que le runner : `$SERGE_SYSTEM_ROOT/state/serge.db`.
+Le jeton owner est `~/.config/serge/secrets/owner-dashboard.token`.
+Les units WSL encore posées par le builder pointent l’ancien
+`orchestrator/` (OpenClaw + `public_dashboard.py`) : les activer n’est
+pas le miroir kit. Boot vierge : voir l’ordonnanceur — pas de venture
+= pas de READY servi ; `memory.consolidate` peut être posé avec
+`venture_id=''` et rester orphelin.

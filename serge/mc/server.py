@@ -470,23 +470,20 @@ def create_server(
 
 def main() -> None:
     import argparse
-    import os
 
+    from serge.db.store import default_canon_path
     from serge.paths import system_root
-    from serge.secrets import read_secret_file
+    from serge.secrets import owner_dashboard_token
 
     p = argparse.ArgumentParser(description='Serge Mission Control HTTP')
     p.add_argument('--host', default='127.0.0.1')
     p.add_argument('--port', type=int, default=8790)
     args = p.parse_args()
     root = system_root()
-    t = read_secret_file(root / 'secrets/owner_dashboard_token') or os.environ.get(
-        'SERGE_MC_TOKEN', 'token-inconnu'
-    )
     d = Path(__file__).resolve().parent
     cfg = McConfig(
-        root / 'state/canon.db',
-        t,
+        default_canon_path(root),
+        owner_dashboard_token(root),
         d / 'static/mc',
         d / 'templates',
         RateLimiter(),
