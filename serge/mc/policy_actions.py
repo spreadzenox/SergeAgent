@@ -7,7 +7,11 @@ from typing import TYPE_CHECKING, Any, Protocol
 
 from serge.db.store import append_event
 from serge.policy import PolicyError, validate_policy
-from serge.policy_snapshots import get_snapshot, snapshot_policy
+from serge.policy_snapshots import (
+    get_snapshot,
+    policy_en_vigueur,
+    snapshot_policy,
+)
 from serge.registry import load_ticket_types
 from serge.tickets.lifecycle import create_ticket
 
@@ -172,6 +176,9 @@ class PolicyActionsMixin(_Base):
                     'Le testing à froid exige 0 campagne active.',
                 )
                 return
+            courante = dict(policy_en_vigueur(conn))
+            courante['testing'] = clean_testing
+            snap = snapshot_policy(conn, courante, applied_by='owner')
             append_event(
                 conn,
                 actor='owner',
@@ -179,6 +186,7 @@ class PolicyActionsMixin(_Base):
                 payload={
                     'acte': 'testing_edit',
                     'testing': clean_testing,
+                    'snapshot_id': snap['id'],
                     'decision_id': decision_id,
                 },
             )
@@ -245,31 +253,31 @@ class PolicyActionsMixin(_Base):
 
         from serge.paths import system_root
 
-        root = system_root()
-        kill_file = root / 'state/KILL_SWITCH'
-        try:
-            kill_file_sys = self.app_config.db_path.parent / 'state/KILL_SWITCH'
-            kill_file_sys.parent.mkdir(parents=True, exist_ok=True)
-            if activer:
-                kill_file_sys.write_text(
-                    'VOICE_KILL_SWITCH_ACTIVE\n', encoding='utf-8'
-                )
-            else:
-                if kill_file_sys.exists():
-                    kill_file_sys.unlink()
-        except Exception:
-            pass
-        try:
-            kill_file.parent.mkdir(parents=True, exist_ok=True)
-            if activer:
-                kill_file.write_text(
-                    'VOICE_KILL_SWITCH_ACTIVE\n', encoding='utf-8'
-                )
-            else:
-                if kill_file.exists():
-                    kill_file.unlink()
-        except Exception:
-            pass
+        cibles = {
+            self.app_config.db_path.parent / 'KILL_SWITCH',
+            system_root() / 'state/KILL_SWITCH',
+        }
+        ok = False
+        for path in cibles:
+            try:
+                path.parent.mkdir(parents=True, exist_ok=True)
+                if activer:
+                    path.write_text(
+                        'VOICE_KILL_SWITCH_ACTIVE\n', encoding='utf-8'
+                    )
+                elif path.exists():
+                    path.unlink()
+                ok = True
+            except OSError:
+                continue
+        if not ok:
+            self._refus(
+                500,
+                'Kill voix injoignable.',
+                'kill',
+                'Vérifie state/KILL_SWITCH.',
+            )
+            return
 
         with self._db() as conn:
             append_event(

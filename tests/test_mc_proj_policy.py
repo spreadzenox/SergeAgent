@@ -49,6 +49,12 @@ class ProjPolicyTests(unittest.TestCase):
         res0 = project_testing_froid(self.conn, self.policy, NOW)
         self.assertFalse(res0['is_locked'])
         self.assertEqual(res0['running_campaigns'], 0)
+        self.assertEqual(res0['config']['n_smoke_min'], 30)
+        seeded = dict(self.policy)
+        seeded['testing'] = {**res0['config'], 'n_smoke_min': 40}
+        snapshot_policy(self.conn, seeded, applied_by='owner')
+        res_t = project_testing_froid(self.conn, self.policy, NOW)
+        self.assertEqual(res_t['config']['n_smoke_min'], 40)
 
         self.conn.execute(
             'INSERT INTO campaigns(id, venture_id, family, channel, state, n_target, created_at, updated_at)'

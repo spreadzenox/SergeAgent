@@ -205,7 +205,7 @@ def validate_policy(data: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def load_policy(directory: Path | None = None) -> dict[str, Any]:
-    """Charge policy.yaml (+ overlay test si SERGE_ENV=test), validée.
+    """Semence YAML (graine git). Runtime = dernier snapshot du canon.
 
     Args:
         directory: Dossier config (défaut : config du repo).

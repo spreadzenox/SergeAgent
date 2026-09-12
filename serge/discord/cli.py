@@ -8,7 +8,6 @@ import os
 import sys
 import tomllib
 from pathlib import Path
-from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
@@ -16,7 +15,8 @@ from kit.instance_file import DISCORD_ID_KEYS  # noqa: E402
 from serge.db.store import default_canon_path, open_db  # noqa: E402
 from serge.discord.bot import Bot  # noqa: E402
 from serge.discord.rest import bot_token, verify_token  # noqa: E402
-from serge.policy import PolicyError, load_policy  # noqa: E402
+from serge.policy import PolicyError  # noqa: E402
+from serge.policy_snapshots import policy_en_vigueur  # noqa: E402
 
 
 class BotError(ValueError):
@@ -65,7 +65,6 @@ def main(argv: list[str] | None = None) -> int:
         default='serve',
     )
     args = parser.parse_args(argv)
-    policy: dict[str, Any] = {}
     try:
         cfg = load_discord_cfg()
         token = bot_token()
@@ -79,8 +78,7 @@ def main(argv: list[str] | None = None) -> int:
                 )
             )
             return 2
-        policy = load_policy()
-    except (BotError, PolicyError) as exc:
+    except BotError as exc:
         print(json.dumps({'status': 'refused', 'error': str(exc)}))
         return 2
     if args.command == 'verify':
@@ -101,6 +99,12 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     conn = open_db(default_canon_path())
     try:
+        try:
+            policy = policy_en_vigueur(conn)
+            conn.commit()
+        except PolicyError as exc:
+            print(json.dumps({'status': 'refused', 'error': str(exc)}))
+            return 2
         bot = Bot(conn, policy, cfg, token)
         if args.command == 'mirror-once':
             count = bot.mirror_due()

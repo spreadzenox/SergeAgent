@@ -7,7 +7,7 @@ import sqlite3
 from collections.abc import Mapping
 from typing import Any
 
-from serge.policy_snapshots import list_snapshots
+from serge.policy_snapshots import list_snapshots, policy_en_vigueur
 
 
 def project_politique_active(
@@ -16,15 +16,15 @@ def project_politique_active(
     """Politique actuellement chargée et validée (P5).
 
     Args:
-        conn: Connexion canon (ignorée, uniformité).
-        policy: Policy injectée (runtime).
+        conn: Connexion canon (dernier snapshot).
+        policy: Ignoré — la vérité est le snapshot.
         now: Maintenant ISO (ignoré).
 
     Returns:
         Dict {policy: {...}}.
     """
-    _ = (conn, now)
-    return {'policy': dict(policy)}
+    _ = (policy, now)
+    return {'policy': policy_en_vigueur(conn)}
 
 
 def project_policy_snapshots(
@@ -62,10 +62,11 @@ def project_testing_froid(
         "SELECT COUNT(*) FROM campaigns WHERE state='RUNNING'"
     ).fetchone()[0]
     locked = int(running) > 0
-    # On lit le testing par défaut ou courant
     from kit.instance_file import _validate_testing
 
-    testing_cfg = _validate_testing({})
+    live = policy_en_vigueur(conn)
+    raw = live.get('testing') if isinstance(live.get('testing'), dict) else {}
+    testing_cfg = _validate_testing(raw)
     return {
         'running_campaigns': int(running),
         'is_locked': locked,

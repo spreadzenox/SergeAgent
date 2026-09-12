@@ -18,6 +18,7 @@ from serge.mc.projectors import (
     SnapshotCache,
     sig,
 )
+from serge.policy_snapshots import policy_en_vigueur
 
 
 def format_event(
@@ -61,7 +62,7 @@ def stream_page(
     Args:
         wfile: Flux d'écriture (flush après chaque tick).
         db_path: Canon (rouvert à chaque tick : vue fraîche).
-        policy: Policy (chargée 1 fois par connexion).
+        policy: Ignoré — la policy vient du dernier snapshot.
         page: Page MC (clé de cache).
         sections: Sections à envoyer (ordre stable).
         cache: Cache TTL de la connexion.
@@ -75,9 +76,11 @@ def stream_page(
         BrokenPipeError: Client parti (normal).
         ConnectionResetError: Client parti (normal).
     """
+    _ = policy
     ticks = 0
     while True:
         with closing(open_db(db_path)) as conn:
+            live = policy_en_vigueur(conn)
             for section in sections:
                 projector = PROJECTORS[section]
                 ttl = SLOW_TTL_S if section in SLOW_SECTIONS else LIVE_TTL_S
@@ -85,7 +88,7 @@ def stream_page(
                     page,
                     section,
                     ttl,
-                    lambda p=projector: p(conn, policy, utcnow()),
+                    lambda p=projector, pol=live: p(conn, pol, utcnow()),
                 )
                 wfile.write(format_event(section, digest, age, payload))
         wfile.flush()
@@ -105,17 +108,19 @@ def state_payload(
 
     Args:
         db_path: Canon.
-        policy: Policy.
+        policy: Ignoré — la policy vient du dernier snapshot.
         page: Page MC.
         sections: Sections à projeter.
 
     Returns:
         Dict {page, sections: {nom: {sig, age_ms: 0, payload}}}.
     """
+    _ = policy
     out: dict[str, Any] = {'page': page, 'sections': {}}
     with closing(open_db(db_path)) as conn:
+        live = policy_en_vigueur(conn)
         for section in sections:
-            payload = PROJECTORS[section](conn, policy, utcnow())
+            payload = PROJECTORS[section](conn, live, utcnow())
             out['sections'][section] = {
                 'sig': sig(payload),
                 'age_ms': 0,

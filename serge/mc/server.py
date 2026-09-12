@@ -29,7 +29,8 @@ from serge.mc.auth import (
 from serge.mc.policy_actions import PolicyActionsMixin
 from serge.mc.projectors import PAGE_SECTIONS, SnapshotCache
 from serge.mc.sse import state_payload, stream_page
-from serge.policy import PolicyError, load_policy
+from serge.policy import PolicyError
+from serge.policy_snapshots import policy_en_vigueur
 
 STATIC_TYPES = {
     '.html': 'text/html; charset=utf-8',
@@ -121,7 +122,8 @@ class McHandler(
 
     def _policy(self) -> dict | None:
         try:
-            return load_policy(self.app_config.policy_dir)
+            with self._db() as conn:
+                return policy_en_vigueur(conn, self.app_config.policy_dir)
         except PolicyError:
             return None
 

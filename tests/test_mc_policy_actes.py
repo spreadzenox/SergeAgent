@@ -12,7 +12,9 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from serge.db.store import open_db  # noqa: E402
+from serge.funnels.essai import ouvrir_essai  # noqa: E402
 from serge.policy import load_policy  # noqa: E402
+from serge.policy_snapshots import policy_en_vigueur  # noqa: E402
 from tests.mc_server_case import McServerCase  # noqa: E402
 
 
@@ -56,6 +58,10 @@ class PolicyActesTests(McServerCase):
             ev_data = json.loads(ev[0])
             self.assertEqual(ev_data['acte'], 'policy_edit')
             self.assertEqual(ev_data['snapshot_id'], snap_id)
+            self.assertEqual(
+                policy_en_vigueur(conn)['budget']['llm_daily_eur'], 12.5
+            )
+            self.assertEqual(load_policy()['budget']['llm_daily_eur'], 5.0)
         finally:
             conn.close()
 
@@ -92,6 +98,20 @@ class PolicyActesTests(McServerCase):
         self.assertEqual(status, 200)
         data = json.loads(corps.decode('utf-8'))
         self.assertEqual(data['testing']['n_smoke_min'], 40)
+        conn_live = open_db(self.db_path)
+        try:
+            conn_live.execute(
+                'INSERT INTO ventures(id, lifecycle, schedulable,'
+                " created_at, updated_at) VALUES('v-essai','SMOKE_RUNNING',"
+                "1,'t','t')"
+            )
+            cid = ouvrir_essai(conn_live, 'v-essai', 'named', 'email', 'smoke')
+            n = conn_live.execute(
+                'SELECT n_target FROM campaigns WHERE id=?', (cid,)
+            ).fetchone()[0]
+            self.assertEqual(n, 40)
+        finally:
+            conn_live.close()
 
         # Activer une campagne -> verrouillage E3
         conn = open_db(self.db_path)

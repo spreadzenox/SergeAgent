@@ -9,10 +9,11 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
+from pathlib import Path
 from typing import Any
 
 from serge.db.store import utcnow
-from serge.policy import validate_policy
+from serge.policy import PolicyError, load_policy, validate_policy
 
 
 def snapshot_policy(
@@ -110,3 +111,73 @@ def get_snapshot(
         'applied_by': str(row[3]),
         'active_from': str(row[4]),
     }
+
+
+def latest_policy(conn: sqlite3.Connection) -> dict[str, Any] | None:
+    """Dernier snapshot validé, ou None si le canon n’en a pas.
+
+    Args:
+        conn: Connexion canon (lecture).
+
+    Returns:
+        Policy validée, ou None.
+
+    Raises:
+        PolicyError: Snapshot présent mais illisible ou invalide.
+    """
+    row = conn.execute(
+        'SELECT content_json FROM policy_snapshots ORDER BY id DESC LIMIT 1'
+    ).fetchone()
+    if row is None:
+        return None
+    try:
+        data = json.loads(row[0] or '{}')
+    except ValueError as exc:
+        raise PolicyError('snapshot policy illisible') from exc
+    if not isinstance(data, dict):
+        raise PolicyError('snapshot policy invalide')
+    return validate_policy(data)
+
+
+def policy_en_vigueur(
+    conn: sqlite3.Connection, directory: Path | None = None
+) -> dict[str, Any]:
+    """Policy runtime : dernier snapshot, sinon semence YAML puis snapshot.
+
+    Une source : le canon. `config/policy.yaml` n’est que la graine.
+
+    Args:
+        conn: Connexion canon (écriture si semence).
+        directory: Dossier YAML (défaut : config du repo).
+
+    Returns:
+        Policy validée en vigueur.
+    """
+    found = latest_policy(conn)
+    if found is not None:
+        return _avec_testing(conn, found)
+    seed = _avec_testing(conn, load_policy(directory), ecrire=True)
+    return seed
+
+
+def _avec_testing(
+    conn: sqlite3.Connection,
+    policy: dict[str, Any],
+    *,
+    ecrire: bool = False,
+) -> dict[str, Any]:
+    """Garantit un bloc testing dans la policy (semence si manquant)."""
+    from kit.instance_file import _validate_testing
+
+    raw = (
+        policy.get('testing')
+        if isinstance(policy.get('testing'), dict)
+        else {}
+    )
+    propre = _validate_testing(raw)
+    if policy.get('testing') == propre and not ecrire:
+        return policy
+    complete = dict(policy)
+    complete['testing'] = propre
+    snapshot_policy(conn, complete, applied_by='seed')
+    return complete

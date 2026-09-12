@@ -389,7 +389,9 @@ Page P3 DONE (607 tests verts).
 
 - `policy_snapshots.py` (invariant B4) : `snapshot_policy` (validation
   `validate_policy` + hash SHA256 16 hex + append-only dans `policy_snapshots`),
-  `list_snapshots`, `get_snapshot`.
+  `list_snapshots`, `get_snapshot`, `latest_policy`, `policy_en_vigueur`.
+  **Une source** : le dernier snapshot du canon. `config/policy.yaml` =
+  semence git si le canon est vide (premier boot).
 - `proj_policy.py` :
   - `project_politique_active` : politique runtime en vigueur.
   - `project_policy_snapshots` : historique 20 derniers snapshots.
@@ -406,7 +408,9 @@ Page P3 DONE (607 tests verts).
   antérieur et écriture d'un nouveau snapshot (jamais d'écrasement).
 - `POST /owner/api/policy/testing` (M6, E3) : validation `_validate_testing`,
   verrouillage strict à froid (409 si au moins une campagne `RUNNING`),
-  événement `mc_act`.
+  fusion dans le snapshot en vigueur + événement `mc_act`.
+  `ouvrir_essai` / `create_campaign(phase=)` posent N et seuils depuis
+  ce snapshot — plus le TOML.
 - `POST /owner/api/policy/propose` (M12) : création d'un ticket `POLICY`
   en `DRAFT` depuis la zone de confiance ou une dérive constatée.
 - 3 tests d'actes complets (passant, erreurs, verrouillage froid, 624 verts).
@@ -589,6 +593,8 @@ n’a pas de quota/j. Lien vers `#/policy`.
 
 MC lit le même canon que le runner : `$SERGE_SYSTEM_ROOT/state/serge.db`.
 Le jeton owner est `~/.config/serge/secrets/owner-dashboard.token`.
+Policy / taille des essais : dernier snapshot du canon (MC, runner,
+Discord, `ouvrir_essai`). YAML / TOML `[testing]` = semence seulement.
 Les units WSL encore posées par le builder pointent l’ancien
 `orchestrator/` (OpenClaw + `public_dashboard.py`) : les activer n’est
 pas le miroir kit. Boot vierge : voir l’ordonnanceur — pas de venture

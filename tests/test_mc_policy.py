@@ -114,4 +114,6 @@ class McPolicyTests(McBrowserCase):
         modale.locator('input[name="titre"]').fill('Hausse budget LLM')
         modale.locator('input[name="diff"]').fill('llm_daily_eur: 5 -> 15')
         modale.get_by_role('button', name='Créer la question').click()
-        expect(page.locator('.toast-succes')).to_contain_text('Ticket POLICY')
+        expect(page.locator('.toast-succes')).to_contain_text(
+            'Question Policy'
+        )

@@ -76,8 +76,11 @@ def create_campaign(
     window_start: str = '',
     window_end: str = '',
     thresholds: dict[str, Any] | None = None,
+    phase: str = '',
 ) -> str:
     """Crée une campagne DRAFT (test pré-enregistrable).
+
+    ``phase`` smoke|full : N et seuils viennent de la policy MC.
 
     Raises:
         CampaignError: Famille inconnue, canal vide, fenêtre incohérente.
@@ -90,6 +93,12 @@ def create_campaign(
         raise CampaignError('fenêtre incohérente (fin <= début)')
     if n_target < 0 or budget_cap_eur < 0:
         raise CampaignError('N et budget >= 0')
+    if phase in {'smoke', 'full'}:
+        from serge.funnels.essai import taille_et_seuils
+
+        n_target, thresholds = taille_et_seuils(
+            conn, phase, n_target, thresholds
+        )
     campaign_id = _new_id()
     moment = utcnow()
     conn.execute(

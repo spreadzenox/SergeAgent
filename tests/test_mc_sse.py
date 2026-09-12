@@ -73,7 +73,9 @@ class SseUnitTests(unittest.TestCase):
                 'meta': lambda *a: _count('meta'),
                 'jauges': lambda *a: _count('jauges'),
             }
-            with mock.patch.dict(PROJECTORS, stubs):
+            with mock.patch.dict(PROJECTORS, stubs), mock.patch(
+                'serge.mc.sse.policy_en_vigueur', return_value={}
+            ):
                 ticks = stream_page(
                     out,
                     Path(raw) / 't.db',

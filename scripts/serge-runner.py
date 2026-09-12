@@ -16,7 +16,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from serge.db.store import default_canon_path, open_db  # noqa: E402
-from serge.policy import PolicyError, load_policy  # noqa: E402
+from serge.policy import PolicyError  # noqa: E402
+from serge.policy_snapshots import policy_en_vigueur  # noqa: E402
 from serge.runner import run_once  # noqa: E402
 
 
@@ -26,15 +27,17 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument('--max-items', type=int, default=10)
     parser.add_argument('--once', action='store_true')
     args = parser.parse_args(argv)
-    try:
-        policy = load_policy()
-    except PolicyError as exc:
-        print(json.dumps({'status': 'refused', 'error': str(exc)}))
-        return 2
     cycles = 1 if args.once else max(1, args.cycles)
     conn = open_db(default_canon_path())
     try:
+        try:
+            policy_en_vigueur(conn)
+            conn.commit()
+        except PolicyError as exc:
+            print(json.dumps({'status': 'refused', 'error': str(exc)}))
+            return 2
         for _ in range(cycles):
+            policy = policy_en_vigueur(conn)
             summary = run_once(conn, policy, max_items=max(1, args.max_items))
             print(json.dumps({'status': 'ok', **summary}))
     finally:
