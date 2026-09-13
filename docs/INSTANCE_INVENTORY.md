@@ -17,7 +17,7 @@ disparaît quand le builder pose `SERGE_INSTANCE_FILE`.
 
 Lecture seule :
 
-- `rg` de `/home/serge`, `/opt/serge`, du domaine public, `~/.config/serge`, `~/.openclaw`
+- `rg` de `/home/serge`, `/opt/serge`, du domaine public, `~/.config/serge`
 - `scripts/install-*.sh`, `systemd/`, `deploy/systemd/`
 - basenames sous `~/.config/serge/secrets/` (pas le contenu)
 - références code (`SECRET_PATH`, `XAI_`, Stripe, Discord, OpenRouter)
@@ -46,8 +46,7 @@ Le YAML reste le catalogue d’hôte Julien. Mapping feature → ids :
 | `ingress` | Caddy, Cloudflare, `optional.public_hostname` |
 | `stripe` / `payments_live` | clés Stripe, vault, carte si live |
 | `owner_ui` | token dashboard ; Discord si `discord` |
-| `gmail` | gog env, provider, binaire |
-| `openclaw` | optionnel ; défaut off. Runtime = OpenRouter `direct_llm` |
+| `gmail` | gog env (`config_root/secrets/gog.env`), provider, binaire |
 | `voice` | xAI / OpenAI env |
 | `metagrok` | workspace + release **déjà présents** sur l’hôte (Julien-only) |
 | `discord` | `secret.discord_bot_token` |

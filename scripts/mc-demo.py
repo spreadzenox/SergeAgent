@@ -91,9 +91,20 @@ def main() -> None:
     )
     conn.execute(
         "INSERT INTO accounts_standing(id, venue, handle, cooldown_until,"
-        " updated_at) VALUES('s1','gmail','serge@atelier.io',?,?),"
-        "('s2','rss','écoute-marché','',?)",
-        (_iso(now + timedelta(hours=2)), _iso(now), _iso(now)),
+        " updated_at, role, profile_path, secret_ref, login_url,"
+        " targets_json, last_login_at, last_fetch_at) VALUES"
+        "('s1','gmail','serge@atelier.io',?,?,'publication','',"
+        "'gmail.session','https://mail.google.com/','[]','',''),"
+        "('s2','reddit','u/serge_atelier','',?,'ecoute',"
+        "'/tmp/serge-demo-profile-reddit','reddit.session',"
+        "'https://www.reddit.com/login',"
+        "'[\"https://www.reddit.com/r/freelance/\"]','',?)",
+        (
+            _iso(now + timedelta(hours=2)),
+            _iso(now),
+            _iso(now),
+            _iso(now - timedelta(hours=10)),
+        ),
     )
     conn.execute(
         "INSERT INTO listen_docs(id, source, url, title, excerpt, cluster_id,"

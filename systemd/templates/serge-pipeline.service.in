@@ -2,7 +2,6 @@
 Description=Serge bounded autonomous pipeline
 ConditionPathExists=!__SYSTEM_ROOT__/orchestrator/runtime/KILL_SWITCH
 ConditionPathExists=!__SYSTEM_ROOT__/state/KILL_SWITCH
-__OPENCLAW_UNIT_LINES__
 
 [Service]
 Type=oneshot
@@ -12,7 +11,6 @@ Environment=USER=__USER__
 Environment=LOGNAME=__USER__
 Environment=PYTHONUNBUFFERED=1
 Environment=SERGE_AGENT_RUNTIME=__AGENT_RUNTIME__
-Environment=SERGE_OPENCLAW_ADAPTER=__OPENCLAW_ADAPTER__
 Environment=SERGE_INSTANCE_FILE=__INSTANCE_FILE__
 Environment=SERGE_HOME=__HOME__
 Environment=SERGE_SYSTEM_ROOT=__SYSTEM_ROOT__
@@ -27,7 +25,7 @@ NoNewPrivileges=yes
 PrivateTmp=yes
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=__SYSTEM_ROOT__/queue __SYSTEM_ROOT__/evidence __SYSTEM_ROOT__/logs __SYSTEM_ROOT__/state __SYSTEM_ROOT__/orchestrator/runtime __SYSTEM_ROOT__/projects __OPENCLAW_RW____CONFIG_ROOT__ __HOME__/.local/share /tmp
+ReadWritePaths=__SYSTEM_ROOT__/queue __SYSTEM_ROOT__/evidence __SYSTEM_ROOT__/logs __SYSTEM_ROOT__/state __SYSTEM_ROOT__/orchestrator/runtime __SYSTEM_ROOT__/projects __CONFIG_ROOT__ __HOME__/.local/share /tmp
 LockPersonality=yes
 
 [Install]

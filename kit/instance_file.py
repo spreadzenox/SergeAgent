@@ -23,7 +23,6 @@ FEATURE_KEYS = (
     'gmail',
     'mailbox',
     'discord',
-    'openclaw',
     'owner_ui',
     'payments_live',
     'phone_sms',

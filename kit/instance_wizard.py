@@ -44,7 +44,7 @@ SECRET_LABELS = {
     'stripe_live_key': 'Stripe live secret key',
     'stripe_webhook_live_key': 'Stripe live webhook secret',
     'discord_bot_token': 'Discord bot token',
-    'browserbase_key': 'Browserbase key (OpenClaw)',
+    'browserbase_key': 'Browserbase key (navigateur, optionnel)',
     'cloudflare_infra_key': 'Cloudflare infra key',
     'cloudflare_registrar_key': 'Cloudflare registrar key',
     'credential_vault_key': 'Credential vault key',

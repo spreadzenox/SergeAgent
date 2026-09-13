@@ -134,10 +134,12 @@ CATALOGUE: dict[str, tuple[str, str, str, str]] = {
         'period + renews_at + status.',
     ),
     'accounts_standing': (
-        'Santé des comptes web (warnings, pause).',
-        'Observe, Discord, mail.',
-        'Jauges, allocator, pauses.',
-        'capital 0–1. cooldown_until bloque.',
+        'Comptes web de Serge : santé + comment crawler'
+        ' (rôle, profil navigateur, nom du secret, cibles).'
+        ' Pas le mot de passe.',
+        'Observe, Discord, mail, écoute.',
+        'Jauges, allocator, pauses, futur login.',
+        'role ecoute/publication/les_deux. secret_ref = nom, pas le secret.',
     ),
     'policy_snapshots': (
         'Photo de la policy appliquée. On sait qui a changé quoi.',

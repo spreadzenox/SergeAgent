@@ -48,7 +48,6 @@
         "gmail": {"type": "boolean"},
         "mailbox": {"type": "boolean"},
         "discord": {"type": "boolean"},
-        "openclaw": {"type": "boolean"},
         "owner_ui": {"type": "boolean"},
         "payments_live": {"type": "boolean"},
         "phone_sms": {"type": "boolean"},

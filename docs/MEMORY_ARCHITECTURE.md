@@ -33,7 +33,8 @@ Couche 5 : **libre** (le LLM décide ce qu'il cherche). Soupape anti-prison.
 **Contenu.** État courant, structuré, SQL pur. Tables : `ventures` (1 ACTIVE
 + historique), `contacts` (+ consentement, régime, cooldowns), `campaigns`
 (+ N, seuils, fenêtres, budgets), `quotas_counters`, `accounts_standing`
-(karma, âge, avertissements, capital), `policy_snapshot` (valeurs actives
+(karma, âge, avertissements, capital, rôle écoute/publication, profil
+navigateur, nom du secret — pas le mot de passe), `policy_snapshot` (valeurs actives
 versionnées), `artifacts` (versions, URLs, hashes), `subscriptions`,
 `ledger_entries`.
 

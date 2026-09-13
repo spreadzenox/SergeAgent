@@ -72,7 +72,7 @@ def project_objet(conn: sqlite3.Connection, typ: str, ident: str) -> dict[str, A
         'client': _contact,
         'facture': _facture,
         'abonnement': _abo,
-        'compte': _compte,
+        'compte': _fiche_compte,
         'plateforme': _plateforme,
         'ticket': _ticket,
         'lesson': _lesson,
@@ -247,27 +247,10 @@ def _abo(conn: sqlite3.Connection, ident: str) -> dict | None:
     }
 
 
-def _compte(conn: sqlite3.Connection, ident: str) -> dict | None:
-    row = _row(conn, 'SELECT * FROM accounts_standing WHERE id=?', (ident,))
-    if row is None:
-        return None
-    return {
-        'type': 'compte',
-        'id': ident,
-        'titre': f'{row["venue"]} · {row["handle"]}',
-        'pourquoi': 'Un compte web de Serge. En pause = souvent pour ne pas se faire fermer.',
-        'champs': _champs(
-            [
-                ('Plateforme', row['venue']),
-                ('Identifiant', row['handle']),
-                ('État', row['status']),
-                ('Capital', row['capital']),
-                ('Pause jusqu’à', row['cooldown_until'] or '—'),
-            ]
-        ),
-        'enfants': _liens([('plateforme', row['venue'], row['venue'])]),
-        'preuve': '',
-    }
+def _fiche_compte(conn: sqlite3.Connection, ident: str) -> dict | None:
+    from serge.mc.proj_compte import project_compte
+
+    return project_compte(conn, ident)
 
 
 def _plateforme(conn: sqlite3.Connection, ident: str) -> dict | None:

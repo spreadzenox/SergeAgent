@@ -25,6 +25,7 @@ never_copy:
   - state/provisioning/
   - state/web-ingress/
   - "~/.config/serge/"
+  # Anciens dossiers runtime (ne pas emporter d'une machine existante).
   - "~/.openclaw/"
   - "~/.config/openclaw/"
   - "~/.meta-grok/"

@@ -41,14 +41,9 @@ boot_classes:
       - secret.owner_dashboard_token
       - unit.public_dashboard
     gmail:
-      - path.openclaw_gog_env
+      - path.gog_env
       - path.gmail_provider
       - path.gog_binary
-    openclaw:
-      - path.openclaw_home
-      - path.openclaw_config
-      - secret.browserbase
-      - path.browserbase_project_id
     voice:
       - secret.xai_voice
       - secret.openai_direct
@@ -151,26 +146,12 @@ entries:
     portable: "yes"
     notes: Config root (secrets/, private/, provider ids); default paths.config_root in instance TOML.
 
-  - id: path.openclaw_home
-    kind: path
-    current_location: /home/serge/.openclaw
-    required_for: pipeline
-    portable: "yes"
-    notes: Leftover optional adapter tree; default runtime is direct_llm; units no longer Wants openclaw-gateway once builder lands.
-
-  - id: path.openclaw_config
-    kind: path
-    current_location: /home/serge/.openclaw/openclaw.json
-    required_for: pipeline
-    portable: "yes"
-    notes: OpenClaw adapter config; optional when features.openclaw is false.
-
-  - id: path.openclaw_gog_env
+  - id: path.gog_env
     kind: secret
-    current_location: /home/serge/.config/openclaw/gog.env
+    current_location: /home/serge/.config/serge/secrets/gog.env
     required_for: pipeline
     portable: "yes"
-    notes: Gmail OAuth env file for gog; outside ~/.config/serge/secrets/. Required when features.gmail is true.
+    notes: Gmail env (gog). Required when features.gmail is true.
 
   - id: path.gmail_provider
     kind: path
@@ -296,7 +277,7 @@ entries:
     current_location: /home/serge/.config/serge/secrets/browserbase.key
     required_for: pipeline
     portable: "yes"
-    notes: Browserbase API key; manifest ties to features.openclaw for web operator paths.
+    notes: Browserbase API key (optionnelle).
 
   - id: path.browserbase_project_id
     kind: path
@@ -359,7 +340,7 @@ entries:
     current_location: /home/serge/.config/systemd/user/serge-pipeline.service
     required_for: pipeline
     portable: "yes"
-    notes: SERGE_AGENT_RUNTIME=direct_llm target; deployed unit still Wants openclaw-gateway until builder refresh removes leftover dependency.
+    notes: SERGE_AGENT_RUNTIME=direct_llm. Gmail via EnvironmentFile secrets/gog.env.
 
   - id: unit.pipeline_timer
     kind: unit
@@ -373,7 +354,7 @@ entries:
     current_location: /home/serge/.config/systemd/user/serge-daily-report.service
     required_for: pipeline
     portable: "yes"
-    notes: Daily report generate-and-deliver; Discord delivery via OpenClaw fail-soft when gateway absent.
+    notes: Daily report generate-and-deliver; Discord fail-soft.
 
   - id: unit.web_ingress
     kind: unit
@@ -388,13 +369,6 @@ entries:
     required_for: owner_ui
     portable: "yes"
     notes: Public Mission Control HTTP surface behind ingress.
-
-  - id: unit.openclaw_gateway
-    kind: unit
-    current_location: /home/serge/.config/systemd/user/openclaw-gateway.service
-    required_for: pipeline
-    portable: "yes"
-    notes: Leftover optional unit; not required for direct_llm runtime once pipeline Wants is removed.
 
   - id: secret.sms_gateway
     kind: secret

@@ -45,7 +45,7 @@ Adaptations du seed (divergences assumées vs kit) :
 
 ## Non porté, par décision
 
-OpenClaw (gateway, CLI, conteneurs, `openclaw.json`, routage — B2/A),
+Ancien gateway / runtime agent externe (hors kit),
 occupancy/challengers/hystérésis/`role_slots` (B3/A), 132 tests legacy
 (B8/A, suppression pure), `queue/` (P4, archive lecture seule),
 `orchestrator.py` 20 k lignes et `portfolio_guard.py` 8 k lignes

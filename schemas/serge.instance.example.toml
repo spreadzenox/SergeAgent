@@ -27,7 +27,6 @@ metagrok = false
 gmail = true
 mailbox = true
 discord = true
-openclaw = true
 owner_ui = true
 payments_live = true
 phone_sms = true

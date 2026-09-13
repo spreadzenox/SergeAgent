@@ -206,6 +206,9 @@ SCOUTED (lieu identifié via écoute J)
   (karma, ancienneté, avertissements, taux suppression). Publier coûte,
   être bien reçu recharge. `can_publish` vérifie le capital, pas un quota.
   **Perte importante → leçon obligatoire** (prioritaire consolidation).
+  Table `accounts_standing` : aussi le rôle (écouter / publier), le
+  dossier profil navigateur, le nom du secret, les URLs cibles.
+  Mot de passe hors table.
 - **Surveillance COMPOUNDING (validé Q4e)** : job déterministe quotidien +
   ALERT si anomalie (thread qui tourne mal, SEO qui chute, avis négatif).
 - **Voie rapide (validé Q4f)** : juge LLM automatique («C») choisit voie

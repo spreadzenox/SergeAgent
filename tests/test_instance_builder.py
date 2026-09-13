@@ -165,11 +165,11 @@ class InstanceBuilderTests(unittest.TestCase):
             dest, Path('/tmp/alice/.config/serge/secrets/openrouter-api-key')
         )
         gog = secret_destination(
-            '/home/serge/.config/openclaw/gog.env',
+            '/home/serge/.config/serge/secrets/gog.env',
             home=Path('/tmp/alice'),
             config_root=Path('/tmp/alice/.config/serge'),
         )
-        self.assertEqual(gog, Path('/tmp/alice/.config/openclaw/gog.env'))
+        self.assertEqual(gog, Path('/tmp/alice/.config/serge/secrets/gog.env'))
 
     def test_refuses_live_system_root(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
@@ -457,7 +457,7 @@ class InstanceBuilderTests(unittest.TestCase):
                 kit_root=ROOT,
                 uid=1000,
             )
-            gog = tmp / 'home/.config/openclaw/gog.env'
+            gog = tmp / 'home/.config/serge/secrets/gog.env'
             self.assertTrue(gog.is_file())
             self.assertEqual(gog.read_text(encoding='utf-8'), blob + '\n')
             mode = oct(gog.stat().st_mode & 0o777)
@@ -465,7 +465,7 @@ class InstanceBuilderTests(unittest.TestCase):
             self.assertIn('gog_env', receipt['secret_names_written'])
 
     def test_secret_file_body_prefixes_only_monoline(self) -> None:
-        item = {'name': 'gog_env', 'maps_to': 'x/openclaw/gog.env'}
+        item = {'name': 'gog_env', 'maps_to': 'x/secrets/gog.env'}
         self.assertEqual(
             secret_file_body('gog_env', 'ALPHA=un', item),
             'GOG_ENV=ALPHA=un\n',

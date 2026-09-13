@@ -48,7 +48,6 @@ voice = {voice}
 metagrok = false
 gmail = false
 discord = {discord}
-openclaw = false
 owner_ui = false
 payments_live = false
 phone_sms = {phone_sms}
@@ -274,7 +273,6 @@ class InstanceFileTests(unittest.TestCase):
         features = default_features()
         self.assertTrue(features['owner_ui'])
         self.assertTrue(features['ingress'])
-        self.assertTrue(features['openclaw'])
         self.assertTrue(features['payments_live'])
         self.assertTrue(features['phone_sms'])
         self.assertTrue(features['phone_voice'])
@@ -456,7 +454,6 @@ class InstanceFileTests(unittest.TestCase):
                 'metagrok': False,
                 'gmail': False,
                 'discord': False,
-                'openclaw': False,
                 'owner_ui': False,
                 'payments_live': False,
             }

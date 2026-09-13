@@ -16,11 +16,8 @@ def secret_destination(
     home: Path,
     config_root: Path,
 ) -> Path:
+    del home
     catalogue = Path(maps_to)
-    if catalogue.name == 'gog.env' or 'openclaw/gog.env' in maps_to.replace(
-        '\\', '/'
-    ):
-        return home / '.config/openclaw' / catalogue.name
     return config_root / 'secrets' / catalogue.name
 
 

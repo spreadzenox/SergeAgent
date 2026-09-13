@@ -157,7 +157,6 @@ metagrok = false                # pas de token ; pont hôte seulement
 gmail = true
 mailbox = true                  # SMTP/IMAP confiance (cohabite avec gmail)
 discord = true
-openclaw = true
 owner_ui = true
 payments_live = true
 phone_sms = true                # SIM + Android, OTP/2FA
@@ -221,8 +220,8 @@ et `guide_model` (défaut = T2) sont écrits par le wizard ; le builder en
 dérive `config_root/llm/slots.json` (CHEAP/DEFAULT/SMART). Détail install :
 [`INSTALL.md`](INSTALL.md).
 
-OpenClaw est **on** dans le défaut tout-ou-rien (`browserbase_key` exigé).
-Sans la feature, le runtime reste `direct_llm`.
+Runtime LLM = OpenRouter en direct (`SERGE_AGENT_RUNTIME=direct_llm`).
+`gog.env` (Gmail) va dans `config_root/secrets/gog.env`.
 
 Téléphonie : `phone_sms` exige `sms_gateway_token`,
 `phone_voice` exige `sip_trunk_password` (+ `voice` pour la voix temps réel).

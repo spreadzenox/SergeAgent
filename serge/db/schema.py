@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import sqlite3
 
-SCHEMA_VERSION = 6
+SCHEMA_VERSION = 7
 
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS schema_version (
@@ -168,6 +168,13 @@ CREATE TABLE IF NOT EXISTS accounts_standing (
     status TEXT NOT NULL DEFAULT 'active',
     cooldown_until TEXT NOT NULL DEFAULT '',
     updated_at TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'ecoute',
+    profile_path TEXT NOT NULL DEFAULT '',
+    secret_ref TEXT NOT NULL DEFAULT '',
+    login_url TEXT NOT NULL DEFAULT '',
+    targets_json TEXT NOT NULL DEFAULT '[]',
+    last_login_at TEXT NOT NULL DEFAULT '',
+    last_fetch_at TEXT NOT NULL DEFAULT '',
     UNIQUE(venue, handle));
 CREATE TABLE IF NOT EXISTS policy_snapshots (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -279,10 +286,12 @@ def init_schema(connection: sqlite3.Connection) -> None:
         "INSERT INTO schema_version(version, applied_at) VALUES(?, datetime('now'))",
         (SCHEMA_VERSION,),
     )
+    from serge.comptes import ensure_account_columns
     from serge.etapes import ensure_pipeline_steps
     from serge.llm_registre import ensure_llm_points
     from serge.outils import ensure_tools
 
+    ensure_account_columns(connection)
     ensure_pipeline_steps(connection)
     ensure_tools(connection)
     ensure_llm_points(connection)

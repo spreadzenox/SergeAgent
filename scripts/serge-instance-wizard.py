@@ -233,7 +233,6 @@ def ask_interactive() -> dict[str, Any]:
         'gmail': 'Gmail provider',
         'mailbox': 'Boîte email SMTP/IMAP (confiance)',
         'discord': 'Discord owner console',
-        'openclaw': 'Adaptateur OpenClaw',
         'owner_ui': 'Dashboard owner / Mission Control',
         'payments_live': 'Paiements live',
         'phone_sms': 'Téléphonie SMS (SIM + Android, OTP)',

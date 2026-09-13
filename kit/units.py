@@ -96,7 +96,6 @@ def substitutions(
 ) -> dict[str, str]:
     paths = loaded['paths']
     features = loaded.get('features') or {}
-    openclaw = bool(features.get('openclaw'))
     gmail = bool(features.get('gmail'))
     mailbox = bool(features.get('mailbox'))
     listen = 'unprivileged'
@@ -120,18 +119,9 @@ def substitutions(
             facts.get('caddy') or Path(paths['home']) / '.local/bin/caddy'
         ),
         'INGRESS_LISTEN': listen,
-        'AGENT_RUNTIME': 'openclaw' if openclaw else 'direct_llm',
-        'OPENCLAW_ADAPTER': '1' if openclaw else '0',
-        'OPENCLAW_UNIT_LINES': (
-            'Wants=openclaw-gateway.service\nAfter=openclaw-gateway.service\n'
-            if openclaw
-            else ''
-        ),
-        'OPENCLAW_RW': (f'{paths["home"]}/.openclaw ' if openclaw else ''),
-        # Miroir kit/builder/secrets.py::secret_destination (cas gog) :
-        # l'import direct ferait un cycle units<->builder.
+        'AGENT_RUNTIME': 'direct_llm',
         'GMAIL_UNIT_LINES': (
-            f'EnvironmentFile=-{paths["home"]}/.config/openclaw/gog.env\n'
+            f'EnvironmentFile=-{paths["config_root"]}/secrets/gog.env\n'
             if gmail
             else ''
         ),

@@ -572,6 +572,16 @@ Page P3 DONE (607 tests verts).
 - 656 tests automatisés au vert.
 Mission Control V2 entièrement implémenté de P0 à P9 (Lots 0 à 14).
 
+## Comptes web (`accounts_standing`)
+
+Une ligne = un compte que Serge possède (Reddit, Gmail…). Santé
+(capital, warnings, pause) **et** de quoi crawler plus tard : `role`
+(`ecoute` / `publication` / `les_deux`), dossier profil Chromium,
+`secret_ref` (le **nom** du fichier secret, pas le mot de passe),
+`login_url`, `targets_json` (URLs / sous-forums), `last_login_at` /
+`last_fetch_at`. Schéma v7 : les vieilles bases reçoivent les colonnes
+au boot (`ensure_account_columns`). Fiche MC `#/objet/compte/{id}`.
+
 ## Carte live — coupe-circuit par étape
 
 Table `pipeline_steps` (canon) : une ligne par nœud de l’épine
@@ -616,7 +626,7 @@ Le jeton owner est `~/.config/serge/secrets/owner-dashboard.token`.
 Policy / taille des essais : dernier snapshot du canon (MC, runner,
 Discord, `ouvrir_essai`). YAML / TOML `[testing]` = semence seulement.
 Les units WSL encore posées par le builder pointent l’ancien
-`orchestrator/` (OpenClaw + `public_dashboard.py`) : les activer n’est
+`orchestrator/` (ancien dashboard) : les activer n’est
 pas le miroir kit. Boot vierge : voir l’ordonnanceur — pas de venture
 = pas de READY servi ; `memory.consolidate` peut être posé avec
 `venture_id=''` et rester orphelin.

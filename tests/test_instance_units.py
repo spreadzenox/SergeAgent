@@ -72,7 +72,8 @@ class InstanceUnitTests(unittest.TestCase):
             pipeline,
         )
         self.assertIn('SERGE_AGENT_RUNTIME=direct_llm', pipeline)
-        self.assertNotIn('Wants=openclaw-gateway.service', pipeline)
+        self.assertNotIn('openclaw-gateway', pipeline)
+        self.assertNotIn('SERGE_OPENCLAW', pipeline)
         self.assertNotIn('/home/serge', pipeline)
         self.assertNotIn('/run/user/1002', pipeline)
         self.assertIn('/run/user/1000', pipeline)
@@ -106,13 +107,6 @@ class InstanceUnitTests(unittest.TestCase):
         )
         self.assertIn('CAP_NET_BIND_SERVICE', unit)
         self.assertIn('SERGE_INGRESS_LISTEN=privileged', unit)
-
-    def test_openclaw_feature_adds_optional_wants(self) -> None:
-        rendered = render_units(_loaded(features={'openclaw': True}))
-        pipeline = rendered['files']['serge-pipeline.service']
-        self.assertIn('Wants=openclaw-gateway.service', pipeline)
-        self.assertIn('SERGE_OPENCLAW_ADAPTER=1', pipeline)
-        self.assertIn('/home/owner/.openclaw', pipeline)
 
     def test_live_mode_omits_burn_in_helper(self) -> None:
         rendered = render_units(_loaded(mode='live'))
@@ -181,7 +175,7 @@ class InstanceUnitTests(unittest.TestCase):
         with_gmail = render_units(_loaded(features={'gmail': True}))
         pipeline = with_gmail['files']['serge-pipeline.service']
         self.assertIn(
-            'EnvironmentFile=-/home/owner/.config/openclaw/gog.env',
+            'EnvironmentFile=-/home/owner/.config/serge/secrets/gog.env',
             pipeline,
         )
         without = render_units(_loaded())['files']['serge-pipeline.service']

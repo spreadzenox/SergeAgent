@@ -38,6 +38,15 @@ class ProjObjetTests(unittest.TestCase):
             "('p2','v1','Chloé','c@x.io','INBOUND','CUSTOMER',?,?)",
             (NOW, NOW, NOW, NOW),
         )
+        self.conn.execute(
+            'INSERT INTO accounts_standing(id, venue, handle, cooldown_until,'
+            " updated_at, role, profile_path, secret_ref, login_url,"
+            " targets_json) VALUES('s1','reddit','u/serge','',?,"
+            "'ecoute','/tmp/profil-reddit','reddit.session',"
+            "'https://www.reddit.com/login',"
+            "'[\"https://www.reddit.com/r/freelance/\"]')",
+            (NOW,),
+        )
         self.conn.commit()
 
     def test_prospect_vs_client(self) -> None:
@@ -144,6 +153,16 @@ class ProjObjetTests(unittest.TestCase):
         mat = project_objet(self.conn, 'contexte', 'policy')
         self.assertEqual(mat['type'], 'contexte')
         self.assertIn('autorisent', mat['pourquoi'])
+
+    def test_compte_web(self) -> None:
+        fiche = project_objet(self.conn, 'compte', 's1')
+        assert fiche is not None
+        self.assertEqual(fiche['titre'], 'reddit · u/serge')
+        vals = {c['k']: c['v'] for c in fiche['champs']}
+        self.assertEqual(vals['Sert à'], 'Écouter')
+        self.assertEqual(vals['Nom du secret'], 'reddit.session')
+        self.assertIn('freelance', vals['Cibles'])
+        self.assertNotIn('mot de passe', vals['Nom du secret'])
 
     def test_inconnu(self) -> None:
         self.assertIsNone(project_objet(self.conn, 'dragon', 'x'))

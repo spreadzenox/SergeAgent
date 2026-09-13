@@ -1,6 +1,6 @@
 # Gmail : binaire gog + keyring fichier
 
-Le transport email passe par le CLI `gog` (OpenClaw `gogcli`, API Gmail) :
+Le transport email passe par le CLI `gog` (API Gmail) :
 recherche, lecture, envoi. Sur machine headless (pas de trousseau OS), l'auth
 est un **keyring fichier** déverrouillé par `gog.env` (3 variables : backend,
 mot de passe, compte) — les tokens OAuth vivent dans le store
@@ -11,8 +11,8 @@ mot de passe, compte) — les tokens OAuth vivent dans le store
 
 ## 1. Binaire (5 min)
 
-1. Télécharge la release [`openclaw/gogcli`](https://github.com/openclaw/gogcli)
-   (asset `linux_amd64`, checksum vérifié) → `~/.local/bin/gog`.
+1. Télécharge le binaire `gog` (asset `linux_amd64`, checksum vérifié)
+   → `~/.local/bin/gog`.
 2. `gog --version` pour valider.
 3. Résolution par le runtime : `SERGE_GOG_BIN` > `PATH` > `/usr/local/bin/gog`
    (override explicite d'abord, défaut codé en dur en dernier).
@@ -44,12 +44,10 @@ Si `doctor` échoue (drift de format entre versions), passe en (b).
 ## 3. Kit (wizard)
 
 - `features.gmail = true` → le wizard demande `gog_env` (3 lignes, fin =
-  ligne vide) → sidecar v2 → `~/.config/openclaw/gog.env` (`0600`).
+  ligne vide) → sidecar v2 → `~/.config/serge/secrets/gog.env` (`0600`).
 - L'unit `serge-pipeline.service` charge le fichier (`EnvironmentFile`
   optionnel : sans lui, le service démarre et les workers Gmail échouent
   proprement en `MailError` — jamais silencieux).
-- Note : `~/.openclaw/.env` peut en être une copie (convention du gateway
-  OpenClaw externe, hors périmètre Serge).
 
 ## 4. Tester
 
