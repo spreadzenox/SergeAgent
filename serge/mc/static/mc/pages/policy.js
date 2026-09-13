@@ -234,6 +234,10 @@ export function mount(main, store) {
     ev.preventDefault();
     const n_smoke_min = parseInt(main.querySelector('[data-testing="n_smoke_min"]').value, 10);
     const n_full_target = parseInt(main.querySelector('[data-testing="n_full_target"]').value, 10);
+    if (!Number.isFinite(n_smoke_min) || !Number.isFinite(n_full_target)) {
+      toast(document.body, 'Taille des essais : nombres requis.', 'erreur');
+      return;
+    }
     try {
       const {ok, data} = await poster('/owner/api/policy/testing', {
         testing: {n_smoke_min, n_full_target},
