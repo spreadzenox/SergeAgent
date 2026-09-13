@@ -54,13 +54,19 @@ class PrePushCheckTests(unittest.TestCase):
                 with mock.patch.object(
                     self.script, 'run_gates', return_value=0
                 ):
-                    with mock.patch.object(self.script.sys, 'stderr', buf):
+                    with mock.patch.object(
+                        self.script, 'run_deterministic', return_value=0
+                    ):
                         with mock.patch.object(
-                            self.script.unittest.TestLoader,
-                            'discover',
-                            return_value=unittest.TestSuite(),
-                        ):
-                            self.assertEqual(self.script.run_pre_push(), 0)
+                            self.script,
+                            'run_live_llm_tests',
+                            return_value=0,
+                        ) as live:
+                            with mock.patch.object(
+                                self.script.sys, 'stderr', buf
+                            ):
+                                self.assertEqual(self.script.run_pre_push(), 0)
+                            live.assert_called_once_with(fake)
         self.assertNotIn(fake, buf.getvalue())
 
     def test_live_llm_skippe_refuse(self) -> None:

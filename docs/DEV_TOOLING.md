@@ -47,7 +47,8 @@ Les tests live-prudents (`SERGE_ENV=test` + vraies clés) ne tournent **pas**
 dans ce script : charte P5, niveaux 2–3 (LLM réel / canary) hors PR CI.
 
 Le **pre-push** (`scripts/pre-push-check.py`) est le gros check local :
-même gates + **toute** la suite (E2E MC compris) + LLM OpenRouter réel.
+même gates + **toute** la suite déterministe (E2E MC compris), puis le
+LLM OpenRouter réel (`SERGE_ENV=test` seulement sur ce second passage).
 Pas de clé (env ou `~/.config/serge/secrets/openrouter-api-key`) = push
 refusé. La clé n’est jamais affichée ni injectée dans GitHub Actions.
 Discord / Stripe live restent skippés s’ils n’ont pas leurs propres env.

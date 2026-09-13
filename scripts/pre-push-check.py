@@ -84,21 +84,43 @@ def live_llm_skipped(result: unittest.TestResult) -> bool:
     return False
 
 
-def run_suite(key: str) -> int:
-    """Suite entière : E2E requis, LLM live allumé, instance locale hors jeu."""
+def _isolate_instance() -> None:
     os.environ['SERGE_CI'] = '1'
-    os.environ['SERGE_ENV'] = 'test'
-    os.environ['OPENROUTER_API_KEY'] = key
     for name in INSTANCE_VARS:
         os.environ.pop(name, None)
+
+
+def run_deterministic() -> int:
+    """Suite CI : E2E requis, policy prod, pas de overlay test."""
+    _isolate_instance()
+    os.environ.pop('SERGE_ENV', None)
     suite = unittest.TestLoader().discover(str(ROOT / 'tests'))
     result = unittest.TextTestRunner(verbosity=1, stream=sys.stderr).run(suite)
-    if live_llm_skipped(result):
-        print('live LLM skippé malgré une clé — push refusé.', file=sys.stderr)
-        return 1
     if not result.wasSuccessful():
         return 1
     return 0
+
+
+def run_live_llm_tests(key: str) -> int:
+    """OpenRouter réel (policy.test). Skip = refus."""
+    _isolate_instance()
+    os.environ['SERGE_ENV'] = 'test'
+    os.environ['OPENROUTER_API_KEY'] = key
+    suite = unittest.TestLoader().discover(
+        str(ROOT / 'tests'), pattern='test_live_llm.py'
+    )
+    result = unittest.TextTestRunner(verbosity=1, stream=sys.stderr).run(suite)
+    if live_llm_skipped(result) or not result.wasSuccessful():
+        print('live LLM skippé ou rouge — push refusé.', file=sys.stderr)
+        return 1
+    return 0
+
+
+def run_suite(key: str) -> int:
+    """Déterministe d'abord, puis LLM live (overlay test seulement là)."""
+    if run_deterministic() != 0:
+        return 1
+    return run_live_llm_tests(key)
 
 
 def run_pre_push() -> int:
