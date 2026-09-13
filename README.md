@@ -237,15 +237,21 @@ Détail : [docs/INSTALL.md](docs/INSTALL.md). Contrat :
 ```sh
 curl -LsSf astral.sh/uv/install.sh | sh
 uv sync --group dev
-uv tool install pre-commit && pre-commit install
-pre-commit run --all-files
-python3 -m unittest discover -s tests            # unitaires
-SERGE_ENV=test python3 -m unittest discover -s tests  # + live-prudents (.env.test)
+uv run pre-commit install
+uv run playwright install chromium
+uv run pre-commit run --all-files
+scripts/ci.sh                    # gates + suite déterministe + E2E MC
 ```
 
-Règles : charte P1-P5 + R1-R5 (review dans chaque message de commit),
+Les tests live-prudents (vraies clés) restent manuels :
+`SERGE_ENV=test uv run python -m unittest discover -s tests`.
+
+Chaque PR passe la CI GitHub Actions (même `scripts/ci.sh`). Détail :
+[docs/DEV_TOOLING.md](docs/DEV_TOOLING.md).
+
+Règles : charte P1-P5 + R1-R6 (review dans chaque message de commit),
 jamais de secret commité, jamais d'écriture live sans
-`--confirm-live-instance-id`. Outillage : [docs/DEV_TOOLING.md](docs/DEV_TOOLING.md).
+`--confirm-live-instance-id`.
 
 ## État
 

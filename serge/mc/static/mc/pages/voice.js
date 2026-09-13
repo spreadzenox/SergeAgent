@@ -63,7 +63,9 @@ async function toggleKillVoice(store, etatActuel) {
 
 function renderBridge(main, payload, sig, store) {
   const info = main.querySelector('#voice-bridge-info');
-  const btnKill = main.querySelector('[data-action="toggle-kill-voice"]');
+  const ancien = main.querySelector('[data-action="toggle-kill-voice"]');
+  const btnKill = ancien.cloneNode(true);
+  ancien.replaceWith(btnKill);
   const kActif = payload.kill_switch;
 
   info.textContent = `Kill Switch Voix : ${kActif ? 'ACTIF (appels coupés)' : 'Inactif (appels autorisés)'} | Bridge statut : ${payload.bridge?.status || 'ok'}`;
@@ -71,13 +73,11 @@ function renderBridge(main, payload, sig, store) {
   btnKill.textContent = kActif ? 'Désactiver Kill Switch Voix' : 'Activer Kill Switch Voix';
   btnKill.className = kActif ? '' : 'danger';
 
-  main
-    .querySelector('[data-action="toggle-kill-voice"]')
-    .addEventListener('click', () => {
-      const env = store.get('bridge_statut');
-      const k = env ? env.payload?.kill_switch : false;
-      toggleKillVoice(store, k);
-    });
+  btnKill.addEventListener('click', () => {
+    const env = store.get('bridge_statut');
+    const k = env ? env.payload?.kill_switch : false;
+    toggleKillVoice(store, k);
+  });
 
   main.querySelector('[data-section="bridge_statut"]').dataset.sig = sig;
 }

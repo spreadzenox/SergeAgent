@@ -149,7 +149,9 @@ class ProjLiveTests(unittest.TestCase):
         self.assertEqual(lignes[0]['cellules'][1], 'Envoi d’e-mail')
         self.assertEqual(lignes[0]['cellules'][2], 'En cours')
         self.assertEqual(lignes[1]['cellules'][2], 'Prochain')
-        self.assertEqual(lignes[1]['cellules'][1], 'Classification d’une réponse')
+        self.assertEqual(
+            lignes[1]['cellules'][1], 'Classification d’une réponse'
+        )
         self.assertEqual(lignes[2]['cellules'][2], 'Prêt')
 
     def test_feed_tri_et_sources(self) -> None:
@@ -172,7 +174,9 @@ class ProjLiveTests(unittest.TestCase):
         self.assertEqual(email['libelle'], 'E-mails')
         self.assertAlmostEqual(email['ratio'], 0.025)
         self.assertEqual(jauges['voix']['libelle'], 'Appels')
-        self.assertEqual((jauges['voix']['faits'], jauges['voix']['quota']), (0, 50))
+        self.assertEqual(
+            (jauges['voix']['faits'], jauges['voix']['quota']), (0, 50)
+        )
         self.assertEqual(jauges['linkedin']['libelle'], 'Invitations LinkedIn')
         self.assertEqual(jauges['linkedin']['quota'], 20)
 

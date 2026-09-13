@@ -114,7 +114,9 @@ class McSystemTests(McBrowserCase):
 
         page = self._page_home()
         expect(page.locator('[data-section="graphe"]')).to_be_visible()
-        expect(page.get_by_text('Comment Serge gagne de l’argent')).to_be_visible()
+        expect(
+            page.get_by_text('Comment Serge gagne de l’argent')
+        ).to_be_visible()
         self.assertGreaterEqual(page.locator('.noeud').count(), 7)
 
     def test_pas_de_fuite_boucle_ilots(self) -> None:

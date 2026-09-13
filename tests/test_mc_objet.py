@@ -33,18 +33,18 @@ class ProjObjetTests(unittest.TestCase):
         )
         self.conn.execute(
             'INSERT INTO contacts(id, venture_id, display, email, regime,'
-            " funnel_state, created_at, updated_at) VALUES"
+            ' funnel_state, created_at, updated_at) VALUES'
             "('p1','v1','Ada','a@x.io','OUTBOUND','INTENT',?,?),"
             "('p2','v1','Chloé','c@x.io','INBOUND','CUSTOMER',?,?)",
             (NOW, NOW, NOW, NOW),
         )
         self.conn.execute(
             'INSERT INTO accounts_standing(id, venue, handle, cooldown_until,'
-            " updated_at, role, profile_path, secret_ref, login_url,"
+            ' updated_at, role, profile_path, secret_ref, login_url,'
             " targets_json) VALUES('s1','reddit','u/serge','',?,"
             "'ecoute','/tmp/profil-reddit','reddit.session',"
             "'https://www.reddit.com/login',"
-            "'[\"https://www.reddit.com/r/freelance/\"]')",
+            '\'["https://www.reddit.com/r/freelance/"]\')',
             (NOW,),
         )
         self.conn.commit()
@@ -68,7 +68,9 @@ class ProjObjetTests(unittest.TestCase):
         self.assertIn('Le texte qu’on lui donne (prompt)', titres)
         self.assertIn('Ce qu’il a le droit de lire', titres)
         self.assertIn('Outils', titres)
-        self.assertEqual(fiche['tableau']['titre'], 'Passages récents de ce jugement')
+        self.assertEqual(
+            fiche['tableau']['titre'], 'Passages récents de ce jugement'
+        )
 
     def test_cluster_demand_clair(self) -> None:
         self.conn.execute(
@@ -122,7 +124,9 @@ class ProjObjetTests(unittest.TestCase):
         notion = project_objet(self.conn, 'notion', 'score_volume')
         self.assertIn('note', notion['pourquoi'])
         rub = project_objet(
-            self.conn, 'contexte', 'rubric_volume_intensite_recurrence_willingness'
+            self.conn,
+            'contexte',
+            'rubric_volume_intensite_recurrence_willingness',
         )
         self.assertIn('Grille', rub['titre'])
         self.assertIn('volume', rub['pourquoi'])
@@ -141,7 +145,7 @@ class ProjObjetTests(unittest.TestCase):
     def test_llm_usage_et_contexte(self) -> None:
         self.conn.execute(
             'INSERT INTO llm_usage(point, tier, model, tokens_in,'
-            " tokens_out, latency_ms, verdict, created_at)"
+            ' tokens_out, latency_ms, verdict, created_at)'
             " VALUES('classify_reply','T1','nemo',10,4,40,'ok',?)",
             (NOW,),
         )
@@ -181,7 +185,6 @@ class ProjObjetTests(unittest.TestCase):
         self.assertTrue(fiche['tableau']['lignes'])
         self.assertNotIn('inbound.classify', str(fiche['tableau']))
 
-
     def test_etape_ecoute(self) -> None:
         fiche = project_objet(self.conn, 'etape', 'ecoute')
         self.assertEqual(fiche['type'], 'etape')
@@ -203,7 +206,9 @@ class ProjObjetTests(unittest.TestCase):
 
 class ApiObjetTests(McServerCase):
     def test_objet_auth_et_404(self) -> None:
-        status, _, _ = self._request('GET', '/owner/api/objet?type=venture&id=v1')
+        status, _, _ = self._request(
+            'GET', '/owner/api/objet?type=venture&id=v1'
+        )
         self.assertEqual(status, 401)
         cookie = self._auth_cookie()
         status, _, body = self._request(

@@ -21,7 +21,9 @@ from tests.mc_server_case import McBrowserCase  # noqa: E402
 
 class LibellesUnitTests(unittest.TestCase):
     def test_verbe_humain(self) -> None:
-        self.assertEqual(verbe('inbound.classify'), 'Classification d’une réponse')
+        self.assertEqual(
+            verbe('inbound.classify'), 'Classification d’une réponse'
+        )
         self.assertEqual(verbe('work.enqueued'), 'Tâche mise en file')
         self.assertNotIn('.', verbe('email.send'))
 
@@ -31,7 +33,9 @@ class LibellesUnitTests(unittest.TestCase):
         self.assertIn('encaissé', phrase_noyau(0, None, 100))
 
     def test_recit_et_llm(self) -> None:
-        self.assertIn('touchées', phrase_recit('Atelier', 'SMOKE_RUNNING', 5, 2, 1, 80))
+        self.assertIn(
+            'touchées', phrase_recit('Atelier', 'SMOKE_RUNNING', 5, 2, 1, 80)
+        )
         self.assertEqual(titre_llm('classify_reply'), 'Classer une réponse')
 
 

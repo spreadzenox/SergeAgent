@@ -291,7 +291,10 @@ MATERIEL: dict[str, tuple[str, str]] = {
         'Même chose, plus les chiffres du premier essai et'
         ' « est-ce qu’on peut encaisser ? ».',
     ),
-    'template_plan': ('Moule du plan pour grandir', 'Les sections d’un plan : où, combien, limites.'),
+    'template_plan': (
+        'Moule du plan pour grandir',
+        'Les sections d’un plan : où, combien, limites.',
+    ),
     'template_option_x3': (
         'Moule des trois autres idées',
         'Oblige à écrire trois pistes vraiment différentes.',
@@ -406,7 +409,10 @@ MATERIEL: dict[str, tuple[str, str]] = {
         'Fins d’essai autorisées',
         'Les issues propres : on arrête, on agrandit, on change d’idée.',
     ),
-    'secrets': ('Interdit : secrets', 'Mots de passe, jetons, clés. Jamais dans un jugement.'),
+    'secrets': (
+        'Interdit : secrets',
+        'Mots de passe, jetons, clés. Jamais dans un jugement.',
+    ),
     'pii_tiers': (
         'Interdit : vies privées des autres',
         'Pas le droit de recracher des données perso de tiers.',
@@ -415,8 +421,14 @@ MATERIEL: dict[str, tuple[str, str]] = {
         'Interdit : mélanger les idées',
         'On ne pique pas les infos d’une autre idée de business.',
     ),
-    'montants_non_catalogue': ('Interdit : un prix hors liste', 'Pas de tarif inventé.'),
-    'montants_inventes': ('Interdit : un prix inventé', 'Même idée : le prix vient du catalogue.'),
+    'montants_non_catalogue': (
+        'Interdit : un prix hors liste',
+        'Pas de tarif inventé.',
+    ),
+    'montants_inventes': (
+        'Interdit : un prix inventé',
+        'Même idée : le prix vient du catalogue.',
+    ),
     'engagements_contractuels': (
         'Interdit : promettre un contrat',
         'Serge ne signe pas à ta place.',
@@ -437,7 +449,10 @@ MATERIEL: dict[str, tuple[str, str]] = {
         'Consigne du guide d’install',
         'Le texte fixe qui dit au modèle : explique, ne touche à rien.',
     ),
-    'etape_courante': ('Étape d’install en cours', 'Où tu en es dans l’installation.'),
+    'etape_courante': (
+        'Étape d’install en cours',
+        'Où tu en es dans l’installation.',
+    ),
     'resume_non_secret': (
         'Résumé sans secret',
         'Un état de l’install, sans mot de passe.',

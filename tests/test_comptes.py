@@ -48,12 +48,12 @@ class ComptesTests(unittest.TestCase):
             ' handle TEXT NOT NULL, capital REAL NOT NULL DEFAULT 1.0,'
             ' age_days INTEGER NOT NULL DEFAULT 0,'
             ' warnings INTEGER NOT NULL DEFAULT 0,'
-            ' status TEXT NOT NULL DEFAULT \'active\','
-            ' cooldown_until TEXT NOT NULL DEFAULT \'\','
+            " status TEXT NOT NULL DEFAULT 'active',"
+            " cooldown_until TEXT NOT NULL DEFAULT '',"
             ' updated_at TEXT NOT NULL)'
         )
         conn.execute(
-            "INSERT INTO accounts_standing(id, venue, handle, updated_at)"
+            'INSERT INTO accounts_standing(id, venue, handle, updated_at)'
             " VALUES('s1','reddit','u/x','2026-09-13T12:00:00+00:00')"
         )
         ensure_account_columns(conn)

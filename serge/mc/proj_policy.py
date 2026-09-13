@@ -65,7 +65,8 @@ def project_testing_froid(
     from kit.instance_file import _validate_testing
 
     live = policy_en_vigueur(conn)
-    raw = live.get('testing') if isinstance(live.get('testing'), dict) else {}
+    testing = live.get('testing')
+    raw: dict[str, Any] = testing if isinstance(testing, dict) else {}
     testing_cfg = _validate_testing(raw)
     return {
         'running_campaigns': int(running),

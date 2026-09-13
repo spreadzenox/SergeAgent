@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 import tempfile
 import threading
@@ -126,6 +127,14 @@ class McBrowserCase(McServerCase):
     @classmethod
     def setUpClass(cls) -> None:
         if not browser_ok():
+            if os.environ.get('SERGE_CI', '').strip() in {
+                '1',
+                'true',
+                'TRUE',
+            }:
+                raise AssertionError(
+                    'navigateur requis en CI (playwright chromium)'
+                )
             raise unittest.SkipTest('navigateur indisponible')
         from playwright.sync_api import sync_playwright
 

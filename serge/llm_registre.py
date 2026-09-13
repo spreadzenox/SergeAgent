@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import sqlite3
+from pathlib import Path
 from typing import Any
 
 # id → (path, sha). SHA figé : fichier changé sans maj = test rouge.
@@ -135,7 +136,10 @@ def ensure_llm_points(conn: sqlite3.Connection) -> None:
     from serge.mc.llm_roles import ROLES
     from serge.policy import config_dir, read_yaml_file
 
-    data = read_yaml_file(config_dir() / 'llm-points.yaml')
+    path = config_dir() / 'llm-points.yaml'
+    if not path.is_file():
+        path = Path(__file__).resolve().parents[1] / 'config/llm-points.yaml'
+    data = read_yaml_file(path)
     raw = data.get('points')
     points = raw if isinstance(raw, dict) else {}
     for name, spec in points.items():

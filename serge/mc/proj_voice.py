@@ -125,6 +125,7 @@ def project_bridge_statut(
         kill_switch_active(root)
         or (Path(system_root()) / 'state/KILL_SWITCH').exists()
         or kill_switch_active(db_parent)
+        or (db_parent / 'KILL_SWITCH').exists()
     )
 
     # Récupération fail-soft du statut bridge

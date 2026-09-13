@@ -49,7 +49,11 @@ class McVoiceTests(McBrowserCase):
         page = self._auth_context().new_page()
         self._watch_errors(page)
         page.goto(f'{self.base}/owner#/voice')
-        page.locator('[data-section="bridge_statut"]').wait_for(timeout=10000)
+        from playwright.sync_api import expect
+
+        expect(page.locator('#voice-bridge-info')).to_contain_text(
+            'Kill Switch Voix', timeout=10000
+        )
         return page
 
     def test_page_voice_rendu(self) -> None:
@@ -67,13 +71,14 @@ class McVoiceTests(McBrowserCase):
         from playwright.sync_api import expect
 
         page = self._page_voice()
-        btn = page.locator('button[data-action="toggle-kill-voice"]')
-        btn.click()
-
+        page.get_by_role('button', name='Activer Kill Switch Voix').click()
         modale = page.locator('.modale')
-        modale.get_by_role('button', name='Activer').click()
+        expect(modale).to_be_visible()
+        modale.get_by_role('button', name='Activer', exact=True).click()
 
         expect(page.locator('.toast-succes')).to_contain_text(
             'Kill Switch Voix : ACTIVÉ.'
         )
-        expect(page.locator('#voice-bridge-info')).to_contain_text('ACTIF')
+        expect(page.locator('#voice-bridge-info')).to_contain_text(
+            'ACTIF (appels coupés)'
+        )

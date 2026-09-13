@@ -59,6 +59,9 @@ KNOWN_FIXTURE_MARKERS = {
     # tests/test_metagrok_voice.py fixtures (self-describing dummies, not keys)
     b'sk-test-permanent-not-used',
     b'sk-permanent-must-not-leave-server',
+    # tests/test_mc_public.py : leurres adversariaux (assert_public_safe)
+    b'api_key: sk-1234567890abcdef1234567890',
+    b'-----BEGIN RSA PRIVATE KEY-----',
 }
 
 
