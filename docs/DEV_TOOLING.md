@@ -15,6 +15,29 @@ Trois couches, volontairement inégales :
 Rouge à n’importe quelle couche = le git s’arrête (commit, push) ou le
 merge est bloqué (check requis `lint tests e2e` sur `main`).
 
+## Branches et PR
+
+Plus de commit ni de push direct sur `main`. Une idée = une branche +
+une PR. `main` ne bouge que par merge, CI verte.
+
+```sh
+git checkout main && git pull
+git checkout -b sujet-court
+# ... commits ...
+git push -u origin HEAD
+gh pr create --base main
+```
+
+Nom de branche : `sujet` (un verbe / un objet, ASCII, tirets). Ex.
+`hooks-pre-push`, `mc-css-statique`. Pas de `main`, pas de date.
+
+La PR cible `main`. Le check `lint tests e2e` doit être vert. Review
+humaine puis merge. Après merge : supprimer la branche, `git checkout
+main && git pull`.
+
+Admin GitHub peut encore forcer `main` (bypass ruleset) : ne pas s’en
+servir, sauf urgence réelle.
+
 ## Ce qui tourne où
 
 **Commit** (`.pre-commit-config.yaml`, hooks `pre-commit`) :

@@ -247,8 +247,10 @@ uv run playwright install chromium
 - **Commit** : lint + types + scan secrets.
 - **Push** : toute la suite (E2E compris) + 1 appel OpenRouter. Pas de clé
   instance = pas de push.
-- **CI** (PR et `main`) : même suite déterministe, zéro secret. Check
-  requis : `lint tests e2e`.
+- **CI** (chaque PR, et `main` après merge) : même suite déterministe,
+  zéro secret. Check requis : `lint tests e2e`.
+- **Pas de push sur `main`.** Branche + PR, voir
+  [docs/DEV_TOOLING.md](docs/DEV_TOOLING.md).
 
 Discord / Stripe live restent manuels.
 
