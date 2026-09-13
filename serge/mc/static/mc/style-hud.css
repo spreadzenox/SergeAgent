@@ -342,6 +342,11 @@ h2 .btn-file {
   box-shadow: var(--glow-orange);
 }
 
+.noeud[data-coupe='1'] {
+  border-color: var(--orange);
+  opacity: 0.55;
+}
+
 .noeud.llm.point {
   height: 0.85rem;
   min-width: 0.85rem;

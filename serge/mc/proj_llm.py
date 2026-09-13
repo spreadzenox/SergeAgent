@@ -63,34 +63,6 @@ NOTIONS = {
     ),
 }
 
-OUTILS = {
-    'memory_search': (
-        'Chercher dans la mémoire',
-        'Un seul outil pour fouiller la mémoire. Si le dossier prévu'
-        ' ne suffit pas, le jugement pose une question (« objections'
-        ' prix artisans ») et ramène'
-        ' quelques extraits — dans un budget. Lecture seule : ça informe,'
-        ' ça n’écrit pas. Certains jugements n’y ont pas droit'
-        ' (un appel, un résumé chiffré) : ils restent sur le dossier figé.'
-        ' Le câblage runtime se complète.',
-    ),
-    'navigateur': (
-        'Ouvrir le web (navigateur)',
-        'Un vrai navigateur (Brave / Chromium) pour aller voir une'
-        ' page, un fil Reddit, un profil. Pas encore branché comme'
-        ' outil du jugement. Aujourd’hui Serge ramasse surtout des'
-        ' flux RSS. Un budget navigateur existe déjà dans les règles.'
-        ' À brancher.',
-    ),
-    'demande_capacite': (
-        'Demander une nouvelle capacité',
-        'Quand Serge ne peut pas (pas de canal, pas d’outil), il'
-        ' doit poser un ticket « j’ai besoin de X » plutôt que'
-        ' d’inventer. C’est dans l’esprit du système ; la page'
-        ' d’outils du jugement le montre pour ne pas l’oublier.',
-    ),
-}
-
 
 def _points() -> dict[str, dict]:
     try:
@@ -104,7 +76,7 @@ def _points() -> dict[str, dict]:
 def _dernier_io(conn: sqlite3.Connection, nom: str) -> tuple[str, str]:
     row = conn.execute(
         "SELECT payload_json FROM events WHERE type='llm.io'"
-        " AND payload_json LIKE ? ORDER BY id DESC LIMIT 1",
+        ' AND payload_json LIKE ? ORDER BY id DESC LIMIT 1',
         (f'%{nom}%',),
     ).fetchone()
     if not row:
@@ -142,15 +114,27 @@ def _repli(brut: str) -> str:
 def _liens_flux(ident: str, spec: dict) -> list[dict[str, str]]:
     ctx = spec.get('context') or {}
     cles = ' '.join(
-        str(x) for x in list(ctx.get('fixed') or []) + list(ctx.get('retrieved') or [])
+        str(x)
+        for x in list(ctx.get('fixed') or [])
+        + list(ctx.get('retrieved') or [])
     )
     liens: list[dict[str, str]] = []
     if ident == 'cluster_demand' or 'ecoute' in cles or 'verbatim' in cles:
-        liens.append({'type': 'ecoute', 'id': 'pages', 'titre': 'Pages vraiment lues'})
+        liens.append(
+            {'type': 'ecoute', 'id': 'pages', 'titre': 'Pages vraiment lues'}
+        )
     if ident == 'cluster_demand':
         liens += [
-            {'type': 'notion', 'id': 'grappe', 'titre': 'C’est quoi un paquet de demandes ?'},
-            {'type': 'notion', 'id': 'score_volume', 'titre': 'C’est quoi la note de volume ?'},
+            {
+                'type': 'notion',
+                'id': 'grappe',
+                'titre': 'C’est quoi un paquet de demandes ?',
+            },
+            {
+                'type': 'notion',
+                'id': 'score_volume',
+                'titre': 'C’est quoi la note de volume ?',
+            },
         ]
     return liens
 
@@ -161,23 +145,25 @@ def _liens_materiel(spec: dict) -> list[dict[str, str]]:
     for cle in list(ctx.get('fixed') or []) + list(ctx.get('retrieved') or []):
         if str(cle) not in vus:
             vus.append(str(cle))
-    return [{'type': 'contexte', 'id': cle, 'titre': titre_materiel(cle)} for cle in vus]
-
-
-def _outils(spec: dict) -> list[dict[str, str]]:
-    ctx = spec.get('context') or {}
-    couche = ctx.get('couche5') or {}
-    autorise = isinstance(couche, dict) and bool(couche.get('allowed'))
-    titre = (
-        'Chercher dans la mémoire (autorisé ici)'
-        if autorise
-        else 'Chercher dans la mémoire (interdit ici)'
-    )
     return [
-        {'type': 'outil', 'id': 'memory_search', 'titre': titre},
-        {'type': 'outil', 'id': 'navigateur', 'titre': 'Ouvrir le web (pas encore branché)'},
-        {'type': 'outil', 'id': 'demande_capacite', 'titre': 'Demander une nouvelle capacité'},
+        {'type': 'contexte', 'id': cle, 'titre': titre_materiel(cle)}
+        for cle in vus
     ]
+
+
+def _outils(conn: sqlite3.Connection, point_id: str) -> list[dict[str, str]]:
+    from serge.llm_registre import outils_du_point
+
+    liens: list[dict[str, str]] = []
+    for item in outils_du_point(conn, point_id):
+        titre = item['titre']
+        if item['id'] == 'memory_search':
+            if item['usage'] == 'autorise':
+                titre = 'Chercher dans la mémoire (autorisé ici)'
+            elif item['usage'] == 'interdit':
+                titre = 'Chercher dans la mémoire (interdit ici)'
+        liens.append({'type': 'outil', 'id': item['id'], 'titre': titre})
+    return liens
 
 
 def project_llm(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
@@ -208,7 +194,9 @@ def project_llm(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
                 'type': 'llm_usage',
                 'cellules': [
                     when or '—',
-                    {'ok': 'terminé', 'error': 'raté'}.get(str(verd), verd or '—'),
+                    {'ok': 'terminé', 'error': 'raté'}.get(
+                        str(verd), verd or '—'
+                    ),
                     PALIERS.get(str(tier), str(tier or '—')).split(' —')[0],
                     str(int(tin or 0) + int(tout or 0)),
                     f'{int(lat or 0)} ms',
@@ -292,7 +280,7 @@ def project_llm(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
                     ' le web plus tard, ou demander une capacité manquante'
                     ' plutôt qu’inventer.'
                 ),
-                'liens': _outils(spec),
+                'liens': _outils(conn, ident),
             },
         ],
         'tableau': {
@@ -376,7 +364,9 @@ def project_contexte(_conn: sqlite3.Connection, ident: str) -> dict[str, Any]:
     }
 
 
-def project_ecoute(conn: sqlite3.Connection, ident: str = '') -> dict[str, Any]:
+def project_ecoute(
+    conn: sqlite3.Connection, ident: str = ''
+) -> dict[str, Any]:
     """Miroir des pages vraiment lues."""
     _ = ident
     rows = conn.execute(
@@ -427,30 +417,54 @@ def project_ecoute(conn: sqlite3.Connection, ident: str = '') -> dict[str, Any]:
     }
 
 
-def project_outil(_conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
-    """Une fiche d’outil — un id, une page (couche 5 = chercher)."""
-    if ident == 'couche5':
-        ident = 'memory_search'
-    found = OUTILS.get(ident)
+def project_outil(
+    conn: sqlite3.Connection, ident: str
+) -> dict[str, Any] | None:
+    """Une fiche d’outil lue dans la table tools."""
+    from pathlib import Path
+
+    from serge.outils import mtime_fichier, outil_par_id
+
+    found = outil_par_id(conn, ident)
     if not found:
         return None
-    titre, texte = found
     todo = ''
-    if ident in ('navigateur', 'demande_capacite'):
+    if found['etat'] == 'prevu':
         todo = 'Pas encore un bouton que le jugement peut presser tout seul.'
+    champs: list[dict[str, str]] = [
+        {
+            'k': 'Genre',
+            'v': {
+                'deterministe': 'déterministe',
+                'agent': 'agent',
+                'web': 'web',
+            }.get(found['kind'], found['kind']),
+        }
+    ]
+    if found['code_path']:
+        root = Path(__file__).resolve().parents[2]
+        champs.append({'k': 'Fichier', 'v': found['code_path']})
+        champs.append(
+            {
+                'k': 'Dernière modification',
+                'v': mtime_fichier(root, found['code_path']) or '—',
+            }
+        )
     return {
         'type': 'outil',
-        'id': ident,
-        'titre': titre,
-        'pourquoi': texte,
-        'champs': [],
+        'id': found['id'],
+        'titre': found['titre'],
+        'pourquoi': found['doc_md'],
+        'champs': champs,
         'cadres': [{'titre': 'État', 'todo': todo}] if todo else [],
         'enfants': [],
         'preuve': '',
     }
 
 
-def project_notion(_conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
+def project_notion(
+    _conn: sqlite3.Connection, ident: str
+) -> dict[str, Any] | None:
     """Une définition cliquée depuis un flux (paquet, note de volume)."""
     found = NOTIONS.get(ident)
     if not found:

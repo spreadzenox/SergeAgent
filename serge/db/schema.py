@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import sqlite3
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 6
 
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS schema_version (
@@ -201,6 +201,35 @@ CREATE TABLE IF NOT EXISTS runtime_flags (
     set_by TEXT NOT NULL DEFAULT '',
     set_at TEXT NOT NULL, expires_at TEXT NOT NULL DEFAULT '',
     reason TEXT NOT NULL DEFAULT '');
+CREATE TABLE IF NOT EXISTS pipeline_steps (
+    id TEXT PRIMARY KEY,
+    enabled INTEGER NOT NULL DEFAULT 1,
+    kinds_json TEXT NOT NULL DEFAULT '[]',
+    rang INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS tools (
+    id TEXT PRIMARY KEY,
+    kind TEXT NOT NULL,
+    code_path TEXT NOT NULL DEFAULT '',
+    code_sha TEXT NOT NULL DEFAULT '',
+    titre TEXT NOT NULL DEFAULT '',
+    doc_md TEXT NOT NULL DEFAULT '',
+    etat TEXT NOT NULL DEFAULT 'prevu',
+    montre_partout INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS llm_points (
+    id TEXT PRIMARY KEY,
+    etape_id TEXT NOT NULL DEFAULT '',
+    code_path TEXT NOT NULL DEFAULT '',
+    code_sha TEXT NOT NULL DEFAULT '',
+    verdict TEXT NOT NULL DEFAULT '',
+    tier TEXT NOT NULL DEFAULT '',
+    titre TEXT NOT NULL DEFAULT '',
+    doc_md TEXT NOT NULL DEFAULT '',
+    enabled INTEGER NOT NULL DEFAULT 1);
+CREATE TABLE IF NOT EXISTS llm_point_tools (
+    point_id TEXT NOT NULL,
+    tool_id TEXT NOT NULL,
+    usage TEXT NOT NULL,
+    PRIMARY KEY (point_id, tool_id));
 """
 
 TABLES = (
@@ -231,6 +260,10 @@ TABLES = (
     'listen_docs',
     'mc_sessions',
     'runtime_flags',
+    'pipeline_steps',
+    'tools',
+    'llm_points',
+    'llm_point_tools',
 )
 
 
@@ -246,3 +279,10 @@ def init_schema(connection: sqlite3.Connection) -> None:
         "INSERT INTO schema_version(version, applied_at) VALUES(?, datetime('now'))",
         (SCHEMA_VERSION,),
     )
+    from serge.etapes import ensure_pipeline_steps
+    from serge.llm_registre import ensure_llm_points
+    from serge.outils import ensure_tools
+
+    ensure_pipeline_steps(connection)
+    ensure_tools(connection)
+    ensure_llm_points(connection)

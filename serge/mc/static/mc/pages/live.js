@@ -25,6 +25,7 @@ import {
 } from '../libelles.js';
 import {chargerObjet, renderFiche} from '../objets.js';
 import {patchSection} from '../patch.js';
+import {fetchState} from '../sse.js';
 
 function renderHero(main, payload, sig, store) {
   patchSection(main, 'hero', sig, payload);
@@ -389,6 +390,13 @@ export function mount(main, store) {
       };
     },
     stoppers,
+    async () => {
+      const data = await fetchState('p0');
+      const env = data.sections && data.sections.graphe;
+      if (env) {
+        store.apply('graphe', env.sig, env.payload);
+      }
+    },
   );
   const renderers = {
     hero: (payload, sg) => renderHero(main, payload, sg, store),

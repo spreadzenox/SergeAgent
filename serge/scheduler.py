@@ -8,6 +8,7 @@ import sqlite3
 from typing import Any
 
 from serge.db.store import append_event, utcnow
+from serge.etapes import kinds_coupes
 
 
 def next_ready(
@@ -26,15 +27,20 @@ def next_ready(
         Le work_item (dict) ou None si rien n'est READY.
     """
     moment = now or utcnow()
-    row = connection.execute(
+    sql = (
         'SELECT id, kind, venture_id, campaign_id, contact_id, ticket_id,'
         ' status, priority, payload_json, blocked_until, attempts,'
         ' idempotency_key, created_at, updated_at FROM work_items'
         " WHERE status='READY' AND (blocked_until='' OR blocked_until<=?)"
         ' AND venture_id IN (SELECT id FROM ventures WHERE schedulable=1)'
-        ' ORDER BY priority DESC, created_at ASC LIMIT 1',
-        (moment,),
-    ).fetchone()
+    )
+    args: list[Any] = [moment]
+    coupes = sorted(kinds_coupes(connection))
+    if coupes:
+        sql += f' AND kind NOT IN ({",".join("?" * len(coupes))})'
+        args.extend(coupes)
+    sql += ' ORDER BY priority DESC, created_at ASC LIMIT 1'
+    row = connection.execute(sql, args).fetchone()
     return dict(row) if row else None
 
 

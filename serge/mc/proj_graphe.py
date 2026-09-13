@@ -3,12 +3,12 @@
 
 from __future__ import annotations
 
+import json
 import sqlite3
 from collections.abc import Mapping
 from typing import Any
 
-import json
-
+from serge.etapes import etats_etapes
 from serge.mc.libelles import (
     LLM_ETAPE,
     NOEUDS,
@@ -30,7 +30,7 @@ def _count(conn: sqlite3.Connection, sql: str, args: tuple = ()) -> int:
 
 def _llm_live(conn: sqlite3.Connection) -> set[str]:
     rows = conn.execute(
-        "SELECT DISTINCT point FROM llm_usage ORDER BY id DESC LIMIT 12"
+        'SELECT DISTINCT point FROM llm_usage ORDER BY id DESC LIMIT 12'
     ).fetchall()
     return {str(r[0]) for r in rows}
 
@@ -38,7 +38,9 @@ def _llm_live(conn: sqlite3.Connection) -> set[str]:
 def _nom_venture(conn: sqlite3.Connection, ident: str) -> str:
     if not ident:
         return ''
-    row = conn.execute('SELECT name FROM ventures WHERE id=?', (ident,)).fetchone()
+    row = conn.execute(
+        'SELECT name FROM ventures WHERE id=?', (ident,)
+    ).fetchone()
     return str(row[0] or ident) if row else ident
 
 
@@ -120,7 +122,9 @@ def project_graphe(
         f" ({placeholders}) AND type IN ('GUICHET','VETO_AMONT','ALERT')",
         tuple(sorted(OPENISH)),
     )
-    failed = _count(conn, "SELECT COUNT(*) FROM work_items WHERE status='FAILED'")
+    failed = _count(
+        conn, "SELECT COUNT(*) FROM work_items WHERE status='FAILED'"
+    )
     deny = _count(
         conn,
         "SELECT COUNT(*) FROM events WHERE type='guard'"
@@ -179,15 +183,21 @@ def project_graphe(
             'libelle': 'factures',
         },
     ]
+    etats = etats_etapes(conn)
     return {
         'epine': [
             {
                 'id': key,
-                **val,
+                **(
+                    NOEUDS.get(key)
+                    or {'titre': key, 'pourquoi': '', 'argent': ''}
+                ),
                 'objet': {'type': 'etape', 'id': key},
                 'jugements': lister_jugements(key, live | kinds_run),
+                'marche': spec['marche'],
+                'kinds': spec['kinds'],
             }
-            for key, val in NOEUDS.items()
+            for key, spec in etats.items()
         ],
         'orbites': [
             {'id': key, **val, 'objet': {'type': key, 'id': key}}
@@ -208,7 +218,7 @@ def project_business(
     from serge.funnels.metrics import campaign_metrics
 
     row = conn.execute(
-        "SELECT id, name, lifecycle FROM ventures WHERE lifecycle IN"
+        'SELECT id, name, lifecycle FROM ventures WHERE lifecycle IN'
         " ('SMOKE_RUNNING','FULL_RUNNING','SCALE','SMOKE_READY','CANDIDATE')"
         ' ORDER BY updated_at DESC LIMIT 1'
     ).fetchone()
@@ -242,7 +252,7 @@ def project_business(
             u2 += int(m.get('u2', 0))
             u3 += int(m.get('u3', 0))
         paid_row = conn.execute(
-            "SELECT COALESCE(SUM(amount_eur),0) FROM transactions"
+            'SELECT COALESCE(SUM(amount_eur),0) FROM transactions'
             " WHERE venture_id=? AND status='paid'",
             (row[0],),
         ).fetchone()

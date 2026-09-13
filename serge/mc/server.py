@@ -26,6 +26,7 @@ from serge.mc.auth import (
     create_session,
     revoke_session,
 )
+from serge.mc.etape_actions import EtapeActionsMixin
 from serge.mc.policy_actions import PolicyActionsMixin
 from serge.mc.projectors import PAGE_SECTIONS, SnapshotCache
 from serge.mc.sse import state_payload, stream_page
@@ -60,7 +61,11 @@ class McConfig:
 
 
 class McHandler(
-    ApiViewsMixin, PolicyActionsMixin, ActionsMixin, BaseHTTPRequestHandler
+    ApiViewsMixin,
+    PolicyActionsMixin,
+    EtapeActionsMixin,
+    ActionsMixin,
+    BaseHTTPRequestHandler,
 ):
     """Routes MC (config via create_server, jamais de global mutable)."""
 
@@ -374,6 +379,9 @@ class McHandler(
             return
         if path == '/owner/api/voice/kill':
             self._api_voice_kill()
+            return
+        if path == '/owner/api/etape':
+            self._api_etape()
             return
         self._error(404)
 

@@ -572,6 +572,25 @@ Page P3 DONE (607 tests verts).
 - 656 tests automatisés au vert.
 Mission Control V2 entièrement implémenté de P0 à P9 (Lots 0 à 14).
 
+## Carte live — coupe-circuit par étape
+
+Table `pipeline_steps` (canon) : une ligne par nœud de l’épine
+(`ecoute` … `caisse`), `enabled`, et `kinds_json` (les `work_items.kind`
+de cette étape). Semence au boot ; les kinds se mettent à jour depuis
+le code, **jamais** l’interrupteur. L’ordonnanceur (`next_ready`) ignore
+les kinds des étapes coupées — la tâche reste READY. Un kind hors table
+(`memory.consolidate`) n’est jamais coupé ici.
+L’épine Live se dessine depuis cette table (pas depuis une liste JS).
+La fenêtre SQLite liste `sqlite_master` (tables réellement là), pas
+la constante `TABLES`.
+Outils et jugements : tables `tools`, `llm_points`, `llm_point_tools`.
+Le texte des fiches MC = `doc_md`. SHA du fichier dans la semence git
+(`serge/outils.py`, `serge/llm_registre.py`) : un `.py` modifié sans
+maj du SHA fait rougir `tests.test_code_lock`. Runtime des points =
+encore `config/llm-points.yaml` ; la table est le miroir + les liens.
+Sur la carte Live : bouton « Couper cette étape » / « Remettre en
+marche » → `POST /owner/api/etape`.
+
 ## Carte live — étapes et jugements
 
 L’épine (Écoute → … → Caisse) n’affiche plus un nuage de losanges LLM.

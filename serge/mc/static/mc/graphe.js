@@ -1,6 +1,8 @@
 // Carte Serge : nœuds HTML, arêtes canvas, panneau d’étape.
+import {toast} from './components.js';
 import {icone} from './icones.js';
-import {TYPES_OBJET, allerObjet} from './libelles.js';
+import {TYPES_OBJET, allerObjet, verbe} from './libelles.js';
+import {fetchState} from './sse.js';
 
 const EPINE_X = {
   ecoute: 0.08,
@@ -43,6 +45,19 @@ function el(tag, classe, texte) {
     node.textContent = texte;
   }
   return node;
+}
+
+function xEpine(id, epine) {
+  if (EPINE_X[id] != null) {
+    return EPINE_X[id];
+  }
+  const liste = epine || [];
+  const i = liste.findIndex((item) => item.id === id);
+  const n = liste.length;
+  if (i < 0 || n <= 1) {
+    return 0.5;
+  }
+  return 0.08 + (0.85 * i) / (n - 1);
 }
 
 function place(node, x, y) {
@@ -89,7 +104,7 @@ function ligneJugement(j) {
   return li;
 }
 
-function remplirPanneau(box, etape, verrouille, onUnlock) {
+function remplirPanneau(box, etape, verrouille, onUnlock, onBasculer) {
   box.replaceChildren();
   box.hidden = false;
   box.dataset.etape = etape.id;
@@ -123,7 +138,35 @@ function remplirPanneau(box, etape, verrouille, onUnlock) {
       el('p', 'texte-panneau', 'Aucun jugement ici — surtout des règles et de l’encaissement.'),
     );
   }
+  const kinds = etape.kinds || [];
+  if (kinds.length) {
+    box.append(
+      el(
+        'p',
+        'texte-panneau',
+        etape.marche === false
+          ? 'Coupée — l’ordonnanceur n’accepte aucune de ces tâches.'
+          : `Tâches de cette étape : ${kinds.map((k) => verbe(k)).join(', ')}.`,
+      ),
+    );
+  } else {
+    box.append(
+      el(
+        'p',
+        'texte-panneau',
+        'Pas de tâche d’ordonnanceur ici pour l’instant — l’interrupteur est prêt.',
+      ),
+    );
+  }
   const actions = el('div', 'actions-panneau');
+  const coupe = el(
+    'button',
+    'clic-ligne',
+    etape.marche === false ? 'Remettre en marche' : 'Couper cette étape',
+  );
+  coupe.type = 'button';
+  coupe.addEventListener('click', () => onBasculer(etape));
+  actions.append(coupe);
   const plus = el('button', 'clic-ligne', 'Plus de détails sur cette étape');
   plus.type = 'button';
   plus.addEventListener('click', () => allerObjet('etape', etape.id));
@@ -183,7 +226,7 @@ export function dessineAretes(canvas, flux, t) {
   });
 }
 
-export function monterGraphe(main, getPayload, stoppers) {
+export function monterGraphe(main, getPayload, stoppers, onEtape) {
   const canvas = main.querySelector('[data-hud="carte"]');
   const host = main.querySelector('[data-graphe="noeuds"]');
   const tw = main.querySelector('[data-typewriter]');
@@ -209,8 +252,39 @@ export function monterGraphe(main, getPayload, stoppers) {
     host.querySelectorAll('.noeud.actif').forEach((n) => n.classList.remove('actif'));
   }
 
+  async function basculer(etape) {
+    try {
+      const res = await fetch('/owner/api/etape', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          id: etape.id,
+          marche: etape.marche === false,
+          decision_id: `mc-${Date.now()}-etape`,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast(document.body, data.erreur || 'Action refusée.', 'erreur');
+        return;
+      }
+      toast(
+        document.body,
+        data.marche ? 'Étape remise en marche.' : 'Étape coupée.',
+        'succes',
+      );
+      if (onEtape) {
+        await onEtape();
+      } else {
+        await fetchState('p0');
+      }
+    } catch {
+      toast(document.body, 'Action injoignable.', 'erreur');
+    }
+  }
+
   function montrer(etape, verrouille) {
-    remplirPanneau(panneau, etape, verrouille, unlock);
+    remplirPanneau(panneau, etape, verrouille, unlock, basculer);
   }
 
   function renderNoeuds() {
@@ -239,10 +313,13 @@ export function monterGraphe(main, getPayload, stoppers) {
       if (bloques.has(n.id)) {
         btn.dataset.bloque = '1';
       }
+      if (n.marche === false) {
+        btn.dataset.coupe = '1';
+      }
       if (lockId === n.id) {
         btn.classList.add('actif');
       }
-      place(btn, EPINE_X[n.id] || 0.5, 0.52);
+      place(btn, xEpine(n.id, p.epine), 0.52);
       btn.addEventListener('mouseenter', () => {
         window.clearTimeout(hideTimer);
         if (!lockId) {
@@ -269,6 +346,12 @@ export function monterGraphe(main, getPayload, stoppers) {
       });
       host.append(btn);
     });
+    if (lockId) {
+      const et = (p.epine || []).find((n) => n.id === lockId);
+      if (et) {
+        montrer(et, true);
+      }
+    }
     (p.orbites || []).forEach((n) => {
       const xy = ORBITE_POS[n.id] || [0.5, 0.2];
       const btn = boutonNoeud(n, 'orbite', xy[0], xy[1]);

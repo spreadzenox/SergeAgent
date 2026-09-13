@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from serge.db.schema import init_schema  # noqa: E402
+from serge.etapes import set_etape_marche  # noqa: E402
 from serge.scheduler import (  # noqa: E402
     claim,
     complete,
@@ -146,6 +147,29 @@ class SchedulerTests(unittest.TestCase):
         self.assertEqual(
             kinds, ['work.enqueued', 'work.claimed', 'work.completed']
         )
+
+    def test_etape_coupee_ignore_ses_kinds(self) -> None:
+        enqueue(
+            self.connection,
+            kind='email.send',
+            idempotency_key='k-cut',
+            venture_id='v1',
+            priority=99,
+        )
+        enqueue(
+            self.connection,
+            kind='memory.consolidate',
+            idempotency_key='k-ok',
+            venture_id='v1',
+        )
+        set_etape_marche(self.connection, 'test', False)
+        item = next_ready(self.connection)
+        assert item is not None
+        self.assertEqual(item['kind'], 'memory.consolidate')
+        set_etape_marche(self.connection, 'test', True)
+        item = next_ready(self.connection)
+        assert item is not None
+        self.assertEqual(item['kind'], 'email.send')
 
 
 if __name__ == '__main__':

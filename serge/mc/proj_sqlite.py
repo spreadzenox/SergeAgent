@@ -3,10 +3,13 @@
 
 from __future__ import annotations
 
+import re
 import sqlite3
 from typing import Any
 
-from serge.db.schema import SCHEMA_VERSION, TABLES
+from serge.db.schema import SCHEMA_VERSION
+
+_NOM_TABLE = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
 
 # role court, remplie par, sort vers, détail
 CATALOGUE: dict[str, tuple[str, str, str, str]] = {
@@ -172,6 +175,30 @@ CATALOGUE: dict[str, tuple[str, str, str, str]] = {
         'run_point() (verdict killed).',
         'name + expires_at + reason.',
     ),
+    'pipeline_steps': (
+        'Les 7 étapes du pipe : en marche ou coupée, et quels kinds.',
+        'Semence au boot ; toi via la carte Live.',
+        'Ordonnanceur (next_ready ignore les kinds coupés).',
+        'enabled + kinds_json. Un kind sans étape n’est jamais coupé.',
+    ),
+    'tools': (
+        'Outils qu’un jugement peut presser (mémoire, web, ticket…).',
+        'Semence git + SHA du fichier.',
+        'Fiches MC, jonction llm_point_tools.',
+        'kind déterministe/agent/web. doc_md = texte de la fiche.',
+    ),
+    'llm_points': (
+        'Les jugements LLM : un id, un fichier, un SHA, une étape.',
+        'Semence depuis llm-points.yaml + verrou fichier.',
+        'Fiches MC, runtime encore le YAML.',
+        'code_sha doit matcher le .py (test).',
+    ),
+    'llm_point_tools': (
+        'Quel jugement a le droit d’utiliser quel outil.',
+        'Recalculé au boot depuis couche5 / tools: du YAML.',
+        'Fiche jugement, rubrique Outils.',
+        'usage : autorise, interdit, declare.',
+    ),
 }
 
 
@@ -187,18 +214,30 @@ def _meta(nom: str) -> tuple[str, str, str, str]:
     )
 
 
+def _tables_live(conn: sqlite3.Connection) -> list[str]:
+    """Tables réellement présentes (pas la liste figée du schéma)."""
+    rows = conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table'"
+        " AND name NOT LIKE 'sqlite_%' ORDER BY name"
+    ).fetchall()
+    return [str(r[0]) for r in rows if _NOM_TABLE.match(str(r[0]))]
+
+
 def _lignes(conn: sqlite3.Connection, nom: str) -> int:
-    if nom not in TABLES:
+    if not _NOM_TABLE.match(nom):
         return 0
     return int(conn.execute(f'SELECT COUNT(*) FROM {nom}').fetchone()[0])
 
 
-def project_sqlite(conn: sqlite3.Connection, ident: str = '') -> dict[str, Any]:
+def project_sqlite(
+    conn: sqlite3.Connection, ident: str = ''
+) -> dict[str, Any]:
     """Catalogue vivant : une ligne par table, compteur à jour."""
     _ = ident
     total = 0
     lignes = []
-    for nom in TABLES:
+    noms = _tables_live(conn)
+    for nom in noms:
         role, par, vers, _detail = _meta(nom)
         n = _lignes(conn, nom)
         total += n
@@ -219,13 +258,19 @@ def project_sqlite(conn: sqlite3.Connection, ident: str = '') -> dict[str, Any]:
             ' sont ceux de cette instance, maintenant.'
         ),
         'champs': [
-            {'k': 'Tables', 'v': str(len(TABLES))},
+            {'k': 'Tables', 'v': str(len(noms))},
             {'k': 'Lignes', 'v': str(total)},
             {'k': 'Schéma', 'v': f'v{SCHEMA_VERSION}'},
         ],
         'tableau': {
             'titre': 'Tables du canon',
-            'colonnes': ['Table', 'Rôle', 'Remplie par', 'Sort vers', 'Lignes'],
+            'colonnes': [
+                'Table',
+                'Rôle',
+                'Remplie par',
+                'Sort vers',
+                'Lignes',
+            ],
             'lignes': lignes,
         },
         'enfants': [],
@@ -233,9 +278,11 @@ def project_sqlite(conn: sqlite3.Connection, ident: str = '') -> dict[str, Any]:
     }
 
 
-def project_table(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
+def project_table(
+    conn: sqlite3.Connection, ident: str
+) -> dict[str, Any] | None:
     """Structure d’une table : colonnes réelles + explication."""
-    if ident not in TABLES:
+    if ident not in _tables_live(conn):
         return None
     role, par, vers, detail = _meta(ident)
     cols = conn.execute(f'PRAGMA table_info({ident})').fetchall()

@@ -29,8 +29,10 @@ seul budget dur = plafond financier global).
 
 **Règles transverses (tous points LLM).**
 - Checklist P2 à 4 cases + risque de propagation → registre versionné
-  `config/llm-points.yaml`. Ajouter un point = ajouter un bloc, jamais du
-  code caché.
+  `config/llm-points.yaml` (runtime). Miroir canon : table `llm_points`
+  + `llm_point_tools` (outils liés). Fiches MC = `doc_md` / `tools.doc_md`,
+  pas un pavé Python. Ajouter un point = bloc YAML + ligne de verrou
+  (`code_path`, `code_sha`) dans `serge/llm_registre.py`.
 - Output vers déterministe = structuré (P3 : enum fermé + `requested`).
 - Repli déterministe obligatoire. Retry = changer quelque chose, puis code
   routable. Jamais de retry aveugle.
