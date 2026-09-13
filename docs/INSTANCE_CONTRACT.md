@@ -38,10 +38,9 @@ sauf `--confirm-live-instance-id julien-vps`.
 `systemd/*.service` à la racine du dossier restent la forme observée
 `julien-vps` ; le seed portable est `systemd/templates/`.
 
-Le VPS `julien-vps` tourne encore sur les hardcodes (sinon on l’éteint
-avant d’avoir le fichier). Cette branche ne doit pas être merge/installée
-sur le live tant que Julien n’a pas son couple TOML+age. Le jour où le
-builder pose `SERGE_INSTANCE_FILE` dans les units, le fallback disparaît.
+Le VPS `julien-vps` se déploie par merge sur `main` (runner self-hosted).
+Chemins live refusés sauf `--confirm-live-instance-id julien-vps`.
+Détail : [`DEPLOY_VPS.md`](DEPLOY_VPS.md).
 
 Exemples versionnés : [`schemas/serge.instance.example.toml`](../schemas/serge.instance.example.toml),
 [`schemas/serge.instance.schema.json`](../schemas/serge.instance.schema.json),

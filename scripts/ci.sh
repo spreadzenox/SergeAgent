@@ -6,11 +6,13 @@ cd "$root"
 
 uv run ruff check kit serge scripts/serge-builder.py \
   scripts/serge-instance-wizard.py scripts/serge-mandate-wizard.py \
-  scripts/serge-install.py scripts/pre-push-check.py tests
+  scripts/serge-install.py scripts/serge-update.py \
+  scripts/serge-deploy.py scripts/pre-push-check.py tests
 # format --check sur tout le dépôt : proj_objet.py dépasse 500 lignes
 # une fois reformaté (P1). Le hook pre-commit formate le diff.
 uv run ty check kit serge scripts/serge-builder.py \
   scripts/serge-instance-wizard.py scripts/serge-mandate-wizard.py \
+  scripts/serge-update.py scripts/serge-deploy.py \
   scripts/pre-push-check.py
 uv run python scripts/scan-repo-secrets.py
 

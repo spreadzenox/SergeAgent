@@ -17,13 +17,8 @@ CORE_UNIT_FILES = (
     'serge-pipeline.service',
     'serge-pipeline.timer',
     'serge-pipeline.timer.d/production-continuous.conf',
-    'serge-daily-report.service',
-    'serge-daily-report.timer',
 )
-ALWAYS_ENABLE = (
-    'serge-pipeline.timer',
-    'serge-daily-report.timer',
-)
+ALWAYS_ENABLE = ('serge-pipeline.timer',)
 
 
 class UnitError(ValueError):
@@ -137,6 +132,7 @@ def selected_units(
     listen: str = 'loopback',
 ) -> list[tuple[str, str, str]]:
     """Return (dest_relpath, template_stem, scope)."""
+    del mode
     chosen: list[tuple[str, str, str]] = [
         ('serge-pipeline.service', 'serge-pipeline.service', 'user'),
         ('serge-pipeline.timer', 'serge-pipeline.timer', 'user'),
@@ -145,8 +141,6 @@ def selected_units(
             'serge-pipeline.timer.d/production-continuous.conf',
             'user',
         ),
-        ('serge-daily-report.service', 'serge-daily-report.service', 'user'),
-        ('serge-daily-report.timer', 'serge-daily-report.timer', 'user'),
     ]
     if features.get('ingress'):
         privileged = listen == 'privileged'
@@ -195,14 +189,6 @@ def selected_units(
             (
                 'serge-voice-bridge.service',
                 'serge-voice-bridge.service',
-                'user',
-            )
-        )
-    if mode == 'sandbox':
-        chosen.append(
-            (
-                'serge-burn-in-failure.service',
-                'serge-burn-in-failure.service',
                 'user',
             )
         )

@@ -1,0 +1,22 @@
+name: Deploy VPS
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy-julien-vps
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: deploy julien-vps
+    runs-on: [self-hosted, linux, julien-vps]
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Déployer
+        run: python3 scripts/serge-deploy.py

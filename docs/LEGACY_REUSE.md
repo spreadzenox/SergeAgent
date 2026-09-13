@@ -28,7 +28,7 @@ Adaptations du seed (divergences assumées vs kit) :
 |---|---|---|
 | `tests/test_instance_file.py` | Test `sergectl doctor` supprimé (legacy `orchestrator/sergectl.py` non porté) | B8/A delete-first |
 | `tests/test_mandate_wizard.py` | `capability_resolution` remplacé par lecture YAML locale + `validate_mandate` | Idem |
-| `tests/test_instance_builder.py` | Copie de `web_ingress.py` legacy remplacée par stub `STUB_WEB_INGRESS` (~30 lignes, même contrat CLI upsert) | Idem ; ingress neuf en phase 1 |
+| `tests/test_instance_builder.py` | Stub `web_ingress` remplacé par `serge/ingress/caddy.py` (inventaire + Caddyfile) | Ingress vivant |
 | `.gitignore` | Ajout `.env.test`, `config/*.local.yaml` | Secrets de test jamais commités |
 | (nouveau) `README.md` | Réécrit pour serge-v2 | Le README kit décrivait le worktree |
 
@@ -40,7 +40,7 @@ Adaptations du seed (divergences assumées vs kit) :
 | Patterns idempotence/ledger | `orchestrator/broker.py`, `payment_broker.py` | Store idempotence phase 0 | À extraire, simplifié |
 | Patterns Stripe receive + sandbox | `adapters/stripe_*.py`, `stripe_*_policy.py` | Funnel collect phase 2 | À extraire, simplifié |
 | Client CDP stdlib | `orchestrator/adapters/cdp_client.py` | `browser.py` (B2 screenshots/interaction) | À extraire + simplifier |
-| Rendu Caddy minimal | `orchestrator/web_ingress.py` (concepts seulement) | Ingress neuf phase 1 | Concepts, pas le code (1,2 k lignes) |
+| Rendu Caddy minimal | `orchestrator/web_ingress.py` (concepts seulement) | `serge/ingress/caddy.py` | Contrat CLI upsert/render, pas les 1,2 k lignes |
 | Calcul fériés FR / fenêtres voix | Déjà kit (`serge/voice/policy.py`) | Registre zones d'appel (F2) | Déplacer, pas dupliquer |
 
 ## Non porté, par décision

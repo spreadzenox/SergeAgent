@@ -1,7 +1,7 @@
 [Unit]
 Description=Serge bounded autonomous pipeline
-ConditionPathExists=!__SYSTEM_ROOT__/orchestrator/runtime/KILL_SWITCH
 ConditionPathExists=!__SYSTEM_ROOT__/state/KILL_SWITCH
+ConditionPathExists=!__SYSTEM_ROOT__/orchestrator/runtime/KILL_SWITCH
 
 [Service]
 Type=oneshot
@@ -18,8 +18,7 @@ Environment=SERGE_MANDATE_PATH=__POLICY__
 Environment=SERGE_POLICY_PATH=__POLICY__
 Environment=XDG_RUNTIME_DIR=/run/user/__UID__
 Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/__UID__/bus
-__GMAIL_UNIT_LINES____EMAIL_BACKEND_LINES__# Production path: one governed run-batch cycle (not burn-in scheduled-run).
-ExecStart=/bin/bash -c '/usr/bin/flock -n __SYSTEM_ROOT__/orchestrator/runtime/systemd.lock __PYTHON__ __SYSTEM_ROOT__/orchestrator/sergectl.py run-once; c=$?; if [ "$c" -eq 1 ]; then echo "{\"status\":\"ok\",\"skipped\":\"orchestrator_overlap\",\"pipeline_exit\":{\"terminal_class\":\"OVERLAP_SKIPPED\",\"exit_code\":0,\"systemd_outcome\":\"success\"}}"; exit 0; fi; exit "$c"'
+__GMAIL_UNIT_LINES____EMAIL_BACKEND_LINES__ExecStart=/bin/bash -c '/usr/bin/flock -n __SYSTEM_ROOT__/state/pipeline.lock __PYTHON__ __SYSTEM_ROOT__/scripts/serge-runner.py --once; c=$?; if [ "$c" -eq 1 ]; then echo "{\"status\":\"ok\",\"skipped\":\"overlap\"}"; exit 0; fi; exit "$c"'
 TimeoutStartSec=15min
 NoNewPrivileges=yes
 PrivateTmp=yes

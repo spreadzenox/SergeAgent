@@ -17,7 +17,7 @@ repos:
     hooks:
       - id: ty-check
         name: ty check (périmètre charte)
-        entry: uv run ty check kit serge scripts/serge-builder.py scripts/serge-instance-wizard.py scripts/serge-mandate-wizard.py scripts/pre-push-check.py
+        entry: uv run ty check kit serge scripts/serge-builder.py scripts/serge-instance-wizard.py scripts/serge-mandate-wizard.py scripts/serge-update.py scripts/serge-deploy.py scripts/pre-push-check.py
         language: system
         types: [python]
         files: *charte-files
