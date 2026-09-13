@@ -154,6 +154,25 @@ class LlmRuntimeTests(unittest.TestCase):
         ]
         self.assertEqual(types, ['alert.llm_envelope_drift'])
 
+    def test_sans_cle_bloque_le_client_reel(self) -> None:
+        result = run_point(
+            self.conn, POLICY, SPEC, 'p1', [], root=self.root / 'vide'
+        )
+        self.assertEqual((result.ok, result.fallback), (False, 'error'))
+
+    def test_caller_injecte_sans_cle(self) -> None:
+        result = run_point(
+            self.conn,
+            POLICY,
+            SPEC,
+            'p1',
+            [],
+            root=self.root / 'vide',
+            caller=_ok_caller,
+        )
+        self.assertTrue(result.ok)
+        self.assertEqual(result.text, 'oui')
+
     def test_point_inconnu_killed(self) -> None:
         result = run_registered_point(
             self.conn,

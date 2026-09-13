@@ -43,6 +43,9 @@ scripts/ci.sh                       # gates + suite déterministe + E2E MC
 `scripts/ci.sh` pose `SERGE_CI=1` : un E2E navigateur skippé = échec.
 Les tests live-prudents (`SERGE_ENV=test` + vraies clés) ne tournent **pas**
 dans ce script : charte P5, niveaux 2–3 (LLM réel / canary) hors PR.
+La suite déterministe n’a pas besoin d’une clé OpenRouter locale : un
+caller injecté passe sans secret (`~/.config/serge` sur ta machine ne
+doit pas masquer un trou CI).
 
 Le format (`ruff format`) est le hook pre-commit sur le diff, pas un
 `--check` sur tout le dépôt : reformater `proj_objet.py` le ferait

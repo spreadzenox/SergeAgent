@@ -160,7 +160,7 @@ def run_point(
         point_name: Nom du point (metering).
         messages: Messages chat.
         root: config_root (défaut : instance).
-        caller: Fonction d'appel (injectable en test).
+        caller: Fonction d'appel (injectable en test ; alors pas de clé).
         max_tokens: Cap réponse.
         day: Jour UTC YYYY-MM-DD (défaut : aujourd'hui).
 
@@ -184,7 +184,8 @@ def run_point(
         return RunResult(False, '', 'budget', 0, 0, '', 0)
     model, referer = resolve_model(tier, root)
     key = read_api_key(root)
-    if not key or not model:
+    # Client réel : clé + modèle. Caller injecté (tests) : pas de secret.
+    if caller is chat and (not key or not model):
         _record(conn, point_name, tier, model, 0, 0, 0, 'error')
         return RunResult(False, '', 'error', 0, 0, model, 0)
     try:
