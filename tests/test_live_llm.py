@@ -18,13 +18,14 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from serge.points.classify import CLASSES, classify_reply  # noqa: E402
-from serge.policy import load_policy  # noqa: E402
-from serge.testkit import SessionCap, require_live, temp_canon  # noqa: E402
+from serge.policy import is_test_env, load_policy  # noqa: E402
+from serge.testkit import SessionCap, temp_canon  # noqa: E402
 
 
 class LiveLlmTests(unittest.TestCase):
     def test_classify_reel(self) -> None:
-        require_live()
+        if not is_test_env():
+            self.skipTest('live only (SERGE_ENV=test requis)')
         key = os.environ.get('OPENROUTER_API_KEY', '').strip()
         if not key:
             self.skipTest('OPENROUTER_API_KEY requise')

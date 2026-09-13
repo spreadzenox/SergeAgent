@@ -327,8 +327,10 @@ vraiment partagé, il obtient un vrai nom (`e164.py`, `backoff.py`, `csvio.py`).
   sur 87 k lignes sans tout typer d'un coup. Alternative stricte (Pyrefly,
   Meta, 1.x stable, ~96 % conformance spec) : à réévaluer dans 6 mois quand
   `kit/` sera entièrement typé.
-- `pre-commit` : ruff + ty + scan secrets. `pre-commit install` requis après
-  clone ; un commit qui ne passe pas les hooks ne part pas.
+- `pre-commit` : ruff + ty + scan secrets au commit ; au pre-push, gates
+  + suite complète (E2E + LLM live). Pas de clé OpenRouter locale = pas
+  de push. Jamais de secret en CI PR. `pre-commit install` requis après
+  clone.
 
 ### R3 — Dépendances : deux phases
 

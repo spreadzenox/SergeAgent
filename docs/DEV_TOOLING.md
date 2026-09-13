@@ -15,6 +15,7 @@ curl -LsSf astral.sh/uv/install.sh | sh
 uv sync --group dev
 
 # 3. hooks (une fois par clone — même venv que le projet)
+# installe commit (ruff/ty/secrets) + push (suite complète, clé obligatoire)
 uv run pre-commit install
 
 # 4. Chromium pour les E2E Mission Control (une fois)
@@ -37,12 +38,19 @@ uv run playwright install chromium
 
 ```sh
 uv run pre-commit run --all-files   # ruff + ty + scan secrets (comme au commit)
+uv run pre-commit run pre-push-check --hook-stage pre-push
 scripts/ci.sh                       # gates + suite déterministe + E2E MC
 ```
 
 `scripts/ci.sh` pose `SERGE_CI=1` : un E2E navigateur skippé = échec.
 Les tests live-prudents (`SERGE_ENV=test` + vraies clés) ne tournent **pas**
-dans ce script : charte P5, niveaux 2–3 (LLM réel / canary) hors PR.
+dans ce script : charte P5, niveaux 2–3 (LLM réel / canary) hors PR CI.
+
+Le **pre-push** (`scripts/pre-push-check.py`) est le gros check local :
+même gates + **toute** la suite (E2E MC compris) + LLM OpenRouter réel.
+Pas de clé (env ou `~/.config/serge/secrets/openrouter-api-key`) = push
+refusé. La clé n’est jamais affichée ni injectée dans GitHub Actions.
+Discord / Stripe live restent skippés s’ils n’ont pas leurs propres env.
 La suite déterministe n’a pas besoin d’une clé OpenRouter locale : un
 caller injecté passe sans secret (`~/.config/serge` sur ta machine ne
 doit pas masquer un trou CI).

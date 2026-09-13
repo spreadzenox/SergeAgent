@@ -29,7 +29,8 @@ Discord).
   sont des actes typés idempotents, la prose ne tranche jamais.
 - **Tests comportementaux.** ~470 tests prouvent le comportement (passant +
   refusé pour chaque capacité externe), plus des tests live-prudents bornés
-  (allowlist owner-only, caps de session, jamais en CI).
+  (allowlist owner-only, caps de session, jamais en CI PR ; suite + LLM
+  live au pre-push, clé obligatoire).
 
 Charte complète (P1-P5 / R1-R5) : [`docs/CODEBASE_CHARTER.md`](docs/CODEBASE_CHARTER.md).
 
@@ -237,14 +238,14 @@ Détail : [docs/INSTALL.md](docs/INSTALL.md). Contrat :
 ```sh
 curl -LsSf astral.sh/uv/install.sh | sh
 uv sync --group dev
-uv run pre-commit install
+uv run pre-commit install        # commit + pre-push (suite complète)
 uv run playwright install chromium
 uv run pre-commit run --all-files
 scripts/ci.sh                    # gates + suite déterministe + E2E MC
 ```
 
-Les tests live-prudents (vraies clés) restent manuels :
-`SERGE_ENV=test uv run python -m unittest discover -s tests`.
+Le pre-push relance gates + tous les tests (E2E + LLM OpenRouter).
+Pas de clé locale = pas de push. Discord / Stripe live restent manuels.
 
 Chaque PR passe la CI GitHub Actions (même `scripts/ci.sh`). Détail :
 [docs/DEV_TOOLING.md](docs/DEV_TOOLING.md).
