@@ -489,7 +489,7 @@ def main() -> None:
     cfg = McConfig(
         default_canon_path(root),
         owner_dashboard_token(root),
-        d / 'static/mc',
+        d / 'static',
         d / 'templates',
         RateLimiter(),
     )
