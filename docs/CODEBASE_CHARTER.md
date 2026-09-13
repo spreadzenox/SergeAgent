@@ -226,12 +226,13 @@ Les tests de détails d'implémentation (format de clé, structure interne,
 ordre d'appels privés) sont du bruit et partent.
 
 **E2E fonctionnels en priorité, 3 niveaux.**
+Où ça tourne : [DEV_TOOLING.md](DEV_TOOLING.md).
 
-| Niveau | Quoi | Quand | Compute |
+| Niveau | Quoi | Quand | Où |
 |---|---|---|---|
-| E2E déterministe | Funnel complet, LLM mockés (verdicts scriptés) : prospect → envoi → réponse simulée → décision | À chaque changement | Nul |
-| E2E LLM réel ciblé | Points de jugement critiques (qualifier, classifier, scorer) avec vrais calls sur fixtures | Avant merge d'un changement de prompt/point | UN PEU (dizaines de calls) |
-| E2E live canary | Cycle réel sandbox wrappé (1 prospect test, 1 € owner→owner) | Hebdo ou avant activation d'une feature externe | Borné et tracé |
+| E2E déterministe | Funnel complet, LLM mockés (verdicts scriptés) : prospect → envoi → réponse simulée → décision | Chaque push / PR | CI PR/`main` + pre-push (0 token) |
+| E2E LLM réel ciblé | Point critique (`classify_reply`) via OpenRouter, fixtures, cap 3 | Chaque `git push` | pre-push seulement (clé locale) |
+| E2E live canary | Cycle réel sandbox wrappé (1 prospect test, 1 € owner→owner) | Hebdo ou avant activation d'une feature externe | Manuel — jamais CI ni hook |
 
 Le niveau 1 attrape ~90 % des régressions pour 0 token. Jamais de test qui
 spamme le monde réel pour valider un refactor.

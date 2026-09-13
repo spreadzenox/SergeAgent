@@ -60,6 +60,7 @@ Résumé humain + receipt JSON à la fin (`state/instance-build.json`).
 `config_root/secrets/`. Chaque brique lit le sien à cet endroit
 (token Discord, clés OpenRouter/Stripe/SIP, webhooks...). Rien dans le
 TOML, rien dans git — le scan pre-commit le vérifie.
+Gates contributeur (commit / push / CI) : [DEV_TOOLING.md](DEV_TOOLING.md).
 
 Détail contrat : [`INSTANCE_CONTRACT.md`](INSTANCE_CONTRACT.md).
 Mission Control : [`MISSION_CONTROL.md`](MISSION_CONTROL.md) (port 8790,

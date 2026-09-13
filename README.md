@@ -235,20 +235,22 @@ Détail : [docs/INSTALL.md](docs/INSTALL.md). Contrat :
 
 ## Développer
 
+Lint, tests, hooks et CI : [docs/DEV_TOOLING.md](docs/DEV_TOOLING.md).
+
 ```sh
 curl -LsSf astral.sh/uv/install.sh | sh
 uv sync --group dev
-uv run pre-commit install        # commit + pre-push (suite complète)
+uv run pre-commit install        # commit (ruff/ty/secrets) + pre-push
 uv run playwright install chromium
-uv run pre-commit run --all-files
-scripts/ci.sh                    # gates + suite déterministe + E2E MC
 ```
 
-Le pre-push relance gates + tous les tests (E2E + LLM OpenRouter).
-Pas de clé locale = pas de push. Discord / Stripe live restent manuels.
+- **Commit** : lint + types + scan secrets.
+- **Push** : toute la suite (E2E compris) + 1 appel OpenRouter. Pas de clé
+  instance = pas de push.
+- **CI** (PR et `main`) : même suite déterministe, zéro secret. Check
+  requis : `lint tests e2e`.
 
-Chaque PR passe la CI GitHub Actions (même `scripts/ci.sh`). Détail :
-[docs/DEV_TOOLING.md](docs/DEV_TOOLING.md).
+Discord / Stripe live restent manuels.
 
 Règles : charte P1-P5 + R1-R6 (review dans chaque message de commit),
 jamais de secret commité, jamais d'écriture live sans
