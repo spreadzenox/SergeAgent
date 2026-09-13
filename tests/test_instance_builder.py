@@ -15,7 +15,6 @@ from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-sys.path.insert(0, str(ROOT / 'orchestrator'))
 
 from kit.builder import (  # noqa: E402
     BuilderError,
@@ -73,52 +72,17 @@ def _write_mandate(path: Path, **overrides) -> Path:
     return path
 
 
-STUB_WEB_INGRESS = '''\
-"""Minimal test double: upsert one route + default tenant, no Caddy."""
-import argparse
-import json
-import os
-import tomllib
-from pathlib import Path
-
-root = Path(os.environ['SERGE_SYSTEM_ROOT'])
-args = argparse.ArgumentParser()
-args.add_argument('command')
-args.add_argument('--hostname', default='')
-args.add_argument('--upstream', default='')
-args.add_argument('--venture-id', default='')
-args.add_argument('--health-url', default='')
-args.add_argument('--allow-unhealthy', action='store_true')
-ns = args.parse_args()
-assert ns.command == 'upsert', ns.command
-data = tomllib.loads(Path(os.environ['SERGE_INSTANCE_FILE']).read_text())
-public = str((data.get('identity') or {}).get('public_hostname') or '')
-routes = [
-    {
-        'hostname': public,
-        'upstream': '127.0.0.1:8790',
-        'venture_id': 'serge-owner-mission-control',
-    },
-    {
-        'hostname': ns.hostname,
-        'upstream': ns.upstream,
-        'venture_id': ns.venture_id,
-    },
-]
-dest = root / 'state/web-ingress/inventory.json'
-dest.parent.mkdir(parents=True, exist_ok=True)
-dest.write_text(json.dumps({'routes': routes}), encoding='utf-8')
-print(json.dumps({'status': 'ok'}))
-'''
-
-
 def _seed_repo(path: Path, *, with_ingress: bool = False) -> str:
     path.mkdir(parents=True)
     (path / 'README').write_text('virgin seed\n', encoding='utf-8')
     if with_ingress:
-        vendor = path / 'orchestrator'
-        vendor.mkdir(parents=True)
-        (vendor / 'web_ingress.py').write_text(STUB_WEB_INGRESS)
+        dest = path / 'serge/ingress'
+        dest.mkdir(parents=True)
+        dest.joinpath('__init__.py').write_text('', encoding='utf-8')
+        dest.joinpath('caddy.py').write_text(
+            (ROOT / 'serge/ingress/caddy.py').read_text(encoding='utf-8'),
+            encoding='utf-8',
+        )
     poison = path / 'state'
     poison.mkdir()
     (poison / 'poison.db').write_text('JULIEN-MEMORY\n', encoding='utf-8')
@@ -378,6 +342,8 @@ class InstanceBuilderTests(unittest.TestCase):
             hosts = [route['hostname'] for route in inventory['routes']]
             self.assertIn('sms.serge-kit-test.example.net', hosts)
             self.assertIn('serge-kit-test.example.net', hosts)
+            caddyfile = (dest / 'state/web-ingress/Caddyfile').read_text()
+            self.assertIn('sms.serge-kit-test.example.net', caddyfile)
             self.assertNotIn('live-owner.example.net', hosts)
             sms_route = [
                 route

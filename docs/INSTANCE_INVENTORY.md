@@ -76,6 +76,8 @@ Julien. Sinon la feature reste `false` et l’instance boot.
 3. **Même HEAD git ≠ même canon.** Copie locale vide, ou dump autorisé.
 4. On se passe le couple kit (TOML + age), pas un zip de secrets.
 5. Le builder, pas l’humain, pose les units et `SERGE_INSTANCE_FILE`.
+   Après merge `main`, `scripts/serge-deploy.py` sur le VPS (voir
+   [`DEPLOY_VPS.md`](DEPLOY_VPS.md)).
 6. Le kit est un Serge **vierge**. Pas tes secrets, pas ton canon, pas
    Discord/domaines/leftover. Exclusions :
    [`schemas/serge.kit-exclusions.yaml`](../schemas/serge.kit-exclusions.yaml).

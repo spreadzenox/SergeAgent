@@ -1,0 +1,144 @@
+#!/usr/bin/env python3
+"""Déploiement : install si racine vide, sinon update + restart des actives."""
+
+from __future__ import annotations
+
+import subprocess
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+from unittest import mock
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+from kit.deploy import deploy_instance  # noqa: E402
+
+
+def _toml(home: Path, system_root: Path) -> str:
+    return (
+        'schema_version = 1\n'
+        'instance_id = "alice-laptop"\n'
+        'mode = "sandbox"\n'
+        '[identity]\n'
+        'hostname = "localhost"\n'
+        '[paths]\n'
+        f'home = "{home}"\n'
+        f'system_root = "{system_root}"\n'
+        f'policy = "{home}/.config/serge/mandate.yaml"\n'
+        f'config_root = "{home}/.config/serge"\n'
+        '[features]\n'
+        'ingress = false\n'
+        'stripe = false\n'
+        'voice = false\n'
+        'metagrok = false\n'
+        'gmail = false\n'
+        'mailbox = false\n'
+        'discord = false\n'
+        'owner_ui = false\n'
+        'payments_live = false\n'
+        'phone_sms = false\n'
+        'phone_voice = false\n'
+        '[llm]\n'
+        'provider = "openrouter"\n'
+    )
+
+
+def _ok(*_args, **_kwargs):
+    return subprocess.CompletedProcess(
+        args=['systemctl'], returncode=0, stdout='', stderr=''
+    )
+
+
+class SergeDeployTests(unittest.TestCase):
+    def test_empty_root_runs_install_then_enable(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            tmp = Path(raw)
+            dest = tmp / 'dest'
+            home = tmp / 'home'
+            instance = tmp / 'serge.instance.toml'
+            instance.write_text(_toml(home, dest), encoding='utf-8')
+            mandate = tmp / 'mandate.yaml'
+            mandate.write_text('schema_version: 1\n', encoding='utf-8')
+            seen: list[list[str]] = []
+
+            def runner(argv, **_kwargs):
+                seen.append(list(argv))
+                return _ok()
+
+            receipt = deploy_instance(
+                instance_file=instance,
+                mandate=mandate,
+                source_repo=ROOT,
+                git_sha='HEAD',
+                kit_root=ROOT,
+                runner=runner,
+                python=sys.executable,
+            )
+            self.assertEqual(receipt['status'], 'installed')
+            self.assertTrue(receipt['canon_recreated'])
+            install = next(cmd for cmd in seen if 'serge-install.py' in cmd[1])
+            self.assertIn('--no-enable-units', install)
+            self.assertIn('--non-interactive', install)
+            enable = [
+                cmd
+                for cmd in seen
+                if cmd[:3] == ['systemctl', '--user', 'enable']
+            ]
+            self.assertTrue(enable)
+            self.assertIn('serge-pipeline.timer', enable[0])
+
+    def test_existing_root_restarts_active_units_only(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            tmp = Path(raw)
+            dest = tmp / 'dest'
+            dest.mkdir()
+            (dest / 'state').mkdir()
+            (dest / 'state/keep').write_text('1\n', encoding='utf-8')
+            home = tmp / 'home'
+            instance = tmp / 'serge.instance.toml'
+            instance.write_text(_toml(home, dest), encoding='utf-8')
+            mandate = tmp / 'mandate.yaml'
+            mandate.write_text('schema_version: 1\n', encoding='utf-8')
+            seen: list[list[str]] = []
+
+            def runner(argv, **_kwargs):
+                seen.append(list(argv))
+                if argv[:3] == ['systemctl', '--user', 'is-active']:
+                    name = argv[-1]
+                    code = 0 if name == 'serge-pipeline.timer' else 3
+                    return subprocess.CompletedProcess(
+                        args=argv, returncode=code, stdout='', stderr=''
+                    )
+                return _ok()
+
+            with mock.patch(
+                'kit.deploy.update_instance',
+                return_value={
+                    'status': 'updated',
+                    'instance_id': 'alice-laptop',
+                    'system_root': str(dest),
+                    'canon_recreated': False,
+                },
+            ) as patched:
+                receipt = deploy_instance(
+                    instance_file=instance,
+                    mandate=mandate,
+                    source_repo=ROOT,
+                    git_sha='HEAD',
+                    kit_root=ROOT,
+                    runner=runner,
+                )
+            patched.assert_called_once()
+            self.assertEqual(receipt['status'], 'updated')
+            self.assertEqual(
+                receipt['units_restarted'], ['serge-pipeline.timer']
+            )
+            self.assertFalse(
+                any('serge-install.py' in ' '.join(cmd) for cmd in seen)
+            )
+
+
+if __name__ == '__main__':
+    unittest.main()

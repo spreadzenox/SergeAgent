@@ -60,8 +60,8 @@ class InstanceUnitTests(unittest.TestCase):
         files = rendered['files']
         self.assertIn('serge-pipeline.service', files)
         self.assertIn('serge-pipeline.timer', files)
-        self.assertIn('serge-daily-report.service', files)
-        self.assertIn('serge-burn-in-failure.service', files)
+        self.assertNotIn('serge-daily-report.service', files)
+        self.assertNotIn('serge-burn-in-failure.service', files)
         self.assertNotIn('serge-web-ingress.service', files)
         self.assertNotIn('serge-public-dashboard.service', files)
         self.assertFalse(rendered['installed'])
@@ -72,15 +72,15 @@ class InstanceUnitTests(unittest.TestCase):
             pipeline,
         )
         self.assertIn('SERGE_AGENT_RUNTIME=direct_llm', pipeline)
+        self.assertIn('scripts/serge-runner.py --once', pipeline)
+        self.assertIn('state/pipeline.lock', pipeline)
+        self.assertNotIn('orchestrator/sergectl.py', pipeline)
         self.assertNotIn('openclaw-gateway', pipeline)
         self.assertNotIn('SERGE_OPENCLAW', pipeline)
         self.assertNotIn('/home/serge', pipeline)
         self.assertNotIn('/run/user/1002', pipeline)
         self.assertIn('/run/user/1000', pipeline)
-        self.assertEqual(
-            rendered['enable'],
-            ['serge-pipeline.timer', 'serge-daily-report.timer'],
-        )
+        self.assertEqual(rendered['enable'], ['serge-pipeline.timer'])
 
     def test_ingress_and_owner_ui_are_feature_gated(self) -> None:
         rendered = render_units(
@@ -93,6 +93,9 @@ class InstanceUnitTests(unittest.TestCase):
         )
         self.assertIn('serge-web-ingress.service', rendered['enable'])
         self.assertIn('serge-public-dashboard.service', rendered['enable'])
+        ingress = rendered['files']['serge-web-ingress.service']
+        self.assertIn('serge/ingress/caddy.py render', ingress)
+        self.assertNotIn('orchestrator/web_ingress.py', ingress)
 
     def test_privileged_ingress_uses_system_scope(self) -> None:
         rendered = render_units(
@@ -108,9 +111,15 @@ class InstanceUnitTests(unittest.TestCase):
         self.assertIn('CAP_NET_BIND_SERVICE', unit)
         self.assertIn('SERGE_INGRESS_LISTEN=privileged', unit)
 
-    def test_live_mode_omits_burn_in_helper(self) -> None:
-        rendered = render_units(_loaded(mode='live'))
-        self.assertNotIn('serge-burn-in-failure.service', rendered['files'])
+    def test_dead_units_are_never_rendered(self) -> None:
+        for mode in ('sandbox', 'live'):
+            rendered = render_units(_loaded(mode=mode))
+            self.assertNotIn(
+                'serge-burn-in-failure.service', rendered['files']
+            )
+            self.assertNotIn('serge-daily-report.service', rendered['files'])
+            self.assertNotIn('serge-daily-report.timer', rendered['files'])
+            self.assertEqual(rendered['enable'], ['serge-pipeline.timer'])
 
     def test_phone_units_are_feature_gated(self) -> None:
         rendered = render_units(_loaded(features={'phone_sms': True}))

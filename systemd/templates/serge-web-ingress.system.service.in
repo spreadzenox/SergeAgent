@@ -18,7 +18,7 @@ Environment=SERGE_MANDATE_PATH=__POLICY__
 Environment=SERGE_POLICY_PATH=__POLICY__
 Environment=SERGE_INGRESS_LISTEN=privileged
 Environment=PYTHONDONTWRITEBYTECODE=1
-ExecStartPre=__PYTHON__ __SYSTEM_ROOT__/orchestrator/web_ingress.py render
+ExecStartPre=__PYTHON__ __SYSTEM_ROOT__/serge/ingress/caddy.py render
 ExecStart=__CADDY__ run --config __SYSTEM_ROOT__/state/web-ingress/Caddyfile --adapter caddyfile
 ExecReload=__CADDY__ reload --config __SYSTEM_ROOT__/state/web-ingress/Caddyfile --adapter caddyfile
 Restart=on-failure

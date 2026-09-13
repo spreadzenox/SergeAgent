@@ -340,28 +340,28 @@ entries:
     current_location: /home/serge/.config/systemd/user/serge-pipeline.service
     required_for: pipeline
     portable: "yes"
-    notes: SERGE_AGENT_RUNTIME=direct_llm. Gmail via EnvironmentFile secrets/gog.env.
+    notes: ExecStart scripts/serge-runner.py --once (flock). SERGE_AGENT_RUNTIME=direct_llm. Gmail via EnvironmentFile secrets/gog.env.
 
   - id: unit.pipeline_timer
     kind: unit
     current_location: /home/serge/.config/systemd/user/serge-pipeline.timer
     required_for: pipeline
     portable: "yes"
-    notes: Schedules bounded run-once cycles via sergectl.py.
+    notes: Timer → serge-pipeline.service → scripts/serge-runner.py --once (flock state/pipeline.lock).
 
   - id: unit.daily_report
     kind: unit
-    current_location: /home/serge/.config/systemd/user/serge-daily-report.service
-    required_for: pipeline
-    portable: "yes"
-    notes: Daily report generate-and-deliver; Discord fail-soft.
+    current_location: retired
+    required_for: none
+    portable: "n/a"
+    notes: Retiré. Digest = Discord channel digest + MC tickets.digest_hour.
 
   - id: unit.web_ingress
     kind: unit
     current_location: /home/serge/.config/systemd/user/serge-web-ingress.service
     required_for: ingress
     portable: "yes"
-    notes: Caddy front for public-hostname routes; active when features.ingress is true.
+    notes: Caddy + serge/ingress/caddy.py render; active when features.ingress is true.
 
   - id: unit.public_dashboard
     kind: unit
@@ -438,7 +438,7 @@ entries:
     current_location: /usr/bin/python3
     required_for: kernel
     portable: "yes"
-    notes: Pipeline, sergectl, and orchestrator interpreter.
+    notes: Pipeline, runner, and unit interpreter.
 
   - id: host_dep.pyyaml
     kind: host_dep

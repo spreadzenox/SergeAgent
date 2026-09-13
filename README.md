@@ -231,7 +231,8 @@ bin/serge-install --instance-file X --mandate Y --source-repo Z  # couple prêt
 Détail : [docs/INSTALL.md](docs/INSTALL.md). Contrat :
 [docs/INSTANCE_CONTRACT.md](docs/INSTANCE_CONTRACT.md). Discord :
 [docs/DISCORD_SETUP.md](docs/DISCORD_SETUP.md). Téléphonie :
-[docs/PHONE_OPTIONS.md](docs/PHONE_OPTIONS.md).
+[docs/PHONE_OPTIONS.md](docs/PHONE_OPTIONS.md). VPS :
+[docs/DEPLOY_VPS.md](docs/DEPLOY_VPS.md).
 
 ## Développer
 
@@ -249,6 +250,8 @@ uv run playwright install chromium
   instance = pas de push.
 - **CI** (chaque PR, et `main` après merge) : même suite déterministe,
   zéro secret. Check requis : `lint tests e2e`.
+- **Deploy VPS** (push `main` seulement) : runner self-hosted
+  `julien-vps`. [docs/DEPLOY_VPS.md](docs/DEPLOY_VPS.md).
 - **Pas de push sur `main`.** Branche + PR, voir
   [docs/DEV_TOOLING.md](docs/DEV_TOOLING.md).
 

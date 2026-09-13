@@ -56,13 +56,19 @@ def seed_sms_route(
     system_root: Path,
     installed_toml: Path,
     public_hostname: str,
+    *,
+    kit_root: Path | None = None,
 ) -> str:
-    """Publish sms.<domain> -> sms receiver via the new tree's own broker."""
+    """Publie sms.<domaine> via le renderer Caddy de cette instance."""
     hostname = f'sms.{public_hostname.strip().lower()}'
-    script = system_root / 'orchestrator/web_ingress.py'
-    if not script.is_file():
+    candidates = []
+    if kit_root is not None:
+        candidates.append(kit_root / 'serge/ingress/caddy.py')
+    candidates.append(system_root / 'serge/ingress/caddy.py')
+    script = next((path for path in candidates if path.is_file()), None)
+    if script is None:
         raise BuilderError(
-            'web_ingress.py missing from seed, cannot seed SMS route'
+            'serge/ingress/caddy.py manquant, impossible de semer la route SMS'
         )
     env = os.environ.copy()
     env['SERGE_SYSTEM_ROOT'] = str(system_root)

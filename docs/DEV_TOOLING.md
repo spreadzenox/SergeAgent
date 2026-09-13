@@ -11,9 +11,12 @@ Trois couches, volontairement inégales :
 | **Commit** | `git commit` | ruff (lint + format du diff), ty, scan secrets | aucun |
 | **Push** | `git push` | mêmes gates + **toute** la suite (E2E MC compris) + LLM OpenRouter réel | clé locale, jamais affichée |
 | **CI GitHub** | PR et push `main` | mêmes gates + suite déterministe + Chromium | **aucun** — le dépôt est public |
+| **Deploy VPS** | merge sur `main` | runner self-hosted `julien-vps` → `scripts/serge-deploy.py` | secrets **sur le VPS**, jamais GitHub |
 
 Rouge à n’importe quelle couche = le git s’arrête (commit, push) ou le
 merge est bloqué (check requis `lint tests e2e` sur `main`).
+Le deploy VPS part **après** le merge, sur le runner de la machine live.
+Détail : [DEPLOY_VPS.md](DEPLOY_VPS.md).
 
 ## Branches et PR
 
@@ -71,6 +74,12 @@ le ferait dépasser P1 (500 lignes). Le hook formate le diff.
 - live LLM / Discord / Stripe **skippés** (charte P5 : hors PR)
 - check GitHub : nom exact `lint tests e2e`
 
+**Deploy** (`.github/workflows/deploy.yml`, push `main` seulement) :
+
+- runner self-hosted `[self-hosted, linux, julien-vps]`
+- aucun secret dans Actions ; couple + age sur le VPS
+- jamais `pull_request` (dépôt public)
+
 Les callers LLM injectés en test ne lisent plus la clé locale : une
 machine sans `~/.config/serge` (Actions) reste verte.
 
@@ -124,6 +133,9 @@ Le pre-push local = `ci.sh` + le passage OpenRouter.
 | `scripts/ci.sh` | Gates + suite déterministe (CI) |
 | `scripts/pre-push-check.py` | Gros check local (clé obligatoire) |
 | `.github/workflows/ci.yml` | Actions : PR + `main`, job `lint tests e2e` |
+| `.github/workflows/deploy.yml` | Actions : push `main` → VPS `julien-vps` |
+| `scripts/serge-deploy.py` | Install vierge ou update + units |
+| `docs/DEPLOY_VPS.md` | Runner, couple live, prérequis VPS |
 | `scripts/scan-repo-secrets.py` | Interdit un secret versionné |
 
 `uv.lock` est commité. `.venv/` ne l’est pas.

@@ -126,6 +126,7 @@ def build_instance(
             system_root,
             installed_toml,
             str(loaded['identity'].get('public_hostname') or ''),
+            kit_root=kit_root,
         )
     units = write_units(loaded, user_systemd, facts=facts, kit_root=kit_root)
     enabled: list[str] = []
