@@ -97,12 +97,24 @@ class McPolicyTests(McBrowserCase):
         from playwright.sync_api import expect
 
         page = self._page_policy()
+        page.locator('[data-section="testing_froid"]').wait_for(timeout=10000)
+        champ = page.locator('input[data-testing="n_smoke_min"]')
         btn = page.locator('button[data-btn="enregistrer-testing"]')
         expect(btn).to_be_enabled()
-        page.locator('input[data-testing="n_smoke_min"]').fill('42')
-        btn.click()
+        champ.click()
+        champ.fill('42')
+        expect(champ).to_have_value('42')
+        with page.expect_response(
+            lambda resp: (
+                '/owner/api/policy/testing' in resp.url
+                and resp.request.method == 'POST'
+            ),
+            timeout=10000,
+        ) as pending:
+            btn.click()
+        self.assertEqual(pending.value.status, 200)
         expect(page.locator('.toast-succes').last).to_contain_text(
-            'Taille des essais mise à jour.'
+            'Taille des essais mise à jour.', timeout=10000
         )
 
     def test_proposer_policy_ui(self) -> None:
