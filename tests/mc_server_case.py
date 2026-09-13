@@ -106,18 +106,35 @@ class McServerCase(unittest.TestCase):
         return self._request('POST', chemin, corps, headers)
 
 
+def _ci() -> bool:
+    """GitHub Actions (CI=true) ou scripts/ci.sh (SERGE_CI=1)."""
+    flag = os.environ.get('SERGE_CI', os.environ.get('CI', '')).strip().lower()
+    return flag in {'1', 'true', 'yes'}
+
+
+def _chromium_kwargs() -> dict:
+    """Args Chromium : sandbox off sur les runners Actions."""
+    kwargs: dict = {'timeout': 15000}
+    if _ci():
+        kwargs['args'] = ['--no-sandbox', '--disable-dev-shm-usage']
+    return kwargs
+
+
 def browser_ok() -> bool:
-    """Chromium pilotable ? (skip gracieux sinon)."""
+    """Chromium pilotable ? (skip gracieux sinon ; échec dur en CI)."""
     try:
         from playwright.sync_api import sync_playwright
     except ImportError:
+        if _ci():
+            raise AssertionError('playwright manquant en CI') from None
         return False
     try:
         with sync_playwright() as handle:
-            browser = handle.chromium.launch(timeout=15000)
-            browser.close()
+            handle.chromium.launch(**_chromium_kwargs()).close()
         return True
-    except Exception:
+    except Exception as exc:
+        if _ci():
+            raise AssertionError(f'chromium CI : {exc}') from exc
         return False
 
 
@@ -127,19 +144,11 @@ class McBrowserCase(McServerCase):
     @classmethod
     def setUpClass(cls) -> None:
         if not browser_ok():
-            if os.environ.get('SERGE_CI', '').strip() in {
-                '1',
-                'true',
-                'TRUE',
-            }:
-                raise AssertionError(
-                    'navigateur requis en CI (playwright chromium)'
-                )
             raise unittest.SkipTest('navigateur indisponible')
         from playwright.sync_api import sync_playwright
 
         cls._pw = sync_playwright().start()
-        cls._browser = cls._pw.chromium.launch()
+        cls._browser = cls._pw.chromium.launch(**_chromium_kwargs())
         cls.addClassCleanup(cls._pw.stop)
         cls.addClassCleanup(cls._browser.close)
 
