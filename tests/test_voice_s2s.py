@@ -83,10 +83,12 @@ class S2sTests(unittest.TestCase):
             right.sendall(encode('uuid', b'x' * 16) + encode('hangup'))
             with mock.patch('serge.voice.s2s.open_session', return_value=fake):
                 pump(left, max_s=1)
+            frame = right.recv(4096)
         finally:
             right.close()
         fake.inject_text.assert_called_once_with(OPENING)
         fake.close.assert_called()
+        self.assertEqual(frame[:1], bytes([0x10]))
 
 
 if __name__ == '__main__':

@@ -30,7 +30,9 @@ Provider = Literal['xai', 'openai']
 PROVIDER_ORDER: tuple[Provider, ...] = ('xai', 'openai')
 POLL_S = 0.05
 MAX_CALL_S = 180.0
+KEEPALIVE_S = 0.4
 OPENING = 'Dis bonjour en une phrase, puis écoute.'
+SILENCE_FRAME = encode('audio', b'\x00' * 320)
 
 
 def open_session(keys: dict[str, str]) -> RealtimeCall:
@@ -73,7 +75,12 @@ def _pull_ast(sock: socket.socket, buf: bytearray) -> list[tuple[str, bytes]]:
     return out
 
 
-def _push_phone(sock: socket.socket, leftover: bytes, b64: str) -> bytes:
+def _push_phone(
+    sock: socket.socket,
+    leftover: bytes,
+    b64: str,
+    lock: threading.Lock,
+) -> bytes:
     try:
         pcm24 = leftover + base64.b64decode(b64)
     except ValueError:
@@ -82,8 +89,21 @@ def _push_phone(sock: socket.socket, leftover: bytes, b64: str) -> bytes:
     ready, rest = pcm24[: len(pcm24) - keep], pcm24[len(pcm24) - keep :]
     slin = downsample_24k_to_8k(ready)
     if slin:
-        sock.sendall(encode('audio', slin))
+        with lock:
+            sock.sendall(encode('audio', slin))
     return rest
+
+
+def _hold(
+    sock: socket.socket, lock: threading.Lock, stop: threading.Event
+) -> None:
+    """Silence 20 ms toutes les 0,4 s (Asterisk coupe à 2 s sans PCM)."""
+    while not stop.wait(KEEPALIVE_S):
+        try:
+            with lock:
+                sock.sendall(SILENCE_FRAME)
+        except OSError:
+            return
 
 
 def pump(ast: socket.socket, max_s: float = MAX_CALL_S) -> None:
@@ -97,12 +117,18 @@ def pump(ast: socket.socket, max_s: float = MAX_CALL_S) -> None:
         RealtimeError: Pas de session (fermeture → AGI).
         AudioSocketError: TLV invalide.
     """
-    call = open_session(secrets())
-    call.ws.sock.settimeout(POLL_S)
     ast.settimeout(POLL_S)
+    lock = threading.Lock()
+    stop = threading.Event()
+    with lock:
+        ast.sendall(SILENCE_FRAME)
+    threading.Thread(target=_hold, args=(ast, lock, stop), daemon=True).start()
+    call = None
     leftover = b''
     buf = bytearray()
     try:
+        call = open_session(secrets())
+        call.ws.sock.settimeout(POLL_S)
         call.inject_text(OPENING)
         deadline = time.monotonic() + max_s
         while time.monotonic() < deadline:
@@ -125,9 +151,11 @@ def pump(ast: socket.socket, max_s: float = MAX_CALL_S) -> None:
                 raise
             for kind, value in actions:
                 if kind == 'audio' and value:
-                    leftover = _push_phone(ast, leftover, str(value))
+                    leftover = _push_phone(ast, leftover, str(value), lock)
     finally:
-        call.close()
+        stop.set()
+        if call is not None:
+            call.close()
         ast.close()
 
 
@@ -155,6 +183,7 @@ def start_audiosocket_thread() -> None:
             )
             while True:
                 conn, _ = server.accept()
+                sys.stderr.write('voice-s2s: appel\n')
                 threading.Thread(
                     target=handle, args=(conn,), daemon=True
                 ).start()
