@@ -29,8 +29,9 @@ Racine `system_root` **vide** →
 
 Racine **déjà peuplée** → `kit/update.py` (git archive par-dessus,
 `state/` / `queue/` / `logs/` / `reports/` / `evidence/` intacts, canon
-non recréé), réécrit les units, `daemon-reload`, restart des units
-déjà actives.
+non recréé), réécrit les units et `asterisk.conf` (jamais `pjsip.conf`),
+`daemon-reload`, restart des units actives **ou en échec**
+(un crash-loop n’est pas un arrêt manuel).
 
 Pipeline : `scripts/serge-runner.py --once` derrière `flock` sur
 `state/pipeline.lock`. Plus de `sergectl`, plus de daily-report, plus de

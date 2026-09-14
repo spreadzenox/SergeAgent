@@ -41,8 +41,16 @@ def systemctl_user(
     return _run(runner, ['systemctl', '--user', *args])
 
 
-def is_active(runner: Runner, unit: str) -> bool:
-    return systemctl_user(runner, 'is-active', '--quiet', unit).returncode == 0
+RESTART_STATES = frozenset(
+    {'active', 'activating', 'failed', 'reloading', 'deactivating'}
+)
+
+
+def unit_active_state(runner: Runner, unit: str) -> str:
+    completed = systemctl_user(
+        runner, 'show', '-p', 'ActiveState', '--value', unit
+    )
+    return (completed.stdout or '').strip()
 
 
 def enable_now(runner: Runner, names: Sequence[str]) -> list[str]:
@@ -130,8 +138,11 @@ def restart_active(runner: Runner, names: Sequence[str]) -> list[str]:
         raise BuilderError(f'daemon-reload a échoué : {detail}')
     restarted: list[str] = []
     for name in names:
-        if not is_active(runner, name):
+        state = unit_active_state(runner, name)
+        if state not in RESTART_STATES:
             continue
+        if state in {'failed', 'activating'}:
+            systemctl_user(runner, 'reset-failed', name)
         completed = systemctl_user(runner, 'restart', name)
         if completed.returncode != 0:
             raise BuilderError(f'restart failed: {name}')

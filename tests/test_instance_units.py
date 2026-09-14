@@ -155,6 +155,8 @@ class InstanceUnitTests(unittest.TestCase):
             '/home/owner/.config/serge/asterisk/asterisk.conf',
             asterisk,
         )
+        self.assertIn('asterisk/var/spool', asterisk)
+        self.assertIn('serge-asterisk/cache', asterisk)
         bridge = full['files']['serge-voice-bridge.service']
         self.assertIn('serge/voice/bridge.py serve', bridge)
         self.assertIn('127.0.0.1:8791', bridge)

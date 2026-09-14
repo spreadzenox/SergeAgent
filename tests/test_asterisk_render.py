@@ -88,6 +88,15 @@ class AsteriskRenderTests(unittest.TestCase):
         asterisk_conf = rendered['asterisk.conf'][0]
         self.assertIn('[directories]', asterisk_conf)
         self.assertNotIn('[directories](!)', asterisk_conf)
+        self.assertIn('astdatadir => /var/lib/asterisk', asterisk_conf)
+        self.assertIn(
+            'astspooldir => /home/owner/.config/serge/asterisk/var/spool',
+            asterisk_conf,
+        )
+        self.assertIn(
+            'astcachedir => /run/user/1000/serge-asterisk/cache',
+            asterisk_conf,
+        )
         self.assertIn('/home/owner/.config/serge/asterisk', asterisk_conf)
         self.assertIn('serge/voice', asterisk_conf)
         self.assertIn('/run/user/1000/serge-asterisk', asterisk_conf)
