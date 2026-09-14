@@ -12,6 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from serge.coupe_circuit import set_heartbeat  # noqa: E402
 from serge.db.boot import init_schema  # noqa: E402
 from serge.memory.summaries import put_summary  # noqa: E402
 from serge.registry import load_ticket_types  # noqa: E402
@@ -65,6 +66,16 @@ class RunnerTests(unittest.TestCase):
             row[0] for row in self.conn.execute('SELECT kind FROM work_items')
         ]
         self.assertIn('memory.consolidate', kinds)
+
+    def test_heartbeat_coupe_pas_de_consolidation(self) -> None:
+        set_heartbeat(self.conn, False)
+        result = run_once(self.conn, POLICY, now='2026-09-20T19:00:00+00:00')
+        self.assertFalse(result['consolidation'])
+        self.assertEqual(result['processed'], 0)
+        kinds = [
+            row[0] for row in self.conn.execute('SELECT kind FROM work_items')
+        ]
+        self.assertEqual(kinds, [])
 
     def test_cycle_ecrit_event_resume(self) -> None:
         result = run_once(self.conn, POLICY, now=NOW)

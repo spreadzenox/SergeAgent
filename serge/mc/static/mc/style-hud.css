@@ -45,6 +45,7 @@ main {
   grid-template-columns: 1fr 1fr 1fr;
 }
 
+#page:has(.carte-serge) [data-section='coupes'],
 #page:has(.carte-serge) [data-section='hero'],
 #page:has(.carte-serge) [data-section='graphe'],
 #page:has(.carte-serge) [data-section='urgents'] {
@@ -122,6 +123,91 @@ main {
 
 .panneau:hover {
   box-shadow: 0 0 0 1px rgb(53 224 255 / 38%), var(--glow-cyan);
+}
+
+.rail-coupes {
+  background: rgb(36 8 12 / 78%);
+  border-color: rgb(220 50 50 / 55%);
+  box-shadow: 0 0 0 1px rgb(220 40 40 / 28%), 0 12px 36px rgb(60 0 0 / 35%);
+}
+
+.rail-coupes h2,
+.rail-coupes h3 {
+  color: #ff8a80;
+  margin: 0 0 0.45rem;
+}
+
+.rail-coupes h3 {
+  font-size: 0.92rem;
+  letter-spacing: 0.06em;
+  margin-top: 0.85rem;
+  text-transform: uppercase;
+}
+
+.legende-coupes {
+  color: var(--texte-doux);
+  font-size: 0.88rem;
+  margin: 0 0 0.75rem;
+}
+
+.rang-kill {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.btn-kill-serge {
+  background: #c62828;
+  border: 0;
+  border-radius: 10px;
+  box-shadow: 0 0 28px rgb(198 40 40 / 55%);
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 1rem 1.25rem;
+  text-transform: uppercase;
+  width: 100%;
+}
+
+.btn-kill-serge:hover {
+  background: #e53935;
+  box-shadow: 0 0 36px rgb(229 57 53 / 65%);
+}
+
+.btn-kill-serge[data-coupe='1'] {
+  background: #3d1515;
+  border: 2px solid #c62828;
+  box-shadow: none;
+  color: #ffcdd2;
+}
+
+.btn-kill {
+  background: rgb(160 32 32 / 88%);
+  border: 1px solid rgb(255 120 110 / 45%);
+  border-radius: 8px;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  padding: 0.4rem 0.7rem;
+}
+
+.btn-kill:hover {
+  border-color: #ff8a80;
+  box-shadow: 0 0 14px rgb(198 40 40 / 35%);
+}
+
+.btn-kill[data-coupe='1'] {
+  background: rgb(40 12 12 / 80%);
+  color: #ffcdd2;
+  text-decoration: line-through;
+}
+
+.rang-kill-kinds .btn-kill {
+  font-size: 0.86rem;
+  padding: 0.32rem 0.55rem;
 }
 
 .rail-urgents {

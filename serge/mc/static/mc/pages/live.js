@@ -8,6 +8,7 @@ import {
   updateGauge,
 } from '../components.js';
 import {monterGraphe} from '../graphe.js';
+import {brancherCoupes, renderCoupes} from './live_coupes.js';
 import {
   densite24h,
   dessineWaveform,
@@ -25,12 +26,17 @@ import {
 } from '../libelles.js';
 import {chargerObjet, renderFiche} from '../objets.js';
 import {patchSection} from '../patch.js';
-import {fetchState} from '../sse.js';
 
 function renderHero(main, payload, sig, store) {
   patchSection(main, 'hero', sig, payload);
   const running = payload.running;
   const headline = main.querySelector('#live-headline');
+  const coupes = store.get('coupes');
+  if (coupes && coupes.payload && coupes.payload.serge === false) {
+    headline.textContent =
+      'Serge est arrêté — l’ordonnanceur ne prend plus de tâche.';
+    return;
+  }
   if (running) {
     headline.textContent =
       `En cours : ${verbe(running.kind)}`
@@ -378,6 +384,7 @@ export function mount(main, store) {
     etatDepuisStore(store),
   );
   const stoppers = [];
+  brancherCoupes(main, store);
   const rafGraphe = monterGraphe(
     main,
     () => {
@@ -390,13 +397,6 @@ export function mount(main, store) {
       };
     },
     stoppers,
-    async () => {
-      const data = await fetchState('p0');
-      const env = data.sections && data.sections.graphe;
-      if (env) {
-        store.apply('graphe', env.sig, env.payload);
-      }
-    },
   );
   const renderers = {
     hero: (payload, sg) => renderHero(main, payload, sg, store),
@@ -408,6 +408,13 @@ export function mount(main, store) {
       }
       renderPensee(main, payload.io);
       rafGraphe();
+    },
+    coupes: (payload, sg) => {
+      renderCoupes(main, payload, sg);
+      const hero = store.get('hero');
+      if (hero) {
+        renderHero(main, hero.payload, hero.sig, store);
+      }
     },
     urgents: (payload, sg) => renderUrgents(main, payload, sg),
     file: (payload, sg) => renderFile(main, payload, sg, store),

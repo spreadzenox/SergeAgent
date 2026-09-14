@@ -52,8 +52,10 @@ Autres faits déjà en canon : `ventures`, `campaigns`, `contacts`,
 
 ## Étapes (v8)
 
-Enum fermé, coupe-circuit par `work_items.etape_id` — plus par `kind`
-(le smoke et la prospection lourde partagent `email.send`).
+Enum fermé, coupe-circuit d’étape par `work_items.etape_id` — plus par
+`kind` seul (le smoke et la lourde partagent `email.send`). Un kind
+peut aussi être coupé à part via `runtime_flags.kind.{kind}` ; tout
+Serge via `runtime_flags.scheduler.heartbeat`.
 
 Ordre : pré-prospection → conception PoC → prospection light (smoke)
 → choix de venture → build/rebuild (y compris livraison / onboarding)

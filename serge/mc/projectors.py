@@ -27,6 +27,7 @@ from serge.mc.proj_cerveau import (
     project_pensees,
     project_signaux,
 )
+from serge.mc.proj_coupes import project_coupes
 from serge.mc.proj_economy import (
     project_audit_reponses,
     project_couts_cognitifs,
@@ -185,6 +186,7 @@ PROJECTORS: dict[str, Callable[..., dict[str, Any]]] = {
     'graphe': project_graphe,
     'business': project_business,
     'hero': project_hero,
+    'coupes': project_coupes,
     'urgents': project_urgents,
     'file': project_file,
     'feed': project_feed,
@@ -229,6 +231,7 @@ PAGE_SECTIONS: dict[str, list[str]] = {
         'graphe',
         'business',
         'hero',
+        'coupes',
         'urgents',
         'file',
         'feed',
