@@ -164,35 +164,30 @@ enregistré comme `serge-agent` (même secret que le trunk, loopback
 uniquement), appel entrant vers le DID (ça sonne ?), appel sortant
 vers son propre mobile (le CLI affiché est bien le NPV ?).
 
-### 2. L'agent Serge (cible : speech-to-speech ; livré : repli tour-par-tour)
+### 2. L’agent Serge (speech-to-speech ; repli tour-par-tour)
 
-Cible rework (matrice C, point P5) : **speech-to-speech temps réel** —
-mêmes providers que la voix Mission Control (xAI Realtime en primary,
-OpenAI Realtime en rollback), compté comme point LLM avec déclaration,
-guards et repli. Le dialogue temps réel (barge-in, latence, naturel)
-est supérieur au tour-par-tour pour la prospection vocale.
-
-En attendant, le kit livre un **repli robuste** : un script AGI
-(`serge/voice/turn.py`, AGI `turn.py`), pas un client SIP :
+Point P5 `voice_dialog` (matrice C) : **speech-to-speech temps réel**
+via AudioSocket, mêmes providers que Mission Control (xAI Realtime
+primaire `grok-voice-think-fast-2.0`, OpenAI Realtime rollback
+`gpt-realtime-2.1-mini`). Checklist 4/4, guards et repli déclarés.
 
 ```
-appel → Asterisk → AGI → Record 6 s → STT Whisper (openai_api_key)
-→ chat OpenRouter → TTS → Playback → … (4 tours max)
-→ menu DTMF « 1 = rappel » → répondeur 30-45 s → CDR
+appel → Asterisk (Answer) → AudioSocket 127.0.0.1:8792
+  → voice-bridge / s2s.py → xAI Realtime (sinon OpenAI)
+  → PCM 8 kHz ↔ 24 kHz
+si socket/session HS → AGI turn.py (Record 6 s → Whisper →
+  OpenRouter → TTS, 4 tours) → menu DTMF « 1 = rappel » → répondeur
 ```
 
-- Clés sidecar (inchangées, servent aussi au realtime) :
-  `openai_api_key`, `xai_api_key`, `openrouter_api_key` (dialogue).
-  Pas de nouvelle clé.
-- Sans clé temps réel / échec mid-call : repli propre — `greeting.wav`
-  owner si présent, sinon bip + répondeur. Jamais de silence,
-  jamais de crash d'appel, jamais de raccrochage sec.
+- Clés sidecar (inchangées) : `openai_api_key`, `xai_api_key`,
+  `openrouter_api_key`. Pas de nouvelle clé.
+- Sans clé temps réel / échec mid-call : AudioSocket rend la main,
+  l’AGI enchaîne. Jamais de crash d’appel, jamais de raccrochage sec.
 - Enregistrement + CDR + transcriptions + métadonnées par appel
   (`state/voice/`) : preuve, coaching, litiges, écoute owner via
   Mission Control. Rétention à fixer au mandat.
-- Le tour-par-tour reste le plancher NPV-compatible (message
-  préenregistré + enregistrement) : si le temps réel est indisponible,
-  l'appel dégrade, il ne meurt pas.
+- Le tour-par-tour reste le plancher NPV-compatible : si le temps
+  réel est indisponible, l’appel dégrade, il ne meurt pas.
 
 ### 3. Garde-fous commerciaux (livrés dans `serge/voice/`)
 
@@ -246,7 +241,7 @@ que les logs, le broker et le dialplan sachent qui est qui.
 | Registration trunk perdue | Bind loopback, mot de passe, IP allowlistée, wildcard TLS | `pjsip show registrations` ; le transport trunk doit être `0.0.0.0`, pas `127.0.0.1`. Fallback UDP temporaire pour isoler TLS. |
 | Audio un seul sens | NAT/RTP, ports 10000+ fermés | `rtp.conf` + firewall, `external_media_address` / `external_signaling_address` sur le VPS. |
 | CLI affiché ≠ DID (ex. numéro UK Zadarma) | INVITE sans PAI / originate direct trunk | `Local/…@serge-dial` + PAI = DID du couple. Vérifier le 09/NPV rattaché au SIP chez Zadarma. |
-| Agent muet puis timeout | Realtime/STT lent ou clé HS | Tester la feature `voice` hors appel, timeouts + message de repli. |
+| Agent muet puis timeout | Realtime HS ou `:8792` fermé | `ss -lntp` : voice-bridge écoute `127.0.0.1:8792`. Sans session S2S l’AGI `turn.py` enchaîne (TTS `tts-1` peut 403 si le projet OpenAI n’a pas l’audio classique). |
 | Correspondants « je n'ai rien compris » | TTS trop rapide / pas de tour de parole | Ralentir, phrases courtes, barge-in, proposer le DTMF. |
 | Facture anormale | Boucle de composition / retry agressif | Plafonds, backoff, alerte €/jour. Couper le trunk avant de debugger. |
 
@@ -268,8 +263,7 @@ que les logs, le broker et le dialplan sachent qui est qui.
 - Monitoring runtime : heartbeat SMS (« silence radio »), alerte
   registration trunk perdue, €/jour vs CDR.
 - Annonce légale d'enregistrement dans les messages d'accueil.
-- Speech-to-speech temps réel (cible rework, point P5 de la matrice C —
-  providers xAI/OpenAI Realtime comme la voix Mission Control). Le
-  tour-par-tour livré devient le repli dégradé.
+- Annonce barge-in / DTMF pendant le S2S (aujourd’hui : DTMF après
+  repli AGI).
 - `request_voice_call` dans l'ActionBroker central (aujourd'hui :
   broker voix dédié, même pattern que `SmsInbox`).

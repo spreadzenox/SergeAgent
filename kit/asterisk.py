@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
+from serge.voice.audiosocket import LISTEN_HOST, LISTEN_PORT, SESSION_UUID
+
 PJSIP_PORT = 5061
 RTP_START = 10000
 RTP_END = 10100
@@ -178,6 +180,8 @@ max_contacts = 1
 [serge-in]
 exten => {did},1,NoOp(Inbound ${{CALLERID(num)}} to Serge {did})
  same => n,MixMonitor({records}/${{STRFTIME(${{EPOCH}},,%Y%m%d-%H%M%S)}}-${{UNIQUEID}}-${{CALLERID(num)}}.wav)
+ same => n,Answer()
+ same => n,AudioSocket({SESSION_UUID},{LISTEN_HOST}:{LISTEN_PORT})
  same => n,AGI(turn.py,inbound,${{CALLERID(num)}},{did})
  same => n,Hangup()
 exten => _X.,1,NoOp(Inbound to unknown DID ${{EXTEN}}, refuse)
@@ -199,6 +203,8 @@ exten => add,1,Set(PJSIP_HEADER(add,P-Asserted-Identity)={pai})
 exten => _+X.,1,NoOp(Serge outbound to ${{EXTEN}})
  same => n,Set(CALLERID(num)={did})
  same => n,MixMonitor({records}/${{STRFTIME(${{EPOCH}},,%Y%m%d-%H%M%S)}}-${{UNIQUEID}}-${{EXTEN}}.wav)
+ same => n,Answer()
+ same => n,AudioSocket({SESSION_UUID},{LISTEN_HOST}:{LISTEN_PORT})
  same => n,AGI(turn.py,outbound,${{EXTEN}})
  same => n,Hangup()
 

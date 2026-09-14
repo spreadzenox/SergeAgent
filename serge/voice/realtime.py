@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Voix temps réel S2S (P5) : session Realtime + routeur événements.
 
-Providers : OpenAI Realtime primaire, xAI rollback (même forme
+Providers : xAI Realtime primaire, OpenAI rollback (même forme
 d'événements). Échec à tout moment = RealtimeError → l'appelant
 dégrade vers tour-par-tour (turn.py), jamais de silence. Audio PCM16.
 """
@@ -17,6 +17,10 @@ from serge.voice.ws import WsClient, WsError
 PROVIDERS = {
     'openai': 'wss://api.openai.com/v1/realtime',
     'xai': 'wss://api.x.ai/v1/realtime',
+}
+DEFAULT_MODELS = {
+    'xai': 'grok-voice-think-fast-2.0',
+    'openai': 'gpt-realtime-2.1-mini',
 }
 DEFAULT_VOICE = 'alloy'
 
