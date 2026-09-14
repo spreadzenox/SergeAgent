@@ -11,6 +11,15 @@ KINDS = frozenset({'cluster', 'select', 'score', 'transform', 'index'})
 # id, etape, kind, path, sha, titre, doc
 SEED: tuple[tuple[str, str, str, str, str, str, str], ...] = (
     (
+        'listen_collect',
+        'pre_prospection',
+        'transform',
+        'serge/listen/collectors.py',
+        '',
+        'Ramasser des pages',
+        'Collecte RSS / pages : déterministe.',
+    ),
+    (
         'cluster_listen',
         'pre_prospection',
         'cluster',
@@ -18,6 +27,24 @@ SEED: tuple[tuple[str, str, str, str, str, str, str], ...] = (
         '',
         'Regrouper les demandes',
         'Paquets Jaccard / labels : pas une invocation LLM.',
+    ),
+    (
+        'metrics_u',
+        'prospection_light',
+        'score',
+        'serge/funnels/metrics.py',
+        '',
+        'Compteurs U1–U5',
+        'Le LLM classe, le code compte.',
+    ),
+    (
+        'sequencer',
+        'prospection_light',
+        'select',
+        'serge/funnels/sequencer.py',
+        '',
+        'Séquenceur de touches',
+        'Qui / quand : requête, pas une invocation LLM.',
     ),
     (
         'select_pre_venture',
@@ -29,6 +56,15 @@ SEED: tuple[tuple[str, str, str, str, str, str, str], ...] = (
         'Algo de sélection parmi les N smokes. Pas encore un module runtime.',
     ),
     (
+        'guards_check',
+        'prospection_lourde',
+        'score',
+        'serge/guards/check.py',
+        '',
+        'Garde-fous',
+        'Autoriser / refuser un acte : déterministe.',
+    ),
+    (
         'memory_fts_index',
         'collect_feedback',
         'index',
@@ -36,6 +72,24 @@ SEED: tuple[tuple[str, str, str, str, str, str, str], ...] = (
         '',
         'Indexer la mémoire',
         'FTS5 : création / maj de l’index, hors invocation LLM.',
+    ),
+    (
+        'stripe_receive',
+        'caisse',
+        'transform',
+        'serge/collect/receiver.py',
+        '',
+        'Recevoir Stripe',
+        'Webhook → transaction : déterministe.',
+    ),
+    (
+        'dunning',
+        'caisse',
+        'transform',
+        'serge/collect/dunning.py',
+        '',
+        'Relances d’encaissement',
+        'Dunning : templates et règles, 0 LLM.',
     ),
 )
 
@@ -68,6 +122,51 @@ def ensure_tech_invocations(conn: sqlite3.Connection) -> None:
             ' code_sha, titre, doc_md, enabled) VALUES(?,?,?,?,?,?,?,1)',
             (ident, etape, kind, path, sha, titre, doc),
         )
+
+
+def fiche_tech(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
+    """Fiche MC d’une invocation technique.
+
+    Args:
+        conn: Canon.
+        ident: Id.
+
+    Returns:
+        Payload fiche, ou None.
+    """
+    ensure_tech_invocations(conn)
+    row = conn.execute(
+        'SELECT id, etape_id, kind, code_path, titre, doc_md'
+        ' FROM tech_invocations WHERE id=?',
+        (ident,),
+    ).fetchone()
+    if row is None:
+        return None
+    return {
+        'type': 'tech',
+        'id': str(row[0]),
+        'titre': str(row[4]),
+        'pourquoi': str(row[5]),
+        'champs': [
+            {'k': 'Étape', 'v': str(row[1])},
+            {'k': 'Kind', 'v': str(row[2])},
+            {'k': 'Code', 'v': str(row[3] or '—')},
+        ],
+        'cadres': [
+            {
+                'titre': 'Étape',
+                'liens': [
+                    {
+                        'type': 'etape',
+                        'id': str(row[1]),
+                        'titre': str(row[1]),
+                    }
+                ],
+            }
+        ],
+        'enfants': [],
+        'preuve': '',
+    }
 
 
 def tech_par_etape(

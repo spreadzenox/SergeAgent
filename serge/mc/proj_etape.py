@@ -254,6 +254,13 @@ def project_etape(
         if not j['ordre']
     ]
     extra = []
+    from serge.catalogue import objets_de_etape
+
+    bundle = objets_de_etape(conn, ident)
+    tech_liens = [
+        {'type': 'tech', 'id': t['id'], 'titre': t['titre']}
+        for t in bundle['tech']
+    ]
     if ident == 'pre_prospection':
         extra.append(
             {
@@ -299,13 +306,22 @@ def project_etape(
         )
     if extra:
         cadres.append({'titre': 'Voir aussi', 'liens': extra})
+    if tech_liens:
+        cadres.append(
+            {
+                'titre': 'Invocations techniques',
+                'texte': 'Déterministes, rattachées à ce sac.',
+                'liens': tech_liens,
+            }
+        )
     return {
         'type': 'etape',
         'id': ident,
         'titre': spec['titre'],
         'pourquoi': spec['pourquoi'],
         'champs': [
-            {'k': 'Jugements liés', 'v': str(len(jugs))},
+            {'k': 'Invocations LLM', 'v': str(len(jugs))},
+            {'k': 'Invocations techniques', 'v': str(len(tech_liens))},
             {'k': 'Étape d’avant', 'v': titre_prec or '— (début)'},
         ],
         'cadres': cadres,

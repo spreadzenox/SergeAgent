@@ -21,7 +21,9 @@ from serge.mc.libelles import (
 from serge.mc.proj_outils import charge_json
 
 
-def _row(conn: sqlite3.Connection, sql: str, args: tuple) -> sqlite3.Row | None:
+def _row(
+    conn: sqlite3.Connection, sql: str, args: tuple
+) -> sqlite3.Row | None:
     conn.row_factory = sqlite3.Row
     return conn.execute(sql, args).fetchone()
 
@@ -34,11 +36,14 @@ def _liens(items: list[tuple[str, str, str]]) -> list[dict[str, str]]:
     return [{'type': t, 'id': i, 'titre': titre} for t, i, titre in items]
 
 
-def project_objet(conn: sqlite3.Connection, typ: str, ident: str) -> dict[str, Any] | None:
+def project_objet(
+    conn: sqlite3.Connection, typ: str, ident: str
+) -> dict[str, Any] | None:
     """Fiche objet {type, id, titre, champs, enfants, preuve} ou None."""
     if typ == 'file':
         from serge.db.store import utcnow
         from serge.mc.proj_live import project_file_detail
+
         return project_file_detail(conn, utcnow())
     if typ in ('llm', 'llm_usage', 'contexte', 'ecoute', 'outil', 'notion'):
         from serge.mc.proj_llm import (
@@ -49,6 +54,7 @@ def project_objet(conn: sqlite3.Connection, typ: str, ident: str) -> dict[str, A
             project_notion,
             project_outil,
         )
+
         return {
             'llm': project_llm,
             'llm_usage': project_llm_usage,
@@ -57,11 +63,17 @@ def project_objet(conn: sqlite3.Connection, typ: str, ident: str) -> dict[str, A
             'outil': project_outil,
             'notion': project_notion,
         }[typ](conn, ident)
+    if typ == 'tech':
+        from serge.tech_registre import fiche_tech
+
+        return fiche_tech(conn, ident)
     if typ == 'etape':
         from serge.mc.proj_etape import project_etape
+
         return project_etape(conn, ident)
     if typ in ('sqlite', 'table'):
         from serge.mc.proj_sqlite import project_sqlite, project_table
+
         if typ == 'sqlite':
             return project_sqlite(conn, ident)
         return project_table(conn, ident)
@@ -137,8 +149,14 @@ def _venture(conn: sqlite3.Connection, ident: str) -> dict | None:
         'pourquoi': 'Une idée de business que Serge essaie — une seule à la fois.',
         'champs': _champs(
             [
-                ('Où on en est', LIFECYCLE.get(row['lifecycle'], row['lifecycle'])),
-                ('Serge peut avancer tout seul', 'oui' if row['schedulable'] else 'non'),
+                (
+                    'Où on en est',
+                    LIFECYCLE.get(row['lifecycle'], row['lifecycle']),
+                ),
+                (
+                    'Serge peut avancer tout seul',
+                    'oui' if row['schedulable'] else 'non',
+                ),
             ]
         ),
         'enfants': enfants,
@@ -168,10 +186,7 @@ def _campagne(conn: sqlite3.Connection, ident: str) -> dict | None:
         ),
         'enfants': _liens(
             [('venture', row['venture_id'], 'Venture')]
-            + [
-                ('touch', str(t[0]), f'{t[2]} · {t[1]}')
-                for t in touches[:20]
-            ]
+            + [('touch', str(t[0]), f'{t[2]} · {t[1]}') for t in touches[:20]]
         ),
         'preuve': row['thresholds_json'] or '',
     }
@@ -193,8 +208,14 @@ def _contact(conn: sqlite3.Connection, ident: str) -> dict | None:
         ),
         'champs': _champs(
             [
-                ('Où il en est', FUNNEL.get(row['funnel_state'], row['funnel_state'])),
-                ('Comment on s’est parlé', REGIMES.get(row['regime'], row['regime'])),
+                (
+                    'Où il en est',
+                    FUNNEL.get(row['funnel_state'], row['funnel_state']),
+                ),
+                (
+                    'Comment on s’est parlé',
+                    REGIMES.get(row['regime'], row['regime']),
+                ),
                 ('E-mail', row['email']),
                 ('Idée de business', row['venture_id']),
             ]
@@ -339,7 +360,9 @@ def _playbook(conn: sqlite3.Connection, ident: str) -> dict | None:
         'id': ident,
         'titre': row['name'],
         'pourquoi': 'Une recette déjà écrite : si ça arrive, fais ces étapes.',
-        'champs': _champs([('Portée', row['scope']), ('Si', row['conditions'])]),
+        'champs': _champs(
+            [('Portée', row['scope']), ('Si', row['conditions'])]
+        ),
         'enfants': [],
         'preuve': row['steps_json'] or '',
     }
@@ -363,8 +386,16 @@ def _work(conn: sqlite3.Connection, ident: str) -> dict | None:
             ]
         ),
         'enfants': _liens(
-            ([('venture', row['venture_id'], 'Venture')] if row['venture_id'] else [])
-            + ([('ticket', row['ticket_id'], 'Ticket')] if row['ticket_id'] else [])
+            (
+                [('venture', row['venture_id'], 'Venture')]
+                if row['venture_id']
+                else []
+            )
+            + (
+                [('ticket', row['ticket_id'], 'Ticket')]
+                if row['ticket_id']
+                else []
+            )
         ),
         'preuve': row['payload_json'] or '',
     }
@@ -415,8 +446,16 @@ def _inbound(conn: sqlite3.Connection, ident: str) -> dict | None:
             ]
         ),
         'enfants': _liens(
-            ([('prospect', row['contact_id'], 'Personne')] if row['contact_id'] else [])
-            + ([('campagne', row['campaign_id'], 'Campagne')] if row['campaign_id'] else [])
+            (
+                [('prospect', row['contact_id'], 'Personne')]
+                if row['contact_id']
+                else []
+            )
+            + (
+                [('campagne', row['campaign_id'], 'Campagne')]
+                if row['campaign_id']
+                else []
+            )
         ),
         'preuve': row['payload_json'] or '',
     }
@@ -435,11 +474,16 @@ def _listen(conn: sqlite3.Connection, ident: str) -> dict | None:
             [
                 (
                     'D’où ça vient',
-                    'flux RSS (Reddit, blogs…)' if row['source'] == 'rss' else row['source'],
+                    'flux RSS (Reddit, blogs…)'
+                    if row['source'] == 'rss'
+                    else row['source'],
                 ),
                 ('Adresse', row['url'] or '—'),
                 ('Quand', row['fetched_at'] or '—'),
-                ('Déjà mise dans un paquet ?', 'oui' if row['cluster_id'] else 'pas encore'),
+                (
+                    'Déjà mise dans un paquet ?',
+                    'oui' if row['cluster_id'] else 'pas encore',
+                ),
             ]
         ),
         'enfants': _liens(
@@ -449,7 +493,9 @@ def _listen(conn: sqlite3.Connection, ident: str) -> dict | None:
                     (
                         'plateforme',
                         row['source'],
-                        'flux RSS' if row['source'] == 'rss' else row['source'],
+                        'flux RSS'
+                        if row['source'] == 'rss'
+                        else row['source'],
                     )
                 ]
                 if row['source']

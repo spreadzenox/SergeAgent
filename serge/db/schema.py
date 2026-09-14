@@ -292,6 +292,7 @@ def init_schema(connection: sqlite3.Connection) -> None:
     Args:
         connection: Connexion (commit par l’appelant).
     """
+    from serge.catalogue import verifier_catalogue
     from serge.comptes import ensure_account_columns
     from serge.db.migrate import apply_pending
     from serge.etapes import ensure_pipeline_steps
@@ -305,3 +306,4 @@ def init_schema(connection: sqlite3.Connection) -> None:
     ensure_tools(connection)
     ensure_llm_points(connection)
     ensure_tech_invocations(connection)
+    verifier_catalogue(connection)

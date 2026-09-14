@@ -28,6 +28,9 @@ L’index FTS `memory_fts` se crée au premier search.
 
 ## Objets (miroir)
 
+`init_schema` sème le catalogue puis `verifier_catalogue` refuse un
+graphe incomplet (toute instance, même vierge).
+
 Catalogue (types, semés) vs occurrences (faits) :
 
 | Catalogue | Occurrences |
@@ -35,7 +38,11 @@ Catalogue (types, semés) vs occurrences (faits) :
 | `pipeline_steps` | `work_items.etape_id` (coupe-circuit MC) |
 | `llm_points` + `llm_point_tools` | `llm_usage` |
 | `tech_invocations` | `events` / runs (pas encore de ledger dédié) |
-| `tools` | appelés seulement par une invocation LLM |
+| `tools` | `llm_point_tools` (seule une invocation LLM invoque) |
+
+Liens : `llm_points.etape_id` et `tech_invocations.etape_id` ∈ épine
+ou `policy` ; jonction `llm_point_tools` sans orphelin. Lecture :
+`objets_de_etape`. Hors épine : `policy` (3 invocations LLM).
 
 Autres faits déjà en canon : `ventures`, `campaigns`, `contacts`,
 `tickets`, `artifacts`, `transactions`, `consents`, `lessons`,
