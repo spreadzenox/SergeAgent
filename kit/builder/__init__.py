@@ -42,6 +42,7 @@ from kit.builder.telephony import (
     write_asterisk,
     write_voice_readme,
 )
+from kit.builder.webhooks import seed_stripe_route
 
 __all__ = [
     'BuilderError',
@@ -70,6 +71,7 @@ __all__ = [
     'secret_destination',
     'secret_file_body',
     'seed_sms_route',
+    'seed_stripe_route',
     'session_systemd_user_dir',
     'write_asterisk',
     'write_units',

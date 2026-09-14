@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Inventaire de routes + Caddyfile (remplace orchestrator/web_ingress)."""
+"""Inventaire de routes + Caddyfile (chemins optionnels sur le même hôte)."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ import argparse
 import json
 import os
 import tomllib
+from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
@@ -44,9 +45,38 @@ def _load_inventory(path: Path) -> list[dict[str, str]]:
                     'hostname': str(item['hostname']),
                     'upstream': str(item.get('upstream') or ''),
                     'venture_id': str(item.get('venture_id') or ''),
+                    'path': str(item.get('path') or ''),
                 }
             )
     return out
+
+
+def _caddyfile(routes: list[dict[str, str]]) -> str:
+    grouped: dict[str, list[dict[str, str]]] = defaultdict(list)
+    for route in routes:
+        if route.get('hostname') and route.get('upstream'):
+            grouped[route['hostname']].append(route)
+    blocks: list[str] = []
+    for host, items in grouped.items():
+        paths = [item for item in items if item.get('path')]
+        roots = [item for item in items if not item.get('path')]
+        if not paths and len(roots) == 1:
+            blocks.append(
+                f'{host} {{\n\treverse_proxy {roots[0]["upstream"]}\n}}\n'
+            )
+            continue
+        lines = [f'{host} {{']
+        for item in paths:
+            lines.append(f'\thandle {item["path"]}* {{')
+            lines.append(f'\t\treverse_proxy {item["upstream"]}')
+            lines.append('\t}')
+        if roots:
+            lines.append('\thandle {')
+            lines.append(f'\t\treverse_proxy {roots[0]["upstream"]}')
+            lines.append('\t}')
+        lines.append('}\n')
+        blocks.append('\n'.join(lines))
+    return ''.join(blocks) or '# vide\n'
 
 
 def _save(inventory: Path, caddy: Path, routes: list[dict[str, str]]) -> None:
@@ -55,12 +85,7 @@ def _save(inventory: Path, caddy: Path, routes: list[dict[str, str]]) -> None:
         json.dumps({'routes': routes}, ensure_ascii=False, indent=2) + '\n',
         encoding='utf-8',
     )
-    lines = [
-        f'{route["hostname"]} {{\n\treverse_proxy {route["upstream"]}\n}}\n'
-        for route in routes
-        if route.get('hostname') and route.get('upstream')
-    ]
-    caddy.write_text(''.join(lines) or '# vide\n', encoding='utf-8')
+    caddy.write_text(_caddyfile(routes), encoding='utf-8')
 
 
 def _mc_route() -> dict[str, str] | None:
@@ -78,25 +103,36 @@ def _mc_route() -> dict[str, str] | None:
         'hostname': host,
         'upstream': MC_UPSTREAM,
         'venture_id': MC_VENTURE,
+        'path': '',
     }
 
 
-def upsert(hostname: str, upstream: str, venture_id: str) -> dict[str, Any]:
-    """Ajoute ou remplace une route, puis réécrit le Caddyfile."""
+def _key(route: dict[str, str]) -> tuple[str, str]:
+    return (route['hostname'], route.get('path') or '')
+
+
+def upsert(
+    hostname: str,
+    upstream: str,
+    venture_id: str,
+    path: str = '',
+) -> dict[str, Any]:
+    """Ajoute ou remplace une route (hôte + chemin), puis réécrit Caddyfile."""
     inventory, caddy = _paths(_root())
     routes = _load_inventory(inventory)
-    seen = {route['hostname'] for route in routes}
+    seen = {_key(route) for route in routes}
     mc = _mc_route()
-    if mc and mc['hostname'] not in seen:
+    if mc and _key(mc) not in seen:
         routes.insert(0, mc)
-        seen.add(mc['hostname'])
+        seen.add(_key(mc))
     if hostname:
         entry = {
             'hostname': hostname,
             'upstream': upstream,
             'venture_id': venture_id,
+            'path': path,
         }
-        routes = [r for r in routes if r['hostname'] != hostname]
+        routes = [r for r in routes if _key(r) != _key(entry)]
         routes.append(entry)
     _save(inventory, caddy, routes)
     return {'status': 'ok', 'routes': len(routes)}
@@ -116,6 +152,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument('--hostname', default='')
     parser.add_argument('--upstream', default='')
     parser.add_argument('--venture-id', default='')
+    parser.add_argument('--path', default='')
     parser.add_argument('--health-url', default='')
     parser.add_argument('--allow-unhealthy', action='store_true')
     args = parser.parse_args(argv)
@@ -124,7 +161,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     print(
         json.dumps(
-            upsert(args.hostname, args.upstream, args.venture_id),
+            upsert(args.hostname, args.upstream, args.venture_id, args.path),
             ensure_ascii=False,
         )
     )

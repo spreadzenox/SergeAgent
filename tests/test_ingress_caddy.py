@@ -69,6 +69,24 @@ class IngressCaddyTests(unittest.TestCase):
             rendered = caddy.render()
             self.assertEqual(rendered['routes'], 2)
 
+    def test_path_route_shares_mc_hostname(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            tmp = Path(raw)
+            instance = tmp / 'serge.instance.toml'
+            instance.write_text(_toml('owner.example.net'), encoding='utf-8')
+            os.environ['SERGE_SYSTEM_ROOT'] = str(tmp)
+            os.environ['SERGE_INSTANCE_FILE'] = str(instance)
+            caddy.upsert(
+                'owner.example.net',
+                '127.0.0.1:8788',
+                'serge-collect-stripe',
+                '/hooks/stripe',
+            )
+            text = (tmp / 'state/web-ingress/Caddyfile').read_text()
+            self.assertIn('handle /hooks/stripe*', text)
+            self.assertIn('reverse_proxy 127.0.0.1:8788', text)
+            self.assertIn('reverse_proxy 127.0.0.1:8790', text)
+
     def test_cli_render_empty(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
             tmp = Path(raw)

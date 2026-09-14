@@ -169,6 +169,14 @@ def selected_units(
                 'user',
             )
         )
+    if features.get('stripe') or features.get('payments_live'):
+        chosen.append(
+            (
+                'serge-stripe-receiver.service',
+                'serge-stripe-receiver.service',
+                'user',
+            )
+        )
     if features.get('discord'):
         chosen.append(
             (
@@ -205,6 +213,8 @@ def units_to_enable(
         enable.append('serge-public-dashboard.service')
     if features.get('phone_sms'):
         enable.append('serge-sms-receiver.service')
+    if features.get('stripe') or features.get('payments_live'):
+        enable.append('serge-stripe-receiver.service')
     if features.get('discord'):
         enable.append('serge-discord-bot.service')
     if features.get('phone_voice'):

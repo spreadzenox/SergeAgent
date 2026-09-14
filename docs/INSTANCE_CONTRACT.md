@@ -27,7 +27,7 @@ de couple existent dans le kit :
 - [`scripts/serge-instance-wizard.py`](../scripts/serge-instance-wizard.py)
   — TOML + sidecar ; `--also-mandate` enchaîne le wizard mandat
 
-Le builder existe : [`kit/builder/`](../kit/builder/) (package : guards, seed, secrets, install, telephony, build),
+Le builder existe : [`kit/builder/`](../kit/builder/) (package : guards, seed, secrets, install, telephony, webhooks, build),
 [`bin/serge-builder`](../bin/serge-builder). Il archive un SHA, pose un
 canon vide, injecte les secrets en 0600, écrit les units paramétrés.
 Le builder **active** les units des features on (`systemctl --user
@@ -144,7 +144,7 @@ Champs obligatoires :
 ```toml
 [identity]
 hostname = "serge-vps"
-public_hostname = ""            # obligatoire si phone_sms on
+public_hostname = ""            # obligatoire si phone_sms ou stripe on
 phone_sms_number = ""           # E.164, obligatoire si phone_sms on
 phone_voice_number = ""         # E.164 NPV, obligatoire si phone_voice on
 
@@ -210,6 +210,8 @@ Contraintes téléphonie (refusées au load, au wizard et au builder) :
   `sip_username`.
 - `phone_sms` ⇒ `ingress` + `public_hostname` non vide (webhook
   `sms.<domaine>` → receiver loopback).
+- `stripe` / `payments_live` ⇒ `ingress` + `public_hostname` non vide
+  (webhook `https://<domaine>/hooks/stripe` → receiver loopback `:8788`).
 - Numéros E.164 quand la feature est on.
 
 `[llm]` est toujours on : une instance sans provider LLM n’est pas un Serge
@@ -230,6 +232,13 @@ ingress `sms.<domaine>`. Le mandat `sandbox` coupe la voix sortante.
 Détail : [`PHONE_OPTIONS.md`](PHONE_OPTIONS.md),
 [`PHONE_SMS_ONLY.md`](PHONE_SMS_ONLY.md),
 [`PHONE_VOICE_SMS.md`](PHONE_VOICE_SMS.md).
+
+Stripe : `stripe` exige `stripe_test_key` + `stripe_webhook_test_key` ;
+`payments_live` exige les clés live + `whsec` live. Le wizard affiche
+l’URL d’endpoint **après** le choix du domaine, **avant** la saisie des
+`whsec`. Le builder écrit `serge-stripe-receiver` et sème
+`https://<domaine>/hooks/stripe` (même hôte que le MC, pas un
+sous-domaine). Détail : [`STRIPE.md`](STRIPE.md).
 
 ## `serge.secrets.age`
 

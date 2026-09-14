@@ -35,6 +35,10 @@ from kit.openrouter import (  # noqa: E402
     format_model_line,
     search_models,
 )
+from serge.collect.webhook import (  # noqa: E402
+    installer_hint,
+    public_webhook_url,
+)
 
 HELP_WORDS = frozenset({'?', 'aide', 'help', 'h'})
 
@@ -253,6 +257,11 @@ def ask_interactive() -> dict[str, Any]:
     if features['phone_sms'] and not features['ingress']:
         print('phone_sms exige ingress (webhook HTTPS).')
         features['ingress'] = True
+    if (features['stripe'] or features['payments_live']) and not features[
+        'ingress'
+    ]:
+        print('stripe exige ingress (webhook HTTPS).')
+        features['ingress'] = True
     answers['features'] = features
     if features['ingress']:
         listen = _prompt_guided(
@@ -264,13 +273,21 @@ def ask_interactive() -> dict[str, Any]:
         answers['ingress']['listen'] = (
             listen if listen in {'loopback', 'privileged'} else 'loopback'
         )
-    if features['phone_sms']:
+    needs_host = (
+        features['phone_sms']
+        or features['ingress']
+        or features['stripe']
+        or features['payments_live']
+        or features['owner_ui']
+    )
+    if needs_host:
         answers['identity']['public_hostname'] = _prompt_guided(
-            'Domaine public (webhook sms.<domaine>)',
+            'Domaine public (MC, sms.<domaine>, webhook Stripe)',
             answers['identity']['public_hostname'],
             guide,
-            'phone',
+            'features',
         )
+    if features['phone_sms']:
         answers['identity']['phone_sms_number'] = _prompt_guided(
             'Numéro SIM SMS (E.164, ex. +33612345678)',
             answers['identity']['phone_sms_number'],
@@ -351,6 +368,13 @@ def ask_interactive() -> dict[str, Any]:
                     'mailbox',
                 )
     print()
+    if features.get('stripe') or features.get('payments_live'):
+        print(
+            installer_hint(
+                str(answers['identity'].get('public_hostname') or '')
+            )
+        )
+        print()
     print('=== Étape 3/3 : secrets (non affichés, jamais dans le TOML) ===')
     print('Clé OpenRouter déjà saisie à l’étape 1 — non redemandée.')
     collected: dict[str, str] = {'openrouter_api_key': openrouter_key}
@@ -362,6 +386,12 @@ def ask_interactive() -> dict[str, Any]:
         optional = name == 'openai_api_key' and features.get('voice')
         suffix = ' (optionnel si xAI déjà fourni)' if optional else ''
         generated = ''
+        if name in {
+            'stripe_webhook_test_key',
+            'stripe_webhook_live_key',
+        }:
+            host = str(answers['identity'].get('public_hostname') or '')
+            print(f'URL Stripe à coller : {public_webhook_url(host)}')
         if name == 'sms_gateway_token':
             suffix = ' (vide = générer)'
         if name in multiline:

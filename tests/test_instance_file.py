@@ -154,11 +154,25 @@ class InstanceFileTests(unittest.TestCase):
     def test_stripe_on_without_keys_refuses(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
             tmp = Path(raw)
-            toml_path = self._write_pair(tmp, stripe=True)
+            toml_path = self._write_pair(
+                tmp,
+                stripe=True,
+                ingress=True,
+                identity_extra='public_hostname = "pay.example.net"\n',
+            )
             os.environ['SERGE_INSTANCE_FILE'] = str(toml_path)
             with self.assertRaises(InstanceError) as ctx:
                 require_instance()
         self.assertIn('stripe_test_key', str(ctx.exception))
+
+    def test_stripe_without_hostname_refuses(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            tmp = Path(raw)
+            toml_path = self._write_pair(tmp, stripe=True, ingress=True)
+            os.environ['SERGE_INSTANCE_FILE'] = str(toml_path)
+            with self.assertRaises(InstanceError) as ctx:
+                require_instance()
+        self.assertIn('public_hostname', str(ctx.exception))
 
     def test_discord_on_without_ids_refuses(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
@@ -216,10 +230,18 @@ class InstanceFileTests(unittest.TestCase):
             'openrouter_api_key=test-openrouter\n'
             'stripe_test_key=sk_test_dummy\n'
             'stripe_webhook_test_key=whsec_dummy\n'
+            'cloudflare_infra_key=cf-infra\n'
+            'cloudflare_registrar_key=cf-reg\n'
         )
         with tempfile.TemporaryDirectory() as raw:
             tmp = Path(raw)
-            toml_path = self._write_pair(tmp, secrets=secrets, stripe=True)
+            toml_path = self._write_pair(
+                tmp,
+                secrets=secrets,
+                stripe=True,
+                ingress=True,
+                identity_extra='public_hostname = "pay.example.net"\n',
+            )
             os.environ['SERGE_INSTANCE_FILE'] = str(toml_path)
             loaded = require_instance()
         self.assertTrue(loaded['features']['stripe'])

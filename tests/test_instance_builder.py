@@ -51,6 +51,9 @@ def _answers(base: Path, **feature_overrides):
     answers['features'] = empty_features()
     answers['features'].update(feature_overrides)
     answers['secrets'] = {'openrouter_api_key': 'test-openrouter'}
+    if feature_overrides.get('ingress'):
+        answers['secrets']['cloudflare_infra_key'] = 'cf-infra'
+        answers['secrets']['cloudflare_registrar_key'] = 'cf-reg'
     if feature_overrides.get('stripe'):
         answers['secrets']['stripe_test_key'] = 'sk_test_dummy'
         answers['secrets']['stripe_webhook_test_key'] = 'whsec_dummy'
@@ -196,7 +199,9 @@ class InstanceBuilderTests(unittest.TestCase):
             sha = _seed_repo(source)
             couple = tmp / 'couple'
             write_couple(
-                _answers(tmp, stripe=True), couple, allow_plaintext=True
+                _answers(tmp, stripe=True, ingress=True),
+                couple,
+                allow_plaintext=True,
             )
             mandate = _write_mandate(tmp / 'mandate.yaml')
             receipt = build_instance(
@@ -234,6 +239,18 @@ class InstanceBuilderTests(unittest.TestCase):
             self.assertNotIn('/home/serge', str(secret))
             stripe = secret.parent / 'stripe-test.key'
             self.assertTrue(stripe.is_file())
+            self.assertTrue(
+                (secret.parent / 'stripe-webhook-test.key').is_file()
+            )
+            self.assertEqual(
+                receipt['stripe_route'],
+                'https://serge.example.net/hooks/stripe',
+            )
+            inventory = json.loads(
+                (dest / 'state/web-ingress/inventory.json').read_text()
+            )
+            paths = [route.get('path') for route in inventory['routes']]
+            self.assertIn('/hooks/stripe', paths)
             pipeline = tmp / 'home/.config/systemd/user/serge-pipeline.service'
             text = pipeline.read_text(encoding='utf-8')
             self.assertIn('SERGE_INSTANCE_FILE=', text)

@@ -77,6 +77,8 @@ def _build(args: argparse.Namespace, instance: Path, mandate: Path) -> dict:
     )
     if receipt.get('sms_route'):
         print(f'route SMS: {receipt["sms_route"]}')
+    if receipt.get('stripe_route'):
+        print(f'webhook Stripe: {receipt["stripe_route"]}')
     if receipt.get('llm_slots'):
         print(f'modèles  : {receipt["llm_slots"]}')
     print()
