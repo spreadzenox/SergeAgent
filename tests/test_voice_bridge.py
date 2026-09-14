@@ -87,6 +87,55 @@ class VoiceBridgeTests(unittest.TestCase):
         self.assertFalse(status['asterisk_binary'])
         self.assertFalse(status['registered'])
 
+    def test_originate_dials_local_serge_dial_not_trunk(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            tmp = Path(raw)
+            toml = tmp / 'serge.instance.toml'
+            toml.write_text(
+                'schema_version = 1\ninstance_id = "t"\nmode = "live"\n'
+                '[paths]\nhome = "/tmp/x"\nsystem_root = "/tmp/x"\n'
+                'policy = "/tmp/x/m.yaml"\n'
+                '[features]\nphone_voice = true\n'
+                '[identity]\nphone_voice_number = "+33162000001"\n',
+                encoding='utf-8',
+            )
+            os.environ['SERGE_INSTANCE_FILE'] = str(toml)
+            os.environ['SERGE_SYSTEM_ROOT'] = str(tmp)
+            ledger = mock.Mock()
+            ledger.request_call.return_value = {
+                'decision': 'allowed',
+                'reason': 'allowed',
+                'cdr_id': 'cdr_test',
+                'request_id': 'req_cli_1',
+                'duplicate': False,
+            }
+            seen: list[tuple[str, ...]] = []
+
+            def fake_cli(*command: str, timeout: float = 10.0):
+                seen.append(command)
+                return 0, 'ok'
+
+            with (
+                mock.patch.object(
+                    voice_bridge, 'resolve_policy', return_value=mock.Mock()
+                ),
+                mock.patch.object(
+                    voice_bridge,
+                    'trunk_status',
+                    return_value={'registered': True},
+                ),
+                mock.patch.object(voice_bridge, 'asterisk_cli', fake_cli),
+            ):
+                result = voice_bridge.originate(
+                    request_id='req_cli_1',
+                    to_e164='+33612345678',
+                    purpose='test',
+                    ledger=ledger,
+                )
+        self.assertTrue(result.get('originated'))
+        self.assertEqual(seen[0][1], 'Local/+33612345678@serge-dial')
+        self.assertNotIn('PJSIP/+33612345678@trunk', seen[0])
+
 
 if __name__ == '__main__':
     unittest.main()

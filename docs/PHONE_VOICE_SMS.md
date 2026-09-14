@@ -154,8 +154,10 @@ sert un certificat wildcard : `verify_server=no` +
 impose SRTP (`media_encryption=sdes`), sinon **488 SRTP
 required**. RTP
 `10000-10100/udp` à ouvrir en entrée (restreindre aux IP du trunk
-si possible). Le CLI est verrouillé au NPV dans le dialplan,
-l'enregistrement systématique (`state/voice/records/`).
+si possible). Le CLI est posé **avant** l’INVITE (`Local/…@serge-dial`
++ `callerid` / `send_pai` / `P-Asserted-Identity` = DID du couple).
+Sans PAI, Zadarma présente son numéro par défaut (souvent UK).
+L'enregistrement systématique (`state/voice/records/`).
 
 Tester sans Serge d'abord : softphone (Linphone, sur le VPS)
 enregistré comme `serge-agent` (même secret que le trunk, loopback
@@ -243,7 +245,7 @@ que les logs, le broker et le dialplan sachent qui est qui.
 | --- | --- | --- |
 | Registration trunk perdue | Bind loopback, mot de passe, IP allowlistée, wildcard TLS | `pjsip show registrations` ; le transport trunk doit être `0.0.0.0`, pas `127.0.0.1`. Fallback UDP temporaire pour isoler TLS. |
 | Audio un seul sens | NAT/RTP, ports 10000+ fermés | `rtp.conf` + firewall, `external_media_address` / `external_signaling_address` sur le VPS. |
-| CLI affiché ≠ NPV | Trunk qui réécrit ou refuse la présentation | Support fournisseur + vérifier la délégation du numéro. Ne pas « essayer » d'autres CLI. |
+| CLI affiché ≠ DID (ex. numéro UK Zadarma) | INVITE sans PAI / originate direct trunk | `Local/…@serge-dial` + PAI = DID du couple. Vérifier le 09/NPV rattaché au SIP chez Zadarma. |
 | Agent muet puis timeout | Realtime/STT lent ou clé HS | Tester la feature `voice` hors appel, timeouts + message de repli. |
 | Correspondants « je n'ai rien compris » | TTS trop rapide / pas de tour de parole | Ralentir, phrases courtes, barge-in, proposer le DTMF. |
 | Facture anormale | Boucle de composition / retry agressif | Plafonds, backoff, alerte €/jour. Couper le trunk avant de debugger. |
