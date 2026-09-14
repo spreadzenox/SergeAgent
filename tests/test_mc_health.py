@@ -78,12 +78,12 @@ class McHealthTests(McBrowserCase):
         from playwright.sync_api import expect
 
         page = self._page_health()
-        expect(page.locator('#health-loc')).to_contain_text('LOC total')
+        expect(page.locator('#health-loc')).to_contain_text('lignes dans kit')
         expect(page.locator('#health-requested')).to_contain_text(
-            'requested en attente : 1'
+            'en attente : 1'
         )
         expect(page.locator('[data-section="units_systemd"]')).to_contain_text(
-            'serge-pipeline.service'
+            'Ordonnanceur'
         )
         expect(page.locator('#health-versions')).to_contain_text(
             'Mission Control : v1'

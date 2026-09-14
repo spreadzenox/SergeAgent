@@ -11,18 +11,6 @@ const COMMANDES_FIXES = [
   {id: 'nav-voice', titre: 'Aller à Voix', type: 'page', hash: '#/voice'},
   {id: 'nav-health', titre: 'Aller à Health', type: 'page', hash: '#/health'},
   {
-    id: 'act-kill-voice',
-    titre: 'Action : Basculer Kill Switch Voix',
-    type: 'action',
-    run: async () => {
-      location.hash = '#/voice';
-      const btn = document.querySelector('[data-action="toggle-kill-voice"]');
-      if (btn) {
-        btn.click();
-      }
-    },
-  },
-  {
     id: 'act-propose-policy',
     titre: 'Action : Demander un changement Policy',
     type: 'action',

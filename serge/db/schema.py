@@ -158,6 +158,7 @@ CREATE TABLE IF NOT EXISTS subscriptions (
     period TEXT NOT NULL DEFAULT 'monthly',
     status TEXT NOT NULL DEFAULT 'active',
     renews_at TEXT NOT NULL DEFAULT '',
+    last_transaction_id TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS accounts_standing (
     id TEXT PRIMARY KEY, venue TEXT NOT NULL,

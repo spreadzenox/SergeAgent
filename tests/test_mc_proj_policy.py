@@ -13,7 +13,6 @@ sys.path.insert(0, str(ROOT))
 
 from serge.db.boot import init_schema  # noqa: E402
 from serge.mc.proj_policy import (  # noqa: E402
-    project_policy_snapshots,
     project_politique_active,
     project_testing_froid,
     project_trust_candidates,
@@ -35,15 +34,6 @@ class ProjPolicyTests(unittest.TestCase):
         res = project_politique_active(self.conn, self.policy, NOW)
         self.assertIn('policy', res)
         self.assertEqual(res['policy']['schema_version'], 1)
-
-    def test_policy_snapshots(self) -> None:
-        res0 = project_policy_snapshots(self.conn, self.policy, NOW)
-        self.assertEqual(res0['snapshots'], [])
-
-        snapshot_policy(self.conn, self.policy, applied_by='owner')
-        res1 = project_policy_snapshots(self.conn, self.policy, NOW)
-        self.assertEqual(len(res1['snapshots']), 1)
-        self.assertEqual(res1['snapshots'][0]['applied_by'], 'owner')
 
     def test_testing_froid_lock(self) -> None:
         res0 = project_testing_froid(self.conn, self.policy, NOW)

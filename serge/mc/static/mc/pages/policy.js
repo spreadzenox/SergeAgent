@@ -1,10 +1,8 @@
-// Page Policy : règles cadrées, historique, taille des essais, confiance.
+// Page Policy : règles cadrées, taille des essais, confiance.
 import {
-  confirmModal,
   fillList,
   li,
   promptModal,
-  rel,
   toast,
 } from '../components.js';
 import {TYPES_TICKET} from '../libelles.js';
@@ -63,31 +61,6 @@ async function proposerModif() {
       return;
     }
     toast(document.body, `Question Policy ${data.ticket_id} créée.`, 'succes');
-  } catch {
-    toast(document.body, 'Action injoignable.', 'erreur');
-  }
-}
-
-async function rollbackSnap(store, snapId) {
-  const ok = await confirmModal(document.body, {
-    title: `Revenir à la version #${snapId} ?`,
-    message: 'Les règles actuelles seront remplacées par celles de cette version.',
-    confirm: 'Revenir à cette version',
-  });
-  if (!ok) {
-    return;
-  }
-  try {
-    const {ok: resOk, data} = await poster('/owner/api/policy/rollback', {
-      snapshot_id: snapId,
-      decision_id: `mc-${Date.now()}-roll-${snapId}`,
-    });
-    if (!resOk) {
-      toast(document.body, `Refusé : ${data.erreur || 'pas passé'}.`, 'erreur');
-      return;
-    }
-    toast(document.body, `Version #${snapId} remise en place.`, 'succes');
-    await rafraichir(store);
   } catch {
     toast(document.body, 'Action injoignable.', 'erreur');
   }
@@ -189,22 +162,6 @@ function renderTesting(main, payload, sig) {
   main.querySelector('[data-section="testing_froid"]').dataset.sig = sig;
 }
 
-function renderSnapshots(main, payload, sig, store) {
-  const ul = main.querySelector('[data-section="policy_snapshots"] [data-list="snapshots"]');
-  fillList(ul, payload.snapshots || [], 'Aucune version enregistrée.', (snap) => {
-    const qui = snap.applied_by === 'owner' || snap.applied_by === 'owner_init'
-      ? 'toi'
-      : (snap.applied_by || 'Serge');
-    const liEl = li(`Version #${snap.id} · posée par ${qui} · ${rel(snap.active_from)}`);
-    const bRoll = el('button', 'btn-doux', 'Revenir à cette version');
-    bRoll.type = 'button';
-    bRoll.addEventListener('click', () => rollbackSnap(store, snap.id));
-    liEl.append(bRoll);
-    return liEl;
-  });
-  main.querySelector('[data-section="policy_snapshots"]').dataset.sig = sig;
-}
-
 function renderTrust(main, payload, sig) {
   const ul = main.querySelector('[data-section="trust_candidates"] [data-list="candidates"]');
   fillList(ul, payload.candidates || [], 'Aucun type assez régulier pour l’instant.', (cand) => {
@@ -257,7 +214,6 @@ export function mount(main, store) {
   const unsubs = [
     store.subscribe('politique_active', (p, s) => renderPolitiqueActive(main, p, s, store)),
     store.subscribe('testing_froid', (p, s) => renderTesting(main, p, s)),
-    store.subscribe('policy_snapshots', (p, s) => renderSnapshots(main, p, s, store)),
     store.subscribe('trust_candidates', (p, s) => renderTrust(main, p, s)),
   ];
 
@@ -266,8 +222,6 @@ export function mount(main, store) {
       renderPolitiqueActive(main, env.payload, env.sig, store);
     } else if (section === 'testing_froid') {
       renderTesting(main, env.payload, env.sig);
-    } else if (section === 'policy_snapshots') {
-      renderSnapshots(main, env.payload, env.sig, store);
     } else if (section === 'trust_candidates') {
       renderTrust(main, env.payload, env.sig);
     }

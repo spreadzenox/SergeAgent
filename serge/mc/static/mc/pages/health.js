@@ -15,33 +15,39 @@ function tuile(n, libelle) {
 function renderCharte(main, payload, sig) {
   const pLoc = main.querySelector('#health-loc');
   const plusGros = payload.plus_gros_fichier || {};
-  pLoc.textContent = `LOC total (kit + serge) : ${payload.loc_total || 0} lignes | Plus gros fichier : ${plusGros.nom || '—'} (${plusGros.lignes || 0} l.)`;
+  const nomCourt = (plusGros.nom || '').split('/').pop() || '—';
+  pLoc.textContent =
+    `${payload.loc_total || 0} lignes dans kit/ et serge/ (Python). `
+    + `Le plus gros fichier est ${nomCourt} (${plusGros.lignes || 0} lignes, plafond charte 500).`;
   const chips = main.querySelector('[data-tuiles="sante"]');
   if (chips) {
-    const ratio = payload.tokens_par_euro !== null ? String(payload.tokens_par_euro) : '—';
+    const ratio = payload.tokens_par_euro !== null
+      ? String(payload.tokens_par_euro)
+      : '—';
     chips.replaceChildren(
-      tuile(payload.loc_total || 0, 'Lignes de code'),
-      tuile(ratio, 'Jetons / €'),
+      tuile(payload.loc_total || 0, 'Lignes de code (kit + serge)'),
+      tuile(ratio, 'Jetons par euro encaissé'),
       tuile(payload.requested_pending || 0, 'Demandes en attente'),
-      tuile(plusGros.lignes || 0, plusGros.nom || 'Plus gros fichier'),
+      tuile(plusGros.lignes || 0, `Plus gros fichier : ${nomCourt}`),
     );
   }
 
   const pRatio = main.querySelector('#health-ratio-cognitif');
-  const ratioTxt = payload.tokens_par_euro !== null ? `${payload.tokens_par_euro} jetons / €` : 'N/A';
-  pRatio.textContent = `Coût cognitif global (tokens / € de revenu) : ${ratioTxt}`;
+  pRatio.textContent = payload.tokens_par_euro !== null
+    ? `${payload.tokens_par_euro} jetons LLM par euro encaissé.`
+    : 'Pas encore d’euro encaissé : le ratio jetons / € apparaîtra au premier paiement.';
 
   const pReq = main.querySelector('#health-requested');
-  pReq.textContent = `Demandes d’évolution requested en attente : ${payload.requested_pending || 0}`;
+  pReq.textContent = `Demandes d’évolution en attente : ${payload.requested_pending || 0}`;
 
   main.querySelector('[data-section="charte_metriques"]').dataset.sig = sig;
 }
 
 function renderUnits(main, payload, sig) {
   const ul = main.querySelector('[data-section="units_systemd"] [data-list="units"]');
-  fillList(ul, payload.units || [], 'Aucune unit renseignée.', (u) => {
-    const liEl = li(`${u.unit} : ${u.status}`);
-    if (u.status === 'active') {
+  fillList(ul, payload.units || [], 'Aucun service renseigné.', (u) => {
+    const liEl = li(`${u.titre || u.unit} — ${u.libelle || u.status}`);
+    if (u.ok) {
       liEl.style.color = 'var(--vert)';
     } else if (u.status === 'inactive') {
       liEl.style.color = 'var(--texte-doux)';

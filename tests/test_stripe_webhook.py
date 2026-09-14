@@ -128,6 +128,53 @@ class StripeWebhookTests(unittest.TestCase):
         }
         self.assertEqual(apply_event(self.conn, event)['status'], 'ok')
 
+    def test_abonnement_et_facture_liee(self) -> None:
+        event = {
+            'type': 'customer.subscription.updated',
+            'data': {
+                'object': {
+                    'id': 'sub_abc',
+                    'status': 'active',
+                    'current_period_end': 1800000000,
+                    'items': {
+                        'data': [{'price': {'unit_amount': 2900}}],
+                    },
+                }
+            },
+        }
+        out = apply_event(self.conn, event)
+        self.assertEqual(out['status'], 'ok')
+        row = self.conn.execute(
+            'SELECT amount_eur, status FROM subscriptions'
+            " WHERE external_id='sub_abc'"
+        ).fetchone()
+        self.assertEqual(row[0], 29.0)
+        self.assertEqual(row[1], 'active')
+        paid = apply_event(
+            self.conn,
+            {
+                'type': 'invoice.paid',
+                'data': {
+                    'object': {
+                        'id': 'in_1',
+                        'subscription': 'sub_abc',
+                        'payment_intent': 'pi_abo1',
+                        'amount_paid': 2900,
+                    }
+                },
+            },
+        )
+        self.assertEqual(paid['status'], 'ok')
+        tx = self.conn.execute(
+            "SELECT status FROM transactions WHERE intent_id='pi_abo1'"
+        ).fetchone()
+        self.assertEqual(tx[0], 'paid')
+        lien = self.conn.execute(
+            'SELECT last_transaction_id FROM subscriptions'
+            " WHERE external_id='sub_abc'"
+        ).fetchone()[0]
+        self.assertTrue(lien)
+
 
 if __name__ == '__main__':
     unittest.main()

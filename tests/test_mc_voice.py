@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""MC P7 Voix : registre + rendu bridge/CDR/qualité + kill-switch toggle UI."""
+"""MC P7 Voix : registre + rendu pont / journal / qualité."""
 
 from __future__ import annotations
 
@@ -52,7 +52,7 @@ class McVoiceTests(McBrowserCase):
         from playwright.sync_api import expect
 
         expect(page.locator('#voice-bridge-info')).to_contain_text(
-            'Kill Switch Voix', timeout=10000
+            'Pont', timeout=10000
         )
         return page
 
@@ -61,24 +61,8 @@ class McVoiceTests(McBrowserCase):
 
         page = self._page_voice()
         expect(page.locator('[data-section="bridge_statut"]')).to_contain_text(
-            'Kill Switch Voix'
+            'Pont'
         )
         expect(page.locator('[data-section="qualite_voix"]')).to_contain_text(
             '4.5 / 5'
-        )
-
-    def test_toggle_kill_voice_ui(self) -> None:
-        from playwright.sync_api import expect
-
-        page = self._page_voice()
-        page.get_by_role('button', name='Activer Kill Switch Voix').click()
-        modale = page.locator('.modale')
-        expect(modale).to_be_visible()
-        modale.get_by_role('button', name='Activer', exact=True).click()
-
-        expect(page.locator('.toast-succes')).to_contain_text(
-            'Kill Switch Voix : ACTIVÉ.'
-        )
-        expect(page.locator('#voice-bridge-info')).to_contain_text(
-            'ACTIF (appels coupés)'
         )

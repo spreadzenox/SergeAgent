@@ -396,9 +396,10 @@ Page P3 DONE (607 tests verts).
   est à Julien. Runtime = snapshot.
 - `proj_policy.py` :
   - `project_politique_active` : politique runtime en vigueur.
-  - `project_policy_snapshots` : historique 20 derniers snapshots.
   - `project_testing_froid` : état testing et détection de campagnes en cours (lock).
   - `project_trust_candidates` : détection des types candidats (>95% sur >=20 tickets).
+  Pas d’UI « versions précédentes » : le snapshot reste la source runtime,
+  sans rollback jouet.
 - 4 tests unitaires et goldens (621 tests verts).
 
 ## Politique P5 — actions et mutations (lot 9b)
@@ -406,8 +407,6 @@ Page P3 DONE (607 tests verts).
 `policy_actions.py` :
 - `POST /owner/api/policy/edit` (M4) : validation `validate_policy`,
   enregistrement d'un snapshot append-only, événement `mc_act`.
-- `POST /owner/api/policy/rollback` (M5) : récupération du snapshot
-  antérieur et écriture d'un nouveau snapshot (jamais d'écrasement).
 - `POST /owner/api/policy/testing` (M6, E3) : validation `_validate_testing`,
   verrouillage strict à froid (409 si au moins une campagne `RUNNING`),
   fusion dans le snapshot en vigueur + événement `mc_act`.
@@ -425,7 +424,6 @@ Page P3 DONE (607 tests verts).
 - Le bon contrôle : curseur (€, %, comptes), oui/non, jours, plages
   horaires, listes, canaux à cocher.
 - Taille des essais (ex-testing à froid) avec verrou si un essai tourne.
-- Versions précédentes + « Revenir à cette version ».
 - Confiance : types assez réguliers pour proposer l’auto.
 - « Demander un changement » → ticket POLICY (Serge propose, toi tu
   appliques).
@@ -553,7 +551,7 @@ Page P3 DONE (607 tests verts).
   flottante au premier plan.
 - Commandes de navigation vers toutes les 9 pages (`#/live`, `#/system`,
   `#/mind`, `#/tickets`, `#/memory`, `#/policy`, `#/economy`, `#/voice`, `#/health`).
-- Raccourcis d'actions rapides : bascule du Kill Switch Voix, proposition en POLICY.
+- Raccourcis d'actions rapides : proposition en POLICY.
 - Intégration dynamique des tickets en attente depuis le store (`#/tickets`).
 - Navigation clavier intégrale : flèches Haut / Bas pour changer de sélection,
   Entrée pour exécuter, Échap ou clic fond pour fermer.
@@ -585,9 +583,9 @@ les vieilles bases reçoivent encore les colonnes au boot
 
 ## Carte live — coupe-circuits (En direct)
 
-Trois nappes en haut de **En direct** (plus dans le panneau du graphe) :
+Trois nappes sur **En direct** (plus dans le panneau du graphe) :
 
-1. **Serge** — gros bouton rouge. Flag `runtime_flags.name =
+1. **Serge** — seul gros bouton rouge **en haut**. Flag `runtime_flags.name =
    scheduler.heartbeat` (`value=kill`, `expires_at` vide = jamais).
    `next_ready` rend `None` ; le runner n’enqueue plus la consolidation.
    Le timer systemd continue de battre.
@@ -596,7 +594,7 @@ Trois nappes en haut de **En direct** (plus dans le panneau du graphe) :
    reste.
 3. **Tâches (kinds)** — flag `runtime_flags.name = kind.{kind}` (même
    forme). Coupe le kind **toutes étapes confondues** (`email.send` light
-   et lourde).
+   et lourde). Étapes et tâches sont en **bas** de la page En direct.
 
 API unique : `POST /owner/api/coupe` avec `cible ∈ {serge, etape, kind}`,
 `marche` booléen, `id` pour étape/kind.

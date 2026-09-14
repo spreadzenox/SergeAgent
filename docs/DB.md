@@ -57,6 +57,15 @@ Enum fermé, coupe-circuit d’étape par `work_items.etape_id` — plus par
 peut aussi être coupé à part via `runtime_flags.kind.{kind}` ; tout
 Serge via `runtime_flags.scheduler.heartbeat`.
 
+Factures = table `transactions`. Abonnements = table `subscriptions`
+(`external_id` Stripe `sub_…`, `last_transaction_id` → dernière
+facture encaissée). Writer : webhooks `customer.subscription.*` et
+`invoice.paid` (`serge/collect/abonnements.py`).
+
+Journal voix = ledger `state/voice/voice.db` (`calls`) : `outcome`,
+`duration_s`, `recording_path`, `transcript`. 0 s + échec = jamais
+connecté, pas une conversation de zéro minute.
+
 Ordre : pré-prospection → conception PoC → prospection light (smoke)
 → choix de venture → build/rebuild (y compris livraison / onboarding)
 → prospection lourde → collect feedback → **caisse**. Hors épine :

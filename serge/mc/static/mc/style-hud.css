@@ -46,6 +46,7 @@ main {
 }
 
 #page:has(.carte-serge) [data-section='coupes'],
+#page:has(.carte-serge) .rail-coupes-fin,
 #page:has(.carte-serge) [data-section='hero'],
 #page:has(.carte-serge) [data-section='graphe'],
 #page:has(.carte-serge) [data-section='urgents'] {
@@ -131,8 +132,14 @@ main {
   box-shadow: 0 0 0 1px rgb(220 40 40 / 28%), 0 12px 36px rgb(60 0 0 / 35%);
 }
 
+.rail-coupes-fin {
+  background: rgb(16 10 18 / 62%);
+}
+
 .rail-coupes h2,
-.rail-coupes h3 {
+.rail-coupes h3,
+.rail-coupes-fin h2,
+.rail-coupes-fin h3 {
   color: #ff8a80;
   margin: 0 0 0.45rem;
 }
@@ -203,6 +210,17 @@ main {
   background: rgb(40 12 12 / 80%);
   color: #ffcdd2;
   text-decoration: line-through;
+}
+
+.transcript-appel {
+  background: rgb(8 10 18 / 70%);
+  border-left: 3px solid var(--cyan);
+  font-size: 0.85rem;
+  margin: 0.45rem 0 0;
+  max-height: 12rem;
+  overflow: auto;
+  padding: 0.5rem 0.7rem;
+  white-space: pre-wrap;
 }
 
 .rang-kill-kinds .btn-kill {

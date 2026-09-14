@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""MC API mutations politique (M4 édition, M5 rollback, M6 testing, M12 proposition)."""
+"""MC API mutations politique (édition, testing, proposition)."""
 
 from __future__ import annotations
 
@@ -7,11 +7,7 @@ from typing import TYPE_CHECKING, Any, Protocol
 
 from serge.db.store import append_event
 from serge.policy import PolicyError, validate_policy
-from serge.policy_snapshots import (
-    get_snapshot,
-    policy_en_vigueur,
-    snapshot_policy,
-)
+from serge.policy_snapshots import policy_en_vigueur, snapshot_policy
 from serge.registry import load_ticket_types
 from serge.tickets.lifecycle import create_ticket
 
@@ -80,56 +76,6 @@ class PolicyActionsMixin(_Base):
                 },
             )
         self._send_json(200, {'ok': True, 'snapshot': snap})
-
-    def _api_policy_rollback(self) -> None:
-        if not self._require_owner():
-            return
-        body = self._json_body()
-        if body is None:
-            self._refus(
-                400,
-                'Corps JSON requis.',
-                'json',
-                'Envoie {"snapshot_id": 123}.',
-            )
-            return
-        try:
-            snapshot_id = int(body.get('snapshot_id') or 0)
-        except (TypeError, ValueError):
-            snapshot_id = 0
-        if snapshot_id <= 0:
-            self._refus(
-                400,
-                'snapshot_id entier requis.',
-                'snapshot_id',
-                'ID du snapshot à restaurer.',
-            )
-            return
-        decision_id = str(body.get('decision_id') or '')
-
-        with self._db() as conn:
-            cible = get_snapshot(conn, snapshot_id)
-            if not cible:
-                self._refus(
-                    404, 'Snapshot introuvable.', 'snapshot', 'ID inexistant.'
-                )
-                return
-            nouveau_snap = snapshot_policy(
-                conn, cible['content'], applied_by='owner_rollback'
-            )
-            append_event(
-                conn,
-                actor='owner',
-                type='mc_act',
-                payload={
-                    'acte': 'policy_rollback',
-                    'from_snapshot_id': snapshot_id,
-                    'new_snapshot_id': nouveau_snap['id'],
-                    'content_hash': nouveau_snap['content_hash'],
-                    'decision_id': decision_id,
-                },
-            )
-        self._send_json(200, {'ok': True, 'snapshot': nouveau_snap})
 
     def _api_policy_testing(self) -> None:
         if not self._require_owner():
