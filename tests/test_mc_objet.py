@@ -186,7 +186,7 @@ class ProjObjetTests(unittest.TestCase):
         self.assertNotIn('inbound.classify', str(fiche['tableau']))
 
     def test_etape_ecoute(self) -> None:
-        fiche = project_objet(self.conn, 'etape', 'ecoute')
+        fiche = project_objet(self.conn, 'etape', 'pre_prospection')
         self.assertEqual(fiche['type'], 'etape')
         self.assertIn('demande réelle', fiche['pourquoi'])
         titres = [c['titre'] for c in fiche['cadres']]

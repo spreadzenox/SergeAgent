@@ -585,12 +585,13 @@ les vieilles bases reçoivent encore les colonnes au boot
 
 ## Carte live — coupe-circuit par étape
 
-Table `pipeline_steps` (canon) : une ligne par nœud de l’épine
-(`ecoute` … `caisse`), `enabled`, et `kinds_json` (les `work_items.kind`
-de cette étape). Semence au boot ; les kinds se mettent à jour depuis
-le code, **jamais** l’interrupteur. L’ordonnanceur (`next_ready`) ignore
-les kinds des étapes coupées — la tâche reste READY. Un kind hors table
-(`memory.consolidate`) n’est jamais coupé ici.
+Table `pipeline_steps` (canon) : une ligne par sac de vie du projet
+(`pre_prospection` … `caisse`), `enabled`, et `kinds_json` (actions
+typiques, plus le coupe-circuit). Semence au boot ; les kinds se
+mettent à jour depuis le code, **jamais** l’interrupteur. L’ordonnanceur
+ignore les `work_items.etape_id` des sacs coupés — le kind peut être
+partagé (smoke et lourde : `email.send`). `memory.consolidate` vit dans
+`collect_feedback`.
 L’épine Live se dessine depuis cette table (pas depuis une liste JS).
 La fenêtre SQLite liste `sqlite_master` (tables réellement là), pas
 la constante `TABLES`.

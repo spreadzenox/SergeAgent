@@ -11,25 +11,25 @@ from serge.mc.llm_roles import role_de
 
 # Ordre d’exécution réel (pas l’ordre du YAML). Le reste = « à part ».
 ORDRE: dict[str, list[str]] = {
-    'ecoute': ['cluster_demand'],
-    'hypothese': [
-        'draft_hypothesis_smoke',
-        'resume_test',
-        'draft_hypothesis_full',
-    ],
-    'test': [
-        'plan_scale',
-        'options_pivot',
-        'build_artifact',
-        'review_build',
-        'summarize_build_debt',
-    ],
-    'qualif': [
+    'pre_prospection': ['cluster_demand'],
+    'conception_poc': ['draft_hypothesis_smoke'],
+    'prospection_light': [
         'qualify_prospect',
         'fill_slots',
         'score_lead_departage',
     ],
-    'conversation': [
+    'choix_venture': [
+        'resume_test',
+        'draft_hypothesis_full',
+        'options_pivot',
+    ],
+    'build_venture': [
+        'build_artifact',
+        'review_build',
+        'summarize_build_debt',
+    ],
+    'prospection_lourde': [
+        'plan_scale',
         'classify_reply',
         'review_other',
         'extract_meeting',
@@ -40,126 +40,114 @@ ORDRE: dict[str, list[str]] = {
         'voice_script',
         'voice_dialog',
         'score_call',
+        'draft_price',
+        'judge_allocator',
     ],
-    'intent': ['draft_price', 'judge_allocator'],
+    'collect_feedback': ['consolidate', 'edit_serge_md'],
     'caisse': [],
 }
 
 PRECEDENTE = {
-    'ecoute': None,
-    'hypothese': 'ecoute',
-    'test': 'hypothese',
-    'qualif': 'test',
-    'conversation': 'qualif',
-    'intent': 'conversation',
-    'caisse': 'intent',
+    'pre_prospection': None,
+    'conception_poc': 'pre_prospection',
+    'prospection_light': 'conception_poc',
+    'choix_venture': 'prospection_light',
+    'build_venture': 'choix_venture',
+    'prospection_lourde': 'build_venture',
+    'collect_feedback': 'prospection_lourde',
+    'caisse': 'prospection_lourde',
 }
 
 ETAPES: dict[str, dict[str, str]] = {
-    'ecoute': {
-        'titre': 'Écoute',
+    'pre_prospection': {
+        'titre': 'Pré-prospection',
         'pourquoi': (
-            'Serge lit ce que des inconnus ont déjà écrit (forums, flux RSS…).'
+            'Serge lit ce que des inconnus ont déjà écrit (forums, flux…).'
             ' But : sentir une demande réelle, pas inventer une idée.'
         ),
         'dependance': 'Rien avant. C’est le début du pipe.',
         'comment': (
-            'Aujourd’hui : ramasser des pages (surtout des flux), les ranger'
-            ' en base, puis un jugement les met en paquets nommés.'
-            ' Un navigateur (Brave) n’est pas encore un bouton du jugement.'
-            ' Les pages elles-mêmes sont un miroir à part — pas cette étape.'
+            'Ramasser des pages, les ranger, puis une invocation LLM les'
+            ' met en paquets. Le navigateur n’est pas encore un bouton.'
         ),
     },
-    'hypothese': {
-        'titre': 'Idée de business',
+    'conception_poc': {
+        'titre': 'Conception d’un PoC',
         'pourquoi': (
-            'On écrit le pari avant d’agir : quoi vendre, à quel prix,'
-            ' par quel canal, à combien de gens, pendant combien de jours.'
+            'On écrit la pré-venture : produit, specs, prérequis, puis on'
+            ' appelle le builder si un livrable est nécessaire.'
         ),
         'dependance': (
-            'Sans paquets de demandes (étape Écoute), on n’a rien à tester'
-            ' — juste une intuition.'
+            'Sans paquets de demandes (pré-prospection), on n’a qu’une intuition.'
         ),
         'comment': (
-            'D’abord une petite idée à essayer. Après le premier essai,'
-            ' on raconte les vrais chiffres, puis on décide si on agrandit.'
-            ' Toi tu valides souvent ici : une mauvaise idée se propage partout.'
+            'Le PoC (landing, SaaS, livrable) sert ensuite au smoke test :'
+            ' on ne vend plus seulement un concept.'
         ),
     },
-    'test': {
-        'titre': 'Essai',
+    'prospection_light': {
+        'titre': 'Prospection light',
         'pourquoi': (
-            'On parle à un nombre de personnes décidé d’avance, on mesure,'
-            ' on ne change pas les règles en cours de route.'
+            'Smoke test multicanal (N configurable dans Mission Control),'
+            ' avec le PoC s’il existe.'
         ),
-        'dependance': (
-            'Sans idée écrite (offre, prix, canal, N), on ne saurait pas'
-            ' ce qu’on mesure.'
-        ),
+        'dependance': 'Sans pré-venture écrite, on ne saurait pas ce qu’on mesure.',
         'comment': (
-            'Des campagnes partent (e-mail, appel…). Si ça marche : comment'
-            ' grandir. Si ça perd : trois autres idées. Parfois on construit'
-            ' un livrable. Les compteurs sont dans la base, pas dans le modèle.'
+            'Mêmes canaux que la prospection lourde (e-mail, appel). On coupe'
+            ' ce sac, pas le kind : la lourde peut continuer à envoyer.'
         ),
     },
-    'qualif': {
-        'titre': 'Qualification',
-        'pourquoi': 'Ne perdre du temps (et des e-mails) que sur les gens dans la cible.',
-        'dependance': (
-            'Sans essai en cours, « dans la cible » ne veut rien dire :'
-            ' cible de quoi ?'
-        ),
-        'comment': (
-            'Un jugement dit oui/non pour une personne. On remplit les cases'
-            ' encore vides (besoin, ville…). S’il faut départager deux pistes,'
-            ' un autre jugement choisit.'
-        ),
-    },
-    'conversation': {
-        'titre': 'Conversation',
+    'choix_venture': {
+        'titre': 'Choix de venture',
         'pourquoi': (
-            'Répondre, relancer, proposer un créneau, parfois appeler.'
-            ' C’est ici qu’une prise de contact devient un vrai échange.'
+            'Parmi les N pré-ventures et leurs smokes, garder la plus prometteuse.'
         ),
-        'dependance': (
-            'On n’écrit qu’aux gens déjà gardés. Sinon on spam des hors-cible.'
-        ),
+        'dependance': 'Sans résultats de smoke, le choix n’est qu’une préférence.',
         'comment': (
-            'Quelqu’un répond : on classe le message, on extrait un rendez-vous'
-            ' s’il y en a un, on relance ou on répond. L’oral a ses propres'
-            ' jugements (script, réplique, note d’appel).'
+            'Aujourd’hui N=1 actif max. Mission Control pourra ouvrir la porte.'
         ),
     },
-    'intent': {
-        'titre': 'Intention',
+    'build_venture': {
+        'titre': 'Build / rebuild',
         'pourquoi': (
-            'Le signal d’achat : devis, « oui », objection prix, rendez-vous.'
-            ' Sans ça, pas de facture.'
+            'Créer ou améliorer la venture active : livrable, delivery,'
+            ' onboarding client.'
         ),
-        'dependance': (
-            'L’intention naît dans la conversation. On ne l’invente pas'
-            ' à partir d’un silence.'
-        ),
+        'dependance': 'On build à partir de la pré-venture choisie et des retours.',
         'comment': (
-            'On propose un prix dans les bornes. Un autre jugement dit où'
-            ' mettre l’effort (cette piste, ou une autre) — sans signer'
-            ' à ta place.'
+            'Toute la partie building / delivery est ici, y compris après vente.'
         ),
+    },
+    'prospection_lourde': {
+        'titre': 'Prospection lourde',
+        'pourquoi': (
+            'Échanges, démo, jusqu’à la signature d’un devis et un client actif.'
+        ),
+        'dependance': 'Sans venture active et livrable, on vend du vent.',
+        'comment': (
+            'Qualification, conversation, prix : mêmes kinds que le smoke,'
+            ' autre etape_id.'
+        ),
+    },
+    'collect_feedback': {
+        'titre': 'Collect feedback',
+        'pourquoi': (
+            'Mails, transcripts, réseaux, leçons — améliorer le livrable ou Serge.'
+        ),
+        'dependance': 'Sans échanges, rien à consolider.',
+        'comment': 'Work items mémoire et invocations de consolidation.',
     },
     'caisse': {
         'titre': 'Caisse',
         'pourquoi': (
-            'L’euro entre (Stripe, devis payé). C’est le bout du pipe :'
-            ' tout le reste sert ça.'
+            'L’euro entre (Stripe, devis payé). Dunning et relances d’encaissement.'
         ),
         'dependance': (
-            'Sans intention claire, encaisser ce serait vendre du vent'
-            ' ou relancer au hasard.'
+            'Sans client / devis, encaisser ce serait vendre du vent.'
         ),
         'comment': (
-            'Pas un jugement qui « crée l’argent ». Le rail (Stripe) encaisse ;'
-            ' les règles décident si on peut prendre l’argent. Les jugements'
-            ' sont surtout avant (prix, allocation).'
+            'Pas une invocation LLM qui « crée l’argent ». Le rail encaisse ;'
+            ' les règles autorisent ou refusent.'
         ),
     },
 }
@@ -266,7 +254,7 @@ def project_etape(
         if not j['ordre']
     ]
     extra = []
-    if ident == 'ecoute':
+    if ident == 'pre_prospection':
         extra.append(
             {
                 'type': 'ecoute',

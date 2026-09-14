@@ -32,7 +32,7 @@ Catalogue (types, semés) vs occurrences (faits) :
 
 | Catalogue | Occurrences |
 |---|---|
-| `pipeline_steps` | `work_items` (prochain lot : `etape_id`) |
+| `pipeline_steps` | `work_items.etape_id` (coupe-circuit MC) |
 | `llm_points` + `llm_point_tools` | `llm_usage` |
 | invocations techniques (à venir) | `events` / runs |
 | `tools` | appelés seulement par une invocation LLM |
@@ -41,16 +41,18 @@ Autres faits déjà en canon : `ventures`, `campaigns`, `contacts`,
 `tickets`, `artifacts`, `transactions`, `consents`, `lessons`,
 `policy_snapshots`. Voix / SMS : ledgers à part.
 
-## Prochain lot (décidé, pas encore dans le code)
+## Étapes (v8)
 
-Étapes = sacs de vie du projet (enum fermé), coupe-circuit MC par
-`etape_id` du work item — plus par `kind` (le smoke et la prospection
-lourde partagent `email.send`).
+Enum fermé, coupe-circuit par `work_items.etape_id` — plus par `kind`
+(le smoke et la prospection lourde partagent `email.send`).
 
 Ordre : pré-prospection → conception PoC → prospection light (smoke)
 → choix de venture → build/rebuild (y compris livraison / onboarding)
 → prospection lourde → collect feedback → **caisse**. Hors épine :
-mémoire, policy owner.
+policy owner.
 
-Renommage UI/docs : « jugement » → **invocation LLM** (la charte
-garde le mot tant que Julien ne l’amende pas).
+Renommage UI/docs encore partiel : « jugement » → **invocation LLM**
+(la charte garde le mot tant que Julien ne l’amende pas).
+
+Invocations techniques (catalogue déterministe rattaché à une étape) :
+prochain commit.

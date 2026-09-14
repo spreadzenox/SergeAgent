@@ -104,7 +104,7 @@ def project_graphe(
     kinds_run = {str(r[0]) for r in running}
     llm_nodes = []
     for name, spec in points.items():
-        etape = LLM_ETAPE.get(name, 'test')
+        etape = LLM_ETAPE.get(name, 'prospection_light')
         llm_nodes.append(
             {
                 'id': name,
@@ -133,51 +133,63 @@ def project_graphe(
     blocages = []
     if urgents:
         blocages.append(
-            {'noeud': 'conversation', 'verbe': 'attend une décision humaine'}
+            {
+                'noeud': 'prospection_lourde',
+                'verbe': 'attend une décision humaine',
+            }
         )
     if failed:
-        blocages.append({'noeud': 'test', 'verbe': 'une tâche a échoué'})
+        blocages.append(
+            {'noeud': 'prospection_light', 'verbe': 'une tâche a échoué'}
+        )
     if deny:
         blocages.append({'noeud': 'policy', 'verbe': 'un garde-fou a refusé'})
     flux = [
         {
-            'id': 'ecoute-hypo',
-            'de': 'ecoute',
-            'vers': 'hypothese',
+            'id': 'pre-poc',
+            'de': 'pre_prospection',
+            'vers': 'conception_poc',
             'debit': _count(conn, 'SELECT COUNT(*) FROM listen_docs'),
             'libelle': 'docs d’écoute',
         },
         {
-            'id': 'hypo-test',
-            'de': 'hypothese',
-            'vers': 'test',
+            'id': 'poc-light',
+            'de': 'conception_poc',
+            'vers': 'prospection_light',
             'debit': _count(conn, 'SELECT COUNT(*) FROM campaigns'),
             'libelle': 'campagnes',
         },
         {
-            'id': 'test-qualif',
-            'de': 'test',
-            'vers': 'qualif',
+            'id': 'light-choix',
+            'de': 'prospection_light',
+            'vers': 'choix_venture',
             'debit': _count(conn, 'SELECT COUNT(*) FROM contacts'),
             'libelle': 'prospects',
         },
         {
-            'id': 'qualif-conv',
-            'de': 'qualif',
-            'vers': 'conversation',
+            'id': 'choix-build',
+            'de': 'choix_venture',
+            'vers': 'build_venture',
+            'debit': _count(conn, 'SELECT COUNT(*) FROM artifacts'),
+            'libelle': 'livrables',
+        },
+        {
+            'id': 'build-lourde',
+            'de': 'build_venture',
+            'vers': 'prospection_lourde',
             'debit': _count(conn, 'SELECT COUNT(*) FROM touches'),
             'libelle': 'touches',
         },
         {
-            'id': 'conv-intent',
-            'de': 'conversation',
-            'vers': 'intent',
+            'id': 'lourde-feedback',
+            'de': 'prospection_lourde',
+            'vers': 'collect_feedback',
             'debit': _count(conn, 'SELECT COUNT(*) FROM inbound_events'),
             'libelle': 'réponses',
         },
         {
-            'id': 'intent-caisse',
-            'de': 'intent',
+            'id': 'lourde-caisse',
+            'de': 'prospection_lourde',
             'vers': 'caisse',
             'debit': _count(conn, 'SELECT COUNT(*) FROM transactions'),
             'libelle': 'factures',

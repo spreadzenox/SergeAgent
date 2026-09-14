@@ -21,7 +21,7 @@ class McEtapeTests(McServerCase):
         cookie = self._auth_cookie()
         status, _, body = self._api_post(
             '/owner/api/etape',
-            {'id': 'ecoute', 'marche': False, 'decision_id': 'dec-1'},
+            {'id': 'pre_prospection', 'marche': False, 'decision_id': 'dec-1'},
             cookie,
         )
         self.assertEqual(status, 200)
@@ -30,7 +30,7 @@ class McEtapeTests(McServerCase):
         self.assertIn('listen.collect', data['kinds'])
         status, _, body = self._api_post(
             '/owner/api/etape',
-            {'id': 'ecoute', 'marche': True},
+            {'id': 'pre_prospection', 'marche': True},
             cookie,
         )
         self.assertEqual(status, 200)
@@ -56,12 +56,14 @@ class ProjEtapeMarcheTests(unittest.TestCase):
         conn = sqlite3.connect(':memory:')
         conn.row_factory = sqlite3.Row
         init_schema(conn)
-        set_etape_marche(conn, 'conversation', False)
+        set_etape_marche(conn, 'prospection_lourde', False)
         data = project_graphe(conn, {}, '2026-09-12T12:00:00+00:00')
-        conv = next(n for n in data['epine'] if n['id'] == 'conversation')
-        self.assertFalse(conv['marche'])
-        self.assertIn('inbound.classify', conv['kinds'])
-        self.assertTrue(etats_etapes(conn)['ecoute']['marche'])
+        lourde = next(
+            n for n in data['epine'] if n['id'] == 'prospection_lourde'
+        )
+        self.assertFalse(lourde['marche'])
+        self.assertIn('inbound.classify', lourde['kinds'])
+        self.assertTrue(etats_etapes(conn)['pre_prospection']['marche'])
         conn.close()
 
 
