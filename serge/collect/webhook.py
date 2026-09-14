@@ -6,6 +6,7 @@ from __future__ import annotations
 import sqlite3
 from typing import Any
 
+from serge.collect.abonnements import appliquer_event_abo
 from serge.collect.intents import CollectError, mark_paid
 from serge.collect.rails import RailError, parse_stripe_webhook
 
@@ -55,7 +56,8 @@ def installer_hint(public_hostname: str) -> str:
         'Webhook Stripe — Dashboard → Developers → Webhooks\n'
         f'  URL (mode test ET mode live) : {url}\n'
         '  Événements : payment_intent.succeeded, '
-        'checkout.session.completed'
+        'checkout.session.completed, invoice.paid, '
+        'customer.subscription.updated'
     )
 
 
@@ -129,6 +131,9 @@ def apply_event(
         Statut fermé : `ok` / `already` / `ignored` / `unmatched` / `refused`.
     """
     kind = str(event.get('type') or '')
+    abo = appliquer_event_abo(conn, event)
+    if abo is not None:
+        return abo
     if kind not in HANDLED_TYPES:
         return {'status': 'ignored', 'type': kind}
     pi_id = payment_intent_id(event)
