@@ -74,13 +74,21 @@ class S2sTests(unittest.TestCase):
 
     def test_pump_hangup_ferme_la_session(self) -> None:
         import socket
+        import threading
+        import time
 
         fake = mock.Mock()
         fake.ws.sock = mock.Mock()
         fake.poll.return_value = []
         left, right = socket.socketpair()
-        try:
+        right.settimeout(0.3)
+
+        def hang() -> None:
+            time.sleep(0.05)
             right.sendall(encode('uuid', b'x' * 16) + encode('hangup'))
+
+        try:
+            threading.Thread(target=hang, daemon=True).start()
             with mock.patch('serge.voice.s2s.open_session', return_value=fake):
                 pump(left, max_s=1)
             frame = right.recv(4096)

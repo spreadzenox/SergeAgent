@@ -20,13 +20,13 @@ from serge.voice.audiosocket import (
     LISTEN_PORT,
     AudioSocketError,
     decode_one,
-    encode,
 )
 from serge.voice.pcm import (
     downsample_24k_to_8k,
     is_speech,
     upsample_8k_to_24k,
 )
+from serge.voice.phoneout import PhoneOut
 from serge.voice.providers import SYSTEM_PROMPT, secrets
 from serge.voice.realtime import DEFAULT_MODELS, RealtimeCall, RealtimeError
 
@@ -34,10 +34,8 @@ Provider = Literal['xai', 'openai']
 PROVIDER_ORDER: tuple[Provider, ...] = ('xai', 'openai')
 POLL_S = 0.05
 MAX_CALL_S = 180.0
-KEEPALIVE_S = 0.4
-MIC_OPEN_S = 4.0
+MIC_OPEN_S = 6.0
 OPENING = 'Dis bonjour en une phrase, puis écoute.'
-SILENCE_FRAME = encode('audio', b'\x00' * 320)
 
 
 def open_session(keys: dict[str, str]) -> RealtimeCall:
@@ -80,36 +78,15 @@ def _pull_ast(sock: socket.socket, buf: bytearray) -> list[tuple[str, bytes]]:
     return out
 
 
-def _push_phone(
-    sock: socket.socket,
-    leftover: bytes,
-    b64: str,
-    lock: threading.Lock,
-) -> bytes:
+def _queue_phone(out: PhoneOut, leftover: bytes, b64: str) -> bytes:
     try:
         pcm24 = leftover + base64.b64decode(b64)
     except ValueError:
         return leftover
     keep = len(pcm24) % 6
     ready, rest = pcm24[: len(pcm24) - keep], pcm24[len(pcm24) - keep :]
-    slin = downsample_24k_to_8k(ready)
-    if slin:
-        with lock:
-            for offset in range(0, len(slin), 320):
-                sock.sendall(encode('audio', slin[offset : offset + 320]))
+    out.push(downsample_24k_to_8k(ready))
     return rest
-
-
-def _hold(
-    sock: socket.socket, lock: threading.Lock, stop: threading.Event
-) -> None:
-    """Silence 20 ms toutes les 0,4 s (Asterisk coupe à 2 s sans PCM)."""
-    while not stop.wait(KEEPALIVE_S):
-        try:
-            with lock:
-                sock.sendall(SILENCE_FRAME)
-        except OSError:
-            return
 
 
 def pump(ast: socket.socket, max_s: float = MAX_CALL_S) -> None:
@@ -124,11 +101,7 @@ def pump(ast: socket.socket, max_s: float = MAX_CALL_S) -> None:
         AudioSocketError: TLV invalide.
     """
     ast.settimeout(POLL_S)
-    lock = threading.Lock()
-    stop = threading.Event()
-    with lock:
-        ast.sendall(SILENCE_FRAME)
-    threading.Thread(target=_hold, args=(ast, lock, stop), daemon=True).start()
+    out = PhoneOut(ast)
     call = None
     leftover = b''
     buf = bytearray()
@@ -140,12 +113,12 @@ def pump(ast: socket.socket, max_s: float = MAX_CALL_S) -> None:
         )
         call.inject_text(OPENING)
         opened = time.monotonic()
-        mic_on = False
+        greeting_done = False
         chunks = 0
         deadline = opened + max_s
         while time.monotonic() < deadline:
-            if not mic_on and time.monotonic() - opened >= MIC_OPEN_S:
-                mic_on = True
+            aged = time.monotonic() - opened >= MIC_OPEN_S
+            mic_on = (greeting_done or aged) and out.queued < 640
             ready, _, _ = select.select([ast], [], [], POLL_S)
             if ast in ready:
                 for kind, payload in _pull_ast(ast, buf):
@@ -171,12 +144,12 @@ def pump(ast: socket.socket, max_s: float = MAX_CALL_S) -> None:
                 raise
             for kind, value in actions:
                 if kind == 'done':
-                    mic_on = True
+                    greeting_done = True
                 if kind == 'audio' and value:
-                    leftover = _push_phone(ast, leftover, str(value), lock)
+                    leftover = _queue_phone(out, leftover, str(value))
                     chunks += 1
     finally:
-        stop.set()
+        out.close()
         if call is not None:
             call.close()
         ast.close()

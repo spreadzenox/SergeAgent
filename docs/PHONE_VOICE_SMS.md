@@ -175,7 +175,7 @@ primaire `grok-voice-think-fast-2.0`, OpenAI Realtime rollback
 appel → Asterisk → AudioSocket 127.0.0.1:8792
   (entrant : canal PJSIP ; sortant : U() sur le trunk, pas Local)
   → voice-bridge / s2s.py → xAI Realtime (sinon OpenAI)
-  → PCM 8 kHz ↔ 24 kHz
+  → PCM 8 kHz ↔ 24 kHz, lecture 20 ms (pas de rafale)
 si socket/session HS → AGI turn.py (Record 6 s → Whisper →
   OpenRouter → TTS, 4 tours) → menu DTMF « 1 = rappel » → répondeur
 ```
