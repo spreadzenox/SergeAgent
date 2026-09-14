@@ -30,6 +30,16 @@ Liste vivante. Julien enrichit au fil des reviews. Pas un changelog.
 
 - [ ] **Invocation LLM prospection avec compte.** Un canal parmi LinkedIn / Reddit / forum / WhatsApp / Google Ads. Formats de sortie typés + digestion en base (contacts, touches, pas du texte libre).
 
+### Ponts entre étapes (manuel d’abord, auto ensuite)
+
+Un seul mécanisme pour tous les passages (écoute → contacts, contacts → séquence, essai → scale, etc.). Pas un pont bricolé par étape.
+
+- [ ] **Bouton MC « passer à la suite ».** L’opérateur déclenche à la main le pont : l’étape N a produit des résultats, on les verse dans l’étape N+1. C’est le mode par défaut. Rien ne s’enchaîne tout seul tant que personne n’a pressé.
+
+- [ ] **Kill switch « passage automatique ».** OFF = manuel seulement. ON = un tick runner régulier écoute si l’étape précédente a de **nouveaux** résultats et déclenche le même pont que le bouton, tout seul. Le bouton manuel reste toujours là (force un passage tout de suite). Coupe-circuit : si l’étape cible ou le kind est déjà coupé, le tick ne passe pas.
+
+- [ ] **Tick runner des ponts.** Un kind dédié (pas un cron hors catalogue). Idempotent : un résultat déjà versé n’est pas rejoué. Visible dans En direct comme les autres kinds.
+
 ### Déjà ouvert, pas encore recouvert par la machine ci-dessus
 
 - [ ] **Outils que le jugement peut vraiment presser (hors web).** Chercher dans la mémoire (`memory_search` existe, pas enchaîné aux jugements). Demander une nouvelle capacité plutôt qu’inventer (`demande_capacite` encore `prevu`).
