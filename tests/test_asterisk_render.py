@@ -56,6 +56,13 @@ class AsteriskRenderTests(unittest.TestCase):
         )
         extensions = rendered['extensions.conf'][0]
         self.assertIn('Set(CALLERID(num)=+33162000001)', extensions)
+        self.assertIn('[serge-dial]', extensions)
+        self.assertIn('[serge-pai]', extensions)
+        self.assertIn(
+            'P-Asserted-Identity)=<sip:+33162000001@sip.example.com>',
+            extensions,
+        )
+        self.assertIn('b(serge-pai^add^1)', extensions)
         self.assertIn('serge-campaign', extensions)
         self.assertIn('AGI(turn.py,', extensions)
         self.assertNotIn('serge_voice_turn.py', extensions)
@@ -66,6 +73,10 @@ class AsteriskRenderTests(unittest.TestCase):
         self.assertIn('allow_wildcard_certs = yes', pjsip)
         self.assertIn('type = identify', pjsip)
         self.assertIn('media_encryption = sdes', pjsip)
+        self.assertIn('callerid = +33162000001', pjsip)
+        self.assertIn('from_domain = sip.example.com', pjsip)
+        self.assertIn('send_pai = yes', pjsip)
+        self.assertIn('qualify_frequency = 0', pjsip)
         self.assertNotIn('bind = 127.0.0.1', pjsip)
 
     def test_udp_trunk_uses_5060_without_tls_knobs(self) -> None:

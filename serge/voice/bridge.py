@@ -138,7 +138,7 @@ def originate(
         }
     code, output = asterisk_cli(
         'channel originate',
-        f'PJSIP/{to_e164}@trunk',
+        f'Local/{to_e164}@serge-dial',
         'extension',
         f'{to_e164}@serge-campaign',
     )
