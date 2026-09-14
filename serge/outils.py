@@ -8,6 +8,22 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+KINDS_OUTIL = frozenset({'deterministe', 'web', 'agent'})
+
+
+def outil_peut_invoquer(appelant_kind: str, cible_kind: str) -> bool:
+    """Seul un non-agent (invocation LLM) enchaîne un tool agent.
+
+    Args:
+        appelant_kind: Kind de l’appelant (tool ou ``llm``).
+        cible_kind: Kind du tool cible.
+
+    Returns:
+        False si un agent appellerait un autre agent.
+    """
+    return not (appelant_kind == 'agent' and cible_kind == 'agent')
+
+
 # id, kind, path, sha, titre, doc, etat, montre_partout
 # SHA figé : un fichier changé sans maj ici = test rouge.
 SEED: tuple[tuple[str, str, str, str, str, str, str, int], ...] = (

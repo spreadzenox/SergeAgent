@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import sqlite3
 
-SCHEMA_VERSION = 8
+SCHEMA_VERSION = 9
 
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS schema_version (
@@ -270,6 +270,7 @@ TABLES = (
     'tools',
     'llm_points',
     'llm_point_tools',
+    'tech_invocations',
 )
 
 
@@ -296,9 +297,11 @@ def init_schema(connection: sqlite3.Connection) -> None:
     from serge.etapes import ensure_pipeline_steps
     from serge.llm_registre import ensure_llm_points
     from serge.outils import ensure_tools
+    from serge.tech_registre import ensure_tech_invocations
 
     apply_pending(connection)
     ensure_account_columns(connection)
     ensure_pipeline_steps(connection)
     ensure_tools(connection)
     ensure_llm_points(connection)
+    ensure_tech_invocations(connection)

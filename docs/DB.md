@@ -34,7 +34,7 @@ Catalogue (types, semés) vs occurrences (faits) :
 |---|---|
 | `pipeline_steps` | `work_items.etape_id` (coupe-circuit MC) |
 | `llm_points` + `llm_point_tools` | `llm_usage` |
-| invocations techniques (à venir) | `events` / runs |
+| `tech_invocations` | `events` / runs (pas encore de ledger dédié) |
 | `tools` | appelés seulement par une invocation LLM |
 
 Autres faits déjà en canon : `ventures`, `campaigns`, `contacts`,
@@ -54,5 +54,8 @@ policy owner.
 Renommage UI/docs encore partiel : « jugement » → **invocation LLM**
 (la charte garde le mot tant que Julien ne l’amende pas).
 
-Invocations techniques (catalogue déterministe rattaché à une étape) :
-prochain commit.
+Invocations techniques : table `tech_invocations` (kinds fermés
+`cluster` / `select` / `score` / `transform` / `index`). Une étape
+en a n ; seule une **invocation LLM** peut appeler des tools. Un tool
+`kind=agent` ne peut pas en appeler un autre (garde-fou à brancher
+sur le runtime).

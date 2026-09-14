@@ -74,8 +74,8 @@ class MigrateTests(unittest.TestCase):
         with self.assertRaises(MigrateError) as ctx:
             apply_pending(
                 conn,
-                migrations=((8, _noop), (10, _noop)),
-                head=10,
+                migrations=((9, _noop), (11, _noop)),
+                head=11,
             )
         self.assertIn('trou', str(ctx.exception))
 
