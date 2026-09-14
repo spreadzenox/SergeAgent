@@ -243,6 +243,9 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def serve(listen: str = DEFAULT_LISTEN) -> int:
+    from serge.voice.s2s import start_audiosocket_thread
+
+    start_audiosocket_thread()
     host, _, port_raw = listen.rpartition(':')
     server = ThreadingHTTPServer(
         (host or '127.0.0.1', int(port_raw or '8791')),

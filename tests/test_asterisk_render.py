@@ -64,7 +64,19 @@ class AsteriskRenderTests(unittest.TestCase):
         )
         self.assertIn('b(serge-pai^add^1)', extensions)
         self.assertIn('serge-campaign', extensions)
+        self.assertIn(
+            'AudioSocket(aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee,127.0.0.1:8792)',
+            extensions,
+        )
         self.assertIn('AGI(turn.py,', extensions)
+        self.assertGreater(
+            extensions.index('AudioSocket('),
+            extensions.index('Answer()'),
+        )
+        self.assertGreater(
+            extensions.index('AGI(turn.py,'),
+            extensions.index('AudioSocket('),
+        )
         self.assertNotIn('serge_voice_turn.py', extensions)
         pjsip = rendered['pjsip.conf'][0]
         self.assertIn('bind = 0.0.0.0:5061', pjsip)
