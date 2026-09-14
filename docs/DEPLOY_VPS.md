@@ -25,7 +25,10 @@ Racine `system_root` **vide** →
 (pipeline, MC, Discord, SMS, Stripe, voix, Asterisk). Si
 `ingress.listen = privileged` (ports 80/443), Caddy est une unit
 **system** : le job fait `sudo -n cp` vers `/etc/systemd/system` puis
-`sudo systemctl enable --now`. Pas de denylist.
+`sudo systemctl enable --now`. Pas de denylist. La unit reste
+sandboxée (`ProtectHome=read-only`) mais doit pouvoir écrire le
+stockage ACME (`~/.local/share/caddy`, `~/.config/caddy`) : sinon
+HTTPS écoute sans certificat et le navigateur reçoit une alerte TLS.
 
 Racine **déjà peuplée** → `kit/update.py` (git archive par-dessus,
 `state/` / `queue/` / `logs/` / `reports/` / `evidence/` intacts, canon
