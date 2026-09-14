@@ -105,11 +105,18 @@ class SergeDeployTests(unittest.TestCase):
 
             def runner(argv, **_kwargs):
                 seen.append(list(argv))
-                if argv[:3] == ['systemctl', '--user', 'is-active']:
+                if argv[:3] == ['systemctl', '--user', 'show']:
                     name = argv[-1]
-                    code = 0 if name == 'serge-pipeline.timer' else 3
+                    state = (
+                        'active'
+                        if name == 'serge-pipeline.timer'
+                        else 'inactive'
+                    )
                     return subprocess.CompletedProcess(
-                        args=argv, returncode=code, stdout='', stderr=''
+                        args=argv,
+                        returncode=0,
+                        stdout=f'{state}\n',
+                        stderr='',
                     )
                 return _ok()
 
@@ -137,6 +144,66 @@ class SergeDeployTests(unittest.TestCase):
             )
             self.assertFalse(
                 any('serge-install.py' in ' '.join(cmd) for cmd in seen)
+            )
+
+    def test_existing_root_restarts_failed_units(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            tmp = Path(raw)
+            dest = tmp / 'dest'
+            dest.mkdir()
+            (dest / 'state').mkdir()
+            home = tmp / 'home'
+            instance = tmp / 'serge.instance.toml'
+            instance.write_text(_toml(home, dest), encoding='utf-8')
+            mandate = tmp / 'mandate.yaml'
+            mandate.write_text('schema_version: 1\n', encoding='utf-8')
+            seen: list[list[str]] = []
+
+            def runner(argv, **_kwargs):
+                seen.append(list(argv))
+                if argv[:3] == ['systemctl', '--user', 'show']:
+                    name = argv[-1]
+                    state = (
+                        'failed'
+                        if name == 'serge-pipeline.timer'
+                        else 'inactive'
+                    )
+                    return subprocess.CompletedProcess(
+                        args=argv,
+                        returncode=0,
+                        stdout=f'{state}\n',
+                        stderr='',
+                    )
+                return _ok()
+
+            with mock.patch(
+                'kit.deploy.update_instance',
+                return_value={
+                    'status': 'updated',
+                    'instance_id': 'alice-laptop',
+                    'system_root': str(dest),
+                    'canon_recreated': False,
+                },
+            ):
+                receipt = deploy_instance(
+                    instance_file=instance,
+                    mandate=mandate,
+                    source_repo=ROOT,
+                    git_sha='HEAD',
+                    kit_root=ROOT,
+                    runner=runner,
+                )
+            self.assertEqual(
+                receipt['units_restarted'], ['serge-pipeline.timer']
+            )
+            self.assertIn(
+                [
+                    'systemctl',
+                    '--user',
+                    'reset-failed',
+                    'serge-pipeline.timer',
+                ],
+                seen,
             )
 
     def test_privileged_install_enables_system_caddy(self) -> None:

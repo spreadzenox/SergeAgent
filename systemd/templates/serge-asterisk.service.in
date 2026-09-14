@@ -14,7 +14,7 @@ Environment=SERGE_HOME=__HOME__
 Environment=SERGE_SYSTEM_ROOT=__SYSTEM_ROOT__
 Environment=SERGE_MANDATE_PATH=__POLICY__
 Environment=SERGE_POLICY_PATH=__POLICY__
-ExecStartPre=/bin/mkdir -p /run/user/__UID__/serge-asterisk __SYSTEM_ROOT__/logs/asterisk __CONFIG_ROOT__/asterisk/var/lib/keys
+ExecStartPre=/bin/mkdir -p /run/user/__UID__/serge-asterisk /run/user/__UID__/serge-asterisk/cache __SYSTEM_ROOT__/logs/asterisk __CONFIG_ROOT__/asterisk/var/lib/keys __CONFIG_ROOT__/asterisk/var/spool
 ExecStart=/usr/sbin/asterisk -f -C __CONFIG_ROOT__/asterisk/asterisk.conf
 Restart=on-failure
 RestartSec=5

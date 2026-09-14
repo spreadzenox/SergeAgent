@@ -11,6 +11,7 @@ from typing import Any
 from kit.builder.guards import BuilderError, assert_instance_paths_safe
 from kit.builder.install import write_units
 from kit.builder.seed import dest_is_empty, git_archive_into, resolve_git_sha
+from kit.builder.telephony import write_asterisk_conf
 from kit.instance_file import load_toml, validate_toml
 from kit.units import host_facts_from_instance
 
@@ -94,6 +95,8 @@ def update_instance(
         facts=facts,
         kit_root=kit_root or source_repo,
     )
+    config_root = Path(str(loaded['paths']['config_root']))
+    asterisk_conf = write_asterisk_conf(loaded, config_root, facts)
     return {
         'status': 'updated',
         'instance_id': loaded['instance_id'],
@@ -101,5 +104,6 @@ def update_instance(
         'files_copied': len(copied),
         'units_written': sorted(units['files']),
         'units_enable': list(units['enable']),
+        'asterisk_conf_written': asterisk_conf,
         'canon_recreated': False,
     }
