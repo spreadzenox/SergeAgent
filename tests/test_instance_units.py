@@ -11,7 +11,12 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from kit.instance_file import FEATURE_KEYS  # noqa: E402
-from kit.units import UnitError, render_template, render_units  # noqa: E402
+from kit.units import (  # noqa: E402
+    UnitError,
+    render_template,
+    render_units,
+    system_units_to_enable,
+)
 
 LIVE_SENTINELS = (
     '/home/serge',
@@ -110,6 +115,11 @@ class InstanceUnitTests(unittest.TestCase):
         )
         self.assertIn('CAP_NET_BIND_SERVICE', unit)
         self.assertIn('SERGE_INGRESS_LISTEN=privileged', unit)
+        self.assertNotIn('serge-web-ingress.service', rendered['enable'])
+        self.assertEqual(
+            system_units_to_enable({'ingress': True}, 'privileged'),
+            ['serge-web-ingress.service'],
+        )
 
     def test_dead_units_are_never_rendered(self) -> None:
         for mode in ('sandbox', 'live'):

@@ -139,6 +139,62 @@ class SergeDeployTests(unittest.TestCase):
                 any('serge-install.py' in ' '.join(cmd) for cmd in seen)
             )
 
+    def test_privileged_install_enables_system_caddy(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            tmp = Path(raw)
+            dest = tmp / 'dest'
+            home = tmp / 'home'
+            unit = (
+                home / '.config/systemd/system-units/serge-web-ingress.service'
+            )
+            unit.parent.mkdir(parents=True)
+            unit.write_text('[Unit]\nDescription=test\n', encoding='utf-8')
+            instance = tmp / 'serge.instance.toml'
+            text = _toml(home, dest).replace(
+                'ingress = false\n',
+                'ingress = true\n',
+            )
+            text += '\n[ingress]\nlisten = "privileged"\n'
+            instance.write_text(text, encoding='utf-8')
+            mandate = tmp / 'mandate.yaml'
+            mandate.write_text('schema_version: 1\n', encoding='utf-8')
+            seen: list[list[str]] = []
+
+            def runner(argv, **_kwargs):
+                seen.append(list(argv))
+                return _ok()
+
+            receipt = deploy_instance(
+                instance_file=instance,
+                mandate=mandate,
+                source_repo=ROOT,
+                git_sha='HEAD',
+                kit_root=ROOT,
+                runner=runner,
+                python=sys.executable,
+            )
+            self.assertEqual(receipt['status'], 'installed')
+            self.assertIn(
+                [
+                    'sudo',
+                    '-n',
+                    'systemctl',
+                    'enable',
+                    '--now',
+                    'serge-web-ingress.service',
+                ],
+                seen,
+            )
+            user_enable = [
+                cmd
+                for cmd in seen
+                if cmd[:3] == ['systemctl', '--user', 'enable']
+            ]
+            self.assertTrue(user_enable)
+            self.assertFalse(
+                any('serge-web-ingress.service' in cmd for cmd in user_enable)
+            )
+
 
 if __name__ == '__main__':
     unittest.main()

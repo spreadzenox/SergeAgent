@@ -203,11 +203,20 @@ def selected_units(
     return chosen
 
 
+def system_units_to_enable(
+    features: Mapping[str, bool], listen: str = 'loopback'
+) -> list[str]:
+    """Units system (Caddy :80/:443). Pas de `systemctl --user`."""
+    if features.get('ingress') and listen == 'privileged':
+        return ['serge-web-ingress.service']
+    return []
+
+
 def units_to_enable(
     features: Mapping[str, bool], listen: str = 'loopback'
 ) -> list[str]:
     enable = list(ALWAYS_ENABLE)
-    if features.get('ingress'):
+    if features.get('ingress') and listen != 'privileged':
         enable.append('serge-web-ingress.service')
     if features.get('owner_ui'):
         enable.append('serge-public-dashboard.service')
