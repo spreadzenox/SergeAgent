@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""MC : POST /owner/api/coupe + projecteur En direct."""
+"""MC : POST /owner/api/coupe + boutons En direct."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ from serge.coupe_circuit import (  # noqa: E402
 from serge.db.store import open_db  # noqa: E402
 from serge.etapes import etats_etapes  # noqa: E402
 from serge.mc.proj_coupes import project_coupes  # noqa: E402
-from tests.mc_server_case import McServerCase  # noqa: E402
+from tests.mc_server_case import McBrowserCase, McServerCase  # noqa: E402
 
 
 class McCoupeApiTests(McServerCase):
@@ -111,6 +111,26 @@ class ProjCoupesTests(unittest.TestCase):
         mail = next(k for k in data['kinds'] if k['id'] == 'email.send')
         self.assertIn('e-mail', mail['titre'])
         conn.close()
+
+
+class McCoupeFrontTests(McBrowserCase):
+    def test_bouton_serge_en_haut(self) -> None:
+        from playwright.sync_api import expect
+
+        page = self._auth_context().new_page()
+        self._watch_errors(page)
+        page.goto(f'{self.base}/owner#/live')
+        page.locator('[data-section="coupes"]').wait_for(timeout=10000)
+        btn = page.locator('.btn-kill-serge')
+        expect(btn).to_be_visible()
+        expect(btn).to_have_text('Arrêter Serge')
+        etapes = page.locator('[data-coupes="etapes"] .btn-kill')
+        self.assertGreaterEqual(etapes.count(), 8)
+        kinds = page.locator('[data-coupes="kinds"] .btn-kill')
+        self.assertGreaterEqual(kinds.count(), 8)
+        btn.click()
+        expect(btn).to_have_text('Remettre Serge en marche', timeout=10000)
+        expect(page.locator('#live-headline')).to_contain_text('arrêté')
 
 
 if __name__ == '__main__':

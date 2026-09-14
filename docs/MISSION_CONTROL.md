@@ -583,17 +583,31 @@ Une ligne = un compte que Serge possède (Reddit, Gmail…). Santé
 les vieilles bases reçoivent encore les colonnes au boot
 (`ensure_account_columns`). Fiche MC `#/objet/compte/{id}`.
 
-## Carte live — coupe-circuit par étape
+## Carte live — coupe-circuits (En direct)
 
-Table `pipeline_steps` (canon) : une ligne par sac de vie du projet
-(`pre_prospection` … `caisse`), `enabled`, `kinds_json` (actions
-typiques, plus le coupe-circuit), et la **doc MC** (`titre`,
-`pourquoi`, `argent`, `dependance`, `comment`, `doc_md`) +
+Trois nappes en haut de **En direct** (plus dans le panneau du graphe) :
+
+1. **Serge** — gros bouton rouge. Flag `runtime_flags.name =
+   scheduler.heartbeat` (`value=kill`, `expires_at` vide = jamais).
+   `next_ready` rend `None` ; le runner n’enqueue plus la consolidation.
+   Le timer systemd continue de battre.
+2. **Étapes** — `pipeline_steps.enabled` (8 sacs). L’ordonnanceur ignore
+   les `work_items.etape_id` des sacs coupés. `POST /owner/api/etape`
+   reste.
+3. **Tâches (kinds)** — flag `runtime_flags.name = kind.{kind}` (même
+   forme). Coupe le kind **toutes étapes confondues** (`email.send` light
+   et lourde).
+
+API unique : `POST /owner/api/coupe` avec `cible ∈ {serge, etape, kind}`,
+`marche` booléen, `id` pour étape/kind.
+
+Table `pipeline_steps` (canon) : une ligne par sac (`pre_prospection` …
+`caisse`), `enabled`, `kinds_json` (actions typiques), et la **doc MC**
+(`titre`, `pourquoi`, `argent`, `dependance`, `comment`, `doc_md`) +
 `files_sha` + `updated_at`. Semence au boot ; les kinds et la doc se
-mettent à jour depuis le code, **jamais** l’interrupteur. L’ordonnanceur
-ignore les `work_items.etape_id` des sacs coupés — le kind peut être
-partagé (smoke et lourde : `email.send`). `memory.consolidate` vit dans
-`collect_feedback`.
+mettent à jour depuis le code, **jamais** l’interrupteur d’étape.
+Le kind peut être partagé (smoke et lourde : `email.send`).
+`memory.consolidate` vit dans `collect_feedback`.
 L’épine Live et les fiches se dessinent depuis cette table (pas depuis
 une liste Python/JS). Les flèches « En direct » viennent de
 `etape_liens` (débit = enum de compteurs, pas une requête libre).
@@ -606,8 +620,6 @@ SHA composé (fichiers + sous-objets) : `files_sha` / `catalogue_lock.py`
 `tests.test_catalogue_sha` rouge. Le verrou fichier-par-fichier
 (`code_sha` / `test_code_lock`) reste. Runtime des points =
 encore `config/llm-points.yaml` ; la table est le miroir + les liens.
-Sur la carte Live : bouton « Couper cette étape » / « Remettre en
-marche » → `POST /owner/api/etape`.
 
 ## Carte live — étapes et jugements
 

@@ -1,8 +1,6 @@
 // Carte Serge : nœuds HTML, arêtes canvas, panneau d’étape.
-import {toast} from './components.js';
 import {icone} from './icones.js';
 import {TYPES_OBJET, allerObjet, verbe} from './libelles.js';
-import {fetchState} from './sse.js';
 
 const EPINE_X = {
   pre_prospection: 0.06,
@@ -105,7 +103,7 @@ function ligneJugement(j) {
   return li;
 }
 
-function remplirPanneau(box, etape, verrouille, onUnlock, onBasculer) {
+function remplirPanneau(box, etape, verrouille, onUnlock) {
   box.replaceChildren();
   box.hidden = false;
   box.dataset.etape = etape.id;
@@ -155,19 +153,11 @@ function remplirPanneau(box, etape, verrouille, onUnlock, onBasculer) {
       el(
         'p',
         'texte-panneau',
-        'Pas de tâche d’ordonnanceur ici pour l’instant — l’interrupteur est prêt.',
+        'Pas de tâche d’ordonnanceur ici pour l’instant.',
       ),
     );
   }
   const actions = el('div', 'actions-panneau');
-  const coupe = el(
-    'button',
-    'clic-ligne',
-    etape.marche === false ? 'Remettre en marche' : 'Couper cette étape',
-  );
-  coupe.type = 'button';
-  coupe.addEventListener('click', () => onBasculer(etape));
-  actions.append(coupe);
   const plus = el('button', 'clic-ligne', 'Plus de détails sur cette étape');
   plus.type = 'button';
   plus.addEventListener('click', () => allerObjet('etape', etape.id));
@@ -227,7 +217,7 @@ export function dessineAretes(canvas, flux, t) {
   });
 }
 
-export function monterGraphe(main, getPayload, stoppers, onEtape) {
+export function monterGraphe(main, getPayload, stoppers) {
   const canvas = main.querySelector('[data-hud="carte"]');
   const host = main.querySelector('[data-graphe="noeuds"]');
   const tw = main.querySelector('[data-typewriter]');
@@ -253,39 +243,8 @@ export function monterGraphe(main, getPayload, stoppers, onEtape) {
     host.querySelectorAll('.noeud.actif').forEach((n) => n.classList.remove('actif'));
   }
 
-  async function basculer(etape) {
-    try {
-      const res = await fetch('/owner/api/etape', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-          id: etape.id,
-          marche: etape.marche === false,
-          decision_id: `mc-${Date.now()}-etape`,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        toast(document.body, data.erreur || 'Action refusée.', 'erreur');
-        return;
-      }
-      toast(
-        document.body,
-        data.marche ? 'Étape remise en marche.' : 'Étape coupée.',
-        'succes',
-      );
-      if (onEtape) {
-        await onEtape();
-      } else {
-        await fetchState('p0');
-      }
-    } catch {
-      toast(document.body, 'Action injoignable.', 'erreur');
-    }
-  }
-
   function montrer(etape, verrouille) {
-    remplirPanneau(panneau, etape, verrouille, unlock, basculer);
+    remplirPanneau(panneau, etape, verrouille, unlock);
   }
 
   function renderNoeuds() {
