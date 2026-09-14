@@ -579,8 +579,9 @@ Une ligne = un compte que Serge possède (Reddit, Gmail…). Santé
 (`ecoute` / `publication` / `les_deux`), dossier profil Chromium,
 `secret_ref` (le **nom** du fichier secret, pas le mot de passe),
 `login_url`, `targets_json` (URLs / sous-forums), `last_login_at` /
-`last_fetch_at`. Schéma v7 : les vieilles bases reçoivent les colonnes
-au boot (`ensure_account_columns`). Fiche MC `#/objet/compte/{id}`.
+`last_fetch_at`. Schéma v7 : socle des migrations (`docs/DB.md`) ;
+les vieilles bases reçoivent encore les colonnes au boot
+(`ensure_account_columns`). Fiche MC `#/objet/compte/{id}`.
 
 ## Carte live — coupe-circuit par étape
 

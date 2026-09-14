@@ -36,7 +36,7 @@ def default_canon_path(root: Path | None = None) -> Path:
 
 
 def open_db(path: Path) -> sqlite3.Connection:
-    """Open (creating) the canon DB: schema ensured, 0600, WAL.
+    """Ouvre le canon : migrations + catalogue, 0600, WAL.
 
     Args:
         path: DB file (parent created, mode 0600 enforced).
