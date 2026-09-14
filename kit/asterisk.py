@@ -187,25 +187,30 @@ exten => {did},1,NoOp(Inbound ${{CALLERID(num)}} to Serge {did})
 exten => _X.,1,NoOp(Inbound to unknown DID ${{EXTEN}}, refuse)
  same => n,Hangup()
 
-; Dial first (CLI + PAI on the INVITE), then AGI after answer.
+; Dial first (CLI + PAI on the INVITE). S2S on the PJSIP channel (U),
+; not on Local/;1 — sinon le MixMonitor entend et le 06 n’entend rien.
 [serge-dial]
 exten => _+X.,1,NoOp(Serge dial ${{EXTEN}} CLI {did})
  same => n,Set(CALLERID(num)={did})
- same => n,Dial(PJSIP/${{EXTEN}}@trunk,60,tTb(serge-pai^add^1))
+ same => n,Dial(PJSIP/${{EXTEN}}@trunk,60,tTb(serge-pai^add^1)U(serge-s2s^${{EXTEN}}))
  same => n,Hangup()
 
 [serge-pai]
 exten => add,1,Set(PJSIP_HEADER(add,P-Asserted-Identity)={pai})
  same => n,Return()
 
+[serge-s2s]
+exten => s,1,MixMonitor({records}/${{STRFTIME(${{EPOCH}},,%Y%m%d-%H%M%S)}}-${{UNIQUEID}}-${{ARG1}}.wav)
+ same => n,AudioSocket({SESSION_UUID},{LISTEN_HOST}:{LISTEN_PORT})
+ same => n,AGI(turn.py,outbound,${{ARG1}})
+ same => n,Return()
+
 ; Originate target: Local/<to>@serge-dial extension <to>@serge-campaign
+; Keep Local/;1 up while U() holds the PJSIP leg.
 [serge-campaign]
 exten => _+X.,1,NoOp(Serge outbound to ${{EXTEN}})
  same => n,Set(CALLERID(num)={did})
- same => n,MixMonitor({records}/${{STRFTIME(${{EPOCH}},,%Y%m%d-%H%M%S)}}-${{UNIQUEID}}-${{EXTEN}}.wav)
- same => n,Answer()
- same => n,AudioSocket({SESSION_UUID},{LISTEN_HOST}:{LISTEN_PORT})
- same => n,AGI(turn.py,outbound,${{EXTEN}})
+ same => n,Wait(180)
  same => n,Hangup()
 
 ; Manual calls from the local softphone. Same CLI lock, same recording.

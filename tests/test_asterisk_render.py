@@ -63,7 +63,10 @@ class AsteriskRenderTests(unittest.TestCase):
             extensions,
         )
         self.assertIn('b(serge-pai^add^1)', extensions)
+        self.assertIn('U(serge-s2s^${EXTEN})', extensions)
+        self.assertIn('[serge-s2s]', extensions)
         self.assertIn('serge-campaign', extensions)
+        self.assertIn('Wait(180)', extensions)
         self.assertIn(
             'AudioSocket(aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee,127.0.0.1:8792)',
             extensions,

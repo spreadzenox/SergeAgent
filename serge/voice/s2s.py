@@ -95,7 +95,8 @@ def _push_phone(
     slin = downsample_24k_to_8k(ready)
     if slin:
         with lock:
-            sock.sendall(encode('audio', slin))
+            for offset in range(0, len(slin), 320):
+                sock.sendall(encode('audio', slin[offset : offset + 320]))
     return rest
 
 
