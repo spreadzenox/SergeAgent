@@ -19,7 +19,7 @@ from tests.mc_server_case import McServerCase  # noqa: E402
 
 
 class PolicyActesTests(McServerCase):
-    def test_policy_edit_et_rollback(self) -> None:
+    def test_policy_edit(self) -> None:
         pol = load_policy()
 
         # Non auth -> 401
@@ -64,27 +64,6 @@ class PolicyActesTests(McServerCase):
             self.assertEqual(load_policy()['budget']['llm_daily_eur'], 5.0)
         finally:
             conn.close()
-
-        # Rollback invalide -> 400 ou 404
-        status, _, _ = self._api_post(
-            '/owner/api/policy/rollback', {'snapshot_id': 0}, cookie
-        )
-        self.assertEqual(status, 400)
-        status, _, _ = self._api_post(
-            '/owner/api/policy/rollback', {'snapshot_id': 99999}, cookie
-        )
-        self.assertEqual(status, 404)
-
-        # Rollback valide
-        status, _, corps2 = self._api_post(
-            '/owner/api/policy/rollback',
-            {'snapshot_id': snap_id, 'decision_id': 'dec_roll_1'},
-            cookie,
-        )
-        self.assertEqual(status, 200)
-        data2 = json.loads(corps2.decode('utf-8'))
-        self.assertTrue(data2['ok'])
-        self.assertNotEqual(data2['snapshot']['id'], snap_id)
 
     def test_policy_testing_a_froid_et_lock(self) -> None:
         cookie = self._auth_cookie()

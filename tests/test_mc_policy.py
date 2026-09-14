@@ -30,7 +30,6 @@ class PolicyRegistryTests(unittest.TestCase):
             [
                 'meta',
                 'politique_active',
-                'policy_snapshots',
                 'testing_froid',
                 'trust_candidates',
             ],
@@ -39,7 +38,6 @@ class PolicyRegistryTests(unittest.TestCase):
             self.assertIn(section, PROJECTORS)
         self.assertIn('politique_active', SLOW_SECTIONS)
         self.assertIn('testing_froid', SLOW_SECTIONS)
-        self.assertIn('policy_snapshots', SLOW_SECTIONS)
         self.assertIn('trust_candidates', SLOW_SECTIONS)
 
 
@@ -86,9 +84,6 @@ class McPolicyTests(McBrowserCase):
         expect(page.locator('#testing-lock-status')).to_contain_text(
             'Aucun essai en cours'
         )
-        expect(
-            page.locator('[data-section="policy_snapshots"]')
-        ).to_contain_text('Version')
         expect(
             page.locator('[data-section="trust_candidates"]')
         ).to_contain_text('Veto amont')

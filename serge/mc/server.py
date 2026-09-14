@@ -355,7 +355,6 @@ class McHandler(
             '/owner/api/memory/lesson': self._api_memory_lesson,
             '/owner/api/memory/rollback': self._api_memory_rollback,
             '/owner/api/policy/edit': self._api_policy_edit,
-            '/owner/api/policy/rollback': self._api_policy_rollback,
             '/owner/api/policy/testing': self._api_policy_testing,
             '/owner/api/policy/propose': self._api_policy_propose,
             '/owner/api/voice/kill': self._api_voice_kill,

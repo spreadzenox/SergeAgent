@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Projecteurs P5 Politique : politique active, snapshots, testing à froid, candidats trust."""
+"""Projecteurs P5 Politique : politique active, testing à froid, candidats trust."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import sqlite3
 from collections.abc import Mapping
 from typing import Any
 
-from serge.policy_snapshots import list_snapshots, policy_en_vigueur
+from serge.policy_snapshots import policy_en_vigueur
 
 
 def project_politique_active(
@@ -25,23 +25,6 @@ def project_politique_active(
     """
     _ = (policy, now)
     return {'policy': policy_en_vigueur(conn)}
-
-
-def project_policy_snapshots(
-    conn: sqlite3.Connection, policy: Mapping[str, Any], now: str
-) -> dict[str, Any]:
-    """Historique des 20 derniers snapshots de politique (P5).
-
-    Args:
-        conn: Connexion canon (lecture).
-        policy: Policy (ignorée, uniformité).
-        now: Maintenant ISO (ignoré).
-
-    Returns:
-        Dict {snapshots: [...]}.
-    """
-    _ = (policy, now)
-    return {'snapshots': list_snapshots(conn, limit=20)}
 
 
 def project_testing_froid(
