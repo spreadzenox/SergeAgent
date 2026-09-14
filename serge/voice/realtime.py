@@ -26,6 +26,7 @@ DEFAULT_MODELS = {
 DEFAULT_VOICE = 'alloy'
 DEFAULT_VOICES = {'xai': 'eve', 'openai': 'alloy'}
 PCM_RATE = 24000
+DEFAULT_RATES = {'xai': 8000, 'openai': 24000}
 
 
 class RealtimeError(ValueError):
@@ -35,17 +36,19 @@ class RealtimeError(ValueError):
 def build_session_update(
     instructions: str,
     voice: str = DEFAULT_VOICE,
+    rate: int = PCM_RATE,
 ) -> dict[str, Any]:
-    """Événement session.update (instructions + voix + PCM 24 kHz).
+    """Événement session.update (instructions + voix + PCM).
 
     Args:
         instructions: Prompt système (script P4 + règles dures).
         voice: Voix synthèse (eve xAI, alloy OpenAI).
+        rate: Fréquence PCM (8000 xAI / 24000 OpenAI).
 
     Returns:
         L'événement à envoyer.
     """
-    pcm = {'type': 'audio/pcm', 'rate': PCM_RATE}
+    pcm = {'type': 'audio/pcm', 'rate': rate}
     return {
         'type': 'session.update',
         'session': {
@@ -156,12 +159,16 @@ class RealtimeCall:
         ws: WsClient,
         instructions: str,
         voice: str = DEFAULT_VOICE,
+        rate: int = PCM_RATE,
     ):
         self.ws = ws
         self.provider = ''
+        self.pcm_rate = rate
         self.state: dict[str, Any] = {}
         try:
-            ws.send_text(json.dumps(build_session_update(instructions, voice)))
+            ws.send_text(
+                json.dumps(build_session_update(instructions, voice, rate))
+            )
         except WsError as exc:
             raise RealtimeError(f'WS: session ({exc})') from exc
 
@@ -208,7 +215,8 @@ class RealtimeCall:
             ws = WsClient.connect(url, headers, timeout)
         except WsError as exc:
             raise RealtimeError(f'WS: {exc}') from exc
-        call = cls(ws, instructions, voice)
+        rate = DEFAULT_RATES.get(provider, PCM_RATE)
+        call = cls(ws, instructions, voice, rate)
         call.provider = provider
         return call
 

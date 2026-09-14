@@ -13,6 +13,8 @@ sys.path.insert(0, str(ROOT))
 from serge.voice.pcm import (  # noqa: E402
     downsample_24k_to_8k,
     is_speech,
+    to_model_rate,
+    to_phone_rate,
     upsample_8k_to_24k,
 )
 
@@ -33,6 +35,13 @@ class PcmTests(unittest.TestCase):
         self.assertFalse(is_speech(b'\x00\x00' * 80))
         loud = (10000).to_bytes(2, 'little', signed=True) * 80
         self.assertTrue(is_speech(loud))
+
+    def test_8k_passe_droit(self) -> None:
+        slin = b'\x01\x00\x02\x00'
+        self.assertEqual(to_model_rate(slin, 8000), slin)
+        out, rest = to_phone_rate(slin, b'', 8000)
+        self.assertEqual(out, slin)
+        self.assertEqual(rest, b'')
 
 
 if __name__ == '__main__':
