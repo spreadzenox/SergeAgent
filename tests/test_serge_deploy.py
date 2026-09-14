@@ -262,6 +262,82 @@ class SergeDeployTests(unittest.TestCase):
                 any('serge-web-ingress.service' in cmd for cmd in user_enable)
             )
 
+    def test_privileged_update_recopies_system_caddy(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            tmp = Path(raw)
+            dest = tmp / 'dest'
+            dest.mkdir()
+            (dest / 'state').mkdir()
+            home = tmp / 'home'
+            unit = (
+                home / '.config/systemd/system-units/serge-web-ingress.service'
+            )
+            unit.parent.mkdir(parents=True)
+            unit.write_text('[Unit]\nDescription=test\n', encoding='utf-8')
+            instance = tmp / 'serge.instance.toml'
+            text = _toml(home, dest).replace(
+                'ingress = false\n',
+                'ingress = true\n',
+            )
+            text += '\n[ingress]\nlisten = "privileged"\n'
+            instance.write_text(text, encoding='utf-8')
+            mandate = tmp / 'mandate.yaml'
+            mandate.write_text('schema_version: 1\n', encoding='utf-8')
+            seen: list[list[str]] = []
+
+            def runner(argv, **_kwargs):
+                seen.append(list(argv))
+                if argv[:3] == ['systemctl', '--user', 'show']:
+                    return subprocess.CompletedProcess(
+                        args=argv,
+                        returncode=0,
+                        stdout='inactive\n',
+                        stderr='',
+                    )
+                return _ok()
+
+            with mock.patch(
+                'kit.deploy.update_instance',
+                return_value={
+                    'status': 'updated',
+                    'instance_id': 'alice-laptop',
+                    'system_root': str(dest),
+                    'canon_recreated': False,
+                },
+            ):
+                receipt = deploy_instance(
+                    instance_file=instance,
+                    mandate=mandate,
+                    source_repo=ROOT,
+                    git_sha='HEAD',
+                    kit_root=ROOT,
+                    runner=runner,
+                )
+            self.assertEqual(receipt['status'], 'updated')
+            self.assertIn(
+                [
+                    'sudo',
+                    '-n',
+                    'cp',
+                    str(unit),
+                    '/etc/systemd/system/serge-web-ingress.service',
+                ],
+                seen,
+            )
+            self.assertIn(
+                [
+                    'sudo',
+                    '-n',
+                    'systemctl',
+                    'restart',
+                    'serge-web-ingress.service',
+                ],
+                seen,
+            )
+            self.assertFalse(
+                any('serge-install.py' in ' '.join(cmd) for cmd in seen)
+            )
+
 
 if __name__ == '__main__':
     unittest.main()

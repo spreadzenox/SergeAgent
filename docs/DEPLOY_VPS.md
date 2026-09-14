@@ -34,7 +34,9 @@ Racine **déjà peuplée** → `kit/update.py` (git archive par-dessus,
 `state/` / `queue/` / `logs/` / `reports/` / `evidence/` intacts, canon
 non recréé), réécrit les units et `asterisk.conf`. Si le sidecar
 secrets est déchiffrable (`SERGE_AGE_IDENTITY`), `pjsip.conf` aussi.
-Sinon `pjsip.conf` reste intact. `daemon-reload`, restart des units
+Sinon `pjsip.conf` reste intact. Les units system (Caddy privileged)
+sont recopiées vers `/etc/systemd/system` avant restart — un simple
+restart laisserait l’ancienne unit. `daemon-reload`, restart des units
 actives **ou en échec** (un crash-loop n’est pas un arrêt manuel).
 
 Pipeline : `scripts/serge-runner.py --once` derrière `flock` sur

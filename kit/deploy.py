@@ -86,11 +86,10 @@ def _system_unit_dir(loaded: dict[str, Any]) -> Path:
     return home / '.config/systemd/system-units'
 
 
-def enable_system_now(
+def install_system_units(
     runner: Runner, names: Sequence[str], source_dir: Path
-) -> list[str]:
-    """Pose les units privileged sous /etc/systemd/system (sudo -n)."""
-    enabled: list[str] = []
+) -> None:
+    """Recopie les units privileged vers /etc/systemd/system (sudo -n)."""
     for name in names:
         src = source_dir / name
         dest = Path('/etc/systemd/system') / name
@@ -100,9 +99,19 @@ def enable_system_now(
         if copied.returncode != 0:
             detail = (copied.stderr or copied.stdout or '')[-300:]
             raise BuilderError(f'sudo cp {name} a échoué : {detail}')
+    if names:
         reload = _run(runner, ['sudo', '-n', 'systemctl', 'daemon-reload'])
         if reload.returncode != 0:
             raise BuilderError('sudo daemon-reload a échoué')
+
+
+def enable_system_now(
+    runner: Runner, names: Sequence[str], source_dir: Path
+) -> list[str]:
+    """Pose les units privileged sous /etc/systemd/system (sudo -n)."""
+    install_system_units(runner, names, source_dir)
+    enabled: list[str] = []
+    for name in names:
         completed = _run(
             runner, ['sudo', '-n', 'systemctl', 'enable', '--now', name]
         )
@@ -242,6 +251,7 @@ def deploy_instance(
         kit_root=root,
         uid=uid,
     )
+    install_system_units(run, system_names, _system_unit_dir(loaded))
     restarted = restart_active(run, names)
     restarted.extend(restart_system_active(run, system_names))
     receipt['units_restarted'] = restarted
