@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Étapes du pipe : mapping kinds + interrupteur (table pipeline_steps)."""
+"""Étapes du pipe : sacs de vie du projet + interrupteur (etape_id)."""
 
 from __future__ import annotations
 
@@ -7,15 +7,27 @@ import json
 import sqlite3
 from typing import Any
 
-# Semence : ids stables (carte Live). kinds = ce que l’ordonnanceur coupe.
+# Enum fermé (P3). kinds = actions typiques du sac, plus le coupe-circuit.
+ETAPE_IDS = (
+    'pre_prospection',
+    'conception_poc',
+    'prospection_light',
+    'choix_venture',
+    'build_venture',
+    'prospection_lourde',
+    'collect_feedback',
+    'caisse',
+)
+
 SEED: tuple[tuple[str, int, tuple[str, ...]], ...] = (
-    ('ecoute', 0, ('listen.collect', 'listen.cluster')),
-    ('hypothese', 1, ()),
-    ('test', 2, ('email.send', 'voice.send')),
-    ('qualif', 3, ()),
+    ('pre_prospection', 0, ('listen.collect', 'listen.cluster')),
+    ('conception_poc', 1, ()),
+    ('prospection_light', 2, ('email.send', 'voice.send')),
+    ('choix_venture', 3, ()),
+    ('build_venture', 4, ()),
     (
-        'conversation',
-        4,
+        'prospection_lourde',
+        5,
         (
             'inbound.classify',
             'inbound.reply_priority',
@@ -24,17 +36,64 @@ SEED: tuple[tuple[str, int, tuple[str, ...]], ...] = (
             'voice.score',
         ),
     ),
-    ('intent', 5, ()),
-    ('caisse', 6, ()),
+    ('collect_feedback', 6, ('memory.consolidate', 'memory.apply')),
+    ('caisse', 7, ()),
 )
+
+KIND_DEFAUT: dict[str, str] = {
+    'listen.collect': 'pre_prospection',
+    'listen.cluster': 'pre_prospection',
+    'email.send': 'prospection_light',
+    'voice.send': 'prospection_light',
+    'inbound.classify': 'prospection_lourde',
+    'inbound.reply_priority': 'prospection_lourde',
+    'inbound.judge_other': 'prospection_lourde',
+    'email.poll': 'prospection_lourde',
+    'voice.score': 'prospection_lourde',
+    'memory.consolidate': 'collect_feedback',
+    'memory.apply': 'collect_feedback',
+}
+
+# enabled v7 → v8 (ET / les deux pour les fusions).
+_ANCIEN_ENABLED: dict[str, tuple[str, ...]] = {
+    'pre_prospection': ('ecoute',),
+    'conception_poc': ('hypothese',),
+    'prospection_light': ('test', 'qualif'),
+    'choix_venture': (),
+    'build_venture': (),
+    'prospection_lourde': ('conversation', 'intent'),
+    'collect_feedback': (),
+    'caisse': ('caisse',),
+}
 
 
 class EtapeError(ValueError):
     """Étape inconnue ou payload invalide."""
 
 
+def etape_pour_kind(kind: str) -> str:
+    """Étape par défaut d’un kind ('' si hors épine)."""
+    return KIND_DEFAUT.get(kind, '')
+
+
+def enabled_depuis_v7(anciens: dict[str, int], ident: str) -> int:
+    """Transporte l’interrupteur v7. Nouveau sac → marche.
+
+    Args:
+        anciens: ``{id_v7: enabled}``.
+        ident: Id v8.
+
+    Returns:
+        1 si le sac marche.
+    """
+    sources = _ANCIEN_ENABLED.get(ident, ())
+    if not sources:
+        return 1
+    return 1 if all(anciens.get(src, 1) for src in sources) else 0
+
+
 def ensure_pipeline_steps(conn: sqlite3.Connection) -> None:
-    """Pose les 7 étapes ; met à jour les kinds, jamais ``enabled``.
+    """Pose les 8 étapes ; met à jour les kinds, jamais ``enabled``.
 
     Args:
         conn: Canon (commit par l’appelant).
@@ -48,6 +107,11 @@ def ensure_pipeline_steps(conn: sqlite3.Connection) -> None:
             ' kinds_json=excluded.kinds_json, rang=excluded.rang',
             (ident, 1, blob, rang),
         )
+    conn.execute(
+        'DELETE FROM pipeline_steps WHERE id NOT IN'
+        f' ({",".join("?" * len(ETAPE_IDS))})',
+        ETAPE_IDS,
+    )
 
 
 def etats_etapes(conn: sqlite3.Connection) -> dict[str, dict[str, Any]]:
@@ -75,14 +139,30 @@ def etats_etapes(conn: sqlite3.Connection) -> dict[str, dict[str, Any]]:
     return out
 
 
-def kinds_coupes(conn: sqlite3.Connection) -> frozenset[str]:
-    """Kinds dont l’étape est coupée — l’ordonnanceur ne les réclame pas.
+def etapes_coupees(conn: sqlite3.Connection) -> frozenset[str]:
+    """Ids d’étapes coupées — l’ordonnanceur ignore leurs work items.
 
     Args:
         conn: Canon.
 
     Returns:
-        Ensemble de kinds bloqués (vide si tout est en marche).
+        Ensemble d’ids (vide si tout est en marche).
+    """
+    return frozenset(
+        ident
+        for ident, spec in etats_etapes(conn).items()
+        if not spec['marche']
+    )
+
+
+def kinds_coupes(conn: sqlite3.Connection) -> frozenset[str]:
+    """Kinds typiques des étapes coupées (doc / repli, pas le coupe-circuit).
+
+    Args:
+        conn: Canon.
+
+    Returns:
+        Ensemble de kinds des sacs coupés.
     """
     blocked: set[str] = set()
     for spec in etats_etapes(conn).values():
@@ -98,8 +178,8 @@ def set_etape_marche(
 
     Args:
         conn: Canon (commit par l’appelant).
-        ident: Id d’étape (``ecoute``, ``test``, …).
-        marche: True = l’ordonnanceur accepte les kinds.
+        ident: Id d’étape.
+        marche: True = l’ordonnanceur accepte les work items du sac.
 
     Returns:
         ``{id, marche, kinds}``.
@@ -107,13 +187,13 @@ def set_etape_marche(
     Raises:
         EtapeError: Id inconnu.
     """
+    if ident not in ETAPE_IDS:
+        raise EtapeError(f'étape inconnue : {ident}')
     ensure_pipeline_steps(conn)
-    cursor = conn.execute(
+    conn.execute(
         'UPDATE pipeline_steps SET enabled=? WHERE id=?',
         (1 if marche else 0, ident),
     )
-    if not cursor.rowcount:
-        raise EtapeError(f'étape inconnue : {ident}')
     spec = etats_etapes(conn)[ident]
     return {'id': ident, 'marche': spec['marche'], 'kinds': spec['kinds']}
 

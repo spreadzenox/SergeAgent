@@ -7,11 +7,12 @@ import sqlite3
 from collections.abc import Callable, Sequence
 
 from serge.db.schema import SCHEMA_VERSION, apply_v007
+from serge.db.v008 import apply_v008
 
 ApplyFn = Callable[[sqlite3.Connection], None]
 Migration = tuple[int, ApplyFn]
 
-MIGRATIONS: tuple[Migration, ...] = ((7, apply_v007),)
+MIGRATIONS: tuple[Migration, ...] = ((7, apply_v007), (8, apply_v008))
 
 
 class MigrateError(ValueError):

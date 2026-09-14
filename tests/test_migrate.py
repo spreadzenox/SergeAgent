@@ -74,17 +74,43 @@ class MigrateTests(unittest.TestCase):
         with self.assertRaises(MigrateError) as ctx:
             apply_pending(
                 conn,
-                migrations=((7, _noop), (9, _noop)),
-                head=9,
+                migrations=((8, _noop), (10, _noop)),
+                head=10,
             )
         self.assertIn('trou', str(ctx.exception))
+
+    def test_v7_vers_v8_remappe_les_etapes(self) -> None:
+        conn = sqlite3.connect(':memory:')
+        self.addCleanup(conn.close)
+        from serge.db.migrate import stamp
+        from serge.db.schema import apply_v007
+
+        apply_v007(conn)
+        stamp(conn, 7)
+        conn.execute(
+            'INSERT INTO pipeline_steps(id, enabled, kinds_json, rang)'
+            " VALUES('ecoute', 0, '[]', 0), ('test', 1, '[]', 2)"
+        )
+        conn.execute(
+            'INSERT INTO work_items(id, kind, idempotency_key, created_at,'
+            " updated_at) VALUES('w1','listen.collect','k','t','t')"
+        )
+        self.assertEqual(apply_pending(conn), SCHEMA_VERSION)
+        etape = conn.execute(
+            "SELECT etape_id FROM work_items WHERE id='w1'"
+        ).fetchone()[0]
+        self.assertEqual(etape, 'pre_prospection')
+        marche = conn.execute(
+            "SELECT enabled FROM pipeline_steps WHERE id='pre_prospection'"
+        ).fetchone()[0]
+        self.assertEqual(marche, 0)
 
     def test_init_schema_seme_apres_migrate(self) -> None:
         conn = sqlite3.connect(':memory:')
         self.addCleanup(conn.close)
         init_schema(conn)
         row = conn.execute(
-            "SELECT id FROM pipeline_steps WHERE id='ecoute'"
+            "SELECT id FROM pipeline_steps WHERE id='pre_prospection'"
         ).fetchone()
         self.assertIsNotNone(row)
 

@@ -8,7 +8,7 @@ import sqlite3
 from typing import Any
 
 from serge.db.store import append_event, utcnow
-from serge.etapes import kinds_coupes
+from serge.etapes import etape_pour_kind, etapes_coupees
 
 
 def next_ready(
@@ -30,14 +30,14 @@ def next_ready(
     sql = (
         'SELECT id, kind, venture_id, campaign_id, contact_id, ticket_id,'
         ' status, priority, payload_json, blocked_until, attempts,'
-        ' idempotency_key, created_at, updated_at FROM work_items'
+        ' idempotency_key, created_at, updated_at, etape_id FROM work_items'
         " WHERE status='READY' AND (blocked_until='' OR blocked_until<=?)"
         ' AND venture_id IN (SELECT id FROM ventures WHERE schedulable=1)'
     )
     args: list[Any] = [moment]
-    coupes = sorted(kinds_coupes(connection))
+    coupes = sorted(etapes_coupees(connection))
     if coupes:
-        sql += f' AND kind NOT IN ({",".join("?" * len(coupes))})'
+        sql += f' AND etape_id NOT IN ({",".join("?" * len(coupes))})'
         args.extend(coupes)
     sql += ' ORDER BY priority DESC, created_at ASC LIMIT 1'
     row = connection.execute(sql, args).fetchone()
@@ -56,6 +56,7 @@ def enqueue(
     priority: int = 0,
     payload: dict[str, Any] | None = None,
     blocked_until: str = '',
+    etape_id: str = '',
 ) -> str:
     """Crée un work_item READY (idempotent sur la clé).
 
@@ -70,17 +71,20 @@ def enqueue(
         priority: Plus haut = servi en premier.
         payload: Données typées du travail (JSON).
         blocked_until: ISO UTC, '' = immédiatement READY.
+        etape_id: Sac de vie du projet (défaut : kind → étape).
 
     Returns:
         L'id du work_item (existant si clé déjà vue).
     """
     work_id = f'w_{abs(hash((kind, idempotency_key))) % 10**12:012d}'
     moment = utcnow()
+    etape = etape_id or etape_pour_kind(kind)
     connection.execute(
         'INSERT INTO work_items(id, kind, venture_id, campaign_id,'
         ' contact_id, ticket_id, status, priority, payload_json,'
-        ' blocked_until, attempts, idempotency_key, created_at, updated_at)'
-        ' VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
+        ' blocked_until, attempts, idempotency_key, created_at, updated_at,'
+        ' etape_id)'
+        ' VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
         ' ON CONFLICT(idempotency_key) DO NOTHING',
         (
             work_id,
@@ -97,6 +101,7 @@ def enqueue(
             idempotency_key,
             moment,
             moment,
+            etape,
         ),
     )
     row = connection.execute(
