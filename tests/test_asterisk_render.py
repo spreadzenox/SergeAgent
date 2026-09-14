@@ -60,9 +60,30 @@ class AsteriskRenderTests(unittest.TestCase):
         self.assertIn('AGI(turn.py,', extensions)
         self.assertNotIn('serge_voice_turn.py', extensions)
         pjsip = rendered['pjsip.conf'][0]
-        self.assertIn('bind = 127.0.0.1:5061', pjsip)
-        self.assertIn('server_uri = sip:sip.example.com', pjsip)
-        self.assertNotIn('0.0.0.0', pjsip)
+        self.assertIn('bind = 0.0.0.0:5061', pjsip)
+        self.assertIn('server_uri = sip:sip.example.com:5061', pjsip)
+        self.assertIn('verify_server = no', pjsip)
+        self.assertIn('allow_wildcard_certs = yes', pjsip)
+        self.assertIn('type = identify', pjsip)
+        self.assertNotIn('bind = 127.0.0.1', pjsip)
+
+    def test_udp_trunk_uses_5060_without_tls_knobs(self) -> None:
+        rendered = render_asterisk(
+            _loaded(
+                phone_voice={
+                    'sip_server': 'sip.example.com',
+                    'sip_username': 'trunk',
+                    'sip_transport': 'udp',
+                    'max_calls_per_day': 50,
+                }
+            ),
+            {'user': 'owner', 'uid': '1000'},
+            {'sip_trunk_password': 's3cret'},
+        )
+        pjsip = rendered['pjsip.conf'][0]
+        self.assertIn('bind = 0.0.0.0:5060', pjsip)
+        self.assertIn('server_uri = sip:sip.example.com:5060', pjsip)
+        self.assertNotIn('verify_server', pjsip)
 
     def test_password_only_in_pjsip(self) -> None:
         rendered = render_asterisk(

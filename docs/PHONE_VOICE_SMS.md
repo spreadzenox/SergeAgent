@@ -146,11 +146,14 @@ sur `/var/run/asterisk` et `/var/lib/asterisk` et refuse de démarrer.
 `astdatadir` reste le paquet (`/var/lib/asterisk`) : la doc XML
 Stasis n’existe pas dans le varlib user-space. Spool et cache
 restent sous `config_root` / `XDG_RUNTIME_DIR`.
-SIP lié en loopback (`127.0.0.1:5061`,
-registration sortante vers le trunk) ; RTP `10000-10100/udp` à
-ouvrir en entrée (restreindre aux IP du trunk si possible). Le CLI
-est verrouillé au NPV dans le dialplan, l'enregistrement systématique
-(`state/voice/records/`).
+Le transport trunk PJSIP bind `0.0.0.0` (TLS `:5061`, sinon `:5060`) :
+un bind loopback n’envoie jamais le REGISTER. Le softphone de test
+reste joignable en local (`127.0.0.1:5061`, même socket). Zadarma
+sert un certificat wildcard : `verify_server=no` +
+`allow_wildcard_certs=yes` (RFC 5922 / pjproject). RTP
+`10000-10100/udp` à ouvrir en entrée (restreindre aux IP du trunk
+si possible). Le CLI est verrouillé au NPV dans le dialplan,
+l'enregistrement systématique (`state/voice/records/`).
 
 Tester sans Serge d'abord : softphone (Linphone, sur le VPS)
 enregistré comme `serge-agent` (même secret que le trunk, loopback
@@ -236,7 +239,7 @@ que les logs, le broker et le dialplan sachent qui est qui.
 
 | Symptôme | Cause probable | Fix |
 | --- | --- | --- |
-| Registration trunk perdue | Mot de passe, IP allowlistée, TLS mal négocié | Logs Asterisk `pjsip show registrations`, requalifier le trunk, fallback UDP temporaire pour isoler TLS. |
+| Registration trunk perdue | Bind loopback, mot de passe, IP allowlistée, wildcard TLS | `pjsip show registrations` ; le transport trunk doit être `0.0.0.0`, pas `127.0.0.1`. Fallback UDP temporaire pour isoler TLS. |
 | Audio un seul sens | NAT/RTP, ports 10000+ fermés | `rtp.conf` + firewall, `external_media_address` / `external_signaling_address` sur le VPS. |
 | CLI affiché ≠ NPV | Trunk qui réécrit ou refuse la présentation | Support fournisseur + vérifier la délégation du numéro. Ne pas « essayer » d'autres CLI. |
 | Agent muet puis timeout | Realtime/STT lent ou clé HS | Tester la feature `voice` hors appel, timeouts + message de repli. |

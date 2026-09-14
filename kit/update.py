@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import os
 import shutil
 import tempfile
 from pathlib import Path
@@ -11,8 +12,13 @@ from typing import Any
 from kit.builder.guards import BuilderError, assert_instance_paths_safe
 from kit.builder.install import write_units
 from kit.builder.seed import dest_is_empty, git_archive_into, resolve_git_sha
-from kit.builder.telephony import write_asterisk_conf
-from kit.instance_file import load_toml, validate_toml
+from kit.builder.telephony import write_asterisk, write_asterisk_conf
+from kit.instance_file import (
+    InstanceError,
+    load_secret_map,
+    load_toml,
+    validate_toml,
+)
 from kit.units import host_facts_from_instance
 
 PRESERVE_TOP = frozenset({'state', 'queue', 'logs', 'reports', 'evidence'})
@@ -33,6 +39,27 @@ def loaded_from_instance(instance_file: Path) -> dict[str, Any]:
             'config_root': str(config_root),
         },
     }
+
+
+def _secrets_for_update(loaded: dict[str, Any]) -> dict[str, str] | None:
+    """Déchiffre le sidecar si age/dotenv est là ; sinon None (pjsip intact)."""
+    instance = Path(str(loaded['instance_file']))
+    name = Path(
+        str(
+            (loaded.get('paths') or {}).get('secrets_age')
+            or 'serge.secrets.age'
+        )
+    ).name
+    sidecar = instance.parent / name
+    if (
+        not os.environ.get('SERGE_SECRETS_DOTENV', '').strip()
+        and not sidecar.is_file()
+    ):
+        return None
+    try:
+        return load_secret_map(sidecar)
+    except InstanceError:
+        return None
 
 
 def _preserved(rel: Path) -> bool:
@@ -96,7 +123,17 @@ def update_instance(
         kit_root=kit_root or source_repo,
     )
     config_root = Path(str(loaded['paths']['config_root']))
-    asterisk_conf = write_asterisk_conf(loaded, config_root, facts)
+    asterisk_files: list[str] = []
+    asterisk_conf = ''
+    if (loaded.get('features') or {}).get('phone_voice'):
+        secrets = _secrets_for_update(loaded)
+        if secrets:
+            asterisk_files = write_asterisk(
+                loaded, secrets, config_root, facts
+            )
+            asterisk_conf = 'asterisk.conf'
+        else:
+            asterisk_conf = write_asterisk_conf(loaded, config_root, facts)
     return {
         'status': 'updated',
         'instance_id': loaded['instance_id'],
@@ -105,5 +142,6 @@ def update_instance(
         'units_written': sorted(units['files']),
         'units_enable': list(units['enable']),
         'asterisk_conf_written': asterisk_conf,
+        'asterisk_files_written': asterisk_files,
         'canon_recreated': False,
     }
