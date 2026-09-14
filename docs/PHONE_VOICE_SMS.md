@@ -140,7 +140,10 @@ sudo apt update && sudo apt install -y asterisk
 ```
 
 Asterisk tourne en user-space (`asterisk -f -C ...`, pas de root,
-pas de `/etc/asterisk`). SIP lié en loopback (`127.0.0.1:5061`,
+pas de `/etc/asterisk`). `[directories]` dans `asterisk.conf` est
+une section active (sans `(!)` template), sinon le binaire retombe
+sur `/var/run/asterisk` et `/var/lib/asterisk` et refuse de démarrer.
+SIP lié en loopback (`127.0.0.1:5061`,
 registration sortante vers le trunk) ; RTP `10000-10100/udp` à
 ouvrir en entrée (restreindre aux IP du trunk si possible). Le CLI
 est verrouillé au NPV dans le dialplan, l'enregistrement systématique

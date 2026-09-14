@@ -86,6 +86,8 @@ class AsteriskRenderTests(unittest.TestCase):
             {'sip_trunk_password': 's3cret'},
         )
         asterisk_conf = rendered['asterisk.conf'][0]
+        self.assertIn('[directories]', asterisk_conf)
+        self.assertNotIn('[directories](!)', asterisk_conf)
         self.assertIn('/home/owner/.config/serge/asterisk', asterisk_conf)
         self.assertIn('serge/voice', asterisk_conf)
         self.assertIn('/run/user/1000/serge-asterisk', asterisk_conf)
