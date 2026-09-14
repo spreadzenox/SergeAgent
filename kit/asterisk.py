@@ -98,6 +98,7 @@ def render_asterisk(
         if transport == 'tls'
         else ''
     )
+    srtp_line = 'media_encryption = sdes\n' if transport == 'tls' else ''
     remote = f'{server}:{remote_port}'
 
     pjsip_conf = f"""\
@@ -140,7 +141,7 @@ aors = trunk-aor
 from_user = {username}
 direct_media = no
 dtmf_mode = rfc4733
-
+{srtp_line}
 [trunk]
 type = identify
 endpoint = trunk
