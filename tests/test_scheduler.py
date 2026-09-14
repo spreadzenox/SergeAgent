@@ -11,7 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from serge.db.schema import init_schema  # noqa: E402
+from serge.db.boot import init_schema  # noqa: E402
 from serge.etapes import set_etape_marche  # noqa: E402
 from serge.scheduler import (  # noqa: E402
     claim,
@@ -148,7 +148,7 @@ class SchedulerTests(unittest.TestCase):
             kinds, ['work.enqueued', 'work.claimed', 'work.completed']
         )
 
-    def test_etape_coupee_ignore_ses_kinds(self) -> None:
+    def test_etape_coupee_ignore_ses_work_items(self) -> None:
         enqueue(
             self.connection,
             kind='email.send',
@@ -162,14 +162,36 @@ class SchedulerTests(unittest.TestCase):
             idempotency_key='k-ok',
             venture_id='v1',
         )
-        set_etape_marche(self.connection, 'test', False)
+        set_etape_marche(self.connection, 'prospection_light', False)
         item = next_ready(self.connection)
         assert item is not None
         self.assertEqual(item['kind'], 'memory.consolidate')
-        set_etape_marche(self.connection, 'test', True)
+        set_etape_marche(self.connection, 'prospection_light', True)
         item = next_ready(self.connection)
         assert item is not None
         self.assertEqual(item['kind'], 'email.send')
+
+    def test_meme_kind_deux_etapes(self) -> None:
+        enqueue(
+            self.connection,
+            kind='email.send',
+            idempotency_key='k-light',
+            venture_id='v1',
+            etape_id='prospection_light',
+            priority=1,
+        )
+        enqueue(
+            self.connection,
+            kind='email.send',
+            idempotency_key='k-lourde',
+            venture_id='v1',
+            etape_id='prospection_lourde',
+            priority=50,
+        )
+        set_etape_marche(self.connection, 'prospection_light', False)
+        item = next_ready(self.connection)
+        assert item is not None
+        self.assertEqual(item['etape_id'], 'prospection_lourde')
 
 
 if __name__ == '__main__':

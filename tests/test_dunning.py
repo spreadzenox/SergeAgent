@@ -13,7 +13,7 @@ sys.path.insert(0, str(ROOT))
 
 from serge.collect import create_intent, to_issued, to_sent  # noqa: E402
 from serge.collect.dunning import due_reminders, record_reminder  # noqa: E402
-from serge.db.schema import init_schema  # noqa: E402
+from serge.db.boot import init_schema  # noqa: E402
 
 POLICY = {'collect': {'dunning_days': [7, 14]}}
 T0 = '2026-09-01T00:00:00+00:00'

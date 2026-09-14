@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
-"""Canon v2 schema: one SQLite authority, no FK constraints (loose links).
+"""Schéma canon v7 : une autorité SQLite, liens souples (pas de FK).
 
-Tables follow D-spec layers: registres (state), épisodes (append-only),
-tickets (H), leçons/playbooks/pitfalls (couche 3), summaries (couche 4),
-usage metering (P2). Voice/SMS keep their bounded ledgers (migration
-tracked separately); consents/blocklist here are the global store.
+Le DDL ci-dessous est le socle. Les évolutions passent par
+``serge.db.migrate`` (une version = une fonction), plus un tampon
+``schema_version`` écrasé à chaque ``open_db``.
 """
 
 from __future__ import annotations
 
 import sqlite3
 
-SCHEMA_VERSION = 7
+SCHEMA_VERSION = 10
 
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS schema_version (
@@ -271,27 +270,18 @@ TABLES = (
     'tools',
     'llm_points',
     'llm_point_tools',
+    'tech_invocations',
+    'etape_liens',
 )
 
 
-def init_schema(connection: sqlite3.Connection) -> None:
-    """Create all canon tables (idempotent) + stamp schema version.
+def apply_v007(connection: sqlite3.Connection) -> None:
+    """Socle v7 : tables + colonnes comptes manquantes.
 
     Args:
-        connection: Open SQLite connection (committed by caller).
+        connection: Connexion (commit par l’appelant).
     """
     connection.executescript(SCHEMA_SQL)
-    connection.execute('DELETE FROM schema_version')
-    connection.execute(
-        "INSERT INTO schema_version(version, applied_at) VALUES(?, datetime('now'))",
-        (SCHEMA_VERSION,),
-    )
     from serge.comptes import ensure_account_columns
-    from serge.etapes import ensure_pipeline_steps
-    from serge.llm_registre import ensure_llm_points
-    from serge.outils import ensure_tools
 
     ensure_account_columns(connection)
-    ensure_pipeline_steps(connection)
-    ensure_tools(connection)
-    ensure_llm_points(connection)

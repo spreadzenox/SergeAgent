@@ -34,7 +34,9 @@ LIMIT 1;
   réponse), le scheduler prend le READY de B. L'attente locale reste locale.
 - Le scheduler ne sait pas ce qu'est un email ou une facture — il ordonnance
   des `work_items` ("appeler X", "augmenter budget Y", "publier Z").
-- Sauf si l’étape du `kind` est coupée : table `pipeline_steps` (MC Live).
+- Sauf si le sac (`work_items.etape_id`) est coupé : table
+  `pipeline_steps` (MC Live). Un kind peut appartenir à deux sacs
+  (smoke vs prospection lourde).
   `next_ready` saute ces kinds. Pas une policy — un fait d’exécution.
 
 ---

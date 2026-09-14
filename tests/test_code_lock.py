@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from serge.code_lock import verifier_verrous  # noqa: E402
-from serge.db.schema import init_schema  # noqa: E402
+from serge.db.boot import init_schema  # noqa: E402
 from serge.llm_registre import POINT_LOCKS  # noqa: E402
 from serge.registry import load_llm_points  # noqa: E402
 

@@ -11,7 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from serge.db.schema import init_schema  # noqa: E402
+from serge.db.boot import init_schema  # noqa: E402
 from serge.db.store import append_event  # noqa: E402
 from serge.mc.proj_graphe import project_business, project_graphe  # noqa: E402
 from serge.scheduler import claim, enqueue  # noqa: E402
@@ -62,39 +62,37 @@ class ProjGrapheTests(unittest.TestCase):
         self.assertEqual(
             ids,
             [
-                'ecoute',
-                'hypothese',
-                'test',
-                'qualif',
-                'conversation',
-                'intent',
+                'pre_prospection',
+                'conception_poc',
+                'prospection_light',
+                'choix_venture',
+                'build_venture',
+                'prospection_lourde',
+                'collect_feedback',
                 'caisse',
             ],
         )
         self.assertGreaterEqual(len(data['llm']), 10)
-        self.assertTrue(any(f['id'] == 'intent-caisse' for f in data['flux']))
-        ecoute = next(n for n in data['epine'] if n['id'] == 'ecoute')
-        self.assertEqual(ecoute['objet'], {'type': 'etape', 'id': 'ecoute'})
-        self.assertEqual(ecoute['titre'], 'Écoute')
-        ids_j = [j['id'] for j in ecoute['jugements']]
+        self.assertTrue(any(f['id'] == 'lourde-caisse' for f in data['flux']))
+        pre = next(n for n in data['epine'] if n['id'] == 'pre_prospection')
+        self.assertEqual(
+            pre['objet'], {'type': 'etape', 'id': 'pre_prospection'}
+        )
+        self.assertEqual(pre['titre'], 'Pré-prospection')
+        ids_j = [j['id'] for j in pre['jugements']]
         self.assertIn('cluster_demand', ids_j)
-        self.assertTrue(ecoute['jugements'][0]['ordre'])
-        self.assertTrue(ecoute['marche'])
-        self.assertIn('listen.collect', ecoute['kinds'])
+        self.assertTrue(pre['jugements'][0]['ordre'])
+        self.assertTrue(pre['marche'])
+        self.assertIn('listen.collect', pre['kinds'])
 
-    def test_epine_suit_pipeline_steps(self) -> None:
+    def test_epine_refuse_un_id_hors_enum(self) -> None:
         self.conn.execute(
             'INSERT INTO pipeline_steps(id, enabled, kinds_json, rang)'
             " VALUES('extra',1,'[]',99)"
         )
         ids = [n['id'] for n in project_graphe(self.conn, {}, NOW)['epine']]
-        self.assertIn('extra', ids)
-        extra = next(
-            n
-            for n in project_graphe(self.conn, {}, NOW)['epine']
-            if n['id'] == 'extra'
-        )
-        self.assertEqual(extra['titre'], 'extra')
+        self.assertNotIn('extra', ids)
+        self.assertIn('pre_prospection', ids)
 
     def test_business_venture_et_voix(self) -> None:
         data = project_business(self.conn, {}, NOW)
@@ -133,8 +131,8 @@ class ProjGrapheTests(unittest.TestCase):
         io = project_graphe(self.conn, {}, NOW)['io']
         self.assertEqual(io['point'], 'classify_reply')
         self.assertEqual(io['jugement'], 'Classer une réponse')
-        self.assertEqual(io['etape'], 'conversation')
-        self.assertEqual(io['etape_titre'], 'Conversation')
+        self.assertEqual(io['etape'], 'prospection_lourde')
+        self.assertEqual(io['etape_titre'], 'Prospection lourde')
         self.assertEqual(io['tache'], 'Classification d’une réponse')
         self.assertEqual(io['tache_id'], wid)
         self.assertEqual(io['venture'], 'Atelier')

@@ -37,12 +37,17 @@ class EtapeActionsMixin(_Base):
                 400,
                 'Corps JSON requis.',
                 'json',
-                'Envoie {"id": "ecoute", "marche": false}.',
+                'Envoie {"id": "pre_prospection", "marche": false}.',
             )
             return
         ident = str(body.get('id') or '').strip()
         if ident == '':
-            self._refus(400, 'Étape requise.', 'etape', 'id : ecoute, test, …')
+            self._refus(
+                400,
+                'Étape requise.',
+                'etape',
+                'id : pre_prospection, prospection_light, …',
+            )
             return
         if 'marche' not in body or not isinstance(body.get('marche'), bool):
             self._refus(
@@ -72,7 +77,7 @@ class EtapeActionsMixin(_Base):
                 404,
                 f'Étape inconnue : {ident}.',
                 'etape',
-                'Ids : ecoute, hypothese, test, qualif, conversation, intent, caisse.',
+                'Ids : pre_prospection … caisse (8 sacs).',
             )
             return
         self._send_json(200, {'ok': True, **etat})

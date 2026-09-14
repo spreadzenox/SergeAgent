@@ -30,12 +30,13 @@ function plein(d, fill = 'currentColor') {
 }
 
 const DESSINS = {
-  ecoute: 'M4 12a8 8 0 0 1 16 0M7 12a5 5 0 0 1 10 0M10 12a2 2 0 0 1 4 0M12 16v4',
-  hypothese: 'M12 3l2 6h6l-5 4 2 6-5-4-5 4 2-6-5-4h6z',
-  test: 'M4 6h16M4 12h16M4 18h10',
-  qualif: 'M5 12l4 4 10-10',
-  conversation: 'M4 6h16v9H8l-4 4V6z',
-  intent: 'M12 3v18M5 10l7-7 7 7',
+  pre_prospection: 'M4 12a8 8 0 0 1 16 0M7 12a5 5 0 0 1 10 0M10 12a2 2 0 0 1 4 0M12 16v4',
+  conception_poc: 'M12 3l2 6h6l-5 4 2 6-5-4-5 4 2-6-5-4h6z',
+  prospection_light: 'M4 6h16M4 12h16M4 18h10',
+  choix_venture: 'M5 12l4 4 10-10',
+  build_venture: 'M12 3v18M5 10l7-7 7 7',
+  prospection_lourde: 'M4 6h16v9H8l-4 4V6z',
+  collect_feedback: 'M6 4h12v16H6zM9 8h6M9 12h6M9 16h3',
   caisse: 'M3 8h18v11H3zM8 8V6a4 4 0 0 1 8 0v2',
   sqlite: 'M5 4h14v16H5zM5 9h14M9 9v11',
   scheduler: 'M12 6v6l4 2M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z',
@@ -52,7 +53,7 @@ export function icone(nom, taille = 18) {
   const node = svg(taille);
   const d = DESSINS[nom] || DESSINS.llm;
   node.append(trait(d));
-  if (nom === 'hypothese') {
+  if (nom === 'conception_poc') {
     node.append(plein('M12 10l.8 2.2H15l-1.8 1.4.7 2.2L12 14.6 10.1 16l.7-2.2L9 12.2h2.2z', 'currentColor'));
   }
   return node;

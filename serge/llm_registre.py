@@ -142,7 +142,10 @@ def ensure_llm_points(conn: sqlite3.Connection) -> None:
     data = read_yaml_file(path)
     raw = data.get('points')
     points = raw if isinstance(raw, dict) else {}
-    for name, spec in points.items():
+    noms = list(dict.fromkeys([*points, *POINT_LOCKS]))
+    for name in noms:
+        raw_spec = points.get(name)
+        spec = raw_spec if isinstance(raw_spec, dict) else {}
         path, sha = POINT_LOCKS.get(name, ('', ''))
         etape = LLM_ETAPE.get(name, '')
         verdict = str(spec.get('verdict') or '')
@@ -220,7 +223,7 @@ def point_par_id(
     ensure_llm_points(conn)
     row = conn.execute(
         'SELECT id, etape_id, code_path, code_sha, verdict, tier, titre,'
-        ' doc_md, enabled FROM llm_points WHERE id=?',
+        ' doc_md, enabled, files_sha, updated_at FROM llm_points WHERE id=?',
         (ident,),
     ).fetchone()
     if row is None:
@@ -235,6 +238,8 @@ def point_par_id(
         'titre': str(row[6]),
         'doc_md': str(row[7]),
         'enabled': bool(row[8]),
+        'files_sha': str(row[9] or ''),
+        'updated_at': str(row[10] or ''),
     }
 
 

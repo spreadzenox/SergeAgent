@@ -5,13 +5,14 @@ import {TYPES_OBJET, allerObjet, verbe} from './libelles.js';
 import {fetchState} from './sse.js';
 
 const EPINE_X = {
-  ecoute: 0.08,
-  hypothese: 0.22,
-  test: 0.38,
-  qualif: 0.52,
-  conversation: 0.66,
-  intent: 0.80,
-  caisse: 0.93,
+  pre_prospection: 0.06,
+  conception_poc: 0.18,
+  prospection_light: 0.31,
+  choix_venture: 0.44,
+  build_venture: 0.56,
+  prospection_lourde: 0.69,
+  collect_feedback: 0.82,
+  caisse: 0.94,
 };
 
 const ORBITE_POS = {
@@ -26,13 +27,13 @@ const ORBITE_POS = {
 };
 
 const ORBITE_LIEN = {
-  sqlite: 'ecoute',
-  scheduler: 'hypothese',
-  mail: 'conversation',
-  discord: 'conversation',
-  voix: 'conversation',
-  memoire: 'ecoute',
-  policy: 'qualif',
+  sqlite: 'pre_prospection',
+  scheduler: 'choix_venture',
+  mail: 'prospection_lourde',
+  discord: 'prospection_lourde',
+  voix: 'prospection_lourde',
+  memoire: 'collect_feedback',
+  policy: 'prospection_light',
   stripe: 'caisse',
 };
 

@@ -12,7 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from serge.db.schema import init_schema  # noqa: E402
+from serge.db.boot import init_schema  # noqa: E402
 from serge.guards import Reason, check  # noqa: E402
 from serge.policy import load_policy  # noqa: E402
 from serge.privacy import subject_hash  # noqa: E402

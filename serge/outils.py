@@ -8,6 +8,22 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+KINDS_OUTIL = frozenset({'deterministe', 'web', 'agent'})
+
+
+def outil_peut_invoquer(appelant_kind: str, cible_kind: str) -> bool:
+    """Seul un non-agent (invocation LLM) enchaîne un tool agent.
+
+    Args:
+        appelant_kind: Kind de l’appelant (tool ou ``llm``).
+        cible_kind: Kind du tool cible.
+
+    Returns:
+        False si un agent appellerait un autre agent.
+    """
+    return not (appelant_kind == 'agent' and cible_kind == 'agent')
+
+
 # id, kind, path, sha, titre, doc, etat, montre_partout
 # SHA figé : un fichier changé sans maj ici = test rouge.
 SEED: tuple[tuple[str, str, str, str, str, str, str, int], ...] = (
@@ -137,7 +153,7 @@ def outil_par_id(
         ident = 'memory_search'
     row = conn.execute(
         'SELECT id, kind, code_path, code_sha, titre, doc_md, etat,'
-        ' montre_partout FROM tools WHERE id=?',
+        ' montre_partout, files_sha, updated_at FROM tools WHERE id=?',
         (ident,),
     ).fetchone()
     if row is None:
@@ -150,7 +166,8 @@ def outils_partout(conn: sqlite3.Connection) -> list[dict[str, Any]]:
     ensure_tools(conn)
     rows = conn.execute(
         'SELECT id, kind, code_path, code_sha, titre, doc_md, etat,'
-        ' montre_partout FROM tools WHERE montre_partout=1 ORDER BY id'
+        ' montre_partout, files_sha, updated_at FROM tools'
+        ' WHERE montre_partout=1 ORDER BY id'
     ).fetchall()
     return [_ligne(r) for r in rows]
 
@@ -184,4 +201,6 @@ def _ligne(row: Any) -> dict[str, Any]:
         'doc_md': str(row[5]),
         'etat': str(row[6]),
         'montre_partout': bool(row[7]),
+        'files_sha': str(row[8] or '') if len(row) > 8 else '',
+        'updated_at': str(row[9] or '') if len(row) > 9 else '',
     }

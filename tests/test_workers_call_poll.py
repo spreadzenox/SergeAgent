@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from serge.channels.email_gog import MailError  # noqa: E402
-from serge.db.schema import init_schema  # noqa: E402
+from serge.db.boot import init_schema  # noqa: E402
 from serge.scheduler import claim, enqueue  # noqa: E402
 from serge.voice.policy import VoiceBrokerDenied  # noqa: E402
 

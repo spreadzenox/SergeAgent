@@ -12,7 +12,7 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from serge.db.schema import init_schema  # noqa: E402
+from serge.db.boot import init_schema  # noqa: E402
 from serge.discord.bot import Bot  # noqa: E402
 from serge.registry import load_ticket_types  # noqa: E402
 from serge.tickets import create_ticket, publish  # noqa: E402

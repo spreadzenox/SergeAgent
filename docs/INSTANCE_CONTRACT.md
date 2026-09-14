@@ -83,7 +83,7 @@ comme source de vérité une fois le builder en service.
 | `SERGE_MANDATE_PATH` | `paths.policy` |
 | config / secrets dir | `paths.config_root` (défaut `$home/.config/serge`) |
 | sidecar | `paths.secrets_age` relatif au TOML, sinon `serge.secrets.age` à côté |
-| canon | `$system_root/state/serge.db` |
+| canon | `$system_root/state/serge.db` (migrations : [`DB.md`](DB.md)) |
 
 `SERGE_HOME` seul n’est **pas** suffisant pour booter.
 

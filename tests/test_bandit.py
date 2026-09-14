@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from serge.allocator.bandit import propose_bandit  # noqa: E402
-from serge.db.schema import init_schema  # noqa: E402
+from serge.db.boot import init_schema  # noqa: E402
 
 POLICY = {
     'budget': {'allocator_bandit_cost_per_eur': 10.0},

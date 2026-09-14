@@ -89,44 +89,6 @@ FUNNEL = {
 
 REGIMES = {'OUTBOUND': 'Sortant', 'INBOUND': 'Entrant'}
 
-NOEUDS = {
-    'ecoute': {
-        'titre': 'Écoute',
-        'pourquoi': 'Serge lit le web pour trouver une demande réelle.',
-        'argent': 'Sans demande observée, pas d’hypothèse à tester.',
-    },
-    'hypothese': {
-        'titre': 'Idée de business',
-        'pourquoi': 'Quoi vendre, à quel prix, par quel canal — écrit avant d’agir.',
-        'argent': 'C’est le pari : qui paie, pour quoi, par quel message.',
-    },
-    'test': {
-        'titre': 'Essai',
-        'pourquoi': 'On parle à des gens et on mesure, sans se mentir.',
-        'argent': 'Les compteurs disent si le pari tient.',
-    },
-    'qualif': {
-        'titre': 'Qualification',
-        'pourquoi': 'Garder seulement les gens dans la cible.',
-        'argent': 'Moins de bruit, plus de chances d’encaisser.',
-    },
-    'conversation': {
-        'titre': 'Conversation',
-        'pourquoi': 'Répondre, relancer, proposer un créneau.',
-        'argent': 'C’est ici qu’une touche devient une intention.',
-    },
-    'intent': {
-        'titre': 'Intention',
-        'pourquoi': 'Devis, objection, rendez-vous — le signal d’achat.',
-        'argent': 'Sans intent, pas de facture.',
-    },
-    'caisse': {
-        'titre': 'Caisse',
-        'pourquoi': 'Stripe encaisse. Scale, pivot ou arrêt selon les seuils.',
-        'argent': 'L’euro entre ici. Tout le reste sert ce nœud.',
-    },
-}
-
 ORBITES = {
     'sqlite': {
         'titre': 'SQLite',
@@ -163,32 +125,32 @@ ORBITES = {
 }
 
 LLM_ETAPE = {
-    'cluster_demand': 'ecoute',
-    'draft_hypothesis_smoke': 'hypothese',
-    'draft_hypothesis_full': 'hypothese',
-    'resume_test': 'hypothese',
-    'plan_scale': 'test',
-    'options_pivot': 'test',
-    'qualify_prospect': 'qualif',
-    'fill_slots': 'qualif',
-    'score_lead_departage': 'qualif',
-    'write_followup': 'conversation',
-    'voice_script': 'conversation',
-    'voice_dialog': 'conversation',
-    'summarize_thread': 'conversation',
-    'classify_reply': 'conversation',
-    'extract_meeting': 'conversation',
-    'reply_intent': 'conversation',
-    'review_other': 'conversation',
-    'score_call': 'conversation',
-    'draft_price': 'intent',
-    'judge_allocator': 'intent',
-    'consolidate': 'memoire',
-    'edit_serge_md': 'memoire',
-    'build_artifact': 'test',
-    'review_build': 'test',
-    'summarize_build_debt': 'test',
-    'render_context_fr': 'conversation',
+    'cluster_demand': 'pre_prospection',
+    'draft_hypothesis_smoke': 'conception_poc',
+    'draft_hypothesis_full': 'choix_venture',
+    'resume_test': 'choix_venture',
+    'plan_scale': 'prospection_lourde',
+    'options_pivot': 'choix_venture',
+    'qualify_prospect': 'prospection_light',
+    'fill_slots': 'prospection_light',
+    'score_lead_departage': 'prospection_light',
+    'write_followup': 'prospection_lourde',
+    'voice_script': 'prospection_lourde',
+    'voice_dialog': 'prospection_lourde',
+    'summarize_thread': 'prospection_lourde',
+    'classify_reply': 'prospection_lourde',
+    'extract_meeting': 'prospection_lourde',
+    'reply_intent': 'prospection_lourde',
+    'review_other': 'prospection_lourde',
+    'score_call': 'prospection_lourde',
+    'draft_price': 'prospection_lourde',
+    'judge_allocator': 'prospection_lourde',
+    'consolidate': 'collect_feedback',
+    'edit_serge_md': 'collect_feedback',
+    'build_artifact': 'build_venture',
+    'review_build': 'build_venture',
+    'summarize_build_debt': 'build_venture',
+    'render_context_fr': 'prospection_lourde',
     'classify_owner_intent': 'policy',
     'judge_consequence': 'policy',
     'install_guide': 'policy',

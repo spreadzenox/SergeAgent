@@ -12,7 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from serge.db.schema import init_schema  # noqa: E402
+from serge.db.boot import init_schema  # noqa: E402
 from serge.mc.proj_objet import project_objet  # noqa: E402
 from serge.scheduler import enqueue  # noqa: E402
 from tests.mc_server_case import McServerCase  # noqa: E402
@@ -186,7 +186,7 @@ class ProjObjetTests(unittest.TestCase):
         self.assertNotIn('inbound.classify', str(fiche['tableau']))
 
     def test_etape_ecoute(self) -> None:
-        fiche = project_objet(self.conn, 'etape', 'ecoute')
+        fiche = project_objet(self.conn, 'etape', 'pre_prospection')
         self.assertEqual(fiche['type'], 'etape')
         self.assertIn('demande réelle', fiche['pourquoi'])
         titres = [c['titre'] for c in fiche['cadres']]

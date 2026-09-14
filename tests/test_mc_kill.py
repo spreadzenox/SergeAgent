@@ -16,7 +16,7 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from serge.db.schema import init_schema  # noqa: E402
+from serge.db.boot import init_schema  # noqa: E402
 from serge.db.store import utcnow  # noqa: E402
 from serge.llm.client import ChatResult  # noqa: E402
 from serge.llm.runtime import run_registered_point  # noqa: E402

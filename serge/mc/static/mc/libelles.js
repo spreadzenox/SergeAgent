@@ -159,6 +159,7 @@ export const TYPES_OBJET = {
   outil: 'Outil',
   notion: 'Pour comprendre',
   etape: 'Étape',
+  tech: 'Invocation technique',
 };
 
 export function verbe(kind) {

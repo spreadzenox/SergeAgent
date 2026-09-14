@@ -5,11 +5,11 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from serge.db.schema import init_schema
+from serge.db.boot import init_schema
+from serge.horloge import iso_utc
 from serge.paths import system_root
 
 
@@ -19,7 +19,7 @@ def utcnow() -> str:
     Returns:
         Current UTC time as ISO-8601 string.
     """
-    return datetime.now(UTC).isoformat()
+    return iso_utc()
 
 
 def default_canon_path(root: Path | None = None) -> Path:
@@ -36,7 +36,7 @@ def default_canon_path(root: Path | None = None) -> Path:
 
 
 def open_db(path: Path) -> sqlite3.Connection:
-    """Open (creating) the canon DB: schema ensured, 0600, WAL.
+    """Ouvre le canon : migrations + catalogue, 0600, WAL.
 
     Args:
         path: DB file (parent created, mode 0600 enforced).
