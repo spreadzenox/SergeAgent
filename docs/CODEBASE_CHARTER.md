@@ -1,6 +1,6 @@
 # Charte belle codebase Serge
 
-Version : 1.0 (2026-09-09)
+Version : 1.1 (2026-09-14)
 Statut : OWNER-CONTROLLED — Julien seul peut amender. Propositions (assistant, Serge, Meta-Grok) avec rationnel + preuve, jamais en autonome.
 S'applique à : tout code produit pour Serge à partir de cette date — assistant, Serge lui-même, Meta-Grok (quand il reviendra), futurs contributeurs.
 Objectif : le maximum de capacité économique avec le minimum de code, lisible, scalable, sans attracteurs ni compute inutile.
@@ -8,6 +8,7 @@ Objectif : le maximum de capacité économique avec le minimum de code, lisible,
 Les 5 principes (P1-P5) ci-dessous sont FIGÉS avec Julien le 2026-09-09.
 Les 5 règles opérationnelles (R1-R5) sont FIGÉES avec Julien le 2026-09-09 — voir §7.
 R6 (doc vivante) ajoutée par Julien le 2026-09-12.
+R7 + §8 (catalogue, SHA, pas de code mort) ajoutés par Julien le 2026-09-14.
 
 ---
 
@@ -417,3 +418,88 @@ Commentaires de code. Cette charte : Julien seul amende.
 
 **Écart.** Code sans doc à jour = « écart R6 : … » dans le commit + ticket.
 Sinon c'est un bug P4 : deux vérités (le code, et un markdown qui ment).
+
+### R7 — Pas de code mort, pas de documentation morte
+
+**Règle.** On n'empile pas une feature à moitié. Pas de bouton sans
+writer, pas d'API sans appelant, pas de projecteur orphelin, pas de
+paragraphe qui décrit un écran supprimé. Soit on finit, soit on
+enlève — y compris tests et docs du même lot (R6).
+
+« On gardera pour plus tard » n'est pas une raison de laisser du mort.
+Un commentaire `TODO` sans ticket = écart (`écart R7 : …`).
+
+---
+
+## §8 — Comment modifier Serge (catalogue, doc en base, SHA)
+
+Ajouté par Julien le 2026-09-14. S'applique à tout assistant / IA /
+contributeur qui touche le dépôt.
+
+### Serge est un catalogue d'objets, pas un tas de pages
+
+La vérité des **objets** (étapes, invocations LLM, tools, invocations
+techniques, liens d'épine) vit dans **SQLite** :
+
+| Objet | Table | Semence code |
+|---|---|---|
+| Étape | `pipeline_steps` | `serge/etapes.py` + `serge/etape_fiches.py` |
+| Lien d'épine | `etape_liens` | `serge/etape_fiches.py` (`LIENS`) |
+| Invocation LLM | `llm_points` | `serge/llm_registre.py` + `config/llm-points.yaml` |
+| Tool | `tools` | `serge/outils.py` (`SEED`) |
+| Invocation technique | `tech_invocations` | `serge/tech_registre.py` |
+
+Mission Control **lit la base** (fiches, graphe Live, docs d'étape).
+Changer un texte de fiche = changer la semence, laisser le boot
+remettre la base à jour — **pas** dupliquer le texte dans un JS ou
+un markdown « en plus ».
+
+P4 : un fait = une source. Le hostname, un prix, un titre d'étape,
+un SHA de fichier : **une** colonne, pas deux copies.
+
+### Comment ajouter ou modifier un tool / un point / une étape
+
+Dans **le même changement** (R1 peut découper, R6 et les tests suivent) :
+
+1. **Déclarer l'objet** dans la semence (table ci-dessus). Id fermé (P3).
+2. **Pointer les fichiers** qui l'encodent :
+   - tools / LLM / tech : colonne `code_path` (chemin relatif repo) ;
+   - étapes / liens : chemins dans `serge/objet_sha.py` (`_FICHIERS_FIXES`).
+   **Tout nouveau fichier** que tu crées pour ce tool (handler, prompt,
+   helper dédié) doit être dans `code_path` **ou** ajouté à
+   `_FICHIERS_FIXES` — sinon le SHA ne le voit pas.
+3. **Écrire la doc de l'objet en base** : `titre`, `doc_md` (ou champs
+   fiche d'étape). C'est ce que MC affiche. Un `docs/*.md` qui répète
+   le même fait sans être la source = doublon interdit.
+4. **Tests de comportement** (P5) : chemin passant + chemin refusé.
+5. **Verrou SHA** : `tests.test_catalogue_sha` doit rester vert.
+   S'il hurle « rajouté / supprimé / SHA » :
+   - tu as oublié la semence, ou
+   - tu as oublié `code_path` / `_FICHIERS_FIXES`, ou
+   - le contenu a changé → recopier le SHA calculé dans
+     `serge/catalogue_lock.py` **dans ce commit**.
+   Ne jamais désactiver le test. Ne jamais committer un SHA inventé.
+6. **R6** : le document qu'un étranger lirait (`docs/DB.md`,
+   `docs/MISSION_CONTROL.md`, `docs/LLM_MATRIX.md`…) décrit l'état
+   réel après le changement.
+
+Sans 1–6, le changement n'est pas fini. Le pre-push / CI refuse.
+
+### Documentation vivante (deux couches)
+
+- **Fiches d'objets** → colonnes SQLite (source). Semées au boot.
+- **Procédures, contrats, cette charte** → `docs/*.md` (R6).
+
+Changer le comportement d'une étape sans toucher `etape_fiches.py`
+(donc la base) = le MC ment. Changer le MC sans changer la base =
+théâtre.
+
+### Coupe-circuits (En direct)
+
+Trois nappes, une API `POST /owner/api/coupe` :
+
+1. Serge (heartbeat ordonnanceur) — bouton rouge en haut.
+2. Étapes (`pipeline_steps.enabled`) — bas de page.
+3. Kinds (`runtime_flags.kind.*`) — bas de page.
+
+Pas de second kill voix dans l'onglet Voix : même levier, En direct.
