@@ -22,7 +22,8 @@ Racine `system_root` **vide** →
 `scripts/serge-install.py --non-interactive --no-enable-units
 --confirm-live-instance-id julien-vps`, puis
 `systemctl --user enable --now` **toutes** les units des features on
-(pipeline, MC, Discord, ingress, SMS, voix, Asterisk). Pas de denylist.
+(pipeline, MC, Discord, ingress, SMS, Stripe, voix, Asterisk). Pas de
+denylist.
 
 Racine **déjà peuplée** → `kit/update.py` (git archive par-dessus,
 `state/` / `queue/` / `logs/` / `reports/` / `evidence/` intacts, canon

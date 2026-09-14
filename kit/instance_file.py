@@ -145,14 +145,16 @@ def validate_toml(data: Mapping[str, Any]) -> dict[str, Any]:
         raise InstanceError(
             'features.phone_voice requires features.voice (realtime voice keys)'
         )
-    if normalized.get('phone_sms') and not normalized.get('ingress'):
+    pay = bool(normalized.get('stripe') or normalized.get('payments_live'))
+    if (normalized.get('phone_sms') or pay) and not normalized.get('ingress'):
         raise InstanceError(
-            'features.phone_sms requires features.ingress (webhook HTTPS)'
+            'features.phone_sms/stripe require features.ingress '
+            '(webhook HTTPS)'
         )
-    if normalized.get('phone_sms') and not public_hostname:
+    if (normalized.get('phone_sms') or pay) and not public_hostname:
         raise InstanceError(
-            'identity.public_hostname is required when features.phone_sms '
-            'is true (sms.<domaine> webhook)'
+            'identity.public_hostname is required when phone_sms or '
+            'stripe is true'
         )
     if normalized.get('phone_sms') and not E164_RE.match(phone_sms_number):
         raise InstanceError(
@@ -308,15 +310,7 @@ def multiline_secret_names(
     features: Mapping[str, bool],
     manifest: Mapping[str, Any] | None = None,
 ) -> list[str]:
-    """Secrets marqués multiline au manifeste (feature on).
-
-    Args:
-        features: Features activées.
-        manifest: Manifeste (défaut : chargé du repo).
-
-    Returns:
-        Noms à saisir/injecter sur plusieurs lignes (ex. gog_env).
-    """
+    """Secrets marqués multiline au manifeste (feature on)."""
     payload = manifest or load_manifest()
     names: list[str] = []
     for item in payload.get('keys') or []:

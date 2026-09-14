@@ -1,0 +1,21 @@
+---
+description: Charte Serge — à respecter sur tout changement de ce dépôt
+alwaysApply: true
+---
+
+# Charte belle codebase
+
+Source de vérité : `docs/CODEBASE_CHARTER.md`. Julien seul l’amende.
+Tout écart va dans le commit (`écart P1 : …`), jamais silencieux.
+
+- **P1** : un fichier = une responsabilité, < 500 lignes de logique.
+- **P2** : pas de LLM invisible ; checklist + fallback si nouveau jugement.
+- **P3** : déterministe = enums / structures typées, jamais du texte libre.
+- **P4** : un fait = une source (canon SQLite). Pas de hostname/prix dupliqué.
+- **P5** : tests = comportement (passant + refusé), pas l’implémentation.
+- **R1** : diff prod < 300 lignes sauf accord Julien + justification.
+- **R2** : docstrings Google, ruff + ty, pas de `utils.py`.
+- **R5** : revue P1–P5 + R6 dans le message de commit.
+- **R6** : la doc qui décrirait l’état réel part dans le même changement.
+- UI / wizard : français, apostrophe Unicode `’`.
+- Jamais `docs/slides/`, jamais de valeur secrète. Branches + PRs, pas de push `main`.

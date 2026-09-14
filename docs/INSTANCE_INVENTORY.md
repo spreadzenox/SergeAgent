@@ -44,7 +44,7 @@ Le YAML reste le catalogue d’hôte Julien. Mapping feature → ids :
 | --- | --- |
 | *(toujours)* | `path.system_root`, `path.policy_mandate`, `path.writable_runtime`, `path.canon_db`, `secret.openrouter`, `host_dep.python3`, `host_dep.pyyaml` |
 | `ingress` | Caddy, Cloudflare, `optional.public_hostname` |
-| `stripe` / `payments_live` | clés Stripe, vault, carte si live |
+| `stripe` / `payments_live` | clés + `whsec`, `unit.stripe_receiver`, route `https://<domaine>/hooks/stripe` |
 | `owner_ui` | token dashboard ; Discord si `discord` |
 | `gmail` | gog env (`config_root/secrets/gog.env`), provider, binaire |
 | `voice` | xAI / OpenAI env |

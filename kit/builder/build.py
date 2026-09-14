@@ -33,6 +33,7 @@ from kit.builder.telephony import (
     write_asterisk,
     write_voice_readme,
 )
+from kit.builder.webhooks import seed_stripe_route
 from kit.instance_file import (
     assert_secrets_complete,
     load_secret_map,
@@ -118,14 +119,25 @@ def build_instance(
     llm_slots_path = write_llm_slots(config_root, loaded.get('llm') or {})
     asterisk_files: list[str] = []
     sms_route = ''
+    stripe_route = ''
     if loaded['features'].get('phone_voice'):
         asterisk_files = write_asterisk(loaded, secrets, config_root, facts)
         write_voice_readme(config_root)
+    host = str(loaded['identity'].get('public_hostname') or '')
     if loaded['features'].get('phone_sms'):
         sms_route = seed_sms_route(
             system_root,
             installed_toml,
-            str(loaded['identity'].get('public_hostname') or ''),
+            host,
+            kit_root=kit_root,
+        )
+    if loaded['features'].get('stripe') or loaded['features'].get(
+        'payments_live'
+    ):
+        stripe_route = seed_stripe_route(
+            system_root,
+            installed_toml,
+            host,
             kit_root=kit_root,
         )
     units = write_units(loaded, user_systemd, facts=facts, kit_root=kit_root)
@@ -148,6 +160,7 @@ def build_instance(
         'secret_values_included': False,
         'asterisk_files_written': asterisk_files,
         'sms_route': sms_route,
+        'stripe_route': stripe_route,
         'llm_slots': str(llm_slots_path),
         'units_written': sorted(units['files']),
         'units_enable': units['enable'],

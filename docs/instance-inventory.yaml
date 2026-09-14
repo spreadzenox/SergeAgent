@@ -30,9 +30,13 @@ boot_classes:
     stripe:
       - secret.stripe_test
       - secret.stripe_webhook_test
+      - unit.stripe_receiver
+      - path.stripe_route
     payments_live:
       - secret.stripe_live
       - secret.stripe_webhook_live
+      - unit.stripe_receiver
+      - path.stripe_route
       - secret.credential_vault
       - secret.payment_card_enc
       - path.payment_card_meta
@@ -256,14 +260,14 @@ entries:
     current_location: /home/serge/.config/serge/secrets/stripe-webhook-live.key
     required_for: payments
     portable: "yes"
-    notes: Live webhook signing secret; referenced by payment_ingestion and live_monitor.
+    notes: Live webhook signing secret; HMAC for POST /hooks/stripe (same host as MC).
 
   - id: stripe_webhook_test
     kind: secret
     current_location: /home/serge/.config/serge/secrets/stripe-webhook-test.key
     required_for: payments
     portable: "yes"
-    notes: Test webhook signing secret; required when features.stripe is true.
+    notes: Test webhook signing secret; HMAC for POST /hooks/stripe (same host as MC).
 
   - id: discord_bot_token
     kind: secret
@@ -391,6 +395,13 @@ entries:
     portable: "yes"
     notes: Loopback 127.0.0.1:8787 Android webhook -> SmsInbox; seeded from systemd/templates.
 
+  - id: unit.stripe_receiver
+    kind: unit
+    current_location: /home/serge/.config/systemd/user/serge-stripe-receiver.service
+    required_for: stripe
+    portable: "yes"
+    notes: Loopback 127.0.0.1:8788 Stripe HMAC -> mark_paid; path /hooks/stripe on public_hostname.
+
   - id: unit.asterisk
     kind: unit
     current_location: /home/serge/.config/systemd/user/serge-asterisk.service
@@ -418,6 +429,13 @@ entries:
     required_for: phone_sms
     portable: "yes"
     notes: Builder-seeded sms.<public_hostname> route to 127.0.0.1:8787 (serge-phone-sms venture).
+
+  - id: path.stripe_route
+    kind: path
+    current_location: /home/serge/serge-system/state/web-ingress/inventory.json
+    required_for: stripe
+    portable: "yes"
+    notes: Builder-seeded https://<public_hostname>/hooks/stripe to 127.0.0.1:8788.
 
   - id: host_dep.asterisk
     kind: host_dep

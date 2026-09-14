@@ -57,6 +57,61 @@ def stripe_keys(
     )
 
 
+def parse_stripe_webhook(
+    raw_body: bytes,
+    sig_header: str,
+    webhook_secret: str,
+    now: float | None = None,
+) -> dict[str, Any]:
+    """Vérifie HMAC + fraîcheur, puis parse l’événement (sans clé API).
+
+    Args:
+        raw_body: Corps brut du POST.
+        sig_header: En-tête `Stripe-Signature`.
+        webhook_secret: `whsec_…` (test ou live).
+        now: Horodatage (tests) ; défaut = maintenant.
+
+    Returns:
+        Objet événement Stripe.
+
+    Raises:
+        RailError: Signature, fraîcheur ou JSON invalides.
+    """
+    if not webhook_secret:
+        raise RailError('SIGNATURE: secret webhook manquant')
+    timestamp = ''
+    signatures: list[str] = []
+    for item in sig_header.split(','):
+        if '=' not in item:
+            continue
+        key, value = item.split('=', 1)
+        key = key.strip()
+        if key == 't':
+            timestamp = value
+        elif key == 'v1':
+            signatures.append(value)
+    if not timestamp or not signatures:
+        raise RailError('SIGNATURE: en-tête incomplet')
+    try:
+        age = abs((now if now is not None else time.time()) - int(timestamp))
+    except ValueError as exc:
+        raise RailError('SIGNATURE: timestamp invalide') from exc
+    if age > WEBHOOK_TOLERANCE_S:
+        raise RailError('STALE: webhook trop ancien')
+    signed = f'{timestamp}.'.encode() + raw_body
+    expected = hmac.new(webhook_secret.encode(), signed, hashlib.sha256)
+    digest = expected.hexdigest()
+    if not any(hmac.compare_digest(digest, sig) for sig in signatures):
+        raise RailError('SIGNATURE: HMAC invalide')
+    try:
+        payload = json.loads(raw_body.decode('utf-8'))
+    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        raise RailError('API: webhook illisible') from exc
+    if not isinstance(payload, dict):
+        raise RailError('API: webhook non-objet')
+    return payload
+
+
 def _cents(amount_eur: float) -> int:
     if amount_eur <= 0:
         raise RailError('API: montant <= 0')
@@ -206,41 +261,6 @@ class StripeRail:
         Raises:
             RailError: SIGNATURE, STALE, API (JSON).
         """
-        if not self.webhook_secret:
-            raise RailError('SIGNATURE: secret webhook manquant')
-        parts = dict(
-            item.split('=', 1) for item in sig_header.split(',') if '=' in item
+        return parse_stripe_webhook(
+            raw_body, sig_header, self.webhook_secret, now
         )
-        timestamp = parts.get('t', '')
-        signatures = [
-            value
-            for key, value in (
-                item.split('=', 1)
-                for item in sig_header.split(',')
-                if '=' in item
-            )
-            if key.strip() == 'v1'
-        ]
-        if not timestamp or not signatures:
-            raise RailError('SIGNATURE: en-tête incomplet')
-        try:
-            age = abs(
-                (now if now is not None else time.time()) - int(timestamp)
-            )
-        except ValueError as exc:
-            raise RailError('SIGNATURE: timestamp invalide') from exc
-        if age > WEBHOOK_TOLERANCE_S:
-            raise RailError('STALE: webhook trop ancien')
-        signed = f'{timestamp}.'.encode() + raw_body
-        expected = hmac.new(
-            self.webhook_secret.encode(), signed, hashlib.sha256
-        ).hexdigest()
-        if not any(hmac.compare_digest(expected, sig) for sig in signatures):
-            raise RailError('SIGNATURE: HMAC invalide')
-        try:
-            payload = json.loads(raw_body.decode('utf-8'))
-        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
-            raise RailError('API: webhook illisible') from exc
-        if not isinstance(payload, dict):
-            raise RailError('API: webhook non-objet')
-        return payload

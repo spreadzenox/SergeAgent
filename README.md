@@ -115,10 +115,11 @@ Guides : [`docs/DISCORD_SETUP.md`](docs/DISCORD_SETUP.md) ·
 Ledger déterministe [`serge/collect/`](serge/collect/) : le prix n'est jamais
 inventé (proposition → bornes → validation). Rail Stripe test-first
 (PaymentIntents, refunds, vérification HMAC des webhooks) et relances bornées
-(J+7 polie → J+14 ferme → STOP + ticket). La boucle retour événements Stripe
-vers le ledger est en cours de branchement.
+(J+7 polie → J+14 ferme → STOP + ticket). Le POST
+`https://<domaine>/hooks/stripe` (même hôte que le MC) vérifie le `whsec`
+et passe la transaction en `paid`.
 
-Code : [`serge/collect/`](serge/collect/) (doc d'architecture à venir)
+Code : [`serge/collect/`](serge/collect/). Install : [`docs/STRIPE.md`](docs/STRIPE.md).
 
 
 ### 7. Voix commerciale bornée

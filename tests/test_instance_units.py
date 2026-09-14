@@ -149,6 +149,17 @@ class InstanceUnitTests(unittest.TestCase):
         self.assertIn('serge/voice/bridge.py serve', bridge)
         self.assertIn('127.0.0.1:8791', bridge)
 
+    def test_stripe_receiver_is_feature_gated(self) -> None:
+        rendered = render_units(_loaded(features={'stripe': True}))
+        self.assertIn('serge-stripe-receiver.service', rendered['files'])
+        self.assertIn('serge-stripe-receiver.service', rendered['enable'])
+        unit = rendered['files']['serge-stripe-receiver.service']
+        self.assertIn('serge/collect/receiver.py serve', unit)
+        self.assertNotIn(
+            'serge-stripe-receiver.service',
+            render_units(_loaded())['files'],
+        )
+
     def test_discord_bot_is_feature_gated(self) -> None:
         rendered = render_units(_loaded(features={'discord': True}))
         self.assertIn('serge-discord-bot.service', rendered['files'])

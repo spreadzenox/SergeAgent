@@ -48,11 +48,14 @@ secrets...). Exemples : “c’est quoi un trunk SIP ?”, “quel mode choisir 
 
 ## Ensuite : instance (2/3), secrets (3/3), build
 
-Le wizard enchaîne instance → features → téléphone → **discord (IDs
-serveur/forum/urgent/digest/owner)** → secrets (la clé OpenRouter n’est
-pas redemandée) → sidecar age → mandat optionnel, puis l’installeur
-construit : arbre vierge (`git archive`, jamais rsync), canon vide,
-secrets 0600, units, Asterisk, route SMS, slots LLM.
+Le wizard enchaîne instance → features → **domaine public** (MC,
+`sms.<domaine>`, webhook Stripe) → téléphone → **discord (IDs
+serveur/forum/urgent/digest/owner)** → si Stripe : affichage de
+`https://<domaine>/hooks/stripe` à coller au Dashboard → secrets (la
+clé OpenRouter n’est pas redemandée) → sidecar age → mandat optionnel,
+puis l’installeur construit : arbre vierge (`git archive`, jamais
+rsync), canon vide, secrets 0600, units, Asterisk, route SMS, route
+Stripe, slots LLM.
 Résumé humain + receipt JSON à la fin (`state/instance-build.json`).
 
 **Secrets : règle d’or.** Tout secret vit dans le sidecar chiffré
@@ -68,4 +71,5 @@ Mission Control : [`MISSION_CONTROL.md`](MISSION_CONTROL.md) (port 8790,
 public / et owner /owner). Jeton owner :
 `~/.config/serge/secrets/owner-dashboard.token` (sinon `SERGE_MC_TOKEN`).
 Téléphonie : [`PHONE_OPTIONS.md`](PHONE_OPTIONS.md).
+Stripe : [`STRIPE.md`](STRIPE.md) (même domaine que le MC).
 Discord : [`DISCORD_SETUP.md`](DISCORD_SETUP.md).
