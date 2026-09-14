@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 import tempfile
@@ -210,6 +211,64 @@ class SergeUpdateTests(unittest.TestCase):
                 (config / 'pjsip.conf').read_text(encoding='utf-8'),
                 'SECRET\n',
             )
+
+    def test_phone_voice_rewrites_pjsip_when_secrets_present(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            tmp = Path(raw)
+            source = tmp / 'source'
+            sha = _git_seed(source)
+            dest = tmp / 'dest'
+            dest.mkdir()
+            (dest / 'keep').write_text('x\n', encoding='utf-8')
+            home = tmp / 'home'
+            config = home / '.config/serge/asterisk'
+            config.mkdir(parents=True)
+            (config / 'pjsip.conf').write_text(
+                'bind = 127.0.0.1:5061\n',
+                encoding='utf-8',
+            )
+            dotenv = tmp / 'secrets.env'
+            dotenv.write_text('sip_trunk_password=s3cret\n', encoding='utf-8')
+            text = (
+                _toml(home, dest)
+                .replace('ingress = false\n', 'ingress = true\n')
+                .replace('voice = false\n', 'voice = true\n')
+                .replace('phone_sms = false\n', 'phone_sms = true\n')
+                .replace('phone_voice = false\n', 'phone_voice = true\n')
+                .replace(
+                    'hostname = "localhost"\n',
+                    'hostname = "localhost"\n'
+                    'public_hostname = "serge-kit-test.example.net"\n'
+                    'phone_sms_number = "+33600000001"\n'
+                    'phone_voice_number = "+33162000001"\n',
+                )
+                + '\n[phone_voice]\n'
+                'sip_server = "sip.example.com"\n'
+                'sip_username = "trunk"\n'
+                'sip_transport = "tls"\n'
+                'max_calls_per_day = 50\n'
+            )
+            instance = tmp / 'serge.instance.toml'
+            instance.write_text(text, encoding='utf-8')
+            previous = os.environ.get('SERGE_SECRETS_DOTENV')
+            os.environ['SERGE_SECRETS_DOTENV'] = str(dotenv)
+            try:
+                receipt = update_instance(
+                    instance_file=instance,
+                    source_repo=source,
+                    git_sha=sha,
+                    kit_root=ROOT,
+                    systemd_user_dir=home / '.config/systemd/user',
+                )
+            finally:
+                if previous is None:
+                    os.environ.pop('SERGE_SECRETS_DOTENV', None)
+                else:
+                    os.environ['SERGE_SECRETS_DOTENV'] = previous
+            pjsip = (config / 'pjsip.conf').read_text(encoding='utf-8')
+            self.assertIn('pjsip.conf', receipt['asterisk_files_written'])
+            self.assertIn('bind = 0.0.0.0:5061', pjsip)
+            self.assertNotIn('bind = 127.0.0.1', pjsip)
 
 
 if __name__ == '__main__':
