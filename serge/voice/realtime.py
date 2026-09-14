@@ -111,13 +111,19 @@ def route_event(
         Actions [(audio|transcript|transcript_delta|done|error|speech, ...)].
     """
     kind = str(event.get('type') or '')
-    if kind == 'response.audio.delta':
+    if kind in {'response.audio.delta', 'response.output_audio.delta'}:
         chunk = str(event.get('delta') or '')
         state.setdefault('audio', []).append(chunk)
         return [('audio', chunk)]
-    if kind == 'response.audio_transcript.delta':
+    if kind in {
+        'response.audio_transcript.delta',
+        'response.output_audio_transcript.delta',
+    }:
         return [('transcript_delta', str(event.get('delta') or ''))]
-    if kind == 'response.audio_transcript.done':
+    if kind in {
+        'response.audio_transcript.done',
+        'response.output_audio_transcript.done',
+    }:
         text = str(event.get('transcript') or '')
         state['transcript'] = str(state.get('transcript') or '') + text
         return [('transcript', text)]

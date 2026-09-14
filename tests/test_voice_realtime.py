@@ -84,6 +84,13 @@ class RealtimeTests(unittest.TestCase):
             [('done', {})],
         )
         self.assertTrue(state['done'])
+        self.assertEqual(
+            route_event(
+                {'type': 'response.output_audio.delta', 'delta': 'Qg=='},
+                {},
+            ),
+            [('audio', 'Qg==')],
+        )
         self.assertEqual(route_event({'type': 'ping.inconnu'}, state), [])
         error = route_event({'type': 'error', 'error': {'code': 'x'}}, state)
         self.assertEqual(error[0][0], 'error')
