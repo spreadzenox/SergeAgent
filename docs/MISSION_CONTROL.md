@@ -586,19 +586,25 @@ les vieilles bases reçoivent encore les colonnes au boot
 ## Carte live — coupe-circuit par étape
 
 Table `pipeline_steps` (canon) : une ligne par sac de vie du projet
-(`pre_prospection` … `caisse`), `enabled`, et `kinds_json` (actions
-typiques, plus le coupe-circuit). Semence au boot ; les kinds se
+(`pre_prospection` … `caisse`), `enabled`, `kinds_json` (actions
+typiques, plus le coupe-circuit), et la **doc MC** (`titre`,
+`pourquoi`, `argent`, `dependance`, `comment`, `doc_md`) +
+`files_sha` + `updated_at`. Semence au boot ; les kinds et la doc se
 mettent à jour depuis le code, **jamais** l’interrupteur. L’ordonnanceur
 ignore les `work_items.etape_id` des sacs coupés — le kind peut être
 partagé (smoke et lourde : `email.send`). `memory.consolidate` vit dans
 `collect_feedback`.
-L’épine Live se dessine depuis cette table (pas depuis une liste JS).
+L’épine Live et les fiches se dessinent depuis cette table (pas depuis
+une liste Python/JS). Les flèches « En direct » viennent de
+`etape_liens` (débit = enum de compteurs, pas une requête libre).
 La fenêtre SQLite liste `sqlite_master` (tables réellement là), pas
 la constante `TABLES`.
-Outils et jugements : tables `tools`, `llm_points`, `llm_point_tools`.
-Le texte des fiches MC = `doc_md`. SHA du fichier dans la semence git
-(`serge/outils.py`, `serge/llm_registre.py`) : un `.py` modifié sans
-maj du SHA fait rougir `tests.test_code_lock`. Runtime des points =
+Outils et jugements : tables `tools`, `llm_points`, `llm_point_tools`,
+`tech_invocations`. Le texte des fiches MC = colonnes en base.
+SHA composé (fichiers + sous-objets) : `files_sha` / `catalogue_lock.py`
+— ajout, suppression ou fichier modifié sans maj du SHA →
+`tests.test_catalogue_sha` rouge. Le verrou fichier-par-fichier
+(`code_sha` / `test_code_lock`) reste. Runtime des points =
 encore `config/llm-points.yaml` ; la table est le miroir + les liens.
 Sur la carte Live : bouton « Couper cette étape » / « Remettre en
 marche » → `POST /owner/api/etape`.

@@ -6,7 +6,9 @@ from __future__ import annotations
 import sqlite3
 from typing import Any
 
-from serge.mc.libelles import LLM_ETAPE, titre_llm
+from serge.etape_fiches import fiche_etape, precedente
+from serge.etapes import ETAPE_IDS
+from serge.mc.libelles import titre_llm
 from serge.mc.llm_roles import role_de
 
 # Ordre d’exécution réel (pas l’ordre du YAML). Le reste = « à part ».
@@ -47,111 +49,6 @@ ORDRE: dict[str, list[str]] = {
     'caisse': [],
 }
 
-PRECEDENTE = {
-    'pre_prospection': None,
-    'conception_poc': 'pre_prospection',
-    'prospection_light': 'conception_poc',
-    'choix_venture': 'prospection_light',
-    'build_venture': 'choix_venture',
-    'prospection_lourde': 'build_venture',
-    'collect_feedback': 'prospection_lourde',
-    'caisse': 'prospection_lourde',
-}
-
-ETAPES: dict[str, dict[str, str]] = {
-    'pre_prospection': {
-        'titre': 'Pré-prospection',
-        'pourquoi': (
-            'Serge lit ce que des inconnus ont déjà écrit (forums, flux…).'
-            ' But : sentir une demande réelle, pas inventer une idée.'
-        ),
-        'dependance': 'Rien avant. C’est le début du pipe.',
-        'comment': (
-            'Ramasser des pages, les ranger, puis une invocation LLM les'
-            ' met en paquets. Le navigateur n’est pas encore un bouton.'
-        ),
-    },
-    'conception_poc': {
-        'titre': 'Conception d’un PoC',
-        'pourquoi': (
-            'On écrit la pré-venture : produit, specs, prérequis, puis on'
-            ' appelle le builder si un livrable est nécessaire.'
-        ),
-        'dependance': (
-            'Sans paquets de demandes (pré-prospection), on n’a qu’une intuition.'
-        ),
-        'comment': (
-            'Le PoC (landing, SaaS, livrable) sert ensuite au smoke test :'
-            ' on ne vend plus seulement un concept.'
-        ),
-    },
-    'prospection_light': {
-        'titre': 'Prospection light',
-        'pourquoi': (
-            'Smoke test multicanal (N configurable dans Mission Control),'
-            ' avec le PoC s’il existe.'
-        ),
-        'dependance': 'Sans pré-venture écrite, on ne saurait pas ce qu’on mesure.',
-        'comment': (
-            'Mêmes canaux que la prospection lourde (e-mail, appel). On coupe'
-            ' ce sac, pas le kind : la lourde peut continuer à envoyer.'
-        ),
-    },
-    'choix_venture': {
-        'titre': 'Choix de venture',
-        'pourquoi': (
-            'Parmi les N pré-ventures et leurs smokes, garder la plus prometteuse.'
-        ),
-        'dependance': 'Sans résultats de smoke, le choix n’est qu’une préférence.',
-        'comment': (
-            'Aujourd’hui N=1 actif max. Mission Control pourra ouvrir la porte.'
-        ),
-    },
-    'build_venture': {
-        'titre': 'Build / rebuild',
-        'pourquoi': (
-            'Créer ou améliorer la venture active : livrable, delivery,'
-            ' onboarding client.'
-        ),
-        'dependance': 'On build à partir de la pré-venture choisie et des retours.',
-        'comment': (
-            'Toute la partie building / delivery est ici, y compris après vente.'
-        ),
-    },
-    'prospection_lourde': {
-        'titre': 'Prospection lourde',
-        'pourquoi': (
-            'Échanges, démo, jusqu’à la signature d’un devis et un client actif.'
-        ),
-        'dependance': 'Sans venture active et livrable, on vend du vent.',
-        'comment': (
-            'Qualification, conversation, prix : mêmes kinds que le smoke,'
-            ' autre etape_id.'
-        ),
-    },
-    'collect_feedback': {
-        'titre': 'Collect feedback',
-        'pourquoi': (
-            'Mails, transcripts, réseaux, leçons — améliorer le livrable ou Serge.'
-        ),
-        'dependance': 'Sans échanges, rien à consolider.',
-        'comment': 'Work items mémoire et invocations de consolidation.',
-    },
-    'caisse': {
-        'titre': 'Caisse',
-        'pourquoi': (
-            'L’euro entre (Stripe, devis payé). Dunning et relances d’encaissement.'
-        ),
-        'dependance': (
-            'Sans client / devis, encaisser ce serait vendre du vent.'
-        ),
-        'comment': (
-            'Pas une invocation LLM qui « crée l’argent ». Le rail encaisse ;'
-            ' les règles autorisent ou refusent.'
-        ),
-    },
-}
-
 
 def _court(nom: str) -> str:
     role = role_de(nom)[0]
@@ -159,40 +56,34 @@ def _court(nom: str) -> str:
     return (tete + '.') if sep else role
 
 
-def _points() -> dict[str, dict]:
-    try:
-        from serge.registry import load_llm_points
-
-        return load_llm_points()
-    except Exception:
-        return {}
-
-
 def lister_jugements(
-    etape: str, chauds: set[str] | None = None
+    conn: sqlite3.Connection, etape: str, chauds: set[str] | None = None
 ) -> list[dict[str, Any]]:
     """Jugements d’une étape : d’abord l’ordre, puis le reste à part.
 
     Args:
-        etape: Id d’étape (`ecoute`, `hypothese`, …).
+        conn: Canon (``llm_points``).
+        etape: Id d’étape.
         chauds: Points vus récemment (badge).
 
     Returns:
         Lignes `{id, titre, detail, rang, ordre, chaud}`.
     """
     chauds = chauds or set()
-    registres = _points()
-    suite = [n for n in ORDRE.get(etape, []) if n in registres]
-    connus = [
-        n for n, et in LLM_ETAPE.items() if et == etape and n in registres
-    ]
+    rows = conn.execute(
+        'SELECT id, titre FROM llm_points WHERE etape_id=? ORDER BY id',
+        (etape,),
+    ).fetchall()
+    titres = {str(r[0]): str(r[1] or '') for r in rows}
+    connus = list(titres)
+    suite = [n for n in ORDRE.get(etape, []) if n in titres]
     reste = [n for n in connus if n not in suite]
     lignes = []
     for i, nom in enumerate(suite, 1):
         lignes.append(
             {
                 'id': nom,
-                'titre': titre_llm(nom),
+                'titre': titres[nom] or titre_llm(nom),
                 'detail': _court(nom),
                 'rang': i,
                 'ordre': True,
@@ -203,7 +94,7 @@ def lister_jugements(
         lignes.append(
             {
                 'id': nom,
-                'titre': titre_llm(nom),
+                'titre': titres[nom] or titre_llm(nom),
                 'detail': _court(nom),
                 'rang': 0,
                 'ordre': False,
@@ -225,7 +116,9 @@ def project_etape(
     Returns:
         Payload fiche MC, ou None si l’étape est inconnue.
     """
-    spec = ETAPES.get(ident)
+    if ident not in ETAPE_IDS:
+        return None
+    spec = fiche_etape(conn, ident)
     if spec is None:
         return None
     chauds = {
@@ -234,9 +127,10 @@ def project_etape(
             'SELECT DISTINCT point FROM llm_usage ORDER BY id DESC LIMIT 20'
         ).fetchall()
     }
-    jugs = lister_jugements(ident, chauds)
-    prec = PRECEDENTE.get(ident)
-    titre_prec = ETAPES[prec]['titre'] if prec and prec in ETAPES else ''
+    jugs = lister_jugements(conn, ident, chauds)
+    prec = precedente(conn, ident)
+    prec_fiche = fiche_etape(conn, prec) if prec else None
+    titre_prec = (prec_fiche or {}).get('titre') or ''
     liens_ord = [
         {
             'type': 'llm',
@@ -323,6 +217,7 @@ def project_etape(
             {'k': 'Invocations LLM', 'v': str(len(jugs))},
             {'k': 'Invocations techniques', 'v': str(len(tech_liens))},
             {'k': 'Étape d’avant', 'v': titre_prec or '— (début)'},
+            {'k': 'Dernière modification', 'v': spec['updated_at'] or '—'},
         ],
         'cadres': cadres,
         'enfants': [],

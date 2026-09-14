@@ -89,49 +89,6 @@ FUNNEL = {
 
 REGIMES = {'OUTBOUND': 'Sortant', 'INBOUND': 'Entrant'}
 
-NOEUDS = {
-    'pre_prospection': {
-        'titre': 'Pré-prospection',
-        'pourquoi': 'Écoute des réseaux, clustering : sentir une demande réelle.',
-        'argent': 'Sans demande observée, pas de pré-venture à concevoir.',
-    },
-    'conception_poc': {
-        'titre': 'Conception d’un PoC',
-        'pourquoi': 'Pré-venture, produit, specs, prérequis, puis builder si besoin.',
-        'argent': 'Le PoC sert à faire valoir que le produit existe.',
-    },
-    'prospection_light': {
-        'titre': 'Prospection light',
-        'pourquoi': 'Smoke test multicanal (N configurable) avec le PoC s’il existe.',
-        'argent': 'On mesure le message, pas encore l’encaissement.',
-    },
-    'choix_venture': {
-        'titre': 'Choix de venture',
-        'pourquoi': 'Parmi les N pré-ventures, garder la plus prometteuse.',
-        'argent': 'Un seul actif aujourd’hui ; MC pourra en ouvrir d’autres.',
-    },
-    'build_venture': {
-        'titre': 'Build / rebuild',
-        'pourquoi': 'Livrable, delivery, onboarding — la venture devient active.',
-        'argent': 'Sans livrable, la prospection lourde vend du vent.',
-    },
-    'prospection_lourde': {
-        'titre': 'Prospection lourde',
-        'pourquoi': 'Échanges, démo, devis signé, client actif.',
-        'argent': 'C’est ici qu’une touche devient un contrat.',
-    },
-    'collect_feedback': {
-        'titre': 'Collect feedback',
-        'pourquoi': 'Mails, voix, réseaux, leçons — améliorer le livrable ou Serge.',
-        'argent': 'Les leçons évitent de payer deux fois la même erreur.',
-    },
-    'caisse': {
-        'titre': 'Caisse',
-        'pourquoi': 'Stripe encaisse. Scale, pivot ou arrêt selon les seuils.',
-        'argent': 'L’euro entre ici. Tout le reste sert ce nœud.',
-    },
-}
-
 ORBITES = {
     'sqlite': {
         'titre': 'SQLite',

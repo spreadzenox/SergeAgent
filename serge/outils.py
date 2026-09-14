@@ -153,7 +153,7 @@ def outil_par_id(
         ident = 'memory_search'
     row = conn.execute(
         'SELECT id, kind, code_path, code_sha, titre, doc_md, etat,'
-        ' montre_partout FROM tools WHERE id=?',
+        ' montre_partout, files_sha, updated_at FROM tools WHERE id=?',
         (ident,),
     ).fetchone()
     if row is None:
@@ -166,7 +166,8 @@ def outils_partout(conn: sqlite3.Connection) -> list[dict[str, Any]]:
     ensure_tools(conn)
     rows = conn.execute(
         'SELECT id, kind, code_path, code_sha, titre, doc_md, etat,'
-        ' montre_partout FROM tools WHERE montre_partout=1 ORDER BY id'
+        ' montre_partout, files_sha, updated_at FROM tools'
+        ' WHERE montre_partout=1 ORDER BY id'
     ).fetchall()
     return [_ligne(r) for r in rows]
 
@@ -200,4 +201,6 @@ def _ligne(row: Any) -> dict[str, Any]:
         'doc_md': str(row[5]),
         'etat': str(row[6]),
         'montre_partout': bool(row[7]),
+        'files_sha': str(row[8] or '') if len(row) > 8 else '',
+        'updated_at': str(row[9] or '') if len(row) > 9 else '',
     }

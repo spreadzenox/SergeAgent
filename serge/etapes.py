@@ -93,20 +93,50 @@ def enabled_depuis_v7(anciens: dict[str, int], ident: str) -> int:
 
 
 def ensure_pipeline_steps(conn: sqlite3.Connection) -> None:
-    """Pose les 8 étapes ; met à jour les kinds, jamais ``enabled``.
+    """Pose les 8 étapes ; met à jour kinds/docs, jamais ``enabled``.
 
     Args:
         conn: Canon (commit par l’appelant).
     """
+    from serge.db.store import utcnow
+    from serge.etape_fiches import FICHES
+
+    now = utcnow()
     for ident, rang, kinds in SEED:
+        fiche = FICHES[ident]
         blob = json.dumps(list(kinds), ensure_ascii=False)
-        conn.execute(
-            'INSERT INTO pipeline_steps(id, enabled, kinds_json, rang)'
-            ' VALUES(?,?,?,?)'
-            ' ON CONFLICT(id) DO UPDATE SET'
-            ' kinds_json=excluded.kinds_json, rang=excluded.rang',
-            (ident, 1, blob, rang),
+        docs = (
+            fiche['titre'],
+            fiche['pourquoi'],
+            fiche['argent'],
+            fiche['dependance'],
+            fiche['comment'],
+            fiche['doc_md'],
         )
+        row = conn.execute(
+            'SELECT titre, pourquoi, argent, dependance, comment, doc_md'
+            ' FROM pipeline_steps WHERE id=?',
+            (ident,),
+        ).fetchone()
+        if row is None:
+            conn.execute(
+                'INSERT INTO pipeline_steps(id, enabled, kinds_json, rang,'
+                ' titre, pourquoi, argent, dependance, comment, doc_md,'
+                ' files_sha, updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',
+                (ident, 1, blob, rang, *docs, '', now),
+            )
+            continue
+        conn.execute(
+            'UPDATE pipeline_steps SET kinds_json=?, rang=?, titre=?,'
+            ' pourquoi=?, argent=?, dependance=?, comment=?, doc_md=?'
+            ' WHERE id=?',
+            (blob, rang, *docs, ident),
+        )
+        if tuple(str(c or '') for c in row) != docs:
+            conn.execute(
+                'UPDATE pipeline_steps SET updated_at=? WHERE id=?',
+                (now, ident),
+            )
     conn.execute(
         'DELETE FROM pipeline_steps WHERE id NOT IN'
         f' ({",".join("?" * len(ETAPE_IDS))})',

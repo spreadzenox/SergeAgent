@@ -6,6 +6,7 @@ from __future__ import annotations
 import sqlite3
 from typing import Any
 
+from serge.etape_fiches import DEBITS, LIENS
 from serge.etapes import ETAPE_IDS, etats_etapes
 from serge.llm_registre import POINT_LOCKS
 from serge.mc.libelles import LLM_ETAPE
@@ -104,5 +105,20 @@ def verifier_catalogue(conn: sqlite3.Connection) -> None:
     ).fetchall()
     for point_id, tool_id in orphelins:
         erreurs.append(f'jonction orpheline : {point_id} → {tool_id}')
+    liens = {
+        str(r[0]): (str(r[1]), str(r[2]), str(r[3]))
+        for r in conn.execute('SELECT id, de, vers, debit FROM etape_liens')
+    }
+    for ident, de, vers, _libelle, debit, _rang in LIENS:
+        if ident not in liens:
+            erreurs.append(f'lien absent : {ident}')
+            continue
+        got_de, got_vers, got_debit = liens[ident]
+        if (got_de, got_vers) != (de, vers):
+            erreurs.append(f'{ident} : extrémités {got_de}→{got_vers}')
+        if got_debit != debit or debit not in DEBITS:
+            erreurs.append(f'{ident} : débit {got_debit!r}')
+        if de not in ETAPE_IDS or vers not in ETAPE_IDS:
+            erreurs.append(f'{ident} : étape hors épine')
     if erreurs:
         raise CatalogueError(' ; '.join(erreurs[:12]))

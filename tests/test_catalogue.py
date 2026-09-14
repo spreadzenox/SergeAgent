@@ -47,8 +47,12 @@ class CatalogueTests(unittest.TestCase):
     def test_fiche_etape_montre_tech(self) -> None:
         fiche = project_objet(self.conn, 'etape', 'pre_prospection')
         assert fiche is not None
+        self.assertEqual(fiche['titre'], 'Pré-prospection')
         titres = [c['titre'] for c in fiche['cadres']]
         self.assertIn('Invocations techniques', titres)
+        self.assertTrue(
+            any(c['k'] == 'Dernière modification' for c in fiche['champs'])
+        )
         tech = project_objet(self.conn, 'tech', 'cluster_listen')
         assert tech is not None
         self.assertEqual(tech['type'], 'tech')

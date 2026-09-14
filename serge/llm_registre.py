@@ -220,7 +220,7 @@ def point_par_id(
     ensure_llm_points(conn)
     row = conn.execute(
         'SELECT id, etape_id, code_path, code_sha, verdict, tier, titre,'
-        ' doc_md, enabled FROM llm_points WHERE id=?',
+        ' doc_md, enabled, files_sha, updated_at FROM llm_points WHERE id=?',
         (ident,),
     ).fetchone()
     if row is None:
@@ -235,6 +235,8 @@ def point_par_id(
         'titre': str(row[6]),
         'doc_md': str(row[7]),
         'enabled': bool(row[8]),
+        'files_sha': str(row[9] or ''),
+        'updated_at': str(row[10] or ''),
     }
 
 

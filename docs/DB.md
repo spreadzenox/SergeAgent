@@ -12,7 +12,8 @@ install et **ne le recrée pas** à l’update.
    manquantes, tamponne `schema_version` **seulement** après une
    migration réellement appliquée.
 2. **Catalogue** (semence idempotente, pas du DDL) : colonnes comptes
-   manquantes, étapes, tools, invocations LLM.
+   manquantes, étapes, tools, invocations LLM / tech, liens d’épine,
+   SHA fichiers.
 
 Une base déjà à la tête du code ne réécrit pas le tampon. Une base
 **plus récente** que le code refuse de booter (`MigrateError`) — un
@@ -39,6 +40,7 @@ Catalogue (types, semés) vs occurrences (faits) :
 | `llm_points` + `llm_point_tools` | `llm_usage` |
 | `tech_invocations` | `events` / runs (pas encore de ledger dédié) |
 | `tools` | `llm_point_tools` (seule une invocation LLM invoque) |
+| `etape_liens` | débits Live (`listen_docs` … `transactions`) |
 
 Liens : `llm_points.etape_id` et `tech_invocations.etape_id` ∈ épine
 ou `policy` ; jonction `llm_point_tools` sans orphelin. Lecture :
@@ -66,3 +68,22 @@ Invocations techniques : table `tech_invocations` (kinds fermés
 en a n ; seule une **invocation LLM** peut appeler des tools. Un tool
 `kind=agent` ne peut pas en appeler un autre (garde-fou à brancher
 sur le runtime).
+
+## Docs MC + SHA fichiers (v10)
+
+Chaque objet catalogue porte `doc_md` (ou les champs fiche d’étape :
+`titre`, `pourquoi`, `argent`, `dependance`, `comment`), `files_sha`
+et `updated_at`. Mission Control lit **uniquement la base** pour
+l’épine, les fiches et le graphe Live.
+
+`files_sha` = SHA-256 des SHA *contenu* de tous les fichiers qui
+encodent l’objet **et** ses sous-objets (étape → invocations LLM /
+tech → tools). Pas les chemins, pas les dates. Valeur figée dans
+`serge/catalogue_lock.py`, recopiée au seed. Les tests
+(`tests/test_catalogue_sha.py`) rougissent si un objet est rajouté,
+supprimé, ou si le SHA disque ≠ SHA en base.
+
+`etape_liens` : arêtes de l’onglet En direct (`de` → `vers`, `libelle`,
+`debit` enum fermé : `listen_docs`, `campaigns`, `contacts`,
+`artifacts`, `touches`, `inbound_events`, `transactions`). Pas de SQL
+libre.

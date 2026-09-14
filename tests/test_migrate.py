@@ -74,8 +74,8 @@ class MigrateTests(unittest.TestCase):
         with self.assertRaises(MigrateError) as ctx:
             apply_pending(
                 conn,
-                migrations=((9, _noop), (11, _noop)),
-                head=11,
+                migrations=((10, _noop), (12, _noop)),
+                head=12,
             )
         self.assertIn('trou', str(ctx.exception))
 
@@ -110,9 +110,19 @@ class MigrateTests(unittest.TestCase):
         self.addCleanup(conn.close)
         init_schema(conn)
         row = conn.execute(
-            "SELECT id FROM pipeline_steps WHERE id='pre_prospection'"
+            'SELECT id, titre, files_sha, updated_at FROM pipeline_steps'
+            " WHERE id='pre_prospection'"
         ).fetchone()
         self.assertIsNotNone(row)
+        self.assertEqual(row[1], 'Pré-prospection')
+        self.assertTrue(row[2])
+        self.assertTrue(row[3])
+        lien = conn.execute(
+            "SELECT de, vers, debit FROM etape_liens WHERE id='lourde-caisse'"
+        ).fetchone()
+        self.assertEqual(
+            tuple(lien), ('prospection_lourde', 'caisse', 'transactions')
+        )
 
 
 if __name__ == '__main__':

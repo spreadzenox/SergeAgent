@@ -136,8 +136,8 @@ def fiche_tech(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
     """
     ensure_tech_invocations(conn)
     row = conn.execute(
-        'SELECT id, etape_id, kind, code_path, titre, doc_md'
-        ' FROM tech_invocations WHERE id=?',
+        'SELECT id, etape_id, kind, code_path, titre, doc_md,'
+        ' files_sha, updated_at FROM tech_invocations WHERE id=?',
         (ident,),
     ).fetchone()
     if row is None:
@@ -151,6 +151,7 @@ def fiche_tech(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
             {'k': 'Étape', 'v': str(row[1])},
             {'k': 'Kind', 'v': str(row[2])},
             {'k': 'Code', 'v': str(row[3] or '—')},
+            {'k': 'Dernière modification', 'v': str(row[7] or '—')},
         ],
         'cadres': [
             {

@@ -8,18 +8,16 @@ import sqlite3
 from collections.abc import Mapping
 from typing import Any
 
-from serge.etapes import etats_etapes
+from serge.etape_fiches import compter_debit, fiche_etape
+from serge.etapes import ETAPE_IDS, etats_etapes
 from serge.mc.libelles import (
-    LLM_ETAPE,
-    NOEUDS,
     ORBITES,
     phrase_noyau,
     phrase_recit,
     titre_llm,
     verbe,
 )
-from serge.mc.proj_etape import ETAPES, lister_jugements
-from serge.registry import load_llm_points
+from serge.mc.proj_etape import lister_jugements
 from serge.tickets.lifecycle import OPENISH
 
 
@@ -66,8 +64,11 @@ def _pensee(conn: sqlite3.Connection) -> dict[str, Any] | None:
         if isinstance(blob, dict):
             data.update(blob)
         point = str(data.get('point') or row[2] or '')
-        etape = LLM_ETAPE.get(point, '')
-        spec = ETAPES.get(etape) or {}
+        etape_row = conn.execute(
+            'SELECT etape_id FROM llm_points WHERE id=?', (point,)
+        ).fetchone()
+        etape = str(etape_row[0] or '') if etape_row else ''
+        spec = fiche_etape(conn, etape) or {}
         hors = {'memoire': 'Mémoire', 'policy': 'Policy'}
         data['point'] = point
         data['jugement'] = titre_llm(point) if point else ''
@@ -96,21 +97,23 @@ def project_graphe(
 ) -> dict[str, Any]:
     """Carte live : épine, LLM, orbites, arêtes, blocages, I/O typewriter."""
     _ = (policy, now)
-    points = load_llm_points()
     live = _llm_live(conn)
     running = conn.execute(
         "SELECT kind FROM work_items WHERE status='RUNNING' LIMIT 8"
     ).fetchall()
     kinds_run = {str(r[0]) for r in running}
+    chauds = live | kinds_run
     llm_nodes = []
-    for name, spec in points.items():
-        etape = LLM_ETAPE.get(name, 'prospection_light')
+    for row in conn.execute(
+        'SELECT id, etape_id, titre, tier FROM llm_points ORDER BY id'
+    ):
+        name = str(row[0])
         llm_nodes.append(
             {
                 'id': name,
-                'titre': titre_llm(name),
-                'etape': etape,
-                'tier': spec.get('tier', 'T1'),
+                'titre': str(row[2] or '') or titre_llm(name),
+                'etape': str(row[1] or '') or 'prospection_light',
+                'tier': str(row[3] or '') or 'T1',
                 'chaud': name in live or any(name in k for k in kinds_run),
                 'objet': {'type': 'llm', 'id': name},
             }
@@ -144,73 +147,40 @@ def project_graphe(
         )
     if deny:
         blocages.append({'noeud': 'policy', 'verbe': 'un garde-fou a refusé'})
-    flux = [
-        {
-            'id': 'pre-poc',
-            'de': 'pre_prospection',
-            'vers': 'conception_poc',
-            'debit': _count(conn, 'SELECT COUNT(*) FROM listen_docs'),
-            'libelle': 'docs d’écoute',
-        },
-        {
-            'id': 'poc-light',
-            'de': 'conception_poc',
-            'vers': 'prospection_light',
-            'debit': _count(conn, 'SELECT COUNT(*) FROM campaigns'),
-            'libelle': 'campagnes',
-        },
-        {
-            'id': 'light-choix',
-            'de': 'prospection_light',
-            'vers': 'choix_venture',
-            'debit': _count(conn, 'SELECT COUNT(*) FROM contacts'),
-            'libelle': 'prospects',
-        },
-        {
-            'id': 'choix-build',
-            'de': 'choix_venture',
-            'vers': 'build_venture',
-            'debit': _count(conn, 'SELECT COUNT(*) FROM artifacts'),
-            'libelle': 'livrables',
-        },
-        {
-            'id': 'build-lourde',
-            'de': 'build_venture',
-            'vers': 'prospection_lourde',
-            'debit': _count(conn, 'SELECT COUNT(*) FROM touches'),
-            'libelle': 'touches',
-        },
-        {
-            'id': 'lourde-feedback',
-            'de': 'prospection_lourde',
-            'vers': 'collect_feedback',
-            'debit': _count(conn, 'SELECT COUNT(*) FROM inbound_events'),
-            'libelle': 'réponses',
-        },
-        {
-            'id': 'lourde-caisse',
-            'de': 'prospection_lourde',
-            'vers': 'caisse',
-            'debit': _count(conn, 'SELECT COUNT(*) FROM transactions'),
-            'libelle': 'factures',
-        },
-    ]
+    flux = []
+    for row in conn.execute(
+        'SELECT id, de, vers, libelle, debit FROM etape_liens'
+        ' ORDER BY rang, id'
+    ):
+        flux.append(
+            {
+                'id': str(row[0]),
+                'de': str(row[1]),
+                'vers': str(row[2]),
+                'libelle': str(row[3]),
+                'debit': compter_debit(conn, str(row[4])),
+            }
+        )
     etats = etats_etapes(conn)
-    return {
-        'epine': [
+    epine = []
+    for key, spec in etats.items():
+        if key not in ETAPE_IDS:
+            continue
+        fiche = fiche_etape(conn, key) or {}
+        epine.append(
             {
                 'id': key,
-                **(
-                    NOEUDS.get(key)
-                    or {'titre': key, 'pourquoi': '', 'argent': ''}
-                ),
+                'titre': fiche.get('titre') or key,
+                'pourquoi': fiche.get('pourquoi') or '',
+                'argent': fiche.get('argent') or '',
                 'objet': {'type': 'etape', 'id': key},
-                'jugements': lister_jugements(key, live | kinds_run),
+                'jugements': lister_jugements(conn, key, chauds),
                 'marche': spec['marche'],
                 'kinds': spec['kinds'],
             }
-            for key, spec in etats.items()
-        ],
+        )
+    return {
+        'epine': epine,
         'orbites': [
             {'id': key, **val, 'objet': {'type': key, 'id': key}}
             for key, val in ORBITES.items()

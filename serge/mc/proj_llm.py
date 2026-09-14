@@ -7,6 +7,7 @@ import json
 import sqlite3
 from typing import Any
 
+from serge.llm_registre import point_par_id
 from serge.mc.libelles import titre_llm
 from serge.mc.llm_roles import role_de, texte_materiel, titre_materiel
 
@@ -237,6 +238,12 @@ def project_llm(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
                 if spec.get('enabled', True)
                 else 'non — coupé pour l’instant',
             },
+            {
+                'k': 'Dernière modification',
+                'v': (
+                    (point_par_id(conn, ident) or {}).get('updated_at') or '—'
+                ),
+            },
         ],
         'cadres': [
             {'titre': 'À quoi ça sert', 'texte': role},
@@ -441,15 +448,17 @@ def project_outil(
             }.get(found['kind'], found['kind']),
         }
     ]
+    root = Path(__file__).resolve().parents[2]
     if found['code_path']:
-        root = Path(__file__).resolve().parents[2]
         champs.append({'k': 'Fichier', 'v': found['code_path']})
-        champs.append(
-            {
-                'k': 'Dernière modification',
-                'v': mtime_fichier(root, found['code_path']) or '—',
-            }
-        )
+    champs.append(
+        {
+            'k': 'Dernière modification',
+            'v': found.get('updated_at')
+            or mtime_fichier(root, found.get('code_path') or '')
+            or '—',
+        }
+    )
     return {
         'type': 'outil',
         'id': found['id'],
