@@ -12,6 +12,7 @@ sys.path.insert(0, str(ROOT))
 
 from serge.voice.pcm import (  # noqa: E402
     downsample_24k_to_8k,
+    is_speech,
     upsample_8k_to_24k,
 )
 
@@ -27,6 +28,11 @@ class PcmTests(unittest.TestCase):
     def test_vide_et_reste_court(self) -> None:
         self.assertEqual(upsample_8k_to_24k(b''), b'')
         self.assertEqual(downsample_24k_to_8k(b'\x00\x01'), b'')
+
+    def test_silence_refuse_parole_passe(self) -> None:
+        self.assertFalse(is_speech(b'\x00\x00' * 80))
+        loud = (10000).to_bytes(2, 'little', signed=True) * 80
+        self.assertTrue(is_speech(loud))
 
 
 if __name__ == '__main__':

@@ -6,6 +6,7 @@ from __future__ import annotations
 import array
 
 RATIO = 3
+SPEECH_RMS = 400
 
 
 def upsample_8k_to_24k(slin8: bytes) -> bytes:
@@ -51,3 +52,23 @@ def downsample_24k_to_8k(pcm24: bytes) -> bytes:
     for index in range(0, len(src) - 2, RATIO):
         dst.append((src[index] + src[index + 1] + src[index + 2]) // RATIO)
     return dst.tobytes()
+
+
+def is_speech(slin8: bytes, min_rms: int = SPEECH_RMS) -> bool:
+    """Vrai si le slin 8 kHz dépasse le seuil RMS (bruit de ligne exclu).
+
+    Args:
+        slin8: PCM16 LE 8 kHz.
+        min_rms: Seuil (défaut 400).
+
+    Returns:
+        True si parole probable.
+    """
+    if len(slin8) % 2:
+        slin8 = slin8[:-1]
+    src = array.array('h')
+    src.frombytes(slin8)
+    if not src:
+        return False
+    rms = int((sum(sample * sample for sample in src) / len(src)) ** 0.5)
+    return rms >= min_rms
