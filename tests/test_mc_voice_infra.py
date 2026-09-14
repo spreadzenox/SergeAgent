@@ -13,7 +13,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from serge.db.schema import init_schema  # noqa: E402
+from serge.db.boot import init_schema  # noqa: E402
 from serge.mc.signedlinks import signer_url, verifier_url  # noqa: E402
 from serge.mc.voice_retention import purger_audio_voix  # noqa: E402
 

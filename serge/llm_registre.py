@@ -142,7 +142,10 @@ def ensure_llm_points(conn: sqlite3.Connection) -> None:
     data = read_yaml_file(path)
     raw = data.get('points')
     points = raw if isinstance(raw, dict) else {}
-    for name, spec in points.items():
+    noms = list(dict.fromkeys([*points, *POINT_LOCKS]))
+    for name in noms:
+        raw_spec = points.get(name)
+        spec = raw_spec if isinstance(raw_spec, dict) else {}
         path, sha = POINT_LOCKS.get(name, ('', ''))
         etape = LLM_ETAPE.get(name, '')
         verdict = str(spec.get('verdict') or '')

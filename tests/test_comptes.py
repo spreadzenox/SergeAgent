@@ -20,7 +20,8 @@ from serge.comptes import (  # noqa: E402
     libelle_role,
     parse_targets,
 )
-from serge.db.schema import SCHEMA_VERSION, init_schema  # noqa: E402
+from serge.db.boot import init_schema  # noqa: E402
+from serge.db.schema import SCHEMA_VERSION  # noqa: E402
 
 
 class ComptesTests(unittest.TestCase):

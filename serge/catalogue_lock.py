@@ -8,63 +8,63 @@ SHA_ATTENDUS: dict[tuple[str, str], str] = {
     (
         'etape',
         'build_venture',
-    ): 'b6d0954ccb1564a739538b70122d950684ccda867e307c258dc4bf30a48e2d4f',
+    ): '7485b369989ee1cea7c64a3db0daebbbbf2dcd9a889abd5985e31665b69d4a8f',
     (
         'etape',
         'caisse',
-    ): 'c46f9586cb443459633c9374e7e14043589c58943aaaa4437fe2e6c5fc75713a',
+    ): '0adf27ead5e61abe5d425b91e36a8c8ecb9c0680189f0d26a1db43070572a698',
     (
         'etape',
         'choix_venture',
-    ): '50e7f25f935a829a228738679b301c842a07554c9249fe1ef780e57216dbc6ed',
+    ): '93046e2189a9faefc65bf343152584239659cafdf1a3a5279243ee2d7ebe5eae',
     (
         'etape',
         'collect_feedback',
-    ): 'f6d927ae3ec1967f889d4424e44f682e12e36d7fc3dd129245b9a6cb9ad7c573',
+    ): '8cdd27c226c95af8ac29349cd19903ae0628e67e02ccdb45f635acd05bce95f7',
     (
         'etape',
         'conception_poc',
-    ): 'c2a959a7ee6847f3da5448a4043b64ccdfc7c844aa2ae91cd55862056a5e292e',
+    ): 'cde75bc00e04b8e4f5c716d76e6b4a6676f99a7e7dbe953d65304c95ab8efb94',
     (
         'etape',
         'pre_prospection',
-    ): 'bc4fa9f276f1a8f4743551da75319e9bb2aa8b4e285ac5f521b93b66d9626eb0',
+    ): '95a0f5c6486249dbf0d918c4dccaa11dbc395bf2f414274982566527fd6b0747',
     (
         'etape',
         'prospection_light',
-    ): '080ae447f25de9445a1bb3a750636f68089e34752d6a95ba8b059fca10f3d8a7',
+    ): 'e69809f2240d32143be375b9f05479dbbcf611c3cdc2b287d8bc59b6c70b55fc',
     (
         'etape',
         'prospection_lourde',
-    ): '15b07a9bfe39dc3a87305bc815833e95c99ce0024d8061950814dc693005a0a2',
+    ): 'ac296d09e87c2fdc68745c5a0ac6ed7baa58188c4f9f98d2095e51fea549cc60',
     (
         'lien',
         'build-lourde',
-    ): '5e27f18b4d431e21b4d475ebc6d4daca39406be6b4697aa05625aa03a115b227',
+    ): '40f272829674ebc13a0e2a9001f6765b8396b4178b6dc159028fb691e5c0b1df',
     (
         'lien',
         'choix-build',
-    ): '5e27f18b4d431e21b4d475ebc6d4daca39406be6b4697aa05625aa03a115b227',
+    ): '40f272829674ebc13a0e2a9001f6765b8396b4178b6dc159028fb691e5c0b1df',
     (
         'lien',
         'light-choix',
-    ): '5e27f18b4d431e21b4d475ebc6d4daca39406be6b4697aa05625aa03a115b227',
+    ): '40f272829674ebc13a0e2a9001f6765b8396b4178b6dc159028fb691e5c0b1df',
     (
         'lien',
         'lourde-caisse',
-    ): '5e27f18b4d431e21b4d475ebc6d4daca39406be6b4697aa05625aa03a115b227',
+    ): '40f272829674ebc13a0e2a9001f6765b8396b4178b6dc159028fb691e5c0b1df',
     (
         'lien',
         'lourde-feedback',
-    ): '5e27f18b4d431e21b4d475ebc6d4daca39406be6b4697aa05625aa03a115b227',
+    ): '40f272829674ebc13a0e2a9001f6765b8396b4178b6dc159028fb691e5c0b1df',
     (
         'lien',
         'poc-light',
-    ): '5e27f18b4d431e21b4d475ebc6d4daca39406be6b4697aa05625aa03a115b227',
+    ): '40f272829674ebc13a0e2a9001f6765b8396b4178b6dc159028fb691e5c0b1df',
     (
         'lien',
         'pre-poc',
-    ): '5e27f18b4d431e21b4d475ebc6d4daca39406be6b4697aa05625aa03a115b227',
+    ): '40f272829674ebc13a0e2a9001f6765b8396b4178b6dc159028fb691e5c0b1df',
     (
         'llm',
         'build_artifact',

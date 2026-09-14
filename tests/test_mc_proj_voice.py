@@ -13,7 +13,7 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from serge.db.schema import init_schema  # noqa: E402
+from serge.db.boot import init_schema  # noqa: E402
 from serge.mc.proj_voice import (  # noqa: E402
     project_bridge_statut,
     project_cdr_appels,

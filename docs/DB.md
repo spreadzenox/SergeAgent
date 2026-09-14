@@ -6,7 +6,7 @@ install et **ne le recrée pas** à l’update.
 
 ## Ouverture
 
-`open_db` (WAL, `0600`) appelle `init_schema` :
+`open_db` (WAL, `0600`) appelle `init_schema` (`serge/db/boot.py`) :
 
 1. **Migrations** (`serge/db/migrate.py`) : enchaîne les versions
    manquantes, tamponne `schema_version` **seulement** après une

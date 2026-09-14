@@ -11,12 +11,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from serge.db.boot import init_schema  # noqa: E402
 from serge.db.migrate import (  # noqa: E402
     MigrateError,
     apply_pending,
     read_version,
 )
-from serge.db.schema import SCHEMA_VERSION, TABLES, init_schema  # noqa: E402
+from serge.db.schema import SCHEMA_VERSION, TABLES  # noqa: E402
 
 
 class MigrateTests(unittest.TestCase):

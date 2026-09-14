@@ -22,7 +22,7 @@ from serge.collect.webhook import (  # noqa: E402
     public_webhook_url,
     verify_event,
 )
-from serge.db.schema import init_schema  # noqa: E402
+from serge.db.boot import init_schema  # noqa: E402
 
 WHSEC = 'whsec_test_secret'
 

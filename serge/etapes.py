@@ -98,10 +98,10 @@ def ensure_pipeline_steps(conn: sqlite3.Connection) -> None:
     Args:
         conn: Canon (commit par l’appelant).
     """
-    from serge.db.store import utcnow
     from serge.etape_fiches import FICHES
+    from serge.horloge import iso_utc
 
-    now = utcnow()
+    now = iso_utc()
     for ident, rang, kinds in SEED:
         fiche = FICHES[ident]
         blob = json.dumps(list(kinds), ensure_ascii=False)

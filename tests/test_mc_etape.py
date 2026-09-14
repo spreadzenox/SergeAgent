@@ -51,7 +51,7 @@ class ProjEtapeMarcheTests(unittest.TestCase):
     def test_epine_porte_marche(self) -> None:
         import sqlite3
 
-        from serge.db.schema import init_schema
+        from serge.db.boot import init_schema
 
         conn = sqlite3.connect(':memory:')
         conn.row_factory = sqlite3.Row

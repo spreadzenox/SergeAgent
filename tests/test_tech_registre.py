@@ -11,7 +11,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from serge.db.schema import SCHEMA_VERSION, init_schema  # noqa: E402
+from serge.db.boot import init_schema  # noqa: E402
+from serge.db.schema import SCHEMA_VERSION  # noqa: E402
 from serge.outils import outil_peut_invoquer  # noqa: E402
 from serge.tech_registre import (  # noqa: E402
     TechError,
@@ -27,7 +28,7 @@ class TechRegistreTests(unittest.TestCase):
         init_schema(self.conn)
 
     def test_semence_rattachee(self) -> None:
-        self.assertEqual(SCHEMA_VERSION, 9)
+        self.assertEqual(SCHEMA_VERSION, 10)
         rows = tech_par_etape(self.conn, 'pre_prospection')
         ids = [r['id'] for r in rows]
         self.assertIn('cluster_listen', ids)

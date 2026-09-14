@@ -16,7 +16,7 @@ from serge.catalogue import (  # noqa: E402
     objets_de_etape,
     verifier_catalogue,
 )
-from serge.db.schema import init_schema  # noqa: E402
+from serge.db.boot import init_schema  # noqa: E402
 from serge.etapes import ETAPE_IDS  # noqa: E402
 from serge.mc.proj_objet import project_objet  # noqa: E402
 

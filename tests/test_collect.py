@@ -26,7 +26,7 @@ from serge.collect import (  # noqa: E402
     to_quote_signed,
     to_sent,
 )
-from serge.db.schema import init_schema  # noqa: E402
+from serge.db.boot import init_schema  # noqa: E402
 
 POLICY = {'collect': {'refund_auto_max_eur': 5.0}}
 

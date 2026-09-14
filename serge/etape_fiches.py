@@ -6,7 +6,7 @@ from __future__ import annotations
 import sqlite3
 from typing import Any
 
-from serge.db.store import utcnow
+from serge.horloge import iso_utc
 
 # Enum fermé : clé → compteur d’occurrences (pas une requête libre).
 DEBITS = frozenset(
@@ -234,7 +234,7 @@ def ensure_etape_liens(conn: sqlite3.Connection) -> None:
     Args:
         conn: Canon (commit par l’appelant).
     """
-    now = utcnow()
+    now = iso_utc()
     ids: list[str] = []
     for ident, de, vers, libelle, debit, rang in LIENS:
         if debit not in DEBITS:

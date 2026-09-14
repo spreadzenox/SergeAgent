@@ -146,9 +146,9 @@ def poser_shas(conn: sqlite3.Connection) -> None:
         conn: Canon (commit par l’appelant).
     """
     from serge.catalogue_lock import SHA_ATTENDUS
-    from serge.db.store import utcnow
+    from serge.horloge import iso_utc
 
-    now = utcnow()
+    now = iso_utc()
     for (kind, ident), sha in SHA_ATTENDUS.items():
         table = TABLES[kind]
         row = conn.execute(
