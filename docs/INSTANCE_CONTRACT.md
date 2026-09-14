@@ -299,4 +299,5 @@ L’exemple tracké est `example-sandbox` (vierge), pas `julien-vps`.
 Service HTTP unifié (`serge-public-dashboard.service` / port 8790) :
 - Surface publique `/` : statut fail-closed sans aucune PII ou secret.
 - Surface propriétaire `/owner` : dashboard complet derrière authentification token ou cookie 12 h.
+- En `ingress.listen = privileged`, Caddy reverse-proxy `https://<public_hostname>` vers ce port. ACME (Let’s Encrypt) écrit sous le home owner ; si le stockage est en lecture seule, le handshake TLS échoue (MC local reste joignable sur `:8790`).
 - Spécification : [`MISSION_CONTROL.md`](MISSION_CONTROL.md).

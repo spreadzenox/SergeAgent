@@ -115,6 +115,9 @@ class InstanceUnitTests(unittest.TestCase):
         )
         self.assertIn('CAP_NET_BIND_SERVICE', unit)
         self.assertIn('SERGE_INGRESS_LISTEN=privileged', unit)
+        self.assertIn('ProtectHome=read-only', unit)
+        self.assertIn('/home/owner/.local/share', unit)
+        self.assertIn('/home/owner/.config', unit)
         self.assertNotIn('serge-web-ingress.service', rendered['enable'])
         self.assertEqual(
             system_units_to_enable({'ingress': True}, 'privileged'),
