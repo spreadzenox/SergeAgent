@@ -58,6 +58,12 @@ class RealtimeTests(unittest.TestCase):
             {'type': 'audio/pcm', 'rate': 24000},
         )
         self.assertEqual(
+            build_session_update('i', rate=8000)['session']['audio']['input'][
+                'format'
+            ]['rate'],
+            8000,
+        )
+        self.assertEqual(
             build_audio_append('xx')['type'], 'input_audio_buffer.append'
         )
         self.assertEqual(build_response_create()['type'], 'response.create')

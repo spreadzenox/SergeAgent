@@ -21,11 +21,7 @@ from serge.voice.audiosocket import (
     AudioSocketError,
     decode_one,
 )
-from serge.voice.pcm import (
-    downsample_24k_to_8k,
-    is_speech,
-    upsample_8k_to_24k,
-)
+from serge.voice.pcm import is_speech, to_model_rate, to_phone_rate
 from serge.voice.phoneout import PhoneOut
 from serge.voice.providers import SYSTEM_PROMPT, secrets
 from serge.voice.realtime import DEFAULT_MODELS, RealtimeCall, RealtimeError
@@ -35,6 +31,7 @@ PROVIDER_ORDER: tuple[Provider, ...] = ('xai', 'openai')
 POLL_S = 0.05
 MAX_CALL_S = 180.0
 MIC_OPEN_S = 6.0
+COMMIT_S = 1.2
 OPENING = 'Dis bonjour en une phrase, puis écoute.'
 
 
@@ -78,14 +75,13 @@ def _pull_ast(sock: socket.socket, buf: bytearray) -> list[tuple[str, bytes]]:
     return out
 
 
-def _queue_phone(out: PhoneOut, leftover: bytes, b64: str) -> bytes:
+def _queue_phone(out: PhoneOut, leftover: bytes, b64: str, rate: int) -> bytes:
     try:
-        pcm24 = leftover + base64.b64decode(b64)
+        chunk = base64.b64decode(b64)
     except ValueError:
         return leftover
-    keep = len(pcm24) % 6
-    ready, rest = pcm24[: len(pcm24) - keep], pcm24[len(pcm24) - keep :]
-    out.push(downsample_24k_to_8k(ready))
+    slin, rest = to_phone_rate(chunk, leftover, rate)
+    out.push(slin)
     return rest
 
 
@@ -115,27 +111,45 @@ def pump(ast: socket.socket, max_s: float = MAX_CALL_S) -> None:
         opened = time.monotonic()
         greeting_done = False
         chunks = 0
+        mic_n = 0
+        last_voice = 0.0
+        need_commit = False
+        raw_rate = getattr(call, 'pcm_rate', 24000)
+        rate = raw_rate if isinstance(raw_rate, int) else 24000
         deadline = opened + max_s
         while time.monotonic() < deadline:
-            aged = time.monotonic() - opened >= MIC_OPEN_S
+            now = time.monotonic()
+            aged = now - opened >= MIC_OPEN_S
             mic_on = (greeting_done or aged) and out.queued < 640
+            if (
+                mic_on
+                and need_commit
+                and last_voice
+                and now - last_voice > COMMIT_S
+            ):
+                try:
+                    call.commit_turn()
+                except RealtimeError:
+                    pass
+                need_commit = False
             ready, _, _ = select.select([ast], [], [], POLL_S)
             if ast in ready:
                 for kind, payload in _pull_ast(ast, buf):
                     if kind == 'hangup':
-                        sys.stderr.write(f'voice-s2s: audio {chunks}\n')
+                        sys.stderr.write(
+                            f'voice-s2s: audio {chunks} mic {mic_n}\n'
+                        )
                         return
-                    if (
-                        kind == 'audio'
-                        and payload
-                        and mic_on
-                        and is_speech(payload)
-                    ):
-                        pcm = upsample_8k_to_24k(payload)
+                    if kind == 'audio' and payload and mic_on:
+                        pcm = to_model_rate(payload, rate)
                         if pcm:
                             call.send_audio(
                                 base64.b64encode(pcm).decode('ascii')
                             )
+                            mic_n += 1
+                        if is_speech(payload):
+                            last_voice = now
+                            need_commit = True
             try:
                 actions = call.poll()
             except RealtimeError as exc:
@@ -145,8 +159,9 @@ def pump(ast: socket.socket, max_s: float = MAX_CALL_S) -> None:
             for kind, value in actions:
                 if kind == 'done':
                     greeting_done = True
+                    need_commit = False
                 if kind == 'audio' and value:
-                    leftover = _queue_phone(out, leftover, str(value))
+                    leftover = _queue_phone(out, leftover, str(value), rate)
                     chunks += 1
     finally:
         out.close()

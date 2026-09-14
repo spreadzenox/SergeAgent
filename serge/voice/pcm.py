@@ -54,6 +54,43 @@ def downsample_24k_to_8k(pcm24: bytes) -> bytes:
     return dst.tobytes()
 
 
+def to_model_rate(slin8: bytes, rate: int) -> bytes:
+    """8 kHz téléphone → taux du modèle (copie ou upsample).
+
+    Args:
+        slin8: PCM16 LE 8 kHz.
+        rate: 8000 ou 24000.
+
+    Returns:
+        PCM au taux demandé.
+    """
+    if rate == 8000:
+        return slin8[:-1] if len(slin8) % 2 else slin8
+    return upsample_8k_to_24k(slin8)
+
+
+def to_phone_rate(
+    pcm: bytes, leftover: bytes, rate: int
+) -> tuple[bytes, bytes]:
+    """Taux modèle → slin 8 kHz + reste non aligné.
+
+    Args:
+        pcm: Nouveau chunk modèle.
+        leftover: Octets du chunk précédent.
+        rate: 8000 ou 24000.
+
+    Returns:
+        (slin 8 kHz, reste).
+    """
+    raw = leftover + pcm
+    step = 2 if rate == 8000 else 6
+    keep = len(raw) % step
+    ready, rest = raw[: len(raw) - keep], raw[len(raw) - keep :]
+    if rate == 8000:
+        return ready, rest
+    return downsample_24k_to_8k(ready), rest
+
+
 def is_speech(slin8: bytes, min_rms: int = SPEECH_RMS) -> bool:
     """Vrai si le slin 8 kHz dépasse le seuil RMS (bruit de ligne exclu).
 
