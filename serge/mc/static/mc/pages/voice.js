@@ -1,90 +1,35 @@
-// Page P7 Voix : CDR, audio signée (E7), qualité F4c, bridge & kill switch M9/M11.
-import {
-  confirmModal,
-  fillList,
-  li,
-  rel,
-  toast,
-} from '../components.js';
-import {fetchState} from '../sse.js';
+// Page P7 Voix : CDR, audio signée (E7), qualité F4c, pont.
+import {fillList, li, rel} from '../components.js';
 
-async function poster(chemin, charge) {
-  const res = await fetch(chemin, {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify(charge),
-  });
-  return {ok: res.ok, data: await res.json()};
+function libelleIssue(c) {
+  if (c.decision === 'denied') {
+    return c.reason || 'refusé avant l’appel';
+  }
+  const issues = {
+    completed: 'terminé',
+    pending: 'en cours ou jamais refermé',
+    originate_failed: 'n’a pas abouti (ligne / trunk)',
+    failed: 'échec',
+    cancelled: 'annulé',
+    no_answer: 'sans réponse',
+    busy: 'occupé',
+    congestion: 'réseau saturé',
+  };
+  return issues[c.outcome] || c.outcome || 'inconnu';
 }
 
-async function rafraichir(store) {
-  try {
-    const data = await fetchState('p7');
-    for (const [section, env] of Object.entries(data.sections || {})) {
-      store.apply(section, env.sig, env.payload);
-    }
-  } catch {
-    // reprise au tick suivant
-  }
-}
-
-async function toggleKillVoice(store, etatActuel) {
-  const action = etatActuel ? 'Désactiver' : 'Activer';
-  const ok = await confirmModal(document.body, {
-    title: `${action} le Kill Switch Voix ?`,
-    message: etatActuel
-      ? 'Les appels sortants seront de nouveau autorisés.'
-      : 'Tous les appels sortants seront immédiatement bloqués.',
-    confirm: action,
-    danger: !etatActuel,
-  });
-  if (!ok) {
-    return;
-  }
-  try {
-    const {ok: resOk, data} = await poster('/owner/api/voice/kill', {
-      activer: !etatActuel,
-      decision_id: `mc-${Date.now()}-voice-kill`,
-    });
-    if (!resOk) {
-      toast(document.body, `Échec : ${data.erreur || 'refusé'}.`, 'erreur');
-      return;
-    }
-    toast(
-      document.body,
-      'Kill Switch Voix : ' + (data.kill_switch ? 'ACTIVÉ.' : 'Désactivé.'),
-      'succes',
-    );
-    await rafraichir(store);
-  } catch {
-    toast(document.body, 'Action injoignable.', 'erreur');
-  }
-}
-
-function renderBridge(main, payload, sig, store) {
+function renderBridge(main, payload, sig) {
   const info = main.querySelector('#voice-bridge-info');
-  const ancien = main.querySelector('[data-action="toggle-kill-voice"]');
-  const btnKill = ancien.cloneNode(true);
-  ancien.replaceWith(btnKill);
-  const kActif = payload.kill_switch;
-
-  info.textContent = `Kill Switch Voix : ${kActif ? 'ACTIF (appels coupés)' : 'Inactif (appels autorisés)'} | Bridge statut : ${payload.bridge?.status || 'ok'}`;
-  info.style.color = kActif ? 'var(--rouge)' : 'var(--vert)';
-  btnKill.textContent = kActif ? 'Désactiver Kill Switch Voix' : 'Activer Kill Switch Voix';
-  btnKill.className = kActif ? '' : 'danger';
-
-  btnKill.addEventListener('click', () => {
-    const env = store.get('bridge_statut');
-    const k = env ? env.payload?.kill_switch : false;
-    toggleKillVoice(store, k);
-  });
-
+  const etat = payload.bridge && payload.bridge.status
+    ? payload.bridge.status
+    : 'ok';
+  info.textContent = `Pont : ${etat}. Pour arrêter les appels, coupe « Appel sortant » ou Serge en bas / en haut de En direct.`;
   main.querySelector('[data-section="bridge_statut"]').dataset.sig = sig;
 }
 
 function renderCdr(main, payload, sig) {
   const pTot = main.querySelector('#voice-cdr-total');
-  pTot.textContent = `${payload.total || 0} appel(s) enregistré(s) au ledger.`;
+  pTot.textContent = `${payload.total || 0} appel(s) au journal.`;
 
   const ul = main.querySelector('[data-section="cdr_appels"] [data-list="calls"]');
   fillList(ul, payload.calls || [], 'Aucun appel enregistré.', (c) => {
@@ -93,7 +38,18 @@ function renderCdr(main, payload, sig) {
       : c.direction === 'in' || c.direction === 'inbound'
         ? 'entrant'
         : c.direction;
-    const liEl = li(`${sens} → ${c.to} [${c.outcome}] (${c.duration_s}s, ${rel(c.created_at)}) `);
+    const duree = Number(c.duration_s) || 0;
+    const issue = libelleIssue(c);
+    const temps = duree > 0
+      ? `${duree}s`
+      : 'pas de conversation (jamais connecté)';
+    const liEl = li(`${sens} → ${c.to} — ${issue} (${temps}, ${rel(c.created_at)})`);
+    if (c.transcript) {
+      const pre = document.createElement('pre');
+      pre.className = 'transcript-appel';
+      pre.textContent = c.transcript;
+      liEl.append(pre);
+    }
     if (c.has_recording && c.audio_url) {
       const a = document.createElement('a');
       a.href = c.audio_url;
@@ -124,14 +80,14 @@ export function mount(main, store) {
   main.replaceChildren(tpl.content.cloneNode(true));
 
   const unsubs = [
-    store.subscribe('bridge_statut', (p, s) => renderBridge(main, p, s, store)),
+    store.subscribe('bridge_statut', (p, s) => renderBridge(main, p, s)),
     store.subscribe('cdr_appels', (p, s) => renderCdr(main, p, s)),
     store.subscribe('qualite_voix', (p, s) => renderQualite(main, p, s)),
   ];
 
   for (const [section, env] of store.all()) {
     if (section === 'bridge_statut') {
-      renderBridge(main, env.payload, env.sig, store);
+      renderBridge(main, env.payload, env.sig);
     } else if (section === 'cdr_appels') {
       renderCdr(main, env.payload, env.sig);
     } else if (section === 'qualite_voix') {

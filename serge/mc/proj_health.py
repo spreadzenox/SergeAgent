@@ -168,22 +168,26 @@ def project_units_systemd(
         Dict {units: [...]}.
     """
     _ = (conn, policy, now)
-    units_surveillees = [
-        'serge-pipeline.service',
-        'serge-discord-bot.service',
-        'serge-voice-bridge.service',
-        'serge-mc.service',
-    ]
+    unites = (
+        ('serge-pipeline.timer', 'Ordonnanceur', 'battement chaque minute'),
+        ('serge-discord-bot.service', 'Bot Discord', 'écoute en continu'),
+        ('serge-voice-bridge.service', 'Pont voix', 'appels'),
+        (
+            'serge-public-dashboard.service',
+            'Mission Control',
+            'cette interface',
+        ),
+    )
 
     resultats = []
     has_systemctl = shutil.which('systemctl') is not None
 
-    for u in units_surveillees:
+    for unit, titre, role in unites:
         etat = 'inconnu'
         if has_systemctl:
             try:
                 p = subprocess.run(
-                    ['systemctl', '--user', 'is-active', u],
+                    ['systemctl', '--user', 'is-active', unit],
                     capture_output=True,
                     text=True,
                     timeout=1.5,
@@ -192,7 +196,21 @@ def project_units_systemd(
                 etat = p.stdout.strip() or 'inactive'
             except Exception:
                 etat = 'non_disponible'
-
-        resultats.append({'unit': u, 'status': etat})
+        ok = etat == 'active'
+        if etat == 'active':
+            libelle = f'en marche ({role})'
+        elif etat == 'inactive':
+            libelle = 'arrêté'
+        else:
+            libelle = etat.replace('_', ' ')
+        resultats.append(
+            {
+                'unit': unit,
+                'titre': titre,
+                'status': etat,
+                'libelle': libelle,
+                'ok': ok,
+            }
+        )
 
     return {'units': resultats}

@@ -53,11 +53,11 @@ export function renderCoupes(main, payload, sig) {
       bouton('btn-kill-serge', texte, 'serge', '', marche),
     );
   }
-  const slotEtapes = sec.querySelector('[data-coupes="etapes"]');
+  const slotEtapes = main.querySelector('[data-coupes="etapes"]');
   if (slotEtapes) {
     remplirRang(slotEtapes, payload.etapes || [], 'etape');
   }
-  const slotKinds = sec.querySelector('[data-coupes="kinds"]');
+  const slotKinds = main.querySelector('[data-coupes="kinds"]');
   if (slotKinds) {
     remplirRang(slotKinds, payload.kinds || [], 'kind');
   }
