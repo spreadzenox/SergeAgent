@@ -22,7 +22,11 @@ from serge.voice.audiosocket import (
     decode_one,
     encode,
 )
-from serge.voice.pcm import downsample_24k_to_8k, upsample_8k_to_24k
+from serge.voice.pcm import (
+    downsample_24k_to_8k,
+    is_speech,
+    upsample_8k_to_24k,
+)
 from serge.voice.providers import SYSTEM_PROMPT, secrets
 from serge.voice.realtime import DEFAULT_MODELS, RealtimeCall, RealtimeError
 
@@ -31,6 +35,7 @@ PROVIDER_ORDER: tuple[Provider, ...] = ('xai', 'openai')
 POLL_S = 0.05
 MAX_CALL_S = 180.0
 KEEPALIVE_S = 0.4
+MIC_OPEN_S = 4.0
 OPENING = 'Dis bonjour en une phrase, puis écoute.'
 SILENCE_FRAME = encode('audio', b'\x00' * 320)
 
@@ -129,15 +134,29 @@ def pump(ast: socket.socket, max_s: float = MAX_CALL_S) -> None:
     try:
         call = open_session(secrets())
         call.ws.sock.settimeout(POLL_S)
+        sys.stderr.write(
+            f'voice-s2s: session {getattr(call, "provider", "?")}\n'
+        )
         call.inject_text(OPENING)
-        deadline = time.monotonic() + max_s
+        opened = time.monotonic()
+        mic_on = False
+        chunks = 0
+        deadline = opened + max_s
         while time.monotonic() < deadline:
+            if not mic_on and time.monotonic() - opened >= MIC_OPEN_S:
+                mic_on = True
             ready, _, _ = select.select([ast], [], [], POLL_S)
             if ast in ready:
                 for kind, payload in _pull_ast(ast, buf):
                     if kind == 'hangup':
+                        sys.stderr.write(f'voice-s2s: audio {chunks}\n')
                         return
-                    if kind == 'audio' and payload:
+                    if (
+                        kind == 'audio'
+                        and payload
+                        and mic_on
+                        and is_speech(payload)
+                    ):
                         pcm = upsample_8k_to_24k(payload)
                         if pcm:
                             call.send_audio(
@@ -150,8 +169,11 @@ def pump(ast: socket.socket, max_s: float = MAX_CALL_S) -> None:
                     continue
                 raise
             for kind, value in actions:
+                if kind == 'done':
+                    mic_on = True
                 if kind == 'audio' and value:
                     leftover = _push_phone(ast, leftover, str(value), lock)
+                    chunks += 1
     finally:
         stop.set()
         if call is not None:

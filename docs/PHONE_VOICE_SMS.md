@@ -241,7 +241,7 @@ que les logs, le broker et le dialplan sachent qui est qui.
 | Registration trunk perdue | Bind loopback, mot de passe, IP allowlistée, wildcard TLS | `pjsip show registrations` ; le transport trunk doit être `0.0.0.0`, pas `127.0.0.1`. Fallback UDP temporaire pour isoler TLS. |
 | Audio un seul sens | NAT/RTP, ports 10000+ fermés | `rtp.conf` + firewall, `external_media_address` / `external_signaling_address` sur le VPS. |
 | CLI affiché ≠ DID (ex. numéro UK Zadarma) | INVITE sans PAI / originate direct trunk | `Local/…@serge-dial` + PAI = DID du couple. Vérifier le 09/NPV rattaché au SIP chez Zadarma. |
-| Agent muet puis timeout | Realtime HS, `:8792` fermé, ou AudioSocket 2 s sans PCM | `ss` : `127.0.0.1:8792`. Le pont envoie un silence de maintien dès l’accept. Sans session l’AGI `turn.py` enchaîne. |
+| Décroché silencieux | RTP / bruit de ligne envoyé au VAD avant le bonjour | Le pont coupe le micro jusqu’à `response.done` (ou 4 s) et n’envoie que le slin au-dessus du RMS. Journal : `voice-s2s: session` puis `audio N`. |
 | Correspondants « je n'ai rien compris » | TTS trop rapide / pas de tour de parole | Ralentir, phrases courtes, barge-in, proposer le DTMF. |
 | Facture anormale | Boucle de composition / retry agressif | Plafonds, backoff, alerte €/jour. Couper le trunk avant de debugger. |
 

@@ -53,8 +53,10 @@ class RealtimeTests(unittest.TestCase):
         event = build_session_update('instructions', voice='alloy')
         session = event['session']
         self.assertEqual(session['voice'], 'alloy')
-        self.assertIn('audio', session['modalities'])
-        self.assertEqual(session['input_audio_format'], 'pcm16')
+        self.assertEqual(
+            session['audio']['output']['format'],
+            {'type': 'audio/pcm', 'rate': 24000},
+        )
         self.assertEqual(
             build_audio_append('xx')['type'], 'input_audio_buffer.append'
         )
@@ -84,6 +86,9 @@ class RealtimeTests(unittest.TestCase):
             [('done', {})],
         )
         self.assertTrue(state['done'])
+        self.assertEqual(
+            route_event({'type': 'session.updated'}, {})[0][0], 'ready'
+        )
         self.assertEqual(
             route_event(
                 {'type': 'response.output_audio.delta', 'delta': 'Qg=='},

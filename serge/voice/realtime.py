@@ -8,6 +8,7 @@ dégrade vers tour-par-tour (turn.py), jamais de silence. Audio PCM16.
 
 from __future__ import annotations
 
+import base64
 import json
 from collections.abc import Mapping
 from typing import Any
@@ -23,6 +24,8 @@ DEFAULT_MODELS = {
     'openai': 'gpt-realtime-2.1-mini',
 }
 DEFAULT_VOICE = 'alloy'
+DEFAULT_VOICES = {'xai': 'eve', 'openai': 'alloy'}
+PCM_RATE = 24000
 
 
 class RealtimeError(ValueError):
@@ -32,27 +35,27 @@ class RealtimeError(ValueError):
 def build_session_update(
     instructions: str,
     voice: str = DEFAULT_VOICE,
-    modalities: list[str] | None = None,
 ) -> dict[str, Any]:
-    """Événement session.update (instructions + voix + audio).
+    """Événement session.update (instructions + voix + PCM 24 kHz).
 
     Args:
         instructions: Prompt système (script P4 + règles dures).
-        voice: Voix synthèse.
-        modalities: Modalités (défaut : texte + audio).
+        voice: Voix synthèse (eve xAI, alloy OpenAI).
 
     Returns:
         L'événement à envoyer.
     """
+    pcm = {'type': 'audio/pcm', 'rate': PCM_RATE}
     return {
         'type': 'session.update',
         'session': {
-            'modalities': modalities or ['text', 'audio'],
             'instructions': instructions,
             'voice': voice,
-            'input_audio_format': 'pcm16',
-            'output_audio_format': 'pcm16',
             'turn_detection': {'type': 'server_vad'},
+            'audio': {
+                'input': {'format': pcm},
+                'output': {'format': pcm},
+            },
         },
     }
 
@@ -127,6 +130,9 @@ def route_event(
         text = str(event.get('transcript') or '')
         state['transcript'] = str(state.get('transcript') or '') + text
         return [('transcript', text)]
+    if kind == 'session.updated':
+        state['ready'] = True
+        return [('ready', True)]
     if kind == 'response.done':
         state['done'] = True
         return [('done', dict(event.get('response') or {}))]
@@ -152,6 +158,7 @@ class RealtimeCall:
         voice: str = DEFAULT_VOICE,
     ):
         self.ws = ws
+        self.provider = ''
         self.state: dict[str, Any] = {}
         try:
             ws.send_text(json.dumps(build_session_update(instructions, voice)))
@@ -195,11 +202,15 @@ class RealtimeCall:
         headers = {'Authorization': f'Bearer {api_key}'}
         if provider == 'openai':
             headers['OpenAI-Beta'] = 'realtime=v1'
+        if voice == DEFAULT_VOICE:
+            voice = DEFAULT_VOICES.get(provider, voice)
         try:
             ws = WsClient.connect(url, headers, timeout)
         except WsError as exc:
             raise RealtimeError(f'WS: {exc}') from exc
-        return cls(ws, instructions, voice)
+        call = cls(ws, instructions, voice)
+        call.provider = provider
+        return call
 
     def send_audio(self, audio_b64: str) -> None:
         """Envoie un chunk micro.
@@ -251,6 +262,11 @@ class RealtimeCall:
             raise RealtimeError(f'WS: poll ({exc})') from exc
         actions: list[tuple[str, Any]] = []
         for opcode, payload in frames:
+            if opcode == 0x2 and payload:
+                actions.append(
+                    ('audio', base64.b64encode(payload).decode('ascii'))
+                )
+                continue
             if opcode != 0x1:
                 continue
             try:
