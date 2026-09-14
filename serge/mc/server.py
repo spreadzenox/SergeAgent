@@ -26,6 +26,7 @@ from serge.mc.auth import (
     create_session,
     revoke_session,
 )
+from serge.mc.coupe_actions import CoupeActionsMixin
 from serge.mc.etape_actions import EtapeActionsMixin
 from serge.mc.policy_actions import PolicyActionsMixin
 from serge.mc.projectors import PAGE_SECTIONS, SnapshotCache
@@ -63,6 +64,7 @@ class McConfig:
 class McHandler(
     ApiViewsMixin,
     PolicyActionsMixin,
+    CoupeActionsMixin,
     EtapeActionsMixin,
     ActionsMixin,
     BaseHTTPRequestHandler,
@@ -344,46 +346,27 @@ class McHandler(
         if path == '/owner/logout':
             self._logout()
             return
-        if path == '/owner/api/kill':
-            self._api_kill()
+        apis = {
+            '/owner/api/kill': self._api_kill,
+            '/owner/api/unkill': self._api_unkill,
+            '/owner/api/ticket/acte': self._api_ticket_acte,
+            '/owner/api/ticket/item': self._api_ticket_item,
+            '/owner/api/ticket/discuter': self._api_ticket_discuter,
+            '/owner/api/memory/lesson': self._api_memory_lesson,
+            '/owner/api/memory/rollback': self._api_memory_rollback,
+            '/owner/api/policy/edit': self._api_policy_edit,
+            '/owner/api/policy/rollback': self._api_policy_rollback,
+            '/owner/api/policy/testing': self._api_policy_testing,
+            '/owner/api/policy/propose': self._api_policy_propose,
+            '/owner/api/voice/kill': self._api_voice_kill,
+            '/owner/api/coupe': self._api_coupe,
+            '/owner/api/etape': self._api_etape,
+        }
+        acte = apis.get(path)
+        if acte is None:
+            self._error(404)
             return
-        if path == '/owner/api/unkill':
-            self._api_unkill()
-            return
-        if path == '/owner/api/ticket/acte':
-            self._api_ticket_acte()
-            return
-        if path == '/owner/api/ticket/item':
-            self._api_ticket_item()
-            return
-        if path == '/owner/api/ticket/discuter':
-            self._api_ticket_discuter()
-            return
-        if path == '/owner/api/memory/lesson':
-            self._api_memory_lesson()
-            return
-        if path == '/owner/api/memory/rollback':
-            self._api_memory_rollback()
-            return
-        if path == '/owner/api/policy/edit':
-            self._api_policy_edit()
-            return
-        if path == '/owner/api/policy/rollback':
-            self._api_policy_rollback()
-            return
-        if path == '/owner/api/policy/testing':
-            self._api_policy_testing()
-            return
-        if path == '/owner/api/policy/propose':
-            self._api_policy_propose()
-            return
-        if path == '/owner/api/voice/kill':
-            self._api_voice_kill()
-            return
-        if path == '/owner/api/etape':
-            self._api_etape()
-            return
-        self._error(404)
+        acte()
 
     def _form(self) -> dict[str, str] | None:
         try:
