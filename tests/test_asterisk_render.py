@@ -65,6 +65,7 @@ class AsteriskRenderTests(unittest.TestCase):
         self.assertIn('verify_server = no', pjsip)
         self.assertIn('allow_wildcard_certs = yes', pjsip)
         self.assertIn('type = identify', pjsip)
+        self.assertIn('media_encryption = sdes', pjsip)
         self.assertNotIn('bind = 127.0.0.1', pjsip)
 
     def test_udp_trunk_uses_5060_without_tls_knobs(self) -> None:
@@ -84,6 +85,7 @@ class AsteriskRenderTests(unittest.TestCase):
         self.assertIn('bind = 0.0.0.0:5060', pjsip)
         self.assertIn('server_uri = sip:sip.example.com:5060', pjsip)
         self.assertNotIn('verify_server', pjsip)
+        self.assertNotIn('media_encryption', pjsip)
 
     def test_password_only_in_pjsip(self) -> None:
         rendered = render_asterisk(

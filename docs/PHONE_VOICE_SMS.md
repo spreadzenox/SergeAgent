@@ -150,7 +150,9 @@ Le transport trunk PJSIP bind `0.0.0.0` (TLS `:5061`, sinon `:5060`) :
 un bind loopback n’envoie jamais le REGISTER. Le softphone de test
 reste joignable en local (`127.0.0.1:5061`, même socket). Zadarma
 sert un certificat wildcard : `verify_server=no` +
-`allow_wildcard_certs=yes` (RFC 5922 / pjproject). RTP
+`allow_wildcard_certs=yes` (RFC 5922 / pjproject). TLS
+impose SRTP (`media_encryption=sdes`), sinon **488 SRTP
+required**. RTP
 `10000-10100/udp` à ouvrir en entrée (restreindre aux IP du trunk
 si possible). Le CLI est verrouillé au NPV dans le dialplan,
 l'enregistrement systématique (`state/voice/records/`).
