@@ -21,9 +21,11 @@ Workflow : [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml).
 Racine `system_root` **vide** →
 `scripts/serge-install.py --non-interactive --no-enable-units
 --confirm-live-instance-id julien-vps`, puis
-`systemctl --user enable --now` **toutes** les units des features on
-(pipeline, MC, Discord, ingress, SMS, Stripe, voix, Asterisk). Pas de
-denylist.
+`systemctl --user enable --now` **les units user** des features on
+(pipeline, MC, Discord, SMS, Stripe, voix, Asterisk). Si
+`ingress.listen = privileged` (ports 80/443), Caddy est une unit
+**system** : le job fait `sudo -n cp` vers `/etc/systemd/system` puis
+`sudo systemctl enable --now`. Pas de denylist.
 
 Racine **déjà peuplée** → `kit/update.py` (git archive par-dessus,
 `state/` / `queue/` / `logs/` / `reports/` / `evidence/` intacts, canon

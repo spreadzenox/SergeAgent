@@ -12,7 +12,7 @@ from typing import Any
 
 from kit.builder.guards import BuilderError
 from kit.builder.seed import dest_is_empty
-from kit.units import units_to_enable
+from kit.units import system_units_to_enable, units_to_enable
 from kit.update import loaded_from_instance, update_instance
 
 Runner = Callable[..., subprocess.CompletedProcess[str]]
@@ -61,6 +61,66 @@ def enable_now(runner: Runner, names: Sequence[str]) -> list[str]:
     if errors:
         raise BuilderError('systemctl enable failed: ' + ', '.join(errors))
     return enabled
+
+
+def _listen(loaded: dict[str, Any]) -> str:
+    raw = (
+        loaded.get('ingress')
+        if isinstance(loaded.get('ingress'), dict)
+        else {}
+    )
+    listen = str((raw or {}).get('listen') or 'loopback')
+    return listen if listen in {'loopback', 'privileged'} else 'loopback'
+
+
+def _system_unit_dir(loaded: dict[str, Any]) -> Path:
+    home = Path(str(loaded['paths']['home']))
+    return home / '.config/systemd/system-units'
+
+
+def enable_system_now(
+    runner: Runner, names: Sequence[str], source_dir: Path
+) -> list[str]:
+    """Pose les units privileged sous /etc/systemd/system (sudo -n)."""
+    enabled: list[str] = []
+    for name in names:
+        src = source_dir / name
+        dest = Path('/etc/systemd/system') / name
+        if not src.is_file():
+            raise BuilderError(f'unit system manquante : {src}')
+        copied = _run(runner, ['sudo', '-n', 'cp', str(src), str(dest)])
+        if copied.returncode != 0:
+            detail = (copied.stderr or copied.stdout or '')[-300:]
+            raise BuilderError(f'sudo cp {name} a échoué : {detail}')
+        reload = _run(runner, ['sudo', '-n', 'systemctl', 'daemon-reload'])
+        if reload.returncode != 0:
+            raise BuilderError('sudo daemon-reload a échoué')
+        completed = _run(
+            runner, ['sudo', '-n', 'systemctl', 'enable', '--now', name]
+        )
+        if completed.returncode != 0:
+            detail = (completed.stderr or completed.stdout or '')[-300:]
+            raise BuilderError(f'sudo enable {name} a échoué : {detail}')
+        enabled.append(name)
+    return enabled
+
+
+def restart_system_active(runner: Runner, names: Sequence[str]) -> list[str]:
+    restarted: list[str] = []
+    reload = _run(runner, ['sudo', '-n', 'systemctl', 'daemon-reload'])
+    if reload.returncode != 0:
+        raise BuilderError('sudo daemon-reload a échoué')
+    for name in names:
+        active = _run(
+            runner, ['sudo', '-n', 'systemctl', 'is-active', '--quiet', name]
+        )
+        if active.returncode != 0:
+            continue
+        completed = _run(runner, ['sudo', '-n', 'systemctl', 'restart', name])
+        if completed.returncode != 0:
+            raise BuilderError(f'sudo restart failed: {name}')
+        restarted.append(name)
+    return restarted
 
 
 def restart_active(runner: Runner, names: Sequence[str]) -> list[str]:
@@ -112,8 +172,16 @@ def _install_fresh(
         detail = (completed.stdout + completed.stderr)[-500:]
         raise BuilderError(f'install a échoué : {detail}')
     loaded = loaded_from_instance(instance_file)
-    names = units_to_enable(loaded['features'])
+    listen = _listen(loaded)
+    names = units_to_enable(loaded['features'], listen)
     enabled = enable_now(runner, names)
+    enabled.extend(
+        enable_system_now(
+            runner,
+            system_units_to_enable(loaded['features'], listen),
+            _system_unit_dir(loaded),
+        )
+    )
     return {
         'status': 'installed',
         'instance_id': loaded['instance_id'],
@@ -141,7 +209,9 @@ def deploy_instance(
     exe = python or sys.executable
     loaded = loaded_from_instance(instance_file)
     system_root = Path(str(loaded['paths']['system_root']))
-    names = units_to_enable(loaded['features'])
+    listen = _listen(loaded)
+    names = units_to_enable(loaded['features'], listen)
+    system_names = system_units_to_enable(loaded['features'], listen)
     if dest_is_empty(system_root):
         return _install_fresh(
             instance_file=instance_file,
@@ -162,6 +232,7 @@ def deploy_instance(
         uid=uid,
     )
     restarted = restart_active(run, names)
+    restarted.extend(restart_system_active(run, system_names))
     receipt['units_restarted'] = restarted
     receipt['status'] = 'updated'
     return receipt
