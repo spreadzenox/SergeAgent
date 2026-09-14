@@ -44,6 +44,17 @@ PURPOSES = frozenset({'prospection', 'contract', 'callback', 'test'})
 PENDING_CLAIM_SECONDS = 600
 
 
+def assurer_colonnes_calls(connection: sqlite3.Connection) -> None:
+    """Ajoute ``transcript`` si la table existe déjà sans cette colonne."""
+    cols = {
+        str(row[1]) for row in connection.execute('PRAGMA table_info(calls)')
+    }
+    if cols and 'transcript' not in cols:
+        connection.execute(
+            "ALTER TABLE calls ADD COLUMN transcript TEXT NOT NULL DEFAULT ''"
+        )
+
+
 def _hash(value: str) -> str:
     return hashlib.sha256(value.encode('utf-8')).hexdigest()
 
@@ -76,6 +87,7 @@ class VoiceLedger:
                     created_at TEXT NOT NULL
                 );
             """)
+            assurer_colonnes_calls(connection)
             connection.commit()
         finally:
             connection.close()
@@ -389,6 +401,7 @@ class VoiceLedger:
         duration_s: int = 0,
         recording_path: str = '',
         callback_requested: bool = False,
+        transcript: str = '',
     ) -> dict[str, Any]:
         if outcome not in {
             'completed',
@@ -402,21 +415,61 @@ class VoiceLedger:
             raise VoiceBrokerDenied('invalid outcome')
         connection = self._connect()
         try:
-            row = connection.execute(
+            assurer_colonnes_calls(connection)
+            sql = (
                 'UPDATE calls SET outcome=?,duration_s=?,recording_path=?,'
-                'callback_requested=? WHERE cdr_id=?',
-                (
-                    outcome,
-                    max(0, int(duration_s)),
-                    recording_path[:500],
-                    1 if callback_requested else 0,
-                    cdr_id,
-                ),
+                'callback_requested=?'
             )
+            args: list[Any] = [
+                outcome,
+                max(0, int(duration_s)),
+                recording_path[:500],
+                1 if callback_requested else 0,
+            ]
+            if transcript:
+                sql += ',transcript=?'
+                args.append(transcript[:8000])
+            sql += ' WHERE cdr_id=?'
+            args.append(cdr_id)
+            row = connection.execute(sql, args)
             connection.commit()
         finally:
             connection.close()
         return {'status': 'recorded' if row.rowcount else 'unknown_cdr'}
+
+    def clore_dernier_autorise(
+        self, *, duration_s: int, transcript: str
+    ) -> dict[str, Any]:
+        """Referme le dernier appel autorisé encore ouvert (S2S).
+
+        Args:
+            duration_s: Durée réelle de la session AudioSocket.
+            transcript: Texte entendu / dit (peut être vide).
+
+        Returns:
+            ``{status, cdr_id}``.
+        """
+        connection = self._connect()
+        try:
+            assurer_colonnes_calls(connection)
+            row = connection.execute(
+                "SELECT cdr_id FROM calls WHERE decision='allowed'"
+                " AND outcome='pending' ORDER BY created_at DESC LIMIT 1"
+            ).fetchone()
+            if row is None:
+                return {'status': 'none', 'cdr_id': ''}
+            cdr_id = str(row[0])
+        finally:
+            connection.close()
+        return {
+            **self.record_outcome(
+                cdr_id,
+                outcome='completed',
+                duration_s=duration_s,
+                transcript=transcript,
+            ),
+            'cdr_id': cdr_id,
+        }
 
     def doctor(self) -> dict[str, Any]:
         connection = self._connect()

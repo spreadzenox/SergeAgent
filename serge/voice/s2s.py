@@ -21,8 +21,10 @@ from serge.voice.audiosocket import (
     AudioSocketError,
     decode_one,
 )
+from serge.voice.ledger import VoiceLedger
 from serge.voice.pcm import is_speech, to_model_rate, to_phone_rate
 from serge.voice.phoneout import PhoneOut
+from serge.voice.policy import default_ledger_path
 from serge.voice.providers import SYSTEM_PROMPT, secrets
 from serge.voice.realtime import DEFAULT_MODELS, RealtimeCall, RealtimeError
 
@@ -101,6 +103,8 @@ def pump(ast: socket.socket, max_s: float = MAX_CALL_S) -> None:
     call = None
     leftover = b''
     buf = bytearray()
+    opened = time.monotonic()
+    morceaux: list[str] = []
     try:
         call = open_session(secrets())
         call.ws.sock.settimeout(POLL_S)
@@ -108,7 +112,6 @@ def pump(ast: socket.socket, max_s: float = MAX_CALL_S) -> None:
             f'voice-s2s: session {getattr(call, "provider", "?")}\n'
         )
         call.inject_text(OPENING)
-        opened = time.monotonic()
         greeting_done = False
         chunks = 0
         mic_n = 0
@@ -160,10 +163,19 @@ def pump(ast: socket.socket, max_s: float = MAX_CALL_S) -> None:
                 if kind == 'done':
                     greeting_done = True
                     need_commit = False
+                if kind == 'transcript' and value:
+                    morceaux.append(str(value))
                 if kind == 'audio' and value:
                     leftover = _queue_phone(out, leftover, str(value), rate)
                     chunks += 1
     finally:
+        try:
+            VoiceLedger(default_ledger_path()).clore_dernier_autorise(
+                duration_s=int(time.monotonic() - opened),
+                transcript=''.join(morceaux),
+            )
+        except Exception as exc:
+            sys.stderr.write(f'voice-s2s: clore {exc}\n')
         out.close()
         if call is not None:
             call.close()

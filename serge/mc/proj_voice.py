@@ -11,6 +11,7 @@ from typing import Any
 
 from serge.mc.signedlinks import signer_url
 from serge.paths import system_root
+from serge.voice.ledger import assurer_colonnes_calls
 from serge.voice.policy import default_ledger_path, kill_switch_active
 from serge.voice.quality import recent_scores
 
@@ -36,9 +37,12 @@ def project_cdr_appels(
     try:
         v_conn = sqlite3.connect(ledger_p, timeout=5)
         v_conn.row_factory = sqlite3.Row
+        assurer_colonnes_calls(v_conn)
+        v_conn.commit()
         rows = v_conn.execute(
             'SELECT request_id, cdr_id, direction, to_e164, cli, purpose,'
-            ' decision, outcome, duration_s, recording_path, created_at'
+            ' decision, reason, outcome, duration_s, recording_path,'
+            ' transcript, created_at'
             ' FROM calls ORDER BY created_at DESC LIMIT 30'
         ).fetchall()
         tot = v_conn.execute('SELECT COUNT(*) FROM calls').fetchone()[0]
@@ -64,10 +68,12 @@ def project_cdr_appels(
                 'cli': str(r['cli']),
                 'purpose': str(r['purpose']),
                 'decision': str(r['decision']),
+                'reason': str(r['reason']),
                 'outcome': str(r['outcome']),
                 'duration_s': int(r['duration_s']),
                 'has_recording': bool(rec_path),
                 'audio_url': audio_url,
+                'transcript': str(r['transcript'] or ''),
                 'created_at': str(r['created_at']),
             }
         )
