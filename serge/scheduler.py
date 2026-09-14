@@ -7,6 +7,7 @@ import json
 import sqlite3
 from typing import Any
 
+from serge.coupe_circuit import heartbeat_marche, kinds_interrompus
 from serge.db.store import append_event, utcnow
 from serge.etapes import etape_pour_kind, etapes_coupees
 
@@ -27,6 +28,8 @@ def next_ready(
         Le work_item (dict) ou None si rien n'est READY.
     """
     moment = now or utcnow()
+    if not heartbeat_marche(connection, moment):
+        return None
     sql = (
         'SELECT id, kind, venture_id, campaign_id, contact_id, ticket_id,'
         ' status, priority, payload_json, blocked_until, attempts,'
@@ -39,6 +42,10 @@ def next_ready(
     if coupes:
         sql += f' AND etape_id NOT IN ({",".join("?" * len(coupes))})'
         args.extend(coupes)
+    kinds = sorted(kinds_interrompus(connection, moment))
+    if kinds:
+        sql += f' AND kind NOT IN ({",".join("?" * len(kinds))})'
+        args.extend(kinds)
     sql += ' ORDER BY priority DESC, created_at ASC LIMIT 1'
     row = connection.execute(sql, args).fetchone()
     return dict(row) if row else None

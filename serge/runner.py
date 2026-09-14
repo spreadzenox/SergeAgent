@@ -14,6 +14,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
+from serge.coupe_circuit import heartbeat_marche
 from serge.db.store import append_event, utcnow
 from serge.memory.consolidate import due_for_consolidation
 from serge.registry import load_ticket_types
@@ -73,7 +74,9 @@ def run_once(
     moment = now or utcnow()
     started = time.monotonic()
     expired = expire_due(conn, moment)
-    consolidation = _ensure_consolidation(conn, policy, moment)
+    consolidation = False
+    if heartbeat_marche(conn, moment):
+        consolidation = _ensure_consolidation(conn, policy, moment)
     done = failed = retried = 0
     processed = 0
     for _ in range(max(1, max_items)):
