@@ -10,6 +10,12 @@ hostname = "localhost"
 public_hostname = "serge.example.net"
 phone_sms_number = "+33600000001"
 phone_voice_number = "+33162000001"
+prenom = "Serge"
+nom = "Atelier"
+pseudo = "serge"
+siret = ""
+iban = ""
+adresse_facturation = ""
 
 [paths]
 home = "/home/owner"

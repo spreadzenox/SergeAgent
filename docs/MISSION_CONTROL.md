@@ -585,6 +585,18 @@ v14 (`docs/DB.md`) : `last_used_at` + garde de santé
 colonnes au boot (`ensure_account_columns`). Fiche MC
 `#/objet/compte/{id}`.
 
+## Identité (`#/identite`, p9)
+
+Miroir de `identite_serge()` : `[identity]` + `[mailbox]`, pas une
+table. Volet advanced (IBAN, facturation) sur la même page. Token MC
+= confiance. Édition runtime = `ecrire_identite` (réécrit l’instance).
+
+## Pages vraiment lues
+
+`#/objet/ecoute/pages` lit `listen_docs`. Base vide = « Aucune page
+en base », pas deux flux RSS inventés. `scripts/mc-demo.py` peut
+semer des lignes de démo : ce n’est pas le runtime.
+
 Fiche prospect / client : un lieu (`venue`) et un identifiant sur ce
 lieu (`handle`). Deux lieux, deux fiches.
 

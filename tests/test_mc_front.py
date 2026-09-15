@@ -51,7 +51,7 @@ class McFrontTests(McBrowserCase):
         self._watch_errors(page)
         page.goto(f'{self.base}/owner')
         links = page.locator('.barre-laterale nav a')
-        self.assertEqual(links.count(), 8)
+        self.assertEqual(links.count(), 9)
         self.assertEqual(links.nth(1).text_content().strip(), 'Cerveau')
         links.nth(1).click()
         page.locator('table.matrice tbody tr').first.wait_for(timeout=10000)
@@ -81,6 +81,9 @@ class McFrontTests(McBrowserCase):
             timeout=10000
         )
         self.assertEqual(page.evaluate('window.__MC.stats.page'), 'p8')
+        links.nth(8).click()
+        page.locator('[data-section="identite"]').wait_for(timeout=10000)
+        self.assertEqual(page.evaluate('window.__MC.stats.page'), 'p9')
         links.nth(0).click()
         page.get_by_text('File vide').wait_for(timeout=5000)
         self.assertEqual(page.evaluate('window.__MC.stats.page'), 'p0')

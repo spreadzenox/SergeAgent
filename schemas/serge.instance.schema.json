@@ -22,7 +22,13 @@
         "hostname": {"type": "string"},
         "public_hostname": {"type": "string"},
         "phone_sms_number": {"type": "string"},
-        "phone_voice_number": {"type": "string"}
+        "phone_voice_number": {"type": "string"},
+        "prenom": {"type": "string"},
+        "nom": {"type": "string"},
+        "pseudo": {"type": "string"},
+        "siret": {"type": "string"},
+        "iban": {"type": "string"},
+        "adresse_facturation": {"type": "string"}
       }
     },
     "paths": {

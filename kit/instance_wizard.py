@@ -192,6 +192,14 @@ def normalize_answers(raw: Mapping[str, Any] | None) -> dict[str, Any]:
             'phone_voice_number': str(
                 identity.get('phone_voice_number') or ''
             ).strip(),
+            'prenom': str(identity.get('prenom') or '').strip(),
+            'nom': str(identity.get('nom') or '').strip(),
+            'pseudo': str(identity.get('pseudo') or '').strip(),
+            'siret': str(identity.get('siret') or '').strip(),
+            'iban': str(identity.get('iban') or '').strip(),
+            'adresse_facturation': str(
+                identity.get('adresse_facturation') or ''
+            ).strip(),
         },
         'paths': {
             'home': str(paths.get('home') or '').strip(),
@@ -294,6 +302,12 @@ def render_toml(answers: Mapping[str, Any]) -> str:
         f'public_hostname = {_toml_str(str(data["identity"].get("public_hostname") or ""))}',
         f'phone_sms_number = {_toml_str(str(data["identity"].get("phone_sms_number") or ""))}',
         f'phone_voice_number = {_toml_str(str(data["identity"].get("phone_voice_number") or ""))}',
+        f'prenom = {_toml_str(str(data["identity"].get("prenom") or ""))}',
+        f'nom = {_toml_str(str(data["identity"].get("nom") or ""))}',
+        f'pseudo = {_toml_str(str(data["identity"].get("pseudo") or ""))}',
+        f'siret = {_toml_str(str(data["identity"].get("siret") or ""))}',
+        f'iban = {_toml_str(str(data["identity"].get("iban") or ""))}',
+        f'adresse_facturation = {_toml_str(str(data["identity"].get("adresse_facturation") or ""))}',
         '',
         '[paths]',
         f'home = {_toml_str(data["paths"]["home"])}',
