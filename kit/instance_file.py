@@ -12,6 +12,7 @@ from typing import Any
 
 import yaml
 
+from kit.instance_identite import extraire as extraire_identite
 from kit.mailbox_config import MailboxError, resolve_mailbox
 from serge.e164 import E164_RE
 
@@ -202,14 +203,7 @@ def validate_toml(data: Mapping[str, Any]) -> dict[str, Any]:
             'public_hostname': public_hostname,
             'phone_sms_number': phone_sms_number,
             'phone_voice_number': phone_voice_number,
-            'prenom': str(identity.get('prenom') or '').strip(),
-            'nom': str(identity.get('nom') or '').strip(),
-            'pseudo': str(identity.get('pseudo') or '').strip(),
-            'siret': str(identity.get('siret') or '').strip(),
-            'iban': str(identity.get('iban') or '').strip(),
-            'adresse_facturation': str(
-                identity.get('adresse_facturation') or ''
-            ).strip(),
+            **extraire_identite(identity),
         },
         'paths': {
             'home': str(paths['home']).strip(),
