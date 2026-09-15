@@ -26,10 +26,10 @@ CATALOGUE: dict[str, tuple[str, str, str, str]] = {
         'Objet cliquable « venture ». SMOKE / FULL / SCALE vivent ici.',
     ),
     'contacts': (
-        'Les personnes : prospects puis clients.',
-        'Qualification, inbound, owner.',
+        'Une trace sur un lieu (venue + handle), pas un humain fusionné.',
+        'upsert_trace, qualification, inbound, owner.',
         'touches, inbound_events, campagnes.',
-        'funnel_state dit où la personne en est. regime = sens du flux.',
+        'Deux lieux, deux lignes. funnel_state + regime sur cette trace.',
     ),
     'campaigns': (
         'Un test sur un canal (e-mail, voix…) pour une venture.',
@@ -135,11 +135,11 @@ CATALOGUE: dict[str, tuple[str, str, str, str]] = {
     ),
     'accounts_standing': (
         'Comptes web de Serge : santé + comment crawler'
-        ' (rôle, profil navigateur, nom du secret, cibles).'
-        ' Pas le mot de passe.',
-        'Observe, Discord, mail, écoute.',
-        'Jauges, allocator, pauses, futur login.',
-        'role ecoute/publication/les_deux. secret_ref = nom, pas le secret.',
+        ' (rôle, profil navigateur, cibles). Login et mot de passe'
+        ' en clair (comptes créés par Serge).',
+        'Writer enregistrer_compte, écoute, publication.',
+        'Jauges, allocator, pauses, tools web.',
+        'role ecoute/publication/les_deux. login + password en clair.',
     ),
     'policy_snapshots': (
         'Photo de la policy appliquée. On sait qui a changé quoi.',

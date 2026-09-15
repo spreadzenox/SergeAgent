@@ -20,11 +20,13 @@ chantier « évident ».
 
 ### Comptes et identité
 
-- [ ] **Brancher `accounts_standing` (table déjà en base).** Pas de seconde table. Writer production (aujourd’hui : semence démo / tests seulement). Login et mot de passe **en clair dans la table** : ce sont des comptes créés par Serge, sans valeur hors de Serge. `secret_ref` comme seul coffre, on n’en a plus besoin pour ça.
+- [x] **Brancher `accounts_standing` (table déjà en base).** Pas de seconde table. Writer `enregistrer_compte` (v13 : `login` / `password` en clair). Ce sont des comptes créés par Serge, sans valeur hors de Serge. `secret_ref` n’est plus le coffre.
 
 - [ ] **Dossier de session par compte.** La colonne `profile_path` pointe un dossier navigateur (cookies, etc.), rangé et unique par ligne. Quand deux usages du même compte se suivent de près, on réouvre ce dossier : c’est le geste le plus proche d’un humain qui n’a pas fermé son onglet. Ce n’est pas un keepalive permanent (ça, c’est un comportement de bot). Les trois tools web doivent accepter ce dossier. *Dépend de : tools web ; brancher `accounts_standing`.*
 
-- [ ] **Santé du compte, appliquée, pas affichée pour décorer.** Avant chaque acte, le tool (ou l’adaptateur) appelle une garde : compte actif, pas en pause, capital suffisant. L’agent est prévenu de l’état. S’il insiste alors que c’est interdit, l’accès est refusé (code, pas un roman). Après usage, le capital **ne peut que baisser**. À l’inutilisation, il **remonte**. Barème simple d’abord, dans la policy. Plus tard : un barème qui pénalise les enchaînements de bot et valorise un rythme humain. *Dépend de : brancher `accounts_standing`. LinkedIn et la publication lieu doivent passer par cette garde.*
+- [x] **Santé du compte, appliquée, pas affichée pour décorer.** Garde `serge/comptes_sante.py` : `etat` (prévient) / `autoriser` (refuse par code : `inconnu`, `inactif`, `pause`, `capital`) / `consommer` (débit) / `recuperer` (crédit idle). Barème dans `policy.standing`. `last_used_at` (v14). Insister ne passe pas. Garde posée ; aucun adaptateur prod ne l’appelle encore (ticket ci-dessous).
+
+- [ ] **Appelants de la garde de santé.** Aucun writer de compte (LinkedIn, publication lieu, tools web) n’existe encore, donc personne n’appelle `autoriser` / `consommer`. Le jour où un de ces writers part, le merge est refusé s’il n’appelle pas la garde. *Dépend de : santé du compte.*
 
 - [ ] **Tool agent « créer un compte ».** Mobilisable à la main dans MC et appelable par les invocations LLM qui ont ce tool. 2FA **100 % autonome** (Serge lit mail/SMS lui-même). Captcha = stream humain (opérateur MC). À la création : login et mot de passe en clair dans `accounts_standing`, plus un dossier de session vide prêt à servir. *Dépend de : tools web ; stream captcha MC ; tool boîte mail/SMS ; `accounts_standing` ; dossier de session ; identity basique.*
 
@@ -42,7 +44,9 @@ chantier « évident ».
 
 - [ ] **Invocation LLM prospection avec compte.** Sortie typée (qui, quel acte, quel texte) — le writer est l’adaptateur du canal, pas le LLM. Digestion en base (`contacts`, `touches`). Un canal = écriture vers un **tiers** (pas Julien). Email et voix sont déjà au catalogue (`canaux` + `brique_canaux`, v11). Discord owner n’en est pas un.
 
-- [ ] **Stockage des contacts par canal.** Chaque scout ou adaptateur (Reddit, LinkedIn, mail, voix…) écrit une trace **à lui** dans `contacts` : ce qu’il sait vraiment (handle, URL de profil, mail s’il l’a, téléphone s’il l’a), champs typés, pas un pavé de texte. Deux traces du même humain sur deux lieux restent deux lignes. On met à jour **sa** ligne quand on apprend quelque chose sur ce lieu (un mail trouvé sur LinkedIn enrichit la fiche LinkedIn, pas la fiche Reddit). Pas de fusion automatique entre lieux, et pas de jugement LLM qui compare toutes les paires : trop de combinaisons, trop de jetons, et Julien tient les collisions pour rares assez pour ne pas en faire un chantier. *Dépend de : rien d’autre pour le contrat d’écriture. LinkedIn, la publication lieu et le pont écoute → contact doivent s’en servir, pas inventer une autre table.*
+- [x] **Stockage des contacts par canal.** `upsert_trace` + colonnes `venue` / `handle` / `profile_url` (v12). Deux lieux, deux lignes. Pas de fusion automatique. Writer posé ; les appelants historiques ne passent pas encore par lui (ticket ci-dessous).
+
+- [ ] **Appelants de `upsert_trace`.** `create_contact` (séquenceur, observe, et plus tard le pont écoute → contact) crée encore des fiches sans lieu. Tant que ces flux n’appellent pas `upsert_trace`, une trace par canal n’est pas le chemin réel. *Dépend de : stockage des contacts par canal. LinkedIn et le pont écoute doivent passer par là.*
 
 ### Canaux manquants (théâtre déjà là, writer absent)
 

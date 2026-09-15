@@ -1,6 +1,6 @@
 # Charte belle codebase Serge
 
-Version : 1.1 (2026-09-14)
+Version : 1.2 (2026-09-15)
 Statut : OWNER-CONTROLLED — Julien seul peut amender. Propositions (assistant, Serge, Meta-Grok) avec rationnel + preuve, jamais en autonome.
 S'applique à : tout code produit pour Serge à partir de cette date — assistant, Serge lui-même, Meta-Grok (quand il reviendra), futurs contributeurs.
 Objectif : le maximum de capacité économique avec le minimum de code, lisible, scalable, sans attracteurs ni compute inutile.
@@ -9,6 +9,7 @@ Les 5 principes (P1-P5) ci-dessous sont FIGÉS avec Julien le 2026-09-09.
 Les 5 règles opérationnelles (R1-R5) sont FIGÉES avec Julien le 2026-09-09 — voir §7.
 R6 (doc vivante) ajoutée par Julien le 2026-09-12.
 R7 + §8 (catalogue, SHA, pas de code mort) ajoutés par Julien le 2026-09-14.
+R8 (checklist avant merge) ajoutée par Julien le 2026-09-15.
 
 ---
 
@@ -269,7 +270,7 @@ Si le refus manque, on écrit le test manquant AVANT de supprimer.
 
 ---
 
-## §7 — Règles opérationnelles R1-R6 (R1-R5 FIGÉES le 2026-09-09 ; R6 le 2026-09-12)
+## §7 — Règles opérationnelles R1-R8 (R1-R5 FIGÉES le 2026-09-09 ; R6 le 2026-09-12 ; R7 le 2026-09-14 ; R8 le 2026-09-15)
 
 ### R1 — Diffs < 300 lignes, dépassement interactif obligatoire
 
@@ -429,6 +430,35 @@ enlève — y compris tests et docs du même lot (R6).
 « On gardera pour plus tard » n'est pas une raison de laisser du mort.
 Un commentaire `TODO` sans ticket = écart (`écart R7 : …`).
 
+### R8 — Checklist avant merge
+
+Validée par Julien le 2026-09-15. S'applique à toute PR avant merge.
+Pas une quatrième liste d'objets : on ouvre les sources (§8, trois
+familles). Écart : `écart merge : …` dans le commit, jamais silencieux.
+R1, secrets, `docs/slides/` interdit, branches + PR (pas de push
+`main`) restent en vigueur.
+
+Pour chaque objet touché (ajout / modification / suppression), dans les
+trois familles (catalogue, schéma, policy) :
+
+1. **Docs vivantes.** Aucun paragraphe de `docs/` ne contredit le diff.
+   On corrige celui qui ment ; on n'empile pas une note.
+2. **Base.** Semence ou migration posée ; fiche / `doc_md` / champs
+   Policy à jour ; SHA recalculé si famille catalogue ;
+   `tests.test_catalogue_sha` vert.
+3. **Liens et appelants.** Graphe n-n, enums fermés, et tout
+   reader / writer / garde existant qui doit parler le nouveau contrat.
+   Suppression : plus aucune mention (code, docs, MC, tests). À défaut :
+   ticket explicite dans le même lot.
+4. **Tests.** P5 passant + refusé. E2E déterministe si un flux
+   opérateur ou un kind change. E2E LLM seulement si un jugement /
+   prompt / tool exposé au LLM change. Pas de test fantôme, pas de
+   harnais LLM inventé pour du déterministe.
+5. **Mission Control.** Si c'est censé se voir, un parcours opérateur
+   le montre (pas une capture). Aucune jauge ni phrase qui invente un
+   fait absent du canon. Les autres pages qui lisent le même fait
+   restent d'accord.
+
 ---
 
 ## §8 — Comment modifier Serge (catalogue, doc en base, SHA)
@@ -457,6 +487,18 @@ un markdown « en plus ».
 
 P4 : un fait = une source. Le hostname, un prix, un titre d'étape,
 un SHA de fichier : **une** colonne, pas deux copies.
+
+### Trois familles d'objets vivants
+
+Pas d'inventaire markdown parallèle (il pourrirait). On ouvre :
+
+1. **Catalogue** — table ci-dessus. Semence + `doc_md` + SHA.
+2. **Faits / schéma** — `TABLES` + migrations `apply_v00N`. Fiche
+   table MC (`serge/mc/proj_sqlite.py`, `CATALOGUE`).
+3. **Policy / flags / instance** — `config/policy.yaml`, snapshots,
+   contrat d'instance. Champs du formulaire MC.
+
+Avant merge : R8.
 
 ### Comment ajouter ou modifier un tool / un point / une étape
 

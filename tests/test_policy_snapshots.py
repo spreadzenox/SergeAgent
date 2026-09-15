@@ -48,6 +48,20 @@ class PolicyEnVigueurTests(unittest.TestCase):
         self.assertEqual(live['budget']['llm_daily_eur'], 12.5)
         self.assertEqual(load_policy()['budget']['llm_daily_eur'], 5.0)
 
+    def test_snapshot_sans_standing_complete(self) -> None:
+        import json
+
+        seed = dict(load_policy())
+        seed.pop('standing')
+        self.conn.execute(
+            'INSERT INTO policy_snapshots(content_hash, content_json,'
+            " applied_by, active_from) VALUES('h1',?,'owner','t')",
+            (json.dumps(seed),),
+        )
+        live = latest_policy(self.conn)
+        self.assertEqual(live['standing']['cout_usage'], 0.10)
+        self.assertEqual(live['standing']['capital_max'], 1.0)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -30,6 +30,8 @@ class PolicyTests(unittest.TestCase):
         self.assertEqual(policy['calling_zones']['default'], 'FR')
         self.assertIn('mon', policy['calling_zones']['FR']['voice_days'])
         self.assertEqual(policy['testing']['n_smoke_min'], 30)
+        self.assertEqual(policy['standing']['cout_usage'], 0.10)
+        self.assertEqual(policy['standing']['capital_min'], 0.20)
 
     def test_test_overlay_applies_plancher(self) -> None:
         with mock.patch.dict(os.environ, {'SERGE_ENV': 'test'}):
@@ -52,6 +54,11 @@ class PolicyTests(unittest.TestCase):
         bad['tickets']['trust_min_rate'] = 1.5
         with self.assertRaises(PolicyError):
             validate_policy(bad)
+        pire = load_policy()
+        pire['standing'] = dict(pire['standing'])
+        pire['standing']['capital_max'] = 0.05
+        with self.assertRaises(PolicyError):
+            validate_policy(pire)
 
 
 if __name__ == '__main__':

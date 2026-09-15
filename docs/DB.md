@@ -109,3 +109,30 @@ Table `canaux` (id fermé, `doc_md`, `code_path` du writer, `etat`
 {`llm`, `tech`}. Semence `serge/canaux.py`. Aujourd’hui branchés :
 `email`, `voice`. Pas LinkedIn / WhatsApp / Ads tant qu’il n’y a pas
 de writer.
+
+## Contacts par lieu (v12)
+
+Une fiche `contacts` = une trace sur **un** lieu (`venue` + `handle`,
+URL optionnelle). Deux lieux, deux lignes, même si c’est le même
+humain. `upsert_trace` (`serge/funnels/contact_canal.py`) enrichit
+**sa** ligne (mail trouvé sur LinkedIn → fiche LinkedIn). Index unique
+partiel `(venture_id, venue, handle)` si les deux sont non vides.
+Les contacts e-mail historiques (venue vide) restent valides.
+
+## Comptes standing (v13)
+
+`accounts_standing.login` et `accounts_standing.password` : identifiants
+de connexion **en clair**. Ce sont des comptes que Serge a créés ; ils
+n’ont pas de valeur hors de lui. Writer : `enregistrer_compte`
+(`serge/comptes.py`) — un lieu + un handle = une ligne ; le second
+appel met à jour login / mot de passe, pas le capital. `secret_ref`
+n’est plus le coffre.
+
+## Santé des comptes (v14)
+
+`accounts_standing.last_used_at` : dernier acte qui a débité le capital.
+Garde `serge/comptes_sante.py`. Barème : `policy.standing` (`cout_usage`,
+`gain_par_heure`, `idle_apres_heures`, `capital_min`, `capital_max`).
+Après un usage le capital ne peut que baisser ; à l’inutilisation il
+remonte, sans dépasser le plafond. Un snapshot policy plus vieux que
+cette section est complété par la semence YAML à la lecture.

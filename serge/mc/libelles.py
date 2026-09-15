@@ -162,6 +162,7 @@ SECTIONS_POLICY = {
     'windows': 'Fenêtres horaires',
     'calling_zones': 'Zones d’appel',
     'cooldowns': 'Temps de pause',
+    'standing': 'Santé des comptes',
     'voice': 'Voix',
     'observation': 'Observation',
     'builder': 'Builder',
