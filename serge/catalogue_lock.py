@@ -195,6 +195,10 @@ SHA_ATTENDUS: dict[tuple[str, str], str] = {
     ): 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
     (
         'outil',
+        'boite_serge',
+    ): 'bd23fbd3b6e0f612a913404e37b7def202b8a09fdda3cf21a25c325dfc10c6b7',
+    (
+        'outil',
         'catalogue',
     ): 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
     (

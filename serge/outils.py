@@ -80,6 +80,17 @@ SEED: tuple[tuple[str, str, str, str, str, str, str, int], ...] = (
         0,
     ),
     (
+        'boite_serge',
+        'deterministe',
+        'serge/boite.py',
+        'e03a01cf4b40b8898610be62ce04e231b01e74cb0489461c714a284185f74dec',
+        'Boîte mail et SMS',
+        'Lecture : corps brut, heure, expéditeur, destinataire,'
+        ' historique. Le 2FA se lit tout seul. Pas un GUICHET.',
+        'branche',
+        0,
+    ),
+    (
         'demande_capacite',
         'deterministe',
         '',

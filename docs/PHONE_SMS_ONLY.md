@@ -18,7 +18,7 @@ opérateur (Free, B&YOU, SFR, Orange…)
     ↕ radio (vraie SIM, line_type=mobile)
 Android dédié, branché H24, Wi-Fi
     ↕ webhook HTTPS sortant (l'app pousse, rien à exposer)
-VPS Serge ──► sms_broker (SmsInbox : OTP only, HMAC, pas de body brut)
+VPS Serge ──► sms_broker (SmsInbox : HMAC, OTP + corps brut)
 ```
 
 L'important : c'est le téléphone qui **pousse** vers le VPS. Pas de
@@ -27,9 +27,9 @@ le téléphone perso. Le VPS expose déjà son ingress ; le webhook SMS
 s'y accroche comme n'importe quel callback signé.
 
 Le broker (`serge/sms/inbox.py`, couvert par
-`tests/test_sms_approval_brokers.py`) ne stocke que l'OTP extrait,
-jamais le corps brut ni l'expéditeur. Ce tuto ne change pas ce
-contrat : il lui donne une source propre.
+`tests/test_sms_receiver.py`) stocke le corps brut et l’expéditeur
+(plus seulement le hash) : Serge lit le 2FA tout seul. HMAC et
+idempotence inchangés. Ce tuto lui donne une source propre.
 
 ## Matériel (BOM)
 
@@ -114,7 +114,8 @@ Le téléphone pousse, le VPS reçoit. Deux bouts à configurer.
   `secrets/sms-gateway.token` 0600), jamais dans le TOML.
 - Le handler normalise le payload de l'app puis appelle
   `SmsInbox.ingest(..., purpose='ACCOUNT_VERIFICATION')` : OTP extrait,
-  body jeté, idempotence sur `id`, rate-limit 10/min/expéditeur.
+  corps et expéditeur stockés, idempotence sur `id`, rate-limit
+  10/min/expéditeur.
 
 **Côté Android** — enregistrer le webhook (depuis le LAN) :
 

@@ -72,6 +72,9 @@ class SmsReceiverTests(unittest.TestCase):
         self.assertTrue(result['otp_present'])
         self.assertEqual(result['auth'], 'hmac')
         self.assertEqual(self.inbox.latest_otp(), '482931')
+        vu = self.inbox.messages(limite=1)
+        self.assertEqual(vu[0]['expediteur'], '+33600000001')
+        self.assertIn('482931', vu[0]['corps'])
 
     def test_android_app_shape_translated(self) -> None:
         result = self._ingest(
