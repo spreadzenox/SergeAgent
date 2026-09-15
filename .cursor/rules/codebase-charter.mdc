@@ -18,6 +18,9 @@ Tout écart va dans le commit (`écart P1 : …`), jamais silencieux.
 - **R5** : revue P1–P5 + R6 dans le message de commit.
 - **R6** : la doc qui décrirait l’état réel part dans le même changement.
 - **R7** : pas de code mort ni de doc morte (on finit ou on enlève).
+- **R8** : avant merge, checklist §7 (docs, base/SHA, appelants, tests,
+  MC vrai). Trois familles : catalogue / schéma / policy — pas une
+  quatrième liste. Détail : `docs/CODEBASE_CHARTER.md` §7 R8 + §8.
 - **Catalogue / SHA** : nouvel objet (tool, point LLM, étape, canal,
   fichier d’implémentation) = semence + `code_path` / `_FICHIERS_FIXES` +
   `catalogue_lock.py` + `tests.test_catalogue_sha` vert. Doc de l’objet

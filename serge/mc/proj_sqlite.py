@@ -26,10 +26,10 @@ CATALOGUE: dict[str, tuple[str, str, str, str]] = {
         'Objet cliquable « venture ». SMOKE / FULL / SCALE vivent ici.',
     ),
     'contacts': (
-        'Les personnes : prospects puis clients.',
-        'Qualification, inbound, owner.',
+        'Une trace sur un lieu (venue + handle), pas un humain fusionné.',
+        'upsert_trace, qualification, inbound, owner.',
         'touches, inbound_events, campagnes.',
-        'funnel_state dit où la personne en est. regime = sens du flux.',
+        'Deux lieux, deux lignes. funnel_state + regime sur cette trace.',
     ),
     'campaigns': (
         'Un test sur un canal (e-mail, voix…) pour une venture.',

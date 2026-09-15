@@ -42,6 +42,13 @@ class SqliteMiroirTests(unittest.TestCase):
         self.assertEqual(fiche['id'], 'extra_live')
         self.assertEqual(fiche['champs'][3]['v'], '1')
 
+    def test_fiche_contacts_dit_une_trace_par_lieu(self) -> None:
+        fiche = project_table(self.conn, 'contacts')
+        assert fiche is not None
+        self.assertIn('lieu', fiche['pourquoi'])
+        self.assertNotIn('prospects puis clients', fiche['pourquoi'])
+        self.assertIn('upsert_trace', fiche['champs'][0]['v'])
+
 
 if __name__ == '__main__':
     unittest.main()

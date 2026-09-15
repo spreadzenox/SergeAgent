@@ -24,7 +24,9 @@ chantier « évident ».
 
 - [ ] **Dossier de session par compte.** La colonne `profile_path` pointe un dossier navigateur (cookies, etc.), rangé et unique par ligne. Quand deux usages du même compte se suivent de près, on réouvre ce dossier : c’est le geste le plus proche d’un humain qui n’a pas fermé son onglet. Ce n’est pas un keepalive permanent (ça, c’est un comportement de bot). Les trois tools web doivent accepter ce dossier. *Dépend de : tools web ; brancher `accounts_standing`.*
 
-- [x] **Santé du compte, appliquée, pas affichée pour décorer.** Garde `serge/comptes_sante.py` : `etat` (prévient) / `autoriser` (refuse par code : `inconnu`, `inactif`, `pause`, `capital`) / `consommer` (débit) / `recuperer` (crédit idle). Barème dans `policy.standing`. `last_used_at` (v14). Insister ne passe pas. LinkedIn et la publication lieu doivent appeler cette garde.
+- [x] **Santé du compte, appliquée, pas affichée pour décorer.** Garde `serge/comptes_sante.py` : `etat` (prévient) / `autoriser` (refuse par code : `inconnu`, `inactif`, `pause`, `capital`) / `consommer` (débit) / `recuperer` (crédit idle). Barème dans `policy.standing`. `last_used_at` (v14). Insister ne passe pas. Garde posée ; aucun adaptateur prod ne l’appelle encore (ticket ci-dessous).
+
+- [ ] **Appelants de la garde de santé.** Aucun writer de compte (LinkedIn, publication lieu, tools web) n’existe encore, donc personne n’appelle `autoriser` / `consommer`. Le jour où un de ces writers part, le merge est refusé s’il n’appelle pas la garde. *Dépend de : santé du compte.*
 
 - [ ] **Tool agent « créer un compte ».** Mobilisable à la main dans MC et appelable par les invocations LLM qui ont ce tool. 2FA **100 % autonome** (Serge lit mail/SMS lui-même). Captcha = stream humain (opérateur MC). À la création : login et mot de passe en clair dans `accounts_standing`, plus un dossier de session vide prêt à servir. *Dépend de : tools web ; stream captcha MC ; tool boîte mail/SMS ; `accounts_standing` ; dossier de session ; identity basique.*
 
@@ -42,7 +44,9 @@ chantier « évident ».
 
 - [ ] **Invocation LLM prospection avec compte.** Sortie typée (qui, quel acte, quel texte) — le writer est l’adaptateur du canal, pas le LLM. Digestion en base (`contacts`, `touches`). Un canal = écriture vers un **tiers** (pas Julien). Email et voix sont déjà au catalogue (`canaux` + `brique_canaux`, v11). Discord owner n’en est pas un.
 
-- [x] **Stockage des contacts par canal.** `upsert_trace` + colonnes `venue` / `handle` / `profile_url` (v12). Deux lieux, deux lignes. Pas de fusion automatique. LinkedIn, la publication lieu et le pont écoute → contact doivent s’en servir.
+- [x] **Stockage des contacts par canal.** `upsert_trace` + colonnes `venue` / `handle` / `profile_url` (v12). Deux lieux, deux lignes. Pas de fusion automatique. Writer posé ; les appelants historiques ne passent pas encore par lui (ticket ci-dessous).
+
+- [ ] **Appelants de `upsert_trace`.** `create_contact` (séquenceur, observe, et plus tard le pont écoute → contact) crée encore des fiches sans lieu. Tant que ces flux n’appellent pas `upsert_trace`, une trace par canal n’est pas le chemin réel. *Dépend de : stockage des contacts par canal. LinkedIn et le pont écoute doivent passer par là.*
 
 ### Canaux manquants (théâtre déjà là, writer absent)
 

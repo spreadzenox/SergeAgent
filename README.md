@@ -32,7 +32,7 @@ Discord).
   (allowlist owner-only, caps de session, jamais en CI PR ; suite + LLM
   live au pre-push, clé obligatoire).
 
-Charte complète (P1-P5 / R1-R5) : [`docs/CODEBASE_CHARTER.md`](docs/CODEBASE_CHARTER.md).
+Charte complète (P1-P5 / R1-R8) : [`docs/CODEBASE_CHARTER.md`](docs/CODEBASE_CHARTER.md).
 
 ## Capacités
 
