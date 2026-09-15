@@ -138,7 +138,7 @@ points:
       fixed: [script_P4, regles_dures, serge_md_min]
       retrieved: [fiche_600t, historique_400t, objections_600t]
       couche5: {allowed: false}
-      tools: [agenda, catalogue, fiches]
+      tools: [agenda, catalogue, fiches, identity_basique]
       forbidden: [engagements, prix_non_catalogue, autres_prospects, hors_sujet]
       envelope_tokens: 4000
     garde_fou: tours/durée max (coupure gracieuse) ; détecteur dérive (recentrage 1× puis raccrochage propre) ; enregistrement ; DTMF1 → ticket ; kill manuel
@@ -296,6 +296,7 @@ points:
       fixed: [template_proposition, serge_md, bornes_policy]
       retrieved: [benchmarks_1000t, couts_300t, objections_prix_800t, offre_600t]
       couche5: {allowed: true, budget_tokens: 2500}
+      tools: [identity_basique]
       forbidden: [prix_autres_clients, pii, engagements_garantie_ventes]
       envelope_tokens: 5000
     garde_fou: ticket VETO_AMONT bloquant ; bornes vérifiées dét avant ticket ; conditions de révision incluses

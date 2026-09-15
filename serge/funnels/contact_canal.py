@@ -6,7 +6,7 @@ from __future__ import annotations
 import sqlite3
 
 from serge.db.store import utcnow
-from serge.funnels.contacts import create_contact
+from serge.funnels.contacts import insert_contact
 
 
 class ContactCanalError(ValueError):
@@ -52,7 +52,7 @@ def upsert_trace(
         (venture_id, lieu, cle),
     ).fetchone()
     if row is None:
-        ident = create_contact(
+        ident = insert_contact(
             conn,
             venture_id,
             display.strip() or cle,

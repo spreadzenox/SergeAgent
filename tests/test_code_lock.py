@@ -57,6 +57,7 @@ class CodeLockTests(unittest.TestCase):
         self.assertEqual(voix['agenda'], 'declare')
         self.assertEqual(voix['catalogue'], 'declare')
         self.assertEqual(voix['fiches'], 'declare')
+        self.assertEqual(voix['identity_basique'], 'declare')
 
     def test_sha_change_hurle(self) -> None:
         self.conn.execute(

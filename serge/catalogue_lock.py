@@ -6,9 +6,17 @@ from __future__ import annotations
 # (kind, id) → files_sha. Contenu des fichiers seulement, puis compose.
 SHA_ATTENDUS: dict[tuple[str, str], str] = {
     (
+        'canal',
+        'email',
+    ): 'cc757e2fd186880b8c39b6c84e8819a62e79ac257c87dabdfa687a95965b291f',
+    (
+        'canal',
+        'voice',
+    ): 'cdfc6e7351890d553232d2b571d503b5cab4d7c4929076c94448556a66e2f367',
+    (
         'etape',
         'build_venture',
-    ): '7485b369989ee1cea7c64a3db0daebbbbf2dcd9a889abd5985e31665b69d4a8f',
+    ): 'aea265f5dff7845e93f2061c80b223e8c000546cb04796b0a606c7cca94e9572',
     (
         'etape',
         'caisse',
@@ -16,27 +24,27 @@ SHA_ATTENDUS: dict[tuple[str, str], str] = {
     (
         'etape',
         'choix_venture',
-    ): '93046e2189a9faefc65bf343152584239659cafdf1a3a5279243ee2d7ebe5eae',
+    ): '1ac8e9123da0a7eea8525db275d4c89c182bcd65d5e11018a56fc6af3ae222b1',
     (
         'etape',
         'collect_feedback',
-    ): '8cdd27c226c95af8ac29349cd19903ae0628e67e02ccdb45f635acd05bce95f7',
+    ): '62082837c55d88fac881babd59685911c70a3d8fd4720875e96d37198a75d4f4',
     (
         'etape',
         'conception_poc',
-    ): 'cde75bc00e04b8e4f5c716d76e6b4a6676f99a7e7dbe953d65304c95ab8efb94',
+    ): 'f65577eb256f4052312efe49078fc6f61b6cb17ba9a23cdbcc0aa9275de76caa',
     (
         'etape',
         'pre_prospection',
-    ): '95a0f5c6486249dbf0d918c4dccaa11dbc395bf2f414274982566527fd6b0747',
+    ): 'bae65a3ef58f5735bc88c17d50b88128d91e1e6de5a292b17a9d88b19e49b0ee',
     (
         'etape',
         'prospection_light',
-    ): 'e69809f2240d32143be375b9f05479dbbcf611c3cdc2b287d8bc59b6c70b55fc',
+    ): '226321cac33aeb5b60b517b0435984ed165352c97eb84377f890250546f850a2',
     (
         'etape',
         'prospection_lourde',
-    ): 'ac296d09e87c2fdc68745c5a0ac6ed7baa58188c4f9f98d2095e51fea549cc60',
+    ): 'd4ac16a9402b842ede2075632755bf4d5a0860cec6c6433cc5ff52dbcb016e35',
     (
         'lien',
         'build-lourde',
@@ -68,131 +76,127 @@ SHA_ATTENDUS: dict[tuple[str, str], str] = {
     (
         'llm',
         'build_artifact',
-    ): '06b12303a5bcdf39b2aabe01f36066a0f738a689746b49236c20e0f9f3168847',
+    ): '86c37da48e06fdeda79967546a83e8b7269832820517e009fc2f0eb160a67e11',
     (
         'llm',
         'classify_owner_intent',
-    ): '6671565f7c6faab94f9bbcfdc96a9541975bdb4dacc20c63e5dedf9cc6cdf057',
+    ): 'd0c036b0e127cebcd01fcf1dc3db152d71d6fe5c9d4ef8a5d0d5a4fdb2b477f3',
     (
         'llm',
         'classify_reply',
-    ): '9dcfc80b3ef6efd671cd72504b148ed8c95b1394f45a00e26adf2cb025c02067',
+    ): 'ef871cf1b9c603444060ef2bd5dc6bc43029eeabd97906ee371ec2e96bd85db9',
     (
         'llm',
         'cluster_demand',
-    ): '6cbbad19faff65a7ec5793791ab78fb74bc83b4e1774546677a8c8596100e3c7',
+    ): '6d22e9f9cb983faaf7c46a19c592fb316bb21a458de410fcfbbee3e263206551',
     (
         'llm',
         'consolidate',
-    ): '6b9fb715ea6e665fab4f72d64053746f1e245605b43efdea1063ee72f035c669',
+    ): 'a80614644339d728dc5e016c993b40842409fafd6e69baa4b13ff8a814ad6b89',
     (
         'llm',
         'draft_hypothesis_full',
-    ): '44ad4e54a21be02bb86ddb3e40fe40dc28e01ac8ecf36f3d452d42fd4fc317ed',
+    ): '7778f04c41610f260301d8cfcfa5ccb36631751c3e6e0e5944f46ddb79b828a6',
     (
         'llm',
         'draft_hypothesis_smoke',
-    ): '44ad4e54a21be02bb86ddb3e40fe40dc28e01ac8ecf36f3d452d42fd4fc317ed',
+    ): '7778f04c41610f260301d8cfcfa5ccb36631751c3e6e0e5944f46ddb79b828a6',
     (
         'llm',
         'draft_price',
-    ): '5fd4e9b1523d5f93240353af8234cc52fbf6a28af66b0f4263900b93f7a6bdbe',
+    ): 'a1a6081fca51dcca241bbf4596784369f5a22e55ffd150cbf974529666405c82',
     (
         'llm',
         'edit_serge_md',
-    ): '6b9fb715ea6e665fab4f72d64053746f1e245605b43efdea1063ee72f035c669',
+    ): 'a80614644339d728dc5e016c993b40842409fafd6e69baa4b13ff8a814ad6b89',
     (
         'llm',
         'extract_meeting',
-    ): 'd5c2d63e5ca06c053e0127a6ecedf19a8f00f52202d103a1945c017709dc581f',
+    ): 'faa07a11e3f00665262947c65d61983de4d7336004b556f33172c67a69dafb3f',
     (
         'llm',
         'fill_slots',
-    ): '0dbf189418fed6c9ee2e1e66321c1dcc3626d9a38a95f560539fbabf277e309c',
+    ): 'e19913111dcfbd738ea0334e1daaefd8300668561a2feb2c19c7c5d9dafa8716',
     (
         'llm',
         'install_guide',
-    ): 'b861b82c0ebfe591ff2591bc751d3bc9dc7b8016346e0f7e4c5f86c320321c48',
+    ): '30ec66e905b9a0da3cfba2fc099712f23599a6cc3c3a9f43f1d57dd37387aedf',
     (
         'llm',
         'judge_allocator',
-    ): '473ef50fdc4736c819eba81c3da3d34a431cd7fd9539b6782ffb9344819d667d',
+    ): '77dce1ed55710205fad82a177ad1ed039c6610ec0f7f6e974404c1c60fb1b377',
     (
         'llm',
         'judge_consequence',
-    ): '6671565f7c6faab94f9bbcfdc96a9541975bdb4dacc20c63e5dedf9cc6cdf057',
+    ): 'd0c036b0e127cebcd01fcf1dc3db152d71d6fe5c9d4ef8a5d0d5a4fdb2b477f3',
     (
         'llm',
         'options_pivot',
-    ): '213e21b01bec63946ef3d059d5f1c836ecfa9ff4896044f8804390ece1a43dd8',
+    ): '62a66c99194df80ce1393845485215b4f6782aeb1f577f18a90e4df27d11e44a',
     (
         'llm',
         'plan_scale',
-    ): '213e21b01bec63946ef3d059d5f1c836ecfa9ff4896044f8804390ece1a43dd8',
+    ): '62a66c99194df80ce1393845485215b4f6782aeb1f577f18a90e4df27d11e44a',
     (
         'llm',
         'qualify_prospect',
-    ): '6fbc5fee284797e653c286f74ad6a18b43afcb14f06047debc29a7097e7444be',
+    ): 'aef3956ef13b48d3d27ac70620bcb561e28029c4bd7433e8947b6135dc645036',
     (
         'llm',
         'render_context_fr',
-    ): '6671565f7c6faab94f9bbcfdc96a9541975bdb4dacc20c63e5dedf9cc6cdf057',
+    ): 'd0c036b0e127cebcd01fcf1dc3db152d71d6fe5c9d4ef8a5d0d5a4fdb2b477f3',
     (
         'llm',
         'reply_intent',
-    ): 'd4d06d580ba7b78b88105558887b3bbb39cbcc69c863fcee3dfa1b2fbeb3fc07',
+    ): '9bb67e21ca9f70becae5e596e30ae841b04759ee36893eecb34729286f7cab38',
     (
         'llm',
         'resume_test',
-    ): '213e21b01bec63946ef3d059d5f1c836ecfa9ff4896044f8804390ece1a43dd8',
+    ): '62a66c99194df80ce1393845485215b4f6782aeb1f577f18a90e4df27d11e44a',
     (
         'llm',
         'review_build',
-    ): '151bd7c67609003c91695cca938f589fd9e557ac4711c736e850e205beaa1012',
+    ): 'd78d931cde1b175ab9086f10ad76ed9065cfe47ff142de56618a561f86ac0189',
     (
         'llm',
         'review_other',
-    ): '0e13ebc7f168bb287671d18342057ecdbf02e094d332af001e6b545cb3d94225',
+    ): 'c37ae9d80a0aff7866a418ad3af54a41e0056f994c0fdf1d85df9d4102c1f29a',
     (
         'llm',
         'score_call',
-    ): '84415a403b76f3e917fc802c34c7e8640824ae2c5487b6cac499f566bd201a6f',
+    ): '8c41ee0888d6a38aaaa27303fda5db4062020f36e4b4ce84e711818b95384436',
     (
         'llm',
         'score_lead_departage',
-    ): '6fbc5fee284797e653c286f74ad6a18b43afcb14f06047debc29a7097e7444be',
+    ): 'aef3956ef13b48d3d27ac70620bcb561e28029c4bd7433e8947b6135dc645036',
     (
         'llm',
         'summarize_build_debt',
-    ): '151bd7c67609003c91695cca938f589fd9e557ac4711c736e850e205beaa1012',
+    ): 'd78d931cde1b175ab9086f10ad76ed9065cfe47ff142de56618a561f86ac0189',
     (
         'llm',
         'summarize_thread',
-    ): '84415a403b76f3e917fc802c34c7e8640824ae2c5487b6cac499f566bd201a6f',
+    ): '8c41ee0888d6a38aaaa27303fda5db4062020f36e4b4ce84e711818b95384436',
     (
         'llm',
         'voice_dialog',
-    ): '4456c481ce1d99f1ac437a23059fd6d455af9397b178b97507275aa586639827',
+    ): 'ba5a234323c142994a89196718be564502eeeaf4528a347efead8276572bf88f',
     (
         'llm',
         'voice_script',
-    ): '5ed9d48eb1d77b00e53dbd4193167e414ff82ae963bf3faede0036eb9fa8f358',
+    ): '448c729bd347697b3757387b0fde8f67cb5b96d6b76aa79889387d5276d4f115',
     (
         'llm',
         'write_followup',
-    ): '0dbf189418fed6c9ee2e1e66321c1dcc3626d9a38a95f560539fbabf277e309c',
-    (
-        'canal',
-        'email',
-    ): 'cc757e2fd186880b8c39b6c84e8819a62e79ac257c87dabdfa687a95965b291f',
-    (
-        'canal',
-        'voice',
-    ): 'cdfc6e7351890d553232d2b571d503b5cab4d7c4929076c94448556a66e2f367',
+    ): 'e19913111dcfbd738ea0334e1daaefd8300668561a2feb2c19c7c5d9dafa8716',
     (
         'outil',
         'agenda',
     ): 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+    (
+        'outil',
+        'boite_serge',
+    ): 'bd23fbd3b6e0f612a913404e37b7def202b8a09fdda3cf21a25c325dfc10c6b7',
     (
         'outil',
         'catalogue',
@@ -205,6 +209,14 @@ SHA_ATTENDUS: dict[tuple[str, str], str] = {
         'outil',
         'fiches',
     ): 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+    (
+        'outil',
+        'identity_advanced',
+    ): '5d695c4535a4dde940832f596d24fb5cf0f668850132efc42dd574e0212bef1b',
+    (
+        'outil',
+        'identity_basique',
+    ): '5d695c4535a4dde940832f596d24fb5cf0f668850132efc42dd574e0212bef1b',
     (
         'outil',
         'memory_search',
@@ -244,7 +256,7 @@ SHA_ATTENDUS: dict[tuple[str, str], str] = {
     (
         'tech',
         'sequencer',
-    ): '48452441ca9632a17990c937a68918d787cda64bbbfd85f4747e77e1fb477b04',
+    ): '9eb5732066a8df38fb130be9a57cc4670696298061e650bc2f042fe328247cae',
     (
         'tech',
         'stripe_receive',

@@ -34,6 +34,10 @@ def project_objet(
             'outil': project_outil,
             'notion': project_notion,
         }[typ](conn, ident)
+    if typ == 'identite':
+        from serge.mc.proj_identite import project_identite
+
+        return project_identite(ident)
     if typ == 'tech':
         from serge.tech_registre import fiche_tech
 

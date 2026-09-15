@@ -147,6 +147,12 @@ hostname = "serge-vps"
 public_hostname = ""            # obligatoire si phone_sms ou stripe on
 phone_sms_number = ""           # E.164, obligatoire si phone_sms on
 phone_voice_number = ""         # E.164 NPV, obligatoire si phone_voice on
+prenom = ""
+nom = ""
+pseudo = ""
+siret = ""
+iban = ""                       # volet advanced ; pas de PAN/CVV
+adresse_facturation = ""
 
 [features]                      # défaut kit = tout on sauf metagrok
 ingress = true

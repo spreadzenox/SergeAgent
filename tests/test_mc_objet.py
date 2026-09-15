@@ -103,6 +103,12 @@ class ProjObjetTests(unittest.TestCase):
         self.assertIn('grappe', ids)
         self.assertIn('page(s) en base', fiche['cadres'][0]['texte'])
 
+    def test_pages_vides_ne_feignent_pas(self) -> None:
+        self.conn.execute('DELETE FROM listen_docs')
+        pages = project_objet(self.conn, 'ecoute', 'pages')
+        self.assertEqual(pages['tableau']['lignes'], [])
+        self.assertIn('Aucune page en base', pages['cadres'][0]['todo'])
+
     def test_pages_outils_notions(self) -> None:
         pages = project_objet(self.conn, 'ecoute', 'pages')
         self.assertEqual(pages['type'], 'ecoute')

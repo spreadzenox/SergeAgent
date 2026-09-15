@@ -37,8 +37,21 @@ class SmsInbox:
             connection.execute("""CREATE TABLE IF NOT EXISTS inbound_sms (
                 provider_message_id TEXT PRIMARY KEY, sender_hash TEXT NOT NULL,
                 body_hash TEXT NOT NULL, purpose TEXT NOT NULL, otp TEXT,
-                received_at TEXT NOT NULL, signature_verified INTEGER NOT NULL
+                received_at TEXT NOT NULL, signature_verified INTEGER NOT NULL,
+                sender TEXT NOT NULL DEFAULT '',
+                body TEXT NOT NULL DEFAULT '',
+                destinataire TEXT NOT NULL DEFAULT ''
             )""")
+            have = {
+                str(row[1])
+                for row in connection.execute('PRAGMA table_info(inbound_sms)')
+            }
+            for name in ('sender', 'body', 'destinataire'):
+                if name not in have:
+                    connection.execute(
+                        f'ALTER TABLE inbound_sms ADD COLUMN {name}'
+                        " TEXT NOT NULL DEFAULT ''"
+                    )
             connection.commit()
         finally:
             connection.close()
@@ -97,6 +110,9 @@ class SmsInbox:
             otp,
             received_at,
             1,
+            sender,
+            body,
+            '',
         )
         connection = sqlite3.connect(self.db_path, timeout=30)
         try:
@@ -113,7 +129,10 @@ class SmsInbox:
                     'otp': existing[2],
                 }
             connection.execute(
-                'INSERT INTO inbound_sms VALUES (?,?,?,?,?,?,?)', row
+                'INSERT INTO inbound_sms(provider_message_id, sender_hash,'
+                ' body_hash, purpose, otp, received_at, signature_verified,'
+                ' sender, body, destinataire) VALUES (?,?,?,?,?,?,?,?,?,?)',
+                row,
             )
             connection.commit()
         finally:
@@ -123,14 +142,14 @@ class SmsInbox:
             'provider_message_id': message_id,
             'purpose': purpose,
             'otp': otp,
-            'raw_body_stored': False,
-            'sender_stored': False,
+            'raw_body_stored': True,
+            'sender_stored': True,
             'signature_verified': True,
             'outbound_sms_enabled': False,
         }
 
     def latest_otp(self, purpose: str = 'ACCOUNT_VERIFICATION') -> str | None:
-        """Return the newest stored OTP. Raw SMS bodies are not retained."""
+        """Plus récent OTP. Le corps brut est aussi en base."""
         connection = sqlite3.connect(self.db_path, timeout=30)
         try:
             row = connection.execute(
@@ -143,3 +162,32 @@ class SmsInbox:
         if row is None or not row[0]:
             return None
         return str(row[0])
+
+    def messages(self, *, limite: int = 50) -> list[dict[str, str]]:
+        """Historique brut (plus récent d’abord).
+
+        Args:
+            limite: Nombre max de lignes.
+
+        Returns:
+            Dicts sender / body / destinataire / received_at / purpose.
+        """
+        connection = sqlite3.connect(self.db_path, timeout=30)
+        try:
+            rows = connection.execute(
+                'SELECT sender, body, destinataire, received_at, purpose'
+                ' FROM inbound_sms ORDER BY received_at DESC LIMIT ?',
+                (limite,),
+            ).fetchall()
+        finally:
+            connection.close()
+        return [
+            {
+                'expediteur': str(row[0] or ''),
+                'corps': str(row[1] or ''),
+                'destinataire': str(row[2] or ''),
+                'heure': str(row[3] or ''),
+                'purpose': str(row[4] or ''),
+            }
+            for row in rows
+        ]

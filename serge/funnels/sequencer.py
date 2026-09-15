@@ -85,9 +85,12 @@ def resolve_steps(
     for step in steps:
         if not isinstance(step, dict) or not step.get('channel'):
             raise SequencerError('étape invalide (channel requis)')
+        canal = str(step['channel'])
+        if canal == 'sms':
+            continue
         clean.append(
             {
-                'channel': str(step['channel']),
+                'channel': canal,
                 'delay_days': int(step.get('delay_days', 0)),
             }
         )
@@ -211,6 +214,8 @@ def next_send(
                 step['channel'], str(contact[1] or ''), str(contact[2] or '')
             )
             if not subject:
+                continue
+            if step['channel'] == 'sms':
                 continue
             key = f'{campaign_id}:{contact_id}:{step["index"]}'
             verdict = check(

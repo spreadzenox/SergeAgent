@@ -76,14 +76,14 @@ def _move(
     )
 
 
-def create_contact(
+def insert_contact(
     conn: sqlite3.Connection,
     venture_id: str,
     display: str,
     email: str = '',
     phone: str = '',
 ) -> str:
-    """Crée un contact NEW en régime OUTBOUND."""
+    """Insert NEW OUTBOUND, sans poser de lieu."""
     contact_id = _new_id()
     moment = utcnow()
     conn.execute(
@@ -94,7 +94,7 @@ def create_contact(
             contact_id,
             venture_id,
             display,
-            email,
+            email.strip(),
             phone,
             'OUTBOUND',
             'NEW',
@@ -102,6 +102,34 @@ def create_contact(
             moment,
         ),
     )
+    return contact_id
+
+
+def create_contact(
+    conn: sqlite3.Connection,
+    venture_id: str,
+    display: str,
+    email: str = '',
+    phone: str = '',
+) -> str:
+    """Crée un contact NEW en régime OUTBOUND.
+
+    Un e-mail pose la trace ``venue=email`` (sauf si ce lieu est déjà pris).
+    """
+    mail = email.strip()
+    contact_id = insert_contact(
+        conn, venture_id, display, email=mail, phone=phone
+    )
+    if mail:
+        pris = conn.execute(
+            'SELECT 1 FROM contacts WHERE venture_id=? AND venue=? AND handle=?',
+            (venture_id, 'email', mail),
+        ).fetchone()
+        if pris is None:
+            conn.execute(
+                'UPDATE contacts SET venue=?, handle=? WHERE id=?',
+                ('email', mail, contact_id),
+            )
     return contact_id
 
 

@@ -56,6 +56,41 @@ SEED: tuple[tuple[str, str, str, str, str, str, str, int], ...] = (
         1,
     ),
     (
+        'identity_basique',
+        'deterministe',
+        'serge/identite.py',
+        '8ffdf0bfa06513d14188baf1f8c6bfd68d5c9851275417a79dbe5a3f24b9670a',
+        'Identité de Serge (basique)',
+        'Lecteur unique : email, prénom, nom, pseudo, n° 2FA, n° DID,'
+        ' SIRET. Source = instance, pas une table. Interdit d’ouvrir'
+        ' le TOML dans un prompt.',
+        'branche',
+        0,
+    ),
+    (
+        'identity_advanced',
+        'deterministe',
+        'serge/identite.py',
+        '8ffdf0bfa06513d14188baf1f8c6bfd68d5c9851275417a79dbe5a3f24b9670a',
+        'Identité avancée (IBAN, facturation)',
+        'Même source que le basique, plus IBAN et adresse de'
+        ' facturation. Personne ne l’appelle tant qu’un acte n’est'
+        ' pas nommé. Pas de carte en clair.',
+        'prevu',
+        0,
+    ),
+    (
+        'boite_serge',
+        'deterministe',
+        'serge/boite.py',
+        'e03a01cf4b40b8898610be62ce04e231b01e74cb0489461c714a284185f74dec',
+        'Boîte mail et SMS',
+        'Lecture : corps brut, heure, expéditeur, destinataire,'
+        ' historique. Le 2FA se lit tout seul. Pas un GUICHET.',
+        'branche',
+        0,
+    ),
+    (
         'demande_capacite',
         'deterministe',
         '',

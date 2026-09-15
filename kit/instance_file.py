@@ -12,6 +12,7 @@ from typing import Any
 
 import yaml
 
+from kit.instance_identite import extraire as extraire_identite
 from kit.mailbox_config import MailboxError, resolve_mailbox
 from serge.e164 import E164_RE
 
@@ -202,6 +203,7 @@ def validate_toml(data: Mapping[str, Any]) -> dict[str, Any]:
             'public_hostname': public_hostname,
             'phone_sms_number': phone_sms_number,
             'phone_voice_number': phone_voice_number,
+            **extraire_identite(identity),
         },
         'paths': {
             'home': str(paths['home']).strip(),

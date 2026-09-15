@@ -136,3 +136,16 @@ Garde `serge/comptes_sante.py`. Barème : `policy.standing` (`cout_usage`,
 Après un usage le capital ne peut que baisser ; à l’inutilisation il
 remonte, sans dépasser le plafond. Un snapshot policy plus vieux que
 cette section est complété par la semence YAML à la lecture.
+
+## Identité (pas de table)
+
+`identite_serge()` (`serge/identite.py`) lit `[identity]` + `[mailbox]`.
+Pas de seconde table. Volet advanced = IBAN + adresse de facturation.
+Outils catalogue `identity_basique` (branché) et `identity_advanced`
+(`prevu`). Page MC `#/identite`.
+
+## Boîte mail / SMS
+
+Tool `boite_serge` : mails dans `inbound_events` (corps dans
+`payload_json`), SMS dans le ledger inbox **en brut** (plus seulement
+le hash). Le séquenceur n’enfile plus `sms.send` (pas de writer).
