@@ -100,7 +100,7 @@ Trois familles d'audiences, même funnel de mesure (U1-U5) :
 | Famille | Exemples | U1 (toucher) | Particularité |
 |---|---|---|---|
 | **Nommée** | Email, voix, LinkedIn 1:1, SMS | Délivrés/connects/accepts | Séquences, cooldowns OUTBOUND, consentement individuel |
-| **Ciblée anonyme** | Meta/Google/LinkedIn/Reddit Ads | Impressions viewables, clics | Budget, enchères, créas ; opt-in à la conversion |
+| **Ciblée anonyme** | Meta/Google/LinkedIn/Reddit Ads | Impressions viewables, clics | Budget, enchères, créas ; opt-in à la conversion. **`prevu`** : `campaigns.family='ads'` existe, aucun writer ni jauge de dépense live. |
 | **Lieu** | SEO, Reddit orga, PH, marketplaces, contenu | Vues, visites, briefs reçus | Pas de quota d'envoi — gate = qualité + standing |
 
 Le **contact** est un cas particulier : audience nommée de N individus.

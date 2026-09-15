@@ -169,7 +169,6 @@ def _ilot_listen(conn: sqlite3.Connection, depuis: str) -> dict[str, Any]:
 
 
 def _ilot_sms(conn: sqlite3.Connection, depuis: str) -> dict[str, Any]:
-    envois = _compte(conn, "SELECT COUNT(*) FROM touches WHERE channel='sms'")
     recus = _compte(
         conn,
         "SELECT COUNT(*) FROM inbound_events WHERE channel='sms'"
@@ -180,8 +179,8 @@ def _ilot_sms(conn: sqlite3.Connection, depuis: str) -> dict[str, Any]:
         'id': 'sms',
         'label': 'SMS',
         'sante': 'ok',
-        'activite': min(1.0, (envois + recus) / 10),
-        'resume': f'{envois} envois, {recus} reçus (24 h)',
+        'activite': min(1.0, recus / 10),
+        'resume': f'{recus} reçus (24 h) — pas d’envoi (writer absent)',
     }
 
 

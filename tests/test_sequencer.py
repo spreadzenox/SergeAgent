@@ -180,6 +180,30 @@ class SequencerTests(unittest.TestCase):
             next_send(self.connection, 'v1', POLICY, self.sequences, NOW)
         )
 
+    def test_etape_sms_ignoree(self) -> None:
+        self._contact()
+        auto_qualify(self.connection, 'v1')
+        self.connection.execute(
+            'UPDATE campaigns SET thresholds_json=? WHERE id=?',
+            (
+                json.dumps(
+                    {
+                        'sequence': [
+                            {'channel': 'sms', 'delay_days': 0},
+                            {'channel': 'email', 'delay_days': 0},
+                        ]
+                    }
+                ),
+                'c1',
+            ),
+        )
+        item_id = next_send(self.connection, 'v1', POLICY, self.sequences, NOW)
+        self.assertIsNotNone(item_id)
+        kind = self.connection.execute(
+            'SELECT kind FROM work_items WHERE id=?', (item_id,)
+        ).fetchone()[0]
+        self.assertEqual(kind, 'email.send')
+
     def test_canal_inconnu_leve(self) -> None:
         self._contact()
         auto_qualify(self.connection, 'v1')

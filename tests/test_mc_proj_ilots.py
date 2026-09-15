@@ -259,8 +259,8 @@ class ProjIlotsTests(ProjSystemFixtures):
                         'id': 'sms',
                         'label': 'SMS',
                         'sante': 'ok',
-                        'activite': 0.2,
-                        'resume': '1 envois, 1 reçus (24 h)',
+                        'activite': 0.1,
+                        'resume': '1 reçus (24 h) — pas d’envoi (writer absent)',
                     },
                     {
                         'id': 'email',

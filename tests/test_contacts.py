@@ -50,6 +50,14 @@ class ContactTests(unittest.TestCase):
     def _make(self) -> str:
         return create_contact(self.connection, 'v1', 'Ada', email='ada@x.io')
 
+    def test_mail_pose_la_trace(self) -> None:
+        ident = self._make()
+        row = self.connection.execute(
+            'SELECT venue, handle FROM contacts WHERE id=?', (ident,)
+        ).fetchone()
+        self.assertEqual(row[0], 'email')
+        self.assertEqual(row[1], 'ada@x.io')
+
     def _state(self, contact_id: str) -> tuple[str, str]:
         row = self.connection.execute(
             'SELECT funnel_state, regime FROM contacts WHERE id=?',
