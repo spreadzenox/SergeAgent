@@ -20,7 +20,7 @@ chantier « évident ».
 
 ### Comptes et identité
 
-- [ ] **Brancher `accounts_standing` (table déjà en base).** Pas de seconde table. Writer production (aujourd’hui : semence démo / tests seulement). Login et mot de passe **en clair dans la table** : ce sont des comptes créés par Serge, sans valeur hors de Serge. `secret_ref` comme seul coffre, on n’en a plus besoin pour ça.
+- [x] **Brancher `accounts_standing` (table déjà en base).** Pas de seconde table. Writer `enregistrer_compte` (v13 : `login` / `password` en clair). Ce sont des comptes créés par Serge, sans valeur hors de Serge. `secret_ref` n’est plus le coffre.
 
 - [ ] **Dossier de session par compte.** La colonne `profile_path` pointe un dossier navigateur (cookies, etc.), rangé et unique par ligne. Quand deux usages du même compte se suivent de près, on réouvre ce dossier : c’est le geste le plus proche d’un humain qui n’a pas fermé son onglet. Ce n’est pas un keepalive permanent (ça, c’est un comportement de bot). Les trois tools web doivent accepter ce dossier. *Dépend de : tools web ; brancher `accounts_standing`.*
 

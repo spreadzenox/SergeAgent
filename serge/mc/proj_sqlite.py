@@ -135,11 +135,11 @@ CATALOGUE: dict[str, tuple[str, str, str, str]] = {
     ),
     'accounts_standing': (
         'Comptes web de Serge : santé + comment crawler'
-        ' (rôle, profil navigateur, nom du secret, cibles).'
-        ' Pas le mot de passe.',
-        'Observe, Discord, mail, écoute.',
-        'Jauges, allocator, pauses, futur login.',
-        'role ecoute/publication/les_deux. secret_ref = nom, pas le secret.',
+        ' (rôle, profil navigateur, cibles). Login et mot de passe'
+        ' en clair (comptes créés par Serge).',
+        'Writer enregistrer_compte, écoute, publication.',
+        'Jauges, allocator, pauses, tools web.',
+        'role ecoute/publication/les_deux. login + password en clair.',
     ),
     'policy_snapshots': (
         'Photo de la policy appliquée. On sait qui a changé quoi.',

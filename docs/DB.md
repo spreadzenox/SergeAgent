@@ -118,3 +118,12 @@ humain. `upsert_trace` (`serge/funnels/contact_canal.py`) enrichit
 **sa** ligne (mail trouvé sur LinkedIn → fiche LinkedIn). Index unique
 partiel `(venture_id, venue, handle)` si les deux sont non vides.
 Les contacts e-mail historiques (venue vide) restent valides.
+
+## Comptes standing (v13)
+
+`accounts_standing.login` et `accounts_standing.password` : identifiants
+de connexion **en clair**. Ce sont des comptes que Serge a créés ; ils
+n’ont pas de valeur hors de lui. Writer : `enregistrer_compte`
+(`serge/comptes.py`) — un lieu + un handle = une ligne ; le second
+appel met à jour login / mot de passe, pas le capital. `secret_ref`
+n’est plus le coffre.

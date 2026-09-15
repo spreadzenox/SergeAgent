@@ -575,11 +575,12 @@ Mission Control V2 entièrement implémenté de P0 à P9 (Lots 0 à 14).
 Une ligne = un compte que Serge possède (Reddit, Gmail…). Santé
 (capital, warnings, pause) **et** de quoi crawler plus tard : `role`
 (`ecoute` / `publication` / `les_deux`), dossier profil Chromium,
-`secret_ref` (le **nom** du fichier secret, pas le mot de passe),
-`login_url`, `targets_json` (URLs / sous-forums), `last_login_at` /
-`last_fetch_at`. Schéma v7 : socle des migrations (`docs/DB.md`) ;
-les vieilles bases reçoivent encore les colonnes au boot
-(`ensure_account_columns`). Fiche MC `#/objet/compte/{id}`.
+`login` et `password` **en clair** (comptes créés par Serge, writer
+`enregistrer_compte`), `login_url`, `targets_json` (URLs / sous-forums),
+`last_login_at` / `last_fetch_at`. `secret_ref` reste une colonne
+d’appoint (nom d’un fichier, plus le coffre du mot de passe). Schéma
+v13 (`docs/DB.md`) ; les vieilles bases reçoivent encore les colonnes
+au boot (`ensure_account_columns`). Fiche MC `#/objet/compte/{id}`.
 
 Fiche prospect / client : un lieu (`venue`) et un identifiant sur ce
 lieu (`handle`). Deux lieux, deux fiches.

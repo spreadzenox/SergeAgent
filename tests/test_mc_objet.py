@@ -41,10 +41,12 @@ class ProjObjetTests(unittest.TestCase):
         self.conn.execute(
             'INSERT INTO accounts_standing(id, venue, handle, cooldown_until,'
             ' updated_at, role, profile_path, secret_ref, login_url,'
-            " targets_json) VALUES('s1','reddit','u/serge','',?,"
+            ' targets_json, login, password) VALUES'
+            "('s1','reddit','u/serge','',?,"
             "'ecoute','/tmp/profil-reddit','reddit.session',"
             "'https://www.reddit.com/login',"
-            '\'["https://www.reddit.com/r/freelance/"]\')',
+            '\'["https://www.reddit.com/r/freelance/"]\','
+            "'u/serge','pw-demo')",
             (NOW,),
         )
         self.conn.commit()
@@ -164,9 +166,11 @@ class ProjObjetTests(unittest.TestCase):
         self.assertEqual(fiche['titre'], 'reddit · u/serge')
         vals = {c['k']: c['v'] for c in fiche['champs']}
         self.assertEqual(vals['Sert à'], 'Écouter')
+        self.assertEqual(vals['Login'], 'u/serge')
+        self.assertEqual(vals['Mot de passe'], 'pw-demo')
         self.assertEqual(vals['Nom du secret'], 'reddit.session')
         self.assertIn('freelance', vals['Cibles'])
-        self.assertNotIn('mot de passe', vals['Nom du secret'])
+        self.assertIn('en clair', fiche['pourquoi'])
 
     def test_inconnu(self) -> None:
         self.assertIsNone(project_objet(self.conn, 'dragon', 'x'))

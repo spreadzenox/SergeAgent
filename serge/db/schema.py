@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import sqlite3
 
-SCHEMA_VERSION = 12
+SCHEMA_VERSION = 13
 
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS schema_version (
@@ -175,6 +175,8 @@ CREATE TABLE IF NOT EXISTS accounts_standing (
     targets_json TEXT NOT NULL DEFAULT '[]',
     last_login_at TEXT NOT NULL DEFAULT '',
     last_fetch_at TEXT NOT NULL DEFAULT '',
+    login TEXT NOT NULL DEFAULT '',
+    password TEXT NOT NULL DEFAULT '',
     UNIQUE(venue, handle));
 CREATE TABLE IF NOT EXISTS policy_snapshots (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
