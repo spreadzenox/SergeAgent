@@ -32,7 +32,7 @@ class ContactCanalTests(unittest.TestCase):
         )
 
     def test_schema(self) -> None:
-        self.assertEqual(SCHEMA_VERSION, 13)
+        self.assertEqual(SCHEMA_VERSION, 14)
 
     def test_meme_lieu_enrichit(self) -> None:
         premier = upsert_trace(

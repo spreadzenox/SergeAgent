@@ -50,6 +50,13 @@ cooldowns:
   guichet_repropose_backoff_days: [1, 3, 7]
   guichet_repropose_max: 3
 
+standing:
+  cout_usage: 0.10                   # débit à chaque acte
+  gain_par_heure: 0.02               # crédit à l’inutilisation
+  idle_apres_heures: 1.0             # rien ne remonte avant ça
+  capital_min: 0.20                  # en dessous = refus
+  capital_max: 1.0
+
 voice:
   npv_per_venture: true              # F3a : 1 NPV / venture-campagne
   record_retention_hot_days: 90

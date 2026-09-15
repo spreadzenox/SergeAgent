@@ -143,6 +143,11 @@ def validate_policy(data: Mapping[str, Any]) -> dict[str, Any]:
         'cooldowns.inbound_silence_days',
         'cooldowns.thread_days_per_venue',
         'cooldowns.guichet_repropose_max',
+        'standing.cout_usage',
+        'standing.gain_par_heure',
+        'standing.idle_apres_heures',
+        'standing.capital_min',
+        'standing.capital_max',
         'voice.record_retention_hot_days',
         'voice.record_retention_archive_years',
         'voice.quality_window',
@@ -203,6 +208,10 @@ def validate_policy(data: Mapping[str, Any]) -> dict[str, Any]:
         _need_ratio(data, key)
     _need_number(data, 'prospection.score_w_negative', minimum=-100.0)
     _need_str_list(data, 'consent.opt_in_channels')
+    standing = data.get('standing')
+    if isinstance(standing, Mapping):
+        if standing.get('capital_max', 0) < standing.get('capital_min', 0):
+            raise PolicyError('policy.standing.capital_max < capital_min')
     zones = data.get('calling_zones')
     if not isinstance(zones, Mapping) or not zones.get('default'):
         raise PolicyError('policy.calling_zones.default manquant')
@@ -232,3 +241,15 @@ def load_policy(directory: Path | None = None) -> dict[str, Any]:
             raise PolicyError('policy.test.yaml doit étendre policy.yaml')
         policy = _deep_merge(policy, overlay)
     return validate_policy(policy)
+
+
+def fusionner_semence(data: Mapping[str, Any]) -> dict[str, Any]:
+    """Complète un snapshot avec les clés nouvelles de la semence YAML.
+
+    Args:
+        data: Snapshot (les valeurs présentes gagnent).
+
+    Returns:
+        Policy fusionnée, pas encore revalidée.
+    """
+    return _deep_merge(load_policy(), dict(data))

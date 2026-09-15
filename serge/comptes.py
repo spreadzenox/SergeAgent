@@ -29,6 +29,7 @@ COLONNES = (
     ('last_fetch_at', "TEXT NOT NULL DEFAULT ''"),
     ('login', "TEXT NOT NULL DEFAULT ''"),
     ('password', "TEXT NOT NULL DEFAULT ''"),
+    ('last_used_at', "TEXT NOT NULL DEFAULT ''"),
 )
 
 

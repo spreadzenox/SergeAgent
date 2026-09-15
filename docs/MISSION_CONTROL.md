@@ -579,11 +579,17 @@ Une ligne = un compte que Serge possède (Reddit, Gmail…). Santé
 `enregistrer_compte`), `login_url`, `targets_json` (URLs / sous-forums),
 `last_login_at` / `last_fetch_at`. `secret_ref` reste une colonne
 d’appoint (nom d’un fichier, plus le coffre du mot de passe). Schéma
-v13 (`docs/DB.md`) ; les vieilles bases reçoivent encore les colonnes
-au boot (`ensure_account_columns`). Fiche MC `#/objet/compte/{id}`.
+v14 (`docs/DB.md`) : `last_used_at` + garde de santé
+(`serge/comptes_sante.py`, barème `policy.standing`, fenêtre Policy
+« Santé des comptes »). Les vieilles bases reçoivent encore les
+colonnes au boot (`ensure_account_columns`). Fiche MC
+`#/objet/compte/{id}`.
 
 Fiche prospect / client : un lieu (`venue`) et un identifiant sur ce
 lieu (`handle`). Deux lieux, deux fiches.
+
+Avant un acte, `etat` / `autoriser` / `consommer` appliquent le capital
+(pas un décor). Insister après un refus ne passe pas.
 
 ## Carte live — coupe-circuits (En direct)
 

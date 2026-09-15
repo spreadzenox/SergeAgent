@@ -13,7 +13,12 @@ from pathlib import Path
 from typing import Any
 
 from serge.db.store import utcnow
-from serge.policy import PolicyError, load_policy, validate_policy
+from serge.policy import (
+    PolicyError,
+    fusionner_semence,
+    load_policy,
+    validate_policy,
+)
 
 
 def snapshot_policy(
@@ -136,7 +141,7 @@ def latest_policy(conn: sqlite3.Connection) -> dict[str, Any] | None:
         raise PolicyError('snapshot policy illisible') from exc
     if not isinstance(data, dict):
         raise PolicyError('snapshot policy invalide')
-    return validate_policy(data)
+    return validate_policy(fusionner_semence(data))
 
 
 def policy_en_vigueur(

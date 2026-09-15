@@ -206,7 +206,8 @@ SCOUTED (lieu identifié via écoute J)
 
 - **Capital standing (validé Q4d)** : chaque lieu/compte a un capital
   (karma, ancienneté, avertissements, taux suppression). Publier coûte,
-  être bien reçu recharge. `can_publish` vérifie le capital, pas un quota.
+  être bien reçu recharge. `autoriser` (`serge/comptes_sante.py`)
+  vérifie le capital, pas un quota.
   **Perte importante → leçon obligatoire** (prioritaire consolidation).
   Table `accounts_standing` : aussi le rôle (écouter / publier), le
   dossier profil navigateur, les URLs cibles, login et mot de passe

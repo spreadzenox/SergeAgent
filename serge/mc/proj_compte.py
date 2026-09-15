@@ -47,6 +47,7 @@ def project_compte(conn: sqlite3.Connection, ident: str) -> dict | None:
                 ('Cibles', ', '.join(cibles) if cibles else '—'),
                 ('Dernière connexion', row['last_login_at'] or 'jamais'),
                 ('Dernier ramassage', row['last_fetch_at'] or 'jamais'),
+                ('Dernier usage', row['last_used_at'] or 'jamais'),
             ]
         ),
         'enfants': [

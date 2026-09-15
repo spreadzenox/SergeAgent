@@ -127,3 +127,12 @@ n’ont pas de valeur hors de lui. Writer : `enregistrer_compte`
 (`serge/comptes.py`) — un lieu + un handle = une ligne ; le second
 appel met à jour login / mot de passe, pas le capital. `secret_ref`
 n’est plus le coffre.
+
+## Santé des comptes (v14)
+
+`accounts_standing.last_used_at` : dernier acte qui a débité le capital.
+Garde `serge/comptes_sante.py`. Barème : `policy.standing` (`cout_usage`,
+`gain_par_heure`, `idle_apres_heures`, `capital_min`, `capital_max`).
+Après un usage le capital ne peut que baisser ; à l’inutilisation il
+remonte, sans dépasser le plafond. Un snapshot policy plus vieux que
+cette section est complété par la semence YAML à la lecture.
