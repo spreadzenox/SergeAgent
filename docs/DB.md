@@ -102,9 +102,10 @@ libre.
 
 ## Canaux (v11)
 
-Un canal = un moyen pour Serge de **faire sortir** de l’information
-(écrire vers l’extérieur). Table `canaux` (id fermé, `doc_md`,
-`code_path` du writer, `etat` `branche` / `prevu`). Jonction n-n
-`brique_canaux` : `brique_kind` ∈ {`llm`, `tech`}. Semence
-`serge/canaux.py`. Aujourd’hui branchés : `email`, `voice`, `discord`.
-Pas LinkedIn / WhatsApp / Ads tant qu’il n’y a pas de writer.
+Un canal = un moyen pour Serge d’**écrire vers un tiers** (client,
+prospect, partenaire — pas Julien). Discord owner n’en est pas un.
+Table `canaux` (id fermé, `doc_md`, `code_path` du writer, `etat`
+`branche` / `prevu`). Jonction n-n `brique_canaux` : `brique_kind` ∈
+{`llm`, `tech`}. Semence `serge/canaux.py`. Aujourd’hui branchés :
+`email`, `voice`. Pas LinkedIn / WhatsApp / Ads tant qu’il n’y a pas
+de writer.

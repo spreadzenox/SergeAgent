@@ -614,8 +614,10 @@ la constante `TABLES`.
 Outils, jugements et canaux : tables `tools`, `llm_points`,
 `llm_point_tools`, `tech_invocations`, `canaux`, `brique_canaux`.
 Le texte des fiches MC = colonnes en base. Un canal
-(`#/objet/canal/{id}`) liste les briques qui écrivent par lui ;
-une fiche jugement / étape / tech montre les canaux reliés.
+(`#/objet/canal/{id}`) = écriture vers un tiers (client / prospect /
+partenaire), pas vers Julien. Discord owner n’est pas un canal.
+La fiche liste les briques qui écrivent par lui ; une fiche jugement /
+étape / tech montre les canaux reliés.
 SHA composé (fichiers + sous-objets) : `files_sha` / `catalogue_lock.py`
 — ajout, suppression ou fichier modifié sans maj du SHA →
 `tests.test_catalogue_sha` rouge. Le verrou fichier-par-fichier

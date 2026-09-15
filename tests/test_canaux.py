@@ -33,7 +33,8 @@ class CanauxTests(unittest.TestCase):
     def test_semence_ecriture_seulement(self) -> None:
         self.assertEqual(SCHEMA_VERSION, 11)
         ids = {str(r[0]) for r in self.conn.execute('SELECT id FROM canaux')}
-        self.assertEqual(ids, {'email', 'voice', 'discord'})
+        self.assertEqual(ids, {'email', 'voice'})
+        self.assertNotIn('discord', ids)
         self.assertNotIn('linkedin', ids)
         email = briques_du_canal(self.conn, 'email')
         self.assertIn(
@@ -84,6 +85,16 @@ class CanauxTests(unittest.TestCase):
 
     def test_fiche_absente(self) -> None:
         self.assertIsNone(fiche_canal(self.conn, 'linkedin'))
+        self.assertIsNone(fiche_canal(self.conn, 'discord'))
+
+    def test_retire_canal_owner(self) -> None:
+        self.conn.execute(
+            'INSERT INTO canaux(id, titre, doc_md, etat)'
+            " VALUES('discord','Discord','owner','branche')"
+        )
+        ensure_canaux(self.conn)
+        ids = {str(r[0]) for r in self.conn.execute('SELECT id FROM canaux')}
+        self.assertNotIn('discord', ids)
 
 
 if __name__ == '__main__':

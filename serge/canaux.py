@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Canaux d’écriture : semence, jonction n-n avec les briques."""
+"""Canaux d’écriture vers un tiers (pas l’owner)."""
 
 from __future__ import annotations
 
@@ -29,15 +29,6 @@ SEED: tuple[tuple[str, str, str, str, str, str], ...] = (
         '4ed728d7eba0b5b61637c877f627b71d146e977f01f511eeeb3f9cb92136701d',
         'branche',
     ),
-    (
-        'discord',
-        'Discord',
-        'Messages vers Julien (tickets, cartes, réponses owner).'
-        ' Client REST ``send_message``, pas un canal prospect.',
-        'serge/discord/rest.py',
-        '8e32b679efc7276a8d8fa5630d8d978602de1b01b7eda28fc43e45aa4b311ac9',
-        'branche',
-    ),
 )
 
 # canal, kind brique, id brique
@@ -49,9 +40,6 @@ JONCTIONS: tuple[tuple[str, str, str], ...] = (
     ('voice', 'llm', 'voice_script'),
     ('voice', 'llm', 'voice_dialog'),
     ('voice', 'tech', 'sequencer'),
-    ('discord', 'llm', 'classify_owner_intent'),
-    ('discord', 'llm', 'judge_consequence'),
-    ('discord', 'llm', 'render_context_fr'),
 )
 
 
@@ -83,6 +71,11 @@ def ensure_canaux(conn: sqlite3.Connection) -> None:
             ' etat) VALUES(?,?,?,?,?,?)',
             (ident, titre, doc, path, sha, etat),
         )
+    holes = ','.join('?' * len(ids))
+    conn.execute(
+        f'DELETE FROM canaux WHERE id NOT IN ({holes})',
+        tuple(ids),
+    )
     conn.execute('DELETE FROM brique_canaux')
     for canal_id, kind, brique_id in JONCTIONS:
         if canal_id not in ids:
