@@ -581,6 +581,9 @@ Une ligne = un compte que Serge possède (Reddit, Gmail…). Santé
 les vieilles bases reçoivent encore les colonnes au boot
 (`ensure_account_columns`). Fiche MC `#/objet/compte/{id}`.
 
+Fiche prospect / client : un lieu (`venue`) et un identifiant sur ce
+lieu (`handle`). Deux lieux, deux fiches.
+
 ## Carte live — coupe-circuits (En direct)
 
 Trois nappes sur **En direct** (plus dans le panneau du graphe) :

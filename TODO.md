@@ -42,7 +42,7 @@ chantier « évident ».
 
 - [ ] **Invocation LLM prospection avec compte.** Sortie typée (qui, quel acte, quel texte) — le writer est l’adaptateur du canal, pas le LLM. Digestion en base (`contacts`, `touches`). Un canal = écriture vers un **tiers** (pas Julien). Email et voix sont déjà au catalogue (`canaux` + `brique_canaux`, v11). Discord owner n’en est pas un.
 
-- [ ] **Stockage des contacts par canal.** Chaque scout ou adaptateur (Reddit, LinkedIn, mail, voix…) écrit une trace **à lui** dans `contacts` : ce qu’il sait vraiment (handle, URL de profil, mail s’il l’a, téléphone s’il l’a), champs typés, pas un pavé de texte. Deux traces du même humain sur deux lieux restent deux lignes. On met à jour **sa** ligne quand on apprend quelque chose sur ce lieu (un mail trouvé sur LinkedIn enrichit la fiche LinkedIn, pas la fiche Reddit). Pas de fusion automatique entre lieux, et pas de jugement LLM qui compare toutes les paires : trop de combinaisons, trop de jetons, et Julien tient les collisions pour rares assez pour ne pas en faire un chantier. *Dépend de : rien d’autre pour le contrat d’écriture. LinkedIn, la publication lieu et le pont écoute → contact doivent s’en servir, pas inventer une autre table.*
+- [x] **Stockage des contacts par canal.** `upsert_trace` + colonnes `venue` / `handle` / `profile_url` (v12). Deux lieux, deux lignes. Pas de fusion automatique. LinkedIn, la publication lieu et le pont écoute → contact doivent s’en servir.
 
 ### Canaux manquants (théâtre déjà là, writer absent)
 

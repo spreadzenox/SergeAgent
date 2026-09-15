@@ -109,3 +109,12 @@ Table `canaux` (id fermé, `doc_md`, `code_path` du writer, `etat`
 {`llm`, `tech`}. Semence `serge/canaux.py`. Aujourd’hui branchés :
 `email`, `voice`. Pas LinkedIn / WhatsApp / Ads tant qu’il n’y a pas
 de writer.
+
+## Contacts par lieu (v12)
+
+Une fiche `contacts` = une trace sur **un** lieu (`venue` + `handle`,
+URL optionnelle). Deux lieux, deux lignes, même si c’est le même
+humain. `upsert_trace` (`serge/funnels/contact_canal.py`) enrichit
+**sa** ligne (mail trouvé sur LinkedIn → fiche LinkedIn). Index unique
+partiel `(venture_id, venue, handle)` si les deux sont non vides.
+Les contacts e-mail historiques (venue vide) restent valides.

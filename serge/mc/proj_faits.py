@@ -133,6 +133,9 @@ def _contact(conn: sqlite3.Connection, ident: str) -> dict | None:
                     REGIMES.get(row['regime'], row['regime']),
                 ),
                 ('E-mail', row['email']),
+                ('Lieu', row['venue'] or '—'),
+                ('Sur ce lieu', row['handle'] or '—'),
+                ('Profil', row['profile_url'] or '—'),
                 ('Idée de business', row['venture_id']),
             ]
         ),

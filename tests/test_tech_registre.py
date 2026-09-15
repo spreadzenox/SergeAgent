@@ -28,7 +28,7 @@ class TechRegistreTests(unittest.TestCase):
         init_schema(self.conn)
 
     def test_semence_rattachee(self) -> None:
-        self.assertEqual(SCHEMA_VERSION, 11)
+        self.assertEqual(SCHEMA_VERSION, 12)
         rows = tech_par_etape(self.conn, 'pre_prospection')
         ids = [r['id'] for r in rows]
         self.assertIn('cluster_listen', ids)
