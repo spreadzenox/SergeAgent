@@ -6,6 +6,8 @@ from __future__ import annotations
 import sqlite3
 from typing import Any
 
+from serge.canaux import JONCTIONS as CANAL_JONCTIONS
+from serge.canaux import SEED as CANAL_SEED
 from serge.etape_fiches import DEBITS, LIENS
 from serge.etapes import ETAPE_IDS, etats_etapes
 from serge.llm_registre import POINT_LOCKS
@@ -15,6 +17,15 @@ from serge.tech_registre import SEED as TECH_SEED
 from serge.tech_registre import tech_par_etape
 
 HORS_EPINE = frozenset({'policy'})
+
+
+def _canaux_etape(
+    conn: sqlite3.Connection, etape_id: str
+) -> list[dict[str, Any]]:
+    """Canaux d’une étape (via ses briques)."""
+    from serge.canaux import canaux_de_etape
+
+    return canaux_de_etape(conn, etape_id)
 
 
 class CatalogueError(ValueError):
@@ -36,7 +47,7 @@ def objets_de_etape(
         etape_id: Id d’étape (épine).
 
     Returns:
-        ``{llm, tech, kinds}``.
+        ``{llm, tech, kinds, canaux}``.
     """
     llm_rows = conn.execute(
         'SELECT id, titre FROM llm_points WHERE etape_id=? ORDER BY id',
@@ -47,6 +58,7 @@ def objets_de_etape(
         'llm': [{'id': str(r[0]), 'titre': str(r[1])} for r in llm_rows],
         'tech': tech_par_etape(conn, etape_id),
         'kinds': list(spec.get('kinds') or []),
+        'canaux': _canaux_etape(conn, etape_id),
     }
 
 
@@ -120,5 +132,32 @@ def verifier_catalogue(conn: sqlite3.Connection) -> None:
             erreurs.append(f'{ident} : débit {got_debit!r}')
         if de not in ETAPE_IDS or vers not in ETAPE_IDS:
             erreurs.append(f'{ident} : étape hors épine')
+    canaux = {
+        str(r[0]) for r in conn.execute('SELECT id FROM canaux').fetchall()
+    }
+    for row in CANAL_SEED:
+        if row[0] not in canaux:
+            erreurs.append(f'canal absent : {row[0]}')
+    attendu_j = {(c, k, b) for c, k, b in CANAL_JONCTIONS}
+    got_j = {
+        (str(r[0]), str(r[1]), str(r[2]))
+        for r in conn.execute(
+            'SELECT canal_id, brique_kind, brique_id FROM brique_canaux'
+        )
+    }
+    for item in sorted(got_j - attendu_j):
+        erreurs.append(f'jonction canal en trop : {item[0]} → {item[2]}')
+    orphelins_c = conn.execute(
+        'SELECT canal_id, brique_kind, brique_id FROM brique_canaux'
+        ' WHERE canal_id NOT IN (SELECT id FROM canaux)'
+        " OR (brique_kind='llm' AND brique_id NOT IN"
+        ' (SELECT id FROM llm_points))'
+        " OR (brique_kind='tech' AND brique_id NOT IN"
+        ' (SELECT id FROM tech_invocations))'
+    ).fetchall()
+    for canal_id, kind, brique_id in orphelins_c:
+        erreurs.append(
+            f'jonction canal orpheline : {canal_id} → {kind}.{brique_id}'
+        )
     if erreurs:
         raise CatalogueError(' ; '.join(erreurs[:12]))

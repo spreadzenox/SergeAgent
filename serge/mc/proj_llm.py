@@ -152,6 +152,12 @@ def _liens_materiel(spec: dict) -> list[dict[str, str]]:
     ]
 
 
+def _canaux(conn: sqlite3.Connection, point_id: str) -> list[dict[str, str]]:
+    from serge.canaux import liens_fiche_brique
+
+    return liens_fiche_brique(conn, 'llm', point_id)
+
+
 def _outils(conn: sqlite3.Connection, point_id: str) -> list[dict[str, str]]:
     from serge.llm_registre import outils_du_point
 
@@ -289,6 +295,7 @@ def project_llm(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
                 ),
                 'liens': _outils(conn, ident),
             },
+            {'titre': 'Canaux', 'liens': _canaux(conn, ident)},
         ],
         'tableau': {
             'titre': 'Passages récents de ce jugement',

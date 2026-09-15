@@ -8,7 +8,7 @@ import sqlite3
 from collections.abc import Iterable
 from pathlib import Path
 
-KINDS = ('etape', 'llm', 'tech', 'outil', 'lien')
+KINDS = ('etape', 'llm', 'tech', 'outil', 'lien', 'canal')
 
 TABLES = {
     'etape': 'pipeline_steps',
@@ -16,12 +16,14 @@ TABLES = {
     'tech': 'tech_invocations',
     'outil': 'tools',
     'lien': 'etape_liens',
+    'canal': 'canaux',
 }
 
 _FICHIERS_FIXES = {
     'etape': ('serge/etapes.py', 'serge/etape_fiches.py'),
     'lien': ('serge/etape_fiches.py',),
     'llm': ('config/llm-points.yaml',),
+    'canal': ('serge/canaux.py',),
 }
 
 
@@ -38,6 +40,7 @@ def sha256_fichier(path: Path) -> str:
 
 def ids_semence() -> set[tuple[str, str]]:
     """Ids que le code déclare (semences), pas encore la base."""
+    from serge.canaux import SEED as CANAL_SEED
     from serge.etape_fiches import LIENS
     from serge.etapes import ETAPE_IDS
     from serge.llm_registre import POINT_LOCKS
@@ -50,6 +53,7 @@ def ids_semence() -> set[tuple[str, str]]:
         | {('outil', row[0]) for row in TOOL_SEED}
         | {('tech', row[0]) for row in TECH_SEED}
         | {('lien', row[0]) for row in LIENS}
+        | {('canal', row[0]) for row in CANAL_SEED}
     )
 
 
@@ -66,7 +70,7 @@ def fichiers(kind: str, ident: str, conn: sqlite3.Connection) -> list[str]:
     """Chemins relatifs qui encodent l’objet (hors sous-objets)."""
     rels = list(_FICHIERS_FIXES.get(kind, ()))
     table = TABLES.get(kind)
-    if table in ('llm_points', 'tech_invocations', 'tools'):
+    if table in ('llm_points', 'tech_invocations', 'tools', 'canaux'):
         row = conn.execute(
             f'SELECT code_path FROM {table} WHERE id=?', (ident,)
         ).fetchone()
@@ -108,7 +112,7 @@ def sha_arbre(
 
     Args:
         root: Racine du repo.
-        kind: ``etape`` / ``llm`` / ``tech`` / ``outil`` / ``lien``.
+        kind: ``etape`` / ``llm`` / ``tech`` / ``outil`` / ``lien`` / ``canal``.
         ident: Id d’objet.
         conn: Canon (chemins et jonctions).
 

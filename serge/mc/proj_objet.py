@@ -38,6 +38,10 @@ def project_objet(
         from serge.tech_registre import fiche_tech
 
         return fiche_tech(conn, ident)
+    if typ == 'canal':
+        from serge.canaux import fiche_canal
+
+        return fiche_canal(conn, ident)
     if typ == 'etape':
         from serge.mc.proj_etape import project_etape
 

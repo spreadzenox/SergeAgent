@@ -201,6 +201,18 @@ CATALOGUE: dict[str, tuple[str, str, str, str]] = {
         'Fiche jugement, rubrique Outils.',
         'usage : autorise, interdit, declare.',
     ),
+    'canaux': (
+        'Moyens d’écrire vers l’extérieur (e-mail, voix, Discord…).',
+        'Semence git + SHA du fichier writer.',
+        'Fiches MC, jonction brique_canaux.',
+        'etat branche/prevu. doc_md = texte de la fiche.',
+    ),
+    'brique_canaux': (
+        'Quelle brique (LLM ou tech) utilise quel canal.',
+        'Recalculé au boot depuis serge/canaux.py.',
+        'Fiches canal / jugement / étape.',
+        'brique_kind : llm ou tech.',
+    ),
 }
 
 

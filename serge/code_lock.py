@@ -7,7 +7,7 @@ import hashlib
 import sqlite3
 from pathlib import Path
 
-TABLES_VERROU = ('tools', 'llm_points')
+TABLES_VERROU = ('tools', 'llm_points', 'canaux')
 
 
 def sha256_fichier(path: Path) -> str:

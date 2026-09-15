@@ -182,6 +182,18 @@ SHA_ATTENDUS: dict[tuple[str, str], str] = {
         'write_followup',
     ): '0dbf189418fed6c9ee2e1e66321c1dcc3626d9a38a95f560539fbabf277e309c',
     (
+        'canal',
+        'discord',
+    ): '29c05810af05b9b7f82a675f71eefa56beec57fa6b718db26056399488ad46ad',
+    (
+        'canal',
+        'email',
+    ): 'fc91a828131cd0df9161bf9dc448a249ea168cf414c0e992f20468079554f735',
+    (
+        'canal',
+        'voice',
+    ): '7ce8b1ab1fb2661dd0f193dc6cffa20aedd188146651ea40cb497bb24cfd3172',
+    (
         'outil',
         'agenda',
     ): 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
