@@ -208,6 +208,18 @@ def project_etape(
                 'liens': tech_liens,
             }
         )
+    canal_liens = [
+        {'type': 'canal', 'id': c['id'], 'titre': c['titre']}
+        for c in bundle['canaux']
+    ]
+    if canal_liens:
+        cadres.append(
+            {
+                'titre': 'Canaux',
+                'texte': 'Moyens d’écrire vers l’extérieur depuis ce sac.',
+                'liens': canal_liens,
+            }
+        )
     return {
         'type': 'etape',
         'id': ident,
@@ -216,6 +228,7 @@ def project_etape(
         'champs': [
             {'k': 'Invocations LLM', 'v': str(len(jugs))},
             {'k': 'Invocations techniques', 'v': str(len(tech_liens))},
+            {'k': 'Canaux', 'v': str(len(canal_liens))},
             {'k': 'Étape d’avant', 'v': titre_prec or '— (début)'},
             {'k': 'Dernière modification', 'v': spec['updated_at'] or '—'},
         ],

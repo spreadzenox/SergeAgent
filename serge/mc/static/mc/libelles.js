@@ -160,7 +160,8 @@ export const TYPES_OBJET = {
   notion: 'Pour comprendre',
   etape: 'Étape',
   tech: 'Invocation technique',
-};
+  canal: 'Canal',
+}
 
 export function verbe(kind) {
   return KINDS[kind] || EVENTS[kind] || String(kind || '').replace(/\./g, ' · ');

@@ -124,6 +124,12 @@ def ensure_tech_invocations(conn: sqlite3.Connection) -> None:
         )
 
 
+def _canaux_tech(conn: sqlite3.Connection, ident: str) -> list[dict[str, str]]:
+    from serge.canaux import liens_fiche_brique
+
+    return liens_fiche_brique(conn, 'tech', ident)
+
+
 def fiche_tech(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
     """Fiche MC d’une invocation technique.
 
@@ -163,7 +169,11 @@ def fiche_tech(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
                         'titre': str(row[1]),
                     }
                 ],
-            }
+            },
+            {
+                'titre': 'Canaux',
+                'liens': _canaux_tech(conn, ident),
+            },
         ],
         'enfants': [],
         'preuve': '',

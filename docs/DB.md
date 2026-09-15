@@ -12,8 +12,8 @@ install et **ne le recrée pas** à l’update.
    manquantes, tamponne `schema_version` **seulement** après une
    migration réellement appliquée.
 2. **Catalogue** (semence idempotente, pas du DDL) : colonnes comptes
-   manquantes, étapes, tools, invocations LLM / tech, liens d’épine,
-   SHA fichiers.
+   manquantes, étapes, tools, invocations LLM / tech, canaux, liens
+   d’épine, SHA fichiers.
 
 Une base déjà à la tête du code ne réécrit pas le tampon. Une base
 **plus récente** que le code refuse de booter (`MigrateError`) — un
@@ -40,6 +40,7 @@ Catalogue (types, semés) vs occurrences (faits) :
 | `llm_points` + `llm_point_tools` | `llm_usage` |
 | `tech_invocations` | `events` / runs (pas encore de ledger dédié) |
 | `tools` | `llm_point_tools` (seule une invocation LLM invoque) |
+| `canaux` + `brique_canaux` | touches / envois (`email.send`, `voice.send`, Discord) |
 | `etape_liens` | débits Live (`listen_docs` … `transactions`) |
 
 Liens : `llm_points.etape_id` et `tech_invocations.etape_id` ∈ épine
@@ -98,3 +99,13 @@ supprimé, ou si le SHA disque ≠ SHA en base.
 `debit` enum fermé : `listen_docs`, `campaigns`, `contacts`,
 `artifacts`, `touches`, `inbound_events`, `transactions`). Pas de SQL
 libre.
+
+## Canaux (v11)
+
+Un canal = un moyen pour Serge d’**écrire vers un tiers** (client,
+prospect, partenaire — pas Julien). Discord owner n’en est pas un.
+Table `canaux` (id fermé, `doc_md`, `code_path` du writer, `etat`
+`branche` / `prevu`). Jonction n-n `brique_canaux` : `brique_kind` ∈
+{`llm`, `tech`}. Semence `serge/canaux.py`. Aujourd’hui branchés :
+`email`, `voice`. Pas LinkedIn / WhatsApp / Ads tant qu’il n’y a pas
+de writer.

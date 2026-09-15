@@ -44,6 +44,14 @@ class CatalogueTests(unittest.TestCase):
         with self.assertRaises(CatalogueError):
             verifier_catalogue(self.conn)
 
+    def test_jonction_canal_orpheline_refusee(self) -> None:
+        self.conn.execute(
+            'INSERT INTO brique_canaux(canal_id, brique_kind, brique_id)'
+            " VALUES('email','llm','ghost')"
+        )
+        with self.assertRaises(CatalogueError):
+            verifier_catalogue(self.conn)
+
     def test_fiche_etape_montre_tech(self) -> None:
         fiche = project_objet(self.conn, 'etape', 'pre_prospection')
         assert fiche is not None

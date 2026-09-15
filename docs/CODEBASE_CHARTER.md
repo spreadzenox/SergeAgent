@@ -439,7 +439,7 @@ contributeur qui touche le dépôt.
 ### Serge est un catalogue d'objets, pas un tas de pages
 
 La vérité des **objets** (étapes, invocations LLM, tools, invocations
-techniques, liens d'épine) vit dans **SQLite** :
+techniques, canaux, liens d'épine) vit dans **SQLite** :
 
 | Objet | Table | Semence code |
 |---|---|---|
@@ -448,6 +448,7 @@ techniques, liens d'épine) vit dans **SQLite** :
 | Invocation LLM | `llm_points` | `serge/llm_registre.py` + `config/llm-points.yaml` |
 | Tool | `tools` | `serge/outils.py` (`SEED`) |
 | Invocation technique | `tech_invocations` | `serge/tech_registre.py` |
+| Canal | `canaux` + `brique_canaux` | `serge/canaux.py` (`SEED`, `JONCTIONS`) |
 
 Mission Control **lit la base** (fiches, graphe Live, docs d'étape).
 Changer un texte de fiche = changer la semence, laisser le boot
@@ -463,8 +464,8 @@ Dans **le même changement** (R1 peut découper, R6 et les tests suivent) :
 
 1. **Déclarer l'objet** dans la semence (table ci-dessus). Id fermé (P3).
 2. **Pointer les fichiers** qui l'encodent :
-   - tools / LLM / tech : colonne `code_path` (chemin relatif repo) ;
-   - étapes / liens : chemins dans `serge/objet_sha.py` (`_FICHIERS_FIXES`).
+   - tools / LLM / tech / canaux : colonne `code_path` (chemin relatif repo) ;
+   - étapes / liens / canaux : chemins dans `serge/objet_sha.py` (`_FICHIERS_FIXES`).
    **Tout nouveau fichier** que tu crées pour ce tool (handler, prompt,
    helper dédié) doit être dans `code_path` **ou** ajouté à
    `_FICHIERS_FIXES` — sinon le SHA ne le voit pas.

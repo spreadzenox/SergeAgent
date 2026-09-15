@@ -18,8 +18,8 @@ Tout écart va dans le commit (`écart P1 : …`), jamais silencieux.
 - **R5** : revue P1–P5 + R6 dans le message de commit.
 - **R6** : la doc qui décrirait l’état réel part dans le même changement.
 - **R7** : pas de code mort ni de doc morte (on finit ou on enlève).
-- **Catalogue / SHA** : nouvel objet (tool, point LLM, étape, fichier
-  d’implémentation) = semence + `code_path` / `_FICHIERS_FIXES` +
+- **Catalogue / SHA** : nouvel objet (tool, point LLM, étape, canal,
+  fichier d’implémentation) = semence + `code_path` / `_FICHIERS_FIXES` +
   `catalogue_lock.py` + `tests.test_catalogue_sha` vert. Doc de l’objet
   en base (`doc_md` / fiche), MC lit la base. Détail : `docs/CODEBASE_CHARTER.md` §8.
 - UI / wizard : français, apostrophe Unicode `’`.
