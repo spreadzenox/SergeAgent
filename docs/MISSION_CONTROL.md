@@ -353,7 +353,7 @@ Page P3 DONE (607 tests verts).
 - `project_consolidation` : cadence et état du moteur de consolidation
   (`last_run`, `due_for_consolidation`, derniers événements d'audit).
 - `project_requested` : demandes d'évolution P3 des agents (tickets
-  `type='REQUESTED'`).
+  `type='REQUESTED'`, posés par le tool `demande_capacite`).
 - `GET /owner/api/memory/search?q=...` : recherche plein-texte FTS
   câblée sur `memory_search` (fail-soft, 401/400).
 - Actions mémoire (curation leçons, rollback SERGE.md) = lot 8b.

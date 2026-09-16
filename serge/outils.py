@@ -93,13 +93,15 @@ SEED: tuple[tuple[str, str, str, str, str, str, str, int], ...] = (
     (
         'demande_capacite',
         'deterministe',
-        '',
-        '',
+        'serge/demande_capacite.py',
+        'b8bd4d69df6ab0b60a60388d09f6d1dbae080461c3fd90e4be189b41d8b3e7de',
         'Demander une nouvelle capacité',
         'Quand Serge ne peut pas (pas de canal, pas d’outil), il'
-        ' doit poser un ticket « j’ai besoin de X » plutôt que'
-        ' d’inventer. La fiche le montre pour ne pas l’oublier.',
-        'prevu',
+        ' pose un ticket REQUESTED (« j’ai besoin de X ») plutôt'
+        ' que d’inventer. Offert à tous les jugements. Un appel'
+        ' par jugement ; le même besoin déjà ouvert n’est pas'
+        ' recréé.',
+        'branche',
         1,
     ),
     (

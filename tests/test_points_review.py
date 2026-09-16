@@ -78,7 +78,10 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual(result['verdict'], 'FIX')
         self.assertEqual(len(result['fix_items']), 1)
         self.assertFalse(result['alert'])
-        sent = caller.calls[0][1]['content']
+        user = next(
+            item for item in caller.calls[0] if item.get('role') == 'user'
+        )
+        sent = user['content']
         self.assertTrue(
             any(block.get('type') == 'image_url' for block in sent)
         )

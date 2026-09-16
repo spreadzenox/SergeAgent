@@ -84,7 +84,7 @@ Un seul mécanisme pour tous les passages (écoute → contacts, contacts → s�
 
 ### Déjà ouvert, pas encore recouvert par la machine ci-dessus
 
-- [x] **Outils que le jugement peut vraiment presser (hors web).** Boucle générique dans `run_point` (12 tours, quotas couple optionnels). Handlers : `memory_search`, `identity_basique`. `demande_capacite` encore `prevu`.
+- [x] **Outils que le jugement peut vraiment presser (hors web).** Boucle générique dans `run_point` (12 tours, quotas couple optionnels). Handlers : `memory_search`, `identity_basique`, `demande_capacite`.
 
 ## En attente d’une décision d’architecture
 
@@ -98,8 +98,8 @@ Mis de côté (on n’invente pas le contrat) :
 - Ads writer / ledger de dépense (la family est documentée `prevu`).
 - Ponts entre étapes (ce que « verser » veut dire pour chaque couple).
 - SMS sortant writer (quel opérateur).
-- `demande_capacite` runtime (que crée le ticket, quel kind).
-- ~~`memory_search` pressé par le jugement : boucle d’outils dans `chat()` / `run_point`.~~ Fait (handlers + plafond 12). `demande_capacite` runtime reste en attente.
+- ~~`demande_capacite` runtime.~~ Fait : ticket `REQUESTED` (pas de kind).
+- ~~`memory_search` pressé par le jugement.~~ Fait.
 
 ## Plus tard
 
