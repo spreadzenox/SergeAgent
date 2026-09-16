@@ -81,6 +81,9 @@ class McPolicyTests(McBrowserCase):
         expect(
             page.locator('[data-section="politique_active"]')
         ).to_contain_text('Argent')
+        expect(
+            page.locator('[data-section="politique_active"]')
+        ).to_contain_text('Tours d’outils max')
         expect(page.locator('#testing-lock-status')).to_contain_text(
             'Aucun essai en cours'
         )

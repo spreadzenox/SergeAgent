@@ -201,6 +201,14 @@ export const CHAMPS = {
     10,
     1,
   ],
+  'quotas.llm_outil_tours_max': [
+    'Tours d’outils max, par jugement',
+    'Tous les outils confondus. 12 est le plafond dur. Un couple peut être plus serré.',
+    'curseur',
+    0,
+    12,
+    1,
+  ],
   'quotas.llm_recalls_json': [
     'Rappels si la réponse est mal formée',
     'Combien de fois on redemande un JSON propre.',

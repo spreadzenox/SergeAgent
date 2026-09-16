@@ -19,6 +19,7 @@ from typing import Any
 
 from kit.openrouter import RECOMMENDED_TIERS
 from serge.db.store import append_event, utcnow
+from serge.llm.boucle import executer_boucle
 from serge.llm.client import ChatResult, LlmError, chat
 from serge.paths import config_root
 from serge.registry import load_llm_points, runtime_allows
@@ -189,10 +190,15 @@ def run_point(
         _record(conn, point_name, tier, model, 0, 0, 0, 'error')
         return RunResult(False, '', 'error', 0, 0, model, 0)
     try:
-        result = caller(
+        result = executer_boucle(
+            caller,
             key,
             model,
             messages,
+            spec=spec,
+            policy=policy,
+            conn=conn,
+            point_name=point_name,
             referer=referer,
             max_tokens=max_tokens,
             temperature=TEMPERATURES.get(verdict_kind, 0.3),

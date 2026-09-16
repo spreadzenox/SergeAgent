@@ -77,9 +77,11 @@ Renommage UI/docs encore partiel : « jugement » → **invocation LLM**
 
 Invocations techniques : table `tech_invocations` (kinds fermés
 `cluster` / `select` / `score` / `transform` / `index`). Une étape
-en a n ; seule une **invocation LLM** peut appeler des tools. Un tool
-`kind=agent` ne peut pas en appeler un autre (garde-fou à brancher
-sur le runtime).
+en a n ; seule une **invocation LLM** peut appeler des tools. Runtime :
+`serge/llm/boucle.py` (plafond 12 tours) + handlers dans
+`serge/llm/outils_exec.py`. Un tool `kind=agent` ne peut pas en
+appeler un autre (garde `outil_peut_invoquer`, pas encore d’enchaînement
+tool → tool).
 
 ## Docs MC + SHA fichiers (v10)
 

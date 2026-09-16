@@ -21,6 +21,26 @@ VERDICTS = frozenset({'LLM-1', 'LLM-B', 'LLM-L', 'LLM-R', 'HYB'})
 TIERS = frozenset({'T1', 'T2', 'T3'})
 
 
+def _valider_tool_quotas(name: str, context: dict) -> None:
+    raw = context.get('tool_quotas')
+    if raw is None:
+        return
+    if not isinstance(raw, dict):
+        raise PolicyError(f'llm-points.{name}.context.tool_quotas invalide')
+    from serge.outils import SEED
+
+    connus = {row[0] for row in SEED}
+    for tool_id, count in raw.items():
+        if str(tool_id) not in connus:
+            raise PolicyError(
+                f'llm-points.{name}.context.tool_quotas.{tool_id} inconnu'
+            )
+        if isinstance(count, bool) or not isinstance(count, int) or count < 1:
+            raise PolicyError(
+                f'llm-points.{name}.context.tool_quotas.{tool_id} invalide'
+            )
+
+
 def _load_registry(filename: str, directory: Path | None = None) -> dict:
     root = directory or config_dir()
     data = read_yaml_file(root / filename)
@@ -61,6 +81,7 @@ def load_llm_points(directory: Path | None = None) -> dict[str, dict]:
         envelope = context.get('envelope_tokens', 0)
         if isinstance(envelope, bool) or not isinstance(envelope, int):
             raise PolicyError(f'llm-points.{name}.envelope_tokens invalide')
+        _valider_tool_quotas(name, context)
         if not isinstance(point.get('enabled'), bool):
             raise PolicyError(f'llm-points.{name}.enabled doit être booléen')
         for key in ('checklist', 'garde_fou', 'repli'):

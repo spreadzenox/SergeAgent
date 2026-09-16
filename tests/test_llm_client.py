@@ -52,6 +52,46 @@ class LlmClientTests(unittest.TestCase):
             request.get_header('Authorization').startswith('Bearer ')
         )
         self.assertNotIn('sk-key', request.full_url)
+        self.assertEqual(result.tool_calls, ())
+
+    def test_chat_accepte_tool_calls_sans_texte(self) -> None:
+        payload = {
+            'choices': [
+                {
+                    'message': {
+                        'content': None,
+                        'tool_calls': [
+                            {
+                                'id': 'c1',
+                                'function': {
+                                    'name': 'memory_search',
+                                    'arguments': '{"query":"prix"}',
+                                },
+                            }
+                        ],
+                    }
+                }
+            ],
+            'usage': {'prompt_tokens': 10, 'completion_tokens': 4},
+        }
+        tools = [{'type': 'function', 'function': {'name': 'memory_search'}}]
+        with mock.patch(
+            'urllib.request.urlopen', return_value=_response(payload)
+        ) as mocked:
+            result = chat(
+                'k',
+                'm',
+                [{'role': 'user', 'content': 'hi'}],
+                tools=tools,
+                tool_choice='auto',
+            )
+        self.assertEqual(result.text, '')
+        self.assertEqual(len(result.tool_calls), 1)
+        self.assertEqual(result.tool_calls[0].name, 'memory_search')
+        sent = json.loads(mocked.call_args[0][0].data.decode('utf-8'))
+        self.assertEqual(sent['tools'], tools)
+        self.assertEqual(sent['tool_choice'], 'auto')
+        self.assertFalse(sent['parallel_tool_calls'])
 
     def test_usage_absent_vaut_zero(self) -> None:
         payload = {'choices': [{'message': {'content': 'ok'}}]}

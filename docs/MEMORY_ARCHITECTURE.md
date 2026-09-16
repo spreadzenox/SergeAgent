@@ -132,7 +132,11 @@ projections (calcul dét + formulation LLM-R).
 codebase (docs + code commenté). **Hybride structuré + sémantique** :
 filtres d'abord (rapide, précis), vecteurs ensuite (rappel), fusion.
 
-**Interface : tool unique `memory_search`.**
+**Interface : tool unique `memory_search`.** Pressé pour de vrai par
+`run_point` (boucle d’outils générique, plafond 12 tours). Offert
+seulement si `couche5.allowed: true`. Un point peut resserrer via
+`couche5.max_calls` ou `context.tool_quotas.memory_search`. Le reste
+d’appels est injecté dans le contexte du jugement à chaque tour.
 
 ```yaml
 memory_search:

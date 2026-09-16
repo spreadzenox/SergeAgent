@@ -38,6 +38,16 @@ seul budget dur = plafond financier global).
   routable. Jamais de retry aveugle.
 - Mesure systématique (tokens, latence, verdicts) + alertes sur dérives vs
   médiane 7j. Enveloppes = dimensionnement, pas caps.
+- **Outils pressés pour de vrai.** `run_point` envoie les schémas OpenAI
+  et tourne une boucle générique (modèle propose → hôte exécute →
+  `role:tool`). Plafond global `quotas.llm_outil_tours_max` (12, dur).
+  Un couple outil × jugement peut être plus serré (`context.tool_quotas`,
+  ou `couche5.max_calls` / quota mémoire pour `memory_search`). Seuls
+  les outils **branchés avec un handler** sont offerts. À chaque tour,
+  le contexte reçoit le reste (`tours_restants` + `appels_restants`
+  par outil) ; un outil à 0 n’est plus envoyé. Voix :
+  `couche5.allowed: false` → pas de `memory_search`. Ajouter un outil
+  futur = handler + schéma, pas une nouvelle boucle.
 - **Kill-switch par point** : `llm_points.<nom>.enabled: false` en policy →
   fallback 100 % dét immédiat, sans déployer. Chaque point survit à sa
   propre extinction (mode dégradé, pas crash).
