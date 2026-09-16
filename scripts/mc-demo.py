@@ -9,7 +9,7 @@ import sys
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-ROOT = Path('/home/jpesquet/SergeAgent')
+ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from serge.db.boot import init_schema  # noqa: E402
