@@ -23,6 +23,7 @@ quotas:
   sms_per_sender_per_min: 10
   sms_global_per_min: 60
   memory_search_per_cycle_per_point: 3
+  llm_outil_tours_max: 12
   llm_recalls_json: 2
   linkedin_connect_per_day: 20
   linkedin_inmail_per_month: 30

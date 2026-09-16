@@ -7,6 +7,7 @@ import json
 import time
 import urllib.error
 import urllib.request
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -18,12 +19,22 @@ class LlmError(ValueError):
 
 
 @dataclass(frozen=True)
+class ToolCall:
+    """Un outil demandé par le modèle (il n’exécute rien)."""
+
+    id: str
+    name: str
+    arguments: str
+
+
+@dataclass(frozen=True)
 class ChatResult:
     text: str
     tokens_in: int
     tokens_out: int
     model: str
     latency_ms: int
+    tool_calls: tuple[ToolCall, ...] = ()
 
 
 def _usage(payload: dict[str, Any]) -> tuple[int, int]:
@@ -36,6 +47,29 @@ def _usage(payload: dict[str, Any]) -> tuple[int, int]:
         return 0, 0
 
 
+def _tool_calls(message: Mapping[str, Any]) -> tuple[ToolCall, ...]:
+    raw = message.get('tool_calls') or []
+    if not isinstance(raw, list):
+        return ()
+    out: list[ToolCall] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        fn = item.get('function') or {}
+        if not isinstance(fn, dict):
+            continue
+        ident = str(item.get('id') or '')
+        name = str(fn.get('name') or '')
+        args = fn.get('arguments')
+        if isinstance(args, dict):
+            args = json.dumps(args, ensure_ascii=False)
+        else:
+            args = str(args or '')
+        if ident and name:
+            out.append(ToolCall(ident, name, args))
+    return tuple(out)
+
+
 def chat(
     api_key: str,
     model: str,
@@ -46,6 +80,9 @@ def chat(
     max_tokens: int = 500,
     temperature: float = 0.3,
     base_url: str = OPENROUTER_BASE_URL,
+    tools: list[dict[str, Any]] | None = None,
+    tool_choice: str | dict[str, Any] | None = None,
+    parallel_tool_calls: bool = False,
 ) -> ChatResult:
     """Un chat completion + usage. Clé en header uniquement, jamais loguée.
 
@@ -58,23 +95,30 @@ def chat(
         max_tokens: Cap réponse.
         temperature: Température.
         base_url: Base API (override tests).
+        tools: Schémas OpenAI (renvoyés à chaque tour).
+        tool_choice: ``auto`` / ``none`` / forcer un outil.
+        parallel_tool_calls: Plusieurs outils d’un coup (défaut : non).
 
     Returns:
-        ChatResult (texte + tokens + modèle + latence).
+        ChatResult (texte et/ou tool_calls + tokens + modèle + latence).
 
     Raises:
         LlmError: AUTH (401/clé), NETWORK, API, EMPTY (sans réponse).
     """
     if not api_key or not model:
         raise LlmError('AUTH: chat needs an API key and a model')
-    body = json.dumps(
-        {
-            'model': model,
-            'messages': messages,
-            'max_tokens': max_tokens,
-            'temperature': temperature,
-        }
-    ).encode('utf-8')
+    payload: dict[str, Any] = {
+        'model': model,
+        'messages': messages,
+        'max_tokens': max_tokens,
+        'temperature': temperature,
+    }
+    if tools:
+        payload['tools'] = tools
+        payload['parallel_tool_calls'] = parallel_tool_calls
+        if tool_choice is not None:
+            payload['tool_choice'] = tool_choice
+    body = json.dumps(payload).encode('utf-8')
     headers = {'Content-Type': 'application/json'}
     headers['Authorization'] = f'Bearer {api_key}'
     if referer:
@@ -105,10 +149,14 @@ def chat(
         raise LlmError('API: OpenRouter unexpected response')
     try:
         choices = payload.get('choices') or []
-        text = str(choices[0]['message']['content'] or '').strip()
+        message = choices[0]['message']
+        if not isinstance(message, dict):
+            raise TypeError('message')
+        text = str(message.get('content') or '').strip()
+        calls = _tool_calls(message)
     except (IndexError, KeyError, TypeError, AttributeError) as exc:
         raise LlmError('EMPTY: OpenRouter empty reply') from exc
-    if not text:
+    if not text and not calls:
         raise LlmError('EMPTY: OpenRouter empty reply')
     tokens_in, tokens_out = _usage(payload)
     used_model = str(payload.get('model') or model)
@@ -118,4 +166,5 @@ def chat(
         tokens_out=tokens_out,
         model=used_model,
         latency_ms=latency_ms,
+        tool_calls=calls,
     )

@@ -136,6 +136,7 @@ def validate_policy(data: Mapping[str, Any]) -> dict[str, Any]:
         'quotas.sms_per_sender_per_min',
         'quotas.sms_global_per_min',
         'quotas.memory_search_per_cycle_per_point',
+        'quotas.llm_outil_tours_max',
         'quotas.llm_recalls_json',
         'quotas.linkedin_connect_per_day',
         'quotas.linkedin_inmail_per_month',
@@ -208,6 +209,11 @@ def validate_policy(data: Mapping[str, Any]) -> dict[str, Any]:
         _need_ratio(data, key)
     _need_number(data, 'prospection.score_w_negative', minimum=-100.0)
     _need_str_list(data, 'consent.opt_in_channels')
+    tours = (data.get('quotas') or {}).get('llm_outil_tours_max')
+    if isinstance(tours, bool) or not isinstance(tours, int) or tours > 12:
+        raise PolicyError(
+            'policy.quotas.llm_outil_tours_max doit être un entier <= 12'
+        )
     standing = data.get('standing')
     if isinstance(standing, Mapping):
         if standing.get('capital_max', 0) < standing.get('capital_min', 0):
