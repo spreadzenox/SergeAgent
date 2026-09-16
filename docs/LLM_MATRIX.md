@@ -46,8 +46,10 @@ seul budget dur = plafond financier global).
   les outils **branchés avec un handler** sont offerts. À chaque tour,
   le contexte reçoit le reste (`tours_restants` + `appels_restants`
   par outil) ; un outil à 0 n’est plus envoyé. Voix :
-  `couche5.allowed: false` → pas de `memory_search`. Ajouter un outil
-  futur = handler + schéma, pas une nouvelle boucle.
+  `couche5.allowed: false` → pas de `memory_search`. `demande_capacite`
+  est offert à tous les jugements (partout) : ticket ``REQUESTED``,
+  un appel par jugement. Ajouter un outil futur = handler + schéma,
+  pas une nouvelle boucle.
 - **Kill-switch par point** : `llm_points.<nom>.enabled: false` en policy →
   fallback 100 % dét immédiat, sans déployer. Chaque point survit à sa
   propre extinction (mode dégradé, pas crash).

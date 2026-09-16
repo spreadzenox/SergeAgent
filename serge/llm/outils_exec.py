@@ -12,8 +12,10 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
+from serge.demande_capacite import CapaciteError, poser_demande
 from serge.identite import IdentiteError, identite_serge
 from serge.memory.search import memory_search
+from serge.outils import SEED as TOOL_SEED
 
 CODES_REFUS = frozenset({'inconnu', 'quota_couple', 'deja_fait', 'invalide'})
 
@@ -74,6 +76,21 @@ SCHEMAS: dict[str, dict[str, Any]] = {
         {},
         [],
     ),
+    'demande_capacite': _schema(
+        'demande_capacite',
+        'Demande une capacité manquante (ticket, pas d’invention).',
+        {
+            'besoin': {
+                'type': 'string',
+                'description': 'Ce qui manque (canal, outil, acte)',
+            },
+            'contexte': {
+                'type': 'string',
+                'description': 'Pourquoi, une phrase',
+            },
+        },
+        ['besoin'],
+    ),
 }
 
 
@@ -120,9 +137,24 @@ def _exec_identity_basique(
         return {'ok': False, 'code': 'invalide', 'detail': str(exc)}
 
 
+def _exec_demande_capacite(
+    ctx: ContexteOutil, args: dict[str, Any]
+) -> dict[str, Any]:
+    try:
+        return poser_demande(
+            ctx.conn,
+            str(args.get('besoin') or ''),
+            point=ctx.point_name,
+            contexte=str(args.get('contexte') or ''),
+        )
+    except CapaciteError as exc:
+        return {'ok': False, 'code': 'invalide', 'detail': str(exc)}
+
+
 HANDLERS: dict[str, Handler] = {
     'memory_search': _exec_memory_search,
     'identity_basique': _exec_identity_basique,
+    'demande_capacite': _exec_demande_capacite,
 }
 
 
@@ -149,7 +181,7 @@ def outils_pressables(spec: Mapping[str, Any]) -> tuple[str, ...]:
         spec: Déclaration du point (registre).
 
     Returns:
-        Ids stables, ordre : memory_search d’abord si autorisé, puis yaml.
+        Ids stables : couche 5, puis yaml, puis outils partout.
     """
     context = spec.get('context')
     context = context if isinstance(context, dict) else {}
@@ -166,6 +198,13 @@ def outils_pressables(spec: Mapping[str, Any]) -> tuple[str, ...]:
                 continue
             if ident in HANDLERS and ident not in ids:
                 ids.append(ident)
+    for row in TOOL_SEED:
+        ident = row[0]
+        partout = row[7]
+        if partout != 1 or ident == 'memory_search':
+            continue
+        if ident in HANDLERS and ident not in ids:
+            ids.append(ident)
     return tuple(ids)
 
 
@@ -269,6 +308,8 @@ def quota_couple(
         fallback = (quotas or {}).get('memory_search_per_cycle_per_point')
         if isinstance(fallback, int) and not isinstance(fallback, bool):
             return max(0, fallback)
+    if tool_id == 'demande_capacite':
+        return 1
     return None
 
 

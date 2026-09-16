@@ -56,7 +56,8 @@ def _spec(*, couche5: bool, tools: list[str] | None = None, **extra):
 class OutilsPressablesTests(unittest.TestCase):
     def test_couche5_offre_memory_search(self) -> None:
         self.assertEqual(
-            outils_pressables(_spec(couche5=True)), ('memory_search',)
+            outils_pressables(_spec(couche5=True)),
+            ('memory_search', 'demande_capacite'),
         )
 
     def test_voix_sans_memoire_mais_identite(self) -> None:
@@ -64,17 +65,24 @@ class OutilsPressablesTests(unittest.TestCase):
             couche5=False,
             tools=['agenda', 'catalogue', 'fiches', 'identity_basique'],
         )
-        self.assertEqual(outils_pressables(spec), ('identity_basique',))
+        self.assertEqual(
+            outils_pressables(spec),
+            ('identity_basique', 'demande_capacite'),
+        )
 
     def test_memory_search_dans_tools_sans_couche5_reste_ferme(self) -> None:
         spec = _spec(
             couche5=False, tools=['memory_search', 'identity_basique']
         )
-        self.assertEqual(outils_pressables(spec), ('identity_basique',))
+        self.assertEqual(
+            outils_pressables(spec),
+            ('identity_basique', 'demande_capacite'),
+        )
 
     def test_prevu_sans_handler_ignore(self) -> None:
         self.assertEqual(
-            outils_pressables(_spec(couche5=False, tools=['agenda'])), ()
+            outils_pressables(_spec(couche5=False, tools=['agenda'])),
+            ('demande_capacite',),
         )
 
 
@@ -95,6 +103,11 @@ class QuotaCoupleTests(unittest.TestCase):
     def test_autre_outil_illimite(self) -> None:
         self.assertIsNone(
             quota_couple(_spec(couche5=False), 'identity_basique', POLICY)
+        )
+
+    def test_demande_capacite_un_par_jugement(self) -> None:
+        self.assertEqual(
+            quota_couple(_spec(couche5=False), 'demande_capacite', POLICY), 1
         )
 
     def test_restants_min_couple_et_tours(self) -> None:
@@ -172,13 +185,17 @@ class BoucleTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.conn.close()
 
-    def test_sans_outil_un_seul_generate(self) -> None:
+    def test_sans_couche5_offre_demande_partout(self) -> None:
         n = {'n': 0}
 
         def caller(*args, **kwargs):
             n['n'] += 1
-            self.assertIsNone(kwargs.get('tools'))
-            self.assertFalse(
+            noms = [
+                (item.get('function') or {}).get('name')
+                for item in (kwargs.get('tools') or [])
+            ]
+            self.assertEqual(noms, ['demande_capacite'])
+            self.assertTrue(
                 any(
                     CLE_QUOTAS in str(item.get('content') or '')
                     for item in args[2]
@@ -334,12 +351,11 @@ class BoucleTests(unittest.TestCase):
                 for item in (kwargs.get('tools') or [])
             ]
             if n['n'] == 1:
-                self.assertEqual(noms, ['identity_basique'])
+                self.assertEqual(
+                    noms, ['identity_basique', 'demande_capacite']
+                )
                 return _call(name='identity_basique', args='{"x":1}')
-            self.assertEqual(noms, [])
-            self.assertTrue(
-                kwargs.get('tool_choice') == 'none' or not kwargs.get('tools')
-            )
+            self.assertEqual(noms, ['demande_capacite'])
             return _call('fin')
 
         with mock.patch(
