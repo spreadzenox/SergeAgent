@@ -272,4 +272,9 @@ def run_registered_point(
     if not isinstance(spec, dict):
         _record(conn, point_name, 'T1', '', 0, 0, 0, 'killed')
         return RunResult(False, '', 'killed', 0, 0, '', 0)
-    return run_point(conn, policy, spec, point_name, messages, **kwargs)
+    runtime_spec = dict(spec)
+    from serge.db_readers import reader_contract, tool_ids_for_point
+
+    runtime_spec['db_readers'] = reader_contract(conn, point_name)['allowed']
+    runtime_spec['db_tools'] = list(tool_ids_for_point(conn, point_name))
+    return run_point(conn, policy, runtime_spec, point_name, messages, **kwargs)

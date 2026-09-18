@@ -5,12 +5,16 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import threading
 from pathlib import Path
 from typing import Any
 
 from serge.db.boot import init_schema
 from serge.horloge import iso_utc
 from serge.paths import system_root
+
+
+_INIT_LOCK = threading.RLock()
 
 
 def utcnow() -> str:
@@ -50,7 +54,8 @@ def open_db(path: Path) -> sqlite3.Connection:
     connection.row_factory = sqlite3.Row
     connection.execute('PRAGMA journal_mode=WAL')
     connection.execute('PRAGMA foreign_keys=ON')
-    init_schema(connection)
+    with _INIT_LOCK:
+        init_schema(connection)
     connection.commit()
     if fresh:
         try:

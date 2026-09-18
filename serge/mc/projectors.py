@@ -34,6 +34,7 @@ from serge.mc.proj_economy import (
     project_entonnoir,
     project_transactions_subscriptions,
 )
+from serge.mc.proj_ecoute import project_ecoute
 from serge.mc.proj_graphe import project_business, project_graphe
 from serge.mc.proj_health import (
     project_audit_trail,
@@ -223,6 +224,7 @@ PROJECTORS: dict[str, Callable[..., dict[str, Any]]] = {
     'versions_drift': project_versions_drift,
     'units_systemd': project_units_systemd,
     'identite': project_identite_page,
+    'ecoute': project_ecoute,
 }
 
 PAGE_SECTIONS: dict[str, list[str]] = {
@@ -268,4 +270,5 @@ PAGE_SECTIONS: dict[str, list[str]] = {
         'units_systemd',
     ],
     'p9': ['meta', 'identite'],
+    'p10': ['meta', 'ecoute'],
 }

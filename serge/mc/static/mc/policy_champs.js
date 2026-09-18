@@ -343,6 +343,22 @@ export const CHAMPS = {
     1,
     0.01,
   ],
+  'listen.discovery_needs_target': [
+    'Besoins à explorer par découverte',
+    'Nombre de fiches que chaque agent de découverte doit proposer.',
+    'curseur',
+    1,
+    50,
+    1,
+  ],
+  'listen.poc_business_target': [
+    'Business à retenir pour le prochain POC',
+    'Nombre maximal de business transmis au prochain essai.',
+    'curseur',
+    1,
+    10,
+    1,
+  ],
   'standing.gain_par_heure': [
     'Gain par heure de repos',
     'Quand le compte ne sert pas, le capital remonte de ce pas.',

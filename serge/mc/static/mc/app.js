@@ -14,6 +14,7 @@ const ROUTES = {
   voice: 'p7',
   health: 'p8',
   identite: 'p9',
+  ecoute: 'p10',
 };
 const LABELS = {
   p2: 'Cerveau',
@@ -24,6 +25,7 @@ const LABELS = {
   p7: 'Voix',
   p8: 'Health',
   p9: 'Identité',
+  p10: 'Écoute',
 };
 
 const store = createStore();
@@ -137,6 +139,12 @@ async function render() {
     unmount = mount(main, store);
   } else if (page === 'p9') {
     const {mount} = await import('./pages/identite.js');
+    if (mine !== generation) {
+      return;
+    }
+    unmount = mount(main, store);
+  } else if (page === 'p10') {
+    const {mount} = await import('./pages/ecoute.js');
     if (mine !== generation) {
       return;
     }

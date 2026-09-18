@@ -120,9 +120,27 @@ POINT_LOCKS: dict[str, tuple[str, str]] = {
     ),
     'cluster_demand': (
         'serge/points/listen_pts.py',
-        'c3d2cf4ae51a6ea3acd2e09e023883d590dc0c6dd7ca2947695c4783b50130b0',
+        'a2561ea7a3eb5f193cec3d6a7f2fa8b808ee9cf223f3ba78b816a07ffe1babd5',
+    ),
+    'listen_discover_needs_a': (
+        'serge/points/listen_pts.py',
+        'a2561ea7a3eb5f193cec3d6a7f2fa8b808ee9cf223f3ba78b816a07ffe1babd5',
+    ),
+    'listen_discover_needs_b': (
+        'serge/points/listen_pts.py',
+        'a2561ea7a3eb5f193cec3d6a7f2fa8b808ee9cf223f3ba78b816a07ffe1babd5',
+    ),
+    'listen_choose_poc': (
+        'serge/points/listen_pts.py',
+        'a2561ea7a3eb5f193cec3d6a7f2fa8b808ee9cf223f3ba78b816a07ffe1babd5',
     ),
     'install_guide': ('', ''),
+}
+
+LISTEN_POINT_DOCS = {
+    'listen_discover_needs_a': 'Explore le corpus du cycle et propose des besoins prouvés.',
+    'listen_discover_needs_b': 'Explore le même corpus indépendamment du premier agent.',
+    'listen_choose_poc': 'Choisit des candidats éligibles, avec veto déterministe du POC.',
 }
 
 
@@ -162,7 +180,7 @@ def ensure_llm_points(conn: sqlite3.Connection) -> None:
             )
         else:
             role = ROLES.get(name)
-            doc = str(role[0]) if role else ''
+            doc = str(role[0]) if role else LISTEN_POINT_DOCS.get(name, '')
             conn.execute(
                 'INSERT INTO llm_points(id, etape_id, code_path, code_sha,'
                 ' verdict, tier, titre, doc_md, enabled)'

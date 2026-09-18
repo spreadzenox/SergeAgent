@@ -49,6 +49,14 @@ ORDRE: dict[str, list[str]] = {
     'caisse': [],
 }
 
+RESTE: dict[str, list[str]] = {
+    'pre_prospection': [
+        'listen_choose_poc',
+        'listen_discover_needs_a',
+        'listen_discover_needs_b',
+    ],
+}
+
 
 def _court(nom: str) -> str:
     role = role_de(nom)[0]
@@ -71,13 +79,16 @@ def lister_jugements(
     """
     chauds = chauds or set()
     rows = conn.execute(
-        'SELECT id, titre FROM llm_points WHERE etape_id=? ORDER BY id',
+        'SELECT id, titre FROM llm_points WHERE etape_id=?',
         (etape,),
     ).fetchall()
     titres = {str(r[0]): str(r[1] or '') for r in rows}
     connus = list(titres)
     suite = [n for n in ORDRE.get(etape, []) if n in titres]
-    reste = [n for n in connus if n not in suite]
+    reste = [
+        n for n in RESTE.get(etape, []) if n in titres and n not in suite
+    ]
+    reste.extend(n for n in connus if n not in suite and n not in reste)
     lignes = []
     for i, nom in enumerate(suite, 1):
         lignes.append(

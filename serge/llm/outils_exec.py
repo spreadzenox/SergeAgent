@@ -13,6 +13,8 @@ from dataclasses import dataclass
 from typing import Any
 
 from serge.identite import IdentiteError, identite_serge
+from serge.listen.memory import read_named
+from serge.listen.web import search_public
 from serge.memory.search import memory_search
 
 CODES_REFUS = frozenset({'inconnu', 'quota_couple', 'deja_fait', 'invalide'})
@@ -68,6 +70,24 @@ SCHEMAS: dict[str, dict[str, Any]] = {
         },
         ['query'],
     ),
+    'db_read': _schema(
+        'db_read',
+        'Lit une vue DB autorisée par le contrat du jugement.',
+        {
+            'reader': {'type': 'string'},
+            'cycle_id': {'type': 'string'},
+        },
+        ['reader'],
+    ),
+    'web_search': _schema(
+        'web_search',
+        'Cherche sur le web public, en lecture seule.',
+        {
+            'query': {'type': 'string'},
+            'limit': {'type': 'integer'},
+        },
+        ['query'],
+    ),
     'identity_basique': _schema(
         'identity_basique',
         'Identité publique de Serge (email, nom, SIRET). Pas l’IBAN.',
@@ -120,9 +140,30 @@ def _exec_identity_basique(
         return {'ok': False, 'code': 'invalide', 'detail': str(exc)}
 
 
+def _exec_db_read(ctx: ContexteOutil, args: dict[str, Any]) -> dict[str, Any]:
+    reader = str(args.get('reader') or '')
+    allowed = ctx.spec.get('db_readers')
+    if not isinstance(allowed, (list, tuple)) or reader not in allowed:
+        return {'ok': False, 'code': 'permission_refusee', 'reader': reader}
+    return read_named(ctx.conn, ctx.point_name, reader, args)
+
+
+def _exec_web_search(
+    ctx: ContexteOutil, args: dict[str, Any]
+) -> dict[str, Any]:
+    del ctx
+    query = str(args.get('query') or '')
+    limit = args.get('limit', 5)
+    if isinstance(limit, bool) or not isinstance(limit, int):
+        limit = 5
+    return search_public(query, limit)
+
+
 HANDLERS: dict[str, Handler] = {
     'memory_search': _exec_memory_search,
     'identity_basique': _exec_identity_basique,
+    'db_read': _exec_db_read,
+    'web_search': _exec_web_search,
 }
 
 
@@ -153,10 +194,22 @@ def outils_pressables(spec: Mapping[str, Any]) -> tuple[str, ...]:
     """
     context = spec.get('context')
     context = context if isinstance(context, dict) else {}
+    db_tools = spec.get('db_tools')
+    db_filter = set(db_tools) if isinstance(db_tools, (list, tuple)) else None
     couche = context.get('couche5')
     couche = couche if isinstance(couche, dict) else {}
     ids: list[str] = []
-    if couche.get('allowed') is True and 'memory_search' in HANDLERS:
+    if (
+        spec.get('db_readers')
+        and 'db_read' in HANDLERS
+        and (db_filter is None or 'db_read' in db_filter)
+    ):
+        ids.append('db_read')
+    if (
+        couche.get('allowed') is True
+        and 'memory_search' in HANDLERS
+        and (db_filter is None or 'memory_search' in db_filter)
+    ):
         ids.append('memory_search')
     extra = context.get('tools')
     if isinstance(extra, list):
@@ -164,7 +217,11 @@ def outils_pressables(spec: Mapping[str, Any]) -> tuple[str, ...]:
             ident = str(raw or '')
             if ident == 'memory_search':
                 continue
-            if ident in HANDLERS and ident not in ids:
+            if (
+                ident in HANDLERS
+                and ident not in ids
+                and (db_filter is None or ident in db_filter)
+            ):
                 ids.append(ident)
     return tuple(ids)
 

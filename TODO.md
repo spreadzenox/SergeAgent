@@ -10,11 +10,11 @@ chantier « évident ».
 
 ### Machine d’écoute (première étape, lancée à la main)
 
-- [ ] **Onglet Mission Control « Écoute ».** Lancer des campagnes d’écoute : input = niches en texte libre, interprétées par les invocations LLM d’écoute. Table dédiée (pas `campaigns` outreach). C’est le démarreur de la machine.
+- [ ] **Onglet Mission Control « Écoute ».** Il faut refaire la première étape de la pipeline (pré-prospection). On va y inclure 3 jugements. Le premier llm doit juste écouter le web pour trouver n besoins et regrouper des informations synthétiques sur chacun de ces besoins. Cela doit enrichir un espace mémoire dédiés aux besoins pré-prospectés. Le llm devra explorer des besoins différents de ceux déjà en table. Il devra trouver des besoins très différents entre eux pour éviter les doublons. Le deuxième jugement est identique. Le troisième est celui du choix: parmis toute la table, il doit choisir p business à tester pour la prochaine étape. n et p doivent être des hyperparamètres modifiables depuis le MC. La configuration de l'espace mémoire en question doit être intelligente : pas de doublons avec ce qui existe déjà, segmentation claire avec un titre, un contenu/détail des observations , ce qui pourrait être vendu, et flag de "business déjà choisi pour un POC par Serge". L'agent de choix ne peut pas choisir un business déjà en POC (ça doit être une protection déterministe pas un system prompt). Il faut aussi ajouter un onglet sur le MC pour lancer la pipeline en commençant par ce cycle, on doit pouvoir inclure un petit texte qui sera donné aux jugements pour les guider dans leurs recherches. 
 
 - [ ] **Invocation LLM pré-prospection lite (sans compte).** Sniffer le web public : Reddit, forums spécialisés, articles, tout ce qui est lisible sans login. Ça s’ajoute au collecteur RSS déterministe déjà là (`listen.collect`) — ça ne le remplace pas.
 
-- [ ] **Invocation LLM pré-prospection lourde (avec compte).** Retrieval sur les plateformes qui exigent un login (LinkedIn, Facebook, Instagram, etc.). Lit les comptes dans `accounts_standing`, n’en invente pas.
+- [ ] **Invocation LLM pré-prospection lourde (avec compte).** Retrieval sur les plateformes qui exigent un login (LinkedIn, Facebook, Instagram, etc.). Lit les comptes dans `accounts_standing`, n’en invente pas. dépends de la création de compte, les différents agents de manipulations de canaux.
 
 - [x] **Pages vraiment lues en base.** Projecteur `listen_docs` : vide = « Aucune page en base ». `mc-demo.py` peut semer, le runtime non. LLM écoute lite/lourde = archi.
 

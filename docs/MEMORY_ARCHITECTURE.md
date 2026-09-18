@@ -26,6 +26,30 @@ Réciproquement, on ne construit que ce que la matrice C exige.
 Couches 1-4 : **prédéfinies** (le système décide le contenu).
 Couche 5 : **libre** (le LLM décide ce qu'il cherche). Soupape anti-prison.
 
+### Écoute : mémoire de cycle et permissions
+
+La pré-prospection ajoute des tables canoniques sans créer une sixième couche :
+`listen_docs` reste la source des pages, `listen_cycles` mémorise les
+paramètres explicites de découverte, de sélection POC et le guide owner,
+`listen_cycle_docs` fige le corpus d'un
+cycle, et `business_candidates` porte l'état courant des besoins/business.
+`poc_selections` est l'épisode de sélection et son index unique interdit qu'un
+business soit engagé dans deux POC actifs. Un cycle suivant ne rattache jamais
+un document déjà présent dans `listen_cycle_docs`.
+
+Les deux découvreurs sont deux invocations indépendantes avec le même contrat
+de lecture (`current_listen_cycle`, `listen_cycle_documents`,
+`known_business_candidates`). Aucun résultat ou message du premier n'est donné
+au second. Le choix lit uniquement `eligible_poc_candidates` après écriture et
+déduplication déterministes des candidats.
+
+Les lecteurs sont des vues nommées, cataloguées dans `db_readers`, et leurs
+permissions actives vivent dans `llm_point_readers`. Le tool `db_read` refuse
+un lecteur absent de cette jonction et n'accepte jamais de SQL libre. Mission
+Control lit ces permissions depuis SQLite ; le runtime les réinjecte avant
+chaque boucle d'outils. `web_search` est séparé : lecture du web public,
+bornée et sans écriture dans le canon.
+
 ---
 
 ## 1. Couche 1 — Registres (faits chauds)

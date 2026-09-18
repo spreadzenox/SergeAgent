@@ -187,6 +187,8 @@ def validate_policy(data: Mapping[str, Any]) -> dict[str, Any]:
         'tickets.digest_hour',
         'tickets.trust_min_approvals',
         'listen.cluster_jaccard_min',
+        'listen.discovery_needs_target',
+        'listen.poc_business_target',
         'testing.n_smoke_min',
         'testing.n_smoke_max',
         'testing.n_full_min',

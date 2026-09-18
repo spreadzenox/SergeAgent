@@ -201,6 +201,30 @@ CATALOGUE: dict[str, tuple[str, str, str, str]] = {
         'Fiche jugement, rubrique Outils.',
         'usage : autorise, interdit, declare.',
     ),
+    'db_readers': (
+        'Lecteurs DB nommés : vues fixes et sorties typées pour les agents.',
+        'Semence code idempotente, permissions actives en SQLite.',
+        'Fiches agents et onglet Écoute.',
+        'Aucun SQL libre ; chaque lecteur possède son contrat.',
+    ),
+    'llm_point_readers': (
+        'Permissions de lecture DB par invocation LLM.',
+        'Semence initiale, modifications conservées en base.',
+        'Runtime et Mission Control.',
+        'enabled + usage autorise/refuse, vérifiés à chaque appel.',
+    ),
+    'listen_cycles': (
+        'Cycles de recherche business avec n/p et guide owner.',
+        'Mission Control, cycle lancé manuellement.',
+        'Agents d’écoute et onglet Écoute.',
+        'Le guide et les paramètres sont historisés.',
+    ),
+    'business_candidates': (
+        'Mémoire canonique des besoins et business pré-prospectés.',
+        'Writer déterministe après jugements.',
+        'Sélection POC et Mission Control.',
+        'normalized_key et status empêchent les doublons et le rechoix.',
+    ),
     'canaux': (
         'Moyens d’écrire vers l’extérieur (e-mail, voix, Discord…).',
         'Semence git + SHA du fichier writer.',

@@ -406,6 +406,49 @@ points:
     repli: clusters bruts sans labels
     enabled: true
 
+  listen_discover_needs_a:
+    verdict: LLM-B
+    tier: T2
+    checklist: {entree: libre, sortie: structuree, info_externe: true, derive: true}
+    context:
+      fixed: [contrat_besoin, cycle_id, guide_owner]
+      retrieved: [documents_cycle, business_deja_connus]
+      couche5: {allowed: true, budget_tokens: 1500, max_calls: 3}
+      tools: [web_search]
+      forbidden: [secrets, pii_inutile, autres_ventures, resultats_autres_agents]
+      envelope_tokens: 7000
+    garde_fou: validation JSON, preuves documentaires et déduplication déterministe
+    repli: aucun candidat nouveau, conserver les documents pour le cycle suivant
+    enabled: true
+  listen_discover_needs_b:
+    verdict: LLM-B
+    tier: T2
+    checklist: {entree: libre, sortie: structuree, info_externe: true, derive: true}
+    context:
+      fixed: [contrat_besoin, cycle_id, guide_owner]
+      retrieved: [documents_cycle, business_deja_connus]
+      couche5: {allowed: true, budget_tokens: 1500, max_calls: 3}
+      tools: [web_search]
+      forbidden: [secrets, pii_inutile, autres_ventures, resultats_autres_agents]
+      envelope_tokens: 7000
+    garde_fou: même corpus et même contrat que A, déduplication déterministe
+    repli: aucun candidat nouveau, conserver les documents pour le cycle suivant
+    enabled: true
+  listen_choose_poc:
+    verdict: LLM-1
+    tier: T2
+    checklist: {entree: structuree, sortie: ids_fermes, info_externe: false, derive: true}
+    context:
+      fixed: [contrat_selection, cycle_id, business_target]
+      retrieved: [business_eligibles]
+      couche5: {allowed: false}
+      tools: []
+      forbidden: [secrets, autres_ventures, candidats_deja_en_poc]
+      envelope_tokens: 3500
+    garde_fou: IDs existants, p borné, veto déterministe si POC déjà actif
+    repli: aucune sélection, file owner
+    enabled: true
+
   # ---- Guide installateur (kit, pas runtime) ----
   install_guide:
     verdict: LLM-R

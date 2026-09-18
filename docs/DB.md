@@ -19,9 +19,15 @@ Une base déjà à la tête du code ne réécrit pas le tampon. Une base
 **plus récente** que le code refuse de booter (`MigrateError`) — un
 rollback git ne démonte pas le schéma tout seul.
 
-Le socle actuel est la **v7** (`SCHEMA_SQL` dans `serge/db/schema.py`).
-Une base vide saute à v7 d’un coup. Ensuite chaque évolution = une
-fonction `apply_v00N`, numéro = précédent + 1.
+Le socle initial est la **v7** (`SCHEMA_SQL` dans `serge/db/schema.py`).
+Une base vide saute à v7 d’un coup. Le schéma runtime actuel est v17.
+Ensuite chaque évolution = une fonction `apply_v00N`, numéro = précédent + 1.
+
+Les paramètres de pré-prospection vivent dans les snapshots Policy en base :
+`listen.discovery_needs_target` et `listen.poc_business_target`. Ils sont
+recopiés dans `listen_cycles.needs_target` et `business_target` au lancement,
+afin de conserver les valeurs réellement utilisées. L’ancienne table
+`listen_settings` n’est plus une source de vérité.
 
 Ledgers bornés hors canon (même pattern `CREATE IF NOT EXISTS`, pas
 encore dans cette chaîne) : `state/voice/voice.db`, inbox SMS.

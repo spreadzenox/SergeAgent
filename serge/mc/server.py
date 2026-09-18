@@ -28,6 +28,7 @@ from serge.mc.auth import (
 )
 from serge.mc.coupe_actions import CoupeActionsMixin
 from serge.mc.etape_actions import EtapeActionsMixin
+from serge.mc.ecoute_actions import EcouteActionsMixin
 from serge.mc.policy_actions import PolicyActionsMixin
 from serge.mc.projectors import PAGE_SECTIONS, SnapshotCache
 from serge.mc.sse import state_payload, stream_page
@@ -66,6 +67,7 @@ class McHandler(
     PolicyActionsMixin,
     CoupeActionsMixin,
     EtapeActionsMixin,
+    EcouteActionsMixin,
     ActionsMixin,
     BaseHTTPRequestHandler,
 ):
@@ -360,6 +362,8 @@ class McHandler(
             '/owner/api/voice/kill': self._api_voice_kill,
             '/owner/api/coupe': self._api_coupe,
             '/owner/api/etape': self._api_etape,
+            '/owner/api/listen/settings': self._api_listen_settings,
+            '/owner/api/listen/start': self._api_listen_start,
         }
         acte = apis.get(path)
         if acte is None:

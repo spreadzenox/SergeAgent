@@ -16,35 +16,35 @@ SHA_ATTENDUS: dict[tuple[str, str], str] = {
     (
         'etape',
         'build_venture',
-    ): 'aea265f5dff7845e93f2061c80b223e8c000546cb04796b0a606c7cca94e9572',
+    ): '8296fa4283fa2386b4a50891646b074e1a029e0c40d3a5e86d9da75fb287ddac',
     (
         'etape',
         'caisse',
-    ): '0adf27ead5e61abe5d425b91e36a8c8ecb9c0680189f0d26a1db43070572a698',
+    ): '52c4c17ca9b5cded964ddd82d6340eb956fe4e7c356203cc83d2d60ee3732fa0',
     (
         'etape',
         'choix_venture',
-    ): '1ac8e9123da0a7eea8525db275d4c89c182bcd65d5e11018a56fc6af3ae222b1',
+    ): 'a8508bd04c81eee001e0e7c3c4bc7da481f09fb3aba3fa36fc31bc72e96f1bf7',
     (
         'etape',
         'collect_feedback',
-    ): '62082837c55d88fac881babd59685911c70a3d8fd4720875e96d37198a75d4f4',
+    ): '490e674a742ae35c167d21cfb928ef0a7704310a8ab148f0517592582a20a9e1',
     (
         'etape',
         'conception_poc',
-    ): 'f65577eb256f4052312efe49078fc6f61b6cb17ba9a23cdbcc0aa9275de76caa',
+    ): 'd88d17faa50488b1f344f03c89e3f914c40330eb1483057625a99bc4885931f9',
     (
         'etape',
         'pre_prospection',
-    ): 'bae65a3ef58f5735bc88c17d50b88128d91e1e6de5a292b17a9d88b19e49b0ee',
+    ): 'f29a260ec24b7857cadbebf2428791f31d64ea8cd4ad13e041a502855dd51695',
     (
         'etape',
         'prospection_light',
-    ): '226321cac33aeb5b60b517b0435984ed165352c97eb84377f890250546f850a2',
+    ): '81a9647f9f581f2acd54b10e76904450768e618bd4f697c6590142bd19fc7c4a',
     (
         'etape',
         'prospection_lourde',
-    ): 'd4ac16a9402b842ede2075632755bf4d5a0860cec6c6433cc5ff52dbcb016e35',
+    ): '44e5958e609b14c46f445b6965f4bacca4874b32d75f95af34a628de5becbd0f',
     (
         'lien',
         'build-lourde',
@@ -69,126 +69,111 @@ SHA_ATTENDUS: dict[tuple[str, str], str] = {
         'lien',
         'poc-light',
     ): '40f272829674ebc13a0e2a9001f6765b8396b4178b6dc159028fb691e5c0b1df',
-    (
-        'lien',
-        'pre-poc',
-    ): '40f272829674ebc13a0e2a9001f6765b8396b4178b6dc159028fb691e5c0b1df',
-    (
-        'llm',
-        'build_artifact',
-    ): '86c37da48e06fdeda79967546a83e8b7269832820517e009fc2f0eb160a67e11',
-    (
-        'llm',
-        'classify_owner_intent',
-    ): 'd0c036b0e127cebcd01fcf1dc3db152d71d6fe5c9d4ef8a5d0d5a4fdb2b477f3',
-    (
-        'llm',
-        'classify_reply',
-    ): 'ef871cf1b9c603444060ef2bd5dc6bc43029eeabd97906ee371ec2e96bd85db9',
-    (
-        'llm',
-        'cluster_demand',
-    ): '6d22e9f9cb983faaf7c46a19c592fb316bb21a458de410fcfbbee3e263206551',
-    (
-        'llm',
-        'consolidate',
-    ): 'a80614644339d728dc5e016c993b40842409fafd6e69baa4b13ff8a814ad6b89',
+    ('lien', 'pre-poc'): '40f272829674ebc13a0e2a9001f6765b8396b4178b6dc159028fb691e5c0b1df',
+    ('llm', 'build_artifact'): 'a8b458813711a567660299b8aaa1c434079dfcf217340727a31545e716593209',
+    ('llm', 'classify_owner_intent'): '61f425e723f5466814d8fec08810d19667ec90985cec536c7b7de9506c17bb85',
+    ('llm', 'classify_reply'): '41640585fba6e127bdd0d8f8af3a4c0b9bcef9941a44d410f8f7c7d99824b867',
+    ('llm', 'cluster_demand'): 'e7074b97eb3ce50220c913b59308613147c864ed3c6a3e4687998bb440a69b1e',
+    ('llm', 'listen_choose_poc'): 'd20ac17b69f69686d86d55cdefd6cc8d62813804c7959bc5cd1eba1dba786b7b',
+    ('llm', 'listen_discover_needs_a'): 'b75ac17c2b769cdcfce88de82492a05c40cb30b836ddd162dcb12322a65fa664',
+    ('llm', 'listen_discover_needs_b'): 'b75ac17c2b769cdcfce88de82492a05c40cb30b836ddd162dcb12322a65fa664',
+    ('llm', 'consolidate'): '51ba6ee8b1d9c31641b38cd9adc0423f32eab351c25a8a1bcedf2dfa67a6216f',
     (
         'llm',
         'draft_hypothesis_full',
-    ): '7778f04c41610f260301d8cfcfa5ccb36631751c3e6e0e5944f46ddb79b828a6',
+    ): '12dcfb0e6991fc525879d3246bf9d314c9754ec598d775163b47e456719f5ab5',
     (
         'llm',
         'draft_hypothesis_smoke',
-    ): '7778f04c41610f260301d8cfcfa5ccb36631751c3e6e0e5944f46ddb79b828a6',
+    ): '12dcfb0e6991fc525879d3246bf9d314c9754ec598d775163b47e456719f5ab5',
     (
         'llm',
         'draft_price',
-    ): 'a1a6081fca51dcca241bbf4596784369f5a22e55ffd150cbf974529666405c82',
+    ): 'a0d6aca043e34aa9697c4462b8d840c22922891456c457c6abf1dca29e6f32a4',
     (
         'llm',
         'edit_serge_md',
-    ): 'a80614644339d728dc5e016c993b40842409fafd6e69baa4b13ff8a814ad6b89',
+    ): '51ba6ee8b1d9c31641b38cd9adc0423f32eab351c25a8a1bcedf2dfa67a6216f',
     (
         'llm',
         'extract_meeting',
-    ): 'faa07a11e3f00665262947c65d61983de4d7336004b556f33172c67a69dafb3f',
+    ): 'bc7764f49f6ceded3c3236a5af2ade1eced4e2aeb71d45be1b218436f2345aa2',
     (
         'llm',
         'fill_slots',
-    ): 'e19913111dcfbd738ea0334e1daaefd8300668561a2feb2c19c7c5d9dafa8716',
+    ): '30db35982ba79c2ec9c6e0f3453f953541266238dc0d66c637ba42c32f031e9f',
     (
         'llm',
         'install_guide',
-    ): '30ec66e905b9a0da3cfba2fc099712f23599a6cc3c3a9f43f1d57dd37387aedf',
+    ): '576c386b0d4d41acef99edd176e6bd136092196319e588a13eb220ab93e1b3dc',
     (
         'llm',
         'judge_allocator',
-    ): '77dce1ed55710205fad82a177ad1ed039c6610ec0f7f6e974404c1c60fb1b377',
+    ): '81452269e96caa48f5a2e260506d3b46beb13786b5fbb54d34daf4d34c48461c',
     (
         'llm',
         'judge_consequence',
-    ): 'd0c036b0e127cebcd01fcf1dc3db152d71d6fe5c9d4ef8a5d0d5a4fdb2b477f3',
+    ): '61f425e723f5466814d8fec08810d19667ec90985cec536c7b7de9506c17bb85',
     (
         'llm',
         'options_pivot',
-    ): '62a66c99194df80ce1393845485215b4f6782aeb1f577f18a90e4df27d11e44a',
+    ): '3a10cbadc5287010dd7418cc7c1cbb32f77464c7b4f5fa6ad896692d0f86481f',
     (
         'llm',
         'plan_scale',
-    ): '62a66c99194df80ce1393845485215b4f6782aeb1f577f18a90e4df27d11e44a',
+    ): '3a10cbadc5287010dd7418cc7c1cbb32f77464c7b4f5fa6ad896692d0f86481f',
     (
         'llm',
         'qualify_prospect',
-    ): 'aef3956ef13b48d3d27ac70620bcb561e28029c4bd7433e8947b6135dc645036',
+    ): '545b4294389f12ee364e5c13c398dda56448e556b086f2c1c946f187467c6b4d',
     (
         'llm',
         'render_context_fr',
-    ): 'd0c036b0e127cebcd01fcf1dc3db152d71d6fe5c9d4ef8a5d0d5a4fdb2b477f3',
+    ): '61f425e723f5466814d8fec08810d19667ec90985cec536c7b7de9506c17bb85',
     (
         'llm',
         'reply_intent',
-    ): '9bb67e21ca9f70becae5e596e30ae841b04759ee36893eecb34729286f7cab38',
+    ): '2b38fc112604e0a6908747f96e5aa1f05658dfb31b6b38f04b087f893dcabce6',
     (
         'llm',
         'resume_test',
-    ): '62a66c99194df80ce1393845485215b4f6782aeb1f577f18a90e4df27d11e44a',
+    ): '3a10cbadc5287010dd7418cc7c1cbb32f77464c7b4f5fa6ad896692d0f86481f',
     (
         'llm',
         'review_build',
-    ): 'd78d931cde1b175ab9086f10ad76ed9065cfe47ff142de56618a561f86ac0189',
+    ): '66357297ddf3dd3548bd37fd9e51db37ed435163b31ff0e1f41bc138250484df',
     (
         'llm',
         'review_other',
-    ): 'c37ae9d80a0aff7866a418ad3af54a41e0056f994c0fdf1d85df9d4102c1f29a',
+    ): 'd799a53ba2dcdbd9bf6a6878230b90cf2071da9215a09a9fc940a140b050c8d3',
     (
         'llm',
         'score_call',
-    ): '8c41ee0888d6a38aaaa27303fda5db4062020f36e4b4ce84e711818b95384436',
+    ): 'c4eea03e106d0f419aae4f4f5fb567acd165e72fa73db149692ad200c19a7936',
     (
         'llm',
         'score_lead_departage',
-    ): 'aef3956ef13b48d3d27ac70620bcb561e28029c4bd7433e8947b6135dc645036',
+    ): '545b4294389f12ee364e5c13c398dda56448e556b086f2c1c946f187467c6b4d',
     (
         'llm',
         'summarize_build_debt',
-    ): 'd78d931cde1b175ab9086f10ad76ed9065cfe47ff142de56618a561f86ac0189',
+    ): '66357297ddf3dd3548bd37fd9e51db37ed435163b31ff0e1f41bc138250484df',
     (
         'llm',
         'summarize_thread',
-    ): '8c41ee0888d6a38aaaa27303fda5db4062020f36e4b4ce84e711818b95384436',
+    ): 'c4eea03e106d0f419aae4f4f5fb567acd165e72fa73db149692ad200c19a7936',
     (
         'llm',
         'voice_dialog',
-    ): 'ba5a234323c142994a89196718be564502eeeaf4528a347efead8276572bf88f',
+    ): '3b8aae5f41f3f1863d75d3352e23b919f9e52b08d5e607f1864dbb2c1904a2d3',
     (
         'llm',
         'voice_script',
-    ): '448c729bd347697b3757387b0fde8f67cb5b96d6b76aa79889387d5276d4f115',
+    ): '60db5b252876481d93542ef1dea76a6075001b81c18486af7aea4219ac403885',
     (
         'llm',
         'write_followup',
-    ): 'e19913111dcfbd738ea0334e1daaefd8300668561a2feb2c19c7c5d9dafa8716',
+    ): '30db35982ba79c2ec9c6e0f3453f953541266238dc0d66c637ba42c32f031e9f',
     (
         'outil',
         'agenda',
@@ -223,8 +208,16 @@ SHA_ATTENDUS: dict[tuple[str, str], str] = {
     ): 'c28e81cd9475e25fcd2daaf0a0951ab7b456de38e9e8269138a1c26d090df730',
     (
         'outil',
+        'db_read',
+    ): 'b982c1b16e025fee5310fcaa2b701b22a58a56d5c0bb134566b24f4425bfab18',
+    (
+        'outil',
         'navigateur',
     ): 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+    (
+        'outil',
+        'web_search',
+    ): '51813343a03a41da95acc479d1eaad4b91c9d7da9ce5806fbe9cd31584d59d43',
     (
         'tech',
         'cluster_listen',

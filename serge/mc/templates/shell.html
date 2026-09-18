@@ -22,6 +22,7 @@
 <a href="#/voice" data-page="p7">Voix</a>
 <a href="#/health" data-page="p8">Health</a>
 <a href="#/identite" data-page="p9">Identité</a>
+<a href="#/ecoute" data-page="p10">Écoute</a>
 </nav>
 </aside>
 <div class="contenu">
@@ -92,6 +93,22 @@
 <div class="rang-kill rang-kill-etapes" data-coupes="etapes"></div>
 <h3>Tâches</h3>
 <div class="rang-kill rang-kill-kinds" data-coupes="kinds"></div>
+</section>
+</template>
+<template id="page-ecoute">
+<section class="panneau" data-section="ecoute" data-sig="">
+<h2>Écoute</h2>
+<p class="legende-policy">Deux explorations indépendantes, puis un choix protégé par la base.</p>
+<div class="grille-champs">
+<p data-ecoute="besoins">Besoins par découverte : …</p>
+<p data-ecoute="business">Business pour le prochain POC : …</p>
+<label class="champ-large">Guide de recherche <textarea data-ecoute="guide" maxlength="4000"></textarea></label>
+</div>
+<p>Les deux hyperparamètres se modifient dans <a href="#/policy">Policy &gt; Écoute du web</a>.</p>
+<div class="barre-policy"><button type="button" class="btn-fort" data-ecoute-action="lancer">Lancer le cycle</button></div>
+<p data-ecoute="cycle">Aucun cycle.</p>
+<h3>Agents et permissions DB</h3><ul data-ecoute="agents"></ul>
+<h3>Business candidats</h3><ul data-ecoute="candidates"></ul>
 </section>
 </template>
 <template id="page-system">

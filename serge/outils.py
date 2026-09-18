@@ -135,6 +135,26 @@ SEED: tuple[tuple[str, str, str, str, str, str, str, int], ...] = (
         'prevu',
         0,
     ),
+    (
+        'db_read',
+        'deterministe',
+        'serge/listen/memory.py',
+        'bdbc0929c92bb0c5bca2e694c70bffd16201fcac510272b0f15ddc43535e7bbd',
+        'Lire une vue DB autorisée',
+        'Lecteurs nommés, sorties typées et permissions vérifiées en SQLite.',
+        'branche',
+        0,
+    ),
+    (
+        'web_search',
+        'web',
+        'serge/listen/web.py',
+        'b20dcdb97ef05caf7214e7241142eb9cee6c776610c0ff6bae5d4f0cbfc6e400',
+        'Chercher sur le web public',
+        'Recherche publique en lecture seule, sans compte ni action externe.',
+        'branche',
+        0,
+    ),
 )
 
 

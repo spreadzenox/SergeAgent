@@ -26,6 +26,8 @@ from serge.llm.outils_exec import (
     tours_max,
 )
 
+CLE_PERMISSIONS = 'serge_db_permissions'
+
 
 def _args_norm(raw: str) -> str:
     try:
@@ -118,6 +120,35 @@ def _injecter_quotas(
     hist.insert(index, message)
 
 
+def _injecter_permissions(
+    hist: list[dict[str, Any]], readers: tuple[str, ...]
+) -> None:
+    """Expose les lecteurs autorisés sans donner de SQL libre au modèle."""
+    if not readers:
+        return
+    message = {
+        'role': 'system',
+        'content': json.dumps(
+            {CLE_PERMISSIONS: {'readers': list(readers), 'source': 'sqlite'}},
+            ensure_ascii=False,
+        ),
+    }
+    for index, item in enumerate(hist):
+        if item.get('role') != 'system':
+            continue
+        try:
+            data = json.loads(str(item.get('content') or ''))
+        except json.JSONDecodeError:
+            continue
+        if isinstance(data, dict) and CLE_PERMISSIONS in data:
+            hist[index] = message
+            return
+    index = 0
+    while index < len(hist) and hist[index].get('role') == 'system':
+        index += 1
+    hist.insert(index, message)
+
+
 def _message_assistant(result: ChatResult) -> dict[str, Any]:
     calls = [
         {
@@ -166,6 +197,7 @@ def executer_boucle(
         ChatResult agrégé (texte final, tokens et latence sommés).
     """
     pressables = outils_pressables(spec)
+    readers = tuple(str(item) for item in (spec.get('db_readers') or ()))
     cap = tours_max(policy)
     hist = [dict(item) for item in messages]
     spent: dict[str, int] = {}
@@ -195,6 +227,7 @@ def executer_boucle(
         tools = schemas_openai(encore)
         if pressables:
             _injecter_quotas(hist, restants, tours_restants)
+        _injecter_permissions(hist, readers)
         force_texte = not tools or tours >= cap
         last = caller(
             api_key,

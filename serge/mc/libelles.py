@@ -126,6 +126,9 @@ ORBITES = {
 
 LLM_ETAPE = {
     'cluster_demand': 'pre_prospection',
+    'listen_discover_needs_a': 'pre_prospection',
+    'listen_discover_needs_b': 'pre_prospection',
+    'listen_choose_poc': 'pre_prospection',
     'draft_hypothesis_smoke': 'conception_poc',
     'draft_hypothesis_full': 'choix_venture',
     'resume_test': 'choix_venture',
@@ -204,6 +207,9 @@ LLM_TITRES = {
     'classify_owner_intent': 'Lire l’intention owner',
     'judge_consequence': 'Juger une conséquence',
     'cluster_demand': 'Regrouper la demande',
+    'listen_discover_needs_a': 'Explorer les besoins A',
+    'listen_discover_needs_b': 'Explorer les besoins B',
+    'listen_choose_poc': 'Choisir les business à tester',
     'install_guide': 'Guider l’installation',
 }
 

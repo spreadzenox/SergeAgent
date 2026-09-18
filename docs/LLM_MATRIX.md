@@ -176,7 +176,20 @@ Lifecycle tickets, actes (boutons), expiry : **DET**.
 
 ---
 
-## 10. Synthèse : ~29 points LLM + squelette DET
+### 9.1 Pré-prospection par cycle
+
+| ID | Point | Verdict | Tier | Contrat | Garde-fou | Repli |
+|---|---|---|---|---|---|---|
+| J2 | `listen_discover_needs_a` | LLM-B | T2 | `db_read` avec `current_listen_cycle`, `listen_cycle_documents`, `known_business_candidates` ; `web_search` public ; couche 5 autorisée | JSON validé, preuves parmi les documents du cycle, déduplication déterministe | Aucun candidat nouveau |
+| J3 | `listen_discover_needs_b` | LLM-B | T2 | Même lecteurs, même corpus et même guide que J2 ; aucun résultat J2 injecté | Exécution séparée avant toute écriture des candidats | Aucun candidat nouveau |
+| J4 | `listen_choose_poc` | LLM-1 | T2 | `db_read` avec `current_listen_cycle`, `eligible_poc_candidates` ; couche 5 interdite | `p_target`, IDs existants et veto DB contre `SELECTED`/`STARTED` | File owner |
+
+`listen_cycle_docs` conserve le snapshot documentaire. Le cycle suivant ne
+réattribue aucun document déjà exploré ; `business_candidates` conserve les
+idées déjà trouvées et leur état POC. Les permissions effectives sont dans
+`llm_point_readers`, visibles par Mission Control et vérifiées par `db_read`.
+
+## 10. Synthèse : ~32 points LLM + squelette DET
 
 | Couche | Nature | Points |
 |---|---|---|

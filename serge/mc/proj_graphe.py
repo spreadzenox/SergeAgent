@@ -17,7 +17,7 @@ from serge.mc.libelles import (
     titre_llm,
     verbe,
 )
-from serge.mc.proj_etape import lister_jugements
+from serge.mc.proj_etape import ORDRE, RESTE, lister_jugements
 from serge.tickets.lifecycle import OPENISH
 
 
@@ -104,9 +104,29 @@ def project_graphe(
     kinds_run = {str(r[0]) for r in running}
     chauds = live | kinds_run
     llm_nodes = []
-    for row in conn.execute(
-        'SELECT id, etape_id, titre, tier FROM llm_points ORDER BY id'
-    ):
+    rows = conn.execute(
+        'SELECT id, etape_id, titre, tier FROM llm_points'
+    ).fetchall()
+    positions: dict[tuple[str, str], tuple[int, int, int, str]] = {}
+    step_rows = conn.execute(
+        'SELECT id, rang FROM pipeline_steps ORDER BY rang, id'
+    ).fetchall()
+    for step_rank, step in enumerate(step_rows):
+        step_id = str(step[0])
+        ordered = ORDRE.get(step_id, [])
+        unordered = RESTE.get(step_id, [])
+        for point_rank, point_id in enumerate(ordered, 1):
+            positions[(step_id, point_id)] = (step_rank, 0, point_rank, point_id)
+        for point_rank, point_id in enumerate(unordered, 1):
+            positions[(step_id, point_id)] = (step_rank, 1, point_rank, point_id)
+    rows = sorted(
+        rows,
+        key=lambda row: positions.get(
+            (str(row[1]), str(row[0])),
+            (999, 2, 999, str(row[0])),
+        ),
+    )
+    for row in rows:
         name = str(row[0])
         llm_nodes.append(
             {
