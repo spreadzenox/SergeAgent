@@ -38,15 +38,6 @@ SEED: tuple[tuple[str, str, str, str, str, str, str], ...] = (
         'Le LLM classe, le code compte.',
     ),
     (
-        'sequencer',
-        'prospection_light',
-        'select',
-        'serge/funnels/sequencer.py',
-        '',
-        'Séquenceur de touches',
-        'Qui / quand : requête, pas une invocation LLM.',
-    ),
-    (
         'select_pre_venture',
         'choix_venture',
         'select',
@@ -104,6 +95,7 @@ def ensure_tech_invocations(conn: sqlite3.Connection) -> None:
     Args:
         conn: Canon (commit par l’appelant).
     """
+    ids = {row[0] for row in SEED}
     for ident, etape, kind, path, sha, titre, doc in SEED:
         if kind not in KINDS:
             raise TechError(f'kind technique inconnu : {kind}')
@@ -122,6 +114,11 @@ def ensure_tech_invocations(conn: sqlite3.Connection) -> None:
             ' code_sha, titre, doc_md, enabled) VALUES(?,?,?,?,?,?,?,1)',
             (ident, etape, kind, path, sha, titre, doc),
         )
+    placeholders = ','.join('?' * len(ids))
+    conn.execute(
+        f'DELETE FROM tech_invocations WHERE id NOT IN ({placeholders})',
+        tuple(ids),
+    )
 
 
 def _canaux_tech(conn: sqlite3.Connection, ident: str) -> list[dict[str, str]]:

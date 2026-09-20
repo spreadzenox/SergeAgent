@@ -129,6 +129,7 @@ LLM_ETAPE = {
     'listen_discover_needs_a': 'pre_prospection',
     'listen_discover_needs_b': 'pre_prospection',
     'listen_choose_poc': 'pre_prospection',
+    'discover_contacts': 'prospection_light',
     'draft_hypothesis_smoke': 'conception_poc',
     'draft_hypothesis_full': 'choix_venture',
     'resume_test': 'choix_venture',

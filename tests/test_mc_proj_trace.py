@@ -23,9 +23,17 @@ class ProjTraceTests(unittest.TestCase):
         self.conn = sqlite3.connect(':memory:')
         init_schema(self.conn)
         self.conn.execute(
-            'INSERT INTO contacts(id, venture_id, display, email,'
-            " created_at, updated_at) VALUES('p1','v1','Ada','ada@x.io',"
-            "'t','t')"
+            'INSERT INTO contacts(id, venture_id, display,'
+            ' contact_reference_by_canal, created_at, updated_at)'
+            ' VALUES(?,?,?,?,?,?)',
+            (
+                'p1',
+                'v1',
+                'Ada',
+                json.dumps({'email': {'address': 'ada@x.io', 'active': True}}),
+                't',
+                't',
+            ),
         )
         self.conn.execute(
             'INSERT INTO tickets(id, type, title, state,'

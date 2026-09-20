@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
-"""Trace de contact par lieu : upsert, jamais de fusion entre canaux."""
+"""Références de contact par canal : upsert et déduplication canonique."""
 
 from __future__ import annotations
 
 import sqlite3
 
 from serge.db.store import utcnow
-from serge.funnels.contacts import insert_contact
+from serge.funnels.contacts import (
+    contact_references,
+    find_contact_by_reference,
+    insert_contact,
+    set_contact_reference,
+)
 
 
 class ContactCanalError(ValueError):
@@ -24,12 +29,12 @@ def upsert_trace(
     phone: str = '',
     profile_url: str = '',
 ) -> str:
-    """Crée ou enrichit la fiche de ce lieu. L’autre lieu reste une autre ligne.
+    """Crée ou enrichit la référence de ce lieu.
 
     Args:
         conn: Canon (commit par l’appelant).
         venture_id: Venture.
-        venue: Lieu (``linkedin``, ``reddit``, ``email``…).
+        venue: Canal/lieu (``linkedin``, ``reddit``, ``email``…).
         handle: Identifiant sur ce lieu (pseudo, URL, adresse).
         display: Nom affiché, s’il est connu.
         email: Mail, seulement s’il vient de **ce** lieu.
@@ -46,35 +51,75 @@ def upsert_trace(
     cle = handle.strip()
     if not lieu or not cle:
         raise ContactCanalError('lieu et identifiant requis')
-    row = conn.execute(
-        'SELECT id, display, email, phone, profile_url FROM contacts'
-        ' WHERE venture_id=? AND venue=? AND handle=?',
-        (venture_id, lieu, cle),
-    ).fetchone()
-    if row is None:
-        ident = insert_contact(
+
+    canal = {
+        'gmail': 'email',
+        'mail': 'email',
+        'phone': 'voice',
+        'telephone': 'voice',
+    }.get(lieu, lieu)
+    trace: dict[str, str | bool]
+    if canal == 'email':
+        trace = {'address': cle, 'handle': cle, 'venue': lieu}
+    elif canal == 'voice':
+        trace = {'phone': cle, 'handle': cle, 'venue': lieu}
+    else:
+        trace = {'handle': cle, 'venue': lieu}
+    if profile_url.strip():
+        trace['profile_url'] = profile_url.strip()
+
+    ident = find_contact_by_reference(conn, venture_id, canal, trace)
+    if ident is None and email.strip():
+        ident = find_contact_by_reference(
+            conn, venture_id, 'email', {'address': email.strip()}
+        )
+    if ident is None and phone.strip():
+        ident = find_contact_by_reference(
+            conn, venture_id, 'voice', {'phone': phone.strip()}
+        )
+
+    if ident is None:
+        references: dict[str, dict[str, str | bool]] = {canal: trace}
+        if email.strip():
+            references['email'] = {
+                'address': email.strip(),
+                'active': True,
+            }
+        if phone.strip():
+            references['voice'] = {'phone': phone.strip(), 'active': True}
+        return insert_contact(
             conn,
             venture_id,
             display.strip() or cle,
-            email=email.strip(),
-            phone=phone.strip(),
+            references,
         )
-        conn.execute(
-            'UPDATE contacts SET venue=?, handle=?, profile_url=? WHERE id=?',
-            (lieu, cle, profile_url.strip(), ident),
-        )
-        return ident
-    ident = str(row[0])
+
+    references = contact_references(conn, ident)
+    merged = dict(references.get(canal, {}))
+    merged.update({key: value for key, value in trace.items() if value})
+    merged['active'] = True
+    set_contact_reference(conn, ident, canal, merged)
+    if email.strip():
+        current = dict(references.get('email', {}))
+        current['address'] = email.strip()
+        current['active'] = True
+        set_contact_reference(conn, ident, 'email', current)
+    if phone.strip():
+        current = dict(references.get('voice', {}))
+        current['phone'] = phone.strip()
+        current['active'] = True
+        set_contact_reference(conn, ident, 'voice', current)
     conn.execute(
-        'UPDATE contacts SET display=?, email=?, phone=?, profile_url=?,'
-        ' updated_at=? WHERE id=?',
-        (
-            display.strip() or str(row[1] or cle),
-            email.strip() or str(row[2] or ''),
-            phone.strip() or str(row[3] or ''),
-            profile_url.strip() or str(row[4] or ''),
-            utcnow(),
-            ident,
-        ),
+        'UPDATE contacts SET display=?, updated_at=? WHERE id=?',
+        (display.strip() or _display_for(conn, ident, cle), utcnow(), ident),
     )
     return ident
+
+
+def _display_for(
+    conn: sqlite3.Connection, contact_id: str, fallback: str
+) -> str:
+    row = conn.execute(
+        'SELECT display FROM contacts WHERE id=?', (contact_id,)
+    ).fetchone()
+    return str(row[0] or fallback) if row else fallback

@@ -17,9 +17,9 @@ Réciproquement, on ne construit que ce que la matrice C exige.
 
 | # | Couche | Question | Latence | Écrivain | Lecteurs |
 |---|---|---|---|---|---|
-| 1 | **Registres** | "Quel est l'état actuel ?" | ms (SQL direct) | Dét + tickets | Tous (fixed) |
+| 1 | **Registres** | "Quel est l'état actuel ?" | ms (SQL direct) | Dét + tickets | Tous les points autorisés |
 | 2 | **Épisodes** | "Que s'est-il passé ?" | ms (SQL append-only) | Dét (transitions) | Consolidation, audit, calculs |
-| 3 | **Leçons** | "Qu'a-t-on appris ?" | ms (SQL top-k) | Consolidateur + Julien | Points LLM (retrieved) |
+| 3 | **Leçons** | "Qu'a-t-on appris ?" | ms (SQL top-k) | Consolidateur + Julien | Points LLM selon l'outil déclaré |
 | 4 | **Résumés** | "L'essentiel de ce gros truc ?" | ms (cache + TTL) | LLM-R + Julien | Points à gros contexte |
 | 5 | **À la demande** | "De quoi ai-je besoin ?" | 100ms-1s (hybride) | Auto (indexation) | Tous LLM non simplistes |
 
@@ -43,14 +43,26 @@ de lecture (`current_listen_cycle`, `listen_cycle_documents`,
 au second. Le choix lit uniquement `eligible_poc_candidates` après écriture et
 déduplication déterministes des candidats.
 
-Les lecteurs sont des vues nommées, cataloguées dans `db_readers`. La liste des
-lecteurs autorisés par point est déclarée une seule fois dans
-`config/llm-points.yaml` (`context.db_readers`) puis projetée au boot dans
-`llm_point_readers`. Le tool `db_read` refuse un lecteur absent de cette
-projection et n'accepte jamais de SQL libre. Mission Control et le runtime
-lisent la projection SQLite ; aucune permission parallèle n'est maintenue en
-Python. `web_search` est séparé : lecture du web public, bornée et sans
-écriture dans le canon.
+Les anciens readers sont des **capsules mémoire** persistées dans
+`db_readers` : titre, description, ajout de prompt, `tool_id` sous-jacent et
+paramètres fixes. La liste des capsules autorisées par point reste déclarée
+dans `config/llm-points.yaml` (`context.db_readers`) puis projetée dans
+`llm_point_readers`; cette affectation capsule ↔ point est donc conservée.
+
+Chaque tool sous-jacent porte `kind='db_read'` dans `tools` et possède un
+catalogue relationnel : tables, colonnes, filtres structurés, jointures et
+paramètres dynamiques. Le query builder ne reçoit jamais de nom SQL ou de
+`WHERE` libre du modèle : colonnes, paramètres et jointures sont validés
+contre ce catalogue, puis les valeurs sont bindées par SQLite. Le schéma
+OpenAI est construit à partir des mêmes lignes DB. Le constructeur Mission
+Control est une combinaison de tables et d'actions DB, pas un handler LLM.
+
+`execute_memory_capsule(conn, capsule_id, runtime_params)` est l'API générique
+de résolution : les paramètres dynamiques viennent du contexte
+d'ordonnancement, jamais d'une résolution implicite de la capsule. Son
+résultat contient les données, la description et `prompt_addition` pour
+l'orchestrateur. `web_search` reste séparé : lecture du web public, bornée et
+sans écriture dans le canon.
 
 ---
 
@@ -73,7 +85,7 @@ versionnées), `artifacts` (versions, URLs, hashes), `subscriptions`,
   (1 seul aujourd'hui) ; `registre_snapshots` quotidiens (time-travel debug).
 
 **Consommateurs.** Scheduler, guards, normaliseurs, compteurs U1-U5,
-dashboards, contexte `fixed` de tous les points LLM.
+  dashboards, points LLM disposant d'un lecteur autorisé.
 
 ---
 
@@ -120,7 +132,7 @@ observé).
 - Leçons à expiry possible ("valable jusqu'à fin 2026" : lois, prix,
   plateformes). Jamais de re-test d'une leçon négative forte sans ticket.
 
-**Consommateurs.** Points LLM (retrieved top-k), PIVOT (objections →
+**Consommateurs.** Points LLM via l'outil de mémoire, PIVOT (objections →
 variation), anti-répétition (pitfalls checkés avant action), onboarding
 nouvelle campagne (playbooks applicables).
 
@@ -144,7 +156,7 @@ tickets longs, snapshots digest (quotidien/hebdo).
 - `SERGE.md` : diff visible, rollback 1 clic, **constitution injectée
   avec** (exigence Julien), auto-édité par Serge sous ces garde-fous.
 
-**Consommateurs.** Contexte `fixed` universel (SERGE.md partout), points à
+**Consommateurs.** SERGE.md lorsqu'il est préchargé par l'appelant, points à
 gros contexte, supervision Julien (digest, cartes H), prompts longs sans
 explosion tokens. Futur : multi-niveaux (1 ligne → 1 page), comparatifs,
 projections (calcul dét + formulation LLM-R).
@@ -160,8 +172,8 @@ filtres d'abord (rapide, précis), vecteurs ensuite (rappel), fusion.
 
 **Interface : tool unique `memory_search`.** Pressé pour de vrai par
 `run_point` (boucle d’outils générique, plafond 12 tours). Offert
-seulement si `couche5.allowed: true`. Un point peut resserrer via
-`couche5.max_calls` ou `context.tool_quotas.memory_search`. Le reste
+seulement si `memory_search` apparaît dans `context.tools`. Un point peut
+resserrer via `context.tool_quotas.memory_search`. Le reste
 d’appels est injecté dans le contexte du jugement à chaque tour.
 
 ```yaml
@@ -173,19 +185,15 @@ memory_search:
     since: "2026-08-01"
     tags: [pricing, artisans]
   top_k: 5
-  budget_tokens: 2000                         # garanti : tronque + "affine ta requête"
-  # → [{type, id, score, extrait, lien}, ...] + tokens_used
+  # → [{type, id, score, extrait, lien}, ...]
 ```
 
 **Règles.**
 - **Lecture seule, toujours.** Informe une décision, ne l'exécute jamais.
-- **Budget imposé par l'appelant** (contrat de contexte du point) ; garanti.
-- **Traçabilité** : chaque recherche loguée (qui, quoi, filtres, résultats,
-  tokens). Source U5 ("toujours la même recherche → promouvoir en 1/3") et
+- **Traçabilité** : chaque recherche loguée (qui, quoi, filtres, résultats).
+  Source U5 ("toujours la même recherche → promouvoir en 1/3") et
   détecteur d'abus ("200 recherches/cycle" → attracteur).
-- **Interdictions héritées** : applique les `forbidden` du contrat appelant
-  (secrets, PII inutile, autres ventures sauf scope global) — filtrage côté
-  tool, pas espoir côté prompt.
+- Les secrets et la PII sont filtrés côté outil, pas par espoir dans le prompt.
 - **Index incrémental** : indexation à l'écriture (job dét léger), pas de
   re-index globale. Embeddings versionnés, modèle pinné par hash.
 - **Pur vectoriel sans filtres interdit par design** (bruit + tokens).
@@ -196,7 +204,7 @@ memory_search:
   promotion en couche 1/3/4. La couche 5 reste une soupape longue traîne.
 
 **Garde-fous.** Interdiction d'indexer secrets/PII (filtrage à l'écriture).
-Jamais de PII/secrets dans les extraits retournés (redaction + `forbidden`).
+Jamais de PII/secrets dans les extraits retournés (redaction côté outil).
 
 ---
 
@@ -205,10 +213,10 @@ Jamais de PII/secrets dans les extraits retournés (redaction + `forbidden`).
 - **Voix temps réel** (tours de parole) : **0 recherche couche 5.**
   Contexte pré-chargé + résumé uniquement. Latence critique.
 - **Async temps réel** (classifier, qualifier, router — SLA 1h) :
-  **1 recherche max** (budget 1000 tokens, timeout 2 s). Échec/timeout →
+  **1 recherche max** (timeout 2 s). Échec/timeout →
   on juge sans (dégradation). Logué.
 - **Batch et préparation** (consolidation, drafts, juge alloueur,
-  builder) : **couche 5 libre** (rate limit 3/cycle/point, budgets larges).
+  builder) : **couche 5 libre** (rate limit 3/cycle/point).
 
 Dans tous les cas : log de manque quand le contexte pré-chargé est
 insuffisant ("j'aurais voulu X") → alimente la promotion. Métrique :
@@ -254,7 +262,7 @@ d'intégration, payé une fois.
 
 - Épisode non référencé par aucune leçon depuis 30 jours → archive froide
   (réversible, requêtable lent). Jamais effacé (couche 2 éternelle).
-- Leçon contredite 3 fois → `deprecated` (pas effacée, exclue du retrieved
+- Leçon contredite 3 fois → `deprecated` (pas effacée, exclue des recherches
   sauf demande explicite).
 - Acte de gouvernance logué (qui/quoi/quand/pourquoi), visible FYI.
   Pas d'oubli silencieux.

@@ -99,7 +99,7 @@ Trois familles d'audiences, même funnel de mesure (U1-U5) :
 
 | Famille | Exemples | U1 (toucher) | Particularité |
 |---|---|---|---|
-| **Nommée** | Email, voix, LinkedIn 1:1, SMS | Délivrés/connects/accepts | Séquences, cooldowns OUTBOUND, consentement individuel |
+| **Nommée** | Email, voix, LinkedIn 1:1, SMS | Délivrés/connects/accepts | Touches historiques, cooldowns OUTBOUND, consentement individuel |
 | **Ciblée anonyme** | Meta/Google/LinkedIn/Reddit Ads | Impressions viewables, clics | Budget, enchères, créas ; opt-in à la conversion. **`prevu`** : `campaigns.family='ads'` existe, aucun writer ni jauge de dépense live. |
 | **Lieu** | SEO, Reddit orga, PH, marketplaces, contenu | Vues, visites, briefs reçus | Pas de quota d'envoi — gate = qualité + standing |
 
@@ -110,8 +110,8 @@ Le **contact** est un cas particulier : audience nommée de N individus.
 Deux régimes distincts — un cooldown mécanique ne doit jamais bloquer une
 réponse urgente.
 
-- **OUTBOUND** (Serge initie) : cooldowns stricts, 1 touch à la fois,
-  quotas, séquences. Protections anti-harcèlement.
+- **OUTBOUND** (Serge initie) : contrôles sur les touches historiques,
+  quotas et consentement. Protections anti-harcèlement.
 - **INBOUND** (le prospect a parlé en premier ou répondu) : **pas de
   cooldown mécanique**. SLA à la place (1h ouvrée, §4). Le prospect qui
   engage a ouvert la porte — la ralentir artificiellement, c'est perdre
@@ -218,15 +218,11 @@ SCOUTED (lieu identifié via écoute J)
   lente (chauffe 3 sem.) vs rapide (profil pro direct : marketplaces,
   annuaires, PH) selon lieu bien décrit. Déclaration P2 obligatoire.
 
-### §2.6 Séquenceur + alloueur (validé)
+### §2.6 Allocation inter-familles (validé)
 
-**Séquenceur contact** (familles nommées) : lit contact + état + historique +
-séquence YAML → prochain `work_item` READY. Règles : 1 touch à la fois par
-contact (OUTBOUND), amplification voix (appel même non connecté → re-priorise
-follow-up email, ×2), attribution multi-touch (intent → touche déclenchante +
-précédentes, pour U4 par canal). Séquence de départ : email → voix →
-LinkedIn (modifiable par venture). Follow-ups : *quand* déterministe,
-*quoi* en LLM avec contexte mémoire complet (validé en A).
+Les campagnes restent des unités de mesure et de budget. Les touches sont des
+traces historiques ; elles ne servent pas à calculer une prochaine étape ou un
+envoi dû.
 
 **Alloueur inter-familles : mix A+B+C (validé Q3, sans hystérésis).**
 

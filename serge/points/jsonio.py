@@ -62,7 +62,6 @@ def run_json(
     *,
     root: Path | None = None,
     caller: Callable[..., ChatResult] | None = None,
-    max_tokens: int = 800,
 ) -> tuple[dict[str, Any] | None, RunResult | None]:
     """Appelle un point + parse JSON avec recalls bornés.
 
@@ -74,7 +73,6 @@ def run_json(
         validate: Prédicat sur l'objet parsé (schéma du point).
         root: config_root (défaut : instance).
         caller: Appel LLM (défaut : client réel).
-        max_tokens: Cap réponse.
 
     Returns:
         Tuple (objet validé ou None, dernier RunResult ou None).
@@ -87,7 +85,7 @@ def run_json(
     attempts = [messages]
     last: RunResult | None = None
     for attempt in range(max(0, recalls) + 1):
-        kwargs: dict[str, Any] = {'root': root, 'max_tokens': max_tokens}
+        kwargs: dict[str, Any] = {'root': root}
         if caller is not None:
             kwargs['caller'] = caller
         last = run_registered_point(

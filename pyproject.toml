@@ -37,5 +37,8 @@ quote-style = "single"
 [tool.ty.environment]
 python-version = "3.12"
 
+[tool.ty.src]
+exclude = ["tests"]
+
 [tool.uv]
 package = false

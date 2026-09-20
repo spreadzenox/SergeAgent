@@ -87,7 +87,7 @@ class McMindTests(McBrowserCase):
         from playwright.sync_api import expect
 
         page = self._page_cerveau()
-        expect(page.locator('table.matrice tbody tr')).to_have_count(32)
+        expect(page.locator('table.matrice tbody tr')).to_have_count(33)
         matrice = page.locator('[data-section="matrice"]')
         expect(matrice).to_contain_text('qualify_prospect')
         expect(matrice).to_contain_text('Tué (temporaire)')
@@ -112,7 +112,7 @@ class McMindTests(McBrowserCase):
         self._watch_errors(page)
         page.goto(f'{self.base}/owner#/mind')
         page.locator('table.matrice tbody tr').first.wait_for(timeout=10000)
-        expect(page.locator('table.matrice tbody tr')).to_have_count(32)
+        expect(page.locator('table.matrice tbody tr')).to_have_count(33)
         expect(page.locator('[data-section="matrice"]')).to_contain_text(
             'En service'
         )

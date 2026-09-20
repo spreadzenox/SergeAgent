@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import base64
+import json
 import sqlite3
 import sys
 import unittest
@@ -37,10 +38,27 @@ class CallPollTests(unittest.TestCase):
             " updated_at) VALUES('v1','SMOKE_RUNNING',1,'t','t')"
         )
         self.conn.execute(
-            'INSERT INTO contacts(id, venture_id, display, email, phone,'
-            ' regime, funnel_state, created_at, updated_at)'
-            " VALUES('p1','v1','Ada','ada@x.io','+33612345678','OUTBOUND',"
-            "'CONTACTING','t','t')"
+            'INSERT INTO contacts(id, venture_id, display,'
+            ' contact_reference_by_canal, regime, funnel_state, created_at,'
+            ' updated_at) VALUES(?,?,?,?,?,?,?,?)',
+            (
+                'p1',
+                'v1',
+                'Ada',
+                json.dumps(
+                    {
+                        'email': {'address': 'ada@x.io', 'active': True},
+                        'voice': {
+                            'phone': '+33612345678',
+                            'active': True,
+                        },
+                    }
+                ),
+                'OUTBOUND',
+                'CONTACTING',
+                't',
+                't',
+            ),
         )
         self.conn.commit()
 

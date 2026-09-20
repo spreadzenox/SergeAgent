@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import sys
 import unittest
 from datetime import UTC, datetime
@@ -57,9 +58,24 @@ class McEconomyTests(McBrowserCase):
                 (iso, iso),
             )
             conn.execute(
-                'INSERT INTO contacts(id, venture_id, display, email, created_at, updated_at)'
-                " VALUES('ct_eco', 'v_eco', 'Bernard', 'bernard@test.com', ?, ?)",
-                (iso, iso),
+                'INSERT INTO contacts(id, venture_id, display,'
+                ' contact_reference_by_canal, created_at, updated_at)'
+                ' VALUES(?,?,?,?,?,?)',
+                (
+                    'ct_eco',
+                    'v_eco',
+                    'Bernard',
+                    json.dumps(
+                        {
+                            'email': {
+                                'address': 'bernard@test.com',
+                                'active': True,
+                            }
+                        }
+                    ),
+                    iso,
+                    iso,
+                ),
             )
             conn.execute(
                 'INSERT INTO touches(id, campaign_id, contact_id, channel, status, cost_eur, idempotency_key, created_at, updated_at)'

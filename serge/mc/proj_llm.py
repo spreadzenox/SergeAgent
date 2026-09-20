@@ -112,15 +112,14 @@ def _repli(brut: str) -> str:
     return f'Si le modèle n’y arrive pas, plan B : {cle}.' if cle else '—'
 
 
-def _liens_flux(ident: str, spec: dict) -> list[dict[str, str]]:
-    ctx = spec.get('context') or {}
-    cles = ' '.join(
-        str(x)
-        for x in list(ctx.get('fixed') or [])
-        + list(ctx.get('retrieved') or [])
-    )
+def _liens_flux(conn: sqlite3.Connection, ident: str) -> list[dict[str, str]]:
     liens: list[dict[str, str]] = []
-    if ident == 'cluster_demand' or 'ecoute' in cles or 'verbatim' in cles:
+    readers = conn.execute(
+        'SELECT 1 FROM llm_point_readers WHERE point_id=? AND enabled=1'
+        " AND usage='autorise' LIMIT 1",
+        (ident,),
+    ).fetchone()
+    if ident == 'cluster_demand' or readers is not None:
         liens.append(
             {'type': 'ecoute', 'id': 'pages', 'titre': 'Pages vraiment lues'}
         )
@@ -140,12 +139,18 @@ def _liens_flux(ident: str, spec: dict) -> list[dict[str, str]]:
     return liens
 
 
-def _liens_materiel(spec: dict) -> list[dict[str, str]]:
-    ctx = spec.get('context') or {}
-    vus: list[str] = []
-    for cle in list(ctx.get('fixed') or []) + list(ctx.get('retrieved') or []):
-        if str(cle) not in vus:
-            vus.append(str(cle))
+def _liens_materiel(
+    conn: sqlite3.Connection, ident: str
+) -> list[dict[str, str]]:
+    vus = [
+        str(row[0])
+        for row in conn.execute(
+            'SELECT reader_id FROM llm_point_readers'
+            " WHERE point_id=? AND enabled=1 AND usage='autorise'"
+            ' ORDER BY reader_id',
+            (ident,),
+        ).fetchall()
+    ]
     return [
         {'type': 'contexte', 'id': cle, 'titre': titre_materiel(cle)}
         for cle in vus
@@ -176,8 +181,21 @@ def _outils(conn: sqlite3.Connection, point_id: str) -> list[dict[str, str]]:
 def project_llm(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
     """Fiche d’un jugement : rôle, flux, lectures, outils, passages."""
     spec = _points().get(ident)
-    if spec is None:
+    point = point_par_id(conn, ident)
+    if spec is None and point is None:
         return None
+    spec = dict(spec or {})
+    if point is not None:
+        spec.update(
+            {
+                'verdict': point['verdict'],
+                'tier': point['tier'],
+                'enabled': point['enabled'],
+                'prompt': point['prompt'],
+                'output_mode': point['output_mode'],
+                'external_info': point['external_info'],
+            }
+        )
     role, entrees, sorties, dest, fmt = role_de(ident)
     if ident == 'cluster_demand':
         n, srcs = _ecoute_etat(conn)
@@ -186,6 +204,7 @@ def project_llm(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
             ' Clique « Pages vraiment lues » pour le miroir.'
         )
     prompt, sortie = _dernier_io(conn, ident)
+    prompt = prompt or str(point.get('prompt') if point else '')
     runs = conn.execute(
         'SELECT id, created_at, tokens_in, tokens_out, latency_ms,'
         ' verdict, tier, model FROM llm_usage WHERE point=?'
@@ -217,7 +236,6 @@ def project_llm(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
         ' ici on verra le prochain passage dès qu’un épisode'
         ' sera posé.'
     )
-    liens_flux = _liens_flux(ident, spec)
     return {
         'type': 'llm',
         'id': ident,
@@ -233,6 +251,24 @@ def project_llm(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
                 'v': VERDICTS.get(
                     str(spec.get('verdict')), str(spec.get('verdict'))
                 ),
+            },
+            {
+                'k': 'Mode de sortie',
+                'v': str(
+                    point.get('output_mode')
+                    if point
+                    else spec.get('output_mode')
+                ),
+            },
+            {
+                'k': 'Information externe',
+                'v': 'oui'
+                if (
+                    point.get('external_info')
+                    if point
+                    else spec.get('external_info')
+                )
+                else 'non',
             },
             {
                 'k': 'Si ça rate',
@@ -261,15 +297,14 @@ def project_llm(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
                     {'k': 'Ensuite', 'v': dest},
                     {'k': 'À quoi ça ressemble', 'v': fmt},
                 ],
-                'liens': liens_flux,
+                'liens': _liens_flux(conn, ident),
             },
             {
                 'titre': 'Le texte qu’on lui donne (prompt)',
                 'texte': prompt_txt,
                 'todo': (
-                    'Pouvoir modifier ce texte depuis Mission Control :'
-                    ' pas encore branché. On le notera dans un dossier'
-                    ' de prompts, avec une revue avant d’appliquer.'
+                    'Le propriétaire peut modifier ce texte via l’API MC'
+                    ' llm-point; la valeur est conservée dans SQLite.'
                 ),
             },
             {
@@ -283,7 +318,7 @@ def project_llm(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
                     'Le dossier prévu pour ce jugement — pas des noms'
                     ' de variables. Clique une ligne : c’est expliqué.'
                 ),
-                'liens': _liens_materiel(spec),
+                'liens': _liens_materiel(conn, ident),
             },
             {
                 'titre': 'Outils',
@@ -329,6 +364,8 @@ def project_llm_usage(
     if row is None or str(row[1]) != point:
         return None
     prompt, sortie = _dernier_io(conn, point)
+    point_row = point_par_id(conn, point)
+    prompt = prompt or str(point_row.get('prompt') if point_row else '')
     return {
         'type': 'llm_usage',
         'id': ident,
@@ -426,53 +463,6 @@ def project_ecoute(
             'lignes': lignes,
         },
         'cadres': [{'titre': 'À brancher', 'todo': todo}] if todo else [],
-        'enfants': [],
-        'preuve': '',
-    }
-
-
-def project_outil(
-    conn: sqlite3.Connection, ident: str
-) -> dict[str, Any] | None:
-    """Une fiche d’outil lue dans la table tools."""
-    from pathlib import Path
-
-    from serge.outils import mtime_fichier, outil_par_id
-
-    found = outil_par_id(conn, ident)
-    if not found:
-        return None
-    todo = ''
-    if found['etat'] == 'prevu':
-        todo = 'Pas encore un bouton que le jugement peut presser tout seul.'
-    champs: list[dict[str, str]] = [
-        {
-            'k': 'Genre',
-            'v': {
-                'deterministe': 'déterministe',
-                'agent': 'agent',
-                'web': 'web',
-            }.get(found['kind'], found['kind']),
-        }
-    ]
-    root = Path(__file__).resolve().parents[2]
-    if found['code_path']:
-        champs.append({'k': 'Fichier', 'v': found['code_path']})
-    champs.append(
-        {
-            'k': 'Dernière modification',
-            'v': found.get('updated_at')
-            or mtime_fichier(root, found.get('code_path') or '')
-            or '—',
-        }
-    )
-    return {
-        'type': 'outil',
-        'id': found['id'],
-        'titre': found['titre'],
-        'pourquoi': found['doc_md'],
-        'champs': champs,
-        'cadres': [{'titre': 'État', 'todo': todo}] if todo else [],
         'enfants': [],
         'preuve': '',
     }

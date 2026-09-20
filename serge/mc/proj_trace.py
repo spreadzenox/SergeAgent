@@ -7,6 +7,8 @@ import json
 import sqlite3
 from typing import Any
 
+from serge.funnels.contacts import contact_reference_value
+
 
 def _payload_json(raw: str) -> dict[str, Any]:
     try:
@@ -107,11 +109,14 @@ def project_trace(
     contact = None
     if item['contact_id']:
         found = conn.execute(
-            'SELECT display, email FROM contacts WHERE id=?',
+            'SELECT display, contact_reference_by_canal FROM contacts WHERE id=?',
             (item['contact_id'],),
         ).fetchone()
         if found is not None:
-            contact = {'display': found[0], 'email': found[1]}
+            contact = {
+                'display': found[0],
+                'email': contact_reference_value(found[1], 'email'),
+            }
     return {
         'item': item,
         'note': note,

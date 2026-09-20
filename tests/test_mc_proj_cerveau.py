@@ -199,18 +199,18 @@ points:
   qualify:
     verdict: LLM-1
     tier: T1
-    checklist: {entree: true}
-    context: {fixed: [], retrieved: [], couche5: {allowed: false},
-      forbidden: [], envelope_tokens: 2500}
+    output_mode: structured
+    external_info: false
+    context: {}
     garde_fou: strict
     repli: manuel
     enabled: true
   score:
     verdict: LLM-1
     tier: T1
-    checklist: {entree: true}
-    context: {fixed: [], retrieved: [], couche5: {allowed: false},
-      forbidden: [], envelope_tokens: 1000}
+    output_mode: structured
+    external_info: false
+    context: {}
     garde_fou: strict
     repli: manuel
     enabled: false
@@ -269,15 +269,14 @@ class ProjMatriceTests(unittest.TestCase):
                         'tier': 'T1',
                         'verdict': 'LLM-1',
                         'enabled': True,
-                        'checklist': {'entree': True},
+                        'output_mode': 'structured',
+                        'external_info': False,
                         'garde_fou': 'strict',
                         'repli': 'manuel',
-                        'enveloppe': 2500,
                         'appels_7j': 3,
                         'tokens_7j': 450,
                         'latence_ms': 10,
                         'verdicts': {'ok': 3},
-                        'derive': '',
                         'tue_runtime': False,
                     },
                     {
@@ -285,15 +284,14 @@ class ProjMatriceTests(unittest.TestCase):
                         'tier': 'T1',
                         'verdict': 'LLM-1',
                         'enabled': False,
-                        'checklist': {'entree': True},
+                        'output_mode': 'structured',
+                        'external_info': False,
                         'garde_fou': 'strict',
                         'repli': 'manuel',
-                        'enveloppe': 1000,
                         'appels_7j': 8,
                         'tokens_7j': 1200,
                         'latence_ms': 10,
                         'verdicts': {'ok': 8},
-                        'derive': 'volume',
                         'tue_runtime': False,
                     },
                 ]

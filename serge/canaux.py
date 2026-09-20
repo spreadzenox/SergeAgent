@@ -17,7 +17,7 @@ SEED: tuple[tuple[str, str, str, str, str, str], ...] = (
         'Sortie texte vers une boîte. Worker ``email.send`` :'
         ' garde-fous, quota, touche, puis Gog ou SMTP.',
         'serge/workers/send.py',
-        '5988786aad7b89c7cbab407bf4f4b63836b7d02d6051b5d7c9ac189046a07f16',
+        'c66f8e9bf48fe8c718901d4fee879c221486febe568521c7064cc4f96f6d8b20',
         'branche',
     ),
     (
@@ -26,7 +26,7 @@ SEED: tuple[tuple[str, str, str, str, str, str], ...] = (
         'Appel sortant. Worker ``voice.send`` : le broker décide,'
         ' le pont compose. Jamais de dial hors broker.',
         'serge/workers/call.py',
-        '4ed728d7eba0b5b61637c877f627b71d146e977f01f511eeeb3f9cb92136701d',
+        '20c38d1c83199cd0664b566af17261778953c4f27d43e9b5572e72dd705b562e',
         'branche',
     ),
 )
@@ -35,11 +35,9 @@ SEED: tuple[tuple[str, str, str, str, str, str], ...] = (
 JONCTIONS: tuple[tuple[str, str, str], ...] = (
     ('email', 'llm', 'fill_slots'),
     ('email', 'llm', 'write_followup'),
-    ('email', 'tech', 'sequencer'),
     ('email', 'tech', 'dunning'),
     ('voice', 'llm', 'voice_script'),
     ('voice', 'llm', 'voice_dialog'),
-    ('voice', 'tech', 'sequencer'),
 )
 
 

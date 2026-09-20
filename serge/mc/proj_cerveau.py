@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """Projecteurs P2 Cerveau : signaux, clusters, décisions, pensées, usage.
 
-Lecture seule. Registre llm-points.yaml + dérives + kills = lot 6b.
+Lecture seule. Registre de seed + métadonnées DB + kills = lot 6b.
 """
 
 from __future__ import annotations
 
 import sqlite3
 from collections.abc import Mapping
-from statistics import median
 from typing import Any
 
+from serge.llm_registre import ensure_llm_points
 from serge.mc.proj_outils import avant_iso
 from serge.policy import PolicyError
 from serge.registry import load_llm_points, runtime_allows
@@ -205,15 +205,26 @@ def project_matrice(
         now: Maintenant ISO UTC.
 
     Returns:
-        Dict {points: [{nom, tier, verdict, enabled, checklist,
-        garde_fou, repli, enveloppe, appels_7j, tokens_7j,
-        latence_ms, verdicts, derive, tue_runtime}]} (triés, fail-soft).
+        Dict {points: [{nom, tier, verdict, enabled, output_mode,
+        external_info, garde_fou, repli, appels_7j, tokens_7j,
+        latence_ms, verdicts, tue_runtime}]} (triés, fail-soft).
     """
     _ = policy
     try:
         registre = load_llm_points()
     except PolicyError:
         return {'points': [], 'erreur': 'registre illisible'}
+    ensure_llm_points(conn)
+    db_points = {
+        str(row[0]): {
+            'tier': str(row[1]),
+            'verdict': str(row[2]),
+            'enabled': bool(row[3]),
+        }
+        for row in conn.execute(
+            'SELECT id, tier, verdict, enabled FROM llm_points'
+        ).fetchall()
+    }
     depuis = avant_iso(now, hours=24 * 8)
     buckets: dict[tuple[str, str], list[int]] = {}
     for row in conn.execute(
@@ -243,34 +254,22 @@ def project_matrice(
     points = []
     for nom in sorted(registre):
         spec = registre[nom]
-        appels_hier, tokens_hier = buckets.get((nom, hier), [0, 0])
-        volumes = [buckets.get((nom, jour), [0, 0])[0] for jour in passe]
-        moyennes = []
-        for jour in passe:
-            appels, tokens = buckets.get((nom, jour), [0, 0])
-            moyennes.append(tokens / appels if appels else 0)
-        med_vol = median(volumes)
-        med_tok = median(moyennes)
-        moyenne_hier = tokens_hier / appels_hier if appels_hier else 0
-        if med_vol > 0 and appels_hier > 3 * med_vol:
-            derive = 'volume'
-        elif med_tok > 0 and moyenne_hier > 3 * med_tok:
-            derive = 'tokens'
-        else:
-            derive = ''
+        db_spec = db_points.get(nom, {})
+        metadata = conn.execute(
+            'SELECT output_mode, external_info FROM llm_points WHERE id=?',
+            (nom,),
+        ).fetchone()
         total_lat, total_n = latences.get(nom, [0, 0])
         points.append(
             {
                 'nom': nom,
-                'tier': str(spec.get('tier')),
-                'verdict': str(spec.get('verdict')),
-                'enabled': bool(spec.get('enabled')),
-                'checklist': spec.get('checklist'),
+                'tier': str(db_spec.get('tier', spec.get('tier'))),
+                'verdict': str(db_spec.get('verdict', spec.get('verdict'))),
+                'enabled': bool(db_spec.get('enabled', spec.get('enabled'))),
+                'output_mode': str(metadata[0] if metadata else 'text'),
+                'external_info': bool(metadata[1]) if metadata else False,
                 'garde_fou': str(spec.get('garde_fou')),
                 'repli': str(spec.get('repli')),
-                'enveloppe': int(
-                    spec.get('context', {}).get('envelope_tokens', 0)
-                ),
                 'appels_7j': sum(
                     buckets.get((nom, jour), [0, 0])[0] for jour in semaine
                 ),
@@ -279,7 +278,6 @@ def project_matrice(
                 ),
                 'latence_ms': round(total_lat / total_n) if total_n else 0,
                 'verdicts': verdicts.get(nom, {}),
-                'derive': derive,
                 'tue_runtime': not runtime_allows(conn, nom, now),
             }
         )

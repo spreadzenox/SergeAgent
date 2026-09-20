@@ -26,8 +26,6 @@ from serge.llm.outils_exec import (
     tours_max,
 )
 
-CLE_PERMISSIONS = 'serge_db_permissions'
-
 
 def _args_norm(raw: str) -> str:
     try:
@@ -56,6 +54,7 @@ def _executer_un(
     arguments = _args_norm(call.arguments)
     code = peut_appeler(
         call.name,
+        conn=ctx.conn,
         pressables=pressables,
         spent=spent,
         spec=ctx.spec,
@@ -66,7 +65,13 @@ def _executer_un(
     if code:
         return _refus(code)
     handler = HANDLERS.get(call.name)
-    if handler is None:
+    is_db_tool = call.name in {
+        str(row[0])
+        for row in ctx.conn.execute(
+            "SELECT id FROM tools WHERE kind='db_read'"
+        ).fetchall()
+    }
+    if handler is None and not is_db_tool:
         return _refus('inconnu')
     try:
         parsed = json.loads(call.arguments or '{}')
@@ -75,7 +80,12 @@ def _executer_un(
     if not isinstance(parsed, dict):
         return _refus('invalide', 'arguments : objet attendu')
     try:
-        result = handler(ctx, parsed)
+        if handler is None:
+            from serge.llm.outils_exec import _exec_db_read_tool
+
+            result = _exec_db_read_tool(ctx, call.name, parsed)
+        else:
+            result = handler(ctx, parsed)
     except Exception as exc:  # noqa: BLE001 — toujours un résultat outil
         return _refus('invalide', str(exc))
     if not isinstance(result, dict):
@@ -120,35 +130,6 @@ def _injecter_quotas(
     hist.insert(index, message)
 
 
-def _injecter_permissions(
-    hist: list[dict[str, Any]], readers: tuple[str, ...]
-) -> None:
-    """Expose les lecteurs autorisés sans donner de SQL libre au modèle."""
-    if not readers:
-        return
-    message = {
-        'role': 'system',
-        'content': json.dumps(
-            {CLE_PERMISSIONS: {'readers': list(readers), 'source': 'sqlite'}},
-            ensure_ascii=False,
-        ),
-    }
-    for index, item in enumerate(hist):
-        if item.get('role') != 'system':
-            continue
-        try:
-            data = json.loads(str(item.get('content') or ''))
-        except json.JSONDecodeError:
-            continue
-        if isinstance(data, dict) and CLE_PERMISSIONS in data:
-            hist[index] = message
-            return
-    index = 0
-    while index < len(hist) and hist[index].get('role') == 'system':
-        index += 1
-    hist.insert(index, message)
-
-
 def _message_assistant(result: ChatResult) -> dict[str, Any]:
     calls = [
         {
@@ -175,7 +156,6 @@ def executer_boucle(
     conn: sqlite3.Connection,
     point_name: str,
     referer: str = '',
-    max_tokens: int = 800,
     temperature: float = 0.3,
 ) -> ChatResult:
     """Enchaîne generate → outils → generate jusqu’au texte ou au cap.
@@ -190,14 +170,12 @@ def executer_boucle(
         conn: Canon (handlers lecture).
         point_name: Nom du jugement (traçabilité).
         referer: HTTP-Referer.
-        max_tokens: Cap par generate.
         temperature: Température.
 
     Returns:
         ChatResult agrégé (texte final, tokens et latence sommés).
     """
-    pressables = outils_pressables(spec)
-    readers = tuple(str(item) for item in (spec.get('db_readers') or ()))
+    pressables = outils_pressables(spec, conn)
     cap = tours_max(policy)
     hist = [dict(item) for item in messages]
     spent: dict[str, int] = {}
@@ -224,17 +202,15 @@ def executer_boucle(
         encore = tuple(
             ident for ident in pressables if restants.get(ident, 0) > 0
         )
-        tools = schemas_openai(encore)
+        tools = schemas_openai(encore, conn)
         if pressables:
             _injecter_quotas(hist, restants, tours_restants)
-        _injecter_permissions(hist, readers)
         force_texte = not tools or tours >= cap
         last = caller(
             api_key,
             model,
             hist,
             referer=referer,
-            max_tokens=max_tokens,
             temperature=temperature,
             tools=tools or None,
             tool_choice='none' if force_texte and tools else None,

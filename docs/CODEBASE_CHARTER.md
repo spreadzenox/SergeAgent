@@ -127,9 +127,7 @@ calls"), règle → LLM quand les edge cases s'accumulent (signal de dérive).
 **Format de déclaration (exemple).**
 
 ```python
-# LLM-CHECKLIST: entree=oui (texte libre prospect)
-#                sortie=oui (binaire + justification 1 phrase)
-#                info_externe=non | derive=oui (formulations)
+# LLM-CONTRACT: output_mode=structured | external_info=false
 # LLM-RISK: propagation=moyen (1 email raté max, détecté au cycle suivant)
 # LLM-FALLBACK: REJECT + code PROSPECT_UNQUALIFIED
 # LLM-BUDGET: mesuré, alerte si > 3x médiane 7j

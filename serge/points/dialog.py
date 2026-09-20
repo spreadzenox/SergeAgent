@@ -89,7 +89,7 @@ def voice_turn(
         },
         {'role': 'user', 'content': '\n'.join(lines)[-2000:]},
     ]
-    kwargs: dict[str, Any] = {'root': root, 'max_tokens': 200}
+    kwargs: dict[str, Any] = {'root': root}
     if caller is not None:
         kwargs['caller'] = caller
     data, result = run_json(

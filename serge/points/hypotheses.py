@@ -139,7 +139,7 @@ def draft_hypothesis(
         {'role': 'system', 'content': system},
         {'role': 'user', 'content': f'Contexte : {context}'},
     ]
-    kwargs: dict[str, Any] = {'root': root, 'max_tokens': 800}
+    kwargs: dict[str, Any] = {'root': root}
     if caller is not None:
         kwargs['caller'] = caller
     data, result = run_json(

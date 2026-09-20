@@ -99,7 +99,7 @@ def consolidate(
             ),
         },
     ]
-    kwargs: dict[str, Any] = {'root': root, 'max_tokens': 2000}
+    kwargs: dict[str, Any] = {'root': root}
     if caller is not None:
         kwargs['caller'] = caller
     data, result = run_json(
@@ -186,7 +186,7 @@ def edit_serge_md(
             ),
         },
     ]
-    kwargs: dict[str, Any] = {'root': root, 'max_tokens': 2000}
+    kwargs: dict[str, Any] = {'root': root}
     if caller is not None:
         kwargs['caller'] = caller
 

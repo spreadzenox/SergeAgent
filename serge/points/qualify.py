@@ -108,7 +108,7 @@ def qualify_prospect(
             'content': f'ICP : {icp_text[:600]}\nFiche : {fiche_text}',
         },
     ]
-    kwargs: dict[str, Any] = {'root': root, 'max_tokens': 200}
+    kwargs: dict[str, Any] = {'root': root}
     if caller is not None:
         kwargs['caller'] = caller
     data, result = run_json(
@@ -231,7 +231,7 @@ def score_lead(
             f'\nHistorique : {history_text[:1500]}',
         },
     ]
-    kwargs: dict[str, Any] = {'root': root, 'max_tokens': 200}
+    kwargs: dict[str, Any] = {'root': root}
     if caller is not None:
         kwargs['caller'] = caller
     data, result = run_json(

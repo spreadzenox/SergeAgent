@@ -102,7 +102,7 @@ def extract_meeting(
             'content': f'Maintenant (Europe/Paris) : {now}\nMessage : {message[:800]}',
         },
     ]
-    kwargs: dict[str, Any] = {'root': root, 'max_tokens': 200}
+    kwargs: dict[str, Any] = {'root': root}
     if caller is not None:
         kwargs['caller'] = caller
     data, result = run_json(

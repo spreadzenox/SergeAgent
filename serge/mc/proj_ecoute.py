@@ -13,7 +13,7 @@ from serge.db_readers import readers_du_point
 def project_ecoute(
     conn: sqlite3.Connection, policy: Mapping[str, Any], now_iso: str
 ) -> dict[str, Any]:
-    """Retourne réglages, dernier cycle, candidats et permissions."""
+    """Retourne réglages, dernier cycle, candidats et capsules autorisées."""
     del now_iso
     listen = dict(policy.get('listen') or {})
     cycle = conn.execute(
@@ -24,6 +24,14 @@ def project_ecoute(
         'SELECT id, title, sellable_offer, status, updated_at '
         'FROM business_candidates ORDER BY updated_at DESC LIMIT 100'
     ).fetchall()
+    agents = []
+    for point in (
+        'listen_discover_needs_a',
+        'listen_discover_needs_b',
+        'listen_choose_poc',
+    ):
+        capsules = readers_du_point(conn, point)
+        agents.append({'id': point, 'capsules': capsules, 'readers': capsules})
     return {
         'settings': {
             'discovery_needs_target': listen.get('discovery_needs_target'),
@@ -31,15 +39,5 @@ def project_ecoute(
         },
         'cycle': dict(cycle) if cycle else None,
         'candidates': [dict(row) for row in candidates],
-        'agents': [
-            {
-                'id': point,
-                'readers': readers_du_point(conn, point),
-            }
-            for point in (
-                'listen_discover_needs_a',
-                'listen_discover_needs_b',
-                'listen_choose_poc',
-            )
-        ],
+        'agents': agents,
     }

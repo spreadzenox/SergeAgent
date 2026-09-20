@@ -44,7 +44,7 @@ class ComptesSanteTests(unittest.TestCase):
         )
 
     def test_schema(self) -> None:
-        self.assertEqual(SCHEMA_VERSION, 17)
+        self.assertEqual(SCHEMA_VERSION, 20)
         have = {
             str(row[1])
             for row in self.conn.execute(

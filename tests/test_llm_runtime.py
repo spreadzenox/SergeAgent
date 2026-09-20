@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Runtime LLM : modèles, clé, kill-switch, budget, metering, dérive."""
+"""Runtime LLM : modèles, clé, kill-switch, budget et metering."""
 
 from __future__ import annotations
 
@@ -22,13 +22,16 @@ from serge.llm.runtime import (  # noqa: E402
     run_point,
     run_registered_point,
 )
+from serge.llm_registre import ensure_llm_points  # noqa: E402
 
 POLICY = {'budget': {'llm_daily_eur': 5.0, 'llm_eur_per_1k_tokens': 0.004}}
 SPEC = {
     'verdict': 'LLM-1',
     'tier': 'T1',
     'enabled': True,
-    'context': {'envelope_tokens': 100},
+    'output_mode': 'text',
+    'external_info': False,
+    'context': {},
 }
 
 
@@ -142,18 +145,6 @@ class LlmRuntimeTests(unittest.TestCase):
         )
         self.assertEqual((result.ok, result.fallback), (False, 'error'))
 
-    def test_dervie_enveloppe_loguee(self) -> None:
-        def _gros(*args, **kwargs):
-            return ChatResult('x', 500, 5, 'm', 9)
-
-        run_point(
-            self.conn, POLICY, SPEC, 'p1', [], root=self.root, caller=_gros
-        )
-        types = [
-            row[0] for row in self.conn.execute('SELECT type FROM events')
-        ]
-        self.assertEqual(types, ['alert.llm_envelope_drift'])
-
     def test_sans_cle_bloque_le_client_reel(self) -> None:
         result = run_point(
             self.conn, POLICY, SPEC, 'p1', [], root=self.root / 'vide'
@@ -183,6 +174,75 @@ class LlmRuntimeTests(unittest.TestCase):
             caller=_ok_caller,
         )
         self.assertEqual(result.fallback, 'killed')
+
+    def test_prompt_et_metadonnees_db_remplacent_le_seed(self) -> None:
+        self.conn.execute(
+            'UPDATE llm_points SET prompt=?, output_mode=?, external_info=?'
+            " WHERE id='classify_reply'",
+            ('prompt MC', 'text', 1),
+        )
+        captured = {}
+
+        def caller(*args, **kwargs):
+            captured['messages'] = args[2]
+            return _ok_caller(*args, **kwargs)
+
+        result = run_point(
+            self.conn,
+            POLICY,
+            SPEC,
+            'classify_reply',
+            [{'role': 'system', 'content': 'prompt code'}],
+            root=self.root,
+            caller=caller,
+        )
+        self.assertTrue(result.ok)
+        self.assertEqual(captured['messages'][0]['content'], 'prompt MC')
+
+    def test_ensure_necrase_pas_une_valeur_db(self) -> None:
+        self.conn.execute(
+            'UPDATE llm_points SET prompt=?, output_mode=?, external_info=?'
+            " WHERE id='classify_reply'",
+            ('prompt MC', 'text', 1),
+        )
+        ensure_llm_points(self.conn)
+        self.assertEqual(
+            self.conn.execute(
+                'SELECT prompt, output_mode, external_info FROM llm_points'
+                " WHERE id='classify_reply'"
+            ).fetchone(),
+            ('prompt MC', 'text', 1),
+        )
+
+    def test_ensure_necrase_pas_un_default_db_edite(self) -> None:
+        self.conn.execute(
+            'UPDATE llm_points SET prompt=?, output_mode=?, external_info=?'
+            ", updated_at='2026-09-20T00:00:00+00:00'"
+            " WHERE id='classify_reply'",
+            ('', 'text', 0),
+        )
+        ensure_llm_points(self.conn)
+        self.assertEqual(
+            self.conn.execute(
+                'SELECT prompt, output_mode, external_info FROM llm_points'
+                " WHERE id='classify_reply'"
+            ).fetchone(),
+            ('', 'text', 0),
+        )
+
+    def test_ensure_necrase_pas_les_metadonnees_operationnelles(self) -> None:
+        self.conn.execute(
+            "UPDATE llm_points SET verdict='LLM-B', tier='T3', enabled=0"
+            " WHERE id='classify_reply'"
+        )
+        ensure_llm_points(self.conn)
+        self.assertEqual(
+            self.conn.execute(
+                'SELECT verdict, tier, enabled FROM llm_points'
+                " WHERE id='classify_reply'"
+            ).fetchone(),
+            ('LLM-B', 'T3', 0),
+        )
 
 
 if __name__ == '__main__':

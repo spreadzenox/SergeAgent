@@ -12,11 +12,14 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from serge.db.boot import init_schema  # noqa: E402
-from serge.db_readers import ensure_db_readers, readers_du_point  # noqa: E402
+from serge.db_readers import (  # noqa: E402
+    ensure_db_readers,
+    execute_memory_capsule,
+    readers_du_point,
+)
 from serge.listen.memory import (  # noqa: E402
     create_cycle,
     current_cycle,
-    read_named,
     save_candidates,
     select_poc,
 )
@@ -65,14 +68,19 @@ class ListenMemoryTests(unittest.TestCase):
             0,
         )
 
-    def test_lecteur_refuse_hors_permission(self) -> None:
-        result = read_named(
-            self.conn,
-            'listen_discover_needs_a',
-            'eligible_poc_candidates',
-            {},
+    def test_capsule_inconnue_est_refusee(self) -> None:
+        result = execute_memory_capsule(self.conn, 'pas-une-capsule', {})
+        self.assertEqual(result['code'], 'capsule_inconnue')
+
+    def test_capsule_retourne_donnees_et_materiel(self) -> None:
+        cycle = create_cycle(self.conn, 'guide', 5, 1)
+        result = execute_memory_capsule(
+            self.conn, 'current_listen_cycle', {'cycle_id': cycle}
         )
-        self.assertEqual(result['code'], 'permission_refusee')
+        self.assertTrue(result['ok'])
+        self.assertEqual(result['data'][0]['id'], cycle)
+        self.assertTrue(result['description'])
+        self.assertTrue(result['prompt_addition'])
 
     def test_permissions_sont_reprojetees_depuis_le_registre(self) -> None:
         self.conn.execute(
@@ -99,7 +107,11 @@ class ListenMemoryTests(unittest.TestCase):
                 item['id']
                 for item in readers_du_point(self.conn, 'listen_choose_poc')
             ],
-            ['current_listen_cycle', 'eligible_poc_candidates'],
+            [
+                'current_listen_cycle',
+                'eligible_poc_candidates',
+                'known_business_candidates',
+            ],
         )
 
     def test_candidat_poc_est_verrouille(self) -> None:

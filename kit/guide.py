@@ -7,8 +7,7 @@ from typing import Any
 
 from kit.openrouter import OpenRouterError, chat_completion
 
-# LLM-CHECKLIST: entree=oui (questions libres FR) | sortie=oui (explication
-# courte, conseil procédural) | info_externe=non | derive=oui (formulations)
+# LLM-CONTRACT: output_mode=text | external_info=false
 # LLM-RISK: propagation=faible (lecture seule, aucun état modifié ; le pire
 # cas est un mauvais conseil affiché, l'installateur décide toujours)
 # LLM-FALLBACK: static TOPIC_HINTS below, then generic message. Never raises.

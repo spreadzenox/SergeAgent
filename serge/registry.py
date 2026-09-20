@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Registres versionnés: points LLM (C), tickets (H), séquences (B §2.6)."""
+"""Registres versionnés : points LLM (C) et tickets (H)."""
 
 from __future__ import annotations
 
@@ -65,9 +65,26 @@ def load_llm_points(directory: Path | None = None) -> dict[str, dict]:
     points = data.get('points')
     if not isinstance(points, dict) or not points:
         raise PolicyError('llm-points.yaml : points manquants')
+    point_keys = {
+        'verdict',
+        'tier',
+        'output_mode',
+        'external_info',
+        'context',
+        'garde_fou',
+        'repli',
+        'enabled',
+        'note',
+        'propagation',
+    }
+    context_keys = {'tool_quotas'}
     for name, point in points.items():
         if not isinstance(point, dict):
             raise PolicyError(f'llm-points.{name} invalide')
+        unknown = set(point) - point_keys
+        if unknown:
+            key = sorted(unknown)[0]
+            raise PolicyError(f'llm-points.{name}.{key} inconnu')
         if point.get('verdict') not in VERDICTS:
             raise PolicyError(f'llm-points.{name}.verdict invalide')
         if point.get('tier') not in TIERS:
@@ -75,24 +92,21 @@ def load_llm_points(directory: Path | None = None) -> dict[str, dict]:
         context = point.get('context')
         if not isinstance(context, dict):
             raise PolicyError(f'llm-points.{name}.context manquant')
-        for key in ('fixed', 'retrieved', 'couche5', 'forbidden'):
-            if key not in context:
-                raise PolicyError(f'llm-points.{name}.context.{key} manquant')
-        readers = context.get('db_readers')
-        if readers is not None and (
-            not isinstance(readers, list)
-            or any(
-                not isinstance(reader, str) or not reader for reader in readers
+        unknown = set(context) - context_keys
+        if unknown:
+            key = sorted(unknown)[0]
+            raise PolicyError(f'llm-points.{name}.context.{key} inconnu')
+        output_mode = point.get('output_mode')
+        if output_mode not in {'structured', 'text'}:
+            raise PolicyError(f'llm-points.{name}.output_mode invalide')
+        if not isinstance(point.get('external_info'), bool):
+            raise PolicyError(
+                f'llm-points.{name}.external_info doit être booléen'
             )
-        ):
-            raise PolicyError(f'llm-points.{name}.context.db_readers invalide')
-        envelope = context.get('envelope_tokens', 0)
-        if isinstance(envelope, bool) or not isinstance(envelope, int):
-            raise PolicyError(f'llm-points.{name}.envelope_tokens invalide')
         _valider_tool_quotas(name, context)
         if not isinstance(point.get('enabled'), bool):
             raise PolicyError(f'llm-points.{name}.enabled doit être booléen')
-        for key in ('checklist', 'garde_fou', 'repli'):
+        for key in ('garde_fou', 'repli'):
             if not point.get(key):
                 raise PolicyError(f'llm-points.{name}.{key} manquant')
     return points
@@ -117,6 +131,11 @@ def llm_enabled(
     """
     if conn is not None and not runtime_allows(conn, name, now_iso=now_iso):
         return False
+    if conn is not None:
+        from serge.llm_registre import point_par_id
+
+        point = point_par_id(conn, name)
+        return bool(point and point.get('enabled') is True)
     try:
         points = load_llm_points(directory)
     except PolicyError:
@@ -206,11 +225,9 @@ def poser_kill(
         return {'duplicata': 'true'}
     if not raison.strip():
         raise KillError('raison requise')
-    try:
-        points = load_llm_points()
-    except PolicyError:
-        points = {}
-    if point not in points:
+    from serge.llm_registre import point_par_id
+
+    if point_par_id(conn, point) is None:
         raise KillError(f'point inconnu : {point}')
     expires = (
         datetime.fromisoformat(moment) + timedelta(hours=ttl_h)
@@ -323,38 +340,3 @@ def load_ticket_types(directory: Path | None = None) -> dict[str, dict]:
             ):
                 raise PolicyError(f'ticket-types.{name}.render.emoji invalide')
     return types
-
-
-def load_sequences(directory: Path | None = None) -> dict[str, list]:
-    """Charge et valide les séquences de prospection (B §2.6).
-
-    Args:
-        directory: Dossier config (défaut : config du repo).
-
-    Returns:
-        Mapping nom → étapes [{channel, delay_days}].
-
-    Raises:
-        PolicyError: Si étape incomplète.
-    """
-    data = _load_registry('sequences.yaml', directory)
-    sequences = data.get('sequences')
-    if not isinstance(sequences, dict) or not sequences:
-        raise PolicyError('sequences.yaml : sequences manquantes')
-    for name, steps in sequences.items():
-        if not isinstance(steps, list) or not steps:
-            raise PolicyError(f'sequences.{name} invalide')
-        for index, step in enumerate(steps):
-            if not isinstance(step, dict):
-                raise PolicyError(f'sequences.{name}[{index}] invalide')
-            channel = step.get('channel')
-            delay = step.get('delay_days')
-            if not channel or not isinstance(channel, str):
-                raise PolicyError(f'sequences.{name}[{index}].channel requis')
-            if isinstance(delay, bool) or not isinstance(delay, int):
-                raise PolicyError(
-                    f'sequences.{name}[{index}].delay_days doit être entier'
-                )
-            if delay < 0:
-                raise PolicyError(f'sequences.{name}[{index}].delay_days >= 0')
-    return sequences

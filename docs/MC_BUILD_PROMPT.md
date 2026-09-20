@@ -355,13 +355,13 @@ Convention par page : `route` — but. **Widgets** (liste). **Sources** (tables/
 - But : l'introspection — ce que les agents pensent et décident, jusqu'au détail fin.
 - Widgets : thought stream (pensées + `note` P3 + contexte FR, fail-soft) ; décisions récentes
   (qualify, score, juge allocator, QNA…) avec entrées/sorties résumées ; matrice des ~29 points
-  LLM (registre `llm-points.yaml` : rôle, checklist, budget, repli) × usage réel (volume, latence,
+  LLM (registre `llm-points.yaml` : rôle, mode de sortie, outils, repli) × usage réel (volume, latence,
   verdicts, recalls, dérives vs médiane 7 j — alertes P2 « 3× la médiane ») ; signaux entrants
   (`inbound_events` + classification O1) ; clusters d'écoute hot (J1).
 - Sources : `llm_usage`, `llm-points.yaml`, `events`, `inbound_events`, `listen_docs`,
   `lessons`/`playbooks` (contexte), `tickets` QNA.
 - Fore vers : trace tâche (timeline complète : pensées → décisions → actes), point LLM (fiche :
-  checklist, prompts, repli, historique 7 j), cluster (docs sources).
+  mode de sortie, prompts, repli, historique 7 j), cluster (docs sources).
 - Mutations : kill-switch par point (proposition §9 — runtime_flags + ticket POLICY auto).
 - Fraîcheur : live (stream, décisions, signaux) ; lent (matrice, dérives).
 

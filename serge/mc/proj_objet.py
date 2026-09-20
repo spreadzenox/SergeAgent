@@ -23,8 +23,8 @@ def project_objet(
             project_llm,
             project_llm_usage,
             project_notion,
-            project_outil,
         )
+        from serge.mc.proj_outil import project_outil
 
         return {
             'llm': project_llm,

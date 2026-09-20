@@ -141,7 +141,7 @@ def draft_intent_reply(
         {'role': 'system', 'content': REPLY_SYSTEM},
         {'role': 'user', 'content': user},
     ]
-    kwargs: dict[str, Any] = {'root': root, 'max_tokens': 600}
+    kwargs: dict[str, Any] = {'root': root}
     if caller is not None:
         kwargs['caller'] = caller
     data, result = run_json(

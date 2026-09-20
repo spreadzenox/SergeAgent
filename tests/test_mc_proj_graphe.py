@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import sqlite3
 import sys
 import unittest
@@ -37,10 +38,19 @@ class ProjGrapheTests(unittest.TestCase):
             (NOW, NOW),
         )
         self.conn.execute(
-            'INSERT INTO contacts(id, venture_id, display, email, regime,'
-            ' funnel_state, created_at, updated_at) VALUES'
-            "('p1','v1','Ada','a@x.io','OUTBOUND','INTENT',?,?)",
-            (NOW, NOW),
+            'INSERT INTO contacts(id, venture_id, display,'
+            ' contact_reference_by_canal, regime, funnel_state, created_at,'
+            ' updated_at) VALUES(?,?,?,?,?,?,?,?)',
+            (
+                'p1',
+                'v1',
+                'Ada',
+                json.dumps({'email': {'address': 'a@x.io', 'active': True}}),
+                'OUTBOUND',
+                'INTENT',
+                NOW,
+                NOW,
+            ),
         )
         self.conn.execute(
             'INSERT INTO touches(id, campaign_id, contact_id, channel,'

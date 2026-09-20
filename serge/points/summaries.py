@@ -70,7 +70,7 @@ def summarize_thread(
         {'role': 'system', 'content': THREAD_SYSTEM},
         {'role': 'user', 'content': bounded},
     ]
-    kwargs: dict[str, Any] = {'root': root, 'max_tokens': 800}
+    kwargs: dict[str, Any] = {'root': root}
     if caller is not None:
         kwargs['caller'] = caller
     data, result = run_json(
@@ -132,7 +132,7 @@ def score_call(
         {'role': 'system', 'content': SCORE_SYSTEM},
         {'role': 'user', 'content': user},
     ]
-    kwargs: dict[str, Any] = {'root': root, 'max_tokens': 300}
+    kwargs: dict[str, Any] = {'root': root}
     if caller is not None:
         kwargs['caller'] = caller
     data, result = run_json(

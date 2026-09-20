@@ -157,7 +157,6 @@ def chat_reply(history: list[dict[str, str]], api_key: str) -> str:
         {
             'model': model,
             'messages': messages,
-            'max_tokens': 150,
             'temperature': 0.4,
         }
     ).encode('utf-8')

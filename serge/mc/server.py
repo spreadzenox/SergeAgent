@@ -29,6 +29,7 @@ from serge.mc.auth import (
 from serge.mc.coupe_actions import CoupeActionsMixin
 from serge.mc.ecoute_actions import EcouteActionsMixin
 from serge.mc.etape_actions import EtapeActionsMixin
+from serge.mc.llm_actions import LlmActionsMixin
 from serge.mc.policy_actions import PolicyActionsMixin
 from serge.mc.projectors import PAGE_SECTIONS, SnapshotCache
 from serge.mc.sse import state_payload, stream_page
@@ -68,6 +69,7 @@ class McHandler(
     CoupeActionsMixin,
     EtapeActionsMixin,
     EcouteActionsMixin,
+    LlmActionsMixin,
     ActionsMixin,
     BaseHTTPRequestHandler,
 ):
@@ -351,6 +353,7 @@ class McHandler(
         apis = {
             '/owner/api/kill': self._api_kill,
             '/owner/api/unkill': self._api_unkill,
+            '/owner/api/llm-point': self._api_llm_point,
             '/owner/api/ticket/acte': self._api_ticket_acte,
             '/owner/api/ticket/item': self._api_ticket_item,
             '/owner/api/ticket/discuter': self._api_ticket_discuter,

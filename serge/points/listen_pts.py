@@ -87,7 +87,7 @@ def label_clusters(
         {'role': 'system', 'content': CLUSTER_SYSTEM},
         {'role': 'user', 'content': '\n\n'.join(blocks)[:3000]},
     ]
-    kwargs: dict[str, Any] = {'root': root, 'max_tokens': 1000}
+    kwargs: dict[str, Any] = {'root': root}
     if caller is not None:
         kwargs['caller'] = caller
     data, result = run_json(
@@ -163,11 +163,13 @@ def discover_needs(
             'content': (
                 f'cycle_id={cycle_id}\n'
                 f'guide owner={guide[:4000]}\n'
-                'Lis le cycle, les documents et les business connus avec db_read.'
+                'Lis le cycle, les documents et les business connus avec les tools '
+                'current_listen_cycle, listen_cycle_documents et '
+                'known_business_candidates.'
             ),
         },
     ]
-    kwargs: dict[str, Any] = {'root': root, 'max_tokens': 1400}
+    kwargs: dict[str, Any] = {'root': root}
     if caller is not None:
         kwargs['caller'] = caller
     return run_json(conn, policy, point_name, messages, _valid_needs, **kwargs)
@@ -197,12 +199,12 @@ def choose_poc(
             'content': (
                 f'cycle_id={cycle_id}\n'
                 f'business_target={business_target}\n'
-                'Lis les candidats éligibles avec db_read, puis choisis au plus '
-                'business_target.'
+                'Lis les candidats éligibles avec eligible_poc_candidates, puis '
+                'choisis au plus business_target.'
             ),
         },
     ]
-    kwargs: dict[str, Any] = {'root': root, 'max_tokens': 700}
+    kwargs: dict[str, Any] = {'root': root}
     if caller is not None:
         kwargs['caller'] = caller
     return run_json(

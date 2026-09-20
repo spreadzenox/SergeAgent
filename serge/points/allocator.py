@@ -110,7 +110,7 @@ def judge_allocation(
             ),
         },
     ]
-    kwargs: dict[str, Any] = {'root': root, 'max_tokens': 1200}
+    kwargs: dict[str, Any] = {'root': root}
     if caller is not None:
         kwargs['caller'] = caller
     data, result = run_json(

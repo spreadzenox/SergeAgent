@@ -138,7 +138,7 @@ def draft_voice_script(
             ),
         },
     ]
-    kwargs: dict[str, Any] = {'root': root, 'max_tokens': 900}
+    kwargs: dict[str, Any] = {'root': root}
     if caller is not None:
         kwargs['caller'] = caller
     data, result = run_json(

@@ -38,7 +38,7 @@ chantier « évident ».
 
 - [x] **Appelants de `upsert_trace`.** `create_contact` avec e-mail pose `venue=email` / `handle=email`. Observe / pont écoute restent à câbler quand ces flux créent un contact (ticket archi / pont).
 
-- [x] **2. SMS sortant — théâtre retiré (pas de writer).** Le séquenceur n’enfile plus `sms.send`. L’îlot MC compte les **reçus**, pas des envois fantômes. Quotas policy restent pour le jour d’un writer. *Mise de côté : quel fournisseur pour un vrai envoi.*
+- [x] **2. SMS sortant — théâtre retiré (pas de writer).** L’îlot MC compte les **reçus**, pas des envois fantômes. Quotas policy restent pour le jour d’un writer. *Mise de côté : quel fournisseur pour un vrai envoi.*
 
 ### Tools web (remplacent le stub unique `navigateur`)
 
@@ -56,9 +56,9 @@ chantier « évident ».
 
 Chaque canal fini = semence `serge/canaux.py` + jonctions n-n + `code_path` du writer + kind worker + guards + SHA (`catalogue_lock.py`) + fiche MC. Pas de jauge / quota / îlot sans writer (R7). Ordre = priorité (le plus menti d’abord).
 
-- [ ] **1. LinkedIn.** Le plus de théâtre. Déjà là sans writer : quotas `linkedin_connect_per_day` / `linkedin_inmail_per_month` (`config/policy.yaml` + UI Policy), jauge En direct qui compte des `touches` `channel='linkedin'` (personne n’en écrit), commentaire « phase 2 » dans `config/sequences.yaml`, archi funnel (invites / InMail / accepts), ticket `PUBLICATION` qui cite LinkedIn. Les guards (`KNOWN_CHANNELS`) ne connaissent que `email` / `sms` / `voice` : un `linkedin.send` explose aujourd’hui. À faire : adaptateur déterministe (compte `accounts_standing`, tool web, cooldown / capital), kind `linkedin.send`, étendre les guards, écrire de vraies `touches`, brancher le catalogue. Jugement = l’invocation prospection (ci-dessus), pas le clic. *Dépend de : tools web ; `accounts_standing` ; dossier de session ; santé du compte ; stream captcha ; tool boîte mail/SMS (2FA compte) ; identity basique ; stockage des contacts par canal.*
+- [ ] **1. LinkedIn.** Le plus de théâtre. Déjà là sans writer : quotas `linkedin_connect_per_day` / `linkedin_inmail_per_month` (`config/policy.yaml` + UI Policy), jauge En direct qui compte des `touches` `channel='linkedin'` (personne n’en écrit), archi funnel (invites / InMail / accepts), ticket `PUBLICATION` qui cite LinkedIn. Les guards (`KNOWN_CHANNELS`) ne connaissent que `email` / `sms` / `voice` : un `linkedin.send` explose aujourd’hui. À faire : adaptateur déterministe (compte `accounts_standing`, tool web, cooldown / capital), kind `linkedin.send`, étendre les guards, écrire de vraies `touches`, brancher le catalogue. Jugement = l’invocation prospection (ci-dessus), pas le clic. *Dépend de : tools web ; `accounts_standing` ; dossier de session ; santé du compte ; stream captcha ; tool boîte mail/SMS (2FA compte) ; identity basique ; stockage des contacts par canal.*
 
-- [x] **2. SMS sortant.** Théâtre d’envoi retiré (séquenceur + îlot). Writer réel = attente fournisseur (section archi).
+- [x] **2. SMS sortant.** Théâtre d’envoi retiré ; l’îlot ne compte que les traces reçues. Writer réel = attente fournisseur (section archi).
 
 - [ ] **3. WhatsApp.** Une case opt-in (`consent.opt_in_channels` + UI Policy) et un paragraphe d’archi (collé au SMS : template, STOP, opt-out). Zéro client, zéro kind, zéro touche. À faire : adaptateur (API / outil web selon le choix) + opt-in vraiment lu à l’envoi + catalogue. Ne pas inventer une jauge avant le writer. *Dépend de : tools web et/ou tool boîte mail/SMS si le compte se crée tout seul ; `accounts_standing` si session web.*
 

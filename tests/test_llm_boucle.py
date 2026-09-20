@@ -41,64 +41,66 @@ POLICY = {
 }
 
 
-def _spec(*, couche5: bool, tools: list[str] | None = None, **extra):
-    context: dict = {'couche5': {'allowed': couche5}, **extra}
+def _spec(*, memory: bool, tools: list[str] | None = None, **extra):
+    context: dict = dict(extra)
+    declared: list[str] = []
+    if memory:
+        declared.append('memory_search')
     if tools is not None:
-        context['tools'] = tools
+        declared.extend(tools)
     return {
         'verdict': 'LLM-1',
         'tier': 'T1',
         'enabled': True,
         'context': context,
+        'db_tools': declared,
     }
 
 
 class OutilsPressablesTests(unittest.TestCase):
-    def test_couche5_offre_memory_search(self) -> None:
+    def test_declaration_offre_memory_search(self) -> None:
         self.assertEqual(
-            outils_pressables(_spec(couche5=True)), ('memory_search',)
+            outils_pressables(_spec(memory=True)), ('memory_search',)
         )
 
     def test_voix_sans_memoire_mais_identite(self) -> None:
         spec = _spec(
-            couche5=False,
+            memory=False,
             tools=['agenda', 'catalogue', 'fiches', 'identity_basique'],
         )
         self.assertEqual(outils_pressables(spec), ('identity_basique',))
 
-    def test_memory_search_dans_tools_sans_couche5_reste_ferme(self) -> None:
-        spec = _spec(
-            couche5=False, tools=['memory_search', 'identity_basique']
-        )
+    def test_memory_search_absent_reste_ferme(self) -> None:
+        spec = _spec(memory=False, tools=['identity_basique'])
         self.assertEqual(outils_pressables(spec), ('identity_basique',))
 
     def test_prevu_sans_handler_ignore(self) -> None:
         self.assertEqual(
-            outils_pressables(_spec(couche5=False, tools=['agenda'])), ()
+            outils_pressables(_spec(memory=False, tools=['agenda'])), ()
         )
 
 
 class QuotaCoupleTests(unittest.TestCase):
     def test_tool_quotas_gagne(self) -> None:
-        spec = _spec(couche5=True, tool_quotas={'memory_search': 1})
+        spec = _spec(memory=True, tool_quotas={'memory_search': 1})
         self.assertEqual(quota_couple(spec, 'memory_search', POLICY), 1)
 
-    def test_couche5_max_calls(self) -> None:
-        spec = {'context': {'couche5': {'allowed': True, 'max_calls': 1}}}
+    def test_tool_quota_memory_search(self) -> None:
+        spec = {'context': {'tool_quotas': {'memory_search': 1}}}
         self.assertEqual(quota_couple(spec, 'memory_search', POLICY), 1)
 
     def test_defaut_policy_memory_search(self) -> None:
         self.assertEqual(
-            quota_couple(_spec(couche5=True), 'memory_search', POLICY), 3
+            quota_couple(_spec(memory=True), 'memory_search', POLICY), 3
         )
 
     def test_autre_outil_illimite(self) -> None:
         self.assertIsNone(
-            quota_couple(_spec(couche5=False), 'identity_basique', POLICY)
+            quota_couple(_spec(memory=False), 'identity_basique', POLICY)
         )
 
     def test_restants_min_couple_et_tours(self) -> None:
-        spec = _spec(couche5=True, tool_quotas={'memory_search': 2})
+        spec = _spec(memory=True, tool_quotas={'memory_search': 2})
         restants = restants_par_outil(
             ('memory_search', 'identity_basique'),
             spent={'memory_search': 1},
@@ -119,7 +121,7 @@ class QuotaCoupleTests(unittest.TestCase):
 
 class PeutAppelerTests(unittest.TestCase):
     def test_inconnu_et_deja_fait_et_quota(self) -> None:
-        spec = _spec(couche5=True, tool_quotas={'memory_search': 1})
+        spec = _spec(memory=True, tool_quotas={'memory_search': 1})
         pressables = ('memory_search',)
         self.assertEqual(
             peut_appeler(
@@ -191,7 +193,7 @@ class BoucleTests(unittest.TestCase):
             'k',
             'm',
             [{'role': 'user', 'content': 'hi'}],
-            spec=_spec(couche5=False),
+            spec=_spec(memory=False),
             policy=POLICY,
             conn=self.conn,
             point_name='p',
@@ -232,7 +234,7 @@ class BoucleTests(unittest.TestCase):
                 {'role': 'system', 'content': 'tu juges'},
                 {'role': 'user', 'content': 'hi'},
             ],
-            spec=_spec(couche5=True),
+            spec=_spec(memory=True),
             policy=POLICY,
             conn=self.conn,
             point_name='p',
@@ -261,7 +263,7 @@ class BoucleTests(unittest.TestCase):
             'k',
             'm',
             [{'role': 'user', 'content': 'hi'}],
-            spec=_spec(couche5=True),
+            spec=_spec(memory=True),
             policy=POLICY,
             conn=self.conn,
             point_name='p',
@@ -285,7 +287,7 @@ class BoucleTests(unittest.TestCase):
             'k',
             'm',
             [],
-            spec=_spec(couche5=True),
+            spec=_spec(memory=True),
             policy=POLICY,
             conn=self.conn,
             point_name='p',
@@ -311,7 +313,7 @@ class BoucleTests(unittest.TestCase):
                 'k',
                 'm',
                 [],
-                spec=_spec(couche5=False, tools=['identity_basique']),
+                spec=_spec(memory=False, tools=['identity_basique']),
                 policy=policy,
                 conn=self.conn,
                 point_name='p',
@@ -321,7 +323,7 @@ class BoucleTests(unittest.TestCase):
 
     def test_quota_epuise_retire_loutil(self) -> None:
         spec = _spec(
-            couche5=False,
+            memory=False,
             tools=['identity_basique'],
             tool_quotas={'identity_basique': 1},
         )
@@ -381,7 +383,7 @@ class BoucleTests(unittest.TestCase):
                 'k',
                 'm',
                 [],
-                spec=_spec(couche5=False, tools=['identity_basique']),
+                spec=_spec(memory=False, tools=['identity_basique']),
                 policy=POLICY,
                 conn=self.conn,
                 point_name='p',

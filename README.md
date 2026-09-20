@@ -58,7 +58,7 @@ Architecture : [`docs/INSTALL.md`](docs/INSTALL.md) ·
 
 Campagnes (1 test sur 1 canal, N + seuils + fenêtre), contacts nommés
 (états + régimes OUTBOUND/INBOUND), lifecycle ventures (gates, une seule
-ACTIVE), séquenceur multi-canal versionné (ex. email → email → voix → email).
+ACTIVE). Les métriques d'envoi s'appuient sur les touches historiques.
 Les métriques U1-U5 sont des compteurs purs (le LLM classe, le code compte) et
 les règles kill/scale sont des fonctions pures (métriques + seuils → verdict),
 sans DB ni LLM.
@@ -212,7 +212,7 @@ serge/workers/  exécutants des files (inbound, mémoire, écoute, envois, voix)
 serge/voice/    voix bornée (S2S + repli tour-par-tour, policy, CDR)
 serge/sms/      SMS inbound vérifié (inbox OTP + receveur loopback)
 serge/allocator/ allocation A/B/C (gardes + bandit + juge)
-config/         policy.yaml, llm-points.yaml, ticket-types.yaml, séquences
+config/         policy.yaml, llm-points.yaml, ticket-types.yaml
 schemas/        contrats instance + secrets + exclusions
 policy-reference/ exemple de mandat sandbox neutre
 systemd/        templates d'units paramétrés

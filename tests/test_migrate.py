@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import sqlite3
 import sys
 import unittest
@@ -18,9 +19,82 @@ from serge.db.migrate import (  # noqa: E402
     read_version,
 )
 from serge.db.schema import SCHEMA_VERSION, TABLES  # noqa: E402
+from serge.db.v018 import apply_v018  # noqa: E402
+from serge.db.v020 import apply_v020  # noqa: E402
 
 
 class MigrateTests(unittest.TestCase):
+    def test_v20_ajoute_les_metadonnees_llm_avec_defaults_valides(
+        self,
+    ) -> None:
+        conn = sqlite3.connect(':memory:')
+        self.addCleanup(conn.close)
+        conn.execute(
+            'CREATE TABLE llm_points (id TEXT PRIMARY KEY,'
+            " updated_at TEXT NOT NULL DEFAULT 'legacy')"
+        )
+        conn.execute("INSERT INTO llm_points(id) VALUES('legacy')")
+        apply_v020(conn)
+        columns = {
+            row[1]: row[4]
+            for row in conn.execute('PRAGMA table_info(llm_points)')
+        }
+        self.assertEqual(columns['prompt'], "''")
+        self.assertEqual(columns['output_mode'], "'text'")
+        self.assertEqual(columns['external_info'], '0')
+        self.assertEqual(
+            conn.execute(
+                "SELECT updated_at FROM llm_points WHERE id='legacy'"
+            ).fetchone()[0],
+            '',
+        )
+        conn.execute("INSERT INTO llm_points(id) VALUES('p')")
+        self.assertEqual(
+            conn.execute(
+                'SELECT prompt, output_mode, external_info FROM llm_points'
+            ).fetchone(),
+            ('', 'text', 0),
+        )
+
+    def test_v18_backfill_reconstruit_contacts(self) -> None:
+        conn = sqlite3.connect(':memory:')
+        self.addCleanup(conn.close)
+        conn.execute(
+            """CREATE TABLE contacts (
+                id TEXT PRIMARY KEY, venture_id TEXT NOT NULL,
+                display TEXT NOT NULL DEFAULT '',
+                email TEXT NOT NULL DEFAULT '', phone TEXT NOT NULL DEFAULT '',
+                venue TEXT NOT NULL DEFAULT '', handle TEXT NOT NULL DEFAULT '',
+                profile_url TEXT NOT NULL DEFAULT '',
+                regime TEXT NOT NULL DEFAULT 'OUTBOUND',
+                funnel_state TEXT NOT NULL DEFAULT 'NEW',
+                last_inbound_at TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL, updated_at TEXT NOT NULL)
+            """
+        )
+        conn.execute(
+            'INSERT INTO contacts(id, venture_id, display, email, phone, venue,'
+            ' handle, profile_url, regime, funnel_state, created_at, updated_at)'
+            " VALUES('p1','v1','Ada','ada@x.io','+33612345678','linkedin',"
+            "'ada','https://linkedin.test/ada','INBOUND','ENGAGED','t','t')"
+        )
+        apply_v018(conn)
+        columns = {
+            row[1] for row in conn.execute('PRAGMA table_info(contacts)')
+        }
+        self.assertNotIn('email', columns)
+        self.assertNotIn('phone', columns)
+        row = conn.execute(
+            'SELECT contact_reference_by_canal, regime, funnel_state'
+            ' FROM contacts WHERE id=?',
+            ('p1',),
+        ).fetchone()
+        references = json.loads(row[0])
+        self.assertEqual(references['email']['address'], 'ada@x.io')
+        self.assertEqual(references['voice']['phone'], '+33612345678')
+        self.assertEqual(references['linkedin']['handle'], 'ada')
+        self.assertEqual(row[1:], ('INBOUND', 'ENGAGED'))
+
     def test_vide_atteint_la_tete(self) -> None:
         conn = sqlite3.connect(':memory:')
         self.addCleanup(conn.close)

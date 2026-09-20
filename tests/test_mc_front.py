@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import sys
 import unittest
 from datetime import UTC, datetime, timedelta
@@ -106,10 +107,19 @@ class McFrontTests(McBrowserCase):
         conn = sqlite3.connect(self.db_path)
         try:
             conn.execute(
-                'INSERT INTO contacts(id, venture_id, display, email,'
-                " created_at, updated_at) VALUES('p1','v1','Ada',"
-                "'ada@x.io',?,?)",
-                (iso, iso),
+                'INSERT INTO contacts(id, venture_id, display,'
+                ' contact_reference_by_canal, created_at, updated_at)'
+                ' VALUES(?,?,?,?,?,?)',
+                (
+                    'p1',
+                    'v1',
+                    'Ada',
+                    json.dumps(
+                        {'email': {'address': 'ada@x.io', 'active': True}}
+                    ),
+                    iso,
+                    iso,
+                ),
             )
             conn.execute(
                 'INSERT INTO work_items(id, kind, venture_id, status,'

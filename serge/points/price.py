@@ -108,7 +108,7 @@ def draft_price(
             ),
         },
     ]
-    kwargs: dict[str, Any] = {'root': root, 'max_tokens': 800}
+    kwargs: dict[str, Any] = {'root': root}
     if caller is not None:
         kwargs['caller'] = caller
     data, result = run_json(

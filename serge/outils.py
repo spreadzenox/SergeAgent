@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-KINDS_OUTIL = frozenset({'deterministe', 'web', 'agent'})
+KINDS_OUTIL = frozenset({'deterministe', 'web', 'agent', 'db_read'})
 
 
 def outil_peut_invoquer(appelant_kind: str, cible_kind: str) -> bool:
@@ -31,7 +31,7 @@ SEED: tuple[tuple[str, str, str, str, str, str, str, int], ...] = (
         'memory_search',
         'deterministe',
         'serge/memory/search.py',
-        '82d43e07949257dc8649c7d273502c9b27139ff277bfde054d4687225c6cb0ce',
+        'eb6ab14dda4ee5e9ff9e52ca640f2d2c0549b828fad112d06e7c4b592a821fdb',
         'Chercher dans la mémoire',
         'Un seul outil pour fouiller la mémoire. Si le dossier prévu'
         ' ne suffit pas, le jugement pose une question (« objections'
@@ -39,6 +39,19 @@ SEED: tuple[tuple[str, str, str, str, str, str, str, int], ...] = (
         ' Lecture seule : ça informe, ça n’écrit pas. Certains jugements'
         ' n’y ont pas droit (un appel, un résumé chiffré) : ils restent'
         ' sur le dossier figé.',
+        'branche',
+        0,
+    ),
+    (
+        'contact_upsert',
+        'deterministe',
+        'serge/llm/outils_exec.py',
+        '5f2a851efa7208ff57cfbe04c23342205f17fdc9ef8f7c50267f1dfa9324772f',
+        'Créer ou enrichir un contact',
+        'Upsert déterministe par références JSON de canal. Compare toutes les'
+        ' références de la venture avant création, puis ajoute les canaux actifs.'
+        ' Les anciennes colonnes email/phone/venue/handle/profile_url ne sont'
+        ' jamais écrites par cet outil.',
         'branche',
         0,
     ),
@@ -136,12 +149,42 @@ SEED: tuple[tuple[str, str, str, str, str, str, str, int], ...] = (
         0,
     ),
     (
+        'current_listen_cycle',
         'db_read',
-        'deterministe',
-        'serge/listen/memory.py',
-        'f11c92e7e635f64c93c30d69e70bcff40d4f61b1a66ec0d8fa5d7c22ab041905',
-        'Lire une vue DB autorisée',
-        'Lecteurs nommés, sorties typées et permissions vérifiées en SQLite.',
+        'serge/db/query_builder.py',
+        '5ddfdca15b91cb997f24d4ce47047f544926a0711bf6d9265f43870465022d91',
+        'Lire le cycle d’écoute courant',
+        'Lecture DB bornée par le catalogue du tool et son paramètre cycle_id.',
+        'branche',
+        0,
+    ),
+    (
+        'listen_cycle_documents',
+        'db_read',
+        'serge/db/query_builder.py',
+        '5ddfdca15b91cb997f24d4ce47047f544926a0711bf6d9265f43870465022d91',
+        'Lire les documents du cycle',
+        'Lecture des documents rattachés au cycle fourni par le contexte.',
+        'branche',
+        0,
+    ),
+    (
+        'known_business_candidates',
+        'db_read',
+        'serge/db/query_builder.py',
+        '5ddfdca15b91cb997f24d4ce47047f544926a0711bf6d9265f43870465022d91',
+        'Lire les business connus',
+        'Lecture des candidats business déjà persistés.',
+        'branche',
+        0,
+    ),
+    (
+        'eligible_poc_candidates',
+        'db_read',
+        'serge/db/query_builder.py',
+        '5ddfdca15b91cb997f24d4ce47047f544926a0711bf6d9265f43870465022d91',
+        'Lire les candidats POC éligibles',
+        'Lecture des candidats dont le statut permet encore une sélection.',
         'branche',
         0,
     ),
@@ -198,14 +241,12 @@ def outil_par_id(
 
     Args:
         conn: Canon.
-        ident: Id d’outil (``couche5`` → ``memory_search``).
+        ident: Id d’outil (par exemple ``memory_search``).
 
     Returns:
         Dict ou None.
     """
     ensure_tools(conn)
-    if ident == 'couche5':
-        ident = 'memory_search'
     row = conn.execute(
         'SELECT id, kind, code_path, code_sha, titre, doc_md, etat,'
         ' montre_partout, files_sha, updated_at FROM tools WHERE id=?',

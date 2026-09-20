@@ -143,7 +143,7 @@ class ApiViewsMixin(_Base):
             try:
                 resultat = memory_search(conn, query, point='mc_search')
             except Exception:
-                resultat = {'results': [], 'tokens_used': 0}
+                resultat = {'results': []}
         self._send_json(200, resultat)
 
     def _api_voice_audio(self) -> None:

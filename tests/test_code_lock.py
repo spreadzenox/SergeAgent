@@ -37,7 +37,7 @@ class CodeLockTests(unittest.TestCase):
         }
         self.assertEqual(yaml_ids, rows)
 
-    def test_jonction_couche5_et_tools_yaml(self) -> None:
+    def test_jonction_tools_yaml(self) -> None:
         usage = {
             str(r[0]): str(r[1])
             for r in self.conn.execute(
@@ -53,7 +53,7 @@ class CodeLockTests(unittest.TestCase):
                 " WHERE point_id='voice_dialog'"
             )
         }
-        self.assertEqual(voix['memory_search'], 'interdit')
+        self.assertNotIn('memory_search', voix)
         self.assertEqual(voix['agenda'], 'declare')
         self.assertEqual(voix['catalogue'], 'declare')
         self.assertEqual(voix['fiches'], 'declare')

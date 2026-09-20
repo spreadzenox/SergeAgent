@@ -20,7 +20,7 @@ Une base déjà à la tête du code ne réécrit pas le tampon. Une base
 rollback git ne démonte pas le schéma tout seul.
 
 Le socle initial est la **v7** (`SCHEMA_SQL` dans `serge/db/schema.py`).
-Une base vide saute à v7 d’un coup. Le schéma runtime actuel est v17.
+Une base vide saute à v7 d’un coup. Le schéma runtime actuel est v19.
 Ensuite chaque évolution = une fonction `apply_v00N`, numéro = précédent + 1.
 
 Les paramètres de pré-prospection vivent dans les snapshots Policy en base :
@@ -46,6 +46,8 @@ Catalogue (types, semés) vs occurrences (faits) :
 | `llm_points` + `llm_point_tools` | `llm_usage` |
 | `tech_invocations` | `events` / runs (pas encore de ledger dédié) |
 | `tools` | `llm_point_tools` (seule une invocation LLM invoque) |
+| `tool_db_*` | Catalogue tables/colonnes/filtres/jointures/paramètres des tools `db_read` |
+| `db_readers` + `db_reader_fixed_params` | Capsules mémoire et paramètres fixes |
 | `canaux` + `brique_canaux` | touches / envois (`email.send`, `voice.send`, Discord) |
 | `etape_liens` | débits Live (`listen_docs` … `transactions`) |
 
@@ -156,4 +158,5 @@ Outils catalogue `identity_basique` (branché) et `identity_advanced`
 
 Tool `boite_serge` : mails dans `inbound_events` (corps dans
 `payload_json`), SMS dans le ledger inbox **en brut** (plus seulement
-le hash). Le séquenceur n’enfile plus `sms.send` (pas de writer).
+le hash). Les reçus SMS restent des traces historiques ; aucun envoi futur
+n'est déduit de la table `touches`.

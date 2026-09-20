@@ -48,12 +48,36 @@ def main() -> None:
         (_iso(now), _iso(now)),
     )
     conn.execute(
-        'INSERT INTO contacts(id, venture_id, display, email, regime,'
-        ' funnel_state, created_at, updated_at) VALUES'
-        "('p1','v1','Ada Morel','ada@x.io','INBOUND','INTENT',?,?),"
-        "('p2','v1','Bob Klein','bob@x.io','OUTBOUND','CONTACTING',?,?),"
-        "('p3','v1','Chloé Martin','chloe@x.io','INBOUND','CUSTOMER',?,?)",
-        (_iso(now),) * 6,
+        'INSERT INTO contacts(id, venture_id, display,'
+        ' contact_reference_by_canal, regime, funnel_state, created_at,'
+        ' updated_at) VALUES(?,?,?,?,?,?,?,?),(?,?,?,?,?,?,?,?),'
+        '(?,?,?,?,?,?,?,?)',
+        (
+            'p1',
+            'v1',
+            'Ada Morel',
+            json.dumps({'email': {'address': 'ada@x.io', 'active': True}}),
+            'INBOUND',
+            'INTENT',
+            _iso(now),
+            _iso(now),
+            'p2',
+            'v1',
+            'Bob Klein',
+            json.dumps({'email': {'address': 'bob@x.io', 'active': True}}),
+            'OUTBOUND',
+            'CONTACTING',
+            _iso(now),
+            _iso(now),
+            'p3',
+            'v1',
+            'Chloé Martin',
+            json.dumps({'email': {'address': 'chloe@x.io', 'active': True}}),
+            'INBOUND',
+            'CUSTOMER',
+            _iso(now),
+            _iso(now),
+        ),
     )
     conn.execute(
         'INSERT INTO campaigns(id, venture_id, family, channel, state,'

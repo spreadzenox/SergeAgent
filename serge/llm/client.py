@@ -77,7 +77,6 @@ def chat(
     *,
     referer: str = '',
     timeout: float = 60.0,
-    max_tokens: int = 500,
     temperature: float = 0.3,
     base_url: str = OPENROUTER_BASE_URL,
     tools: list[dict[str, Any]] | None = None,
@@ -92,7 +91,6 @@ def chat(
         messages: Historique (role/content str ou blocs multimodaux).
         referer: HTTP-Referer de l'instance.
         timeout: Timeout HTTP (secondes).
-        max_tokens: Cap réponse.
         temperature: Température.
         base_url: Base API (override tests).
         tools: Schémas OpenAI (renvoyés à chaque tour).
@@ -110,7 +108,6 @@ def chat(
     payload: dict[str, Any] = {
         'model': model,
         'messages': messages,
-        'max_tokens': max_tokens,
         'temperature': temperature,
     }
     if tools:

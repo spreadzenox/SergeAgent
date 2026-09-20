@@ -32,11 +32,27 @@ class ProjObjetTests(unittest.TestCase):
             (NOW, NOW),
         )
         self.conn.execute(
-            'INSERT INTO contacts(id, venture_id, display, email, regime,'
-            ' funnel_state, created_at, updated_at) VALUES'
-            "('p1','v1','Ada','a@x.io','OUTBOUND','INTENT',?,?),"
-            "('p2','v1','Chloé','c@x.io','INBOUND','CUSTOMER',?,?)",
-            (NOW, NOW, NOW, NOW),
+            'INSERT INTO contacts(id, venture_id, display,'
+            ' contact_reference_by_canal, regime, funnel_state, created_at,'
+            ' updated_at) VALUES(?,?,?,?,?,?,?,?),(?,?,?,?,?,?,?,?)',
+            (
+                'p1',
+                'v1',
+                'Ada',
+                json.dumps({'email': {'address': 'a@x.io', 'active': True}}),
+                'OUTBOUND',
+                'INTENT',
+                NOW,
+                NOW,
+                'p2',
+                'v1',
+                'Chloé',
+                json.dumps({'email': {'address': 'c@x.io', 'active': True}}),
+                'INBOUND',
+                'CUSTOMER',
+                NOW,
+                NOW,
+            ),
         )
         self.conn.execute(
             'INSERT INTO accounts_standing(id, venue, handle, cooldown_until,'
@@ -93,10 +109,7 @@ class ProjObjetTests(unittest.TestCase):
         self.assertIn('tas de textes', champs['Si ça rate'])
         mat = next(c for c in fiche['cadres'] if 'droit de lire' in c['titre'])
         titres_m = [lien['titre'] for lien in mat['liens']]
-        self.assertTrue(any('Grille' in t for t in titres_m))
-        self.assertNotIn(
-            'rubric_volume_intensite_recurrence_willingness', titres_m
-        )
+        self.assertEqual(titres_m, [])
         flux = next(c for c in fiche['cadres'] if 'vient' in c['titre'])
         ids = [lien['id'] for lien in flux['liens']]
         self.assertIn('pages', ids)
@@ -116,7 +129,8 @@ class ProjObjetTests(unittest.TestCase):
         outil = project_objet(self.conn, 'outil', 'memory_search')
         self.assertIn('mémoire', outil['pourquoi'])
         self.assertEqual(
-            project_objet(self.conn, 'outil', 'couche5')['id'], 'memory_search'
+            project_objet(self.conn, 'outil', 'memory_search')['id'],
+            'memory_search',
         )
         fiche = project_objet(self.conn, 'llm', 'cluster_demand')
         ids_outils = [
@@ -126,7 +140,6 @@ class ProjObjetTests(unittest.TestCase):
             for lien in c['liens']
         ]
         self.assertEqual(ids_outils.count('memory_search'), 1)
-        self.assertNotIn('couche5', ids_outils)
         nav = project_objet(self.conn, 'outil', 'navigateur')
         self.assertTrue(nav['cadres'][0].get('todo'))
         notion = project_objet(self.conn, 'notion', 'score_volume')

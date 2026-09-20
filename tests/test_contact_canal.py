@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import sqlite3
 import sys
 import unittest
@@ -32,7 +33,7 @@ class ContactCanalTests(unittest.TestCase):
         )
 
     def test_schema(self) -> None:
-        self.assertEqual(SCHEMA_VERSION, 17)
+        self.assertEqual(SCHEMA_VERSION, 20)
 
     def test_meme_lieu_enrichit(self) -> None:
         premier = upsert_trace(
@@ -48,14 +49,15 @@ class ContactCanalTests(unittest.TestCase):
         )
         self.assertEqual(premier, second)
         row = self.conn.execute(
-            'SELECT email, display, profile_url, venue FROM contacts'
+            'SELECT contact_reference_by_canal, display FROM contacts'
             ' WHERE id=?',
             (premier,),
         ).fetchone()
-        self.assertEqual(row['email'], 'ada@x.io')
+        references = json.loads(row['contact_reference_by_canal'])
+        self.assertEqual(references['email']['address'], 'ada@x.io')
         self.assertEqual(row['display'], 'Ada')
-        self.assertIn('linkedin.com', row['profile_url'])
-        self.assertEqual(row['venue'], 'linkedin')
+        self.assertIn('linkedin.com', references['linkedin']['profile_url'])
+        self.assertEqual(references['linkedin']['handle'], 'ada')
 
     def test_deux_lieux_deux_lignes(self) -> None:
         linkedin = upsert_trace(
@@ -67,6 +69,22 @@ class ContactCanalTests(unittest.TestCase):
             'SELECT COUNT(*) FROM contacts WHERE venture_id=?', ('v1',)
         ).fetchone()[0]
         self.assertEqual(n, 2)
+
+    def test_reference_partagee_dedoublonne(self) -> None:
+        linkedin = upsert_trace(
+            self.conn, 'v1', 'linkedin', 'ada', email='ada@x.io'
+        )
+        reddit = upsert_trace(
+            self.conn, 'v1', 'reddit', 'u/ada', email='ADA@X.IO'
+        )
+        self.assertEqual(linkedin, reddit)
+        references = json.loads(
+            self.conn.execute(
+                'SELECT contact_reference_by_canal FROM contacts WHERE id=?',
+                (linkedin,),
+            ).fetchone()[0]
+        )
+        self.assertEqual(references['reddit']['handle'], 'u/ada')
 
     def test_vide_refuse(self) -> None:
         with self.assertRaises(ContactCanalError):

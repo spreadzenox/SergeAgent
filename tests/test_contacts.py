@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import sqlite3
 import sys
 import unittest
@@ -48,15 +49,28 @@ class ContactTests(unittest.TestCase):
         self.connection.close()
 
     def _make(self) -> str:
-        return create_contact(self.connection, 'v1', 'Ada', email='ada@x.io')
+        return create_contact(
+            self.connection,
+            'v1',
+            'Ada',
+            {'channel': 'email', 'address': 'ada@x.io'},
+        )
 
     def test_mail_pose_la_trace(self) -> None:
         ident = self._make()
         row = self.connection.execute(
-            'SELECT venue, handle FROM contacts WHERE id=?', (ident,)
+            'SELECT contact_reference_by_canal FROM contacts WHERE id=?',
+            (ident,),
         ).fetchone()
-        self.assertEqual(row[0], 'email')
-        self.assertEqual(row[1], 'ada@x.io')
+        references = json.loads(row[0])
+        self.assertEqual(references['email']['address'], 'ada@x.io')
+        self.assertTrue(references['email']['active'])
+        columns = {
+            row[1]
+            for row in self.connection.execute('PRAGMA table_info(contacts)')
+        }
+        self.assertNotIn('email', columns)
+        self.assertNotIn('phone', columns)
 
     def _state(self, contact_id: str) -> tuple[str, str]:
         row = self.connection.execute(

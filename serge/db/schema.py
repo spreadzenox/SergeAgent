@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import sqlite3
 
-SCHEMA_VERSION = 17
+SCHEMA_VERSION = 20
 
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS schema_version (
@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS ventures (
 CREATE TABLE IF NOT EXISTS contacts (
     id TEXT PRIMARY KEY, venture_id TEXT NOT NULL,
     display TEXT NOT NULL DEFAULT '',
-    email TEXT NOT NULL DEFAULT '', phone TEXT NOT NULL DEFAULT '',
+    contact_reference_by_canal TEXT NOT NULL DEFAULT '{}',
     regime TEXT NOT NULL DEFAULT 'OUTBOUND',
     funnel_state TEXT NOT NULL DEFAULT 'NEW',
     last_inbound_at TEXT NOT NULL DEFAULT '',
@@ -234,7 +234,12 @@ CREATE TABLE IF NOT EXISTS llm_points (
     tier TEXT NOT NULL DEFAULT '',
     titre TEXT NOT NULL DEFAULT '',
     doc_md TEXT NOT NULL DEFAULT '',
-    enabled INTEGER NOT NULL DEFAULT 1);
+    enabled INTEGER NOT NULL DEFAULT 1,
+    prompt TEXT NOT NULL DEFAULT '',
+    output_mode TEXT NOT NULL DEFAULT 'text'
+        CHECK(output_mode IN ('structured', 'text')),
+    external_info INTEGER NOT NULL DEFAULT 0
+        CHECK(external_info IN (0, 1)));
 CREATE TABLE IF NOT EXISTS llm_point_tools (
     point_id TEXT NOT NULL,
     tool_id TEXT NOT NULL,
@@ -285,6 +290,15 @@ TABLES = (
     'business_candidates',
     'business_candidate_sources',
     'poc_selections',
+    'tool_db_tables',
+    'tool_db_columns',
+    'tool_db_filters',
+    'tool_db_filter_values',
+    'tool_db_joins',
+    'tool_db_params',
+    'tool_db_param_enums',
+    'db_reader_fixed_params',
+    'db_reader_fixed_joins',
 )
 
 

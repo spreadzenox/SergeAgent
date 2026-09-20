@@ -31,7 +31,7 @@ class CanauxTests(unittest.TestCase):
         init_schema(self.conn)
 
     def test_semence_ecriture_seulement(self) -> None:
-        self.assertEqual(SCHEMA_VERSION, 17)
+        self.assertEqual(SCHEMA_VERSION, 20)
         ids = {str(r[0]) for r in self.conn.execute('SELECT id FROM canaux')}
         self.assertEqual(ids, {'email', 'voice'})
         self.assertNotIn('discord', ids)

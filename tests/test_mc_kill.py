@@ -37,9 +37,9 @@ points:
   qualify:
     verdict: LLM-1
     tier: T1
-    checklist: {entree: true}
-    context: {fixed: [], retrieved: [], couche5: {allowed: false},
-      forbidden: [], envelope_tokens: 2500}
+    output_mode: structured
+    external_info: false
+    context: {}
     garde_fou: strict
     repli: manuel
     enabled: true

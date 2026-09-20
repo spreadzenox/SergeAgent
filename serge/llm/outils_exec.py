@@ -12,8 +12,8 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
+from serge.funnels.contacts import ContactError, upsert_contact_references
 from serge.identite import IdentiteError, identite_serge
-from serge.listen.memory import read_named
 from serge.listen.web import search_public
 from serge.memory.search import memory_search
 
@@ -70,15 +70,6 @@ SCHEMAS: dict[str, dict[str, Any]] = {
         },
         ['query'],
     ),
-    'db_read': _schema(
-        'db_read',
-        'Lit une vue DB autorisée par le contrat du jugement.',
-        {
-            'reader': {'type': 'string'},
-            'cycle_id': {'type': 'string'},
-        },
-        ['reader'],
-    ),
     'web_search': _schema(
         'web_search',
         'Cherche sur le web public, en lecture seule.',
@@ -94,7 +85,67 @@ SCHEMAS: dict[str, dict[str, Any]] = {
         {},
         [],
     ),
+    'contact_upsert': _schema(
+        'contact_upsert',
+        'Crée ou enrichit un contact avec des références JSON par canal. '
+        'La déduplication est faite dans toute la venture avant toute création.',
+        {
+            'venture_id': {
+                'type': 'string',
+                'description': 'Identifiant de la venture dans le contexte courant',
+            },
+            'display': {
+                'type': 'string',
+                'description': 'Nom affiché du contact, sans secret',
+            },
+            'contact_reference_by_canal': {
+                'type': 'object',
+                'description': (
+                    'Map canal -> référence. Email: address; voice: phone; '
+                    'autres canaux: handle ou profile_url.'
+                ),
+                'additionalProperties': {
+                    'type': 'object',
+                    'properties': {
+                        'active': {'type': 'boolean'},
+                        'address': {'type': 'string'},
+                        'phone': {'type': 'string'},
+                        'handle': {'type': 'string'},
+                        'profile_url': {'type': 'string'},
+                    },
+                    'additionalProperties': False,
+                },
+            },
+            'reference': {
+                'type': 'object',
+                'description': (
+                    'Référence unique structurée, par exemple '
+                    "{'channel':'email','address':'...'}"
+                ),
+                'properties': {
+                    'channel': {'type': 'string'},
+                    'canal': {'type': 'string'},
+                    'active': {'type': 'boolean'},
+                    'address': {'type': 'string'},
+                    'phone': {'type': 'string'},
+                    'handle': {'type': 'string'},
+                    'profile_url': {'type': 'string'},
+                },
+                'additionalProperties': False,
+            },
+        },
+        ['venture_id', 'display'],
+    ),
 }
+SCHEMAS['contact_upsert']['function']['parameters'].update(
+    {
+        'additionalProperties': False,
+        'anyOf': [
+            {'required': ['contact_reference_by_canal']},
+            {'required': ['reference']},
+        ],
+    }
+)
 
 
 def _exec_memory_search(
@@ -103,14 +154,6 @@ def _exec_memory_search(
     query = str(args.get('query') or '').strip()
     if not query:
         return {'ok': False, 'code': 'invalide', 'detail': 'query vide'}
-    context = ctx.spec.get('context')
-    context = context if isinstance(context, dict) else {}
-    couche = context.get('couche5')
-    couche = couche if isinstance(couche, dict) else {}
-    budget = couche.get('budget_tokens', 2000)
-    if isinstance(budget, bool) or not isinstance(budget, int) or budget < 1:
-        budget = 2000
-    forbidden = context.get('forbidden')
     types = args.get('types')
     tags = args.get('tags')
     top_k = args.get('top_k', 5)
@@ -125,8 +168,6 @@ def _exec_memory_search(
         since=str(args.get('since') or ''),
         tags=tags if isinstance(tags, list) else None,
         top_k=top_k,
-        budget_tokens=budget,
-        forbidden=forbidden if isinstance(forbidden, list) else None,
     )
 
 
@@ -140,12 +181,93 @@ def _exec_identity_basique(
         return {'ok': False, 'code': 'invalide', 'detail': str(exc)}
 
 
-def _exec_db_read(ctx: ContexteOutil, args: dict[str, Any]) -> dict[str, Any]:
-    reader = str(args.get('reader') or '')
-    allowed = ctx.spec.get('db_readers')
-    if not isinstance(allowed, (list, tuple)) or reader not in allowed:
-        return {'ok': False, 'code': 'permission_refusee', 'reader': reader}
-    return read_named(ctx.conn, ctx.point_name, reader, args)
+def _exec_contact_upsert(
+    ctx: ContexteOutil, args: dict[str, Any]
+) -> dict[str, Any]:
+    """Upsert contact borné aux références JSON canoniques."""
+    forbidden = {'email', 'phone', 'venue', 'handle', 'profile_url'}
+    if forbidden.intersection(args):
+        return {
+            'ok': False,
+            'code': 'invalide',
+            'detail': 'les anciennes colonnes de contact sont interdites',
+        }
+    context = ctx.spec.get('context')
+    context = context if isinstance(context, Mapping) else {}
+    venture_id = str(
+        args.get('venture_id') or context.get('venture_id') or ''
+    ).strip()
+    display = str(args.get('display') or '').strip()
+    if not venture_id or not display:
+        return {
+            'ok': False,
+            'code': 'invalide',
+            'detail': 'venture_id et display requis',
+        }
+    if (
+        ctx.conn.execute(
+            'SELECT 1 FROM ventures WHERE id=?', (venture_id,)
+        ).fetchone()
+        is None
+    ):
+        return {'ok': False, 'code': 'invalide', 'detail': 'venture inconnue'}
+
+    reference_map = args.get('contact_reference_by_canal')
+    single_reference = args.get('reference')
+    if reference_map is not None and single_reference is not None:
+        return {
+            'ok': False,
+            'code': 'invalide',
+            'detail': 'une seule forme de référence est acceptée',
+        }
+    raw_references = (
+        reference_map if reference_map is not None else single_reference
+    )
+    if not isinstance(raw_references, Mapping):
+        return {
+            'ok': False,
+            'code': 'invalide',
+            'detail': 'référence JSON requise',
+        }
+    try:
+        references = raw_references
+        is_single = bool(
+            single_reference is not None
+            or references.get('channel')
+            or references.get('canal')
+        )
+        candidates = [references] if is_single else list(references.values())
+        for reference in candidates:
+            if not isinstance(reference, Mapping):
+                continue
+            if 'venue' in reference:
+                return {
+                    'ok': False,
+                    'code': 'invalide',
+                    'detail': 'le champ legacy venue est interdit',
+                }
+            if not isinstance(reference.get('active', True), bool):
+                return {
+                    'ok': False,
+                    'code': 'invalide',
+                    'detail': 'active doit être booléen',
+                }
+        return upsert_contact_references(
+            ctx.conn, venture_id, display, references
+        )
+    except (ContactError, TypeError, ValueError) as exc:
+        return {'ok': False, 'code': 'invalide', 'detail': str(exc)}
+
+
+def _exec_db_read_tool(
+    ctx: ContexteOutil, tool_id: str, args: dict[str, Any]
+) -> dict[str, Any]:
+    from serge.db.query_builder import execute_db_read
+
+    try:
+        return execute_db_read(ctx.conn, tool_id, args)
+    except (ValueError, sqlite3.Error) as exc:
+        return {'ok': False, 'code': 'invalide', 'detail': str(exc)}
 
 
 def _exec_web_search(
@@ -162,9 +284,21 @@ def _exec_web_search(
 HANDLERS: dict[str, Handler] = {
     'memory_search': _exec_memory_search,
     'identity_basique': _exec_identity_basique,
-    'db_read': _exec_db_read,
+    'contact_upsert': _exec_contact_upsert,
     'web_search': _exec_web_search,
 }
+
+
+def _db_tool_ids(conn: sqlite3.Connection | None) -> set[str]:
+    if conn is None:
+        return set()
+    from serge.db.query_builder import db_read_tool_ids
+
+    return set(db_read_tool_ids(conn))
+
+
+def _handler_exists(conn: sqlite3.Connection | None, tool_id: str) -> bool:
+    return tool_id in HANDLERS or tool_id in _db_tool_ids(conn)
 
 
 def tours_max(policy: Mapping[str, Any]) -> int:
@@ -183,42 +317,29 @@ def tours_max(policy: Mapping[str, Any]) -> int:
     return max(0, min(TOURS_MAX_ABSOLU, raw))
 
 
-def outils_pressables(spec: Mapping[str, Any]) -> tuple[str, ...]:
-    """Outils offerts à ce jugement : handler + contrat (couche 5 / yaml).
+def outils_pressables(
+    spec: Mapping[str, Any], conn: sqlite3.Connection | None = None
+) -> tuple[str, ...]:
+    """Outils offerts à ce jugement : handlers et jonction DB.
 
     Args:
         spec: Déclaration du point (registre).
 
     Returns:
-        Ids stables, ordre : memory_search d’abord si autorisé, puis yaml.
+        Ids stables des tools DB affectés au point.
     """
-    context = spec.get('context')
-    context = context if isinstance(context, dict) else {}
-    db_tools = spec.get('db_tools')
-    db_filter = set(db_tools) if isinstance(db_tools, (list, tuple)) else None
-    couche = context.get('couche5')
-    couche = couche if isinstance(couche, dict) else {}
+    declared_db_tools = spec.get('db_tools')
+    db_filter = (
+        set(declared_db_tools)
+        if isinstance(declared_db_tools, (list, tuple))
+        else None
+    )
     ids: list[str] = []
-    if (
-        spec.get('db_readers')
-        and 'db_read' in HANDLERS
-        and (db_filter is None or 'db_read' in db_filter)
-    ):
-        ids.append('db_read')
-    if (
-        couche.get('allowed') is True
-        and 'memory_search' in HANDLERS
-        and (db_filter is None or 'memory_search' in db_filter)
-    ):
-        ids.append('memory_search')
-    extra = context.get('tools')
-    if isinstance(extra, list):
-        for raw in extra:
+    if isinstance(declared_db_tools, (list, tuple)):
+        for raw in declared_db_tools:
             ident = str(raw or '')
-            if ident == 'memory_search':
-                continue
             if (
-                ident in HANDLERS
+                _handler_exists(conn, ident)
                 and ident not in ids
                 and (db_filter is None or ident in db_filter)
             ):
@@ -226,7 +347,9 @@ def outils_pressables(spec: Mapping[str, Any]) -> tuple[str, ...]:
     return tuple(ids)
 
 
-def schemas_openai(ids: tuple[str, ...]) -> list[dict[str, Any]]:
+def schemas_openai(
+    ids: tuple[str, ...], conn: sqlite3.Connection | None = None
+) -> list[dict[str, Any]]:
     """Schémas OpenAI des ids pressables (ignore un id sans schéma).
 
     Args:
@@ -235,7 +358,15 @@ def schemas_openai(ids: tuple[str, ...]) -> list[dict[str, Any]]:
     Returns:
         Liste de blocs ``type=function``.
     """
-    return [SCHEMAS[ident] for ident in ids if ident in SCHEMAS]
+    from serge.db.query_builder import openai_schema_for_tool
+
+    out: list[dict[str, Any]] = []
+    for ident in ids:
+        if ident in SCHEMAS:
+            out.append(SCHEMAS[ident])
+        elif conn is not None and ident in _db_tool_ids(conn):
+            out.append(openai_schema_for_tool(conn, ident))
+    return out
 
 
 CLE_QUOTAS = 'serge_outil_quotas'
@@ -317,11 +448,6 @@ def quota_couple(
             return 0
         return value
     if tool_id == 'memory_search':
-        couche = context.get('couche5')
-        couche = couche if isinstance(couche, dict) else {}
-        max_calls = couche.get('max_calls')
-        if isinstance(max_calls, int) and not isinstance(max_calls, bool):
-            return max(0, max_calls)
         quotas = policy.get('quotas') if isinstance(policy, Mapping) else {}
         fallback = (quotas or {}).get('memory_search_per_cycle_per_point')
         if isinstance(fallback, int) and not isinstance(fallback, bool):
@@ -332,6 +458,7 @@ def quota_couple(
 def peut_appeler(
     tool_id: str,
     *,
+    conn: sqlite3.Connection | None = None,
     pressables: tuple[str, ...],
     spent: Mapping[str, int],
     spec: Mapping[str, Any],
@@ -353,7 +480,7 @@ def peut_appeler(
     Returns:
         Code de refus, ou ``None``.
     """
-    if tool_id not in HANDLERS or tool_id not in pressables:
+    if not _handler_exists(conn, tool_id) or tool_id not in pressables:
         return 'inconnu'
     if (tool_id, arguments) in deja:
         return 'deja_fait'

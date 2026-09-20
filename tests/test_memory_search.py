@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Couche 5 : index FTS, filtres, budget, logs, redaction."""
+"""Couche 5 : index FTS, filtres, logs, redaction."""
 
 from __future__ import annotations
 
@@ -72,21 +72,14 @@ class SearchTests(unittest.TestCase):
         self.assertEqual(
             [item['id'] for item in only_tickets['results']], ['t1']
         )
-        strict = memory_search(
-            self.conn,
-            'email',
-            point='p',
-            venture='v1',
-            forbidden=['autres_ventures'],
-        )
-        self.assertEqual([item['id'] for item in strict['results']], ['l1'])
+        scoped = memory_search(self.conn, 'email', point='p', venture='v1')
+        self.assertEqual([item['id'] for item in scoped['results']], ['l1'])
 
-    def test_budget_tronque(self) -> None:
+    def test_top_k_extrait_complet(self) -> None:
         index_document(self.conn, 'lesson', 'l1', 'Mot ' * 500, venture='')
-        result = memory_search(self.conn, 'mot', point='p', budget_tokens=20)
+        result = memory_search(self.conn, 'mot', point='p', top_k=1)
         excerpt = result['results'][0]['extrait']
-        self.assertIn('affine ta requête', excerpt)
-        self.assertLessEqual(result['tokens_used'], 25)
+        self.assertEqual(excerpt, 'Mot ' * 500)
 
     def test_redaction(self) -> None:
         self.assertEqual(

@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import sqlite3
 import sys
 import unittest
@@ -39,8 +40,19 @@ class ProjEconomyTests(unittest.TestCase):
             " VALUES('c1', 'v1', 'named', 'email', 'RUNNING', 10, '2026-09-02T10:00:00+00:00', 't')"
         )
         conn.execute(
-            'INSERT INTO contacts(id, venture_id, display, email, created_at, updated_at)'
-            " VALUES('ct1', 'v1', 'Alice', 'alice@test.com', 't', 't')"
+            'INSERT INTO contacts(id, venture_id, display,'
+            ' contact_reference_by_canal, created_at, updated_at)'
+            ' VALUES(?,?,?,?,?,?)',
+            (
+                'ct1',
+                'v1',
+                'Alice',
+                json.dumps(
+                    {'email': {'address': 'alice@test.com', 'active': True}}
+                ),
+                't',
+                't',
+            ),
         )
         conn.execute(
             'INSERT INTO touches(id, campaign_id, contact_id, channel, status, cost_eur, idempotency_key, created_at, updated_at)'

@@ -45,6 +45,13 @@ class RegistryTests(unittest.TestCase):
         self.assertTrue(llm_enabled('qualify_prospect'))
         self.assertFalse(llm_enabled('nope_unknown_point'))
 
+    def test_llm_contract_uses_normalized_fields(self) -> None:
+        points = load_llm_points()
+        for point in points.values():
+            self.assertIn(point['output_mode'], {'structured', 'text'})
+            self.assertIsInstance(point['external_info'], bool)
+            self.assertLessEqual(set(point['context']), {'tool_quotas'})
+
     def test_ticket_taxonomy_complete(self) -> None:
         types = load_ticket_types()
         for name in (

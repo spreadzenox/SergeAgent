@@ -159,7 +159,6 @@ def chat_completion(
     messages: list[dict[str, str]],
     referer: str = '',
     timeout: float = 60.0,
-    max_tokens: int = 500,
     temperature: float = 0.3,
 ) -> str:
     """One chat completion. Minimal surface for the installer guide.
@@ -170,7 +169,6 @@ def chat_completion(
         messages: Chat history (role/content).
         referer: Optional HTTP referer.
         timeout: HTTP timeout in seconds.
-        max_tokens: Cap on the reply.
         temperature: Sampling temperature.
 
     Returns:
@@ -188,7 +186,6 @@ def chat_completion(
         {
             'model': model,
             'messages': messages,
-            'max_tokens': max_tokens,
             'temperature': temperature,
         },
         referer,
