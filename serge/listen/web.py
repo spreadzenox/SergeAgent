@@ -16,7 +16,9 @@ class _ResultsParser(HTMLParser):
         self._in_title = False
         self._in_text = False
 
-    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+    def handle_starttag(
+        self, tag: str, attrs: list[tuple[str, str | None]]
+    ) -> None:
         values = dict(attrs)
         classes = values.get('class') or ''
         if tag == 'a' and 'result__a' in classes:
@@ -55,7 +57,12 @@ def search_public(query: str, limit: int = 5) -> dict[str, object]:
         with urlopen(request, timeout=8) as response:
             html = response.read(600_000).decode('utf-8', errors='replace')
     except Exception as exc:  # noqa: BLE001 — tool fail-soft
-        return {'ok': False, 'code': 'web_indisponible', 'detail': str(exc), 'results': []}
+        return {
+            'ok': False,
+            'code': 'web_indisponible',
+            'detail': str(exc),
+            'results': [],
+        }
     parser = _ResultsParser()
     parser.feed(html)
     results = []

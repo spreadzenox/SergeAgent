@@ -116,9 +116,19 @@ def project_graphe(
         ordered = ORDRE.get(step_id, [])
         unordered = RESTE.get(step_id, [])
         for point_rank, point_id in enumerate(ordered, 1):
-            positions[(step_id, point_id)] = (step_rank, 0, point_rank, point_id)
+            positions[(step_id, point_id)] = (
+                step_rank,
+                0,
+                point_rank,
+                point_id,
+            )
         for point_rank, point_id in enumerate(unordered, 1):
-            positions[(step_id, point_id)] = (step_rank, 1, point_rank, point_id)
+            positions[(step_id, point_id)] = (
+                step_rank,
+                1,
+                point_rank,
+                point_id,
+            )
     rows = sorted(
         rows,
         key=lambda row: positions.get(

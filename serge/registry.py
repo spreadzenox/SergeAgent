@@ -78,6 +78,14 @@ def load_llm_points(directory: Path | None = None) -> dict[str, dict]:
         for key in ('fixed', 'retrieved', 'couche5', 'forbidden'):
             if key not in context:
                 raise PolicyError(f'llm-points.{name}.context.{key} manquant')
+        readers = context.get('db_readers')
+        if readers is not None and (
+            not isinstance(readers, list)
+            or any(
+                not isinstance(reader, str) or not reader for reader in readers
+            )
+        ):
+            raise PolicyError(f'llm-points.{name}.context.db_readers invalide')
         envelope = context.get('envelope_tokens', 0)
         if isinstance(envelope, bool) or not isinstance(envelope, int):
             raise PolicyError(f'llm-points.{name}.envelope_tokens invalide')

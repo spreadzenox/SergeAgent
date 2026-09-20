@@ -413,6 +413,7 @@ points:
     context:
       fixed: [contrat_besoin, cycle_id, guide_owner]
       retrieved: [documents_cycle, business_deja_connus]
+      db_readers: [current_listen_cycle, listen_cycle_documents, known_business_candidates]
       couche5: {allowed: true, budget_tokens: 1500, max_calls: 3}
       tools: [web_search]
       forbidden: [secrets, pii_inutile, autres_ventures, resultats_autres_agents]
@@ -427,6 +428,7 @@ points:
     context:
       fixed: [contrat_besoin, cycle_id, guide_owner]
       retrieved: [documents_cycle, business_deja_connus]
+      db_readers: [current_listen_cycle, listen_cycle_documents, known_business_candidates]
       couche5: {allowed: true, budget_tokens: 1500, max_calls: 3}
       tools: [web_search]
       forbidden: [secrets, pii_inutile, autres_ventures, resultats_autres_agents]
@@ -441,6 +443,7 @@ points:
     context:
       fixed: [contrat_selection, cycle_id, business_target]
       retrieved: [business_eligibles]
+      db_readers: [current_listen_cycle, eligible_poc_candidates]
       couche5: {allowed: false}
       tools: []
       forbidden: [secrets, autres_ventures, candidats_deja_en_poc]

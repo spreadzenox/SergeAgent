@@ -60,7 +60,8 @@ Lecteurs nommés :
 - `known_business_candidates`
 - `eligible_poc_candidates`
 
-Permissions par agent :
+Permissions déclarées dans `config/llm-points.yaml` sous
+`context.db_readers`, puis projetées au boot dans SQLite :
 
 ```text
 listen_discover_needs_a:
@@ -78,7 +79,11 @@ listen_choose_poc:
   eligible_poc_candidates
 ```
 
-Le tool `db_read` n'accepte pas de SQL libre. Il vérifie le lecteur demandé contre `llm_point_readers` en BDD, puis appelle une vue nommée dans `serge/listen/memory.py`.
+Le tool `db_read` n'accepte pas de SQL libre. Le boot projette la déclaration
+YAML dans `llm_point_readers`, puis le runtime vérifie le lecteur demandé
+contre cette projection et appelle une vue nommée dans
+`serge/listen/memory.py`. Il n'existe pas de mapping de permissions parallèle
+en Python.
 
 Le runtime injecte au modèle les permissions DB et filtre les tools par les jonctions `llm_point_tools` actives. Les deux agents de découverte reçoivent le même contrat et ne reçoivent jamais la sortie de l'autre.
 

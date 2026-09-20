@@ -43,12 +43,14 @@ de lecture (`current_listen_cycle`, `listen_cycle_documents`,
 au second. Le choix lit uniquement `eligible_poc_candidates` après écriture et
 déduplication déterministes des candidats.
 
-Les lecteurs sont des vues nommées, cataloguées dans `db_readers`, et leurs
-permissions actives vivent dans `llm_point_readers`. Le tool `db_read` refuse
-un lecteur absent de cette jonction et n'accepte jamais de SQL libre. Mission
-Control lit ces permissions depuis SQLite ; le runtime les réinjecte avant
-chaque boucle d'outils. `web_search` est séparé : lecture du web public,
-bornée et sans écriture dans le canon.
+Les lecteurs sont des vues nommées, cataloguées dans `db_readers`. La liste des
+lecteurs autorisés par point est déclarée une seule fois dans
+`config/llm-points.yaml` (`context.db_readers`) puis projetée au boot dans
+`llm_point_readers`. Le tool `db_read` refuse un lecteur absent de cette
+projection et n'accepte jamais de SQL libre. Mission Control et le runtime
+lisent la projection SQLite ; aucune permission parallèle n'est maintenue en
+Python. `web_search` est séparé : lecture du web public, bornée et sans
+écriture dans le canon.
 
 ---
 

@@ -27,8 +27,8 @@ from serge.mc.auth import (
     revoke_session,
 )
 from serge.mc.coupe_actions import CoupeActionsMixin
-from serge.mc.etape_actions import EtapeActionsMixin
 from serge.mc.ecoute_actions import EcouteActionsMixin
+from serge.mc.etape_actions import EtapeActionsMixin
 from serge.mc.policy_actions import PolicyActionsMixin
 from serge.mc.projectors import PAGE_SECTIONS, SnapshotCache
 from serge.mc.sse import state_payload, stream_page

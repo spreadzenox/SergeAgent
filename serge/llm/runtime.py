@@ -277,4 +277,6 @@ def run_registered_point(
 
     runtime_spec['db_readers'] = reader_contract(conn, point_name)['allowed']
     runtime_spec['db_tools'] = list(tool_ids_for_point(conn, point_name))
-    return run_point(conn, policy, runtime_spec, point_name, messages, **kwargs)
+    return run_point(
+        conn, policy, runtime_spec, point_name, messages, **kwargs
+    )

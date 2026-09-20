@@ -120,19 +120,19 @@ POINT_LOCKS: dict[str, tuple[str, str]] = {
     ),
     'cluster_demand': (
         'serge/points/listen_pts.py',
-        'a2561ea7a3eb5f193cec3d6a7f2fa8b808ee9cf223f3ba78b816a07ffe1babd5',
+        '863bdcbafe1ca63bc5fcb1ef2df015cb02b7503d5cf1d0290b39fe60e5ceab52',
     ),
     'listen_discover_needs_a': (
         'serge/points/listen_pts.py',
-        'a2561ea7a3eb5f193cec3d6a7f2fa8b808ee9cf223f3ba78b816a07ffe1babd5',
+        '863bdcbafe1ca63bc5fcb1ef2df015cb02b7503d5cf1d0290b39fe60e5ceab52',
     ),
     'listen_discover_needs_b': (
         'serge/points/listen_pts.py',
-        'a2561ea7a3eb5f193cec3d6a7f2fa8b808ee9cf223f3ba78b816a07ffe1babd5',
+        '863bdcbafe1ca63bc5fcb1ef2df015cb02b7503d5cf1d0290b39fe60e5ceab52',
     ),
     'listen_choose_poc': (
         'serge/points/listen_pts.py',
-        'a2561ea7a3eb5f193cec3d6a7f2fa8b808ee9cf223f3ba78b816a07ffe1babd5',
+        '863bdcbafe1ca63bc5fcb1ef2df015cb02b7503d5cf1d0290b39fe60e5ceab52',
     ),
     'install_guide': ('', ''),
 }
@@ -274,6 +274,13 @@ def _sync_jonction(conn: sqlite3.Connection, points: dict[str, dict]) -> None:
             ' VALUES(?,?,?)',
             (name, 'memory_search', 'autorise' if allowed else 'interdit'),
         )
+        readers = ctx.get('db_readers') or []
+        if isinstance(readers, list) and readers:
+            conn.execute(
+                'INSERT INTO llm_point_tools(point_id, tool_id, usage)'
+                " VALUES(?, 'db_read', 'autorise')",
+                (name,),
+            )
         extra = ctx.get('tools') or []
         if isinstance(extra, list):
             for tool in extra:

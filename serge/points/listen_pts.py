@@ -170,21 +170,21 @@ def discover_needs(
     kwargs: dict[str, Any] = {'root': root, 'max_tokens': 1400}
     if caller is not None:
         kwargs['caller'] = caller
-    return run_json(
-        conn, policy, point_name, messages, _valid_needs, **kwargs
-    )
+    return run_json(conn, policy, point_name, messages, _valid_needs, **kwargs)
 
 
 def _valid_choice(data: dict[str, Any]) -> bool:
     items = data.get('candidate_ids')
-    return isinstance(items, list) and all(isinstance(item, str) for item in items)
+    return isinstance(items, list) and all(
+        isinstance(item, str) for item in items
+    )
 
 
 def choose_poc(
     conn: sqlite3.Connection,
     policy: Mapping[str, Any],
     cycle_id: str,
-    p_target: int,
+    business_target: int,
     *,
     root: Path | None = None,
     caller: Any = None,
@@ -196,8 +196,9 @@ def choose_poc(
             'role': 'user',
             'content': (
                 f'cycle_id={cycle_id}\n'
-                f'p_target={p_target}\n'
-                'Lis les candidats éligibles avec db_read, puis choisis au plus p.'
+                f'business_target={business_target}\n'
+                'Lis les candidats éligibles avec db_read, puis choisis au plus '
+                'business_target.'
             ),
         },
     ]

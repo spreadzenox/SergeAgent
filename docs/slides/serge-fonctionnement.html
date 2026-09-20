@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Serge — de l’écoute à l’encaissement</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Sora:wght@400;500;600;700&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --fond-0: #070b16;
+      --fond-1: #0b1220;
+      --fond-2: #111a2e;
+      --verre: rgb(17 26 46 / 72%);
+      --bordure: rgb(53 224 255 / 22%);
+      --texte: #e6edf3;
+      --texte-doux: #9fb0c3;
+      --cyan: #35e0ff;
+      --or: #f0c45a;
+      --orange: #ff9a3c;
+      --vert: #3fb950;
+      --rouge: #ff7b72;
+      --rayon: 12px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: var(--fond-0);
+      color: var(--texte);
+      font-family: "Source Sans 3", system-ui, sans-serif;
+      overflow: hidden;
+    }
+
+    body {
+      background:
+        radial-gradient(900px 600px at 50% 0%, rgb(240 196 90 / 8%) 0%, transparent 55%),
+        radial-gradient(1200px 800px at 85% -10%, #163056 0%, transparent 55%),
+        radial-gradient(900px 700px at 5% 110%, #0a3040 0%, transparent 50%),
+        var(--fond-0);
+    }
+
+    .deck {
+      position: relative;
+      height: 100vh;
+      width: 100vw;
+    }
+
+    .slide {
+      display: none;
+      height: 100%;
+      padding: clamp(1.6rem, 4vw, 3.2rem) clamp(2rem, 6vw, 5.5rem) 4.2rem;
+      flex-direction: column;
+      justify-content: center;
+      gap: 1.1rem;
+    }
+
+    .slide.active { display: flex; }
+
+    .kicker {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.78rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--or);
+      margin: 0;
+    }
+
+    h1, h2 {
+      font-family: Sora, sans-serif;
+      font-weight: 600;
+      line-height: 1.15;
+      letter-spacing: -0.03em;
+      margin: 0;
+    }
+
+    h1 { font-size: clamp(2.4rem, 5vw, 4.2rem); max-width: 18ch; }
+    h2 { font-size: clamp(1.35rem, 2.6vw, 2.05rem); max-width: 36ch; }
+
+    .lede {
+      font-size: clamp(1.05rem, 1.55vw, 1.28rem);
+      color: var(--texte);
+      max-width: 62ch;
+      margin: 0;
+      line-height: 1.45;
+    }
+
+    p, li { line-height: 1.45; }
+
+    .sub { color: var(--texte-doux); margin: 0; font-size: 1.05rem; max-width: 68ch; }
+
+    .prose {
+      margin: 0;
+      max-width: 68ch;
+      font-size: 1.05rem;
+      color: var(--texte-doux);
+    }
+
+    .row {
+      display: grid;
+      gap: 0.85rem;
+    }
+
+    .row-2 { grid-template-columns: 1fr 1fr; }
+    .row-3 { grid-template-columns: 1fr 1fr 1fr; }
+    .row-4 { grid-template-columns: repeat(4, 1fr); }
+    .row-5 { grid-template-columns: repeat(5, 1fr); }
+
+    .card {
+      background: var(--verre);
+      backdrop-filter: blur(14px);
+      border: 1px solid var(--bordure);
+      border-radius: var(--rayon);
+      padding: 0.95rem 1.05rem;
+    }
+
+    .card h3 {
+      font-family: Sora, sans-serif;
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin: 0 0 0.35rem;
+    }
+
+    .card p, .card li { margin: 0; font-size: 0.98rem; color: var(--texte-doux); line-height: 1.45; }
+
+    .card ul { margin: 0; padding-left: 1.1rem; }
+
+    .gold { color: var(--or); }
+    .cyan { color: var(--cyan); }
+    .orange { color: var(--orange); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.95rem;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 0.45rem 0.6rem;
+      border-bottom: 1px solid rgb(53 224 255 / 14%);
+      vertical-align: top;
+    }
+
+    th {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--cyan);
+      font-weight: 500;
+    }
+
+    .flow {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.45rem;
+      font-family: Sora, sans-serif;
+      font-size: clamp(0.78rem, 1.3vw, 1rem);
+    }
+
+    .chip {
+      border: 1px solid var(--bordure);
+      background: rgb(7 12 24 / 55%);
+      border-radius: 999px;
+      padding: 0.35rem 0.7rem;
+      white-space: nowrap;
+    }
+
+    .chip.money { border-color: rgb(240 196 90 / 45%); color: var(--or); }
+    .arrow { color: var(--cyan); opacity: 0.7; }
+
+    .rule {
+      font-size: 1.05rem;
+      margin: 0;
+      padding-left: 0.85rem;
+      border-left: 3px solid var(--or);
+    }
+
+    .stack { display: flex; flex-direction: column; gap: 0.55rem; }
+
+    .compare td:first-child { color: var(--texte-doux); }
+    .compare td:last-child { color: var(--texte); }
+
+    footer.hud {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.65rem 1.4rem 0.75rem;
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.72rem;
+      letter-spacing: 0.06em;
+      color: var(--texte-doux);
+      background: linear-gradient(transparent, rgb(7 11 22 / 92%));
+    }
+
+    .progress {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 3px;
+      background: rgb(53 224 255 / 12%);
+    }
+
+    .progress > span {
+      display: block;
+      height: 100%;
+      background: linear-gradient(90deg, var(--or), var(--cyan));
+      width: 0%;
+    }
+
+    .help {
+      opacity: 0.75;
+    }
+
+    .title-meta {
+      display: flex;
+      gap: 1rem;
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.78rem;
+      color: var(--texte-doux);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .big-list {
+      margin: 0;
+      padding-left: 1.15rem;
+      font-size: 1.15rem;
+    }
+
+    .big-list li { margin: 0.35rem 0; }
+
+    .center-title {
+      justify-content: center;
+      padding-bottom: 8vh;
+    }
+
+    .center-title h1 {
+      font-size: clamp(3.2rem, 7vw, 5.6rem);
+    }
+
+    .rule-gold {
+      width: 4.2rem;
+      height: 3px;
+      background: linear-gradient(90deg, var(--or), var(--cyan));
+      border: 0;
+      margin: 0.15rem 0 0.35rem;
+    }
+
+    .phrase {
+      font-family: Sora, sans-serif;
+      font-size: clamp(1.15rem, 2vw, 1.55rem);
+      max-width: 34ch;
+      line-height: 1.35;
+      margin: 0;
+    }
+
+    .notes {
+      display: none;
+      position: fixed;
+      right: 1.2rem;
+      bottom: 3.2rem;
+      width: min(34rem, 42vw);
+      max-height: 40vh;
+      overflow: auto;
+      background: rgb(7 12 24 / 92%);
+      border: 1px solid var(--bordure);
+      border-radius: var(--rayon);
+      padding: 0.85rem 1rem;
+      color: var(--texte-doux);
+      font-size: 0.88rem;
+      z-index: 5;
+    }
+
+    body.show-notes .notes { display: block; }
+
+    @media (max-width: 980px) {
+      .row-2, .row-3, .row-4, .row-5 { grid-template-columns: 1fr; }
+      .slide { padding: 1.2rem 1.2rem 4rem; }
+      h1 { max-width: none; }
+    }
+
+    @media print {
+      html, body { overflow: visible; height: auto; background: #070b16; }
+      .slide {
+        display: flex !important;
+        page-break-after: always;
+        height: 100vh;
+        break-after: page;
+      }
+      footer.hud, .notes { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="deck" id="deck">
+
+    <section class="slide center-title" data-notes="Dire simplement : Serge est un employé logiciel qui vend, pas un chatbot. Le reste du deck raconte sa journée de travail.">
+      <p class="kicker">20 minutes · comment ça marche, vraiment</p>
+      <h1>Serge</h1>
+      <hr class="rule-gold">
+      <p class="phrase">Un employé qui écoute le marché, teste une idée, vend, encaisse — et se souvient de ce qui a marché.</p>
+      <div class="title-meta">
+        <span>Produit en bêta</span>
+        <span>Pour investisseurs</span>
+      </div>
+    </section>
+
+    <section class="slide" data-notes="Imaginer un stagiaire commercial ultra-discipliné, pas ChatGPT avec un cron. L’humain reste le patron : il dit oui seulement quand ça engage l’entreprise.">
+      <p class="kicker">01 · C’est quoi, concrètement</p>
+      <h2>Ce n’est pas un chatbot. C’est un commercial qui ne dort pas.</h2>
+      <p class="lede">Serge fait le métier d’une petite équipe vente + ops : trouver une demande, proposer une offre, écrire, appeler, facturer, relancer. Toi, tu restes le patron. Tu ne relis pas chaque mail. Tu signes seulement ce qui engage l’entreprise — un prix, une nouvelle activité, un gros budget.</p>
+      <div class="row row-2">
+        <div class="card">
+          <h3>Ce qu’il fait tout seul</h3>
+          <p>Il écoute le marché, rédige, envoie, répond, tient la caisse, et note ce qui a marché ou raté. Comme un employé à qui on a donné une fiche de poste, pas une conversation ouverte.</p>
+        </div>
+        <div class="card">
+          <h3>Ce que tu continues de décider</h3>
+          <p>Les choix qui se paient cher si on se trompe. Lancer une offre. Fixer un prix. Mettre de l’essence sur une campagne. Publier quelque chose de visible. Le reste a déjà une règle.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-notes="L’innovation n’est pas « on a plus d’IA ». C’est : l’IA n’a le droit de juger que là où c’est écrit, et jamais de toucher à l’argent ou au planning toute seule.">
+      <p class="kicker">02 · L’idée qui change tout</p>
+      <h2>L’intelligence artificielle rédige. Elle ne tient pas la caisse, et elle ne décide pas toute seule.</h2>
+      <p class="lede">La plupart des « agents » mélangent tout : ils parlent, ils décident, ils envoient, ils inventent un prix. C’est pour ça que ça part en vrille. Chez Serge, on a coupé le travail en deux métiers très clairs.</p>
+      <div class="row row-2">
+        <div class="card">
+          <h3 class="gold">Les règles tiennent la boutique</h3>
+          <p>Qui appeler aujourd’hui, à quelle heure, combien de fois, est-ce que la personne a dit stop, quel montant figurer sur la facture : tout ça, c’est de la procédure. Pas un avis. Si l’IA tombe, la boutique s’arrête proprement. Elle n’improvise pas.</p>
+        </div>
+        <div class="card">
+          <h3 class="orange">L’IA n’intervient que pour juger</h3>
+          <p>Qualifier un prospect, écrire un mail, tenir un appel, proposer un prix, inventer une page. Chaque fois, c’est une tâche nommée, avec un budget, et un plan B si on l’éteint. Un « ok » dans le chat ne lance rien. Il faut un bouton.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-notes="Dessiner la semaine type. Une seule affaire à la fois, comme un bon resto : une cuisine, pas douze plats à moitié cuits.">
+      <p class="kicker">03 · Sa journée, du début à la fin</p>
+      <h2>Une seule affaire à la fois. Cinq étapes, toujours dans le même ordre.</h2>
+      <p class="prose">Serge n’ouvre pas dix projets en parallèle. Il en mène un jusqu’à un verdict : on grandit, on pivote, ou on arrête. Ça évite le cimetière de « on verra plus tard ».</p>
+      <div class="flow">
+        <span class="chip">Écouter</span><span class="arrow">→</span>
+        <span class="chip">Proposer une idée</span><span class="arrow">→</span>
+        <span class="chip">Fabriquer l’offre</span><span class="arrow">→</span>
+        <span class="chip">Tester</span><span class="arrow">→</span>
+        <span class="chip money">Encaisser</span><span class="arrow">→</span>
+        <span class="chip">Retenir la leçon</span>
+      </div>
+      <div class="row row-2">
+        <div class="card">
+          <h3 class="gold">D’abord un essai (une semaine, ~40 personnes)</h3>
+          <p>On vérifie surtout si le message parle aux gens. Le prix n’est pas encore gravé. On n’embauche personne, on n’achète pas de pub à fond.</p>
+        </div>
+        <div class="card">
+          <h3 class="cyan">Ensuite un vrai test (2–3 semaines, ~180 personnes)</h3>
+          <p>Là, il faut pouvoir encaisser pour de bon : prix validé par toi, catalogue prêt, un paiement test de 1 € déjà passé. Sinon on fabrique de la demande qu’on ne peut pas servir.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-notes="Personne n’est contacté ici. C’est le radar. Une idée n’existe que si des gens s’en plaignent déjà quelque part.">
+      <p class="kicker">04 · Avant même de vendre</p>
+      <h2>Il ne commence pas par une liste de numéros. Il commence par une douleur qui revient.</h2>
+      <p class="lede">La plupart des outils te vendent 10 000 contacts. Serge fait l’inverse : il lit ce que les gens disent déjà — forums, flux, sites — et regroupe les plaintes qui se ressemblent. Personne n’est encore appelé. C’est un radar, pas un téléphone.</p>
+      <div class="row row-2">
+        <div class="card">
+          <h3>Le tri est mécanique</h3>
+          <p>Collecter et dédoublonner, c’est du travail de secrétariat. L’IA n’est pas payée pour « surfer ». Une fois par semaine, elle met des mots sur les paquets : est-ce que ça a l’air fréquent, urgent, et est-ce que quelqu’un paierait pour que ça s’arrête.</p>
+        </div>
+        <div class="card">
+          <h3>Toi, tu n’es dérangé que si ça chauffe</h3>
+          <p>Si un sujet dépasse un seuil, tu reçois une alerte. Sinon ça attend sagement. Serge ne s’invente pas une priorité pour avoir l’air occupé.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-notes="Insister : on ne « tente LinkedIn cette semaine ». On signe un contrat de test, avec un critère d’arrêt écrit à l’avance.">
+      <p class="kicker">05 · De la douleur à l’hypothèse</p>
+      <h2>L’idée n’est pas un brainstorm du lundi. C’est un pari écrit, avec une date de fin.</h2>
+      <p class="lede">Serge rédige une fiche : à qui on parle, quoi on vend, par quel canal, combien de personnes on touche, et à partir de quels chiffres on arrête ou on accélère. Toi, tu valides <em>cette</em> version — pas « l’idée en général ».</p>
+      <div class="row row-2">
+        <div class="card">
+          <h3>Sur la fiche, il y a forcément</h3>
+          <p>Le client visé, l’offre, le canal, la taille du test, et le prix. Pour l’essai, le prix est encore un brouillon. Pour le vrai test, c’est toi qui l’as signé. Sans ça, on ne part pas.</p>
+        </div>
+        <div class="card">
+          <h3>À la fin, quatre issues honnêtes</h3>
+          <p>On industrialise. On change une chose et on reteste. On prolonge une seule fois. Ou on tue l’idée — et dans ce cas Serge est <em>obligé</em> d’écrire pourquoi, pour ne pas recommencer le même trou.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-notes="Comparer à un artisan : on ne vend pas un croquis. On vend une vitrine réelle, relue, versionnée. Trois essais max, puis un humain.">
+      <p class="kicker">06 · Fabriquer ce qu’on va vendre</p>
+      <h2>On ne vend pas un prompt. On vend une page, un pack, un script — quelque chose de réel.</h2>
+      <p class="lede">Quand l’idée est signée, Serge construit l’offre : une landing, un document, un petit produit. Ce n’est pas « l’IA a généré un site, on met en ligne ». C’est une chaîne de contrôle, comme une imprimerie.</p>
+      <div class="row row-3">
+        <div class="card">
+          <h3>D’abord les contrôles bêtes</h3>
+          <p>Il y a un bouton ? Les mentions légales ? Les liens marchent ? Rien de secret qui fuit ? Ça, une machine le vérifie en une seconde, sans avis artistique.</p>
+        </div>
+        <div class="card">
+          <h3>Ensuite un juge qui n’est pas l’auteur</h3>
+          <p>Une autre IA regarde le rendu réel — photos d’écran, clics — et dit : on publie, on corrige, ou on recommence. L’auteur ne s’auto-note pas. Sans ce passage, rien ne sort.</p>
+        </div>
+        <div class="card">
+          <h3>Trois essais, puis on s’arrête</h3>
+          <p>On ne tourne pas en boucle jusqu’à 3 h du matin. Après trois passages, c’est toi qui débloques. Chaque version est gardée : on saura plus tard si la v2 convertissait vraiment mieux.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-notes="L’IA écrit le mail n°3. Le planning décide que c’est le moment du mail n°3. Distinguer : on te courtise vs tu as déjà répondu.">
+      <p class="kicker">07 · Comment on prospecte</p>
+      <h2>On ne « gère pas des contacts ». On mène une campagne : un canal, un message, une durée, un budget.</h2>
+      <p class="lede">Que tu écrives à Marie, que tu achètes de la pub, ou que tu publies sur un forum, la question est la même : on a touché combien de gens, combien ont réagi, combien veulent acheter, à quel coût. L’IA rédige le texte. Elle ne choisit pas qui harceler ce matin.</p>
+      <div class="row row-2">
+        <div class="card">
+          <h3 class="orange">Quand c’est Serge qui parle en premier</h3>
+          <p>Une seule relance à la fois, des pauses entre les messages, jamais d’appel à 3 h. C’est de la politesse, et c’est aussi la loi. On protège ta marque autant que la vente.</p>
+        </div>
+        <div class="card">
+          <h3 class="cyan">Quand la personne a déjà répondu</h3>
+          <p>Là, on accélère. Si quelqu’un dit « c’est combien ? », on ne le met pas au frigo « parce que le scénario dit J+4 ». On a une heure, en journée, pour répondre. Une vente se perd dans l’attente, pas dans le manque de prompts.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-notes="Raconter le film d’une personne : on la trie, on lui parle, elle s’intéresse, elle veut acheter. Avant chaque envoi, un portier : consentement, horaires, pas de doublon.">
+      <p class="kicker">08 · Une personne, de près</p>
+      <h2>Le film est simple. Avant chaque message, un portier demande : on a le droit ?</h2>
+      <p class="lede">On rencontre quelqu’un, on vérifie qu’il ressemble au client visé, on lui parle, il s’intéresse, il veut un rendez-vous ou un prix — ou il dit non. S’il dit « ne me contactez plus », c’est immédiat et global. L’IA n’a pas son mot à dire là-dessus.</p>
+      <div class="row row-3">
+        <div class="card">
+          <h3>Le portier, avant d’ouvrir la porte</h3>
+          <p>Consentement, liste Bloctel, quota du jour, horaires légaux, budget restant, pas le même mail envoyé deux fois. Si c’est non, on reporte. On n’envoie pas « quand même ».</p>
+        </div>
+        <div class="card">
+          <h3>Le téléphone, sans tricher</h3>
+          <p>Serge se présente comme un agent, appelle aux heures autorisées, pas plus de quatre fois en trente jours, avec le bon type de numéro. Un 06 qui spam, c’est illégal et suicidaire.</p>
+        </div>
+        <div class="card">
+          <h3>Ce qu’on refuse exprès</h3>
+          <p>Pas de SMS publicitaires sortants. Publier sur un forum coûte de la réputation : il faut ton feu vert. Mieux vaut moins de volume que brûler le domaine et la marque.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-notes="Un mail « c’est combien ? » et un message LinkedIn veulent la même chose. L’IA lit. Le tableau de bord compte. Un prix inventé n’est jamais envoyé.">
+      <p class="kicker">09 · Quand les gens répondent</p>
+      <h2>Peu importe le canal. On veut savoir une seule chose : est-ce que quelqu’un veut acheter ?</h2>
+      <p class="lede">Un mail, un appel manqué, un clic pub, un message LinkedIn : la technique change, l’intention est la même. Serge traduit tout ça en questions de commerçant. L’IA lit le texte. Les compteurs, eux, sont tenus par des règles — elle n’a pas le droit de « arrondir » les résultats.</p>
+      <div class="row row-2">
+        <div class="card">
+          <h3>Les réactions qu’on distingue</h3>
+          <p>La technique est cassée (mail rejeté). La personne a vu. Elle a répondu. Elle veut acheter. Elle a dit non. Elle a dit stop. Ou on ne comprend pas — et on met ça de côté pour le soir, sans bloquer la journée.</p>
+        </div>
+        <div class="card">
+          <h3>En cas de doute, on penche vers la vente</h3>
+          <p>Se tromper et relire un message coûte des centimes. Rater un « je suis preneur » coûte une vente. En revanche, si Serge s’apprête à promettre un prix ou un délai qui n’est pas au catalogue, le message ne part pas : il te le pose sur le bureau.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-notes="C’est LE slide argent. Raconter un euro : toi tu signes le prix, on teste 1 €, on facture le catalogue, on relance deux fois, on s’arrête.">
+      <p class="kicker">10 · Comment ça gagne de l’argent</p>
+      <h2>Serge ne « monétise » pas. Il vend un truc du catalogue, il envoie une facture, il encaisse.</h2>
+      <p class="lede">L’IA peut te proposer un prix — avec des alternatives et des « on pourra revoir si… ». C’est toi qui le signes. Ensuite, plus personne n’invente un montant. La facture est un formulaire. Ennuyeux. C’est exactement ce qu’un comptable et un investisseur veulent.</p>
+      <div class="row row-3">
+        <div class="card">
+          <h3>Avant d’ouvrir la boutique</h3>
+          <p>Prix validé, offre dans le catalogue, un vrai paiement test de 1 € (toi vers toi) pour prouver que le tuyau marche. Pas de grand test commercial tant que la caisse n’est pas prête.</p>
+        </div>
+        <div class="card">
+          <h3>Une vente, pas un roman</h3>
+          <p>Devis si c’est une mission. Paiement direct si c’est un abonnement. Facture numérotée, mentions françaises. Relance polie à une semaine, plus ferme à deux, puis on s’arrête et on te prévient. Deux fois, pas une chasse à l’homme.</p>
+        </div>
+        <div class="card">
+          <h3>Si les chiffres ne collent pas</h3>
+          <p>Un remboursement minuscule passe tout seul. Au-dessus, il te demande. Un écart, un double paiement, un montant bizarre : alerte, jamais un silence. L’argent n’a pas le droit d’être flou.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-notes="Cinq questions de commerçant, pas des vanity metrics. Le budget : des rails, un peu de maths, et l’IA qui explique si elle veut bouger.">
+      <p class="kicker">11 · Est-ce que ça vaut le coup ?</p>
+      <h2>On ne scale pas au feeling. On pose cinq questions, et les réponses décident.</h2>
+      <p class="lede">Combien de gens a-t-on vraiment touchés ? Combien ont réagi ? Combien veulent acheter — c’est le seul « positif » qui compte. Combien ça a coûté, par personne intéressée ? Et surtout : <em>pourquoi</em> ils disent non, dans leurs mots. Si le coût par envie d’acheter est trop haut, on arrête. Si c’est bas, on met de l’essence — dans une limite.</p>
+      <div class="row row-2">
+        <div class="card">
+          <h3>Le budget a des rails</h3>
+          <p>On ne met pas 80 % de l’argent sur une campagne qui n’a rien prouvé. Une part reste de côté pour une opportunité. Si Serge propose trop, on coupe et on note. Ce n’est pas négociable.</p>
+        </div>
+        <div class="card">
+          <h3>Les maths explorent, l’IA explique</h3>
+          <p>Un calcul répartit l’effort vers ce qui rapporte le plus d’envies d’acheter pour le moins cher. Tous les jours, l’IA peut ajuster — et elle doit le dire en français. Un gros mouvement, c’est toi qui signes.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-notes="Comparer à une compta : le journal, le grand livre, les notes de doctrine. L’IA peut lire et résumer. Elle n’écrit pas l’état de l’entreprise.">
+      <p class="kicker">12 · Comment il se souvient</p>
+      <h2>Ce n’est pas un historique de chat. C’est une comptabilité de ce qu’on sait.</h2>
+      <p class="lede">Un agent classique oublie lundi ce qu’il a appris vendredi, ou pire : il mélange tout dans un grand sac. Serge sépare cinq tiroirs, et l’IA n’a le droit d’écrire dans aucun des tiroirs officiels.</p>
+      <div class="row row-2">
+        <div class="card">
+          <h3>Ce qui est vrai, maintenant</h3>
+          <p>Où en est l’affaire, qui a dit stop, quel est le prix, quel budget reste. C’est le tableau de bord. Seules les règles — ou toi, avec un bouton — le mettent à jour.</p>
+        </div>
+        <div class="card">
+          <h3>Ce qui s’est passé</h3>
+          <p>Chaque envoi, chaque réponse, chaque décision, horodatés. On ne gomme pas. On corrige en ajoutant une ligne. C’est la preuve, pour toi et pour plus tard.</p>
+        </div>
+        <div class="card">
+          <h3>Ce qu’on a vraiment appris</h3>
+          <p>Des leçons courtes, avec leurs sources : « sur ce métier, parler prix trop tôt tue ». Toi tu les gardes, tu les modifies ou tu les jettes. Trois fois contredites, elles sortent du jeu sans disparaître.</p>
+        </div>
+        <div class="card">
+          <h3>Le résumé, et la recherche</h3>
+          <p>L’IA peut raconter l’essentiel ou aller chercher un vieux fil. Elle informe. Elle n’exécute pas. Et ça reste sur ta machine : on ne loue pas la mémoire à un tiers à chaque lecture.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-notes="Toi tu es le conseil de doctrine, pas le stagiaire qui relit les mails. Un arrêt force une leçon. Le capital se compose.">
+      <p class="kicker">13 · Comment il devient meilleur</p>
+      <h2>Tous les trois jours, on vote la doctrine. Ce n’est pas l’IA qui se « réentraîne » dans son coin.</h2>
+      <p class="lede">Quand une idée meurt, quand quelqu’un objecte, quand les maths et l’IA ne sont pas d’accord, Serge prépare des leçons candidates. Tu reçois une liste : garder, modifier, jeter. Si tu ne dis rien en 48 heures, ça passe — sauf si tu as mis un veto. Ensuite, le prochain mail, le prochain appel, le prochain test s’en servent.</p>
+      <div class="row row-2">
+        <div class="card">
+          <h3>Une partie s’améliore sans réfléchir</h3>
+          <p>Le partage du budget, les scores, « qui a vraiment déclenché la vente » : ça se met à jour tout seul, comme un commercial qui note ses ratios. Pas besoin d’une phrase intelligente.</p>
+        </div>
+        <div class="card">
+          <h3>On n’oublie pas en silence</h3>
+          <p>Une vieille histoire jamais citée part à l’archive — on peut la ressortir. Une leçon fausse trois fois de suite n’est plus suggérée. Toi tu vois qui a décidé quoi, et pourquoi.</p>
+        </div>
+      </div>
+      <p class="rule">Le capital de Serge, ce n’est pas un prompt magique. C’est la pile de leçons que tu as laissées entrer.</p>
+    </section>
+
+    <section class="slide" data-notes="Parler usage : temps du patron, risque de marque, argent qui ne s’évapore pas. Pas une feature list.">
+      <p class="kicker">14 · Ce que ça change pour toi</p>
+      <h2>Moins de relances à 23 h. Moins de « l’IA a promis 50 % ». Plus de tests qui laissent une trace.</h2>
+      <div class="row row-2">
+        <div class="card">
+          <h3>Sans ça</h3>
+          <p>Une liste figée, un outil qui envoie trop, des prix sortis d’un chapeau, on accélère parce que « ça a l’air de marcher », on oublie pourquoi ça a planté, et il faut surveiller la machine comme un stagiaire. Douze logiciels qui ne se parlent pas.</p>
+        </div>
+        <div class="card">
+          <h3>Avec Serge</h3>
+          <p>On part d’une demande réelle, on teste avec un critère d’arrêt, l’IA écrit et le planning décide, le prix est au catalogue, on met de l’essence seulement si le coût par envie d’acheter le justifie, et tu passes vingt minutes sur ce qui engage — pas huit heures à relancer.</p>
+        </div>
+      </div>
+      <p class="prose">L’avantage n’est pas « plus de mails ». C’est un système fermé : entendre, construire, tester, vendre, apprendre — avec des portes que l’IA ne peut pas enfoncer.</p>
+    </section>
+
+    <section class="slide" data-notes="Reformuler pour un business angel : on n’a pas « plus de GPT ». On a enfin un endroit où GPT s’arrête.">
+      <p class="kicker">15 · Pourquoi ce n’est pas « encore un agent »</p>
+      <h2>L’innovation, ce n’est pas plus d’intelligence. C’est savoir où elle s’arrête.</h2>
+      <p class="lede">Tout le monde peut coller un modèle de langage sur une boîte mail. Très peu de gens construisent une entreprise autour, avec une caisse qui ne ment pas et une mémoire que le patron contrôle.</p>
+      <div class="row row-2">
+        <div class="card">
+          <h3>Un métier, pas une boîte à outils</h3>
+          <p>Serge a déjà choisi comment on vend. Tu n’arrives pas avec une page blanche et des prompts. Tu arrives avec un employé qui a une méthode.</p>
+        </div>
+        <div class="card">
+          <h3>Le compte de résultat n’est pas une conversation</h3>
+          <p>Qui faire, quand, combien facturer : hors IA. Tu peux lire l’histoire d’un euro. Tu ne la « discutes » pas avec un modèle.</p>
+        </div>
+      </div>
+      <p class="rule">Le test simple : si on coupe l’IA, Serge s’arrête proprement. Il n’invente pas une facture pour remplir le silence.</p>
+    </section>
+
+    <section class="slide" data-notes="Un ok en prose n’approuve rien. Si tu ne réponds pas, le défaut est annoncé : souvent on ne fait pas, parfois ça passe.">
+      <p class="kicker">16 · À quoi ressemble ta journée</p>
+      <h2>Tu n’es pas collé à l’écran. Tu tranches des cartes, et chaque carte a déjà un plan B.</h2>
+      <p class="lede">Serge te parle sur Discord (bientôt aussi sur une page web). Vous pouvez discuter autant que vous voulez. Pour décider, c’est un bouton. Écrire « ok » dans le fil ne lance rien — c’est voulu. Ça évite les malentendus à 1 h du matin.</p>
+      <div class="row row-2">
+        <div class="card">
+          <h3>Si tu ne réponds pas</h3>
+          <p>Valider une idée : on ne teste pas. Signer un prix ou une nouvelle activité : on ne crée pas. Une leçon : au bout de 48 h, elle entre, sauf veto. Une alerte argent : elle te prévient, elle n’attend pas ton avis pour exister.</p>
+        </div>
+        <div class="card">
+          <h3>Quand il a vraiment besoin de tes mains</h3>
+          <p>Un code banque, une signature, un captcha : ça sonne dans le canal urgent, pas dans le digest du soir. Le reste peut attendre. Tu fais le métier de patron, pas de standardiste.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-notes="Honnêteté : moteur vrai, revenus pas encore à raconter. Le risque est d’allumer la machine, pas de ne pas savoir facturer sans halluciner.">
+      <p class="kicker">17 · Où on en est, sans maquillage</p>
+      <h2>Le moteur existe. La boutique live est en train de s’allumer. On ne vend pas un rêve de chiffre d’affaires.</h2>
+      <div class="row row-2">
+        <div class="card">
+          <h3 class="cyan">Ce qui tourne déjà</h3>
+          <p>Toute la boucle dont on a parlé : écouter, hypothèse, fabriquer, tester, mémoire, tickets. L’email, le téléphone commercial borné, les codes SMS qui arrivent. La caisse en mode test. Discord pour te parler.</p>
+        </div>
+        <div class="card">
+          <h3 class="orange">Ce qui n’est pas encore au même niveau</h3>
+          <p>La page de pilotage web. Le branchement des vrais paiements sur le livre de comptes. La pub et LinkedIn aussi fluides que l’email et la voix. On le dit maintenant, pas après la question gênante.</p>
+        </div>
+      </div>
+      <p class="rule">On te demande de croire à une architecture qui peut vendre sans se mentir. Pas à un GTM déjà en feu.</p>
+    </section>
+
+    <section class="slide" data-notes="S’arrêter. Si 2 min : le film d’un euro. Si 10 min : une carte Discord. Close : l’IA s’arrête, l’argent et la leçon commencent.">
+      <p class="kicker">18 · Si vous n’emportez que ça</p>
+      <h2>Demain matin, vous devez pouvoir raconter ça à quelqu’un dans le métro.</h2>
+      <p class="lede">Serge écoute une douleur, te propose un pari, fabrique l’offre, teste sans te ruiner, encaisse sans inventer un prix, et te demande quelles leçons garder. L’IA écrit et juge. Les règles tiennent la boutique. Toi tu signes ce qui se paie cher si c’est faux.</p>
+      <ol class="big-list">
+        <li>Il <strong>vend</strong>. Il ne discute pas pour passer le temps.</li>
+        <li>L’IA n’est pas le patron. Elle a des tâches. Le reste a des règles.</li>
+        <li>On n’accélère que si on a <strong>mesuré</strong> et si on sait <strong>encaisser</strong>.</li>
+        <li>Si tu ne réponds pas, le défaut est déjà écrit — souvent : on ne fait pas.</li>
+        <li>Ce qui prend de la valeur, ce n’est pas le prompt. C’est la mémoire que tu as validée.</li>
+      </ol>
+    </section>
+  </div>
+
+  <aside class="notes" id="notes"></aside>
+
+  <footer class="hud">
+    <span>SERGE · fonctionnement</span>
+    <span class="help">← → &nbsp; F plein écran &nbsp; N notes &nbsp; P PDF</span>
+    <span id="counter">1 / 18</span>
+    <div class="progress"><span id="bar"></span></div>
+  </footer>
+
+  <script>
+    const slides = [...document.querySelectorAll(".slide")];
+    const notes = document.getElementById("notes");
+    const counter = document.getElementById("counter");
+    const bar = document.getElementById("bar");
+    let i = Math.max(0, parseInt(location.hash.slice(1), 10) - 1 || 0);
+
+    function show(n) {
+      i = (n + slides.length) % slides.length;
+      slides.forEach((s, idx) => s.classList.toggle("active", idx === i));
+      notes.textContent = slides[i].dataset.notes || "";
+      counter.textContent = `${i + 1} / ${slides.length}`;
+      bar.style.width = `${((i + 1) / slides.length) * 100}%`;
+      history.replaceState(null, "", `#${i + 1}`);
+    }
+
+    document.addEventListener("keydown", (e) => {
+      if (["ArrowRight", "ArrowDown", " ", "PageDown"].includes(e.key)) {
+        e.preventDefault();
+        show(i + 1);
+      } else if (["ArrowLeft", "ArrowUp", "PageUp", "Backspace"].includes(e.key)) {
+        e.preventDefault();
+        show(i - 1);
+      } else if (e.key === "Home") show(0);
+      else if (e.key === "End") show(slides.length - 1);
+      else if (e.key === "f" || e.key === "F") {
+        if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+        else document.exitFullscreen();
+      } else if (e.key === "n" || e.key === "N") {
+        document.body.classList.toggle("show-notes");
+      } else if (e.key === "p" || e.key === "P") {
+        window.print();
+      }
+    });
+
+    window.addEventListener("hashchange", () => {
+      const n = parseInt(location.hash.slice(1), 10);
+      if (n) show(n - 1);
+    });
+
+    document.addEventListener("click", (e) => {
+      if (e.target.closest(".notes") || e.target.closest("a") || e.target.closest("footer")) return;
+      show(e.clientX > innerWidth / 2 ? i + 1 : i - 1);
+    });
+
+    show(i);
+  </script>
+</body>
+</html>

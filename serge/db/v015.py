@@ -84,8 +84,3 @@ def apply_v015(connection: sqlite3.Connection) -> None:
             WHERE status IN ('SELECTED', 'STARTED');
         """
     )
-    connection.execute(
-        "INSERT OR IGNORE INTO listen_settings"
-        "(id, n_target, p_target, updated_at)"
-        "VALUES(1, 5, 1, datetime('now'))"
-    )

@@ -182,7 +182,11 @@ Lifecycle tickets, actes (boutons), expiry : **DET**.
 |---|---|---|---|---|---|---|
 | J2 | `listen_discover_needs_a` | LLM-B | T2 | `db_read` avec `current_listen_cycle`, `listen_cycle_documents`, `known_business_candidates` ; `web_search` public ; couche 5 autorisée | JSON validé, preuves parmi les documents du cycle, déduplication déterministe | Aucun candidat nouveau |
 | J3 | `listen_discover_needs_b` | LLM-B | T2 | Même lecteurs, même corpus et même guide que J2 ; aucun résultat J2 injecté | Exécution séparée avant toute écriture des candidats | Aucun candidat nouveau |
-| J4 | `listen_choose_poc` | LLM-1 | T2 | `db_read` avec `current_listen_cycle`, `eligible_poc_candidates` ; couche 5 interdite | `p_target`, IDs existants et veto DB contre `SELECTED`/`STARTED` | File owner |
+| J4 | `listen_choose_poc` | LLM-1 | T2 | `db_read` avec `current_listen_cycle`, `eligible_poc_candidates` ; couche 5 interdite | `business_target`, IDs existants et veto DB contre `SELECTED`/`STARTED` | File owner |
+
+J2 et J3 sont deux invocations indépendantes et traçables du même contrat et
+de la même implémentation `discover_needs()` ; leurs IDs distincts servent à
+séparer les traces et les kill-switches, pas à dupliquer la logique métier.
 
 `listen_cycle_docs` conserve le snapshot documentaire. Le cycle suivant ne
 réattribue aucun document déjà exploré ; `business_candidates` conserve les

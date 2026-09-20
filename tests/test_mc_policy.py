@@ -96,6 +96,7 @@ class McPolicyTests(McBrowserCase):
 
         page = self._page_policy()
         page.locator('[data-section="testing_froid"]').wait_for(timeout=10000)
+        page.locator('#testing-lock-status[data-etat]').wait_for(timeout=10000)
         champ = page.locator('input[data-testing="n_smoke_min"]')
         btn = page.locator('button[data-btn="enregistrer-testing"]')
         expect(btn).to_be_enabled()

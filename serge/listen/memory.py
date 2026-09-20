@@ -43,19 +43,29 @@ def create_cycle(
     return cycle_id
 
 
-def current_cycle(conn: sqlite3.Connection, cycle_id: str) -> dict[str, Any] | None:
+def current_cycle(
+    conn: sqlite3.Connection, cycle_id: str
+) -> dict[str, Any] | None:
     """Lit un cycle précis, sans exposer les autres cycles."""
     row = conn.execute(
-        'SELECT id, guide, n_target, p_target, status, created_at '
+        'SELECT id, guide, needs_target, business_target, status, created_at '
         'FROM listen_cycles WHERE id=?',
         (cycle_id,),
     ).fetchone()
     if row is None:
         return None
-    return dict(row) if isinstance(row, sqlite3.Row) else {
-        'id': row[0], 'guide': row[1], 'n_target': row[2],
-        'p_target': row[3], 'status': row[4], 'created_at': row[5],
-    }
+    return (
+        dict(row)
+        if isinstance(row, sqlite3.Row)
+        else {
+            'id': row[0],
+            'guide': row[1],
+            'needs_target': row[2],
+            'business_target': row[3],
+            'status': row[4],
+            'created_at': row[5],
+        }
+    )
 
 
 def cycle_documents(
@@ -83,7 +93,7 @@ def known_candidates(conn: sqlite3.Connection) -> list[dict[str, Any]]:
 def eligible_candidates(conn: sqlite3.Connection) -> list[dict[str, Any]]:
     """Lit les idées sélectionnables, hors POC déjà engagés."""
     rows = conn.execute(
-        "SELECT id, title, content, observations, sellable_offer, status "
+        'SELECT id, title, content, observations, sellable_offer, status '
         "FROM business_candidates WHERE status='CANDIDATE' ORDER BY created_at"
     ).fetchall()
     return [dict(row) for row in rows]
@@ -126,7 +136,8 @@ def save_candidates(
     if not isinstance(items, list):
         return 0
     allowed_docs = {
-        str(row[0]) for row in conn.execute(
+        str(row[0])
+        for row in conn.execute(
             'SELECT doc_id FROM listen_cycle_docs WHERE cycle_id=?',
             (cycle_id,),
         )
@@ -171,14 +182,14 @@ def select_poc(
     conn: sqlite3.Connection,
     cycle_id: str,
     data: Mapping[str, Any] | None,
-    p_target: int,
+    business_target: int,
 ) -> list[str]:
     """Applique la sélection avec veto DB contre tout POC déjà engagé."""
     raw = data.get('candidate_ids') if isinstance(data, Mapping) else None
     if not isinstance(raw, list):
         return []
     selected: list[str] = []
-    for rank, raw_id in enumerate(raw[: max(0, p_target)], start=1):
+    for rank, raw_id in enumerate(raw[: max(0, business_target)], start=1):
         candidate_id = str(raw_id or '')
         row = conn.execute(
             "SELECT 1 FROM business_candidates WHERE id=? AND status='CANDIDATE'",
@@ -191,13 +202,19 @@ def select_poc(
                 'INSERT INTO poc_selections'
                 '(id, cycle_id, candidate_id, rank, selected_at) '
                 'VALUES(?,?,?,?,?)',
-                (f'{cycle_id}:{candidate_id}', cycle_id, candidate_id, rank, utcnow()),
+                (
+                    f'{cycle_id}:{candidate_id}',
+                    cycle_id,
+                    candidate_id,
+                    rank,
+                    utcnow(),
+                ),
             )
         except sqlite3.IntegrityError:
             continue
         conn.execute(
             "UPDATE business_candidates SET status='POC_SELECTED', updated_at=? "
-            'WHERE id=? AND status=\'CANDIDATE\'',
+            "WHERE id=? AND status='CANDIDATE'",
             (utcnow(), candidate_id),
         )
         selected.append(candidate_id)
@@ -217,11 +234,27 @@ def read_named(
         return {'ok': False, 'code': 'permission_refusee', 'reader': reader_id}
     cycle_id = str(args.get('cycle_id') or '')
     if reader_id == 'current_listen_cycle':
-        return {'ok': True, 'reader': reader_id, 'data': current_cycle(conn, cycle_id)}
+        return {
+            'ok': True,
+            'reader': reader_id,
+            'data': current_cycle(conn, cycle_id),
+        }
     if reader_id == 'listen_cycle_documents':
-        return {'ok': True, 'reader': reader_id, 'data': cycle_documents(conn, cycle_id)}
+        return {
+            'ok': True,
+            'reader': reader_id,
+            'data': cycle_documents(conn, cycle_id),
+        }
     if reader_id == 'known_business_candidates':
-        return {'ok': True, 'reader': reader_id, 'data': known_candidates(conn)}
+        return {
+            'ok': True,
+            'reader': reader_id,
+            'data': known_candidates(conn),
+        }
     if reader_id == 'eligible_poc_candidates':
-        return {'ok': True, 'reader': reader_id, 'data': eligible_candidates(conn)}
+        return {
+            'ok': True,
+            'reader': reader_id,
+            'data': eligible_candidates(conn),
+        }
     return {'ok': False, 'code': 'lecteur_inconnu', 'reader': reader_id}

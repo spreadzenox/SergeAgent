@@ -203,18 +203,18 @@ CATALOGUE: dict[str, tuple[str, str, str, str]] = {
     ),
     'db_readers': (
         'Lecteurs DB nommés : vues fixes et sorties typées pour les agents.',
-        'Semence code idempotente, permissions actives en SQLite.',
+        'Semence code idempotente ; contrats implémentés dans memory.py.',
         'Fiches agents et onglet Écoute.',
         'Aucun SQL libre ; chaque lecteur possède son contrat.',
     ),
     'llm_point_readers': (
         'Permissions de lecture DB par invocation LLM.',
-        'Semence initiale, modifications conservées en base.',
+        'Projection du champ context.db_readers dans llm-points.yaml.',
         'Runtime et Mission Control.',
-        'enabled + usage autorise/refuse, vérifiés à chaque appel.',
+        'La déclaration YAML est la source ; SQLite est la projection vérifiée.',
     ),
     'listen_cycles': (
-        'Cycles de recherche business avec n/p et guide owner.',
+        'Cycles de recherche business avec cibles explicites et guide owner.',
         'Mission Control, cycle lancé manuellement.',
         'Agents d’écoute et onglet Écoute.',
         'Le guide et les paramètres sont historisés.',

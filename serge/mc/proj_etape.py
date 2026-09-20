@@ -85,9 +85,7 @@ def lister_jugements(
     titres = {str(r[0]): str(r[1] or '') for r in rows}
     connus = list(titres)
     suite = [n for n in ORDRE.get(etape, []) if n in titres]
-    reste = [
-        n for n in RESTE.get(etape, []) if n in titres and n not in suite
-    ]
+    reste = [n for n in RESTE.get(etape, []) if n in titres and n not in suite]
     reste.extend(n for n in connus if n not in suite and n not in reste)
     lignes = []
     for i, nom in enumerate(suite, 1):

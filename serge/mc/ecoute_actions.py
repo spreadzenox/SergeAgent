@@ -52,9 +52,7 @@ class EcouteActionsMixin(_Base):
             listen = policy.get('listen') or {}
             needs_target = int(listen['discovery_needs_target'])
             business_target = int(listen['poc_business_target'])
-            cycle_id = create_cycle(
-                conn, guide, needs_target, business_target
-            )
+            cycle_id = create_cycle(conn, guide, needs_target, business_target)
             item_id = enqueue(
                 conn,
                 kind='listen.business_cycle',
@@ -68,4 +66,6 @@ class EcouteActionsMixin(_Base):
                 type='listen.cycle_start',
                 payload={'cycle_id': cycle_id, 'work_item_id': item_id},
             )
-        self._send_json(200, {'ok': True, 'cycle_id': cycle_id, 'work_item_id': item_id})
+        self._send_json(
+            200, {'ok': True, 'cycle_id': cycle_id, 'work_item_id': item_id}
+        )

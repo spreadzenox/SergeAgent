@@ -16,7 +16,7 @@ SHA_ATTENDUS: dict[tuple[str, str], str] = {
     (
         'etape',
         'build_venture',
-    ): '8296fa4283fa2386b4a50891646b074e1a029e0c40d3a5e86d9da75fb287ddac',
+    ): '84a703bab885c170ecd7cbeeee3177d85db4fa9d053a857e5a248610cd38999a',
     (
         'etape',
         'caisse',
@@ -24,27 +24,27 @@ SHA_ATTENDUS: dict[tuple[str, str], str] = {
     (
         'etape',
         'choix_venture',
-    ): 'a8508bd04c81eee001e0e7c3c4bc7da481f09fb3aba3fa36fc31bc72e96f1bf7',
+    ): 'b5909b772f1e2ba54ebdc9223f760247751ad972b9526fb0b6d655add8c2a7b0',
     (
         'etape',
         'collect_feedback',
-    ): '490e674a742ae35c167d21cfb928ef0a7704310a8ab148f0517592582a20a9e1',
+    ): 'ee3d84d234be80e9320b225685b78181b1cd82f24edaf5fd514f06c19742f6a3',
     (
         'etape',
         'conception_poc',
-    ): 'd88d17faa50488b1f344f03c89e3f914c40330eb1483057625a99bc4885931f9',
+    ): '43a0803f7839f557149b5cdcd6beb7f1dbf9ea013bb92fce6635dfb1505e6580',
     (
         'etape',
         'pre_prospection',
-    ): 'f29a260ec24b7857cadbebf2428791f31d64ea8cd4ad13e041a502855dd51695',
+    ): 'f0654b60457b5530e7c0d0a59d717dd3683d0cae48a92d9d89eafae6e614b7f5',
     (
         'etape',
         'prospection_light',
-    ): '81a9647f9f581f2acd54b10e76904450768e618bd4f697c6590142bd19fc7c4a',
+    ): 'a3405221ce210b2c60b563af05d78ebc6afe9ed94ee5da3449465a94ba3d43fe',
     (
         'etape',
         'prospection_lourde',
-    ): '44e5958e609b14c46f445b6965f4bacca4874b32d75f95af34a628de5becbd0f',
+    ): 'a96ffd01b66357b22b56b01ad6275e6e5b53666776f2fd3ff76a6a882437297e',
     (
         'lien',
         'build-lourde',
@@ -69,111 +69,138 @@ SHA_ATTENDUS: dict[tuple[str, str], str] = {
         'lien',
         'poc-light',
     ): '40f272829674ebc13a0e2a9001f6765b8396b4178b6dc159028fb691e5c0b1df',
-    ('lien', 'pre-poc'): '40f272829674ebc13a0e2a9001f6765b8396b4178b6dc159028fb691e5c0b1df',
-    ('llm', 'build_artifact'): 'a8b458813711a567660299b8aaa1c434079dfcf217340727a31545e716593209',
-    ('llm', 'classify_owner_intent'): '61f425e723f5466814d8fec08810d19667ec90985cec536c7b7de9506c17bb85',
-    ('llm', 'classify_reply'): '41640585fba6e127bdd0d8f8af3a4c0b9bcef9941a44d410f8f7c7d99824b867',
-    ('llm', 'cluster_demand'): 'e7074b97eb3ce50220c913b59308613147c864ed3c6a3e4687998bb440a69b1e',
-    ('llm', 'listen_choose_poc'): 'd20ac17b69f69686d86d55cdefd6cc8d62813804c7959bc5cd1eba1dba786b7b',
-    ('llm', 'listen_discover_needs_a'): 'b75ac17c2b769cdcfce88de82492a05c40cb30b836ddd162dcb12322a65fa664',
-    ('llm', 'listen_discover_needs_b'): 'b75ac17c2b769cdcfce88de82492a05c40cb30b836ddd162dcb12322a65fa664',
-    ('llm', 'consolidate'): '51ba6ee8b1d9c31641b38cd9adc0423f32eab351c25a8a1bcedf2dfa67a6216f',
+    (
+        'lien',
+        'pre-poc',
+    ): '40f272829674ebc13a0e2a9001f6765b8396b4178b6dc159028fb691e5c0b1df',
+    (
+        'llm',
+        'build_artifact',
+    ): '918d807c491659057b1bbc886db0c412e997c24bd3e253c191662ee22aa05bba',
+    (
+        'llm',
+        'classify_owner_intent',
+    ): '01826b8f4db329628ed1645466d8e44ad8795a671eaa747f59f776c70e907d94',
+    (
+        'llm',
+        'classify_reply',
+    ): 'b06aa1e4c79d37bed56ad9d065debd450d440dfe4ef1b956af4dfc0bb273cec5',
+    (
+        'llm',
+        'cluster_demand',
+    ): '22889ca79103f260bc9deed6d2aab9300bf963da613fcf1b070fe26b9a614c30',
+    (
+        'llm',
+        'listen_choose_poc',
+    ): '03f92156c22b6624581c0afbd33f4a122b4b571e11d65a757dfc402e1b2b2e61',
+    (
+        'llm',
+        'listen_discover_needs_a',
+    ): '7dd8cc501e86b091ae432bd57556ba5023d03c1d758cb2b2ec7326d2a2e7acbe',
+    (
+        'llm',
+        'listen_discover_needs_b',
+    ): '7dd8cc501e86b091ae432bd57556ba5023d03c1d758cb2b2ec7326d2a2e7acbe',
+    (
+        'llm',
+        'consolidate',
+    ): '743b58c48581d4f0300f90d5f958c5e179232d6d02088954751260e80414c3e8',
     (
         'llm',
         'draft_hypothesis_full',
-    ): '12dcfb0e6991fc525879d3246bf9d314c9754ec598d775163b47e456719f5ab5',
+    ): '1d2cfb7867552f3037438c64f44677a514a4e6c589b98138f863d54aade9362c',
     (
         'llm',
         'draft_hypothesis_smoke',
-    ): '12dcfb0e6991fc525879d3246bf9d314c9754ec598d775163b47e456719f5ab5',
+    ): '1d2cfb7867552f3037438c64f44677a514a4e6c589b98138f863d54aade9362c',
     (
         'llm',
         'draft_price',
-    ): 'a0d6aca043e34aa9697c4462b8d840c22922891456c457c6abf1dca29e6f32a4',
+    ): '326438c2d3728821c228070fa7f80374bea52739d0e742d91dcf9b6b1e75ffbc',
     (
         'llm',
         'edit_serge_md',
-    ): '51ba6ee8b1d9c31641b38cd9adc0423f32eab351c25a8a1bcedf2dfa67a6216f',
+    ): '743b58c48581d4f0300f90d5f958c5e179232d6d02088954751260e80414c3e8',
     (
         'llm',
         'extract_meeting',
-    ): 'bc7764f49f6ceded3c3236a5af2ade1eced4e2aeb71d45be1b218436f2345aa2',
+    ): '4d145872af6cc385b461d8b6896aec40e53103779af3d935519b3d7f7ac270c5',
     (
         'llm',
         'fill_slots',
-    ): '30db35982ba79c2ec9c6e0f3453f953541266238dc0d66c637ba42c32f031e9f',
+    ): '25aba9c2543828d3067797a646f19bd436bb453f3f853478a685087a2487a686',
     (
         'llm',
         'install_guide',
-    ): '576c386b0d4d41acef99edd176e6bd136092196319e588a13eb220ab93e1b3dc',
+    ): '168908aa33b9caec9dfee3b332d8e9d4e3b7088d07ed3341371ee4435ea5995c',
     (
         'llm',
         'judge_allocator',
-    ): '81452269e96caa48f5a2e260506d3b46beb13786b5fbb54d34daf4d34c48461c',
+    ): 'f65a46373bce8f030b1eccec8978cf224e0dacf74d1a315979e43e47a2cc563d',
     (
         'llm',
         'judge_consequence',
-    ): '61f425e723f5466814d8fec08810d19667ec90985cec536c7b7de9506c17bb85',
+    ): '01826b8f4db329628ed1645466d8e44ad8795a671eaa747f59f776c70e907d94',
     (
         'llm',
         'options_pivot',
-    ): '3a10cbadc5287010dd7418cc7c1cbb32f77464c7b4f5fa6ad896692d0f86481f',
+    ): 'c8b012bef657300aa13789105a04270375d559997a82e053b7af1ef574a7f524',
     (
         'llm',
         'plan_scale',
-    ): '3a10cbadc5287010dd7418cc7c1cbb32f77464c7b4f5fa6ad896692d0f86481f',
+    ): 'c8b012bef657300aa13789105a04270375d559997a82e053b7af1ef574a7f524',
     (
         'llm',
         'qualify_prospect',
-    ): '545b4294389f12ee364e5c13c398dda56448e556b086f2c1c946f187467c6b4d',
+    ): '08f18aa83856fdbf8f09301f1211168b3993557aa9675d87ef9875e9decc91dc',
     (
         'llm',
         'render_context_fr',
-    ): '61f425e723f5466814d8fec08810d19667ec90985cec536c7b7de9506c17bb85',
+    ): '01826b8f4db329628ed1645466d8e44ad8795a671eaa747f59f776c70e907d94',
     (
         'llm',
         'reply_intent',
-    ): '2b38fc112604e0a6908747f96e5aa1f05658dfb31b6b38f04b087f893dcabce6',
+    ): '52dd06efafcb0f09080c1ceba2de6efadbfc3afae0b3e9623da2d0767fa09f4b',
     (
         'llm',
         'resume_test',
-    ): '3a10cbadc5287010dd7418cc7c1cbb32f77464c7b4f5fa6ad896692d0f86481f',
+    ): 'c8b012bef657300aa13789105a04270375d559997a82e053b7af1ef574a7f524',
     (
         'llm',
         'review_build',
-    ): '66357297ddf3dd3548bd37fd9e51db37ed435163b31ff0e1f41bc138250484df',
+    ): '9ce5456009b3e3e9a3f831f4f18a69cfc729440c0f90558d0d1c83b845ab716e',
     (
         'llm',
         'review_other',
-    ): 'd799a53ba2dcdbd9bf6a6878230b90cf2071da9215a09a9fc940a140b050c8d3',
+    ): 'b8d34984be168d02e6132538efed1437d37805a7624f4bd11801b3c6344646a9',
     (
         'llm',
         'score_call',
-    ): 'c4eea03e106d0f419aae4f4f5fb567acd165e72fa73db149692ad200c19a7936',
+    ): 'bf1b2e3f68ef6703e3fb8e97b394f81f93e2a0640357b775f1ed424453fc644d',
     (
         'llm',
         'score_lead_departage',
-    ): '545b4294389f12ee364e5c13c398dda56448e556b086f2c1c946f187467c6b4d',
+    ): '08f18aa83856fdbf8f09301f1211168b3993557aa9675d87ef9875e9decc91dc',
     (
         'llm',
         'summarize_build_debt',
-    ): '66357297ddf3dd3548bd37fd9e51db37ed435163b31ff0e1f41bc138250484df',
+    ): '9ce5456009b3e3e9a3f831f4f18a69cfc729440c0f90558d0d1c83b845ab716e',
     (
         'llm',
         'summarize_thread',
-    ): 'c4eea03e106d0f419aae4f4f5fb567acd165e72fa73db149692ad200c19a7936',
+    ): 'bf1b2e3f68ef6703e3fb8e97b394f81f93e2a0640357b775f1ed424453fc644d',
     (
         'llm',
         'voice_dialog',
-    ): '3b8aae5f41f3f1863d75d3352e23b919f9e52b08d5e607f1864dbb2c1904a2d3',
+    ): 'e310ddfc003fdf81436fe63596db122ec49af3a264c290b4f8292fec993b5daa',
     (
         'llm',
         'voice_script',
-    ): '60db5b252876481d93542ef1dea76a6075001b81c18486af7aea4219ac403885',
+    ): '0c2a2837c7b504f3977ce3e9acc6a05688b54218a569e41bf687c4cfbad047dc',
     (
         'llm',
         'write_followup',
-    ): '30db35982ba79c2ec9c6e0f3453f953541266238dc0d66c637ba42c32f031e9f',
+    ): '25aba9c2543828d3067797a646f19bd436bb453f3f853478a685087a2487a686',
     (
         'outil',
         'agenda',
@@ -209,7 +236,7 @@ SHA_ATTENDUS: dict[tuple[str, str], str] = {
     (
         'outil',
         'db_read',
-    ): 'b982c1b16e025fee5310fcaa2b701b22a58a56d5c0bb134566b24f4425bfab18',
+    ): '75cdfcbbb7c26dd380839db5cd95d652a96740d4d7dab4446da21242d0172fa2',
     (
         'outil',
         'navigateur',
@@ -217,7 +244,7 @@ SHA_ATTENDUS: dict[tuple[str, str], str] = {
     (
         'outil',
         'web_search',
-    ): '51813343a03a41da95acc479d1eaad4b91c9d7da9ce5806fbe9cd31584d59d43',
+    ): '831a2747280388ad9dfa275930fdbd30b09e57f31c2667380cd12768129cbeed',
     (
         'tech',
         'cluster_listen',

@@ -172,7 +172,11 @@ def run_business_cycle(
     ).fetchone()
     if row is None:
         return {'status': 'error', 'error': 'cycle_inconnu'}
-    guide, needs_target, business_target = str(row[0]), int(row[1]), int(row[2])
+    guide, needs_target, business_target = (
+        str(row[0]),
+        int(row[1]),
+        int(row[2]),
+    )
     now = utcnow()
     conn.execute(
         "UPDATE listen_cycles SET status='RUNNING', started_at=? WHERE id=?",
@@ -181,12 +185,22 @@ def run_business_cycle(
     # Les deux appels partagent uniquement cycle_id + guide. Rien n'est écrit
     # avant que les deux réponses soient revenues.
     result_a, run_a = discover_needs(
-        conn, policy, 'listen_discover_needs_a', cycle_id, guide,
-        root=root, caller=caller,
+        conn,
+        policy,
+        'listen_discover_needs_a',
+        cycle_id,
+        guide,
+        root=root,
+        caller=caller,
     )
     result_b, run_b = discover_needs(
-        conn, policy, 'listen_discover_needs_b', cycle_id, guide,
-        root=root, caller=caller,
+        conn,
+        policy,
+        'listen_discover_needs_b',
+        cycle_id,
+        guide,
+        root=root,
+        caller=caller,
     )
     saved_a = save_candidates(conn, cycle_id, result_a, max_items=needs_target)
     saved_b = save_candidates(conn, cycle_id, result_b, max_items=needs_target)
@@ -196,7 +210,7 @@ def run_business_cycle(
     selected = select_poc(conn, cycle_id, result_choice, business_target)
     status = 'DONE' if run_choice is not None and run_choice.ok else 'DEGRADED'
     conn.execute(
-        "UPDATE listen_cycles SET status=?, finished_at=? WHERE id=?",
+        'UPDATE listen_cycles SET status=?, finished_at=? WHERE id=?',
         (status, utcnow(), cycle_id),
     )
     append_event(

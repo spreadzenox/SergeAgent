@@ -13,7 +13,6 @@ from serge.db.boot import init_schema
 from serge.horloge import iso_utc
 from serge.paths import system_root
 
-
 _INIT_LOCK = threading.RLock()
 
 

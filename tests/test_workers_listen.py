@@ -8,6 +8,7 @@ import sqlite3
 import sys
 import unittest
 from pathlib import Path
+from typing import Any
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -15,9 +16,11 @@ sys.path.insert(0, str(ROOT))
 
 from serge.db.boot import init_schema  # noqa: E402
 from serge.listen.collectors import ListenError  # noqa: E402
+from serge.listen.memory import create_cycle  # noqa: E402
 from serge.llm.client import ChatResult  # noqa: E402
 from serge.scheduler import claim, enqueue  # noqa: E402
 from serge.workers.dispatch import execute  # noqa: E402
+from serge.workers.listen import run_business_cycle  # noqa: E402
 
 POLICY = {
     'budget': {'llm_daily_eur': 5.0, 'llm_eur_per_1k_tokens': 0.004},
@@ -48,14 +51,20 @@ DOCS = [
 ]
 
 
-def _caller_for(*texts: str):
-    def _call(*args, **kwargs):
-        _call.n += 1  # type: ignore[attr-defined]
-        index = min(_call.n - 1, len(texts) - 1)  # type: ignore[attr-defined]
-        return ChatResult(texts[index], 10, 5, 'm', 3)
+class _ScriptedCaller:
+    def __init__(self, texts: tuple[str, ...]) -> None:
+        self.texts = texts
+        self.n = 0
 
-    _call.n = 0  # type: ignore[attr-defined]
-    return _call
+    def __call__(self, *args: Any, **kwargs: Any) -> ChatResult:
+        del args, kwargs
+        self.n += 1
+        index = min(self.n - 1, len(self.texts) - 1)
+        return ChatResult(self.texts[index], 10, 5, 'm', 3)
+
+
+def _caller_for(*texts: str) -> _ScriptedCaller:
+    return _ScriptedCaller(texts)
 
 
 class ListenWorkerTests(unittest.TestCase):
@@ -170,6 +179,54 @@ class ListenWorkerTests(unittest.TestCase):
         )
         self.assertEqual(result['clusters'], 0)
         self.assertEqual(caller.n, 0)
+
+    def test_cycle_business_invoque_a_et_b_sur_le_meme_contrat(self) -> None:
+        cycle_id = create_cycle(self.conn, 'guide', 5, 1)
+        caller = _caller_for(
+            json.dumps(
+                {
+                    'needs': [
+                        {
+                            'title': 'Besoin A',
+                            'content': 'Contenu A',
+                            'evidence_ids': [],
+                        }
+                    ]
+                }
+            ),
+            json.dumps(
+                {
+                    'needs': [
+                        {
+                            'title': 'Besoin B',
+                            'content': 'Contenu B',
+                            'evidence_ids': [],
+                        }
+                    ]
+                }
+            ),
+            '{"candidate_ids": []}',
+        )
+        result = run_business_cycle(
+            self.conn,
+            POLICY,
+            {'payload_json': json.dumps({'cycle_id': cycle_id})},
+            caller=caller,
+        )
+        self.assertEqual(result['llm'], [True, True, True])
+        self.assertEqual(
+            [
+                row[0]
+                for row in self.conn.execute(
+                    'SELECT point FROM llm_usage ORDER BY rowid'
+                )
+            ],
+            [
+                'listen_discover_needs_a',
+                'listen_discover_needs_b',
+                'listen_choose_poc',
+            ],
+        )
 
 
 if __name__ == '__main__':
