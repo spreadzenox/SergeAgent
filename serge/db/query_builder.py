@@ -13,6 +13,10 @@ import sqlite3
 from collections.abc import Mapping, Sequence
 from typing import Any
 
+from serge.db.query_catalogue import (  # noqa: F401
+    db_read_tool_ids,
+    tool_catalogue,
+)
 from serge.db.query_errors import DbReadError
 
 _IDENTIFIER = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
@@ -27,120 +31,6 @@ def _quote(identifier: str) -> str:
     ):
         raise DbReadError(f'identifiant SQL interdit: {identifier!r}')
     return f'"{identifier}"'
-
-
-def _tool(conn: sqlite3.Connection, tool_id: str) -> dict[str, Any]:
-    row = conn.execute(
-        'SELECT id, kind, titre, doc_md FROM tools WHERE id=?', (tool_id,)
-    ).fetchone()
-    if row is None:
-        raise DbReadError(f'tool inconnu: {tool_id}')
-    if str(row[1]) != 'db_read':
-        raise DbReadError(f'tool non db_read: {tool_id}')
-    tables = [
-        {'name': str(item[0]), 'position': int(item[1])}
-        for item in conn.execute(
-            'SELECT table_name, position FROM tool_db_tables'
-            ' WHERE tool_id=? ORDER BY position, table_name',
-            (tool_id,),
-        ).fetchall()
-    ]
-    columns = [
-        {
-            'table': str(item[0]),
-            'name': str(item[1]),
-            'output_name': str(item[2] or ''),
-            'position': int(item[3]),
-        }
-        for item in conn.execute(
-            'SELECT table_name, column_name, output_name, position'
-            ' FROM tool_db_columns WHERE tool_id=?'
-            ' ORDER BY position, table_name, column_name',
-            (tool_id,),
-        ).fetchall()
-    ]
-    filters = [
-        {
-            'id': str(item[0]),
-            'table': str(item[1]),
-            'column': str(item[2]),
-            'operator': str(item[3]),
-            'value_kind': str(item[4]),
-            'value_text': str(item[5] or ''),
-            'param_name': str(item[6] or ''),
-        }
-        for item in conn.execute(
-            'SELECT filter_id, table_name, column_name, operator, value_kind,'
-            ' value_text, param_name FROM tool_db_filters'
-            ' WHERE tool_id=? ORDER BY position, filter_id',
-            (tool_id,),
-        ).fetchall()
-    ]
-    filter_values = {
-        str(item['id']): [
-            str(value[0])
-            for value in conn.execute(
-                'SELECT value FROM tool_db_filter_values'
-                ' WHERE tool_id=? AND filter_id=? ORDER BY value',
-                (tool_id, str(item['id'])),
-            ).fetchall()
-        ]
-        for item in filters
-    }
-    params = [
-        {
-            'name': str(item[0]),
-            'type': str(item[1]),
-            'description': str(item[2] or ''),
-            'required': bool(item[3]),
-            'default_text': str(item[4] or ''),
-        }
-        for item in conn.execute(
-            'SELECT name, type, description, required, default_text'
-            ' FROM tool_db_params WHERE tool_id=? ORDER BY position, name',
-            (tool_id,),
-        ).fetchall()
-    ]
-    enums = {
-        str(item['name']): [
-            str(value[0])
-            for value in conn.execute(
-                'SELECT value FROM tool_db_param_enums'
-                ' WHERE tool_id=? AND param_name=? ORDER BY value',
-                (tool_id, str(item['name'])),
-            ).fetchall()
-        ]
-        for item in params
-    }
-    return {
-        'id': str(row[0]),
-        'titre': str(row[2] or row[0]),
-        'description': str(row[3] or ''),
-        'tables': tables,
-        'columns': columns,
-        'filters': filters,
-        'filter_values': filter_values,
-        # Generic db_read tools do not predeclare join edges. The request
-        # supplies them after checking both endpoints against this catalogue.
-        'joins': [],
-        'params': params,
-        'param_enums': enums,
-    }
-
-
-def tool_catalogue(conn: sqlite3.Connection, tool_id: str) -> dict[str, Any]:
-    """Retourne le contrat normalisé d'un tool DB en lecture seule."""
-    return _tool(conn, tool_id)
-
-
-def db_read_tool_ids(conn: sqlite3.Connection) -> tuple[str, ...]:
-    """Ids des tools DB individualisés présents dans le catalogue."""
-    return tuple(
-        str(row[0])
-        for row in conn.execute(
-            "SELECT id FROM tools WHERE kind='db_read' ORDER BY id"
-        ).fetchall()
-    )
 
 
 def _real_columns(conn: sqlite3.Connection, table: str) -> set[str]:
@@ -448,7 +338,7 @@ def build_db_read_query(
     """Construit une requête bornée à un contrat DB, sans l'exécuter."""
     if not isinstance(arguments, Mapping):
         raise DbReadError('arguments objet attendus')
-    catalogue = _tool(conn, tool_id)
+    catalogue = tool_catalogue(conn, tool_id)
     tables, _columns_set = _validate_catalogue(conn, catalogue)
     values = _parameters(catalogue, arguments)
     joins = _join_items(catalogue, arguments.get('joins'), fixed_joins)
@@ -513,6 +403,6 @@ def openai_schema_for_tool(
     """Construit le function schema depuis le catalogue relationnel."""
     from serge.db.query_schema import build_openai_schema
 
-    catalogue = _tool(conn, tool_id)
+    catalogue = tool_catalogue(conn, tool_id)
     _validate_catalogue(conn, catalogue)
     return build_openai_schema(catalogue, tool_id)

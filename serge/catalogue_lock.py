@@ -36,11 +36,11 @@ SHA_ATTENDUS: dict[tuple[str, str], str] = {
     (
         'etape',
         'pre_prospection',
-    ): '3ef60cbf19c3a64af88749c1696ffc93fca10bef2578ae585354897d3c6a8a7e',
+    ): '0f79d7f9e6c91f4e7a24b71e1c11ad6f2982f20fff2dad6ee4c4358943f7040c',
     (
         'etape',
         'prospection_light',
-    ): '0a9d26360f2601cd5da75957292468f643c2a805cafb797851fc9eaf6320c7ce',
+    ): '7935f5e1d644beb0a8c6c59a3f9df23596ec796007f27e2036a8a0c8e552594e',
     (
         'etape',
         'prospection_lourde',
@@ -92,15 +92,15 @@ SHA_ATTENDUS: dict[tuple[str, str], str] = {
     (
         'llm',
         'listen_choose_poc',
-    ): 'cd35d993e251ef52362b35200d321d04163775b2516f87cc356009d60f2bcdfb',
+    ): '5765923cc2a447592a7a23393fd71097af8daa07e1c03236a9e2217f4e747d3e',
     (
         'llm',
         'listen_discover_needs_a',
-    ): 'b2a96e577fa59393d869ca3ff0629607e3512184994d7cdd9842d196e2f2202a',
+    ): '887d1f2a32ccdaa10bf9c148f4898d5128919921c0af4fca2929820daf70a4bb',
     (
         'llm',
         'listen_discover_needs_b',
-    ): 'b2a96e577fa59393d869ca3ff0629607e3512184994d7cdd9842d196e2f2202a',
+    ): '887d1f2a32ccdaa10bf9c148f4898d5128919921c0af4fca2929820daf70a4bb',
     (
         'llm',
         'consolidate',
@@ -120,7 +120,7 @@ SHA_ATTENDUS: dict[tuple[str, str], str] = {
     (
         'llm',
         'discover_contacts',
-    ): '59caaaafdd233f82c9a0d84416edb45d7a991e883d6ecc62a287bd87ceb6e2ef',
+    ): '100863e4944ec215d60107617836446d129c848e968853361c73fe4540c669fb',
     (
         'llm',
         'edit_serge_md',
@@ -216,7 +216,7 @@ SHA_ATTENDUS: dict[tuple[str, str], str] = {
     (
         'outil',
         'contact_upsert',
-    ): '3ce9578ea627784d7ac3820f7df4bdbac5ddf5c9caab3bbe8e808317c50aec8b',
+    ): '1a0b302bf6737a3eee564905c73e54bad3e988791777763035df93b9c31ad39e',
     (
         'outil',
         'catalogue',
@@ -244,19 +244,19 @@ SHA_ATTENDUS: dict[tuple[str, str], str] = {
     (
         'outil',
         'current_listen_cycle',
-    ): '7de39373e8ec14244cafa172294987faf86a948cae0c2e2ed984cd8f0219f0b7',
+    ): '32168f46aa0d0224f7def70ab30e33e1c132b58ecbd5cede4d73466f8574f455',
     (
         'outil',
         'listen_cycle_documents',
-    ): '7de39373e8ec14244cafa172294987faf86a948cae0c2e2ed984cd8f0219f0b7',
+    ): '32168f46aa0d0224f7def70ab30e33e1c132b58ecbd5cede4d73466f8574f455',
     (
         'outil',
         'known_business_candidates',
-    ): '7de39373e8ec14244cafa172294987faf86a948cae0c2e2ed984cd8f0219f0b7',
+    ): '32168f46aa0d0224f7def70ab30e33e1c132b58ecbd5cede4d73466f8574f455',
     (
         'outil',
         'eligible_poc_candidates',
-    ): '7de39373e8ec14244cafa172294987faf86a948cae0c2e2ed984cd8f0219f0b7',
+    ): '32168f46aa0d0224f7def70ab30e33e1c132b58ecbd5cede4d73466f8574f455',
     (
         'outil',
         'navigateur',
