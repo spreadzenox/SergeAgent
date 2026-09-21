@@ -10,6 +10,7 @@ Les 5 règles opérationnelles (R1-R5) sont FIGÉES avec Julien le 2026-09-09 �
 R6 (doc vivante) ajoutée par Julien le 2026-09-12.
 R7 + §8 (catalogue, SHA, pas de code mort) ajoutés par Julien le 2026-09-14.
 R8 (checklist avant merge) ajoutée par Julien le 2026-09-15.
+MC = Mission Control
 
 ---
 
@@ -18,203 +19,37 @@ R8 (checklist avant merge) ajoutée par Julien le 2026-09-15.
 **Règle.** Un fichier fait une chose, dicible en une phrase, lisible en ~15 min.
 Plafond : **500 lignes de logique** (hors lignes vides et imports triviaux).
 
-**Données déclaratives à part (exception validée).** Un module légitimement gros
-(réducteur 40 tables, policy 50 règles) passe en **données, pas en code** :
-fichier YAML/JSON de règles + moteur maigre (< 150 lignes). Les 500 lignes
-s'appliquent au code ; les tables de règles ne comptent pas comme logique.
+**Privilégier le mapping** Lors de l'implémentation d'une logique conditionnelle à multiples conditions d'entrées et de sorties, créer une table json ou yaml pour écrire les règles de mapping. Les tables de règles ne comptent pas comme logique.
 
-**Dépendances en arbre, pas en grappe.** `guard.py` peut importer
-`retry_policy.py`, l'inverse est interdit. Pas d'imports circulaires dans
-`orchestrator/` — vérifié par test (`test_no_circular_imports`).
+## P2 — Règles régissant les invocations llm
 
-**Méthode de refactor (extraction progressive, pas big-bang).** On n'efface pas,
-on extrait module par module, chaque extraction validée par les tests qui
-restent verts. Ordre suggéré : raisons/codes d'abord (facile), policies
-ensuite, scheduler en dernier.
+**Règle.** Chaque point de llm-points LLM est **déclaré** dans le code et dans la database, son intervention doit être absolument nécéssaire.
 
-**Exemples cibles (état live au 2026-09-09).**
+**Prompts modifiables facilement** Pas de prompt directement dans le code métier :
+Tout doit être dans la base de donnée et directement modifiable depuis le mission control.
 
-`portfolio_guard.py` (7 937 lignes) → `portfolio/` :
+**Mesure des performances des llm-points**: Pour chaque jugement, il faut répertorier en base de données les métriques suivantes, construites au fur et à mesure des utilisations:
+- coût moyen par invocation
+- coût total des invocations effectuées
 
-```text
-portfolio/
-  guard.py          # ~200 lignes : "cette tâche passe-t-elle ? oui/non + code"
-  retry_policy.py   # ~300 lignes : RETRY_BLOCKED_*, limites, backoff, gel
-  disposition.py    # ~300 lignes : SELECT/REJECT/WAIT des candidats
-  freeze.py         # ~200 lignes : gel "once-miss"
-  reasons.py        # ~150 lignes : codes de refus en enum, pas de prose
-```
+**Pas de passage de contexte**: Le contexte initial d'un llm lors d'une invocation est déterministe. Il reçoit dans son contexte uniquement un prompt system défini depuis le MC et ses outils. Le travail des autres llm est contenue dans la DB. Les agents parlent entre eux uniquement via les données laissés en BDD.
 
-`orchestrator.py` (20 385 lignes) → `orchestrator/` :
+**Organisation des outils de récupération mémoire**: Toute la mémoire d'un llm est contenue dans la DB. Il peut lire que certaines tables de celle-ci. Chaque jugement llm a un outil personnalisé de lecture mémoire d'un type dédié. Un outil de ce type est instancié en précisant:
+- les tables auxquelles de llm a accès
+- dans ces tables, à quelles colonnes il a accès
+- dans ces colonnes, à quelle lignes à t'il accès. Les lignes auxquelle il a accès sont paramétrées uniquement par les colonnes catégorielles (enum sql).
+Tout ce qui régie les permissions de l'outil sont modifiables depuis le MC, dans la page de l'outil.
+Dans la description de l'outil, celui ci déclare les accès mémoire dont il dispose au llm, il déclare également la description de chaque table et ce qu'elle contient.
 
-```text
-orchestrator/
-  scheduler.py      # "quel est le prochain READY ?" — 100 % SQL, 0 LLM
-  director.py       # planification — seul fichier autorisé à planifier au LLM
-  worker.py         # invocation (un rôle, une tâche, un budget)
-  contracts.py      # validation des contrats runtime
-  tokens.py         # budgets, occupancy, réservations
-```
+**Contrôle des mauvais formats** Certains llm seront amenés à rendre du texte dans un format particulier (comme des json par exemple), le format devra systématiquement être vérifié par une class Pydantic. En cas d'échec, le llm est rappelé directement avec son contexte + le détail de l'erreur. Ce n'est pas une nouvelle invocation llm. Le llm aura droit à un nombre fini d'échec, paramétrable depuis le MC.
 
-Ce découpage prépare P2 : la frontière LLM/déterministe devient une
-**frontière de fichiers**, vérifiable par `grep`.
+## P3 — Tout vie en base de donnée
 
-**Contre-exemples à démanteler en premier.** `orchestrator.py` (20 k),
-`portfolio_guard.py` (8 k), `economic_action_class.py` (5 k),
-`experiment_decision.py` (3,6 k), `burn_in.py` (2,7 k — devrait vivre
-dans `tests/`, pas dans l'orchestrateur).
+**Une information est stockée à un unique endroit**: Toute information destinée à être mutable ou paramétrable est stockée une unique fois en base de donnée et les objets paramétrables de l'architecture de Serge y sont stockés. Par exemple, la liste des llm-points et leur ordre, les prompts system des llm ou bien l'ensemble des permissions mémoire des llm-points sont stockés en bdd.
 
----
+**La documentation vivante**: Toutes les documentations du code vivent en base de données et doivent impérativement être updatées à chaque changement. Le MC est généré dynamiquement en fonction de ce qui existe en base de donnée.
 
-## P2 — Frontière LLM/déterministe explicite, mesurée et révisable
-
-**Règle.** Chaque point de jugement LLM est **déclaré** dans le code, avec la
-checklist du test du besoin (4 cases obligatoires) + le risque de propagation.
-Pas de LLM invisible noyé dans des prompts ou des `invoke_*` génériques.
-
-**Checklist du test du besoin (vraie checklist, obligatoire).** Plus on coche
-de cases, plus le LLM est justifié :
-
-1. **Entrée variable ?** L'input ne tient pas dans un schéma fermé (texte
-   libre, pages web, réponses humaines).
-2. **Sortie variable + décision difficile ?** L'output n'est pas une valeur
-   dans un enum mais un choix ouvert (rédiger, négocier, concevoir,
-   prioriser) que des règles ne couvriraient qu'au prix d'une combinatoire
-   explosive.
-3. **Information externe nécessaire ?** La tâche exige d'aller chercher
-   (recherche web, lecture de docs, exploration) avant de décider — le LLM
-   comme agent chercheur, pas comme fonction.
-4. **Dérive absorbée ?** Le domaine dérive vite (formulations prospects,
-   layouts web, APIs) : la règle marcherait aujourd'hui mais pourrirait en
-   6 mois ; le LLM absorbe la dérive gratuitement.
-
-Test qui **disqualifie** le LLM : entrée fermée + sortie dans un enum + pas de
-recherche + domaine stable = règle, sans discussion (ex. scheduling :
-"quel est le prochain READY ?" = requête SQL).
-
-**Risque de propagation (détermine le garde-fou).** Deux composantes :
-
-- **Criticité** : irréversible financier/juridique/contractuel (paiement,
-  signature, engagement) → barre haute, garde-fou proportionné.
-- **Perte de productivité** = probabilité d'erreur × travail aval gaspillé
-  × temps de détection. Une erreur en amont (mauvaise venture créée) se
-  propage en cascade (tâches, artifacts, semaines) ; une erreur en aval
-  (mauvais slot de template) est locale et détectée au cycle suivant.
-
-**Hiérarchie par défaut (idée conservée, définitions précises repoussées à la
-fin du rework architectural).**
-
-- **Aval** (classifier une réponse, remplir un slot) : LLM libre, erreur
-  locale.
-- **Milieu** (qualifier un prospect, scorer un test) : LLM + seuils
-  déterministes, erreur bornée par quotas.
-- **Amont** (créer une venture, choisir un marché, hypothèse de test, prix) :
-  LLM + veto/notification owner, car l'erreur se propage.
-
-**Mesure, pas de cap arbitraire.** Chaque point enregistre tokens, durée,
-verdict (traçabilité). Pas de plafond tokens par call — le call se termine
-quand il se termine. **Alertes sur dérives vs médiane 7 jours**
-("3× la médiane", "50 invocations/cycle au lieu de 2" = attracteur suspect
-→ gel + remontée). Repli routable obligatoire en cas d'échec. Retry aveugle
-interdit : chaque retry change quelque chose (contexte, modèle, découpage),
-puis code routable après N tentatives. **Seul budget dur : le plafond
-financier global** (€/jour compute LLM, dégradation gracieuse au-delà).
-
-**La frontière se déplace dans les deux sens** via la consolidation :
-LLM → règle quand le pattern se stabilise ("2 verdicts distincts en 500
-calls"), règle → LLM quand les edge cases s'accumulent (signal de dérive).
-
-**Format de déclaration (exemple).**
-
-```python
-# LLM-CONTRACT: output_mode=structured | external_info=false
-# LLM-RISK: propagation=moyen (1 email raté max, détecté au cycle suivant)
-# LLM-FALLBACK: REJECT + code PROSPECT_UNQUALIFIED
-# LLM-BUDGET: mesuré, alerte si > 3x médiane 7j
-def qualify_prospect(prospect: Prospect, icp: ICP) -> QualifyVerdict:
-    ...
-```
-
-**Prompts versionnés.** Pas de prompt inline dans le code métier :
-dossier `prompts/`, un fichier par point de jugement, variables nommées,
-relisables et amendables par la consolidation.
-
----
-
-## P3 — Les interpréteurs déterministes ne lisent jamais de texte libre
-
-**Règle.** Agents entre eux : **texte libre autorisé** (leur espace de
-travail, probablement leur meilleur protocole — non réglementé).
-Agent → interpréteur déterministe (parser, scheduler, guard, broker,
-reducer) : **structures typées uniquement**. Si une décision dépend d'un
-champ texte libre, c'est un bug.
-
-**Forme imposée : enums fermés + champ `requested`.**
-
-```python
-@dataclass
-class WorkerOutcome:
-    status: WorkerStatus       # enum FERMÉ : DONE | BLOCKED | FAILED | NEEDS_INFO
-    code: str                  # enum FERMÉ par domaine (liste fixée dans le code)
-    evidence_ids: list[str]
-    note: str                  # une phrase, logs humains et Mission Control UNIQUEMENT
-    requested: str = ""        # "ce que je voudrais dire/faire et que les codes
-                               #  ne permettent pas" — vide 99 % du temps
-```
-
-- Enums **fermés** : le déterministe route vite, sans ambiguïté, sans file
-  bloquante.
-- `requested` : frustration exprimée en langage naturel, **adressée à
-  Meta-Grok/consolidation** (contexte max : tâche, venture, tentatives,
-  pourquoi aucun code ne convient, proposition). Relu en batch (jamais
-  bloquant), décide : nouveau code officiel, reformulation, ou bruit.
-  Exposé dans Mission Control ("demandes d'évolution" + contexte).
-  Le prompt d'aide à la rédaction (`à qui, quoi inclure pour être valide`)
-  sera designé avec les prompts (P2).
-- Le LLM produit du JSON structuré (function calling). Validation de schéma
-  par l'appelant, fail-fast.
-
-**JSON malformé.** 2 recalls silencieux au LLM d'origine ("voici l'erreur,
-reformule") → si toujours raté, code routable `LLM_OUTPUT_MALFORMED` (c'est
-suspect). Les recalls sont **comptés** dans les métriques du point
-("40 % de recalls cette semaine" = prompt ou schéma à revoir).
-
----
-
-## P4 — Zéro duplication de vérité
-
-**Règle.** Un fait = une source. Si deux représentations divergent, on en
-supprime une — jamais de couche de synchronisation. La chasse aux doublons
-est une mission permanente (run Meta-Grok "chasse aux duplications" à garder
-et consolider, cause historique de nombreux bugs).
-
-1. **SQLite (`serge.db`) est l'autorité unique des faits métier** :
-   ventures, tâches, prospects, communications, paiements, décisions,
-   leçons. Un seul endroit où écrire, un seul où lire.
-2. **Vues dérivées en mémoire uniquement, via des tools partagés.** Pas de
-   fichiers intermédiaires (fini les JSON d'état périmés sans date de
-   péremption). Quand Serge ou le code a besoin d'une vue, il appelle un
-   tool qui lit la DB et met le résultat dans le contexte. Les tools sont
-   partagés : scheduler déterministe, workers LLM (function calling),
-   Mission Control — une seule implémentation, un seul comportement.
-3. **Fichiers autorisés sous `state/`** : la DB elle-même, les traces
-   append-only (logs, cycles, evidence), les artifacts opaques (landings
-   HTML, PDFs). Tout le reste est un bug.
-4. **Zéro constante métier dupliquée.** Un prix, seuil, hostname par défaut
-   n'existe qu'à un endroit (fichier de policy, voir R4 en discussion).
-5. **Cache mémoire avec TTL explicite si besoin de perf**, jamais de fichier
-   cache. Un cache périmé se régénère ; il ne ment jamais plus de N secondes.
-
-**`queue/` (dossiers pending/running/done/...) : archivé en lecture seule.**
-Ne sert à personne (Julien ne s'en sert jamais), doublon de la table `tasks`.
-Le nouveau scheduler est 100 % SQL dès le premier jour. Les dossiers
-actuels restent sur disque comme archive historique (archéologie des bugs,
-patterns à ne pas reproduire), déjà exclus du seed kit (`never_copy`).
-Nouveau code : ne les lit ni ne les écrit.
-
-**Test mécanique.** Toute vue dérivée est une fonction pure de la DB :
-régénérer et comparer — si ça diffère, quelqu'un a écrit dans la vue,
-c'est un bug.
+**Liens code/DB** : Comme chaque fonctionnalité de Serge existe en BDD, le code qui régit chaque objet et chacune de ses fonctionnalitées (l'ensemble des fichiers) est traqué en BDD. Chaque table d'objet a une colonne qui référence l'ensemble des fichiers qui régissent son comportement. Le SHA de ces fichiers est recalculé par les tests
 
 ---
 
@@ -401,7 +236,7 @@ ment ; on n'empile pas une note « aussi, on a changé X ».
 **Quel document.** Celui que lirait quelqu'un qui n'a pas le diff :
 
 - Mission Control → `docs/MISSION_CONTROL.md`
-- un point de jugement → `docs/LLM_MATRIX.md` (+ prompts si P2)
+- un point de llm-points → `docs/LLM_MATRIX.md` (+ prompts si P2)
 - mémoire / funnel / interaction → le `*_ARCHITECTURE.md` concerné
 - install, secrets, contrat d'instance → `docs/INSTALL.md` et le contrat
 - une capacité nouvelle sans doc → on écrit le paragraphe manquant
@@ -449,7 +284,7 @@ trois familles (catalogue, schéma, policy) :
    Suppression : plus aucune mention (code, docs, MC, tests). À défaut :
    ticket explicite dans le même lot.
 4. **Tests.** P5 passant + refusé. E2E déterministe si un flux
-   opérateur ou un kind change. E2E LLM seulement si un jugement /
+   opérateur ou un kind change. E2E LLM seulement si un llm-points /
    prompt / tool exposé au LLM change. Pas de test fantôme, pas de
    harnais LLM inventé pour du déterministe.
 5. **Mission Control.** Si c'est censé se voir, un parcours opérateur
