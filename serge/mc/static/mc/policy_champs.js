@@ -247,6 +247,14 @@ export const CHAMPS = {
     48,
     1,
   ],
+  'windows.email_poll_minutes': [
+    'Relever la boîte mail toutes les',
+    'En minutes. Exemple : 5 = Serge regarde s’il a reçu des réponses toutes les 5 minutes.',
+    'curseur',
+    1,
+    60,
+    1,
+  ],
   'windows.intent_biz_hours': [
     'Heures où on peut relancer une intention',
     'En dehors, on attend.',

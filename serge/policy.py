@@ -141,6 +141,7 @@ def validate_policy(data: Mapping[str, Any]) -> dict[str, Any]:
         'quotas.linkedin_connect_per_day',
         'quotas.linkedin_inmail_per_month',
         'windows.intent_sla_hours',
+        'windows.email_poll_minutes',
         'cooldowns.inbound_silence_days',
         'cooldowns.thread_days_per_venue',
         'cooldowns.guichet_repropose_max',

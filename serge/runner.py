@@ -2,6 +2,7 @@
 """Runner : un cycle (expiry tickets + file READY + consolidation due).
 
 Boucle : expire_due → consolidation si due (file, idempotente/jour) →
+relève mail programmée (une par créneau de windows.email_poll_minutes) →
 claim → dispatch.execute → complete | fail | fail+retry_at. Gate voix
 pause → FYI. Un commit par cycle (atomicité). Zéro LLM direct.
 """
@@ -11,6 +12,7 @@ from __future__ import annotations
 import sqlite3
 import time
 from collections.abc import Mapping
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -35,6 +37,29 @@ def _ensure_consolidation(
         payload={},
     )
     return True
+
+
+def _ensure_email_poll(
+    conn: sqlite3.Connection, policy: Mapping[str, Any], now: str
+) -> None:
+    """Programme la relève de la boîte mail, une fois par créneau.
+
+    Exemple : avec ``windows.email_poll_minutes: 5``, une tâche
+    ``email.poll`` est créée au plus une fois toutes les 5 minutes.
+    """
+    windows = policy.get('windows') or {}
+    minutes = windows.get('email_poll_minutes', 5)
+    if isinstance(minutes, bool) or not isinstance(minutes, int):
+        minutes = 5
+    seconds = int(datetime.fromisoformat(now).timestamp())
+    slot = seconds // (max(1, minutes) * 60)
+    enqueue(
+        conn,
+        kind='email.poll',
+        idempotency_key=f'cron:email_poll:{slot}',
+        priority=80,
+        payload={},
+    )
 
 
 def _quality_fyi(conn: sqlite3.Connection, detail: str) -> None:
@@ -77,6 +102,7 @@ def run_once(
     consolidation = False
     if heartbeat_marche(conn, moment):
         consolidation = _ensure_consolidation(conn, policy, moment)
+        _ensure_email_poll(conn, policy, moment)
     done = failed = retried = 0
     processed = 0
     for _ in range(max(1, max_items)):

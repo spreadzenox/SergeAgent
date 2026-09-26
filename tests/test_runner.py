@@ -59,13 +59,38 @@ class RunnerTests(unittest.TestCase):
         )
         publish(self.conn, ticket_id)
         result = run_once(self.conn, POLICY, now='2026-09-20T19:00:00+00:00')
-        self.assertEqual(result['processed'], 0)
+        # Consolidation et relève mail n'ont pas de venture : elles
+        # s'exécutent dans le même cycle.
+        self.assertEqual(result['processed'], 2)
         self.assertEqual(result['expired'], 1)
         self.assertTrue(result['consolidation'])
         kinds = [
             row[0] for row in self.conn.execute('SELECT kind FROM work_items')
         ]
         self.assertIn('memory.consolidate', kinds)
+
+    def test_releve_mail_programmee_une_fois_par_creneau(self) -> None:
+        run_once(self.conn, POLICY, now='2026-09-20T19:00:00+00:00')
+        run_once(self.conn, POLICY, now='2026-09-20T19:03:00+00:00')
+        run_once(self.conn, POLICY, now='2026-09-20T19:06:00+00:00')
+        polls = self.conn.execute(
+            "SELECT COUNT(*) FROM work_items WHERE kind='email.poll'"
+        ).fetchone()[0]
+        self.assertEqual(polls, 2)
+
+    def test_tache_sans_venture_est_executee(self) -> None:
+        enqueue(
+            self.conn,
+            kind='listen.business_cycle',
+            idempotency_key='cycle-sans-venture',
+            payload={'cycle_id': 'inconnu'},
+        )
+        run_once(self.conn, POLICY, now='2026-09-20T19:00:00+00:00')
+        status = self.conn.execute(
+            'SELECT status FROM work_items'
+            " WHERE idempotency_key='cycle-sans-venture'"
+        ).fetchone()[0]
+        self.assertNotEqual(status, 'READY')
 
     def test_heartbeat_coupe_pas_de_consolidation(self) -> None:
         set_heartbeat(self.conn, False)
@@ -110,7 +135,8 @@ class RunnerTests(unittest.TestCase):
         result = run_once(self.conn, POLICY, now=NOW)
         self.assertEqual(
             (result['processed'], result['done'], result['failed']),
-            (2, 1, 1),
+            # + la relève mail, qui échoue : aucune boîte en test.
+            (3, 1, 2),
         )
         self.assertFalse(result['consolidation'])
         statuses = {

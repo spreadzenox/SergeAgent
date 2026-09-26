@@ -35,7 +35,8 @@ def next_ready(
         ' status, priority, payload_json, blocked_until, attempts,'
         ' idempotency_key, created_at, updated_at, etape_id FROM work_items'
         " WHERE status='READY' AND (blocked_until='' OR blocked_until<=?)"
-        ' AND venture_id IN (SELECT id FROM ventures WHERE schedulable=1)'
+        " AND (venture_id='' OR venture_id IN"
+        ' (SELECT id FROM ventures WHERE schedulable=1))'
     )
     args: list[Any] = [moment]
     coupes = sorted(etapes_coupees(connection))

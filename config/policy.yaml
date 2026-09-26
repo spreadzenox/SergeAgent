@@ -31,6 +31,7 @@ quotas:
 windows:
   timezone: Europe/Paris
   intent_sla_hours: 1
+  email_poll_minutes: 5               # relève de la boîte mail
   intent_biz_hours: [[8, 0, 20, 0]]
   quiet_hours: [[23, 0, 8, 0]]       # notifs (GUICHET TTL<15min passe)
 
