@@ -1,169 +1,157 @@
-# Canon SQLite — schéma et migrations
+# La base de données
 
-Le fichier `$SERGE_SYSTEM_ROOT/state/serge.db` est **l’autorité** des
-faits métier (charte P4). Le deploy crée un canon vide au premier
-install et **ne le recrée pas** à l’update.
+Serge range tout dans une base SQLite : `$SERGE_SYSTEM_ROOT/state/serge.db`.
+C'est la **seule source de vérité**. Mission Control la lit et y écrit ;
+le code et les fichiers de `config/` ne servent qu'à la remplir.
 
-## Ouverture
+Le déploiement crée une base vide à la première installation. Il ne la
+recrée jamais ensuite.
 
-`open_db` (WAL, `0600`) appelle `init_schema` (`serge/db/boot.py`) :
+---
 
-1. **Migrations** (`serge/db/migrate.py`) : enchaîne les versions
-   manquantes, tamponne `schema_version` **seulement** après une
-   migration réellement appliquée.
-2. **Catalogue** (semence idempotente, pas du DDL) : colonnes comptes
-   manquantes, étapes, tools, invocations LLM / tech, canaux, liens
-   d’épine, SHA fichiers.
+## Ce qui se passe à l'ouverture
 
-Une base déjà à la tête du code ne réécrit pas le tampon. Une base
-**plus récente** que le code refuse de booter (`MigrateError`) — un
-rollback git ne démonte pas le schéma tout seul.
+`open_db` ouvre la base (mode WAL, droits `0600`), puis `init_schema`
+(`serge/db/boot.py`) fait trois choses dans l'ordre :
 
-Le socle initial est la **v7** (`SCHEMA_SQL` dans `serge/db/schema.py`).
-Une base vide saute à v7 d’un coup. Le schéma runtime actuel est v19.
-Ensuite chaque évolution = une fonction `apply_v00N`, numéro = précédent + 1.
+1. **Les migrations** (`serge/db/migrate.py`). Chaque changement de
+   structure est une fonction `apply_v0NN` (fichiers `serge/db/v0NN.py`).
+   Serge applique celles qui manquent, dans l'ordre. Version actuelle :
+   **20**.
+   - Une base neuve saute directement à la version 7 (le socle,
+     `serge/db/schema.py`), puis applique 8, 9, … 20.
+   - Une base **plus récente** que le code refuse de démarrer
+     (`MigrateError`). Revenir à un ancien commit ne défait pas une
+     migration.
+2. **Le remplissage du catalogue** : étapes, tools, invocations LLM et
+   techniques, canaux, liens.
+3. **Le calcul des empreintes** du code de chaque objet
+   (`serge/objet_sha.py`).
 
-Les paramètres de pré-prospection vivent dans les snapshots Policy en base :
-`listen.discovery_needs_target` et `listen.poc_business_target`. Ils sont
-recopiés dans `listen_cycles.needs_target` et `business_target` au lancement,
-afin de conserver les valeurs réellement utilisées. L’ancienne table
-`listen_settings` n’est plus une source de vérité.
+### La règle « insérer sans écraser »
 
-Ledgers bornés hors canon (même pattern `CREATE IF NOT EXISTS`, pas
-encore dans cette chaîne) : `state/voice/voice.db`, inbox SMS.
-L’index FTS `memory_fts` se crée au premier search.
+- Un objet **nouveau** dans le code (exemple : une nouvelle invocation)
+  est **ajouté** à la base.
+- Un objet **existant** n'est **jamais modifié** par le code pour ce que
+  Julien peut régler dans Mission Control : prompt, allumé ou éteint,
+  niveau de modèle, tools.
+- Serge met à jour à chaque démarrage les informations qu'il calcule
+  lui-même : empreinte des fichiers, chemin du code.
+- Un objet **retiré** du code est retiré de la base. L'historique
+  (exemple : `llm_usage`) reste.
 
-## Objets (miroir)
+Exemple : Julien modifie le prompt de « Explorer les besoins A » dans
+Mission Control. Un développeur modifie ensuite le prompt de départ dans le
+code. Au déploiement, l'instance de Julien garde son prompt ; une nouvelle
+instance reçoit celui du code.
 
-`init_schema` sème le catalogue puis `verifier_catalogue` refuse un
-graphe incomplet (toute instance, même vierge).
+---
 
-Catalogue (types, semés) vs occurrences (faits) :
+## Les tables
 
-| Catalogue | Occurrences |
+Rangées selon les trois familles de [`MEMOIRE.md`](MEMOIRE.md), plus le
+catalogue et la mécanique.
+
+### L'état (ce qui est vrai maintenant)
+
+| Table | Contenu |
 |---|---|
-| `pipeline_steps` | `work_items.etape_id` (coupe-circuit MC) |
-| `llm_points` + `llm_point_tools` | `llm_usage` |
-| `tech_invocations` | `events` / runs (pas encore de ledger dédié) |
-| `tools` | `llm_point_tools` (seule une invocation LLM invoque) |
-| `tool_db_*` | Catalogue tables/colonnes/filtres/jointures/paramètres des tools `db_read` |
-| `db_readers` + `db_reader_fixed_params` | Capsules mémoire et paramètres fixes |
-| `canaux` + `brique_canaux` | touches / envois (`email.send`, `voice.send`, Discord) |
-| `etape_liens` | débits Live (`listen_docs` … `transactions`) |
+| `ventures` | Les business. Colonne `lifecycle` : le statut. |
+| `campaigns` | Les campagnes de test : business, canal, taille, fenêtre, seuils. |
+| `contacts` | Les prospects et clients. Leurs adresses sont aujourd'hui dans une colonne JSON, `contact_reference_by_canal` (une adresse par canal). |
+| `accounts_standing` | Les comptes web que Serge a créés : lieu, identifiant, mot de passe en clair, dossier de session, santé du compte. |
+| `consents`, `blocklist` | Consentements et personnes à ne plus contacter. |
+| `transactions` | Les paiements. |
+| `subscriptions` | Les abonnements Stripe. |
+| `artifacts` | Les livrables (pas encore utilisée). |
+| `listen_docs` | Les pages lues par l'écoute. |
+| `listen_cycles`, `listen_cycle_docs` | Les cycles de l'étape 1 et les pages figées pour chacun. |
+| `business_candidates`, `business_candidate_sources`, `poc_selections` | Les business trouvés par l'étape 1, leurs pages de preuve, les sélections. |
+| `tickets`, `ticket_items` | Les décisions à prendre par Julien. |
+| `policy_snapshots` | Les versions successives de la policy. La dernière fait foi. |
+| `runtime_flags` | Les interrupteurs : heartbeat, kinds coupés. |
 
-Liens : `llm_points.etape_id` et `tech_invocations.etape_id` ∈ épine
-ou `policy` ; jonction `llm_point_tools` sans orphelin. Lecture :
-`objets_de_etape`. Hors épine : `policy` (3 invocations LLM).
+### Le journal (ce qui s'est passé, jamais modifié)
 
-Autres faits déjà en canon : `ventures`, `campaigns`, `contacts`,
-`tickets`, `artifacts`, `transactions`, `consents`, `lessons`,
-`policy_snapshots`. Voix / SMS : ledgers à part.
+| Table | Contenu |
+|---|---|
+| `events` | Le journal général : qui, quoi, quand, avec un contenu JSON. |
+| `touches` | Chaque envoi à un prospect. |
+| `inbound_events` | Chaque réaction reçue, traduite en signal. |
+| `ticket_events` | L'historique de chaque ticket. |
+| `llm_usage` | Chaque appel au LLM : invocation, modèle, tokens, durée, résultat. |
+| `episode_archives` | Les archives d'événements anciens. |
 
-## Étapes (v8)
+### La connaissance
 
-Enum fermé, coupe-circuit d’étape par `work_items.etape_id` — plus par
-`kind` seul (le smoke et la lourde partagent `email.send`). Un kind
-peut aussi être coupé à part via `runtime_flags.kind.{kind}` ; tout
-Serge via `runtime_flags.scheduler.heartbeat`.
+| Table | Contenu |
+|---|---|
+| `lessons` | Les leçons, avec leur fiabilité et leurs sources. |
+| `playbooks` | Les procédures qui marchent. |
+| `pitfalls` | Les pièges à éviter. |
+| `summaries` | Des résumés versionnés (la version précédente est gardée). |
 
-Factures = table `transactions`. Abonnements = table `subscriptions`
-(`external_id` Stripe `sub_…`, `last_transaction_id` → dernière
-facture encaissée). Writer : webhooks `customer.subscription.*` et
-`invoice.paid` (`serge/collect/abonnements.py`).
+### Le catalogue
 
-Journal voix = ledger `state/voice/voice.db` (`calls`) : `outcome`,
-`duration_s`, `recording_path`, `transcript`. 0 s + échec = jamais
-connecté, pas une conversation de zéro minute.
+| Table | Contenu |
+|---|---|
+| `pipeline_steps` | Les 8 étapes : titre, texte d'explication, interrupteur. |
+| `etape_liens` | Les liens entre étapes. Colonne `debit` : le nom d'une table dont Mission Control compte les lignes. |
+| `llm_points` | Les invocations LLM : niveau de modèle, prompt, mode de sortie, allumée ou non. |
+| `llm_point_tools` | Quels tools chaque invocation peut appeler. |
+| `tech_invocations` | Les invocations techniques (sans LLM). |
+| `tools` | Les tools. `montre_partout = 1` : offert à toutes les invocations. |
+| `canaux`, `brique_canaux` | Les canaux et les invocations qui écrivent par eux. |
+| `db_readers`, `llm_point_readers`, `db_reader_fixed_params`, `db_reader_fixed_joins` | Les capsules de lecture de la base (à supprimer, voir ci-dessous). |
+| `tool_db_*` | Pour chaque tool de lecture de la base : tables, colonnes, filtres, jointures et paramètres autorisés. Le modèle n'écrit jamais de SQL. |
 
-Ordre : pré-prospection → conception PoC → prospection light (smoke)
-→ choix de venture → build/rebuild (y compris livraison / onboarding)
-→ prospection lourde → collect feedback → **caisse**. Hors épine :
-policy owner.
+### La mécanique
 
-Renommage UI/docs encore partiel : « jugement » → **invocation LLM**
-(la charte garde le mot tant que Julien ne l’amende pas).
+| Table | Contenu |
+|---|---|
+| `work_items` | La file des tâches du runner. |
+| `mc_sessions` | Les sessions de Mission Control (jeton haché, jamais en clair). |
+| `schema_version` | La version de la base. |
 
-Invocations techniques : table `tech_invocations` (kinds fermés
-`cluster` / `select` / `score` / `transform` / `index`). Une étape
-en a n ; seule une **invocation LLM** peut appeler des tools. Runtime :
-`serge/llm/boucle.py` (plafond 12 tours) + handlers dans
-`serge/llm/outils_exec.py`. Un tool `kind=agent` ne peut pas en
-appeler un autre (garde `outil_peut_invoquer`, pas encore d’enchaînement
-tool → tool).
+### Hors de cette base
 
-## Docs MC + SHA fichiers (v10)
+- `state/voice/voice.db` : le journal des appels.
+- La boîte SMS entrante.
+- L'index de recherche `memory_fts`, créé à la première recherche.
 
-Chaque objet catalogue porte `doc_md` (ou les champs fiche d’étape :
-`titre`, `pourquoi`, `argent`, `dependance`, `comment`), `files_sha`
-et `updated_at`. Mission Control lit **uniquement la base** pour
-l’épine, les fiches et le graphe Live.
+---
 
-`files_sha` = SHA-256 des SHA *contenu* de tous les fichiers qui
-encodent l’objet **et** ses sous-objets (étape → invocations LLM /
-tech → tools). Pas les chemins, pas les dates. Valeur figée dans
-`serge/catalogue_lock.py`, recopiée au seed. Les tests
-(`tests/test_catalogue_sha.py`) rougissent si un objet est rajouté,
-supprimé, ou si le SHA disque ≠ SHA en base.
+## Décidé : ce qui va changer
 
-`etape_liens` : arêtes de l’onglet En direct (`de` → `vers`, `libelle`,
-`debit` enum fermé : `listen_docs`, `campaigns`, `contacts`,
-`artifacts`, `touches`, `inbound_events`, `transactions`). Pas de SQL
-libre.
+Voir [`TODO.md`](../TODO.md) pour l'ordre des chantiers.
 
-## Canaux (v11)
+- `business_candidates`, `business_candidate_sources` et `poc_selections`
+  sont fondues dans `ventures`, avec de nouveaux statuts (`POC_SELECTED`,
+  `PARKED`, `MAINTENANCE`, `CLOSED`…). La table de liens business ↔ page
+  reste.
+- `contacts` : une ligne par personne, et une nouvelle table avec **une
+  ligne par adresse** (canal, valeur, active ou non). Regroupement
+  automatique seulement sur un e-mail ou un téléphone identique. La
+  colonne JSON disparaît.
+- Nouvelles tables : `deliveries` (ce qui reste à livrer), `product_requests`
+  (les demandes des clients), `listen_feeds` (les flux suivis), et une
+  table de barème de points par canal et par signal.
+- `subscriptions` : chaque abonnement est rattaché à son vrai business.
+- Les capsules (`db_readers` et tables associées) disparaissent : leurs
+  réglages vont sur `llm_point_tools`.
+- `work_items.kind` et les interrupteurs par kind disparaissent : une tâche
+  pointe vers une invocation.
+- `etape_liens` est remplacée par des liens entre invocations, qui
+  transportent des données.
 
-Un canal = un moyen pour Serge d’**écrire vers un tiers** (client,
-prospect, partenaire — pas Julien). Discord owner n’en est pas un.
-Table `canaux` (id fermé, `doc_md`, `code_path` du writer, `etat`
-`branche` / `prevu`). Jonction n-n `brique_canaux` : `brique_kind` ∈
-{`llm`, `tech`}. Semence `serge/canaux.py`. Aujourd’hui branchés :
-`email`, `voice`. Pas LinkedIn / WhatsApp / Ads tant qu’il n’y a pas
-de writer.
+---
 
-## Contacts par lieu (v12)
+## Ajouter une migration
 
-Une fiche `contacts` = une trace sur **un** lieu (`venue` + `handle`,
-URL optionnelle). Deux lieux, deux lignes, même si c’est le même
-humain. `upsert_trace` (`serge/funnels/contact_canal.py`) enrichit
-**sa** ligne (mail trouvé sur LinkedIn → fiche LinkedIn). Index unique
-partiel `(venture_id, venue, handle)` si les deux sont non vides.
-Les contacts e-mail historiques (venue vide) restent valides.
-
-## Comptes standing (v13)
-
-`accounts_standing.login` et `accounts_standing.password` : identifiants
-de connexion **en clair**. Ce sont des comptes que Serge a créés ; ils
-n’ont pas de valeur hors de lui. Writer : `enregistrer_compte`
-(`serge/comptes.py`) — un lieu + un handle = une ligne ; le second
-appel met à jour login / mot de passe, pas le capital. `secret_ref`
-n’est plus le coffre.
-
-## Santé des comptes (v14)
-
-`accounts_standing.last_used_at` : dernier acte qui a débité le capital.
-Garde `serge/comptes_sante.py`. Barème : `policy.standing` (`cout_usage`,
-`gain_par_heure`, `idle_apres_heures`, `capital_min`, `capital_max`).
-Après un usage le capital ne peut que baisser ; à l’inutilisation il
-remonte, sans dépasser le plafond. Un snapshot policy plus vieux que
-cette section est complété par la semence YAML à la lecture.
-
-## Identité (pas de table)
-
-`identite_serge()` (`serge/identite.py`) lit `[identity]` + `[mailbox]`.
-Pas de seconde table. Volet advanced = IBAN + adresse de facturation.
-Outils catalogue `identity_basique` (branché) et `identity_advanced`
-(`prevu`). Page MC `#/identite`.
-
-## Demande de capacité
-
-Tool `demande_capacite` (branché, partout) : `poser_demande()` crée un
-ticket `REQUESTED` (champs `demande`, `contexte`, `point_llm`). Pas de
-kind worker. Le même besoin déjà ouvert pour le même jugement n’est
-pas recréé.
-
-## Boîte mail / SMS
-
-Tool `boite_serge` : mails dans `inbound_events` (corps dans
-`payload_json`), SMS dans le ledger inbox **en brut** (plus seulement
-le hash). Les reçus SMS restent des traces historiques ; aucun envoi futur
-n'est déduit de la table `touches`.
+1. Créer `serge/db/v0NN.py` avec une fonction `apply_v0NN(connection)`.
+   Elle doit pouvoir tourner sur une base qui a déjà une partie du
+   changement (utiliser `IF NOT EXISTS`, vérifier les colonnes).
+2. L'ajouter à `MIGRATIONS` dans `serge/db/migrate.py`, et monter
+   `SCHEMA_VERSION` dans `serge/db/schema.py`.
+3. Ajouter un test dans `tests/test_migrate.py`.
+4. Mettre à jour ce document.

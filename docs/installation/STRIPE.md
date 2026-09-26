@@ -11,7 +11,7 @@ Dashboard Stripe  POST  https://<domaine>/hooks/stripe
                          ↕ Caddy (handle /hooks/stripe*)
 VPS loopback 127.0.0.1:8788  serge-stripe-receiver
                          ↕ HMAC whsec (live puis test)
-canon  transactions.intent_id = pi_…  → mark_paid
+base   transactions.intent_id = pi_…  → mark_paid
 ```
 
 Même hôte que le MC (`https://<domaine>/`). Pas de sous-domaine `pay.`.

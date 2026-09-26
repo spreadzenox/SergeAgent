@@ -51,4 +51,4 @@ verify → nom du canal → send/edit/delete (rien ne persiste, cap 6).
 - `!` / `--force` / “sans confirmation” = bypass logué + FYI post-hoc.
   La constitution (§14.1a : faux avis, usurpation, spam illégal…)
   **n’est jamais bypassée** (refus avec explication).
-- Fiche architecture : [`INTERACTION_ARCHITECTURE.md`](INTERACTION_ARCHITECTURE.md).
+- Fiche architecture : [`MISSION_CONTROL.md`](../MISSION_CONTROL.md#discord).

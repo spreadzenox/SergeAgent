@@ -166,10 +166,10 @@ vers son propre mobile (le CLI affiché est bien le NPV ?).
 
 ### 2. L’agent Serge (speech-to-speech ; repli tour-par-tour)
 
-Point P5 `voice_dialog` (matrice C) : **speech-to-speech temps réel**
+La voix principale est **en temps réel** (speech-to-speech)
 via AudioSocket, mêmes providers que Mission Control (xAI Realtime
 primaire `grok-voice-think-fast-2.0`, OpenAI Realtime rollback
-`gpt-realtime-2.1-mini`). Checklist 4/4, guards et repli déclarés.
+`gpt-realtime-2.1-mini`). Garde-fous et repli tour par tour déclarés.
 
 ```
 appel → Asterisk → AudioSocket 127.0.0.1:8792
@@ -203,8 +203,8 @@ La voix sortante est une mutation externe, refus par défaut :
   composition (`serge/voice/bridge.py block-add`).
 - [x] CLI verrouillé au NPV (broker + dialplan). Aucun paramètre
   d'appel ne peut le changer.
-- [x] Kill-switch (fichier `KILL_SWITCH`) + `external_actions_enabled`
-  : stoppe tout sortant. Idempotence par `request_id`.
+- [x] Coupe-circuit `voice.send` (Mission Control, page En direct) +
+  `external_actions_enabled` : stoppe tout sortant. Idempotence par `request_id`.
 - [ ] Enregistrement annoncé (« cet appel peut être enregistré… »)
   selon les obligations applicables + rétention bornée — **à écrire
   dans le message d'accueil par l'owner**.

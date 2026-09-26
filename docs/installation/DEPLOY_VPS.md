@@ -6,11 +6,11 @@ overlay du SHA + restart des units déjà actives.
 
 Les secrets restent **sur le VPS**, jamais dans GitHub (dépôt public).
 
-Détail lint / tests / CI déterministe : [DEV_TOOLING.md](DEV_TOOLING.md).
+Détail lint / tests / CI déterministe : [DEV_TOOLING.md](../DEV_TOOLING.md).
 
 ## Ce que fait le job
 
-Workflow : [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml).
+Workflow : [`.github/workflows/deploy.yml`](../../.github/workflows/deploy.yml).
 
 - Déclenché **uniquement** par `push` sur `main` (jamais `pull_request`,
   jamais les forks).
@@ -31,7 +31,7 @@ stockage ACME (`~/.local/share/caddy`, `~/.config/caddy`) : sinon
 HTTPS écoute sans certificat et le navigateur reçoit une alerte TLS.
 
 Racine **déjà peuplée** → `kit/update.py` (git archive par-dessus,
-`state/` / `queue/` / `logs/` / `reports/` / `evidence/` intacts, canon
+`state/` / `queue/` / `logs/` / `reports/` / `evidence/` intacts, base
 non recréé), réécrit les units et `asterisk.conf`. Si le sidecar
 secrets est déchiffrable (`SERGE_AGE_IDENTITY`), `pjsip.conf` aussi.
 Sinon `pjsip.conf` reste intact. Les units system (Caddy privileged)
@@ -94,7 +94,7 @@ non vide et les chemins live sans
 - sidecar `serge.secrets.age` + identité age
 - mandat kit vivant (pas un mandat mort)
 - `/home/serge/serge-system` **vide** au premier install
-- **canon vide** (ne pas copier la DB WSL)
+- **base vide** (ne pas copier la DB WSL)
 - mêmes clés API que le WSL, TOML neuf
 - Asterisk + Caddy si les features correspondantes sont on
   (Julien : tout allumer)
@@ -113,5 +113,5 @@ couple. Après le merge, on le fait à deux :
       `--user` après logout
 - [ ] premier job deploy après merge (suivre le check `deploy julien-vps`)
 
-Kill-switch : `state/KILL_SWITCH` ou
-`orchestrator/runtime/KILL_SWITCH` → le pipeline ne part pas.
+Arrêt d'urgence : le bouton « Serge » de la page En direct de Mission
+Control. Plus aucune tâche ne démarre.

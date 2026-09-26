@@ -1,106 +1,399 @@
-# À faire — Mission Control / Serge
+# À faire
 
-Liste vivante. Julien enrichit au fil des reviews. Pas un changelog.
+La liste de ce qui reste à construire. Ce qui est fait n'y est plus : c'est
+dans l'historique git.
 
-**Dépendances.** Si A a besoin d’un B déjà dans cette liste, on l’écrit
-sur A (`dépend de : …`). Pas de feature orpheline qui suppose un autre
-chantier « évident ».
+Chaque élément suit le même modèle :
 
-## Ouvert
+- **Quoi** : ce qu'on veut pouvoir faire, avec un exemple.
+- **Pourquoi** : en une phrase.
+- **Dépend de** : ce qui doit exister avant, s'il y a lieu.
 
-### Machine d’écoute (première étape, lancée à la main)
+Les décisions derrière chaque élément sont dans
+[`docs/DECISIONS_REVUE.md`](docs/DECISIONS_REVUE.md) (le numéro de question
+est indiqué entre parenthèses, exemple : Q13).
 
-- [ ] **Onglet Mission Control « Écoute ».** Il faut refaire la première étape de la pipeline (pré-prospection). On va y inclure 3 jugements. Le premier llm doit juste écouter le web pour trouver n besoins et regrouper des informations synthétiques sur chacun de ces besoins. Cela doit enrichir un espace mémoire dédiés aux besoins pré-prospectés. Le llm devra explorer des besoins différents de ceux déjà en table. Il devra trouver des besoins très différents entre eux pour éviter les doublons. Le deuxième jugement est identique. Le troisième est celui du choix: parmis toute la table, il doit choisir p business à tester pour la prochaine étape. n et p doivent être des hyperparamètres modifiables depuis le MC. La configuration de l'espace mémoire en question doit être intelligente : pas de doublons avec ce qui existe déjà, segmentation claire avec un titre, un contenu/détail des observations , ce qui pourrait être vendu, et flag de "business déjà choisi pour un POC par Serge". L'agent de choix ne peut pas choisir un business déjà en POC (ça doit être une protection déterministe pas un system prompt). Il faut aussi ajouter un onglet sur le MC pour lancer la pipeline en commençant par ce cycle, on doit pouvoir inclure un petit texte qui sera donné aux jugements pour les guider dans leurs recherches. 
+---
 
-- [ ] **Invocation LLM pré-prospection lite (sans compte).** Sniffer le web public : Reddit, forums spécialisés, articles, tout ce qui est lisible sans login. Ça s’ajoute au collecteur RSS déterministe déjà là (`listen.collect`) — ça ne le remplace pas.
+## Ordre de travail
 
-- [ ] **Invocation LLM pré-prospection lourde (avec compte).** Retrieval sur les plateformes qui exigent un login (LinkedIn, Facebook, Instagram, etc.). Lit les comptes dans `accounts_standing`, n’en invente pas. dépends de la création de compte, les différents agents de manipulations de canaux.
+On avance par petits lots : un sujet, un commit, des tests verts.
 
-- [x] **Pages vraiment lues en base.** Projecteur `listen_docs` : vide = « Aucune page en base ». `mc-demo.py` peut semer, le runtime non. LLM écoute lite/lourde = archi.
+1. **Données** : ventures, contacts, livraisons, demandes clients,
+   abonnements (section Transverse).
+2. **Invocations et liens** : suppression des kinds et des capsules,
+   liens entre invocations, priorités, tools automatiques (Transverse).
+3. **Étape 1** refaite.
+4. **Conversations** : fil par prospect, « Traiter une réponse », relances
+   (Étapes 3 et 6).
+5. **Grille de points** (Transverse).
+6. **Étapes 2 et 5** : concevoir, challenger, construire, mettre en ligne.
+7. **Étapes 3, 4, 6, 7, 8.**
+8. **Web** : navigation, agent web, connecteurs (Transverse).
 
-### Comptes et identité
+---
 
-- [x] **Brancher `accounts_standing` (table déjà en base).** Pas de seconde table. Writer `enregistrer_compte` (v13 : `login` / `password` en clair). Ce sont des comptes créés par Serge, sans valeur hors de Serge. `secret_ref` n’est plus le coffre.
+## Transverse
 
-- [ ] **Dossier de session par compte.** La colonne `profile_path` pointe un dossier navigateur (cookies, etc.), rangé et unique par ligne. Quand deux usages du même compte se suivent de près, on réouvre ce dossier : c’est le geste le plus proche d’un humain qui n’a pas fermé son onglet. Ce n’est pas un keepalive permanent (ça, c’est un comportement de bot). Les trois tools web doivent accepter ce dossier. *Dépend de : tools web ; brancher `accounts_standing`.*
+### Une seule table pour les business (Q13, Q15, Q44)
 
-- [x] **Santé du compte, appliquée, pas affichée pour décorer.** Garde `serge/comptes_sante.py` : `etat` (prévient) / `autoriser` (refuse par code : `inconnu`, `inactif`, `pause`, `capital`) / `consommer` (débit) / `recuperer` (crédit idle). Barème dans `policy.standing`. `last_used_at` (v14). Insister ne passe pas. Garde posée ; aucun adaptateur prod ne l’appelle encore (ticket ci-dessous).
+- **Quoi** : fondre `business_candidates` et `poc_selections` dans
+  `ventures`. Ajouter les colonnes de la fiche (titre, description,
+  observations, offre vendable), les statuts `POC_SELECTED`, `PARKED`,
+  `MAINTENANCE`, `CLOSED`, et les dates de début et de fin du test léger.
+  Écrire chaque changement de statut dans le journal.
+- **Pourquoi** : aujourd'hui, un même business peut exister dans trois
+  tables qui se contredisent.
 
-- [ ] **Appelants de la garde de santé.** Aucun writer de compte (LinkedIn, publication lieu, tools web) n’existe encore, donc personne n’appelle `autoriser` / `consommer`. Le jour où un de ces writers part, le merge est refusé s’il n’appelle pas la garde. *Dépend de : santé du compte.*
+### Les places de test (Q14)
 
-- [ ] **Tool agent « créer un compte ».** Mobilisable à la main dans MC et appelable par les invocations LLM qui ont ce tool. 2FA **100 % autonome** (Serge lit mail/SMS lui-même). Captcha = stream humain (opérateur MC). À la création : login et mot de passe en clair dans `accounts_standing`, plus un dossier de session vide prêt à servir. *Dépend de : tools web ; stream captcha MC ; tool boîte mail/SMS ; `accounts_standing` ; dossier de session ; identity basique.*
+- **Quoi** : deux réglages dans la policy, 3 places en prospection légère
+  et 1 en prospection lourde. Pas de file d'attente. Exemple : si les
+  3 places légères sont prises, l'étape 1 ne lance pas de cycle et Mission
+  Control affiche « 3 places sur 3 occupées ».
+- **Pourquoi** : ne pas tester plus de business qu'on ne peut en suivre.
+- **Dépend de** : une seule table pour les business.
 
-- [x] **Identity basique (tool + page MC).** Lecteur `identite_serge()`, tool `identity_basique`, page `#/identite`, édition = `ecrire_identite` (réécrit l’instance). Jonction `voice_dialog` + `draft_price`.
+### Contacts : une fiche par personne (Q17)
 
-- [x] **Identity advanced (tool `prevu` + même page, volet à part).** `identity_advanced` (`prevu`, `montre_partout=0`). IBAN + adresse sur la même page. Pas de PAN.
+- **Quoi** : une ligne par personne dans `contacts`, et une nouvelle table
+  avec une ligne par adresse (canal, valeur, active ou non). Regroupement
+  automatique seulement sur un e-mail ou un téléphone identique, jamais sur
+  une adresse générique comme `contact@…`. Supprimer la colonne JSON
+  `contact_reference_by_canal`.
+- **Pourquoi** : aujourd'hui, une nouvelle adresse écrase l'ancienne sans
+  prévenir, et un désabonnement doit valoir pour la personne entière.
 
-- [x] **Tool boîte mail / SMS (brut + historique).** Tool `boite_serge`. SMS inbox stocke sender + body. 2FA lisible sans GUICHET.
+### Livraisons, demandes clients, abonnements (Q43, Q45)
 
-- [x] **Appelants de `upsert_trace`.** `create_contact` avec e-mail pose `venue=email` / `handle=email`. Observe / pont écoute restent à câbler quand ces flux créent un contact (ticket archi / pont).
+- **Quoi** :
+  - une table `deliveries` : une ligne par chose vendue à livrer, créée à
+    chaque paiement d'un produit qui n'est pas instantané ;
+  - une table `product_requests` : les bugs, insatisfactions et demandes
+    des clients ;
+  - rattacher chaque abonnement Stripe à son vrai business. Aujourd'hui
+    ils sont tous rattachés à `serge-collect-stripe`, écrit en dur dans
+    `serge/collect/abonnements.py`. Remplacer aussi les colonnes ajoutées à
+    la volée (`assurer_colonnes`) par une migration.
+- **Pourquoi** : sans ça, Serge ne sait pas ce qui reste à livrer ni quand
+  un business peut être fermé.
 
-- [x] **2. SMS sortant — théâtre retiré (pas de writer).** L’îlot MC compte les **reçus**, pas des envois fantômes. Quotas policy restent pour le jour d’un writer. *Mise de côté : quel fournisseur pour un vrai envoi.*
+### Supprimer les kinds (Q7)
 
-### Tools web (remplacent le stub unique `navigateur`)
+- **Quoi** : une tâche en file pointe directement vers une invocation (LLM
+  ou technique). Le coupe-circuit se pose sur l'invocation. Supprimer
+  `work_items.kind`, les interrupteurs `kind.*`, `KIND_DEFAUT` et le
+  dispatch par kind. Au passage, vérifier `scheduler.enqueue`, qui calcule
+  l'identifiant avec `hash()` (différent à chaque redémarrage de Python).
+- **Pourquoi** : ce que Mission Control affiche doit être exactement ce qui
+  tourne.
 
-- [ ] **Tool web ultra-light Chromium.**
-- [ ] **Tool web medium Selenium.**
-- [ ] **Tool web heavy Browserbase** (la clé est déjà dans les secrets). Un contrat commun, trois implémentations. Le stub `navigateur` (`etat: prevu`) disparaît quand le premier des trois est branché — pas un quatrième tool. Chaque tool doit pouvoir ouvrir le `profile_path` du compte.
+### Liens entre invocations (Q5, Q6)
 
-### Prospection avec compte
+- **Quoi** : un lien relie deux invocations et transporte des données.
+  Exemple : « chaque business `POC_SELECTED` lance Concevoir le POC, avec
+  son identifiant en paramètre ». Un résultat n'est transmis qu'une fois.
+  Un bouton « passer à la suite » dans Mission Control, un interrupteur
+  « passage automatique », et une invocation technique qui fait le passage
+  toute seule quand l'interrupteur est allumé. Structure relationnelle
+  propre, lisible depuis Mission Control.
+- **Pourquoi** : aujourd'hui l'enchaînement est écrit en dur dans les
+  workers et les liens ne servent qu'à afficher un compteur.
+- **Dépend de** : supprimer les kinds.
 
-- [ ] **Invocation LLM prospection avec compte.** Sortie typée (qui, quel acte, quel texte) — le writer est l’adaptateur du canal, pas le LLM. Digestion en base (`contacts`, `touches`). Un canal = écriture vers un **tiers** (pas Julien). Email et voix sont déjà au catalogue (`canaux` + `brique_canaux`, v11). Discord owner n’en est pas un.
+### Tools : remplacer les capsules (Q4, Q12, Q25)
 
-- [x] **Stockage des contacts par canal.** `upsert_trace` + colonnes `venue` / `handle` / `profile_url` (v12). Deux lieux, deux lignes. Pas de fusion automatique. `create_contact` avec e-mail pose la trace e-mail.
+- **Quoi** : supprimer `db_readers`, `llm_point_readers`,
+  `db_reader_fixed_params`, `db_reader_fixed_joins`. Le lien invocation ↔
+  tool (`llm_point_tools`) porte le mode (donné d'office ou appelable) et
+  les paramètres figés. Chaque invocation reçoit automatiquement trois
+  tools : « historique de l'objet traité », « leçons »,
+  « demander une nouvelle capacité ».
+- **Pourquoi** : aujourd'hui les capsules ne sont pas appliquées quand le
+  modèle appelle le tool. Exemple : la lecture des pages d'un cycle
+  renvoie seulement leurs identifiants.
 
-### Canaux manquants (théâtre déjà là, writer absent)
+### Ce que voit une invocation (Q11, Q12, Q46)
 
-Chaque canal fini = semence `serge/canaux.py` + jonctions n-n + `code_path` du writer + kind worker + guards + SHA (`catalogue_lock.py`) + fiche MC. Pas de jauge / quota / îlot sans writer (R7). Ordre = priorité (le plus menti d’abord).
+- **Quoi** :
+  - donner d'office ce que le lien apporte, en entier ;
+  - donner la version courte des tables où l'invocation écrit ;
+  - un maximum de lignes par défaut (exemple : 50), réglable ;
+  - les leçons propres à l'invocation ;
+  - le bloc « Qui est Serge et quelle est ta place » aux invocations de
+    niveau moyen et intelligent.
 
-- [ ] **1. LinkedIn.** Le plus de théâtre. Déjà là sans writer : quotas `linkedin_connect_per_day` / `linkedin_inmail_per_month` (`config/policy.yaml` + UI Policy), jauge En direct qui compte des `touches` `channel='linkedin'` (personne n’en écrit), archi funnel (invites / InMail / accepts), ticket `PUBLICATION` qui cite LinkedIn. Les guards (`KNOWN_CHANNELS`) ne connaissent que `email` / `sms` / `voice` : un `linkedin.send` explose aujourd’hui. À faire : adaptateur déterministe (compte `accounts_standing`, tool web, cooldown / capital), kind `linkedin.send`, étendre les guards, écrire de vraies `touches`, brancher le catalogue. Jugement = l’invocation prospection (ci-dessus), pas le clic. *Dépend de : tools web ; `accounts_standing` ; dossier de session ; santé du compte ; stream captcha ; tool boîte mail/SMS (2FA compte) ; identity basique ; stockage des contacts par canal.*
+  Mission Control affiche combien de lignes chaque invocation a reçues.
+- **Pourquoi** : que chaque invocation ait ce qu'il lui faut, sans noyer
+  son contexte.
+- **Dépend de** : liens entre invocations ; tools.
 
-- [x] **2. SMS sortant.** Théâtre d’envoi retiré ; l’îlot ne compte que les traces reçues. Writer réel = attente fournisseur (section archi).
+### Priorités (Q38)
 
-- [ ] **3. WhatsApp.** Une case opt-in (`consent.opt_in_channels` + UI Policy) et un paragraphe d’archi (collé au SMS : template, STOP, opt-out). Zéro client, zéro kind, zéro touche. À faire : adaptateur (API / outil web selon le choix) + opt-in vraiment lu à l’envoi + catalogue. Ne pas inventer une jauge avant le writer. *Dépend de : tools web et/ou tool boîte mail/SMS si le compte se crée tout seul ; `accounts_standing` si session web.*
+- **Quoi** : une priorité par invocation, réglable dans Mission Control.
+  Valeurs de départ : 100 traiter une réponse, 80 relever les boîtes,
+  50 envois et relances, 30 construction, 10 écoute et consolidation.
+- **Pourquoi** : répondre à un prospect passe avant tout le reste.
 
-- [x] **4. Ads (Google / Meta / LinkedIn / Reddit).** Documenté `prevu` : `family='ads'` sans writer ni jauge de dépense. Adaptateur / ledger = archi.
+### Grille de points (Q16)
 
-- [ ] **5. Publication lieu (Reddit / forums / SEO).** Ticket `PUBLICATION` (« drafts Reddit/LinkedIn/forums »), famille campagne `place`, comptes démo `venue='reddit'` (`accounts_standing`). Rien ne poste. L’écoute RSS Reddit est de la **lecture** (`listen.collect`), pas un canal. À faire : writer de publication (ticket approuvé → post réel), compte + cooldown, catalogue (reddit / forum, pas un fourre-tout). Insta / Facebook : aucun câble, on ne les invente pas ici. *Dépend de : tools web ; `accounts_standing` ; dossier de session ; santé du compte ; stream captcha si le lieu challenge ; stockage des contacts par canal.*
+- **Quoi** : une table de barème, une ligne par canal et par signal, de
+  0 à 10 points, modifiable dans Mission Control. Deux chiffres par
+  business : total de points et points par euro. Exemple de barème
+  e-mail : ouvert 0,5, clic 1, réponse 4, veut acheter 10, refus 1.
+- **Pourquoi** : comparer des tests faits sur des canaux différents, sans
+  rater les signaux faibles.
 
-### Captcha (humain) et boîte Serge (autonome)
+### Recherche dans la mémoire
 
-- [ ] **Tool stream captcha → Mission Control.** Le navigateur déjà ouvert streame son écran (pas un second browser). Ticket `GUICHET` Discord avec `lien_stream` = URL MC (pas la vidéo dans Discord : pas de PII sur Discord). Keepalive auto jusqu’à expiration du ticket. Accessible **téléphone et ordinateur** pour tout opérateur qui a le token MC **et** Discord. Pause de la tâche jusqu’à « c’est fait » / abandon / expiry. *Dépend de : tools web (Chromium / Selenium / Browserbase) — le stream n’a rien à filmer sinon.*
+- **Quoi** : remplir l'index de `memory_search` au fil de l'eau (à chaque
+  nouvelle leçon, nouvel événement, nouveau ticket).
+- **Pourquoi** : aujourd'hui rien ne remplit cet index en production :
+  `memory_search` ne renvoie jamais rien.
 
-- [x] **Tool boîte mail / SMS (brut + historique).** `boite_serge` + inbox SMS en brut.
+### Web (Q48)
 
-### Ponts entre étapes (manuel d’abord, auto ensuite)
+- **Quoi** :
+  - installer **SearXNG** sur le VPS et l'utiliser pour chercher ;
+  - un tool « Lire une page » : requête simple, puis Chrome piloté par
+    Playwright si la page a besoin de JavaScript, puis Browserbase si le
+    site bloque. Chaque montée de niveau est écrite au journal ;
+  - une invocation **« Agent web »** (Browser Use) qui accomplit une
+    mission. Exemple : « crée un compte sur X ». Une session par compte,
+    qui garde les cookies (`accounts_standing.profile_path`) ;
+  - créer un compte de bout en bout : identité de Serge, code lu dans sa
+    boîte mail ou ses SMS, captcha résolu par un humain (ticket Discord
+    avec un lien vers l'écran en direct dans Mission Control), compte
+    enregistré dans `accounts_standing` ;
+  - une invocation **« Construire un connecteur »** quand une API gratuite
+    existe. Julien valide le code par ticket avant activation.
 
-Un seul mécanisme pour tous les passages (écoute → contacts, contacts → séquence, essai → scale, etc.). Pas un pont bricolé par étape.
+  Le tool prévu `navigateur` disparaît au profit de ceux-ci.
+- **Pourquoi** : Serge doit pouvoir tout faire sur le web avec son e-mail,
+  son téléphone et sa carte, sans intervention humaine à chaque nouveau
+  site.
 
-- [ ] **Bouton MC « passer à la suite ».** L’opérateur déclenche à la main le pont : l’étape N a produit des résultats, on les verse dans l’étape N+1. C’est le mode par défaut. Rien ne s’enchaîne tout seul tant que personne n’a pressé.
+### Garde de santé des comptes
 
-- [ ] **Kill switch « passage automatique ».** OFF = manuel seulement. ON = un tick runner régulier écoute si l’étape précédente a de **nouveaux** résultats et déclenche le même pont que le bouton, tout seul. Le bouton manuel reste toujours là (force un passage tout de suite). Coupe-circuit : si l’étape cible ou le kind est déjà coupé, le tick ne passe pas.
+- **Quoi** : chaque action faite avec un compte web appelle la garde
+  (`serge/comptes_sante.py` : `autoriser` avant, `consommer` après).
+- **Pourquoi** : la garde existe mais personne ne l'appelle ; un compte
+  trop sollicité se fait bannir.
+- **Dépend de** : web.
 
-- [ ] **Tick runner des ponts.** Un kind dédié (pas un cron hors catalogue). Idempotent : un résultat déjà versé n’est pas rejoué. Visible dans En direct comme les autres kinds.
+### Page Identité
 
-### Déjà ouvert, pas encore recouvert par la machine ci-dessus
+- **Quoi** : un bouton pour modifier l'identité, qui appelle
+  `ecrire_identite`, ou supprimer cette fonction.
+- **Pourquoi** : aujourd'hui la fonction existe mais aucun bouton ne
+  l'appelle.
 
-- [x] **Outils que le jugement peut vraiment presser (hors web).** Boucle générique dans `run_point` (12 tours, quotas couple optionnels). Handlers : `memory_search`, `identity_basique`, `demande_capacite`.
+### Docstrings qui renvoient à des documents supprimés
 
-## En attente d’une décision d’architecture
+- **Quoi** : environ 100 docstrings et commentaires de `serge/` et `kit/`
+  citent des repères d'anciens documents (« P2 », « R6 », « B §2.6 »,
+  « matrice C », « D-spec »). Les réécrire en phrases claires au fil des
+  changements, avec le renommage en anglais des noms.
+- **Pourquoi** : ces repères ne mènent plus nulle part.
 
-Mis de côté (on n’invente pas le contrat) :
+### Invocations écrites mais jamais appelées
 
-- Onglet Écoute + table dédiée (forme du sac de niches).
-- LLM pré-prospection lite / lourde (nouveau point vs extension de `cluster_demand`).
-- Tools web Chromium / Selenium / Browserbase (contrat commun d’API outil).
-- Dossier de session, captcha stream, créer un compte (dépendent des tools web).
-- LinkedIn / WhatsApp / publication lieu (fournisseur + writer).
-- Ads writer / ledger de dépense (la family est documentée `prevu`).
-- Ponts entre étapes (ce que « verser » veut dire pour chaque couple).
-- SMS sortant writer (quel opérateur).
-- ~~`demande_capacite` runtime.~~ Fait : ticket `REQUESTED` (pas de kind).
-- ~~`memory_search` pressé par le jugement.~~ Fait.
+- **Quoi** : pour chacune, la brancher dans le nouveau pipeline ou la
+  supprimer. Liste : `voice_script`, `voice_dialog`, `summarize_thread`,
+  `score_lead_departage`,
+  `resume_test`, `draft_hypothesis_full`, `options_pivot`, `plan_scale`,
+  `judge_allocator`, `build_artifact`, `review_build`,
+  `summarize_build_debt`, `draft_hypothesis_smoke`, `discover_contacts`.
+- **Pourquoi** : pas de code mort.
 
-## Plus tard
+---
 
-_(idées proposées, pas encore validées par Julien)_
+## Étape 1 — Pré-prospection
+
+### Refaire l'étape en 7 invocations (Q8, Q9)
+
+- **Quoi** : Lire les flux (technique), Explorer le web, Trier les pages
+  (étiquette : enrichit un business / signal nouveau / bruit), Formuler
+  des business A et B, Dédoublonner (technique), Choisir les business à
+  tester (autant que de places libres), Refuser ceux déjà en test
+  (technique). Détail : [`docs/etapes/1-pre-prospection.md`](docs/etapes/1-pre-prospection.md).
+- **Pourquoi** : une invocation, un rôle ; aujourd'hui les découvertes font
+  tout à la fois.
+- **Dépend de** : liens entre invocations ; une seule table pour les
+  business ; places.
+
+### Garder toutes les pages lues (Q8)
+
+- **Quoi** : chaque page lue par un flux ou par le web est enregistrée dans
+  `listen_docs`, avec le cycle qui l'a trouvée. Elle peut servir de preuve.
+- **Pourquoi** : aujourd'hui les business sont enregistrés sans aucune
+  preuve.
+
+### Les flux en base (Q9)
+
+- **Quoi** : une table `listen_feeds` (adresse, ajouté par qui, actif,
+  pages ramenées, pages utiles), éditable dans Mission Control. L'étape
+  « Explorer le web » peut proposer des flux. La veille tourne toute seule.
+- **Pourquoi** : aujourd'hui aucun flux n'est configuré et rien ne lance
+  la collecte.
+
+### Garde-fous de volume (Q9)
+
+- **Quoi** : réglages de policy : N pages triées au maximum par cycle,
+  pages « bruit » oubliées après X jours, flux désactivé après K cycles de
+  bruit, fréquence de la veille.
+- **Pourquoi** : que la base ne grossisse pas sans fin.
+
+---
+
+## Étape 2 — Conception du POC
+
+### Concevoir, challenger, valider, construire (Q31, Q34, Q35, Q39)
+
+- **Quoi** : Concevoir le POC (plan de A à Z, rythme des relances,
+  livrable d'essai), Challenger le POC (remarques « à corriger » ou
+  « nouvelle capacité nécessaire », 3 tours), ticket Discord à Julien avant
+  construction, construction, mise en ligne sur un sous-domaine, création
+  de la campagne. Détail : [`docs/etapes/2-conception-poc.md`](docs/etapes/2-conception-poc.md).
+- **Pourquoi** : un POC doit proposer quelque chose de concret à essayer.
+- **Dépend de** : liens entre invocations ; construction (étape 5).
+
+---
+
+## Étape 3 — Prospection légère
+
+### Trouver des prospects (Q36)
+
+- **Quoi** : une invocation qui cherche et qualifie des prospects
+  pertinents, avec des adresses qui ne rebondissent pas, et garde la page
+  source de chaque adresse. Sortie exacte à définir. Seulement vers des
+  professionnels pour l'e-mail et l'appel.
+- **Pourquoi** : Serge sait écrire et appeler, mais ne sait pas encore à
+  qui.
+- **Dépend de** : web ; contacts.
+
+### Fil de discussion et relances réactives (Q37)
+
+- **Quoi** : un fil par prospect, tous canaux (garder aussi le texte des
+  envois). Rattacher chaque réponse au prospect, y compris par le fil
+  e-mail. Une relance ne part que si le dernier événement est un envoi de
+  Serge sans réponse, vérifié au moment de l'envoi. Aucune relance si les
+  réponses d'un canal n'ont pas été relevées depuis plus d'une heure.
+- **Pourquoi** : ne jamais relancer quelqu'un qui a déjà répondu.
+- **Dépend de** : contacts.
+
+### LinkedIn (Q48)
+
+- **Quoi** : utiliser LinkedIn avec le compte de Serge, à un volume
+  modéré, chaque message et publication validé par Julien. Les guards
+  (`KNOWN_CHANNELS`) doivent connaître `linkedin`.
+- **Pourquoi** : un canal de prospection B2B important.
+- **Dépend de** : web.
+
+### Autres canaux
+
+- **Quoi** : WhatsApp, publication sur des forums ou Reddit, publicité
+  (Google, Meta, LinkedIn, Reddit), SMS sortant. Pour chacun : le code qui
+  écrit vraiment, son barème de points, sa fiche au catalogue.
+- **Pourquoi** : chaque type de business n'a pas le même bon canal.
+- **Dépend de** : web ; grille de points.
+
+---
+
+## Étape 4 — Choix du business principal
+
+### Proposer, valider, mettre de côté (Q15, Q16 bis, Q44)
+
+- **Quoi** : quand les 3 tests légers sont finis, une invocation propose
+  le meilleur (avec points, points par euro et réponses), Julien valide par
+  ticket (48 h sinon ça s'applique), les autres passent en `PARKED`.
+  Comparer aussi les `PARKED` de moins de 60 jours.
+- **Pourquoi** : c'est la décision la plus lourde du pipeline.
+- **Dépend de** : places ; grille de points.
+
+---
+
+## Étape 5 — Construction
+
+### Construire le vrai produit (Q41)
+
+- **Quoi** : Concevoir le produit, le challenger, ticket Julien (prix
+  définitif), construire avec le couple builder / reviewer (réponses
+  « bon », « à corriger », « nouvelle capacité nécessaire »), mettre en
+  ligne sur un domaine dédié, créer le produit Stripe et faire un paiement
+  test de 1 € remboursé.
+- **Pourquoi** : pas de prospection lourde sans pouvoir encaisser.
+
+### Mettre en ligne et stocker (Q39, Q40)
+
+- **Quoi** : publier via Caddy sur le VPS (sous-domaine pour un POC,
+  domaine acheté pour le business principal). Ranger les fichiers dans
+  `files/<business>/<livrable>/v<N>/`, jamais modifiés une fois publiés,
+  avec leur fiche dans `artifacts`.
+- **Pourquoi** : les livrables doivent être en ligne et retrouvables.
+
+---
+
+## Étape 6 — Prospection lourde
+
+### Une seule invocation pour répondre (Q38)
+
+- **Quoi** : « Traiter une réponse » lit le fil et rend le signal, la
+  réponse ou « pas de réponse », et « besoin de Julien ». Elle remplace
+  `classify_reply`, `reply_intent`, `review_other`, `extract_meeting`.
+  Envoi entre 5 et 20 minutes après le message en heures ouvrées, le
+  lendemain matin sinon. Son propre interrupteur, pour servir aussi
+  l'étape 3.
+- **Pourquoi** : aujourd'hui trois invocations lisent le même message
+  chacune de leur côté.
+- **Dépend de** : fil de discussion.
+
+### Le point hebdomadaire (Q42)
+
+- **Quoi** : « Faire le point sur le business principal » propose
+  continuer, accélérer (+50 % ou un canal), pivoter ou arrêter. Pivoter et
+  arrêter passent par Julien. Elle remplace `plan_scale`, `options_pivot`
+  et `judge_allocator`.
+- **Pourquoi** : une seule question, « on continue et à quelle vitesse ? ».
+
+### Retours clients (Q43)
+
+- **Quoi** : repérer les demandes sur le produit, corriger l'urgent tout
+  de suite, préparer une version par semaine pour le reste, prévenir les
+  clients concernés.
+- **Pourquoi** : le produit s'améliore avec ses vrais utilisateurs.
+- **Dépend de** : `product_requests` ; construction.
+
+### Maintenance et fermeture (Q44)
+
+- **Quoi** : passage en `MAINTENANCE` quand les quotas de prospection
+  lourde sont épuisés ou que Julien valide « arrêter » ; passage
+  automatique en `CLOSED` quand il ne reste rien à faire.
+- **Pourquoi** : arrêter de prospecter n'est pas fermer le business.
+- **Dépend de** : `deliveries`, `product_requests`, abonnements rattachés.
+
+---
+
+## Étape 7 — Mémoire
+
+### Leçons plus précises (Q46)
+
+- **Quoi** : une leçon obligatoire à chaque `KILLED` ou `CLOSED`.
+  Rattacher chaque leçon à une invocation, sinon à une étape, sinon à tout
+  Serge.
+- **Pourquoi** : chaque invocation doit recevoir ce qu'on a appris sur son
+  propre travail.
+
+---
+
+## Étape 8 — Caisse
+
+### Encaisser proprement (Q47)
+
+- **Quoi** : programmer les relances d'impayés (codées dans
+  `serge/collect/dunning.py`, jamais lancées) en passant par le fil du
+  client. Remboursement automatique sous un seuil (exemple : 50 €), ticket
+  au-dessus. Factures émises par Stripe. Encaissé, dû et en retard par
+  business dans Mission Control.
+- **Pourquoi** : l'argent doit rentrer sans relancer un client qui a déjà
+  répondu.

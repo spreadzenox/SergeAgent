@@ -22,7 +22,7 @@ Lecture seule :
 - basenames sous `~/.config/serge/secrets/` (pas le contenu)
 - références code (`SECRET_PATH`, `XAI_`, Stripe, Discord, OpenRouter)
 
-Limite : [`scripts/scan-repo-secrets.py`](../scripts/scan-repo-secrets.py)
+Limite : [`scripts/scan-repo-secrets.py`](../../scripts/scan-repo-secrets.py)
 ne voit que le git tracké.
 
 ## Barrière de boot (cible)
@@ -63,7 +63,7 @@ hardcodes. C’est la dette que le builder ferme.
 - Identité publique DNS du propriétaire.
 - Unix `serge` / uid `1002`.
 - Snowflake Discord owner câblé.
-- Canon et `state/` de production.
+- La base et `state/` de production.
 
 Un tiers allume `metagrok` seulement s’il a **son** pont, pas le checkout
 Julien. Sinon la feature reste `false` et l’instance boot.
@@ -73,11 +73,11 @@ Julien. Sinon la feature reste `false` et l’instance boot.
 1. **Git** = code, schémas, inventaire, exemple TOML. Jamais
    `serge.secrets.age` de prod.
 2. **VPS** = `julien-vps`. Laptop = autre `instance_id`.
-3. **Même HEAD git ≠ même canon.** Copie locale vide, ou dump autorisé.
+3. **Même commit git ≠ même base.** Copie locale vide, ou dump autorisé.
 4. On se passe le couple kit (TOML + age), pas un zip de secrets.
 5. Le builder, pas l’humain, pose les units et `SERGE_INSTANCE_FILE`.
    Après merge `main`, `scripts/serge-deploy.py` sur le VPS (voir
    [`DEPLOY_VPS.md`](DEPLOY_VPS.md)).
-6. Le kit est un Serge **vierge**. Pas tes secrets, pas ton canon, pas
+6. Le kit est un Serge **vierge**. Pas tes secrets, pas ta base, pas
    Discord/domaines/leftover. Exclusions :
-   [`schemas/serge.kit-exclusions.yaml`](../schemas/serge.kit-exclusions.yaml).
+   [`schemas/serge.kit-exclusions.yaml`](../../schemas/serge.kit-exclusions.yaml).

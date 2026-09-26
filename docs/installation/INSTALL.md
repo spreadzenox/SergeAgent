@@ -54,7 +54,7 @@ serveur/forum/urgent/digest/owner)** → si Stripe : affichage de
 `https://<domaine>/hooks/stripe` à coller au Dashboard → secrets (la
 clé OpenRouter n’est pas redemandée) → sidecar age → mandat optionnel,
 puis l’installeur construit : arbre vierge (`git archive`, jamais
-rsync), canon vide, secrets 0600, units, Asterisk, route SMS, route
+rsync), base vide, secrets 0600, units, Asterisk, route SMS, route
 Stripe, slots LLM.
 Résumé humain + receipt JSON à la fin (`state/instance-build.json`).
 
@@ -63,11 +63,11 @@ Résumé humain + receipt JSON à la fin (`state/instance-build.json`).
 `config_root/secrets/`. Chaque brique lit le sien à cet endroit
 (token Discord, clés OpenRouter/Stripe/SIP, webhooks...). Rien dans le
 TOML, rien dans git — le scan pre-commit le vérifie.
-Gates contributeur (commit / push / CI) : [DEV_TOOLING.md](DEV_TOOLING.md).
+Gates contributeur (commit / push / CI) : [DEV_TOOLING.md](../DEV_TOOLING.md).
 Déploiement VPS après merge : [DEPLOY_VPS.md](DEPLOY_VPS.md).
 
 Détail contrat : [`INSTANCE_CONTRACT.md`](INSTANCE_CONTRACT.md).
-Mission Control : [`MISSION_CONTROL.md`](MISSION_CONTROL.md) (port 8790,
+Mission Control : [`MISSION_CONTROL.md`](../MISSION_CONTROL.md) (port 8790,
 public / et owner /owner). Jeton owner :
 `~/.config/serge/secrets/owner-dashboard.token` (sinon `SERGE_MC_TOKEN`).
 Téléphonie : [`PHONE_OPTIONS.md`](PHONE_OPTIONS.md).

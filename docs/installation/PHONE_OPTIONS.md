@@ -144,9 +144,9 @@ geek » :
   (user-space), `serge-voice-bridge` (8791), configs Asterisk,
   route ingress `sms.<domaine>`, CLI verrouillé au NPV.
 - Runtime : `serge/sms/` (receiver → `SmsInbox`, OTP only),
-  `serge/voice/` (`policy.py` mandat/consentement/horaires/quotas/kill-switch,
+  `serge/voice/` (`policy.py` mandat/consentement/horaires/quotas,
   `ledger.py` CDR, `bridge.py` originate gaté, `turn.py` AGI tour-par-tour
-  livré comme repli robuste ; cible rework : speech-to-speech, point P5).
+  livré comme repli robuste ; la voix principale est en temps réel).
 - Mandat `sandbox` : voix sortante coupée. `sergectl doctor` vérifie
   la complétude phone ; capabilities `voice_answer` / `voice_call`.
 

@@ -12,7 +12,7 @@ kit (générateur interactif)
     → serge.instance.toml  +  serge.secrets.age
          ↓
 serge builder
-    → arbre Unix, units, canon vide, secrets injectés
+    → arbre Unix, units, base vide, secrets injectés
          ↓
 kernel
     → boot seulement si SERGE_INSTANCE_FILE + sidecar sont complets
@@ -21,15 +21,15 @@ kernel
 Le loader, la barrière de boot, les templates systemd et le générateur
 de couple existent dans le kit :
 
-- [`kit/instance_file.py`](../kit/instance_file.py) — parse + gate CLI
-- [`systemd/templates/`](../systemd/templates/) + [`kit/units.py`](../kit/units.py)
+- [`kit/instance_file.py`](../../kit/instance_file.py) — parse + gate CLI
+- [`systemd/templates/`](../../systemd/templates/) + [`kit/units.py`](../../kit/units.py)
   — units paramétrés, **pas installés**
-- [`scripts/serge-instance-wizard.py`](../scripts/serge-instance-wizard.py)
+- [`scripts/serge-instance-wizard.py`](../../scripts/serge-instance-wizard.py)
   — TOML + sidecar ; `--also-mandate` enchaîne le wizard mandat
 
-Le builder existe : [`kit/builder/`](../kit/builder/) (package : guards, seed, secrets, install, telephony, webhooks, build),
-[`bin/serge-builder`](../bin/serge-builder). Il archive un SHA, pose un
-canon vide, injecte les secrets en 0600, écrit les units paramétrés.
+Le builder existe : [`kit/builder/`](../../kit/builder/) (package : guards, seed, secrets, install, telephony, webhooks, build),
+[`bin/serge-builder`](../../bin/serge-builder). Il archive un SHA, pose un
+base vide, injecte les secrets en 0600, écrit les units paramétrés.
 Le builder **active** les units des features on (`systemctl --user
 enable --now`) dès que le dossier units est la session de cet utilisateur.
 `--no-enable-units` pour un dry-run. Les chemins live Julien sont refusés
@@ -42,9 +42,9 @@ Le VPS `julien-vps` se déploie par merge sur `main` (runner self-hosted).
 Chemins live refusés sauf `--confirm-live-instance-id julien-vps`.
 Détail : [`DEPLOY_VPS.md`](DEPLOY_VPS.md).
 
-Exemples versionnés : [`schemas/serge.instance.example.toml`](../schemas/serge.instance.example.toml),
-[`schemas/serge.instance.schema.json`](../schemas/serge.instance.schema.json),
-[`schemas/serge.secrets.manifest.yaml`](../schemas/serge.secrets.manifest.yaml).
+Exemples versionnés : [`schemas/serge.instance.example.toml`](../../schemas/serge.instance.example.toml),
+[`schemas/serge.instance.schema.json`](../../schemas/serge.instance.schema.json),
+[`schemas/serge.secrets.manifest.yaml`](../../schemas/serge.secrets.manifest.yaml).
 
 ## Barrière de boot (fail-closed)
 
@@ -83,7 +83,7 @@ comme source de vérité une fois le builder en service.
 | `SERGE_MANDATE_PATH` | `paths.policy` |
 | config / secrets dir | `paths.config_root` (défaut `$home/.config/serge`) |
 | sidecar | `paths.secrets_age` relatif au TOML, sinon `serge.secrets.age` à côté |
-| canon | `$system_root/state/serge.db` (migrations : [`DB.md`](DB.md)) |
+| base | `$system_root/state/serge.db` (migrations : [`DB.md`](../DB.md)) |
 
 `SERGE_HOME` seul n’est **pas** suffisant pour booter.
 
@@ -104,7 +104,7 @@ Le **mandat** est un troisième artefact, produit par
 identité neutre). Ce n’est pas le mandat Julien. `mode=sandbox` coupe
 paiements live et deploy prod.
 
-Le kit refuse d’écrire un couple incomplet. Il ne crée pas le canon, n’installe
+Le kit refuse d’écrire un couple incomplet. Il ne crée pas la base, n’installe
 pas systemd, ne copie pas les Constitutions, ne touche pas Meta-Grok.
 
 Partage équipe = ces deux fichiers (TOML clair + age chiffré pour des
@@ -119,7 +119,7 @@ Le builder :
 
 1. Vérifie TOML + age (même règles que le kernel).
 2. Crée `system_root` writable (`state/`, `queue/`, `evidence/`, `logs/`,
-   `orchestrator/runtime`). Canon **vide** sauf dump explicitement autorisé.
+   `orchestrator/runtime`). Base **vide** sauf copie explicitement autorisée.
 3. Pose le mandat à `paths.policy` (fourni par l’owner, pas celui de prod
    Julien si `instance_id` ≠ `julien-vps`).
 4. Injecte les secrets du sidecar aux chemins dérivés (mode 0600).
@@ -206,7 +206,7 @@ extend_max = 1
 
 `[testing]` du TOML n’est plus écrit par Mission Control. Au premier
 snapshot, ces valeurs (ou celles de `config/policy.yaml`) sont copiées
-dans le canon. Ensuite : MC à froid seulement ; `ouvrir_essai` et le
+dans la base. Ensuite : MC à froid seulement ; `ouvrir_essai` et le
 runner lisent `policy_en_vigueur`.
 
 Contraintes téléphonie (refusées au load, au wizard et au builder) :
@@ -251,7 +251,7 @@ sous-domaine). Détail : [`STRIPE.md`](STRIPE.md).
 Chiffrement : [age](https://age-encryption.org/) ou SOPS-age.
 
 Après déchiffrement : dotenv plat, noms du
-[`schemas/serge.secrets.manifest.yaml`](../schemas/serge.secrets.manifest.yaml).
+[`schemas/serge.secrets.manifest.yaml`](../../schemas/serge.secrets.manifest.yaml).
 
 Tests / sandbox : `SERGE_SECRETS_DOTENV` pointe un dotenv clair (jamais
 commité). `SERGE_AGE_IDENTITY` déchiffre `serge.secrets.age` en prod.
@@ -264,7 +264,7 @@ Le repo ignore `*.secrets.age` et `/serge.instance.toml` à la racine.
 
 - Constitutions owner (`/etc/serge/meta-grok/…`) — pas un kit public.
 - Checkout Meta-Grok, clones d’ingénierie, `v2-runs/`.
-- Canon / `state/` d’une autre instance.
+- La base / `state/` d’une autre instance.
 - Mandat de production Julien si l’instance n’est pas `julien-vps`.
 - Secrets en clair.
 
@@ -275,7 +275,7 @@ la feature à `false` (sinon builder/kernel refusent).
 ## Collab
 
 Git = code + schémas + inventaire. VPS = `julien-vps`. Laptop = autre
-`instance_id`. Même commit ≠ même SQLite. Dump canon uniquement si Julien
+`instance_id`. Même commit ≠ même SQLite. Copie de la base uniquement si Julien
 l’autorise nommément.
 
 Le fichier d’instance **est** ce qu’on se passe. Le builder fait le reste.
@@ -286,16 +286,16 @@ Le kit n’empacte **pas** le Serge de Julien. Il produit une instance vide
 à partir du SHA git + du couple TOML/age **du destinataire**.
 
 Interdit dans le seed (liste machine :
-[`schemas/serge.kit-exclusions.yaml`](../schemas/serge.kit-exclusions.yaml)) :
+[`schemas/serge.kit-exclusions.yaml`](../../schemas/serge.kit-exclusions.yaml)) :
 
 - secrets (`*.age`, `~/.config/serge/secrets/`, clés, cartes)
-- mémoire : `state/` (canon, cycles, leftover, portfolio-guidance,
+- mémoire : `state/` (base, cycles, leftover, portfolio-guidance,
   provisioning live, Caddy/certs), queues, evidence, logs, projects
 - identité Julien : snowflakes Discord, domaines live, fiche juridique
 - Meta-Grok (checkout, runs, Constitutions)
 
 Le builder clone via `git archive` (ou checkout propre), **jamais** un
-rsync du working tree VPS. Canon = SQLite créé vide. Un dump de prod
+rsync du working tree VPS. La base SQLite est créée vide. Un dump de prod
 n’entre que sur ordre explicite, hors kit par défaut.
 
 L’exemple tracké est `example-sandbox` (vierge), pas `julien-vps`.
@@ -306,4 +306,4 @@ Service HTTP unifié (`serge-public-dashboard.service` / port 8790) :
 - Surface publique `/` : statut fail-closed sans aucune PII ou secret.
 - Surface propriétaire `/owner` : dashboard complet derrière authentification token ou cookie 12 h.
 - En `ingress.listen = privileged`, Caddy reverse-proxy `https://<public_hostname>` vers ce port. ACME (Let’s Encrypt) écrit sous le home owner ; si le stockage est en lecture seule, le handshake TLS échoue (MC local reste joignable sur `:8790`).
-- Spécification : [`MISSION_CONTROL.md`](MISSION_CONTROL.md).
+- Spécification : [`MISSION_CONTROL.md`](../MISSION_CONTROL.md).
