@@ -10,7 +10,7 @@ from serge.canaux import JONCTIONS as CANAL_JONCTIONS
 from serge.canaux import SEED as CANAL_SEED
 from serge.etape_fiches import DEBITS, LIENS
 from serge.etapes import ETAPE_IDS, etats_etapes
-from serge.llm_registre import POINT_LOCKS
+from serge.llm_registre import POINT_PATHS
 from serge.mc.libelles import LLM_ETAPE
 from serge.outils import SEED as TOOL_SEED
 from serge.tech_registre import SEED as TECH_SEED
@@ -83,7 +83,7 @@ def verifier_catalogue(conn: sqlite3.Connection) -> None:
         str(r[0]): str(r[1] or '')
         for r in conn.execute('SELECT id, etape_id FROM llm_points')
     }
-    for ident in POINT_LOCKS:
+    for ident in POINT_PATHS:
         if ident not in points:
             erreurs.append(f'invocation LLM absente : {ident}')
         else:

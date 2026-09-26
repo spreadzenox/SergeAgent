@@ -8,14 +8,13 @@ from typing import Any
 
 KINDS = frozenset({'cluster', 'select', 'score', 'transform', 'index'})
 
-# id, etape, kind, path, sha, titre, doc
-SEED: tuple[tuple[str, str, str, str, str, str, str], ...] = (
+# id, etape, kind, path, titre, doc (l’empreinte est calculée au boot)
+SEED: tuple[tuple[str, str, str, str, str, str], ...] = (
     (
         'listen_collect',
         'pre_prospection',
         'transform',
         'serge/listen/collectors.py',
-        '',
         'Ramasser des pages',
         'Collecte RSS / pages : déterministe.',
     ),
@@ -24,7 +23,6 @@ SEED: tuple[tuple[str, str, str, str, str, str, str], ...] = (
         'pre_prospection',
         'cluster',
         'serge/listen/cluster.py',
-        '',
         'Regrouper les demandes',
         'Paquets Jaccard / labels : pas une invocation LLM.',
     ),
@@ -33,7 +31,6 @@ SEED: tuple[tuple[str, str, str, str, str, str, str], ...] = (
         'prospection_light',
         'score',
         'serge/funnels/metrics.py',
-        '',
         'Compteurs U1–U5',
         'Le LLM classe, le code compte.',
     ),
@@ -41,7 +38,6 @@ SEED: tuple[tuple[str, str, str, str, str, str, str], ...] = (
         'select_pre_venture',
         'choix_venture',
         'select',
-        '',
         '',
         'Choisir une pré-venture',
         'Algo de sélection parmi les N smokes. Pas encore un module runtime.',
@@ -51,7 +47,6 @@ SEED: tuple[tuple[str, str, str, str, str, str, str], ...] = (
         'prospection_lourde',
         'score',
         'serge/guards/check.py',
-        '',
         'Garde-fous',
         'Autoriser / refuser un acte : déterministe.',
     ),
@@ -60,7 +55,6 @@ SEED: tuple[tuple[str, str, str, str, str, str, str], ...] = (
         'collect_feedback',
         'index',
         'serge/memory/search.py',
-        '',
         'Indexer la mémoire',
         'FTS5 : création / maj de l’index, hors invocation LLM.',
     ),
@@ -69,7 +63,6 @@ SEED: tuple[tuple[str, str, str, str, str, str, str], ...] = (
         'caisse',
         'transform',
         'serge/collect/receiver.py',
-        '',
         'Recevoir Stripe',
         'Webhook → transaction : déterministe.',
     ),
@@ -78,7 +71,6 @@ SEED: tuple[tuple[str, str, str, str, str, str, str], ...] = (
         'caisse',
         'transform',
         'serge/collect/dunning.py',
-        '',
         'Relances d’encaissement',
         'Dunning : templates et règles, 0 LLM.',
     ),
@@ -96,7 +88,7 @@ def ensure_tech_invocations(conn: sqlite3.Connection) -> None:
         conn: Canon (commit par l’appelant).
     """
     ids = {row[0] for row in SEED}
-    for ident, etape, kind, path, sha, titre, doc in SEED:
+    for ident, etape, kind, path, titre, doc in SEED:
         if kind not in KINDS:
             raise TechError(f'kind technique inconnu : {kind}')
         row = conn.execute(
@@ -105,14 +97,14 @@ def ensure_tech_invocations(conn: sqlite3.Connection) -> None:
         if row:
             conn.execute(
                 'UPDATE tech_invocations SET etape_id=?, kind=?,'
-                ' code_path=?, code_sha=?, enabled=1 WHERE id=?',
-                (etape, kind, path, sha, ident),
+                ' code_path=?, enabled=1 WHERE id=?',
+                (etape, kind, path, ident),
             )
             continue
         conn.execute(
             'INSERT INTO tech_invocations(id, etape_id, kind, code_path,'
-            ' code_sha, titre, doc_md, enabled) VALUES(?,?,?,?,?,?,?,1)',
-            (ident, etape, kind, path, sha, titre, doc),
+            ' titre, doc_md, enabled) VALUES(?,?,?,?,?,?,1)',
+            (ident, etape, kind, path, titre, doc),
         )
     placeholders = ','.join('?' * len(ids))
     conn.execute(

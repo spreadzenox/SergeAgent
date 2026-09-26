@@ -24,14 +24,13 @@ def outil_peut_invoquer(appelant_kind: str, cible_kind: str) -> bool:
     return not (appelant_kind == 'agent' and cible_kind == 'agent')
 
 
-# id, kind, path, sha, titre, doc, etat, montre_partout
-# SHA figé : un fichier changé sans maj ici = test rouge.
-SEED: tuple[tuple[str, str, str, str, str, str, str, int], ...] = (
+# id, kind, path, titre, doc, etat, montre_partout
+# L’empreinte du fichier est calculée au boot (serge/objet_sha.py).
+SEED: tuple[tuple[str, str, str, str, str, str, int], ...] = (
     (
         'memory_search',
         'deterministe',
         'serge/memory/search.py',
-        'eb6ab14dda4ee5e9ff9e52ca640f2d2c0549b828fad112d06e7c4b592a821fdb',
         'Chercher dans la mémoire',
         'Un seul outil pour fouiller la mémoire. Si le dossier prévu'
         ' ne suffit pas, le jugement pose une question (« objections'
@@ -46,7 +45,6 @@ SEED: tuple[tuple[str, str, str, str, str, str, str, int], ...] = (
         'contact_upsert',
         'deterministe',
         'serge/funnels/contact_tool.py',
-        'a45b52b85113834b29ddeda0672dbcdf1112aa48988d8f037abd4500398419a4',
         'Créer ou enrichir un contact',
         'Upsert déterministe par références JSON de canal. Compare toutes les'
         ' références de la venture avant création, puis ajoute les canaux actifs.'
@@ -58,7 +56,6 @@ SEED: tuple[tuple[str, str, str, str, str, str, str, int], ...] = (
     (
         'navigateur',
         'web',
-        '',
         '',
         'Ouvrir le web (navigateur)',
         'Un vrai navigateur (Brave / Chromium) pour aller voir une'
@@ -72,7 +69,6 @@ SEED: tuple[tuple[str, str, str, str, str, str, str, int], ...] = (
         'identity_basique',
         'deterministe',
         'serge/identite.py',
-        '8ffdf0bfa06513d14188baf1f8c6bfd68d5c9851275417a79dbe5a3f24b9670a',
         'Identité de Serge (basique)',
         'Lecteur unique : email, prénom, nom, pseudo, n° 2FA, n° DID,'
         ' SIRET. Source = instance, pas une table. Interdit d’ouvrir'
@@ -84,7 +80,6 @@ SEED: tuple[tuple[str, str, str, str, str, str, str, int], ...] = (
         'identity_advanced',
         'deterministe',
         'serge/identite.py',
-        '8ffdf0bfa06513d14188baf1f8c6bfd68d5c9851275417a79dbe5a3f24b9670a',
         'Identité avancée (IBAN, facturation)',
         'Même source que le basique, plus IBAN et adresse de'
         ' facturation. Personne ne l’appelle tant qu’un acte n’est'
@@ -96,7 +91,6 @@ SEED: tuple[tuple[str, str, str, str, str, str, str, int], ...] = (
         'boite_serge',
         'deterministe',
         'serge/boite.py',
-        'e03a01cf4b40b8898610be62ce04e231b01e74cb0489461c714a284185f74dec',
         'Boîte mail et SMS',
         'Lecture : corps brut, heure, expéditeur, destinataire,'
         ' historique. Le 2FA se lit tout seul. Pas un GUICHET.',
@@ -107,7 +101,6 @@ SEED: tuple[tuple[str, str, str, str, str, str, str, int], ...] = (
         'demande_capacite',
         'deterministe',
         'serge/demande_capacite.py',
-        'b8bd4d69df6ab0b60a60388d09f6d1dbae080461c3fd90e4be189b41d8b3e7de',
         'Demander une nouvelle capacité',
         'Quand Serge ne peut pas (pas de canal, pas d’outil), il'
         ' pose un ticket REQUESTED (« j’ai besoin de X ») plutôt'
@@ -121,7 +114,6 @@ SEED: tuple[tuple[str, str, str, str, str, str, str, int], ...] = (
         'agenda',
         'deterministe',
         '',
-        '',
         'Agenda',
         'Créneaux et disponibilités. Cité par le dialogue voix.'
         ' Pas encore un module runtime.',
@@ -131,7 +123,6 @@ SEED: tuple[tuple[str, str, str, str, str, str, str, int], ...] = (
     (
         'catalogue',
         'deterministe',
-        '',
         '',
         'Catalogue',
         'Prix et offres ownés. Le jugement n’invente pas un montant.'
@@ -143,7 +134,6 @@ SEED: tuple[tuple[str, str, str, str, str, str, str, int], ...] = (
         'fiches',
         'deterministe',
         '',
-        '',
         'Fiches prospect',
         'Fiche de la personne en cours d’appel. Cité par le dialogue voix.'
         ' Pas encore un module runtime.',
@@ -154,7 +144,6 @@ SEED: tuple[tuple[str, str, str, str, str, str, str, int], ...] = (
         'current_listen_cycle',
         'db_read',
         'serge/db/query_builder.py',
-        '8dcb3c030fb252832f60b97b7728fc901237d239611dcca95b0e19f2135a2fe8',
         'Lire le cycle d’écoute courant',
         'Lecture DB bornée par le catalogue du tool et son paramètre cycle_id.',
         'branche',
@@ -164,7 +153,6 @@ SEED: tuple[tuple[str, str, str, str, str, str, str, int], ...] = (
         'listen_cycle_documents',
         'db_read',
         'serge/db/query_builder.py',
-        '8dcb3c030fb252832f60b97b7728fc901237d239611dcca95b0e19f2135a2fe8',
         'Lire les documents du cycle',
         'Lecture des documents rattachés au cycle fourni par le contexte.',
         'branche',
@@ -174,7 +162,6 @@ SEED: tuple[tuple[str, str, str, str, str, str, str, int], ...] = (
         'known_business_candidates',
         'db_read',
         'serge/db/query_builder.py',
-        '8dcb3c030fb252832f60b97b7728fc901237d239611dcca95b0e19f2135a2fe8',
         'Lire les business connus',
         'Lecture des candidats business déjà persistés.',
         'branche',
@@ -184,7 +171,6 @@ SEED: tuple[tuple[str, str, str, str, str, str, str, int], ...] = (
         'eligible_poc_candidates',
         'db_read',
         'serge/db/query_builder.py',
-        '8dcb3c030fb252832f60b97b7728fc901237d239611dcca95b0e19f2135a2fe8',
         'Lire les candidats POC éligibles',
         'Lecture des candidats dont le statut permet encore une sélection.',
         'branche',
@@ -194,7 +180,6 @@ SEED: tuple[tuple[str, str, str, str, str, str, str, int], ...] = (
         'web_search',
         'web',
         'serge/listen/web.py',
-        '8ed79df95ba494463db00fbe361616da6bdd41a21d374ca750aa710ab7300a2c',
         'Chercher sur le web public',
         'Recherche publique en lecture seule, sans compte ni action externe.',
         'branche',
@@ -204,7 +189,7 @@ SEED: tuple[tuple[str, str, str, str, str, str, str, int], ...] = (
 
 
 def ensure_tools(conn: sqlite3.Connection) -> None:
-    """Sème les outils. SHA/path/kind depuis git ; titre/doc seulement à l’insert.
+    """Sème les outils. Chemin/kind depuis git ; titre/doc seulement à l’insert.
 
     Args:
         conn: Canon (commit par l’appelant).
@@ -213,7 +198,6 @@ def ensure_tools(conn: sqlite3.Connection) -> None:
         ident,
         kind,
         path,
-        sha,
         titre,
         doc,
         etat,
@@ -224,15 +208,15 @@ def ensure_tools(conn: sqlite3.Connection) -> None:
         ).fetchone()
         if row:
             conn.execute(
-                'UPDATE tools SET kind=?, code_path=?, code_sha=?, etat=?,'
+                'UPDATE tools SET kind=?, code_path=?, etat=?,'
                 ' montre_partout=? WHERE id=?',
-                (kind, path, sha, etat, partout, ident),
+                (kind, path, etat, partout, ident),
             )
             continue
         conn.execute(
-            'INSERT INTO tools(id, kind, code_path, code_sha, titre,'
-            ' doc_md, etat, montre_partout) VALUES(?,?,?,?,?,?,?,?)',
-            (ident, kind, path, sha, titre, doc, etat, partout),
+            'INSERT INTO tools(id, kind, code_path, titre,'
+            ' doc_md, etat, montre_partout) VALUES(?,?,?,?,?,?,?)',
+            (ident, kind, path, titre, doc, etat, partout),
         )
 
 

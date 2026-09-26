@@ -7,138 +7,42 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
-# id → (path, sha). SHA figé : fichier changé sans maj = test rouge.
+# id → fichier Python qui porte l'invocation (empreinte calculée au boot).
 # install_guide : pas encore de .py.
-POINT_LOCKS: dict[str, tuple[str, str]] = {
-    'draft_hypothesis_smoke': (
-        'serge/points/hypotheses.py',
-        '55e16836c32779044f8cb51f36d3c89cd2bc7e407d66c499cdcb2582d157deb6',
-    ),
-    'draft_hypothesis_full': (
-        'serge/points/hypotheses.py',
-        '55e16836c32779044f8cb51f36d3c89cd2bc7e407d66c499cdcb2582d157deb6',
-    ),
-    'plan_scale': (
-        'serge/points/plans.py',
-        '14380a2ef0eb8725e75087b5eda3e38eb66935754bde88526fff01cb1f0f994d',
-    ),
-    'options_pivot': (
-        'serge/points/plans.py',
-        '14380a2ef0eb8725e75087b5eda3e38eb66935754bde88526fff01cb1f0f994d',
-    ),
-    'resume_test': (
-        'serge/points/plans.py',
-        '14380a2ef0eb8725e75087b5eda3e38eb66935754bde88526fff01cb1f0f994d',
-    ),
-    'qualify_prospect': (
-        'serge/points/qualify.py',
-        '7b931fef460dcd036dfbfe0406be2971e3b906e304475a0f60dcd728d2ec99a5',
-    ),
-    'fill_slots': (
-        'serge/points/write.py',
-        '466eb2b34aa13456e0d85f2fb43a6cd782c4beb740c35d611f4af4c9cd749df1',
-    ),
-    'write_followup': (
-        'serge/points/write.py',
-        '466eb2b34aa13456e0d85f2fb43a6cd782c4beb740c35d611f4af4c9cd749df1',
-    ),
-    'voice_script': (
-        'serge/points/voice_script.py',
-        'd55eff88658a2323c3d94f356eb772a4c3ef5b9c472569d72bc59e2a30e6636b',
-    ),
-    'voice_dialog': (
-        'serge/points/dialog.py',
-        'bcd51c033a766578158ad681fe720efd5824bfd793328d253d92b56d3071b307',
-    ),
-    'summarize_thread': (
-        'serge/points/summaries.py',
-        '46c9b258e416038d5a5a2d4f679e665659c8f8241bc85bd4019d2fd437079236',
-    ),
-    'score_lead_departage': (
-        'serge/points/qualify.py',
-        '7b931fef460dcd036dfbfe0406be2971e3b906e304475a0f60dcd728d2ec99a5',
-    ),
-    'build_artifact': (
-        'serge/points/build.py',
-        '57facac98cf71fd6300e275ef5de73e1630040d908a46fed2bd61ea97fc78edc',
-    ),
-    'review_build': (
-        'serge/points/review.py',
-        'c4ff5b6a91be05c952f272dd6714aca67e47459f74c59f20f6952969ed89b61a',
-    ),
-    'summarize_build_debt': (
-        'serge/points/review.py',
-        'c4ff5b6a91be05c952f272dd6714aca67e47459f74c59f20f6952969ed89b61a',
-    ),
-    'classify_reply': (
-        'serge/points/classify.py',
-        '63f11a97e6b082982ec5bc50c2c00c8d215af3367590facaf496113446a6fe5a',
-    ),
-    'extract_meeting': (
-        'serge/points/meeting.py',
-        'cd8fccf3247055279939434a23ef4658bc756900fa904d2861ad9da6b83f1a2a',
-    ),
-    'reply_intent': (
-        'serge/points/reply.py',
-        '42882c22801339f0ddedc377be9f7e85bccb5fe1fd4945637b232838e8a996a7',
-    ),
-    'review_other': (
-        'serge/points/other.py',
-        'c177f12db1c734abe8958bab6fa98eefeeee7f3764e244c16c0b292963bfa019',
-    ),
-    'score_call': (
-        'serge/points/summaries.py',
-        '46c9b258e416038d5a5a2d4f679e665659c8f8241bc85bd4019d2fd437079236',
-    ),
-    'draft_price': (
-        'serge/points/price.py',
-        '1b0aadf8479fa3c2cfa098bb7f8ec4d4f6e8c5b00d39a61a5feff2adfffcd8b7',
-    ),
-    'judge_allocator': (
-        'serge/points/allocator.py',
-        '15f7d51a68cd388eda3aa92f81df6397885777f6d7f2babe4816ec94c30d9e9b',
-    ),
-    'consolidate': (
-        'serge/points/memory_pts.py',
-        '1d5d647bdca5ee980c5db93e60e5e9a9a3a5cb82a168534c5801a3b249c5c4bf',
-    ),
-    'edit_serge_md': (
-        'serge/points/memory_pts.py',
-        '1d5d647bdca5ee980c5db93e60e5e9a9a3a5cb82a168534c5801a3b249c5c4bf',
-    ),
-    'render_context_fr': (
-        'serge/points/interact.py',
-        'f3b8c25f65eb87b39094cc4a4b7a94af800a547282409cbe6661bd19de109400',
-    ),
-    'classify_owner_intent': (
-        'serge/points/interact.py',
-        'f3b8c25f65eb87b39094cc4a4b7a94af800a547282409cbe6661bd19de109400',
-    ),
-    'judge_consequence': (
-        'serge/points/interact.py',
-        'f3b8c25f65eb87b39094cc4a4b7a94af800a547282409cbe6661bd19de109400',
-    ),
-    'cluster_demand': (
-        'serge/points/listen_pts.py',
-        '6aec51bdd62319aa6c60592b26bb5743e69a16bf1c6ab4c7167a991b018767a1',
-    ),
-    'listen_discover_needs_a': (
-        'serge/points/listen_pts.py',
-        '6aec51bdd62319aa6c60592b26bb5743e69a16bf1c6ab4c7167a991b018767a1',
-    ),
-    'listen_discover_needs_b': (
-        'serge/points/listen_pts.py',
-        '6aec51bdd62319aa6c60592b26bb5743e69a16bf1c6ab4c7167a991b018767a1',
-    ),
-    'listen_choose_poc': (
-        'serge/points/listen_pts.py',
-        '6aec51bdd62319aa6c60592b26bb5743e69a16bf1c6ab4c7167a991b018767a1',
-    ),
-    'discover_contacts': (
-        'serge/points/discover_contacts.py',
-        'ca8704c8899f531f3ffae3a239f8afc2237aee731a810250d960899c1f33e913',
-    ),
-    'install_guide': ('', ''),
+POINT_PATHS: dict[str, str] = {
+    'draft_hypothesis_smoke': 'serge/points/hypotheses.py',
+    'draft_hypothesis_full': 'serge/points/hypotheses.py',
+    'plan_scale': 'serge/points/plans.py',
+    'options_pivot': 'serge/points/plans.py',
+    'resume_test': 'serge/points/plans.py',
+    'qualify_prospect': 'serge/points/qualify.py',
+    'fill_slots': 'serge/points/write.py',
+    'write_followup': 'serge/points/write.py',
+    'voice_script': 'serge/points/voice_script.py',
+    'voice_dialog': 'serge/points/dialog.py',
+    'summarize_thread': 'serge/points/summaries.py',
+    'score_lead_departage': 'serge/points/qualify.py',
+    'build_artifact': 'serge/points/build.py',
+    'review_build': 'serge/points/review.py',
+    'summarize_build_debt': 'serge/points/review.py',
+    'classify_reply': 'serge/points/classify.py',
+    'extract_meeting': 'serge/points/meeting.py',
+    'reply_intent': 'serge/points/reply.py',
+    'review_other': 'serge/points/other.py',
+    'score_call': 'serge/points/summaries.py',
+    'draft_price': 'serge/points/price.py',
+    'judge_allocator': 'serge/points/allocator.py',
+    'consolidate': 'serge/points/memory_pts.py',
+    'edit_serge_md': 'serge/points/memory_pts.py',
+    'render_context_fr': 'serge/points/interact.py',
+    'classify_owner_intent': 'serge/points/interact.py',
+    'judge_consequence': 'serge/points/interact.py',
+    'cluster_demand': 'serge/points/listen_pts.py',
+    'listen_discover_needs_a': 'serge/points/listen_pts.py',
+    'listen_discover_needs_b': 'serge/points/listen_pts.py',
+    'listen_choose_poc': 'serge/points/listen_pts.py',
+    'discover_contacts': 'serge/points/discover_contacts.py',
+    'install_guide': '',
 }
 
 LISTEN_POINT_DOCS = {
@@ -270,11 +174,11 @@ def ensure_llm_points(conn: sqlite3.Connection) -> None:
     data = read_yaml_file(path)
     raw = data.get('points')
     points = raw if isinstance(raw, dict) else {}
-    noms = list(dict.fromkeys([*points, *POINT_LOCKS]))
+    noms = list(dict.fromkeys([*points, *POINT_PATHS]))
     for name in noms:
         raw_spec = points.get(name)
         spec = raw_spec if isinstance(raw_spec, dict) else {}
-        path, sha = POINT_LOCKS.get(name, ('', ''))
+        path = POINT_PATHS.get(name, '')
         etape = LLM_ETAPE.get(name, '')
         verdict = str(spec.get('verdict') or '')
         tier = str(spec.get('tier') or '')
@@ -287,9 +191,9 @@ def ensure_llm_points(conn: sqlite3.Connection) -> None:
         ).fetchone()
         if found:
             conn.execute(
-                'UPDATE llm_points SET etape_id=?, code_path=?, code_sha=?,'
+                'UPDATE llm_points SET etape_id=?, code_path=?,'
                 ' titre=? WHERE id=?',
-                (etape, path, sha, LLM_TITRES.get(name, name), name),
+                (etape, path, LLM_TITRES.get(name, name), name),
             )
             # v020 vide updated_at pour demander une seule passe de seed. Les
             # éditions ultérieures, y compris vers les valeurs par défaut,
@@ -309,14 +213,13 @@ def ensure_llm_points(conn: sqlite3.Connection) -> None:
             role = ROLES.get(name)
             doc = str(role[0]) if role else LISTEN_POINT_DOCS.get(name, '')
             conn.execute(
-                'INSERT INTO llm_points(id, etape_id, code_path, code_sha,'
+                'INSERT INTO llm_points(id, etape_id, code_path,'
                 ' verdict, tier, titre, doc_md, enabled, prompt, output_mode,'
-                ' external_info) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',
+                ' external_info) VALUES(?,?,?,?,?,?,?,?,?,?,?)',
                 (
                     name,
                     etape,
                     path,
-                    sha,
                     verdict,
                     tier,
                     LLM_TITRES.get(name, name),

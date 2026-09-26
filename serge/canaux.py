@@ -9,15 +9,14 @@ from typing import Any
 BRIQUE_KINDS = frozenset({'llm', 'tech'})
 ETATS = frozenset({'branche', 'prevu'})
 
-# id, titre, doc, path, sha, etat
-SEED: tuple[tuple[str, str, str, str, str, str], ...] = (
+# id, titre, doc, path, etat (l’empreinte est calculée au boot)
+SEED: tuple[tuple[str, str, str, str, str], ...] = (
     (
         'email',
         'E-mail',
         'Sortie texte vers une boîte. Worker ``email.send`` :'
         ' garde-fous, quota, touche, puis Gog ou SMTP.',
         'serge/workers/send.py',
-        'c66f8e9bf48fe8c718901d4fee879c221486febe568521c7064cc4f96f6d8b20',
         'branche',
     ),
     (
@@ -26,7 +25,6 @@ SEED: tuple[tuple[str, str, str, str, str, str], ...] = (
         'Appel sortant. Worker ``voice.send`` : le broker décide,'
         ' le pont compose. Jamais de dial hors broker.',
         'serge/workers/call.py',
-        '20c38d1c83199cd0664b566af17261778953c4f27d43e9b5572e72dd705b562e',
         'branche',
     ),
 )
@@ -52,7 +50,7 @@ def ensure_canaux(conn: sqlite3.Connection) -> None:
         conn: Canon (commit par l’appelant).
     """
     ids = {row[0] for row in SEED}
-    for ident, titre, doc, path, sha, etat in SEED:
+    for ident, titre, doc, path, etat in SEED:
         if etat not in ETATS:
             raise CanalError(f'état canal inconnu : {etat}')
         row = conn.execute(
@@ -60,14 +58,14 @@ def ensure_canaux(conn: sqlite3.Connection) -> None:
         ).fetchone()
         if row:
             conn.execute(
-                'UPDATE canaux SET code_path=?, code_sha=?, etat=? WHERE id=?',
-                (path, sha, etat, ident),
+                'UPDATE canaux SET code_path=?, etat=? WHERE id=?',
+                (path, etat, ident),
             )
             continue
         conn.execute(
-            'INSERT INTO canaux(id, titre, doc_md, code_path, code_sha,'
-            ' etat) VALUES(?,?,?,?,?,?)',
-            (ident, titre, doc, path, sha, etat),
+            'INSERT INTO canaux(id, titre, doc_md, code_path,'
+            ' etat) VALUES(?,?,?,?,?)',
+            (ident, titre, doc, path, etat),
         )
     holes = ','.join('?' * len(ids))
     conn.execute(

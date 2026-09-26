@@ -41,7 +41,7 @@ class TechRegistreTests(unittest.TestCase):
         from serge import tech_registre as mod
 
         ancien = mod.SEED
-        mod.SEED = (('x', 'caisse', 'pas-un-kind', '', '', 'X', ''),)
+        mod.SEED = (('x', 'caisse', 'pas-un-kind', '', 'X', ''),)
         self.addCleanup(setattr, mod, 'SEED', ancien)
         with self.assertRaises(TechError):
             ensure_tech_invocations(self.conn)
