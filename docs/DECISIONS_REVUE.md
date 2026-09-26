@@ -496,3 +496,26 @@ Les autres sont supprimés dès qu'un scénario couvre le même comportement.
 5. Rythme (délais, nombre max de messages) écrit dans le plan du POC et
    validé par Julien à l'étape 2.
 Le séquenceur fixe (supprimé par Clem, jamais branché) n'est pas recréé.
+
+### Q38 — Circuit des réponses, priorités, délais (validé)
+- Une seule invocation « Traiter une réponse » : lit le fil complet du
+  prospect, rend (1) le signal dans une liste fermée (intéressé, question,
+  objection, refus, désinscription, hors sujet), (2) la réponse à envoyer ou
+  « pas de réponse », (3) « besoin de Julien : oui/non » + raison.
+  Remplace classify_reply, reply_intent, review_other, extract_meeting.
+- Envoi automatique sauf « besoin de Julien » ou refus d'un garde-fou →
+  ticket Discord avec le brouillon (discussion possible).
+- Circuit transverse (étapes 3 et 6), avec son propre coupe-circuit.
+- Priorité par invocation, réglable dans MC. Départ : 100 traiter une
+  réponse / désinscription ; 80 relever boîtes et canaux entrants ; 50
+  envois et relances ; 30 construction ; 10 écoute, veille, consolidation.
+- Relève des réponses toutes les 5 min (invocation technique programmée).
+- Délai de réponse « humain » : en heures ouvrées (ex. 8 h–20 h, lundi–
+  samedi) entre 5 et 20 min après réception (tirage au hasard) ; hors
+  heures : le lendemain entre 8 h et 9 h. Valeurs dans la policy.
+- Bugs constatés à corriger :
+  1. email.poll n'est programmé par personne → la boîte n'est jamais
+     relevée automatiquement.
+  2. scheduler.next_ready ne prend que les tâches liées à une venture
+     « schedulable » → une tâche sans venture (cycle d'écoute lancé depuis
+     MC) ne s'exécute jamais (vérifié par script).
