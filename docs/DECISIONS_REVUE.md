@@ -648,3 +648,35 @@ Le point hebdomadaire (Q42) lit aussi ces demandes.
    dans le plan du POC (étape 2), définitif validé par Julien (étape 5),
    modifié seulement par un pivot validé (étape 6).
 5. MC montre par business : encaissé, dû, en retard.
+
+### Q48 — Web (validé)
+- Gratuit d'abord : pas d'API payante qui livre une donnée accessible
+  gratuitement ; pas de nouvelle clé pour rien. API gratuite = OK.
+- Chercher : SearXNG hébergé sur le VPS (méta-moteur open source, sans clé).
+- Trois niveaux : (1) requête HTTP simple ; (2) vrai navigateur sur le VPS
+  piloté par Playwright avec Google Chrome installé (pas seulement le
+  Chromium de test), une session par compte ; (3) Browserbase (clé déjà là)
+  seulement si un site bloque le niveau 2, avec l'identité d'agent vérifiée.
+  Chaque montée de niveau est écrite au journal.
+- Invocation « Agent web » (Browser Use, open source) : reçoit une mission
+  (créer un compte, publier, réserver un humain…). Création de compte :
+  identité de Serge, codes lus dans sa boîte mail / SMS, captcha résolu par
+  un humain (ticket + écran en direct dans MC), compte enregistré dans
+  accounts_standing.
+- Serge assume d'être un agent IA partout où ça suffit.
+- Connecteurs : quand une API gratuite existe, l'invocation « Construire un
+  connecteur » lit la doc, crée le compte et la clé via l'agent web, écrit
+  et teste le code en bac à sable, le déclare comme tool. Julien valide par
+  ticket avant activation (code exécuté sur le VPS avec les secrets).
+- LinkedIn : utilisé via le compte de Serge, volume modéré, AVEC validation
+  humaine de chaque message et publication. Claude ne construit pas de
+  mécanisme destiné à échapper à la détection de robots (déguisement,
+  rotation d'IP, empreinte falsifiée) ; Julien fera ses propres recherches.
+- Selenium vs Playwright : même détectabilité par défaut ; on garde
+  Playwright (déjà installé) avec Chrome.
+
+### Q49 — Ordre des lots (validé, lots 1 à 4 en une passe)
+1. Fusionner main dans Clem. 2. Corriger les deux bugs graves. 3. Supprimer
+code mort et doublons. 4. Nouvelle doc + TODO + charte. Puis 5. Données,
+6. Invocations et liens, 7. Étape 1, 8. Conversations, 9. Grille de points,
+10. Étapes 2 et 5, 11. Étapes 3, 4, 6, 7, 8, 12. Web.
