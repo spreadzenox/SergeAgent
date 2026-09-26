@@ -419,3 +419,11 @@ Les autres sont supprimés dès qu'un scénario couvre le même comportement.
   un humain…).
 - Présence physique : possible via des sous-traitants humains (ex.
   plateforme Rent a Human citée par Julien) si Serge juge ça rentable.
+
+### Q33 — Légalité : pas d'invocation ni de filtre dédiés (validé)
+- Pas d'invocation « vérifier la légalité », pas de filtre déterministe.
+- On écrit simplement dans le prompt des invocations qui créent les business
+  (formuler, choisir) que le business doit être légal.
+- Les modèles sont déjà très frileux : au contraire, leurs prompts doivent
+  les encourager à ne pas s'arrêter sur des considérations morales qui ne
+  sont pas contraires à la loi.
