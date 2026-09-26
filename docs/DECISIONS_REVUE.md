@@ -538,3 +538,33 @@ Le séquenceur fixe (supprimé par Clem, jamais branché) n'est pas recréé.
   ligne. MC les liste par venture.
 - Pas de sauvegarde automatique hors du VPS pour le moment (décision de
   Julien, malgré l'absence totale de sauvegarde de serge.db aujourd'hui).
+
+### Q41 — Étape 5 : construire le business principal (validé)
+1. Concevoir le produit (LLM) : part du livrable d'essai, du plan du POC et
+   des retours des prospects ; plan du vrai produit, prix définitif, page
+   de vente.
+2. Challenger le produit : même boucle qu'à l'étape 2 (3 tours, « à
+   corriger » / « nouvelle capacité nécessaire »).
+3. Ticket Discord à Julien avant construction (valide notamment le prix).
+4. Construire avec le couple builder / reviewer existant (build_artifact +
+   review_build, 3 passages max), réponses alignées : « bon » / « à
+   corriger » / « nouvelle capacité nécessaire ». Même mécanique aux
+   étapes 2 et 5.
+5. Mise en ligne sur un nom de domaine dédié.
+6. Encaissement : produit + prix dans Stripe, paiement test de 1 € fait et
+   remboursé automatiquement.
+7. Ticket d'information, puis étape 6.
+Versions suivantes : publication automatique si la relecture est bonne,
+ticket d'information seulement.
+
+### Q42 — Étape 6 : vie du business principal (validé)
+- Prospection lourde en continu avec les briques de l'étape 3 (trouver,
+  envoyer, relancer, répondre), plus de volume, canaux en plus (pub…).
+- Une fois par semaine, une seule invocation « Faire le point sur le
+  business principal » : lit points, points/€, argent encaissé, réponses ;
+  propose continuer / accélérer (+50 % max ou un canal de plus) / pivoter
+  (un seul élément : cible, prix, offre ou canal) / arrêter.
+- Continuer et accélérer : automatiques + ticket d'information. Pivoter et
+  arrêter : ticket Discord validé par Julien.
+- Remplace plan_scale, options_pivot, judge_allocator.
+- Retours clients / demandes des prospects → nouvelle version : voir Q43.
