@@ -614,3 +614,21 @@ Le point hebdomadaire (Q42) lit aussi ces demandes.
      produit non instantané ; produit instantané = livré tout de suite.
      Livraison en retard → MC + correction en priorité haute.
   3. product_requests (Q43).
+
+### Q46 — Étape 7 : consolidation, leçons, contexte Serge (validé)
+- Consolidation gardée telle quelle (tous les 3 jours, ticket Mémoire,
+  acceptée après 48 h sans réponse) + leçon obligatoire à chaque KILLED
+  ou CLOSED.
+- Chaque leçon est rattachée au niveau le plus précis : une invocation
+  (grâce au journal qui sait quelle invocation a produit quoi), sinon une
+  étape, sinon tout Serge.
+- Une invocation reçoit d'office SES leçons (les plus fiables d'abord,
+  maximum de lignes habituel) ; les leçons de son étape et globales sur
+  demande (tool automatique « leçons »).
+- SERGE.md et l'invocation edit_serge_md sont supprimés.
+- Nouveau bloc « Qui est Serge et quelle est ta place », généré depuis la
+  base à chaque appel : présentation de Serge (texte en base, modifiable
+  dans MC) + la chaîne des 8 étapes (fiches des étapes) + la place de
+  l'invocation (son étape, qui est avant elle, qui est après, via les
+  liens). Donné aux invocations de niveau moyen et intelligent, pas aux
+  rapides ; case à cocher sur la fiche de l'invocation.
