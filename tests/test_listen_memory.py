@@ -19,7 +19,6 @@ from serge.db_readers import (  # noqa: E402
 )
 from serge.listen.memory import (  # noqa: E402
     create_cycle,
-    current_cycle,
     save_candidates,
     select_poc,
 )
@@ -47,25 +46,6 @@ class ListenMemoryTests(unittest.TestCase):
                 (first,),
             ).fetchone()[0],
             1,
-        )
-
-    def test_lecteur_cycle_utilise_les_noms_de_parametres_policy(self) -> None:
-        cycle = create_cycle(self.conn, 'guide', 5, 1)
-        result = current_cycle(self.conn, cycle)
-        self.assertIsNotNone(result)
-        assert result is not None
-        self.assertEqual(result['id'], cycle)
-        self.assertEqual(result['guide'], 'guide')
-        self.assertEqual(result['needs_target'], 5)
-        self.assertEqual(result['business_target'], 1)
-        self.assertEqual(result['status'], 'READY')
-        second = create_cycle(self.conn, '', 5, 1)
-        self.assertEqual(
-            self.conn.execute(
-                'SELECT COUNT(*) FROM listen_cycle_docs WHERE cycle_id=?',
-                (second,),
-            ).fetchone()[0],
-            0,
         )
 
     def test_capsule_inconnue_est_refusee(self) -> None:

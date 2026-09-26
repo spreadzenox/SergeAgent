@@ -43,62 +43,6 @@ def create_cycle(
     return cycle_id
 
 
-def current_cycle(
-    conn: sqlite3.Connection, cycle_id: str
-) -> dict[str, Any] | None:
-    """Lit un cycle précis, sans exposer les autres cycles."""
-    row = conn.execute(
-        'SELECT id, guide, needs_target, business_target, status, created_at '
-        'FROM listen_cycles WHERE id=?',
-        (cycle_id,),
-    ).fetchone()
-    if row is None:
-        return None
-    return (
-        dict(row)
-        if isinstance(row, sqlite3.Row)
-        else {
-            'id': row[0],
-            'guide': row[1],
-            'needs_target': row[2],
-            'business_target': row[3],
-            'status': row[4],
-            'created_at': row[5],
-        }
-    )
-
-
-def cycle_documents(
-    conn: sqlite3.Connection, cycle_id: str, limit: int = 200
-) -> list[dict[str, Any]]:
-    """Lit les pages du snapshot de cycle, dans leur ordre de collecte."""
-    rows = conn.execute(
-        'SELECT d.id, d.source, d.url, d.title, d.excerpt, d.published '
-        'FROM listen_cycle_docs x JOIN listen_docs d ON d.id=x.doc_id '
-        'WHERE x.cycle_id=? ORDER BY d.fetched_at, d.id LIMIT ?',
-        (cycle_id, max(1, min(limit, 500))),
-    ).fetchall()
-    return [dict(row) for row in rows]
-
-
-def known_candidates(conn: sqlite3.Connection) -> list[dict[str, Any]]:
-    """Lit les idées déjà persistées pour la déduplication inter-cycles."""
-    rows = conn.execute(
-        'SELECT id, title, content, observations, sellable_offer, '
-        'normalized_key, status FROM business_candidates ORDER BY created_at'
-    ).fetchall()
-    return [dict(row) for row in rows]
-
-
-def eligible_candidates(conn: sqlite3.Connection) -> list[dict[str, Any]]:
-    """Lit les idées sélectionnables, hors POC déjà engagés."""
-    rows = conn.execute(
-        'SELECT id, title, content, observations, sellable_offer, status '
-        "FROM business_candidates WHERE status='CANDIDATE' ORDER BY created_at"
-    ).fetchall()
-    return [dict(row) for row in rows]
-
-
 def normalized_key(title: str, content: str) -> str:
     """Produit une clé stable de rapprochement, sans décision LLM."""
     raw = ' '.join(sorted(f'{title} {content}'.lower().split()))

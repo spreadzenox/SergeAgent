@@ -28,20 +28,6 @@ else:
 class EcouteActionsMixin(_Base):
     """Mutations owner du cycle de pré-prospection."""
 
-    def _api_listen_settings(self) -> None:
-        if not self._require_owner():
-            return
-        body = self._json_body()
-        if body is None:
-            self._refus(400, 'Corps JSON requis.', 'json', 'n et p requis.')
-            return
-        self._refus(
-            410,
-            'Les paramètres Écoute se modifient dans Policy.',
-            'policy_only',
-            'Ouvre Policy > Écoute du web.',
-        )
-
     def _api_listen_start(self) -> None:
         if not self._require_owner():
             return

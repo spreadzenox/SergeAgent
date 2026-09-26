@@ -363,7 +363,6 @@ class McHandler(
             '/owner/api/policy/propose': self._api_policy_propose,
             '/owner/api/coupe': self._api_coupe,
             '/owner/api/etape': self._api_etape,
-            '/owner/api/listen/settings': self._api_listen_settings,
             '/owner/api/listen/start': self._api_listen_start,
         }
         acte = apis.get(path)

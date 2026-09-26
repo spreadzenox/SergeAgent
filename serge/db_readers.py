@@ -45,12 +45,6 @@ CAPSULE_SEED: tuple[tuple[str, str, str, str, str], ...] = (
     ),
 )
 
-# Ancien nom de semence conservé pour les modules qui ne connaissent que la
-# fiche historique; les lignes sont bien traitées comme des capsules ci-dessus.
-READER_SEED = tuple(
-    item[:3] + ('serge/db/query_builder.py',) for item in CAPSULE_SEED
-)
-
 TOOL_TABLES: tuple[tuple[str, str, int], ...] = (
     ('current_listen_cycle', 'listen_cycles', 0),
     ('listen_cycle_documents', 'listen_cycle_docs', 0),
@@ -399,37 +393,6 @@ def readers_du_point(
         }
         for row in rows
     ]
-
-
-def reader_allowed(
-    conn: sqlite3.Connection, point_id: str, reader_id: str
-) -> bool:
-    """Vérifie en DB l'affectation d'une capsule à un point."""
-    row = conn.execute(
-        'SELECT 1 FROM llm_point_readers'
-        " WHERE point_id=? AND reader_id=? AND enabled=1 AND usage='autorise'",
-        (point_id, reader_id),
-    ).fetchone()
-    return row is not None
-
-
-def reader_ids_for_point(
-    conn: sqlite3.Connection, point_id: str
-) -> tuple[str, ...]:
-    """Retourne les ids de capsules actives injectables dans le contrat."""
-    return tuple(
-        item['id']
-        for item in readers_du_point(conn, point_id)
-        if item['enabled'] and item['usage'] == 'autorise'
-    )
-
-
-def reader_contract(conn: sqlite3.Connection, point_id: str) -> dict[str, Any]:
-    """Construit le contrat des capsules visible par l'ordonnanceur."""
-    return {
-        'allowed': list(reader_ids_for_point(conn, point_id)),
-        'permission_source': 'sqlite',
-    }
 
 
 def tool_ids_for_point(
