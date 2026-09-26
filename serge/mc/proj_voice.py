@@ -3,16 +3,14 @@
 
 from __future__ import annotations
 
-import os
 import sqlite3
 from collections.abc import Mapping
-from pathlib import Path
 from typing import Any
 
+from serge.coupe_circuit import heartbeat_marche, kinds_interrompus
 from serge.mc.signedlinks import signer_url
-from serge.paths import system_root
 from serge.voice.ledger import assurer_colonnes_calls
-from serge.voice.policy import default_ledger_path, kill_switch_active
+from serge.voice.policy import default_ledger_path
 from serge.voice.quality import recent_scores
 
 
@@ -119,19 +117,10 @@ def project_bridge_statut(
     Returns:
         Dict {kill_switch_active, mode, trunk_status}.
     """
-    _ = (conn, policy, now)
-    root = (
-        Path(os.environ.get('SERGE_SYSTEM_ROOT', ''))
-        if os.environ.get('SERGE_SYSTEM_ROOT')
-        else system_root()
-    )
-    db_root = conn.execute('PRAGMA database_list').fetchone()
-    db_parent = Path(db_root[2]).parent if db_root and db_root[2] else root
-    is_killed = (
-        kill_switch_active(root)
-        or (Path(system_root()) / 'state/KILL_SWITCH').exists()
-        or kill_switch_active(db_parent)
-        or (db_parent / 'KILL_SWITCH').exists()
+    _ = policy
+    # Même levier que partout : heartbeat ou kind voice.send coupé en base.
+    is_killed = not heartbeat_marche(conn, now) or 'voice.send' in (
+        kinds_interrompus(conn, now)
     )
 
     # Récupération fail-soft du statut bridge

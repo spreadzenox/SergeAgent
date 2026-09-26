@@ -362,7 +362,6 @@ class McHandler(
             '/owner/api/policy/edit': self._api_policy_edit,
             '/owner/api/policy/testing': self._api_policy_testing,
             '/owner/api/policy/propose': self._api_policy_propose,
-            '/owner/api/voice/kill': self._api_voice_kill,
             '/owner/api/coupe': self._api_coupe,
             '/owner/api/etape': self._api_etape,
             '/owner/api/listen/settings': self._api_listen_settings,

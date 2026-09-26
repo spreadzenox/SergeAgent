@@ -1,7 +1,5 @@
 [Unit]
 Description=Serge bounded autonomous pipeline
-ConditionPathExists=!__SYSTEM_ROOT__/state/KILL_SWITCH
-ConditionPathExists=!__SYSTEM_ROOT__/orchestrator/runtime/KILL_SWITCH
 
 [Service]
 Type=oneshot

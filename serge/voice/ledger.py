@@ -269,8 +269,6 @@ class VoiceLedger:
             return 'invalid_purpose'
         if policy.mode == 'sandbox':
             return 'sandbox_no_outbound'
-        if policy.kill_switch:
-            return 'kill_switch_active'
         if not policy.external_actions:
             return 'external_actions_disabled'
         if not policy.mandate_outbound_allowed:
