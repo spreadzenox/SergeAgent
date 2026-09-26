@@ -12,7 +12,9 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from serge.funnels.contacts import ContactError, upsert_contact_references
+from serge.demande_capacite import CapaciteError, poser_demande
+from serge.funnels.contact_tool import SCHEMA as CONTACT_UPSERT_SCHEMA
+from serge.funnels.contact_tool import executer_contact_upsert
 from serge.identite import IdentiteError, identite_serge
 from serge.listen.web import search_public
 from serge.memory.search import memory_search
@@ -53,6 +55,7 @@ def _schema(
 
 
 SCHEMAS: dict[str, dict[str, Any]] = {
+    'contact_upsert': CONTACT_UPSERT_SCHEMA,
     'memory_search': _schema(
         'memory_search',
         'Fouille la mémoire (leçons, épisodes, tickets). Lecture seule.',
@@ -85,67 +88,22 @@ SCHEMAS: dict[str, dict[str, Any]] = {
         {},
         [],
     ),
-    'contact_upsert': _schema(
-        'contact_upsert',
-        'Crée ou enrichit un contact avec des références JSON par canal. '
-        'La déduplication est faite dans toute la venture avant toute création.',
+    'demande_capacite': _schema(
+        'demande_capacite',
+        'Demande une capacité manquante (ticket, pas d’invention).',
         {
-            'venture_id': {
+            'besoin': {
                 'type': 'string',
-                'description': 'Identifiant de la venture dans le contexte courant',
+                'description': 'Ce qui manque (canal, outil, acte)',
             },
-            'display': {
+            'contexte': {
                 'type': 'string',
-                'description': 'Nom affiché du contact, sans secret',
-            },
-            'contact_reference_by_canal': {
-                'type': 'object',
-                'description': (
-                    'Map canal -> référence. Email: address; voice: phone; '
-                    'autres canaux: handle ou profile_url.'
-                ),
-                'additionalProperties': {
-                    'type': 'object',
-                    'properties': {
-                        'active': {'type': 'boolean'},
-                        'address': {'type': 'string'},
-                        'phone': {'type': 'string'},
-                        'handle': {'type': 'string'},
-                        'profile_url': {'type': 'string'},
-                    },
-                    'additionalProperties': False,
-                },
-            },
-            'reference': {
-                'type': 'object',
-                'description': (
-                    'Référence unique structurée, par exemple '
-                    "{'channel':'email','address':'...'}"
-                ),
-                'properties': {
-                    'channel': {'type': 'string'},
-                    'canal': {'type': 'string'},
-                    'active': {'type': 'boolean'},
-                    'address': {'type': 'string'},
-                    'phone': {'type': 'string'},
-                    'handle': {'type': 'string'},
-                    'profile_url': {'type': 'string'},
-                },
-                'additionalProperties': False,
+                'description': 'Pourquoi, une phrase',
             },
         },
-        ['venture_id', 'display'],
+        ['besoin'],
     ),
 }
-SCHEMAS['contact_upsert']['function']['parameters'].update(
-    {
-        'additionalProperties': False,
-        'anyOf': [
-            {'required': ['contact_reference_by_canal']},
-            {'required': ['reference']},
-        ],
-    }
-)
 
 
 def _exec_memory_search(
@@ -181,84 +139,6 @@ def _exec_identity_basique(
         return {'ok': False, 'code': 'invalide', 'detail': str(exc)}
 
 
-def _exec_contact_upsert(
-    ctx: ContexteOutil, args: dict[str, Any]
-) -> dict[str, Any]:
-    """Upsert contact borné aux références JSON canoniques."""
-    forbidden = {'email', 'phone', 'venue', 'handle', 'profile_url'}
-    if forbidden.intersection(args):
-        return {
-            'ok': False,
-            'code': 'invalide',
-            'detail': 'les anciennes colonnes de contact sont interdites',
-        }
-    context = ctx.spec.get('context')
-    context = context if isinstance(context, Mapping) else {}
-    venture_id = str(
-        args.get('venture_id') or context.get('venture_id') or ''
-    ).strip()
-    display = str(args.get('display') or '').strip()
-    if not venture_id or not display:
-        return {
-            'ok': False,
-            'code': 'invalide',
-            'detail': 'venture_id et display requis',
-        }
-    if (
-        ctx.conn.execute(
-            'SELECT 1 FROM ventures WHERE id=?', (venture_id,)
-        ).fetchone()
-        is None
-    ):
-        return {'ok': False, 'code': 'invalide', 'detail': 'venture inconnue'}
-
-    reference_map = args.get('contact_reference_by_canal')
-    single_reference = args.get('reference')
-    if reference_map is not None and single_reference is not None:
-        return {
-            'ok': False,
-            'code': 'invalide',
-            'detail': 'une seule forme de référence est acceptée',
-        }
-    raw_references = (
-        reference_map if reference_map is not None else single_reference
-    )
-    if not isinstance(raw_references, Mapping):
-        return {
-            'ok': False,
-            'code': 'invalide',
-            'detail': 'référence JSON requise',
-        }
-    try:
-        references = raw_references
-        is_single = bool(
-            single_reference is not None
-            or references.get('channel')
-            or references.get('canal')
-        )
-        candidates = [references] if is_single else list(references.values())
-        for reference in candidates:
-            if not isinstance(reference, Mapping):
-                continue
-            if 'venue' in reference:
-                return {
-                    'ok': False,
-                    'code': 'invalide',
-                    'detail': 'le champ legacy venue est interdit',
-                }
-            if not isinstance(reference.get('active', True), bool):
-                return {
-                    'ok': False,
-                    'code': 'invalide',
-                    'detail': 'active doit être booléen',
-                }
-        return upsert_contact_references(
-            ctx.conn, venture_id, display, references
-        )
-    except (ContactError, TypeError, ValueError) as exc:
-        return {'ok': False, 'code': 'invalide', 'detail': str(exc)}
-
-
 def _exec_db_read_tool(
     ctx: ContexteOutil, tool_id: str, args: dict[str, Any]
 ) -> dict[str, Any]:
@@ -281,11 +161,28 @@ def _exec_web_search(
     return search_public(query, limit)
 
 
+def _exec_demande_capacite(
+    ctx: ContexteOutil, args: dict[str, Any]
+) -> dict[str, Any]:
+    try:
+        return poser_demande(
+            ctx.conn,
+            str(args.get('besoin') or ''),
+            point=ctx.point_name,
+            contexte=str(args.get('contexte') or ''),
+        )
+    except CapaciteError as exc:
+        return {'ok': False, 'code': 'invalide', 'detail': str(exc)}
+
+
 HANDLERS: dict[str, Handler] = {
     'memory_search': _exec_memory_search,
     'identity_basique': _exec_identity_basique,
-    'contact_upsert': _exec_contact_upsert,
+    'contact_upsert': lambda ctx, args: executer_contact_upsert(
+        ctx.conn, ctx.spec, args
+    ),
     'web_search': _exec_web_search,
+    'demande_capacite': _exec_demande_capacite,
 }
 
 
@@ -326,24 +223,21 @@ def outils_pressables(
         spec: Déclaration du point (registre).
 
     Returns:
-        Ids stables des tools DB affectés au point.
+        Ids stables : tools affectés au point, puis outils offerts partout.
     """
-    declared_db_tools = spec.get('db_tools')
-    db_filter = (
-        set(declared_db_tools)
-        if isinstance(declared_db_tools, (list, tuple))
-        else None
-    )
     ids: list[str] = []
-    if isinstance(declared_db_tools, (list, tuple)):
-        for raw in declared_db_tools:
+    declared = spec.get('db_tools')
+    if isinstance(declared, (list, tuple)):
+        for raw in declared:
             ident = str(raw or '')
-            if (
-                _handler_exists(conn, ident)
-                and ident not in ids
-                and (db_filter is None or ident in db_filter)
-            ):
+            if _handler_exists(conn, ident) and ident not in ids:
                 ids.append(ident)
+    if conn is not None:
+        for (ident,) in conn.execute(
+            'SELECT id FROM tools WHERE montre_partout=1 ORDER BY id'
+        ).fetchall():
+            if str(ident) in HANDLERS and str(ident) not in ids:
+                ids.append(str(ident))
     return tuple(ids)
 
 
@@ -452,6 +346,8 @@ def quota_couple(
         fallback = (quotas or {}).get('memory_search_per_cycle_per_point')
         if isinstance(fallback, int) and not isinstance(fallback, bool):
             return max(0, fallback)
+    if tool_id == 'demande_capacite':
+        return 1
     return None
 
 

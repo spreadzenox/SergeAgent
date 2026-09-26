@@ -154,6 +154,13 @@ Pas de seconde table. Volet advanced = IBAN + adresse de facturation.
 Outils catalogue `identity_basique` (branché) et `identity_advanced`
 (`prevu`). Page MC `#/identite`.
 
+## Demande de capacité
+
+Tool `demande_capacite` (branché, partout) : `poser_demande()` crée un
+ticket `REQUESTED` (champs `demande`, `contexte`, `point_llm`). Pas de
+kind worker. Le même besoin déjà ouvert pour le même jugement n’est
+pas recréé.
+
 ## Boîte mail / SMS
 
 Tool `boite_serge` : mails dans `inbound_events` (corps dans

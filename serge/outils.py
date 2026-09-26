@@ -45,8 +45,8 @@ SEED: tuple[tuple[str, str, str, str, str, str, str, int], ...] = (
     (
         'contact_upsert',
         'deterministe',
-        'serge/llm/outils_exec.py',
-        '99b37d8cd8f85b02dfe786d5195317c03c8f777bdbf305be2b0d9d19093ea8cd',
+        'serge/funnels/contact_tool.py',
+        'a45b52b85113834b29ddeda0672dbcdf1112aa48988d8f037abd4500398419a4',
         'Créer ou enrichir un contact',
         'Upsert déterministe par références JSON de canal. Compare toutes les'
         ' références de la venture avant création, puis ajoute les canaux actifs.'
@@ -106,13 +106,15 @@ SEED: tuple[tuple[str, str, str, str, str, str, str, int], ...] = (
     (
         'demande_capacite',
         'deterministe',
-        '',
-        '',
+        'serge/demande_capacite.py',
+        'b8bd4d69df6ab0b60a60388d09f6d1dbae080461c3fd90e4be189b41d8b3e7de',
         'Demander une nouvelle capacité',
         'Quand Serge ne peut pas (pas de canal, pas d’outil), il'
-        ' doit poser un ticket « j’ai besoin de X » plutôt que'
-        ' d’inventer. La fiche le montre pour ne pas l’oublier.',
-        'prevu',
+        ' pose un ticket REQUESTED (« j’ai besoin de X ») plutôt'
+        ' que d’inventer. Offert à tous les jugements. Un appel'
+        ' par jugement ; le même besoin déjà ouvert n’est pas'
+        ' recréé.',
+        'branche',
         1,
     ),
     (

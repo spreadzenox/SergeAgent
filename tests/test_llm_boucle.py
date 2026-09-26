@@ -74,6 +74,15 @@ class OutilsPressablesTests(unittest.TestCase):
         spec = _spec(memory=False, tools=['identity_basique'])
         self.assertEqual(outils_pressables(spec), ('identity_basique',))
 
+    def test_demande_capacite_offerte_partout(self) -> None:
+        conn = sqlite3.connect(':memory:')
+        init_schema(conn)
+        self.assertEqual(
+            outils_pressables(_spec(memory=True), conn),
+            ('memory_search', 'demande_capacite'),
+        )
+        conn.close()
+
     def test_prevu_sans_handler_ignore(self) -> None:
         self.assertEqual(
             outils_pressables(_spec(memory=False, tools=['agenda'])), ()
@@ -97,6 +106,11 @@ class QuotaCoupleTests(unittest.TestCase):
     def test_autre_outil_illimite(self) -> None:
         self.assertIsNone(
             quota_couple(_spec(memory=False), 'identity_basique', POLICY)
+        )
+
+    def test_demande_capacite_un_par_jugement(self) -> None:
+        self.assertEqual(
+            quota_couple(_spec(memory=False), 'demande_capacite', POLICY), 1
         )
 
     def test_restants_min_couple_et_tours(self) -> None:
@@ -174,13 +188,17 @@ class BoucleTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.conn.close()
 
-    def test_sans_outil_un_seul_generate(self) -> None:
+    def test_sans_memoire_offre_demande_partout(self) -> None:
         n = {'n': 0}
 
         def caller(*args, **kwargs):
             n['n'] += 1
-            self.assertIsNone(kwargs.get('tools'))
-            self.assertFalse(
+            noms = [
+                (item.get('function') or {}).get('name')
+                for item in (kwargs.get('tools') or [])
+            ]
+            self.assertEqual(noms, ['demande_capacite'])
+            self.assertTrue(
                 any(
                     CLE_QUOTAS in str(item.get('content') or '')
                     for item in args[2]
@@ -336,12 +354,11 @@ class BoucleTests(unittest.TestCase):
                 for item in (kwargs.get('tools') or [])
             ]
             if n['n'] == 1:
-                self.assertEqual(noms, ['identity_basique'])
+                self.assertEqual(
+                    noms, ['identity_basique', 'demande_capacite']
+                )
                 return _call(name='identity_basique', args='{"x":1}')
-            self.assertEqual(noms, [])
-            self.assertTrue(
-                kwargs.get('tool_choice') == 'none' or not kwargs.get('tools')
-            )
+            self.assertEqual(noms, ['demande_capacite'])
             return _call('fin')
 
         with mock.patch(

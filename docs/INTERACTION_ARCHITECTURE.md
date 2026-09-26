@@ -20,7 +20,7 @@ plusieurs projections (Discord, Mission Control). DB = vérité, UI = miroirs te
 | 6 | POLICY | Propositions R4 (diff seuils/quotas + justification + impact) | Normale |
 | 7 | R1_OVERRIDE | Dépassement 300 lignes (pourquoi indécoupable + risques) | Normale |
 | 8 | FYI | Digest, résultats de tests, signaux d'écoute, rapports (pas de réponse) | Aucune |
-| 9 | REQUESTED | Demandes d'évolution P3 des LLM (lecture seule owner, batch Meta-Grok) | Lecture seule |
+| 9 | REQUESTED | Demandes d'évolution P3 des LLM (lecture seule owner, batch Meta-Grok). Posé par le tool `demande_capacite` quand un jugement ne peut pas (pas de canal, pas d’outil). | Lecture seule |
 | 10 | OWNER_ORDER | Ordres/questions/veto/infos owner → Serge (sens inverse) | Variable |
 | 11 | QNA | Questions générales de Serge : QCM (2-4 options + "Autre") + texte libre + bouton "Discuter" (thread). Tool toujours accessible à tout agent. | Normale, jamais bloquant |
 | 12 | ALERT | Incidents graves détectés (panne trunk, suspension compte, anomalie financière) : "voilà + voilà ce que j'ai fait". Pas de décision, juste tracé. | Haute (notifie, n'attend pas) |

@@ -40,7 +40,7 @@ SHA_ATTENDUS: dict[tuple[str, str], str] = {
     (
         'etape',
         'prospection_light',
-    ): '7935f5e1d644beb0a8c6c59a3f9df23596ec796007f27e2036a8a0c8e552594e',
+    ): '351de1af9e87038ca5301cb2611d99e4d5ec5e4329293e47de14e00603420efa',
     (
         'etape',
         'prospection_lourde',
@@ -120,7 +120,7 @@ SHA_ATTENDUS: dict[tuple[str, str], str] = {
     (
         'llm',
         'discover_contacts',
-    ): '100863e4944ec215d60107617836446d129c848e968853361c73fe4540c669fb',
+    ): '1a2560dd0352ccc9b975ce1b371f1d9d96d2e59439fff925425539b66900b7ec',
     (
         'llm',
         'edit_serge_md',
@@ -216,7 +216,7 @@ SHA_ATTENDUS: dict[tuple[str, str], str] = {
     (
         'outil',
         'contact_upsert',
-    ): '1a0b302bf6737a3eee564905c73e54bad3e988791777763035df93b9c31ad39e',
+    ): 'ef0b7d7a13bd5ac5aa1a2d92e1a307de32115cd1db2e0a7c29d95f476c4e280c',
     (
         'outil',
         'catalogue',
@@ -224,7 +224,7 @@ SHA_ATTENDUS: dict[tuple[str, str], str] = {
     (
         'outil',
         'demande_capacite',
-    ): 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+    ): '14bc00395e804c0ac6d02c8e0271673df4909b0ba7f2bfef66fd2c8ce723b067',
     (
         'outil',
         'fiches',
