@@ -475,3 +475,24 @@ Les autres sont supprimés dès qu'un scénario couvre le même comportement.
   légale française ; les particuliers exigent un accord préalable).
 - Programmation des envois et relances : à discuter dans une question
   dédiée (Q37).
+
+### Q37 — Envois et relances : système réactif (validé)
+- Priorité absolue : ne jamais relancer quelqu'un qui a déjà répondu (bug
+  déjà vécu dans une version précédente de Serge).
+1. Un fil de discussion unique par prospect, tous canaux : envois
+   (touches, avec leur TEXTE, à ajouter) + réponses (inbound_events), par
+   date. Visible sur la fiche prospect dans MC ; lu par les invocations qui
+   rédigent relances et réponses.
+2. Rattachement de chaque réponse au prospect : par adresse (email,
+   téléphone) et, pour l'email, par le fil de messages (réponse depuis
+   l'adresse d'un collègue). Non rattachée → file d'examen visible dans MC,
+   jamais ignorée.
+3. Une relance ne part que si le dernier événement du fil est un envoi de
+   Serge sans réponse depuis ; vérifié AU MOMENT DE L'ENVOI. Sinon annulée
+   et écrite au journal.
+4. Jamais de relance à l'aveugle : si les réponses d'un canal n'ont pas été
+   relevées récemment (ex. boîte mail non lue depuis > 1 h), aucune relance
+   sur ce canal ; alerte dans MC.
+5. Rythme (délais, nombre max de messages) écrit dans le plan du POC et
+   validé par Julien à l'étape 2.
+Le séquenceur fixe (supprimé par Clem, jamais branché) n'est pas recréé.
