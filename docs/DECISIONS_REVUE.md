@@ -395,3 +395,12 @@ Les autres sont supprimés dès qu'un scénario couvre le même comportement.
 - Pas de correction géante d'un seul coup. D'abord toutes les questions
   (cohérence d'ensemble), puis des petits lots relisibles.
 - Ce fichier est poussé sur `Clem` pour ne pas perdre les réponses.
+
+### Q31 — Construire quelque chose dès le POC (validé)
+- Le POC ne teste pas seulement un message : l'étape 2 construit déjà un
+  livrable, pour pouvoir proposer des essais aux futurs prospects.
+- Construction « complète » toujours en étape 5 pour le business principal.
+- Avant de concevoir l'étape 2 : dresser la liste la plus complète possible
+  des types de business que Serge peut lancer avec ses moyens (email,
+  téléphone, carte bancaire, Stripe, comptes web, Internet permanent,
+  bacs à sable de code, stockage illimité) → Q32.
