@@ -632,3 +632,19 @@ Le point hebdomadaire (Q42) lit aussi ces demandes.
   l'invocation (son étape, qui est avant elle, qui est après, via les
   liens). Donné aux invocations de niveau moyen et intelligent, pas aux
   rapides ; case à cocher sur la fiche de l'invocation.
+
+### Q47 — Étape 8 : la caisse (validé)
+1. Tout encaissement passe par Stripe (liens de paiement, pages de
+   paiement, abonnements). Stripe émet les factures conformes (numérotation,
+   mentions) avec l'identité de Serge en base. Serge ne fabrique pas ses
+   propres factures.
+2. Relances d'impayés programmées (J+7 polie, J+14 ferme, puis arrêt +
+   ticket), via le fil du client, mêmes règles que Q37 (pas de relance si
+   le client a répondu). Aujourd'hui serge/collect/dunning.py n'est jamais
+   programmé.
+3. Remboursements : sous un seuil (ex. 50 €, policy) automatiques + ticket
+   d'information ; au-dessus, ticket Discord.
+4. Invocation « Proposer un prix » (draft_price) supprimée : prix indicatif
+   dans le plan du POC (étape 2), définitif validé par Julien (étape 5),
+   modifié seulement par un pivot validé (étape 6).
+5. MC montre par business : encaissé, dû, en retard.
