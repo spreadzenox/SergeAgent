@@ -297,7 +297,7 @@ function renderPensee(main, io) {
     return;
   }
   titre.textContent = io.sortie ? 'Dernière réflexion' : 'En train d’écrire';
-  lignePensee(fil, 'Jugement', io.jugement, 'llm', io.point);
+  lignePensee(fil, 'Invocation', io.jugement, 'llm', io.point);
   lignePensee(fil, 'Étape', io.etape_titre, 'etape', io.etape);
   lignePensee(fil, 'Tâche', io.tache, 'work_item', io.tache_id);
   lignePensee(fil, 'Venture', io.venture, 'venture', io.venture_id);
@@ -316,7 +316,7 @@ function renderJauges(main, payload, sig, gauges) {
   tweenNombre(
     gauges.llm.label,
     llm.tokens_jour || 0,
-    (v) => `${llm.libelle || 'Jugements'} : ${Math.round(v)} jetons (~${euros} € / ${llm.plafond_eur || 0} €)`,
+    (v) => `${llm.libelle || 'Invocations'} : ${Math.round(v)} jetons (~${euros} € / ${llm.plafond_eur || 0} €)`,
   );
   for (const nom of ['email', 'voix', 'linkedin']) {
     const barre = payload[nom] || {};

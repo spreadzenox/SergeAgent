@@ -184,22 +184,22 @@ CATALOGUE: dict[str, tuple[str, str, str, str]] = {
         'enabled + kinds_json. Un kind sans étape n’est jamais coupé.',
     ),
     'tools': (
-        'Outils qu’un jugement peut presser (mémoire, web, ticket…).',
+        'Outils qu’une invocation peut presser (mémoire, web, ticket…).',
         'Semence git + SHA du fichier.',
         'Fiches MC, jonction llm_point_tools.',
         'kind déterministe/agent/web/db_read. Un db_read est individualisé.',
     ),
     'llm_points': (
-        'Les jugements LLM : un id, un fichier, un SHA, une étape et'
+        'Les invocations LLM : un id, un fichier, un SHA, une étape et'
         ' leurs métadonnées runtime.',
         'Seed initial depuis llm-points.yaml + verrou fichier.',
         'Fiches MC et runtime lisent prompt/output_mode/external_info ici.',
         'code_sha doit matcher le .py (test).',
     ),
     'llm_point_tools': (
-        'Quel jugement a le droit d’utiliser quel outil.',
+        'Quelle invocation a le droit d’utiliser quel outil.',
         'Recalculé au boot depuis tools du YAML.',
-        'Fiche jugement, rubrique Outils.',
+        'Fiche invocation, rubrique Outils.',
         'usage : autorise, interdit, declare.',
     ),
     'db_readers': (
@@ -276,7 +276,7 @@ CATALOGUE: dict[str, tuple[str, str, str, str]] = {
     ),
     'business_candidates': (
         'Mémoire canonique des besoins et business pré-prospectés.',
-        'Writer déterministe après jugements.',
+        'Writer déterministe après invocations.',
         'Sélection POC et Mission Control.',
         'normalized_key et status empêchent les doublons et le rechoix.',
     ),
@@ -289,7 +289,7 @@ CATALOGUE: dict[str, tuple[str, str, str, str]] = {
     'brique_canaux': (
         'Quelle brique (LLM ou tech) utilise quel canal.',
         'Recalculé au boot depuis serge/canaux.py.',
-        'Fiches canal / jugement / étape.',
+        'Fiches canal / invocation / étape.',
         'brique_kind : llm ou tech.',
     ),
 }

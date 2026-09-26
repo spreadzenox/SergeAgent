@@ -31,7 +31,7 @@ export const SECTIONS = {
   },
   observation: {
     titre: 'Lecture des réponses',
-    pourquoi: 'À partir de quand on croit un jugement sur un message reçu.',
+    pourquoi: 'À partir de quand on croit une invocation sur un message reçu.',
   },
   builder: {
     titre: 'Construction',
@@ -74,7 +74,7 @@ export const CHAMPS = {
     1,
   ],
   'budget.llm_daily_eur': [
-    'Jugements, par jour',
+    'Invocations LLM, par jour',
     'Le plafond € des réflexions (celui des budgets du jour).',
     'eur',
     0,
@@ -194,15 +194,15 @@ export const CHAMPS = {
     1,
   ],
   'quotas.memory_search_per_cycle_per_point': [
-    'Fois qu’un jugement peut fouiller la mémoire',
-    'Par cycle, par jugement. Au-delà il s’arrête.',
+    'Fois qu’une invocation peut fouiller la mémoire',
+    'Par cycle, par invocation. Au-delà il s’arrête.',
     'curseur',
     0,
     10,
     1,
   ],
   'quotas.llm_outil_tours_max': [
-    'Tours d’outils max, par jugement',
+    'Tours d’outils max, par invocation',
     'Tous les outils confondus. 12 est le plafond dur. Un couple peut être plus serré.',
     'curseur',
     0,
@@ -486,7 +486,7 @@ export const CHAMPS = {
   ],
   'observation.other_batch_max_items': [
     'Messages « autre » relus d’un coup',
-    'Pour ne pas noyer le jugement qui relit le bruit.',
+    'Pour ne pas noyer l’invocation qui relit le bruit.',
     'curseur',
     5,
     80,
@@ -550,7 +550,7 @@ export const CHAMPS = {
   ],
   'prospection.lead_score_gray': [
     'Zone grise du score (à départager)',
-    'Entre les deux bornes, un jugement tranche.',
+    'Entre les deux bornes, une invocation tranche.',
     'paire',
     0,
     100,
@@ -666,7 +666,7 @@ export const CHAMPS = {
     1,
   ],
   'memory.judge_oscillation_days': [
-    'Jours pour détecter un jugement qui se contredit',
+    'Jours pour détecter une invocation qui se contredit',
     'S’il change d’avis trop vite, on le voit.',
     'curseur',
     1,

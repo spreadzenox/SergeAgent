@@ -87,7 +87,7 @@ class ProjObjetTests(unittest.TestCase):
         self.assertIn('Ce qu’il a le droit de lire', titres)
         self.assertIn('Outils', titres)
         self.assertEqual(
-            fiche['tableau']['titre'], 'Passages récents de ce jugement'
+            fiche['tableau']['titre'], 'Passages récents de cette invocation'
         )
 
     def test_pages_vides_ne_feignent_pas(self) -> None:
@@ -178,7 +178,7 @@ class ProjObjetTests(unittest.TestCase):
         self.assertEqual(fiche['type'], 'etape')
         self.assertIn('demande réelle', fiche['pourquoi'])
         titres = [c['titre'] for c in fiche['cadres']]
-        self.assertIn('Jugements, dans l’ordre', titres)
+        self.assertIn('Invocations, dans l’ordre', titres)
         self.assertIn('Pourquoi ça dépend de avant', titres)
         liens = [
             lien['id']

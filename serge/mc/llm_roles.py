@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Textes simples des jugements LLM : rôle, flux, lectures autorisées."""
+"""Textes simples des invocations LLM : rôle, flux, lectures autorisées."""
 
 from __future__ import annotations
 
@@ -97,7 +97,7 @@ ROLES: dict[str, tuple[str, str, str, str, str]] = {
         ' tout relire. Les messages bruts restent dans le journal.',
         'Les messages échangés.',
         'Un résumé daté.',
-        'Toi, et le prochain jugement qui a besoin du fil.',
+        'Toi, et la prochaine invocation qui a besoin du fil.',
         'Un paragraphe + numéro de version.',
     ),
     'classify_reply': (
@@ -354,7 +354,7 @@ MATERIEL: dict[str, tuple[str, str]] = {
     ),
     'secrets': (
         'Interdit : secrets',
-        'Mots de passe, jetons, clés. Jamais dans un jugement.',
+        'Mots de passe, jetons, clés. Jamais dans une invocation.',
     ),
     'pii_tiers': (
         'Interdit : vies privées des autres',
@@ -410,9 +410,9 @@ def role_de(nom: str) -> tuple[str, str, str, str, str]:
         return found
     titre = nom.replace('_', ' ')
     return (
-        f'Un jugement « {titre} » : il lit un dossier borné, décide,'
+        f'Une invocation « {titre} » : elle lit un dossier borné, décide,'
         ' et rend la main. Rien n’est dépensé sans les règles.',
-        'Le dossier prévu pour ce jugement (lectures + éventuellement recherche).',
+        'Le dossier prévu pour cette invocation (lectures + éventuellement recherche).',
         'Une décision structurée, pas un roman.',
         'L’étape suivante du travail (message, ticket, ou toi).',
         'Un petit objet clair (oui/non, texte, liste).',
@@ -438,6 +438,6 @@ def texte_materiel(cle: str) -> str:
         return MATERIEL[cle][1]
     return (
         f'« {titre_materiel(cle)} » : un morceau du dossier prévu'
-        ' pour ce jugement. On ne lui donne que ça, pour limiter'
+        ' pour cette invocation. On ne lui donne que ça, pour limiter'
         ' le coût et éviter de tout lui verser.'
     )

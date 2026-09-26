@@ -47,8 +47,8 @@ def project_identite(ident: str = 'serge') -> dict[str, Any] | None:
         'titre': 'Identité de Serge',
         'pourquoi': (
             'Une source : le fichier d’instance. Token MC = confiance'
-            ' absolue. Le volet avancé (IBAN) n’est appelé par aucun'
-            ' jugement tant qu’un acte n’est pas nommé.'
+            ' absolue. Le volet avancé (IBAN) n’est appelé par aucune'
+            ' invocation tant qu’un acte n’est pas nommé.'
         ),
         'champs': champs,
         'enfants': [],

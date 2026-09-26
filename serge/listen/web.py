@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Recherche web publique en lecture seule pour les jugements d'écoute."""
+"""Recherche web publique en lecture seule pour les invocations d'écoute."""
 
 from __future__ import annotations
 

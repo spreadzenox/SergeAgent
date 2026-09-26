@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fiches jugement : rôle clair, flux, lectures, outils, invocations."""
+"""Fiches invocation : rôle clair, flux, lectures, outils, invocations."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ PALIERS = {
 }
 
 VERDICTS = {
-    'LLM-1': 'Un jugement simple à une réponse (classe, oui/non, date).',
+    'LLM-1': 'Une invocation simple à une réponse (classe, oui/non, date).',
     'LLM-B': 'Il rédige un texte dans un moule (idée, message, script).',
     'LLM-L': 'Il réfléchit plus large (plan, options, où mettre l’argent).',
     'LLM-R': 'Il relit ou résume — il n’invente pas de chiffres.',
@@ -128,7 +128,7 @@ def _outils(conn: sqlite3.Connection, point_id: str) -> list[dict[str, str]]:
 
 
 def project_llm(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
-    """Fiche d’un jugement : rôle, flux, lectures, outils, passages."""
+    """Fiche d’une invocation : rôle, flux, lectures, outils, passages."""
     spec = _points().get(ident)
     point = point_par_id(conn, ident)
     if spec is None and point is None:
@@ -174,7 +174,7 @@ def project_llm(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
             }
         )
     prompt_txt = prompt or (
-        'Pas encore de prompt enregistré pour ce jugement sur'
+        'Pas encore de prompt enregistré pour cette invocation sur'
         ' cette instance. Le texte vit encore dans le code ;'
         ' ici on verra le prochain passage dès qu’un épisode'
         ' sera posé.'
@@ -190,7 +190,7 @@ def project_llm(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
                 'v': PALIERS.get(str(spec.get('tier')), str(spec.get('tier'))),
             },
             {
-                'k': 'Quelle sorte de jugement',
+                'k': 'Quelle sorte d’invocation',
                 'v': VERDICTS.get(
                     str(spec.get('verdict')), str(spec.get('verdict'))
                 ),
@@ -219,7 +219,7 @@ def project_llm(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
             },
             {
                 'k': 'Allumé',
-                'v': 'oui — ce jugement peut tourner'
+                'v': 'oui — cette invocation peut tourner'
                 if spec.get('enabled', True)
                 else 'non — coupé pour l’instant',
             },
@@ -253,12 +253,12 @@ def project_llm(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
             {
                 'titre': 'La dernière réponse du modèle',
                 'texte': sortie
-                or 'Pas encore de réponse enregistrée pour ce jugement.',
+                or 'Pas encore de réponse enregistrée pour cette invocation.',
             },
             {
                 'titre': 'Ce qu’il a le droit de lire',
                 'texte': (
-                    'Le dossier prévu pour ce jugement — pas des noms'
+                    'Le dossier prévu pour cette invocation — pas des noms'
                     ' de variables. Clique une ligne : c’est expliqué.'
                 ),
                 'liens': _liens_materiel(conn, ident),
@@ -267,7 +267,7 @@ def project_llm(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
                 'titre': 'Outils',
                 'texte': (
                     'Chaque ligne est un outil, une page. Chercher dans'
-                    ' la mémoire (si ce jugement en a le droit), ouvrir'
+                    ' la mémoire (si cette invocation en a le droit), ouvrir'
                     ' le web plus tard, ou demander une capacité manquante'
                     ' plutôt qu’inventer.'
                 ),
@@ -276,7 +276,7 @@ def project_llm(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
             {'titre': 'Canaux', 'liens': _canaux(conn, ident)},
         ],
         'tableau': {
-            'titre': 'Passages récents de ce jugement',
+            'titre': 'Passages récents de cette invocation',
             'colonnes': [
                 'Quand',
                 'Résultat',
@@ -318,7 +318,7 @@ def project_llm_usage(
             ' Le texte n’est là que si on a enregistré l’épisode.'
         ),
         'champs': [
-            {'k': 'Jugement', 'v': titre_llm(point)},
+            {'k': 'Invocation', 'v': titre_llm(point)},
             {'k': 'Quand', 'v': str(row[8] or '—')},
             {'k': 'Sortie courte', 'v': str(row[7] or '—')},
             {
@@ -388,7 +388,7 @@ def project_ecoute(
             'Aucune page en base pour l’instant. Quand Serge écoute'
             ' pour de vrai, elles apparaissent ici (flux RSS aujourd’hui :'
             ' Reddit, blogs…). Un navigateur type Brave n’est pas encore'
-            ' branché comme outil du jugement.'
+            ' branché comme outil de l’invocation.'
         )
     return {
         'type': 'ecoute',

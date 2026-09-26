@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Étapes du pipe : textes, ordre des jugements, fiche MC."""
+"""Étapes du pipe : textes, ordre des invocations, fiche MC."""
 
 from __future__ import annotations
 
@@ -63,7 +63,7 @@ def _court(nom: str) -> str:
 def lister_jugements(
     conn: sqlite3.Connection, etape: str, chauds: set[str] | None = None
 ) -> list[dict[str, Any]]:
-    """Jugements d’une étape : d’abord l’ordre, puis le reste à part.
+    """Invocations d’une étape : d’abord l’ordre, puis le reste à part.
 
     Args:
         conn: Canon (``llm_points``).
@@ -112,7 +112,7 @@ def lister_jugements(
 def project_etape(
     conn: sqlite3.Connection, ident: str
 ) -> dict[str, Any] | None:
-    """Fiche d’une étape du pipe : rôle, dépendance, jugements cliquables.
+    """Fiche d’une étape du pipe : rôle, dépendance, invocations cliquables.
 
     Args:
         conn: Canon (lecture des points chauds).
@@ -187,11 +187,11 @@ def project_etape(
         },
         {'titre': 'Comment c’est fait vraiment', 'texte': spec['comment']},
         {
-            'titre': 'Jugements, dans l’ordre',
+            'titre': 'Invocations, dans l’ordre',
             'texte': (
-                'Chaque ligne ouvre la page du jugement.'
+                'Chaque ligne ouvre la page de l’invocation.'
                 if liens_ord
-                else 'Pas de jugement LLM ici — surtout des règles et Stripe.'
+                else 'Pas d’invocation LLM ici — surtout des règles et Stripe.'
             ),
             'liens': liens_ord,
         },
@@ -199,7 +199,7 @@ def project_etape(
     if liens_reste:
         cadres.append(
             {
-                'titre': 'Autres jugements (pas d’ordre fixe)',
+                'titre': 'Autres invocations (pas d’ordre fixe)',
                 'liens': liens_reste,
             }
         )

@@ -294,7 +294,7 @@ def project_jauges(
             'eur_estimes': round(eur, 4),
             'plafond_eur': cap,
             'ratio': (eur / cap) if cap > 0 else None,
-            'libelle': 'Jugements (plafond € du jour)',
+            'libelle': 'Invocations LLM (plafond € du jour)',
         },
         'email': {
             **email,

@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 EXAMPLE = ROOT / 'schemas/serge.instance.example.toml'
 EXCLUSIONS = ROOT / 'schemas/serge.kit-exclusions.yaml'
 MANIFEST = ROOT / 'schemas/serge.secrets.manifest.yaml'
-INVENTORY = ROOT / 'docs/instance-inventory.yaml'
+INVENTORY = ROOT / 'docs/installation/instance-inventory.yaml'
 TEMPLATES = ROOT / 'systemd/templates'
 
 LIVE_SENTINELS = (

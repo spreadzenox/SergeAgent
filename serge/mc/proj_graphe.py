@@ -43,7 +43,7 @@ def _nom_venture(conn: sqlite3.Connection, ident: str) -> str:
 
 
 def _pensee(conn: sqlite3.Connection) -> dict[str, Any] | None:
-    """Dernier jugement + tâche RUNNING : de quoi cadrer le texte."""
+    """Dernière invocation + tâche RUNNING : de quoi cadrer le texte."""
     row = conn.execute(
         'SELECT payload_json, venture_id, actor FROM events'
         " WHERE type='llm.io' ORDER BY id DESC LIMIT 1"

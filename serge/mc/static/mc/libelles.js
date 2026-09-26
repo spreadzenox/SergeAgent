@@ -134,7 +134,7 @@ export const TYPES_OBJET = {
   client: 'Client',
   facture: 'Facture',
   abonnement: 'Abonnement',
-  llm: 'Jugement',
+  llm: 'Invocation',
   compte: 'Compte web',
   plateforme: 'Endroit du web',
   ticket: 'Question pour toi',

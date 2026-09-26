@@ -108,7 +108,7 @@ class QuotaCoupleTests(unittest.TestCase):
             quota_couple(_spec(memory=False), 'identity_basique', POLICY)
         )
 
-    def test_demande_capacite_un_par_jugement(self) -> None:
+    def test_demande_capacite_un_par_invocation(self) -> None:
         self.assertEqual(
             quota_couple(_spec(memory=False), 'demande_capacite', POLICY), 1
         )

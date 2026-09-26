@@ -41,7 +41,7 @@ async function proposerModif() {
     message: 'Ça crée une question pour toi : rien n’est appliqué tout seul.',
     fields: [
       {nom: 'titre', label: 'Titre : ', defaut: 'Ajuster un plafond', requis: true},
-      {nom: 'diff', label: 'Quoi changer : ', defaut: 'jugements / jour : 5 → 10', requis: true},
+      {nom: 'diff', label: 'Quoi changer : ', defaut: 'invocations / jour : 5 → 10', requis: true},
       {nom: 'justif', label: 'Pourquoi : ', defaut: 'On touche plus de monde'},
     ],
     confirm: 'Créer la question',

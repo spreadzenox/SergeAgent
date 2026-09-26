@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Jugements LLM en canon : table llm_points + jonction outils."""
+"""Invocations LLM en canon : table llm_points + jonction outils."""
 
 from __future__ import annotations
 
@@ -236,7 +236,7 @@ def ensure_llm_points(conn: sqlite3.Connection) -> None:
 def outils_du_point(
     conn: sqlite3.Connection, point_id: str
 ) -> list[dict[str, Any]]:
-    """Outils liés au jugement + ceux « partout ».
+    """Outils liés à l’invocation + ceux « partout ».
 
     Args:
         conn: Canon.

@@ -26,7 +26,7 @@ TOURS_MAX_ABSOLU = 12
 
 @dataclass(frozen=True)
 class ContexteOutil:
-    """Contexte passé à chaque handler (canon + contrat du jugement)."""
+    """Contexte passé à chaque handler (canon + contrat de l’invocation)."""
 
     conn: sqlite3.Connection
     policy: Mapping[str, Any]
@@ -217,7 +217,7 @@ def tours_max(policy: Mapping[str, Any]) -> int:
 def outils_pressables(
     spec: Mapping[str, Any], conn: sqlite3.Connection | None = None
 ) -> tuple[str, ...]:
-    """Outils offerts à ce jugement : handlers et jonction DB.
+    """Outils offerts à cette invocation : handlers et jonction DB.
 
     Args:
         spec: Déclaration du point (registre).
@@ -278,7 +278,7 @@ def restants_par_outil(
     """Appels encore possibles par outil (min couple / tours globaux).
 
     Args:
-        pressables: Outils offerts à ce jugement.
+        pressables: Outils offerts à cette invocation.
         spent: Appels déjà réussis dans cette boucle.
         spec: Déclaration du point.
         policy: Policy (plafonds).
@@ -323,7 +323,7 @@ def payload_quotas(
 def quota_couple(
     spec: Mapping[str, Any], tool_id: str, policy: Mapping[str, Any]
 ) -> int | None:
-    """Plafond optionnel pour ce couple (outil × jugement). None = illimité.
+    """Plafond optionnel pour ce couple (outil × invocation). None = illimité.
 
     Args:
         spec: Déclaration du point.
@@ -366,7 +366,7 @@ def peut_appeler(
 
     Args:
         tool_id: Outil demandé.
-        pressables: Outils offerts à ce jugement.
+        pressables: Outils offerts à cette invocation.
         spent: Appels déjà réussis.
         spec: Déclaration du point.
         policy: Policy.

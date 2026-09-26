@@ -22,7 +22,7 @@ def _add_column(
 
 
 def apply_v020(connection: sqlite3.Connection) -> None:
-    """Ajoute les trois champs éditables du jugement.
+    """Ajoute les trois champs éditables de l’invocation.
 
     Les valeurs par défaut sont des valeurs de contrat valides. Le seed des
     lignes existantes est fait par ``ensure_llm_points`` après migration, afin

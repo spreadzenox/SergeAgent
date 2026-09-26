@@ -168,7 +168,7 @@ def executer_boucle(
         spec: Déclaration du point.
         policy: Policy (plafond tours).
         conn: Canon (handlers lecture).
-        point_name: Nom du jugement (traçabilité).
+        point_name: Nom de l’invocation (traçabilité).
         referer: HTTP-Referer.
         temperature: Température.
 

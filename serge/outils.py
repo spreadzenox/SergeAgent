@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Outils pressables par un jugement (table tools + semence git)."""
+"""Outils pressables par une invocation (table tools + semence git)."""
 
 from __future__ import annotations
 
@@ -33,9 +33,9 @@ SEED: tuple[tuple[str, str, str, str, str, str, int], ...] = (
         'serge/memory/search.py',
         'Chercher dans la mémoire',
         'Un seul outil pour fouiller la mémoire. Si le dossier prévu'
-        ' ne suffit pas, le jugement pose une question (« objections'
+        ' ne suffit pas, l’invocation pose une question (« objections'
         ' prix artisans ») et ramène quelques extraits — dans un budget.'
-        ' Lecture seule : ça informe, ça n’écrit pas. Certains jugements'
+        ' Lecture seule : ça informe, ça n’écrit pas. Certaines invocations'
         ' n’y ont pas droit (un appel, un résumé chiffré) : ils restent'
         ' sur le dossier figé.',
         'branche',
@@ -60,7 +60,7 @@ SEED: tuple[tuple[str, str, str, str, str, str, int], ...] = (
         'Ouvrir le web (navigateur)',
         'Un vrai navigateur (Brave / Chromium) pour aller voir une'
         ' page, un fil Reddit, un profil. Pas encore branché comme'
-        ' outil du jugement. Aujourd’hui Serge ramasse surtout des'
+        ' outil de l’invocation. Aujourd’hui Serge ramasse surtout des'
         ' flux RSS. Un budget navigateur existe déjà dans les règles.',
         'prevu',
         1,
@@ -104,8 +104,8 @@ SEED: tuple[tuple[str, str, str, str, str, str, int], ...] = (
         'Demander une nouvelle capacité',
         'Quand Serge ne peut pas (pas de canal, pas d’outil), il'
         ' pose un ticket REQUESTED (« j’ai besoin de X ») plutôt'
-        ' que d’inventer. Offert à tous les jugements. Un appel'
-        ' par jugement ; le même besoin déjà ouvert n’est pas'
+        ' que d’inventer. Offert à toutes les invocations. Un appel'
+        ' par invocation ; le même besoin déjà ouvert n’est pas'
         ' recréé.',
         'branche',
         1,
@@ -125,7 +125,7 @@ SEED: tuple[tuple[str, str, str, str, str, str, int], ...] = (
         'deterministe',
         '',
         'Catalogue',
-        'Prix et offres ownés. Le jugement n’invente pas un montant.'
+        'Prix et offres ownés. L’invocation n’invente pas un montant.'
         ' Pas encore un module runtime.',
         'prevu',
         0,
@@ -244,7 +244,7 @@ def outil_par_id(
 
 
 def outils_partout(conn: sqlite3.Connection) -> list[dict[str, Any]]:
-    """Outils affichés sur toutes les fiches jugement."""
+    """Outils affichés sur toutes les fiches invocation."""
     ensure_tools(conn)
     rows = conn.execute(
         'SELECT id, kind, code_path, code_sha, titre, doc_md, etat,'

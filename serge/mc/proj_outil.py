@@ -19,7 +19,9 @@ def project_outil(
         return None
     todo = ''
     if found['etat'] == 'prevu':
-        todo = 'Pas encore un bouton que le jugement peut presser tout seul.'
+        todo = (
+            'Pas encore un bouton que l’invocation peut presser toute seule.'
+        )
     labels = {
         'deterministe': 'déterministe',
         'agent': 'agent',

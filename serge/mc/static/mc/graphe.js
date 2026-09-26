@@ -121,20 +121,20 @@ function remplirPanneau(box, etape, verrouille, onUnlock) {
   const ordres = jugs.filter((j) => j.ordre);
   const restes = jugs.filter((j) => !j.ordre);
   if (ordres.length) {
-    box.append(el('h3', '', 'Jugements, dans l’ordre'));
+    box.append(el('h3', '', 'Invocations, dans l’ordre'));
     const ol = el('ol', 'liste-jugements');
     ordres.forEach((j) => ol.append(ligneJugement(j)));
     box.append(ol);
   }
   if (restes.length) {
-    box.append(el('h3', '', 'Autres jugements (pas d’ordre fixe)'));
+    box.append(el('h3', '', 'Autres invocations (pas d’ordre fixe)'));
     const ul = el('ul', 'liste-jugements');
     restes.forEach((j) => ul.append(ligneJugement(j)));
     box.append(ul);
   }
   if (!jugs.length) {
     box.append(
-      el('p', 'texte-panneau', 'Aucun jugement ici — surtout des règles et de l’encaissement.'),
+      el('p', 'texte-panneau', 'Aucune invocation ici — surtout des règles et de l’encaissement.'),
     );
   }
   const kinds = etape.kinds || [];
@@ -264,7 +264,7 @@ export function monterGraphe(main, getPayload, stoppers) {
       if (nJ) {
         const badge = el('span', 'compte-llm', String(nJ));
         btn.append(badge);
-        const mot = nJ === 1 ? 'jugement' : 'jugements';
+        const mot = nJ === 1 ? 'invocation' : 'invocations';
         btn.setAttribute('aria-label', `${n.titre || n.id} — ${nJ} ${mot}`);
       }
       if ((n.jugements || []).some((j) => j.chaud)) {
