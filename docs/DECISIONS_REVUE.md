@@ -460,3 +460,18 @@ Les autres sont supprimés dès qu'un scénario couvre le même comportement.
    arrive dans cet état : c'est à Julien de créer la capacité.
 5. Construction + mise en ligne après accord.
 6. Lancement du test automatique + ticket d'information avec le lien.
+
+### Q36 — Étape 3 : trouver les prospects (validé)
+- Invocation « Trouver des prospects » (LLM + recherche web) : cherche ET
+  qualifie en une seule invocation. L'invocation « qualifier un prospect »
+  (qualify_prospect) est supprimée.
+- À travailler : trouver des prospects PERTINENTS et des adresses qui ne
+  rebondissent pas (pas d'adresses de contact génériques pourries).
+  Définir précisément sa sortie (champs, source de chaque adresse…).
+- Cette étape n'existe que pour les canaux qui ont besoin d'une liste de
+  personnes (email, appel, LinkedIn peut-être). Une pub n'a pas besoin de
+  prospects mais d'un PROFIL de cible.
+- Emails et appels à froid : seulement vers des professionnels (règle
+  légale française ; les particuliers exigent un accord préalable).
+- Programmation des envois et relances : à discuter dans une question
+  dédiée (Q37).
