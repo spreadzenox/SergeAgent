@@ -568,3 +568,21 @@ ticket d'information seulement.
   arrêter : ticket Discord validé par Julien.
 - Remplace plan_scale, options_pivot, judge_allocator.
 - Retours clients / demandes des prospects → nouvelle version : voir Q43.
+
+### Q43 — Retours clients → nouvelle version (validé)
+1. « Traiter une réponse » rend aussi, s'il y en a une, une demande sur le
+   produit : bug / insatisfaction / demande. Chaque demande → une ligne
+   dans une nouvelle table product_requests (business, personne, message
+   d'origine, type, texte, état : nouvelle / retenue / livrée dans la
+   version N / refusée + raison).
+2. Urgent (bug touchant un client qui a payé) : correction lancée tout de
+   suite, priorité haute. Le reste : invocation hebdomadaire « Préparer la
+   prochaine version » (regroupe les doublons, choisit, explique, refuse
+   avec raison).
+3. Construction avec le couple builder / reviewer habituel.
+4. Corrections et petites améliorations : publication automatique + ticket
+   d'information. Nouvelle fonctionnalité importante, changement de prix
+   ou nouvelle capacité nécessaire : ticket Discord validé par Julien.
+5. Après publication, message aux personnes dont la demande est livrée
+   (via le fil du prospect, mêmes règles que les relances).
+Le point hebdomadaire (Q42) lit aussi ces demandes.
