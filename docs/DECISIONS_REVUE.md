@@ -427,3 +427,19 @@ Les autres sont supprimés dès qu'un scénario couvre le même comportement.
 - Les modèles sont déjà très frileux : au contraire, leurs prompts doivent
   les encourager à ne pas s'arrêter sur des considérations morales qui ne
   sont pas contraires à la loi.
+
+### Q34 — Étape 2 : plan complet, challenge, validation Discord (validé)
+- Validation par Julien sur Discord, avec discussion possible (option B :
+  rien ne part vers des prospects sans son accord ; défaut 48 h proposé).
+- L'invocation « Concevoir le POC » rédige : hypothèse, cible, canaux,
+  nombre de prospects, durée, prix indicatif, description du livrable
+  d'essai ET un plan de A à Z : de quoi le produit a besoin, ce que le
+  builder doit faire, pourquoi, comment ça va marcher.
+- Une invocation distincte « Challenger le POC » critique ce plan :
+  faisabilité technique, limites du produit, réalisme commercial.
+  Exemple de Julien : un POC qui commence par « se connecter à l'ERP / au
+  CRM d'une grande entreprise contactée par e-mail » doit être signalé
+  comme irréaliste.
+- Construction par la même mécanique que l'étape 5 (construire, relire,
+  corriger, 3 essais max). Mise en ligne, puis création de la campagne.
+- Ordre ticket / construction : voir Q35.
