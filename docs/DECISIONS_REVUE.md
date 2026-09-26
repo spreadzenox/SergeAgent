@@ -519,3 +519,12 @@ Le séquenceur fixe (supprimé par Clem, jamais branché) n'est pas recréé.
   2. scheduler.next_ready ne prend que les tâches liées à une venture
      « schedulable » → une tâche sans venture (cycle d'écoute lancé depuis
      MC) ne s'exécute jamais (vérifié par script).
+
+### Q39 — Mise en ligne des livrables (validé : option C)
+- Par défaut sur le serveur de Serge (VPS), via Caddy déjà en place, avec
+  le nom de domaine que Serge possède déjà sur le VPS.
+- Plateforme externe seulement quand le type de business l'exige (Chrome
+  Web Store pour une extension, Telegram pour un bot…).
+- POC : sous-domaine du domaine de Serge. Business principal (étape 5) :
+  nom de domaine dédié acheté avec la carte.
+- Le STOCKAGE (logiciels, documents, fichiers) est une question à part (Q40).
