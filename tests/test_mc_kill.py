@@ -206,7 +206,7 @@ class KillBackendTests(unittest.TestCase):
 
 
 class KillEndpointTests(McServerCase):
-    POINT = 'qualify_prospect'
+    POINT = 'classify_reply'
 
     def test_kill_ok(self) -> None:
         cookie = self._auth_cookie()

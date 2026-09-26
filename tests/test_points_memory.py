@@ -14,12 +14,12 @@ sys.path.insert(0, str(ROOT))
 
 from serge.db.boot import init_schema  # noqa: E402
 from serge.llm.client import ChatResult  # noqa: E402
-from serge.points.memory_pts import consolidate, edit_serge_md  # noqa: E402
+from serge.points.memory_pts import consolidate  # noqa: E402
 
 POLICY = {
     'budget': {'llm_daily_eur': 5.0, 'llm_eur_per_1k_tokens': 0.004},
     'quotas': {'llm_recalls_json': 1},
-    'memory': {'consolidate_max_items': 10, 'serge_md_max_lines': 100},
+    'memory': {'consolidate_max_items': 10},
 }
 
 
@@ -85,32 +85,6 @@ class MemoryPointsTests(unittest.TestCase):
         )
         result = consolidate(self.conn, POLICY, 'eps', caller=caller)
         self.assertEqual(result['lecons'], [])
-        self.assertTrue(result['fallback'])
-
-    def test_serge_md_ok(self) -> None:
-        caller = _caller_for(
-            json.dumps(
-                {
-                    'serge_md': '# Serge\nVenture : v1\n',
-                    'changements': ['venture active'],
-                }
-            )
-        )
-        result = edit_serge_md(
-            self.conn, POLICY, '# Serge\n', 'nouvelle venture', caller=caller
-        )
-        self.assertIn('v1', result['serge_md'])
-        self.assertEqual(result['fallback'], '')
-
-    def test_serge_md_trop_long_repli(self) -> None:
-        long_md = '\n'.join(f'ligne {index}' for index in range(200))
-        caller = _caller_for(
-            json.dumps({'serge_md': long_md, 'changements': []})
-        )
-        result = edit_serge_md(
-            self.conn, POLICY, '# Serge\n', 'x', caller=caller
-        )
-        self.assertEqual(result['serge_md'], '# Serge\n')
         self.assertTrue(result['fallback'])
 
 

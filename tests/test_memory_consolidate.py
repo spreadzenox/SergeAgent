@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Consolidateur : échéance, batch → MEMORY + SERGE.md + FYI."""
+"""Consolidateur : échéance, batch → ticket MEMORY."""
 
 from __future__ import annotations
 
@@ -28,7 +28,6 @@ POLICY = {
     'memory': {
         'consolidation_days': 3,
         'consolidate_max_items': 10,
-        'serge_md_max_lines': 100,
     },
 }
 NOW = '2026-09-09T19:00:00+00:00'
@@ -46,7 +45,6 @@ D1 = json.dumps(
         'pitfalls': [],
     }
 )
-D2 = json.dumps({'serge_md': '# Serge\nVenture : v1\n', 'changements': ['v1']})
 
 
 def _caller_for(*texts: str):
@@ -89,12 +87,11 @@ class ConsolidateTests(unittest.TestCase):
         self.assertIn('transition.x', matter['episodes'])
 
     def test_batch_complet(self) -> None:
-        caller = _caller_for(D1, D2)
+        caller = _caller_for(D1)
         result = run_consolidation(self.conn, POLICY, caller=caller, now=NOW)
         self.assertTrue(result['due'])
         self.assertIsNotNone(result['ticket_id'])
         self.assertEqual(result['counts']['lecons'], 1)
-        self.assertEqual(result['serge_md_version'], 1)
         state = self.conn.execute(
             'SELECT state FROM tickets WHERE id=?', (result['ticket_id'],)
         ).fetchone()[0]
@@ -120,7 +117,7 @@ class ConsolidateTests(unittest.TestCase):
 
     def test_pas_du_pas_de_batch(self) -> None:
         put_summary(self.conn, 'consolidation', NOW)
-        caller = _caller_for(D1, D2)
+        caller = _caller_for(D1)
         result = run_consolidation(self.conn, POLICY, caller=caller, now=NOW)
         self.assertFalse(result['due'])
         self.assertEqual(caller.n, 0)

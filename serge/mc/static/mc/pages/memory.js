@@ -1,4 +1,4 @@
-// Page P4 Mémoire : 5 couches C1-C5, recherche FTS, consolidation, requested.
+// Page P4 Mémoire : épisodes, procédures, pièges, leçons, recherche, consolidation, demandes.
 import {fillList, li, rel} from '../components.js';
 import {allerObjet} from '../libelles.js';
 
@@ -71,17 +71,6 @@ const RENDUS_COUCHES = {
       return node;
     });
     vue.append(ul);
-  },
-  c5: (vue, c) => {
-    vue.append(
-      p(`SERGE.md version ${c.version || 1} (${rel(c.updated_at)}).`),
-    );
-    vue.append(bloc(c.content || 'SERGE.md vide.'));
-    if (c.previous) {
-      const h3 = document.createElement('h3');
-      h3.textContent = 'Version précédente';
-      vue.append(h3, bloc(c.previous));
-    }
   },
 };
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Points P1/P7 : qualif prospects + score hybride."""
+"""Point P7 : score de piste déterministe + départage en zone grise."""
 
 from __future__ import annotations
 
@@ -14,10 +14,8 @@ sys.path.insert(0, str(ROOT))
 
 from serge.db.boot import init_schema  # noqa: E402
 from serge.llm.client import ChatResult  # noqa: E402
-from serge.points.qualify import (  # noqa: E402
+from serge.points.score_lead import (  # noqa: E402
     det_score,
-    icp_rules,
-    qualify_prospect,
     score_lead,
 )
 
@@ -25,7 +23,6 @@ POLICY = {
     'budget': {'llm_daily_eur': 5.0, 'llm_eur_per_1k_tokens': 0.004},
     'quotas': {'llm_recalls_json': 1},
     'prospection': {
-        'qualify_confidence_min': 0.6,
         'lead_score_gray': [40, 60],
         'score_w_intent': 25,
         'score_w_reply': 10,
@@ -46,7 +43,7 @@ def _caller_for(*texts: str):
     return _call
 
 
-class QualifyTests(unittest.TestCase):
+class ScoreLeadTests(unittest.TestCase):
     def setUp(self) -> None:
         self.conn = sqlite3.connect(':memory:')
         init_schema(self.conn)
@@ -54,55 +51,6 @@ class QualifyTests(unittest.TestCase):
 
     def tearDown(self) -> None:
         self.conn.close()
-
-    def test_regles_icp(self) -> None:
-        self.assertEqual(
-            icp_rules({'email': 'a@x.io'})['decision'], 'QUALIFIED'
-        )
-        self.assertEqual(icp_rules({'email': 'nope'})['decision'], 'REJECTED')
-        self.assertEqual(
-            icp_rules({'phone': '+33612345678'})['decision'], 'QUALIFIED'
-        )
-
-    def test_qualify_ok(self) -> None:
-        caller = _caller_for(
-            json.dumps(
-                {
-                    'decision': 'QUALIFIED',
-                    'confiance': 0.85,
-                    'motif': 'ICP match',
-                    'requested': '',
-                }
-            )
-        )
-        result = qualify_prospect(
-            self.conn,
-            POLICY,
-            'artisans FR',
-            {'email': 'a@x.io'},
-            caller=caller,
-        )
-        self.assertEqual(
-            (result['decision'], result['needs_review']),
-            ('QUALIFIED', False),
-        )
-
-    def test_qualify_sous_seuil_rejet(self) -> None:
-        caller = _caller_for(
-            json.dumps(
-                {
-                    'decision': 'QUALIFIED',
-                    'confiance': 0.3,
-                    'motif': 'bof',
-                    'requested': 'secteur',
-                }
-            )
-        )
-        result = qualify_prospect(
-            self.conn, POLICY, 'ICP', {'email': 'a@x.io'}, caller=caller
-        )
-        self.assertEqual(result['decision'], 'REJECTED')
-        self.assertTrue(result['needs_review'])
 
     def test_det_score_zones(self) -> None:
         self.assertEqual(det_score(self.conn, POLICY, 'p0')['zone'], 'low')

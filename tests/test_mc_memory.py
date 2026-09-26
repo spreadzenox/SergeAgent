@@ -64,10 +64,6 @@ class McMemoryTests(McBrowserCase):
                 conn, 'Valider le SIRET systématiquement', confidence=0.85
             )
 
-            # C5
-            put_summary(conn, 'serge_md', 'Version 1 de base.')
-            put_summary(conn, 'serge_md', 'Version 2 mise à jour.')
-
             # Consolidation
             put_summary(conn, 'consolidation', iso)
 
@@ -123,15 +119,6 @@ class McMemoryTests(McBrowserCase):
         page.locator('button[data-couche="c4"]').click()
         expect(page.locator('[data-couche-vue="contenu"]')).to_contain_text(
             'Valider le SIRET'
-        )
-
-        # C5
-        page.locator('button[data-couche="c5"]').click()
-        expect(page.locator('[data-couche-vue="contenu"]')).to_contain_text(
-            'Version 2 mise à jour.'
-        )
-        expect(page.locator('[data-couche-vue="contenu"]')).to_contain_text(
-            'Version 1 de base.'
         )
 
         # Consolidation & requested

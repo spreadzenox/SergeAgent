@@ -135,7 +135,7 @@ def keyword_fallback(message: str) -> dict[str, Any]:
         message: Texte brut.
 
     Returns:
-        Dict classe/confiance/requested (confiance 0.4 → review).
+        Dict classe/confiance (confiance 0.4 → review).
     """
     folded = _fold(message)
     if any(pattern in folded for pattern in OPT_OUT_PATTERNS):
@@ -156,14 +156,13 @@ def keyword_fallback(message: str) -> dict[str, Any]:
         classe = 'POSITIVE'
     else:
         classe = 'OTHER'
-    return {'classe': classe, 'confiance': 0.4, 'requested': ''}
+    return {'classe': classe, 'confiance': 0.4}
 
 
 CLASSIFY_SYSTEM = """Tu classes des réponses de prospects (français/anglais).
-Réponds UNIQUEMENT un objet JSON : {"classe": "...", "confiance": 0.0-1.0, "requested": "..."}.
+Réponds UNIQUEMENT un objet JSON : {"classe": "...", "confiance": 0.0-1.0}.
 Classes : MEETING_REQUEST (veut un RDV/appel/démo), OBJECTION (frein : prix, timing, déjà équipé), QUESTION (demande d'info), POSITIVE (intérêt sans demande précise), NEGATIVE (refus poli), UNSUBSCRIBE (ne plus contacter), SPAM (menace/signalement), AUTO_REPLY (absence/bot), OTHER (inclassable).
-requested = ce qu'il te manquerait pour mieux classer ("" si rien).
-Exemples : {"classe": "MEETING_REQUEST", "confiance": 0.9, "requested": ""} / {"classe": "UNSUBSCRIBE", "confiance": 0.95, "requested": ""}."""
+Exemples : {"classe": "MEETING_REQUEST", "confiance": 0.9} / {"classe": "UNSUBSCRIBE", "confiance": 0.95}."""
 
 
 def _valid_classify(data: dict[str, Any]) -> bool:
@@ -194,7 +193,7 @@ def classify_reply(
         caller: Appel LLM (défaut : client réel).
 
     Returns:
-        Dict classe/confiance/requested/fallback/needs_review/opt_out.
+        Dict classe/confiance/fallback/needs_review/opt_out.
     """
     try:
         threshold = float(
@@ -237,7 +236,6 @@ def classify_reply(
     return {
         'classe': classe,
         'confiance': confiance,
-        'requested': str(data.get('requested') or ''),
         'fallback': '',
         'needs_review': confiance < threshold,
         'opt_out': classe in {'UNSUBSCRIBE', 'SPAM'},

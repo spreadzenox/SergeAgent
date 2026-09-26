@@ -66,6 +66,27 @@ class CatalogueTests(unittest.TestCase):
         self.assertEqual(tech['type'], 'tech')
         self.assertEqual(tech['champs'][0]['v'], 'pre_prospection')
 
+    def test_invocation_retiree_du_code_disparait_de_la_base(self) -> None:
+        from serge.llm_registre import ensure_llm_points
+
+        self.conn.execute(
+            "INSERT INTO llm_points(id, etape_id, titre) VALUES('ancien','','X')"
+        )
+        self.conn.execute(
+            'INSERT INTO llm_point_tools(point_id, tool_id, usage)'
+            " VALUES('ancien','memory_search','autorise')"
+        )
+        ensure_llm_points(self.conn)
+        restes = (
+            self.conn.execute(
+                "SELECT COUNT(*) FROM llm_points WHERE id='ancien'"
+            ).fetchone()[0]
+            + self.conn.execute(
+                "SELECT COUNT(*) FROM llm_point_tools WHERE point_id='ancien'"
+            ).fetchone()[0]
+        )
+        self.assertEqual(restes, 0)
+
 
 if __name__ == '__main__':
     unittest.main()

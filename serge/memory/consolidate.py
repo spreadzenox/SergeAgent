@@ -2,8 +2,8 @@
 """Consolidation (D §8) : batch 3j, semi-interactif, jamais d'écriture directe.
 
 Rassemble épisodes + OTHER + candidats → D1 → ticket MEMORY (garder/
-modifier/jeter par item) → D2 → SERGE.md versionné + FYI. Tamponne le run
-(summaries). Repli D1 vide : FYI "rien de nouveau".
+modifier/jeter par item). Tamponne le run (summaries). Repli D1 vide :
+FYI "rien de nouveau".
 """
 
 from __future__ import annotations
@@ -16,9 +16,8 @@ from pathlib import Path
 from typing import Any
 
 from serge.db.store import utcnow
-from serge.memory.summaries import get_summary, put_summary, serge_md_text
+from serge.memory.summaries import get_summary, put_summary
 from serge.points.memory_pts import consolidate as run_d1
-from serge.points.memory_pts import edit_serge_md as run_d2
 from serge.registry import load_ticket_types
 from serge.tickets import add_item, create_ticket, publish
 
@@ -134,7 +133,7 @@ def run_consolidation(
     caller: Any = None,
     now: str | None = None,
 ) -> dict[str, Any]:
-    """Exécute un batch (dû requis) : D1 → MEMORY, D2 → SERGE.md + FYI.
+    """Exécute un batch (dû requis) : D1 → ticket MEMORY.
 
     Args:
         conn: Connexion canon (commit par l'appelant).
@@ -145,7 +144,7 @@ def run_consolidation(
         now: ISO (défaut : maintenant).
 
     Returns:
-        Dict due/ticket_id/fyi_id/serge_md_version/counts/fallback.
+        Dict due/ticket_id/fyi_id/counts/fallback.
     """
     moment = now or utcnow()
     if not due_for_consolidation(conn, policy, moment):
@@ -179,7 +178,6 @@ def run_consolidation(
             'due': True,
             'ticket_id': None,
             'fyi_id': fyi_id,
-            'serge_md_version': None,
             'counts': {'lecons': 0, 'playbooks': 0, 'pitfalls': 0},
             'fallback': candidates['fallback'] or 'vide',
         }
@@ -224,29 +222,11 @@ def run_consolidation(
             {'enonce': item['enonce'], 'cout': item['cout']},
         )
     publish(conn, ticket_id)
-    changes = '\n'.join(
-        [f'- {item["enonce"][:100]}' for item in candidates['lecons'][:5]]
-    )
-    edited = run_d2(
-        conn, policy, serge_md_text(conn), changes, root=root, caller=caller
-    )
-    version = None
-    if not edited['fallback']:
-        version = put_summary(conn, 'serge_md', edited['serge_md'])['version']
-    fyi_id = create_ticket(
-        conn,
-        types,
-        'FYI',
-        'SERGE.md mis à jour',
-        {'contenu': '\n'.join(edited['changements'][:10]) or '(inchangé)'},
-    )
-    publish(conn, fyi_id)
     put_summary(conn, 'consolidation', moment)
     return {
         'due': True,
         'ticket_id': ticket_id,
-        'fyi_id': fyi_id,
-        'serge_md_version': version,
+        'fyi_id': None,
         'counts': {
             'lecons': len(candidates['lecons']),
             'playbooks': len(candidates['playbooks']),

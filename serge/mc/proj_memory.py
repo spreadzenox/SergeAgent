@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Projecteurs P4 Mémoire : 5 couches (C1-C5), consolidation, requested (purs)."""
+"""Projecteurs P4 Mémoire : épisodes, procédures, pièges, leçons, consolidation, demandes."""
 
 from __future__ import annotations
 
@@ -9,7 +9,6 @@ from typing import Any
 
 from serge.mc.proj_outils import charge_json
 from serge.memory.consolidate import due_for_consolidation, last_run
-from serge.memory.summaries import get_summary
 from serge.points.interact import strip_ids
 
 
@@ -36,7 +35,7 @@ def project_couches(
         now: Maintenant ISO (ignoré, uniformité).
 
     Returns:
-        Dict {c1, c2, c3, c4, c5} avec compteurs et listes d'items.
+        Dict {c1, c2, c3, c4} avec compteurs et listes d'items.
     """
     _ = (policy, now)
     # C1 : Épisodes & archives
@@ -127,16 +126,7 @@ def project_couches(
         ],
     }
 
-    # C5 : SERGE.md
-    serge_md = get_summary(conn, 'serge_md') or {}
-    c5 = {
-        'version': int(serge_md.get('version') or 1),
-        'content': strip_ids(str(serge_md.get('content') or '')),
-        'previous': strip_ids(str(serge_md.get('previous') or '')),
-        'updated_at': str(serge_md.get('updated_at') or ''),
-    }
-
-    return {'c1': c1, 'c2': c2, 'c3': c3, 'c4': c4, 'c5': c5}
+    return {'c1': c1, 'c2': c2, 'c3': c3, 'c4': c4}
 
 
 def project_consolidation(

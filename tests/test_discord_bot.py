@@ -31,7 +31,6 @@ POLICY = {
     'windows': {'quiet_hours': [[23, 0, 8, 0]]},
     'memory': {
         'consolidate_max_items': 10,
-        'serge_md_max_lines': 100,
     },
 }
 NOW = '2026-09-09T19:00:00+00:00'

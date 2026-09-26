@@ -16,7 +16,6 @@ ORDRE: dict[str, list[str]] = {
     'pre_prospection': ['cluster_demand'],
     'conception_poc': ['draft_hypothesis_smoke'],
     'prospection_light': [
-        'qualify_prospect',
         'fill_slots',
         'score_lead_departage',
     ],
@@ -42,10 +41,9 @@ ORDRE: dict[str, list[str]] = {
         'voice_script',
         'voice_dialog',
         'score_call',
-        'draft_price',
         'judge_allocator',
     ],
-    'collect_feedback': ['consolidate', 'edit_serge_md'],
+    'collect_feedback': ['consolidate'],
     'caisse': [],
 }
 

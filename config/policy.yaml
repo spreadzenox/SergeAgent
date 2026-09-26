@@ -85,7 +85,6 @@ builder:
   artifact_max_chars: 200000
 
 prospection:
-  qualify_confidence_min: 0.6
   lead_score_gray: [40, 60]          # zone grise P7 → départage LLM-1
   score_w_intent: 25                 # barème P7 (DET, 0-100 clampé)
   score_w_reply: 10
@@ -95,8 +94,6 @@ prospection:
 
 collect:
   refund_auto_max_eur: 5.0
-  draft_price_min_eur: 1.0
-  draft_price_max_eur: 100000.0
   dunning_days: [7, 14]
   quote_required_above_eur: 150
   recanary_months: 1
@@ -108,7 +105,6 @@ memory:
   episode_archive_days: 30
   other_promote_per_week: 10
   judge_oscillation_days: 3
-  serge_md_max_lines: 100
 
 tickets:
   digest_hour: 8                     # digest quotidien (Europe/Paris)

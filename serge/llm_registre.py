@@ -15,13 +15,12 @@ POINT_PATHS: dict[str, str] = {
     'plan_scale': 'serge/points/plans.py',
     'options_pivot': 'serge/points/plans.py',
     'resume_test': 'serge/points/plans.py',
-    'qualify_prospect': 'serge/points/qualify.py',
     'fill_slots': 'serge/points/write.py',
     'write_followup': 'serge/points/write.py',
     'voice_script': 'serge/points/voice_script.py',
     'voice_dialog': 'serge/points/dialog.py',
     'summarize_thread': 'serge/points/summaries.py',
-    'score_lead_departage': 'serge/points/qualify.py',
+    'score_lead_departage': 'serge/points/score_lead.py',
     'build_artifact': 'serge/points/build.py',
     'review_build': 'serge/points/review.py',
     'summarize_build_debt': 'serge/points/review.py',
@@ -30,10 +29,8 @@ POINT_PATHS: dict[str, str] = {
     'reply_intent': 'serge/points/reply.py',
     'review_other': 'serge/points/other.py',
     'score_call': 'serge/points/summaries.py',
-    'draft_price': 'serge/points/price.py',
     'judge_allocator': 'serge/points/allocator.py',
     'consolidate': 'serge/points/memory_pts.py',
-    'edit_serge_md': 'serge/points/memory_pts.py',
     'render_context_fr': 'serge/points/interact.py',
     'classify_owner_intent': 'serge/points/interact.py',
     'judge_consequence': 'serge/points/interact.py',
@@ -61,13 +58,12 @@ POINT_PROMPT_SEEDS: dict[str, tuple[str, str]] = {
     'plan_scale': ('serge.points.plans', 'SCALE_SYSTEM'),
     'options_pivot': ('serge.points.plans', 'PIVOT_SYSTEM'),
     'resume_test': ('serge.points.plans', 'RESUME_SYSTEM'),
-    'qualify_prospect': ('serge.points.qualify', 'QUALIFY_SYSTEM'),
     'fill_slots': ('serge.points.write', 'SLOTS_SYSTEM'),
     'write_followup': ('serge.points.write', 'FOLLOWUP_SYSTEM'),
     'voice_script': ('serge.points.voice_script', 'SCRIPT_SYSTEM'),
     'voice_dialog': ('serge.points.dialog', 'DIALOG_SYSTEM'),
     'summarize_thread': ('serge.points.summaries', 'THREAD_SYSTEM'),
-    'score_lead_departage': ('serge.points.qualify', 'DEPARTAGE_SYSTEM'),
+    'score_lead_departage': ('serge.points.score_lead', 'DEPARTAGE_SYSTEM'),
     'build_artifact': ('serge.points.build', 'BUILD_SYSTEM'),
     'review_build': ('serge.points.review', 'REVIEW_SYSTEM'),
     'summarize_build_debt': ('serge.points.review', 'DEBT_SYSTEM'),
@@ -76,10 +72,8 @@ POINT_PROMPT_SEEDS: dict[str, tuple[str, str]] = {
     'reply_intent': ('serge.points.reply', 'REPLY_SYSTEM'),
     'review_other': ('serge.points.other', 'OTHER_SYSTEM'),
     'score_call': ('serge.points.summaries', 'SCORE_SYSTEM'),
-    'draft_price': ('serge.points.price', 'PRICE_SYSTEM'),
     'judge_allocator': ('serge.points.allocator', 'JUDGE_SYSTEM'),
     'consolidate': ('serge.points.memory_pts', 'CONSOLIDATE_SYSTEM'),
-    'edit_serge_md': ('serge.points.memory_pts', 'SERGE_MD_SYSTEM'),
     'render_context_fr': ('serge.points.interact', 'RENDER_SYSTEM'),
     'classify_owner_intent': ('serge.points.interact', 'INTENT_SYSTEM'),
     'judge_consequence': ('serge.points.interact', 'CONSEQ_SYSTEM'),
@@ -108,7 +102,6 @@ POINT_TOOL_SEEDS: dict[str, tuple[str, ...]] = {
     'classify_reply': ('memory_search',),
     'reply_intent': ('memory_search',),
     'review_other': ('memory_search',),
-    'draft_price': ('identity_basique', 'memory_search'),
     'judge_allocator': ('memory_search',),
     'consolidate': ('memory_search',),
     'judge_consequence': ('memory_search',),
@@ -230,6 +223,16 @@ def ensure_llm_points(conn: sqlite3.Connection) -> None:
                     external_info,
                 ),
             )
+    # Une invocation retirée du code disparaît de la base (ses réglages et
+    # ses tools). L’historique llm_usage reste, c’est le journal.
+    trous = ','.join('?' * len(noms))
+    conn.execute(f'DELETE FROM llm_points WHERE id NOT IN ({trous})', noms)
+    conn.execute(
+        f'DELETE FROM llm_point_tools WHERE point_id NOT IN ({trous})', noms
+    )
+    conn.execute(
+        f'DELETE FROM llm_point_readers WHERE point_id NOT IN ({trous})', noms
+    )
     _sync_jonction(conn, points)
 
 

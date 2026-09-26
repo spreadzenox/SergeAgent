@@ -300,9 +300,8 @@ def main() -> None:
         now - timedelta(minutes=8),
     )
     for point, tin, tout, lat, verdict, moment in (
-        ('qualify_prospect', 1000, 400, 90, 'ok', now - timedelta(hours=4)),
+        ('classify_reply', 1000, 400, 90, 'ok', now - timedelta(hours=4)),
         ('classify_reply', 1800, 700, 140, 'ok', now - timedelta(minutes=8)),
-        ('draft_price', 900, 300, 80, 'ok', now - timedelta(hours=3)),
         ('cluster_demand', 2200, 600, 200, 'ok', now - timedelta(hours=9)),
     ):
         conn.execute(

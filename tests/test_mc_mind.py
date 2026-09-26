@@ -16,6 +16,7 @@ from serge.mc.projectors import (  # noqa: E402
     PROJECTORS,
     SLOW_SECTIONS,
 )
+from serge.registry import load_llm_points  # noqa: E402
 from tests.mc_server_case import McBrowserCase  # noqa: E402
 
 
@@ -42,14 +43,14 @@ class McMindTests(McBrowserCase):
             conn.execute(
                 'INSERT INTO llm_usage(point, tier, model, tokens_in,'
                 ' tokens_out, latency_ms, verdict, created_at)'
-                " VALUES('qualify_prospect','T1','nemo',1000,500,100,"
+                " VALUES('classify_reply','T1','nemo',1000,500,100,"
                 "'ok',?)",
                 (iso,),
             )
             conn.execute(
                 'INSERT INTO llm_usage(point, tier, model, tokens_in,'
                 ' tokens_out, latency_ms, verdict, created_at)'
-                " VALUES('qualify_prospect','T1','nemo',2000,1000,200,"
+                " VALUES('classify_reply','T1','nemo',2000,1000,200,"
                 "'recall',?)",
                 (iso,),
             )
@@ -87,16 +88,16 @@ class McMindTests(McBrowserCase):
         from playwright.sync_api import expect
 
         page = self._page_cerveau()
-        expect(page.locator('table.matrice tbody tr')).to_have_count(33)
+        expect(page.locator('table.matrice tbody tr')).to_have_count(len(load_llm_points()))
         matrice = page.locator('[data-section="matrice"]')
-        expect(matrice).to_contain_text('qualify_prospect')
+        expect(matrice).to_contain_text('classify_reply')
         expect(matrice).to_contain_text('Tué (temporaire)')
         expect(matrice).to_contain_text('En service')
         expect(page.locator('[data-section="pensees"]')).to_contain_text(
             'Aucune pensée pour le moment.'
         )
         decisions = page.locator('[data-section="decisions"]')
-        expect(decisions).to_contain_text('qualify_prospect — ok')
+        expect(decisions).to_contain_text('classify_reply — ok')
         expect(decisions).to_contain_text('recall')
         expect(page.locator('[data-section="signaux"]')).to_contain_text(
             'sms reply (positive)'
@@ -112,7 +113,7 @@ class McMindTests(McBrowserCase):
         self._watch_errors(page)
         page.goto(f'{self.base}/owner#/mind')
         page.locator('table.matrice tbody tr').first.wait_for(timeout=10000)
-        expect(page.locator('table.matrice tbody tr')).to_have_count(33)
+        expect(page.locator('table.matrice tbody tr')).to_have_count(len(load_llm_points()))
         expect(page.locator('[data-section="matrice"]')).to_contain_text(
             'En service'
         )
@@ -132,9 +133,9 @@ class McMindTests(McBrowserCase):
         from playwright.sync_api import expect
 
         page = self._page_cerveau()
-        page.get_by_role('button', name='qualify_prospect').click()
+        page.get_by_role('button', name='classify_reply').click()
         tiroir = page.locator('.drawer')
-        expect(tiroir).to_contain_text('Point qualify_prospect')
+        expect(tiroir).to_contain_text('Point classify_reply')
         expect(tiroir).to_contain_text('Garde-fou')
         expect(tiroir).to_contain_text('En service')
         tiroir.get_by_role('button', name='Tuer').click()
@@ -142,14 +143,14 @@ class McMindTests(McBrowserCase):
         modale.locator('input[name="raison"]').fill('dérive vue en matrice')
         modale.get_by_role('button', name='Tuer').click()
         expect(page.locator('.toast-succes')).to_contain_text(
-            'qualify_prospect tué'
+            'classify_reply tué'
         )
         expect(tiroir).to_contain_text('Tué (temporaire)')
         conn = sqlite3.connect(self.db_path)
         try:
             flag = conn.execute(
                 'SELECT value FROM runtime_flags'
-                " WHERE name='llm.qualify_prospect'"
+                " WHERE name='llm.classify_reply'"
             ).fetchone()
             ticket = conn.execute(
                 "SELECT type FROM tickets WHERE type='POLICY'"

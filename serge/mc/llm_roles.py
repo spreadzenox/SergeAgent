@@ -70,15 +70,6 @@ ROLES: dict[str, tuple[str, str, str, str, str]] = {
         'Toi : tu en choisis une (ou aucune).',
         'Trois fiches d’idée, chacune avec un écart visible.',
     ),
-    'qualify_prospect': (
-        'Regarde une personne et dit : « elle est dans la cible de'
-        ' cette idée de business, ou on perd notre temps ? » Un non'
-        ' ici évite des e-mails inutiles.',
-        'La fiche de la personne + les critères de l’idée en cours.',
-        'Oui / non, avec une raison simple.',
-        'La suite : on lui écrit, ou on passe à quelqu’un d’autre.',
-        'Décision + phrase de motif.',
-    ),
     'fill_slots': (
         'Remplit les cases vides d’une fiche (besoin, créneau, ville)'
         ' à partir de ce que la personne a déjà dit. Interdit d’inventer.',
@@ -170,14 +161,6 @@ ROLES: dict[str, tuple[str, str, str, str, str]] = {
         'La qualité voix et les leçons.',
         'Note + motifs.',
     ),
-    'draft_price': (
-        'Propose un prix, seulement entre le minimum et le maximum'
-        ' autorisés. Hors fourchette : ça ne part pas.',
-        'L’offre, les leçons sur les prix, les bornes.',
-        'Un montant + pourquoi ce montant.',
-        'Le devis (pas encore payé).',
-        'Euros + motif.',
-    ),
     'judge_allocator': (
         'Où mettre le prochain euro : plus d’e-mails, un appel, ou'
         ' on pause. Il justifie. Il ne dépense pas tout seul.',
@@ -217,14 +200,6 @@ ROLES: dict[str, tuple[str, str, str, str, str]] = {
         'Une phrase à garder, modifier ou jeter.',
         'La mémoire (table des leçons).',
         'Énoncé + d’où ça vient + confiance.',
-    ),
-    'edit_serge_md': (
-        'Propose une modification de tes envies écrites (SERGE.md).'
-        ' Jamais en silence : tu vois le avant / après.',
-        'Le texte actuel + ce que tu viens de demander.',
-        'Un diff.',
-        'Toi : tu acceptes ou non.',
-        'Patch texte.',
     ),
     'render_context_fr': (
         'Traduit un truc technique en français simple, pour toi ou'
@@ -302,11 +277,6 @@ MATERIEL: dict[str, tuple[str, str]] = {
     'template_resume': (
         'Moule du résumé d’essai',
         'Un canevas : chiffres d’abord, blabla ensuite. Pas l’inverse.',
-    ),
-    'serge_md': (
-        'Tes envies écrites',
-        'Le petit texte versionné où tu dis qui tu es et ce que'
-        ' Serge a le droit de poursuivre. C’est SERGE.md.',
     ),
     'seuils_A': (
         'Ce qui compte comme « ça a marché »',

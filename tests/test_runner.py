@@ -30,7 +30,6 @@ POLICY = {
     'memory': {
         'consolidation_days': 3,
         'consolidate_max_items': 10,
-        'serge_md_max_lines': 100,
     },
     'consent': {'opt_in_channels': ['voice', 'sms']},
     'calling_zones': {'default': 'FR', 'FR': {'contact_per_30d': 4}},

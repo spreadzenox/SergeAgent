@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """IO JSON des points LLM-1/LLM-B : extraction + recalls bornés (P3).
 
-Contrat P3 : output structuré (enum fermé + `requested`). Réponse malformée
+Contrat P3 : output structuré (enum fermé). Réponse malformée
 = recall avec consigne de réparation (N en policy, jamais de retry aveugle :
 on change le message). Fallback runtime (killed/budget/error) = pas de
 recall, le point bascule sur son repli dét.

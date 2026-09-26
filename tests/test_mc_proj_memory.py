@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Projecteurs P4 Mémoire : goldens C1-C5, consolidation, requested + search."""
+"""Projecteurs P4 Mémoire : goldens C1-C4, consolidation, demandes + recherche."""
 
 from __future__ import annotations
 
@@ -87,10 +87,6 @@ class ProjMemoryTests(unittest.TestCase):
             ),
         )
 
-        # C5
-        put_summary(conn, 'serge_md', '# Serge\nAgent commercial autonome.')
-        put_summary(conn, 'serge_md', '# Serge\nAgent commercial autonome v2.')
-
         # Consolidation summary & events
         put_summary(conn, 'consolidation', '2026-09-08T10:00:00+00:00')
         conn.execute(
@@ -137,11 +133,7 @@ class ProjMemoryTests(unittest.TestCase):
         self.assertEqual(c4['total'], 1)
         self.assertEqual(c4['items'][0]['confiance'], 0.85)
         self.assertEqual(c4['items'][0]['confirmations'], 5)
-
-        c5 = data['c5']
-        self.assertEqual(c5['version'], 2)
-        self.assertIn('v2', c5['content'])
-        self.assertIn('autonome.', c5['previous'])
+        self.assertNotIn('c5', data)
 
     def test_consolidation_golden(self) -> None:
         data = project_consolidation(self.conn, POLICY, NOW)

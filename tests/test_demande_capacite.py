@@ -32,7 +32,7 @@ class DemandeCapaciteTests(unittest.TestCase):
         out = poser_demande(
             self.conn,
             'écrire sur LinkedIn',
-            point='qualify_prospect',
+            point='classify_reply',
             contexte='pas de canal',
             types=self.types,
         )
@@ -48,7 +48,7 @@ class DemandeCapaciteTests(unittest.TestCase):
         self.assertEqual(row[2], 'OPEN')
         payload = json.loads(row[3])
         self.assertEqual(payload['demande'], 'écrire sur LinkedIn')
-        self.assertEqual(payload['point_llm'], 'qualify_prospect')
+        self.assertEqual(payload['point_llm'], 'classify_reply')
         self.assertEqual(payload['contexte'], 'pas de canal')
 
     def test_besoin_vide_refuse(self) -> None:

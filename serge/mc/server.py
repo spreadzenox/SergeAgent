@@ -358,7 +358,6 @@ class McHandler(
             '/owner/api/ticket/item': self._api_ticket_item,
             '/owner/api/ticket/discuter': self._api_ticket_discuter,
             '/owner/api/memory/lesson': self._api_memory_lesson,
-            '/owner/api/memory/rollback': self._api_memory_rollback,
             '/owner/api/policy/edit': self._api_policy_edit,
             '/owner/api/policy/testing': self._api_policy_testing,
             '/owner/api/policy/propose': self._api_policy_propose,

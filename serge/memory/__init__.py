@@ -25,7 +25,6 @@ from serge.memory.summaries import (
     get_summary,
     put_summary,
     rollback_summary,
-    serge_md_text,
 )
 
 __all__ = [
@@ -44,7 +43,6 @@ __all__ = [
     'redact_text',
     'rollback_summary',
     'searches_spent',
-    'serge_md_text',
     'set_lesson_status',
     'top_lessons',
 ]

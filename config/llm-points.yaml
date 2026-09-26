@@ -52,15 +52,6 @@ points:
     enabled: true
 
   # ---- Prospection ----
-  qualify_prospect:
-    verdict: LLM-1
-    tier: T1
-    output_mode: structured
-    external_info: false
-    context: {}
-    garde_fou: binaire strict + confiance ; < 0,6 -> REJECT conservateur + log + candidat-leçon
-    repli: règles ICP de base
-    enabled: true
   fill_slots:
     verdict: LLM-B
     tier: T1
@@ -159,7 +150,7 @@ points:
     external_info: false
     context:
       tool_quotas: {memory_search: 1}
-    garde_fou: enum strict P3 + requested ; confiance < 0,6 -> file review groupée ; UNSUBSCRIBE/SPAM = double-check dét
+    garde_fou: enum strict P3 ; confiance < 0,6 -> file review groupée ; UNSUBSCRIBE/SPAM = double-check dét
     repli: règles mots-clés + confiance basse forcée -> review
     enabled: true
   extract_meeting:
@@ -202,15 +193,6 @@ points:
     enabled: true
 
   # ---- Collect ----
-  draft_price:
-    verdict: LLM-L
-    tier: T2
-    output_mode: structured
-    external_info: true
-    context: {}
-    garde_fou: ticket VETO_AMONT bloquant ; bornes vérifiées dét avant ticket ; conditions de révision incluses
-    repli: ticket QNA avec données brutes
-    enabled: true
 
   # ---- Alloueur ----
   judge_allocator:
@@ -235,15 +217,6 @@ points:
     note: Batch 3 jours. Le plus gros contexte batch.
     garde_fou: K max, budget mesuré, ticket MEMORY ; jamais d'écriture directe
     repli: pas de nouvelles leçons (+ FYI)
-    enabled: true
-  edit_serge_md:
-    verdict: LLM-B
-    tier: T1
-    output_mode: text
-    external_info: false
-    context: {}
-    garde_fou: diff visible, rollback 1 clic, constitution injectée
-    repli: version précédente
     enabled: true
 
   # ---- Interactivité ----

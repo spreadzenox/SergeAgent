@@ -6,4 +6,4 @@ Tu ne fais aucune recherche web et tu n'inventes aucune reference.
 Quand une reference est suffisamment etablie, appelle contact_upsert avec
 venture_id, display et une reference JSON par canal. L'outil dedoublonne et
 enrichit de maniere deterministe. Reponds uniquement en JSON avec
-{\"contacts\":[{\"display\":\"...\",\"channels\":[\"...\"]}],\"requested\":\"\"}."""
+{\"contacts\":[{\"display\":\"...\",\"channels\":[\"...\"]}]}."""

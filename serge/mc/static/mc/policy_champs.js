@@ -548,14 +548,6 @@ export const CHAMPS = {
     500000,
     1000,
   ],
-  'prospection.qualify_confidence_min': [
-    'Confiance min pour garder quelqu’un',
-    'En dessous : hors cible.',
-    'pct',
-    0,
-    1,
-    0.05,
-  ],
   'prospection.lead_score_gray': [
     'Zone grise du score (à départager)',
     'Entre les deux bornes, un jugement tranche.',
@@ -611,22 +603,6 @@ export const CHAMPS = {
     0,
     50,
     0.5,
-  ],
-  'collect.draft_price_min_eur': [
-    'Prix proposé, plancher €',
-    'Le jugement prix ne descend pas sous ça.',
-    'eur',
-    0,
-    1000,
-    1,
-  ],
-  'collect.draft_price_max_eur': [
-    'Prix proposé, plafond €',
-    'Il n’invente pas un tarif hors bornes.',
-    'nombre',
-    1,
-    1000000,
-    1,
   ],
   'collect.dunning_days': [
     'Jours de relance de paiement',
@@ -696,14 +672,6 @@ export const CHAMPS = {
     1,
     14,
     1,
-  ],
-  'memory.serge_md_max_lines': [
-    'Lignes max de tes envies écrites',
-    'SERGE.md trop long = moins lisible.',
-    'curseur',
-    20,
-    400,
-    10,
   ],
   'tickets.digest_hour': [
     'Heure du résumé du jour',

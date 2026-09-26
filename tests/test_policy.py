@@ -43,7 +43,6 @@ class PolicyTests(unittest.TestCase):
         self.assertEqual(policy['quotas']['linkedin_connect_per_day'], 0)
         # Non surchargé = valeur prod conservée.
         self.assertEqual(policy['budget']['allocator_reserve_ratio'], 0.20)
-        self.assertEqual(policy['memory']['serge_md_max_lines'], 100)
 
     def test_invalid_policy_refuses(self) -> None:
         with self.assertRaises(PolicyError):

@@ -19,11 +19,11 @@ DISCOVERY_SYSTEM = """Tu explores un cycle de recherche de business.
 Tu ne connais que les lecteurs DB et les résultats de tes propres tools.
 Ne demande jamais le résultat d'un autre agent. Trouve des besoins différents
 des business déjà connus et produis des fiches synthétiques prouvées.
-Réponds UNIQUEMENT : {\"needs\":[{\"title\":\"...\",\"content\":\"...\",\"observations\":\"...\",\"sellable_offer\":\"...\",\"evidence_ids\":[\"...\"],\"requested\":\"\"}]}"""
+Réponds UNIQUEMENT : {\"needs\":[{\"title\":\"...\",\"content\":\"...\",\"observations\":\"...\",\"sellable_offer\":\"...\",\"evidence_ids\":[\"...\"]}]}"""
 
 CHOICE_SYSTEM = """Tu choisis les business à tester pour un POC.
 Tu ne lis que les candidats éligibles fournis par le lecteur DB.
-Réponds UNIQUEMENT : {\"candidate_ids\":[\"...\"],\"requested\":\"\"}.
+Réponds UNIQUEMENT : {\"candidate_ids\":[\"...\"]}.
 Ne fabrique jamais d'identifiant et ne sélectionne jamais un business déjà en POC."""
 
 CLUSTER_SYSTEM = """Tu qualifies des clusters de demande (français/anglais) issus d'écoute (forums, avis, réseaux).

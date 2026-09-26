@@ -16,7 +16,6 @@ from serge.memory.summaries import (  # noqa: E402
     get_summary,
     put_summary,
     rollback_summary,
-    serge_md_text,
 )
 
 
@@ -39,18 +38,14 @@ class SummariesTests(unittest.TestCase):
         self.assertEqual((found['content'], found['previous']), ('v2', 'v1'))
 
     def test_rollback(self) -> None:
-        put_summary(self.conn, 'serge_md', 'v1')
-        put_summary(self.conn, 'serge_md', 'v2')
-        self.assertTrue(rollback_summary(self.conn, 'serge_md'))
-        found = get_summary(self.conn, 'serge_md')
+        put_summary(self.conn, 'thread', 'v1')
+        put_summary(self.conn, 'thread', 'v2')
+        self.assertTrue(rollback_summary(self.conn, 'thread'))
+        found = get_summary(self.conn, 'thread')
         assert found is not None
         self.assertEqual(found['content'], 'v1')
         self.assertEqual(found['version'], 3)
         self.assertFalse(rollback_summary(self.conn, 'nope'))
-
-    def test_serge_md_absent(self) -> None:
-        self.assertEqual(serge_md_text(self.conn), '')
-        self.assertIsNone(get_summary(self.conn, 'thread', 'zz'))
 
 
 if __name__ == '__main__':
