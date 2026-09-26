@@ -443,3 +443,20 @@ Les autres sont supprimés dès qu'un scénario couvre le même comportement.
 - Construction par la même mécanique que l'étape 5 (construire, relire,
   corriger, 3 essais max). Mise en ligne, puis création de la campagne.
 - Ordre ticket / construction : voir Q35.
+
+### Q35 — Étape 2 : ordre et boucle de critique (validé)
+1. Concevoir le POC (plan de A à Z).
+2. Challenger le POC : chaque remarque est de l'un de ces deux types
+   seulement (jamais « bloquant ») :
+   - « à corriger » : le plan est mal fait mais faisable avec les capacités
+     actuelles de Serge ;
+   - « nouvelle capacité nécessaire » : il manque un outil ou autre chose
+     (via le tool « Demander une nouvelle capacité »).
+3. La conception reprend son plan ; 3 tours maximum. Les prompts forcent à
+   ATTERRIR sur un plan qui fonctionne.
+4. Ticket Discord à Julien AVANT construction : plan final, critique, ce
+   qui a été corrigé, ce qui reste. Julien valide, refuse ou discute.
+   Si après 3 tours il reste « nouvelle capacité nécessaire », le ticket
+   arrive dans cet état : c'est à Julien de créer la capacité.
+5. Construction + mise en ligne après accord.
+6. Lancement du test automatique + ticket d'information avec le lien.
