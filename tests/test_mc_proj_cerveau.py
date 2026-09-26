@@ -16,7 +16,6 @@ sys.path.insert(0, str(ROOT))
 
 from serge.db.boot import init_schema  # noqa: E402
 from serge.mc.proj_cerveau import (  # noqa: E402
-    project_clusters,
     project_decisions,
     project_matrice,
     project_pensees,
@@ -131,21 +130,6 @@ class ProjCerveauTests(unittest.TestCase):
                         'contact_id': 'p2',
                         'ts': '2026-09-10T11:10:00+00:00',
                     },
-                ]
-            },
-        )
-
-    def test_clusters_golden(self) -> None:
-        self.assertEqual(
-            project_clusters(self.conn, POLICY, NOW),
-            {
-                'items': [
-                    {
-                        'id': 'cA',
-                        'docs': 2,
-                        'dernier': '2026-09-10T11:30:00+00:00',
-                        'titres': ['Bug synchro', 'Bruit prix'],
-                    }
                 ]
             },
         )

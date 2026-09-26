@@ -90,7 +90,7 @@ class ProjGrapheTests(unittest.TestCase):
         )
         self.assertEqual(pre['titre'], 'Pré-prospection')
         ids_j = [j['id'] for j in pre['jugements']]
-        self.assertIn('cluster_demand', ids_j)
+        self.assertIn('listen_discover_needs_a', ids_j)
         self.assertTrue(pre['jugements'][0]['ordre'])
         self.assertTrue(pre['marche'])
         self.assertIn('listen.collect', pre['kinds'])

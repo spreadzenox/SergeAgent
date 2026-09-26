@@ -30,8 +30,8 @@ class CatalogueTests(unittest.TestCase):
     def test_instance_vide_a_le_graphe(self) -> None:
         verifier_catalogue(self.conn)
         pre = objets_de_etape(self.conn, 'pre_prospection')
-        self.assertIn('cluster_demand', [r['id'] for r in pre['llm']])
-        self.assertIn('cluster_listen', [r['id'] for r in pre['tech']])
+        self.assertIn('listen_discover_needs_a', [r['id'] for r in pre['llm']])
+        self.assertIn('listen_collect', [r['id'] for r in pre['tech']])
         self.assertIn('listen.collect', pre['kinds'])
         for ident in ETAPE_IDS:
             objets_de_etape(self.conn, ident)
@@ -61,7 +61,7 @@ class CatalogueTests(unittest.TestCase):
         self.assertTrue(
             any(c['k'] == 'Dernière modification' for c in fiche['champs'])
         )
-        tech = project_objet(self.conn, 'tech', 'cluster_listen')
+        tech = project_objet(self.conn, 'tech', 'listen_collect')
         assert tech is not None
         self.assertEqual(tech['type'], 'tech')
         self.assertEqual(tech['champs'][0]['v'], 'pre_prospection')

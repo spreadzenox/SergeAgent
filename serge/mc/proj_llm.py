@@ -18,10 +18,6 @@ PALIERS = {
 }
 
 VERDICTS = {
-    'HYB': (
-        'Travail en deux temps : d’abord un tri automatique (textes'
-        ' qui se ressemblent), ensuite le modèle pose un nom dessus.'
-    ),
     'LLM-1': 'Un jugement simple à une réponse (classe, oui/non, date).',
     'LLM-B': 'Il rédige un texte dans un moule (idée, message, script).',
     'LLM-L': 'Il réfléchit plus large (plan, options, où mettre l’argent).',
@@ -29,10 +25,6 @@ VERDICTS = {
 }
 
 REPLIS = {
-    'clusters bruts sans labels': (
-        'Si le modèle n’y arrive pas : on garde les tas de textes'
-        ' comme ils sont, sans leur donner un joli nom.'
-    ),
     'template min + ticket QNA': 'On pose un moule vide et on te pose la question.',
     'chiffres bruts sans résumé': 'On affiche les nombres, sans histoire autour.',
     'rejouer le test gagnant à l’identique + FYI': (
@@ -43,24 +35,6 @@ REPLIS = {
     ),
     'PIVOT → EXTEND (variation min) + FYI + QNA optionnel': (
         'On garde l’essai, on varie un peu, on te prévient, parfois une question.'
-    ),
-}
-
-NOTIONS = {
-    'grappe': (
-        'Un paquet de demandes',
-        'Imagine 40 messages différents. Certains disent « je veux un'
-        ' timer pour facturer », d’autres « un chrono freelance » :'
-        ' c’est la même envie. Serge les met dans le même paquet et'
-        ' lui donne un nom en français. Ce n’est pas une table magique :'
-        ' c’est juste « ces gens-là veulent la même chose ».',
-    ),
-    'score_volume': (
-        'La note de volume',
-        'Une note simple : on en voit beaucoup, ou presque pas.'
-        ' Beaucoup + souvent + des gens prêts à payer = une idée'
-        ' plus intéressante qu’un message unique. Ce n’est pas un'
-        ' classement Instagram : c’est « est-ce que ça se répète ? ».',
     ),
 }
 
@@ -93,18 +67,6 @@ def _dernier_io(conn: sqlite3.Connection, nom: str) -> tuple[str, str]:
     return str(blob.get('prompt') or ''), str(blob.get('sortie') or '')
 
 
-def _ecoute_etat(conn: sqlite3.Connection) -> tuple[int, str]:
-    n = int(conn.execute('SELECT COUNT(*) FROM listen_docs').fetchone()[0])
-    srcs = [
-        str(r[0])
-        for r in conn.execute(
-            "SELECT DISTINCT source FROM listen_docs WHERE source!=''"
-        ).fetchall()
-    ]
-    noms = ['flux RSS (Reddit, blogs…)' if s == 'rss' else s for s in srcs]
-    return n, (', '.join(noms) if noms else 'aucune source encore')
-
-
 def _repli(brut: str) -> str:
     cle = (brut or '').replace("'", '’')
     if cle in REPLIS:
@@ -119,23 +81,10 @@ def _liens_flux(conn: sqlite3.Connection, ident: str) -> list[dict[str, str]]:
         " AND usage='autorise' LIMIT 1",
         (ident,),
     ).fetchone()
-    if ident == 'cluster_demand' or readers is not None:
+    if readers is not None:
         liens.append(
             {'type': 'ecoute', 'id': 'pages', 'titre': 'Pages vraiment lues'}
         )
-    if ident == 'cluster_demand':
-        liens += [
-            {
-                'type': 'notion',
-                'id': 'grappe',
-                'titre': 'C’est quoi un paquet de demandes ?',
-            },
-            {
-                'type': 'notion',
-                'id': 'score_volume',
-                'titre': 'C’est quoi la note de volume ?',
-            },
-        ]
     return liens
 
 
@@ -197,12 +146,6 @@ def project_llm(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
             }
         )
     role, entrees, sorties, dest, fmt = role_de(ident)
-    if ident == 'cluster_demand':
-        n, srcs = _ecoute_etat(conn)
-        role += (
-            f' En ce moment : {n} page(s) en base, sources : {srcs}.'
-            ' Clique « Pages vraiment lues » pour le miroir.'
-        )
     prompt, sortie = _dernier_io(conn, ident)
     prompt = prompt or str(point.get('prompt') if point else '')
     runs = conn.execute(
@@ -463,25 +406,6 @@ def project_ecoute(
             'lignes': lignes,
         },
         'cadres': [{'titre': 'À brancher', 'todo': todo}] if todo else [],
-        'enfants': [],
-        'preuve': '',
-    }
-
-
-def project_notion(
-    _conn: sqlite3.Connection, ident: str
-) -> dict[str, Any] | None:
-    """Une définition cliquée depuis un flux (paquet, note de volume)."""
-    found = NOTIONS.get(ident)
-    if not found:
-        return None
-    titre, texte = found
-    return {
-        'type': 'notion',
-        'id': ident,
-        'titre': titre,
-        'pourquoi': texte,
-        'champs': [],
         'enfants': [],
         'preuve': '',
     }

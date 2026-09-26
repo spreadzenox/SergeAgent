@@ -5,25 +5,6 @@ from __future__ import annotations
 
 # role, entre, sort, vers, forme
 ROLES: dict[str, tuple[str, str, str, str, str]] = {
-    'cluster_demand': (
-        'Serge lit ce que des inconnus ont écrit sur internet'
-        ' (forums, fils RSS… aujourd’hui surtout des flux, pas encore'
-        ' LinkedIn en direct). Il met ensemble les gens qui veulent'
-        ' à peu près la même chose. Ça sert à trouver une idée de'
-        ' business assez répétée pour valoir un petit essai — pas'
-        ' une intuition sortie de nulle part.',
-        'Les pages vraiment lues (titre, extrait, source), plus une'
-        ' grille de notation, plus un moule pour nommer un paquet,'
-        ' plus un échantillon des phrases des gens. Les leçons déjà'
-        ' apprises et la mémoire peuvent s’ajouter s’il demande plus.',
-        'Des paquets de demandes qui se ressemblent. Chaque paquet'
-        ' a un nom en français (ex. « indépendants qui veulent un'
-        ' timer pour facturer ») et une note : on en voit beaucoup,'
-        ' ou presque pas.',
-        'L’étape suivante : écrire une idée de business à tester'
-        ' sur un petit groupe.',
-        'Une liste de paquets : nom, note de volume, quelques extraits.',
-    ),
     'draft_hypothesis_smoke': (
         'Écrit l’idée de business à tester tout de suite : quoi vendre,'
         ' à quel prix de départ, par quel canal (e-mail, appel…), à'
@@ -236,14 +217,6 @@ ROLES: dict[str, tuple[str, str, str, str, str]] = {
 }
 
 MATERIEL: dict[str, tuple[str, str]] = {
-    'rubric_volume_intensite_recurrence_willingness': (
-        'Grille de notation des demandes',
-        'Quatre questions toutes bêtes, pour chaque paquet :'
-        ' on en voit beaucoup ? (volume) les gens ont l’air'
-        ' embêtés pour de vrai ? (intensité) ça revient souvent ?'
-        ' (récurrence) est-ce qu’ils paieraient ? (volonté).'
-        ' Ce n’est pas un code secret : c’est un barème.',
-    ),
     'template_cluster': (
         'Moule pour nommer un paquet',
         'La recette pour écrire le nom et le résumé d’un paquet'

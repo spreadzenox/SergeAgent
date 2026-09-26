@@ -16,13 +16,12 @@ def project_objet(
         from serge.mc.proj_live import project_file_detail
 
         return project_file_detail(conn, utcnow())
-    if typ in ('llm', 'llm_usage', 'contexte', 'ecoute', 'outil', 'notion'):
+    if typ in ('llm', 'llm_usage', 'contexte', 'ecoute', 'outil'):
         from serge.mc.proj_llm import (
             project_contexte,
             project_ecoute,
             project_llm,
             project_llm_usage,
-            project_notion,
         )
         from serge.mc.proj_outil import project_outil
 
@@ -32,7 +31,6 @@ def project_objet(
             'contexte': project_contexte,
             'ecoute': project_ecoute,
             'outil': project_outil,
-            'notion': project_notion,
         }[typ](conn, ident)
     if typ == 'identite':
         from serge.mc.proj_identite import project_identite

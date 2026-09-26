@@ -250,16 +250,6 @@ points:
     enabled: true
 
   # ---- Écoute ----
-  cluster_demand:
-    verdict: HYB
-    tier: T2
-    output_mode: structured
-    external_info: true
-    context: {}
-    note: Embeddings = outil dét ; labeling/scoring = LLM-1. Batch hebdo.
-    garde_fou: batch hebdo, jamais bloquant ; opportunité chaude (seuils policy) -> ALERT/FYI dét
-    repli: clusters bruts sans labels
-    enabled: true
   listen_discover_needs_a:
     verdict: LLM-B
     tier: T2

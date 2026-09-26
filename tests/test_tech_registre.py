@@ -31,8 +31,8 @@ class TechRegistreTests(unittest.TestCase):
         self.assertEqual(SCHEMA_VERSION, 20)
         rows = tech_par_etape(self.conn, 'pre_prospection')
         ids = [r['id'] for r in rows]
-        self.assertIn('cluster_listen', ids)
-        self.assertEqual(rows[0]['kind'], 'cluster')
+        self.assertIn('listen_collect', ids)
+        self.assertEqual(rows[0]['kind'], 'transform')
         choix = tech_par_etape(self.conn, 'choix_venture')
         self.assertIn('select_pre_venture', [r['id'] for r in choix])
 

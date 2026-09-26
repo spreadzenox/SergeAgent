@@ -25,11 +25,7 @@ from serge.workers.listen import run_business_cycle  # noqa: E402
 POLICY = {
     'budget': {'llm_daily_eur': 5.0, 'llm_eur_per_1k_tokens': 0.004},
     'quotas': {'llm_recalls_json': 1},
-    'listen': {
-        'hot_min_volume': 0.7,
-        'hot_min_willingness': 0.7,
-        'cluster_jaccard_min': 0.25,
-    },
+    'listen': {},
 }
 DOCS = [
     {
@@ -125,60 +121,6 @@ class ListenWorkerTests(unittest.TestCase):
             )
         self.assertEqual(result['status'], 'done')
         self.assertEqual(len(result['errors']), 1)
-
-    def test_cluster_chaud_fyi(self) -> None:
-        with mock.patch(
-            'serge.workers.listen.fetch_rss', return_value=list(DOCS)
-        ):
-            execute(
-                self.conn,
-                POLICY,
-                self._item(
-                    'listen.collect',
-                    'k-lc2',
-                    {'feeds': [{'url': 'https://f.test/rss', 'source': 'f'}]},
-                ),
-            )
-        caller = _caller_for(
-            json.dumps(
-                {
-                    'clusters': [
-                        {
-                            'id': 'k1',
-                            'label': 'Douleur prix artisans',
-                            'volume': 0.8,
-                            'intensite': 0.7,
-                            'recurrence': 0.6,
-                            'willingness': 0.9,
-                            'opportunite_chaude': True,
-                        }
-                    ]
-                }
-            )
-        )
-        result = execute(
-            self.conn,
-            POLICY,
-            self._item('listen.cluster', 'k-lk', {}),
-            caller=caller,
-        )
-        self.assertEqual((result['clusters'], result['hot']), (1, 1))
-        self.assertTrue(result['ticket_id'])
-        state = self.conn.execute(
-            'SELECT state FROM tickets WHERE id=?', (result['ticket_id'],)
-        ).fetchone()[0]
-        self.assertEqual(state, 'OPEN')
-
-    def test_cluster_vide(self) -> None:
-        caller = _caller_for('{}')
-        result = execute(
-            self.conn,
-            POLICY,
-            self._item('listen.cluster', 'k-lv', {}),
-            caller=caller,
-        )
-        self.assertEqual(result['clusters'], 0)
-        self.assertEqual(caller.n, 0)
 
     def test_cycle_business_invoque_a_et_b_sur_le_meme_contrat(self) -> None:
         cycle_id = create_cycle(self.conn, 'guide', 5, 1)

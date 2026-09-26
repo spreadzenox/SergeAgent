@@ -90,39 +90,13 @@ class ProjObjetTests(unittest.TestCase):
             fiche['tableau']['titre'], 'Passages récents de ce jugement'
         )
 
-    def test_cluster_demand_clair(self) -> None:
-        self.conn.execute(
-            'INSERT INTO listen_docs(id, source, title, excerpt, fetched_at)'
-            " VALUES('d1','rss','Freelances chrono','timer facturable',?)",
-            (NOW,),
-        )
-        self.conn.commit()
-        fiche = project_objet(self.conn, 'llm', 'cluster_demand')
-        self.assertEqual(fiche['pourquoi'], '')
-        blob = json.dumps(fiche, ensure_ascii=False)
-        self.assertNotIn('ALERT/FYI', blob)
-        self.assertNotIn('listen_docs', blob)
-        self.assertNotIn('hypothèse smoke', blob.lower())
-        champs = {c['k']: c['v'] for c in fiche['champs']}
-        self.assertIn('Moyen', champs['Quel genre de modèle'])
-        self.assertIn('deux temps', champs['Quelle sorte de jugement'])
-        self.assertIn('tas de textes', champs['Si ça rate'])
-        mat = next(c for c in fiche['cadres'] if 'droit de lire' in c['titre'])
-        titres_m = [lien['titre'] for lien in mat['liens']]
-        self.assertEqual(titres_m, [])
-        flux = next(c for c in fiche['cadres'] if 'vient' in c['titre'])
-        ids = [lien['id'] for lien in flux['liens']]
-        self.assertIn('pages', ids)
-        self.assertIn('grappe', ids)
-        self.assertIn('page(s) en base', fiche['cadres'][0]['texte'])
-
     def test_pages_vides_ne_feignent_pas(self) -> None:
         self.conn.execute('DELETE FROM listen_docs')
         pages = project_objet(self.conn, 'ecoute', 'pages')
         self.assertEqual(pages['tableau']['lignes'], [])
         self.assertIn('Aucune page en base', pages['cadres'][0]['todo'])
 
-    def test_pages_outils_notions(self) -> None:
+    def test_pages_et_outils(self) -> None:
         pages = project_objet(self.conn, 'ecoute', 'pages')
         self.assertEqual(pages['type'], 'ecoute')
         self.assertIn('vraiment lues', pages['titre'])
@@ -132,7 +106,7 @@ class ProjObjetTests(unittest.TestCase):
             project_objet(self.conn, 'outil', 'memory_search')['id'],
             'memory_search',
         )
-        fiche = project_objet(self.conn, 'llm', 'cluster_demand')
+        fiche = project_objet(self.conn, 'llm', 'listen_discover_needs_a')
         ids_outils = [
             lien['id']
             for c in fiche['cadres']
@@ -142,15 +116,6 @@ class ProjObjetTests(unittest.TestCase):
         self.assertEqual(ids_outils.count('memory_search'), 1)
         nav = project_objet(self.conn, 'outil', 'navigateur')
         self.assertTrue(nav['cadres'][0].get('todo'))
-        notion = project_objet(self.conn, 'notion', 'score_volume')
-        self.assertIn('note', notion['pourquoi'])
-        rub = project_objet(
-            self.conn,
-            'contexte',
-            'rubric_volume_intensite_recurrence_willingness',
-        )
-        self.assertIn('Grille', rub['titre'])
-        self.assertIn('volume', rub['pourquoi'])
 
     def test_sqlite_et_table(self) -> None:
         cat = project_objet(self.conn, 'sqlite', 'sqlite')
@@ -220,7 +185,7 @@ class ProjObjetTests(unittest.TestCase):
             for cadre in fiche['cadres']
             for lien in cadre.get('liens') or []
         ]
-        self.assertIn('cluster_demand', liens)
+        self.assertIn('listen_discover_needs_a', liens)
         self.assertIn('pages', liens)
 
     def test_etape_inconnue(self) -> None:

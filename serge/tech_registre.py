@@ -6,7 +6,7 @@ from __future__ import annotations
 import sqlite3
 from typing import Any
 
-KINDS = frozenset({'cluster', 'select', 'score', 'transform', 'index'})
+KINDS = frozenset({'select', 'score', 'transform', 'index'})
 
 # id, etape, kind, path, titre, doc (l’empreinte est calculée au boot)
 SEED: tuple[tuple[str, str, str, str, str, str], ...] = (
@@ -17,14 +17,6 @@ SEED: tuple[tuple[str, str, str, str, str, str], ...] = (
         'serge/listen/collectors.py',
         'Ramasser des pages',
         'Collecte RSS / pages : déterministe.',
-    ),
-    (
-        'cluster_listen',
-        'pre_prospection',
-        'cluster',
-        'serge/listen/cluster.py',
-        'Regrouper les demandes',
-        'Paquets Jaccard / labels : pas une invocation LLM.',
     ),
     (
         'metrics_u',

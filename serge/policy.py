@@ -183,7 +183,6 @@ def validate_policy(data: Mapping[str, Any]) -> dict[str, Any]:
         'memory.judge_oscillation_days',
         'tickets.digest_hour',
         'tickets.trust_min_approvals',
-        'listen.cluster_jaccard_min',
         'listen.discovery_needs_target',
         'listen.poc_business_target',
         'testing.n_smoke_min',
@@ -202,8 +201,6 @@ def validate_policy(data: Mapping[str, Any]) -> dict[str, Any]:
         'budget.allocator_max_single_channel_ratio',
         'budget.allocator_trigger_spent_ratio',
         'tickets.trust_min_rate',
-        'listen.hot_min_volume',
-        'listen.hot_min_willingness',
     ):
         _need_ratio(data, key)
     _need_number(data, 'prospection.score_w_negative', minimum=-100.0)

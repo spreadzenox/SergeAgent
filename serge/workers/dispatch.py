@@ -10,7 +10,7 @@ from typing import Any
 
 from serge.workers.call import run_voice_send
 from serge.workers.classify import run_classify
-from serge.workers.listen import run_business_cycle, run_cluster, run_collect
+from serge.workers.listen import run_business_cycle, run_collect
 from serge.workers.memory import run_apply, run_consolidate_worker
 from serge.workers.poll import run_email_poll
 from serge.workers.respond import run_judge_other, run_reply
@@ -24,7 +24,6 @@ HANDLERS = {
     'memory.consolidate': run_consolidate_worker,
     'memory.apply': run_apply,
     'listen.collect': run_collect,
-    'listen.cluster': run_cluster,
     'listen.business_cycle': run_business_cycle,
     'voice.score': run_score,
     'email.send': run_email_send,

@@ -13,7 +13,11 @@ from serge.mc.llm_roles import role_de
 
 # Ordre d’exécution réel (pas l’ordre du YAML). Le reste = « à part ».
 ORDRE: dict[str, list[str]] = {
-    'pre_prospection': ['cluster_demand'],
+    'pre_prospection': [
+        'listen_discover_needs_a',
+        'listen_discover_needs_b',
+        'listen_choose_poc',
+    ],
     'conception_poc': ['draft_hypothesis_smoke'],
     'prospection_light': [
         'fill_slots',
@@ -47,13 +51,7 @@ ORDRE: dict[str, list[str]] = {
     'caisse': [],
 }
 
-RESTE: dict[str, list[str]] = {
-    'pre_prospection': [
-        'listen_choose_poc',
-        'listen_discover_needs_a',
-        'listen_discover_needs_b',
-    ],
-}
+RESTE: dict[str, list[str]] = {}
 
 
 def _court(nom: str) -> str:

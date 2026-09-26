@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Projecteurs P2 Cerveau : signaux, clusters, décisions, pensées, usage.
+"""Projecteurs P2 Cerveau : signaux, décisions, pensées, usage.
 
 Lecture seule. Registre de seed + métadonnées DB + kills = lot 6b.
 """
@@ -46,50 +46,6 @@ def project_signaux(
                 'score': float(row[4]),
                 'contact_id': str(row[5]),
                 'ts': str(row[6]),
-            }
-        )
-    return {'items': items}
-
-
-def project_clusters(
-    conn: sqlite3.Connection, policy: Mapping[str, Any], now: str
-) -> dict[str, Any]:
-    """Clusters d'écoute chauds 24 h (P2 clusters).
-
-    Args:
-        conn: Connexion canon (lecture).
-        policy: Policy (ignorée, uniformité).
-        now: Maintenant ISO UTC.
-
-    Returns:
-        Dict {items: [{id, docs, dernier, titres}]} (hors cluster exclus,
-        3 derniers titres par cluster).
-    """
-    _ = policy
-    depuis = avant_iso(now, hours=24)
-    titres: dict[str, list[str]] = {}
-    for row in conn.execute(
-        'SELECT cluster_id, title FROM listen_docs'
-        ' WHERE fetched_at>? ORDER BY fetched_at DESC',
-        (depuis,),
-    ).fetchall():
-        cid = str(row[0])
-        if cid and len(titres.setdefault(cid, [])) < 3:
-            titres[cid].append(str(row[1]))
-    items = []
-    for row in conn.execute(
-        'SELECT cluster_id, COUNT(*) AS n, MAX(fetched_at)'
-        ' FROM listen_docs WHERE fetched_at>?'
-        " AND cluster_id<>'' GROUP BY cluster_id ORDER BY n DESC",
-        (depuis,),
-    ).fetchall():
-        cid = str(row[0])
-        items.append(
-            {
-                'id': cid,
-                'docs': int(row[1]),
-                'dernier': str(row[2]),
-                'titres': titres.get(cid, []),
             }
         )
     return {'items': items}

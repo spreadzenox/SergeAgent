@@ -25,12 +25,11 @@ class MindRegistryTests(unittest.TestCase):
         sections = PAGE_SECTIONS['p2']
         self.assertEqual(
             sections,
-            ['meta', 'pensees', 'decisions', 'matrice', 'signaux', 'clusters'],
+            ['meta', 'pensees', 'decisions', 'matrice', 'signaux'],
         )
         for section in sections:
             self.assertIn(section, PROJECTORS)
         self.assertIn('matrice', SLOW_SECTIONS)
-        self.assertIn('clusters', SLOW_SECTIONS)
 
 
 class McMindTests(McBrowserCase):
@@ -88,7 +87,9 @@ class McMindTests(McBrowserCase):
         from playwright.sync_api import expect
 
         page = self._page_cerveau()
-        expect(page.locator('table.matrice tbody tr')).to_have_count(len(load_llm_points()))
+        expect(page.locator('table.matrice tbody tr')).to_have_count(
+            len(load_llm_points())
+        )
         matrice = page.locator('[data-section="matrice"]')
         expect(matrice).to_contain_text('classify_reply')
         expect(matrice).to_contain_text('Tué (temporaire)')
@@ -102,9 +103,6 @@ class McMindTests(McBrowserCase):
         expect(page.locator('[data-section="signaux"]')).to_contain_text(
             'sms reply (positive)'
         )
-        expect(page.locator('[data-section="clusters"]')).to_contain_text(
-            'cA — 2 docs'
-        )
 
     def test_page_cerveau_vide(self) -> None:
         from playwright.sync_api import expect
@@ -113,7 +111,9 @@ class McMindTests(McBrowserCase):
         self._watch_errors(page)
         page.goto(f'{self.base}/owner#/mind')
         page.locator('table.matrice tbody tr').first.wait_for(timeout=10000)
-        expect(page.locator('table.matrice tbody tr')).to_have_count(len(load_llm_points()))
+        expect(page.locator('table.matrice tbody tr')).to_have_count(
+            len(load_llm_points())
+        )
         expect(page.locator('[data-section="matrice"]')).to_contain_text(
             'En service'
         )
@@ -121,7 +121,6 @@ class McMindTests(McBrowserCase):
             ('pensees', 'Aucune pensée pour le moment.'),
             ('decisions', 'Aucune décision récente.'),
             ('signaux', 'Aucun signal récent.'),
-            ('clusters', 'Aucun cluster chaud.'),
         ):
             expect(
                 page.locator(f'[data-section="{section}"]')

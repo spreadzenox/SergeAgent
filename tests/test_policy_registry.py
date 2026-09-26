@@ -28,7 +28,6 @@ class RegistryTests(unittest.TestCase):
             'judge_allocator',
             'consolidate',
             'judge_consequence',
-            'cluster_demand',
             'install_guide',
         ):
             self.assertIn(name, points)

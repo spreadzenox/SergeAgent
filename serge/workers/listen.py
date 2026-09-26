@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Workers listen.collect + listen.cluster (J0 → J1 → FYI chaud).
+"""Workers de l'étape 1 : listen.collect et listen.business_cycle.
 
-Collect : flux → docs dédupliqués (erreurs par flux, jamais fatal).
-Cluster : non-clusterisés → groupes dét → J1 labels → chaud (seuils
-policy) → FYI + résumé versionné. Batch hebdo, jamais bloquant.
+Collect : flux RSS → pages dédupliquées (erreurs par flux, jamais fatal).
+Cycle : deux découvertes indépendantes, puis choix des business à tester
+avec veto déterministe.
 """
 
 from __future__ import annotations
@@ -15,15 +15,10 @@ from pathlib import Path
 from typing import Any
 
 from serge.db.store import append_event, utcnow
-from serge.listen.cluster import cluster_docs, hot_clusters
 from serge.listen.collectors import ListenError, fetch_rss
 from serge.listen.memory import save_candidates, select_poc
-from serge.listen.store import docs_in_cluster, save_docs, set_cluster
-from serge.listen.store import unclustered as pending_docs
-from serge.memory.summaries import put_summary
-from serge.points.listen_pts import choose_poc, discover_needs, label_clusters
-from serge.registry import load_ticket_types
-from serge.tickets import create_ticket, publish
+from serge.listen.store import save_docs
+from serge.points.listen_pts import choose_poc, discover_needs
 
 
 def run_collect(
@@ -67,90 +62,6 @@ def run_collect(
             continue
         fresh += save_docs(conn, docs)
     return {'status': 'done', 'new': fresh, 'errors': errors}
-
-
-def run_cluster(
-    conn: sqlite3.Connection,
-    policy: Mapping[str, Any],
-    item: Mapping[str, Any],
-    *,
-    root: Path | None = None,
-    caller: Any = None,
-) -> dict[str, Any]:
-    """Exécute un work_item listen.cluster (groupes → J1 → FYI chaud).
-
-    Args:
-        conn: Connexion canon (commit par l'appelant).
-        policy: Policy (seuil Jaccard + seuils chaud).
-        item: Work_item (venture_id scope, optionnel).
-        root: config_root (défaut : instance).
-        caller: Appel LLM (défaut : client réel).
-
-    Returns:
-        Dict status done (+ clusters, hot, ticket_id, fallback).
-    """
-    try:
-        threshold = float(
-            (policy.get('listen') or {}).get('cluster_jaccard_min', 0.25)
-        )
-    except (TypeError, ValueError):
-        threshold = 0.25
-    docs = pending_docs(conn)
-    groups = cluster_docs(docs, threshold=threshold)
-    if not groups:
-        return {
-            'status': 'done',
-            'clusters': 0,
-            'hot': 0,
-            'ticket_id': '',
-            'fallback': '',
-        }
-    for group in groups:
-        set_cluster(conn, group['doc_ids'], group['id'])
-    batch = []
-    for group in groups:
-        verbatims = [
-            f'{item["title"]} — {item["excerpt"]}'
-            for item in docs_in_cluster(conn, group['id'])
-        ]
-        batch.append({'id': group['id'], 'verbatims': verbatims})
-    labels = label_clusters(conn, policy, batch, root=root, caller=caller)
-    put_summary(
-        conn,
-        'listen_clusters',
-        json.dumps(labels['clusters'], ensure_ascii=False),
-    )
-    if labels['fallback']:
-        return {
-            'status': 'done',
-            'clusters': len(groups),
-            'hot': 0,
-            'ticket_id': '',
-            'fallback': labels['fallback'],
-        }
-    hot = hot_clusters(labels['clusters'], policy)
-    ticket_id = ''
-    if hot:
-        lines = '\n'.join(
-            f'- {item["label"]} (vol {item["volume"]}, will {item["willingness"]})'
-            for item in hot
-        )
-        types = load_ticket_types()
-        ticket_id = create_ticket(
-            conn,
-            types,
-            'FYI',
-            f'Opportunité chaude écoute ({len(hot)})',
-            {'contenu': lines},
-        )
-        publish(conn, ticket_id)
-    return {
-        'status': 'done',
-        'clusters': len(groups),
-        'hot': len(hot),
-        'ticket_id': ticket_id,
-        'fallback': '',
-    }
 
 
 def run_business_cycle(

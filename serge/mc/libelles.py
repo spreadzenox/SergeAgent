@@ -12,7 +12,6 @@ KINDS = {
     'inbound.reply_priority': 'Réponse prioritaire',
     'inbound.judge_other': 'Arbitrage des messages autres',
     'listen.collect': 'Ramasser des pages',
-    'listen.cluster': 'Regrouper les demandes',
     'memory.consolidate': 'Consolidation de la mémoire',
     'memory.apply': 'Application d’une leçon',
 }
@@ -125,7 +124,6 @@ ORBITES = {
 }
 
 LLM_ETAPE = {
-    'cluster_demand': 'pre_prospection',
     'listen_discover_needs_a': 'pre_prospection',
     'listen_discover_needs_b': 'pre_prospection',
     'listen_choose_poc': 'pre_prospection',
@@ -201,7 +199,6 @@ LLM_TITRES = {
     'render_context_fr': 'Rendre le contexte FR',
     'classify_owner_intent': 'Lire l’intention owner',
     'judge_consequence': 'Juger une conséquence',
-    'cluster_demand': 'Regrouper la demande',
     'listen_discover_needs_a': 'Explorer les besoins A',
     'listen_discover_needs_b': 'Explorer les besoins B',
     'listen_choose_poc': 'Choisir les business à tester',

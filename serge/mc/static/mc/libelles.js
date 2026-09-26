@@ -8,7 +8,6 @@ export const KINDS = {
   'inbound.reply_priority': 'Réponse prioritaire',
   'inbound.judge_other': 'Arbitrage des messages autres',
   'listen.collect': 'Ramasser des pages',
-  'listen.cluster': 'Regrouper les demandes',
   'memory.consolidate': 'Consolidation de la mémoire',
   'memory.apply': 'Application d’une leçon',
 };
@@ -108,7 +107,6 @@ export const LLM_TITRES = {
   render_context_fr: 'Rendre le contexte FR',
   classify_owner_intent: 'Lire l’intention owner',
   judge_consequence: 'Juger une conséquence',
-  cluster_demand: 'Regrouper la demande',
   install_guide: 'Guider l’installation',
 };
 
@@ -154,7 +152,6 @@ export const TYPES_OBJET = {
   contexte: 'Lecture autorisée',
   ecoute: 'Pages lues',
   outil: 'Outil',
-  notion: 'Pour comprendre',
   etape: 'Étape',
   tech: 'Invocation technique',
   canal: 'Canal',

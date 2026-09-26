@@ -23,7 +23,7 @@ SEED: tuple[tuple[str, int, tuple[str, ...]], ...] = (
     (
         'pre_prospection',
         0,
-        ('listen.collect', 'listen.cluster', 'listen.business_cycle'),
+        ('listen.collect', 'listen.business_cycle'),
     ),
     ('conception_poc', 1, ()),
     ('prospection_light', 2, ('email.send', 'voice.send')),
@@ -46,7 +46,6 @@ SEED: tuple[tuple[str, int, tuple[str, ...]], ...] = (
 
 KIND_DEFAUT: dict[str, str] = {
     'listen.collect': 'pre_prospection',
-    'listen.cluster': 'pre_prospection',
     'listen.business_cycle': 'pre_prospection',
     'email.send': 'prospection_light',
     'voice.send': 'prospection_light',

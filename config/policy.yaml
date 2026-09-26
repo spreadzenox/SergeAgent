@@ -115,9 +115,6 @@ consent:
   opt_in_channels: [voice, sms, whatsapp]  # opt-in requis, autres = opt-out
 
 listen:
-  hot_min_volume: 0.7                # opportunité chaude (J1 + seuils)
-  hot_min_willingness: 0.7
-  cluster_jaccard_min: 0.25          # clustering dét v1
   discovery_needs_target: 5           # besoins demandés à chaque découverte
   poc_business_target: 1              # business retenus pour le prochain POC
 

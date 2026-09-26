@@ -302,7 +302,6 @@ def main() -> None:
     for point, tin, tout, lat, verdict, moment in (
         ('classify_reply', 1000, 400, 90, 'ok', now - timedelta(hours=4)),
         ('classify_reply', 1800, 700, 140, 'ok', now - timedelta(minutes=8)),
-        ('cluster_demand', 2200, 600, 200, 'ok', now - timedelta(hours=9)),
     ):
         conn.execute(
             'INSERT INTO llm_usage(point, tier, model, tokens_in,'

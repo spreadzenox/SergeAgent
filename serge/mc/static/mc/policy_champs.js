@@ -702,30 +702,6 @@ export const CHAMPS = {
     'Les autres : on peut écrire, la personne se retire.',
     'canaux',
   ],
-  'listen.hot_min_volume': [
-    'Volume min pour une demande « chaude »',
-    'On en voit beaucoup, ou presque pas.',
-    'pct',
-    0,
-    1,
-    0.05,
-  ],
-  'listen.hot_min_willingness': [
-    'Envie min pour une demande « chaude »',
-    'Les gens ont l’air prêts à payer, ou juste à râler.',
-    'pct',
-    0,
-    1,
-    0.05,
-  ],
-  'listen.cluster_jaccard_min': [
-    'Ressemblance min pour mettre deux textes ensemble',
-    'Trop bas : tout se mélange. Trop haut : rien ne se groupe.',
-    'pct',
-    0,
-    1,
-    0.05,
-  ],
 };
 
 export const JOURS = [
