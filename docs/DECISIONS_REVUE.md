@@ -586,3 +586,31 @@ ticket d'information seulement.
 5. Après publication, message aux personnes dont la demande est livrée
    (via le fil du prospect, mêmes règles que les relances).
 Le point hebdomadaire (Q42) lit aussi ces demandes.
+
+### Q44–Q45 — Maintenance, fermeture, suivi technique (validé)
+- Fin de la prospection lourde ≠ fin du business. Nouveaux statuts :
+  - MAINTENANCE : plus aucun nouveau prospect contacté ; on livre ce qui
+    est vendu, répond aux clients, corrige (product_requests), encaisse les
+    abonnements, relance les impayés ; un client qui revient seul est servi.
+    Entrée : quotas de prospection lourde épuisés, ou « arrêter » validé
+    alors que le business a des clients (sans client → KILLED).
+  - CLOSED : automatique quand zéro livraison due, zéro abonnement actif,
+    zéro demande client ouverte, aucun message client depuis 30 jours
+    (réglable) ; archivé + leçon ; ticket d'information.
+- L'entrée en MAINTENANCE libère la place de prospection lourde.
+  Remplacement : choix normal (Q16 bis) si les 3 tests légers sont finis,
+  en comparant aussi les PARKED testés il y a moins de 60 jours (réglable) ;
+  sinon la place reste vide jusqu'à la fin des tests. Un PARKED de plus de
+  60 jours repasse CANDIDATE.
+- Plusieurs business peuvent être en MAINTENANCE en même temps.
+- Technique :
+  1. subscriptions : aujourd'hui toutes rattachées au faux business
+     'serge-collect-stripe' (en dur dans serge/collect/abonnements.py) →
+     rattacher au vrai business via l'identifiant inscrit dans Stripe ;
+     colonnes ajoutées à la volée (assurer_colonnes) → vraie migration.
+  2. Nouvelle table deliveries (business, client, paiement, quoi livrer,
+     date promise, état à faire / en cours / livrée / problème, date de
+     livraison, fichier livré). Créée automatiquement à chaque paiement d'un
+     produit non instantané ; produit instantané = livré tout de suite.
+     Livraison en retard → MC + correction en priorité haute.
+  3. product_requests (Q43).
