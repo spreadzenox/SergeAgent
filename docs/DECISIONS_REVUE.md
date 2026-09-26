@@ -404,3 +404,18 @@ Les autres sont supprimés dès qu'un scénario couvre le même comportement.
   des types de business que Serge peut lancer avec ses moyens (email,
   téléphone, carte bancaire, Stripe, comptes web, Internet permanent,
   bacs à sable de code, stockage illimité) → Q32.
+
+### Q32 — Familles de business et limites (validé)
+- Liste des 11 familles acceptée : produits numériques, petits logiciels en
+  ligne, services faits par Serge, automatisation sur mesure, téléphone/SMS
+  pour les autres, veille et rapports, médias et audience, mise en
+  relation, formation, commerce sans stock, prospection pour les autres.
+- La seule vraie limite de Serge : la LÉGALITÉ. Tout le reste est ouvert.
+- Conseil financier / juridique : autorisé dans le cadre légal (les LLM
+  sont bons là-dessus). Attention aux activités réservées par la loi (voir
+  Q33).
+- Crypto-monnaies : évité pour l'instant (nid à arnaques), porte pas fermée.
+- Tromperie interdite (faux avis, fausse urgence, IA qui se fait passer pour
+  un humain…).
+- Présence physique : possible via des sous-traitants humains (ex.
+  plateforme Rent a Human citée par Julien) si Serge juge ça rentable.
