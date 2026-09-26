@@ -528,3 +528,13 @@ Le séquenceur fixe (supprimé par Clem, jamais branché) n'est pas recréé.
 - POC : sous-domaine du domaine de Serge. Business principal (étape 5) :
   nom de domaine dédié acheté avec la carte.
 - Le STOCKAGE (logiciels, documents, fichiers) est une question à part (Q40).
+
+### Q40 — Stockage des fichiers (validé, sans sauvegarde externe)
+- Fichiers sur le disque du VPS, un seul dossier rangé par venture /
+  livrable / version (ex. files/devis-artisan/generateur/v2/). Une version
+  publiée n'est jamais modifiée : une correction crée la version suivante.
+- La base garde la fiche de chaque fichier (table artifacts) : venture,
+  type, version, chemin, empreinte, taille, date, adresse publique si en
+  ligne. MC les liste par venture.
+- Pas de sauvegarde automatique hors du VPS pour le moment (décision de
+  Julien, malgré l'absence totale de sauvegarde de serge.db aujourd'hui).
