@@ -30,7 +30,7 @@ base.
   sans jamais écraser ni recréer ce qui a été supprimé),
   `tests/test_pipeline_seed.py`.
 
-## Ce qui est fait sur `Clem` : l'étape 6.2 (la bascule), tests verts
+## Étape 6.2 (la bascule), fusionnée dans `main`
 
 - **L'interpréteur** (`serge/interpreter/`) : la file des tâches
   (`tasks.py`), une fonction par capacité (`tools.py`), le format de
@@ -92,7 +92,7 @@ base.
 7. Quand Serge est arrêté, les déclencheurs horaires ne créent pas de
    tâche.
 
-## Ce qui est fait sur `Clem` après 6.2, à la demande de Clem
+## Fait après 6.2, à la demande de Clem (fusionné aussi)
 
 - **Serge est arrêté par défaut** (`serge/coupe_circuit.py`). Il ne tourne
   qu'après un clic sur « Démarrer Serge » en haut de la page En direct
@@ -112,11 +112,13 @@ base.
 - **La charte** (partie 4) décrit les invocations en base ; Clem l'a
   autorisé exceptionnellement.
 
-### Reste à faire pour finir 6.2
+### Fusionné dans `main`
 
-Pousser `Clem` et fusionner dans `main` par une pull request (chaque
-fusion redéploie Serge sur le serveur de Julien ; Serge y restera arrêté
-jusqu'au clic sur « Démarrer Serge »).
+La bascule 6.2 et ce qui suit sont fusionnés dans `main`
+([PR #31](https://github.com/spreadzenox/SergeAgent/pull/31), 27 septembre
+2026) et déployés sur le serveur de Julien : l'ancien timer y a été
+remplacé par les deux files, et Serge y reste arrêté jusqu'au clic sur
+« Démarrer Serge ».
 
 ## Ensuite : ce qui reste du lot 6
 
