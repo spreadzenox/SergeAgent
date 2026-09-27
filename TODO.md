@@ -135,6 +135,8 @@ et pour tout le reste.
 
 La conception des tables, validée avec Clem, est dans
 [`docs/LOT6_CONCEPTION.md`](docs/LOT6_CONCEPTION.md).
+Pour reprendre le lot en cours de route, lire d'abord
+[`docs/REPRISE_LOT6.md`](docs/REPRISE_LOT6.md).
 
 Clem a fixé la façon de mener ce lot. On passe directement à la version
 durable : tout ce qui est écrit en dur pour un enchaînement (le cycle

@@ -19,6 +19,8 @@ dev = [
 [tool.ruff]
 line-length = 79
 target-version = "py312"
+# Code rangé pour plus tard, hors production : ni vérifié ni formaté.
+extend-exclude = ["pas_encore_branche"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "UP"]
@@ -38,7 +40,7 @@ quote-style = "single"
 python-version = "3.12"
 
 [tool.ty.src]
-exclude = ["tests"]
+exclude = ["tests", "pas_encore_branche"]
 
 [tool.uv]
 package = false

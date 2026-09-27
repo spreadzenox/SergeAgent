@@ -9,7 +9,7 @@ from typing import Any
 
 from serge.mc.proj_outils import charge_json
 from serge.memory.consolidate import due_for_consolidation, last_run
-from serge.points.interact import strip_ids
+from serge.text_ids import strip_ids
 
 
 def _liste_json(raw: object) -> list:
