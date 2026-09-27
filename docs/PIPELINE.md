@@ -179,22 +179,39 @@ Les **liens** entre invocations sont aussi en base : un lien dit
 données en paramètre ». Par exemple, chaque business choisi à l'étape 1
 lance la conception de son POC, avec l'identifiant du business. Les
 **déclencheurs** sont en base eux aussi : « quand un message arrive d'un
-prospect, lance "Traiter une réponse" pour ce prospect ». Plus tard, les
-accès de Serge à un bac à sable (pour tester du code, naviguer sur le web,
-créer des comptes) seront déclarés en base de la même façon.
+prospect, lance "Traiter une réponse" pour ce prospect ». Plus tard, le bac
+à sable (pour tester du code, naviguer sur le web, créer des comptes), les
+connecteurs vers des services et les canaux suivront la même règle : des
+capacités générales, réglées en base. Un connecteur, par exemple, n'est
+pas du code écrit par Serge, mais la description du service en base,
+utilisée par une seule capacité « Appeler une API ».
 
-Le code, lui, ne garde que les briques de base : les tools (chercher sur le
-web, lire une table, envoyer un e-mail), les traitements sans LLM (écarter
-les doublons, par exemple) et la liste des écritures autorisées dans chaque
-table. Les protections qui ne doivent pas dépendre d'un prompt restent
-dans le code : par exemple, refuser un business déjà en test.
+Le code, lui, est rangé par **capacité**, jamais par invocation : lire la
+base, écrire dans la base, appeler un modèle, chercher sur le web, agir
+dans un bac à sable, appeler une API décrite en base, envoyer ou relever
+sur un canal, ouvrir un ticket. Chaque capacité est générale et réglée par
+des paramètres lus en base. Il n'y a **jamais de code propre à une
+invocation** : le nom d'une invocation n'apparaît dans le code que dans le
+fichier qui remplit une nouvelle instance.
+
+Même l'écriture en base est générale. Pour chaque invocation, la base dit
+dans quelle table elle écrit, si elle ajoute ou modifie des lignes, et
+quelle colonne reçoit quel champ de sa réponse. Ce n'est jamais le modèle
+qui choisit où écrire. Les protections qui ne doivent pas dépendre d'un
+prompt sont, elles aussi, des règles en base appliquées par ce code
+d'écriture : les tables et colonnes autorisées, les changements de statut
+permis, le repérage des doublons, les champs obligatoires, la validation
+par Julien. Exemple : refuser un business déjà en test, c'est déclarer en
+base que le statut d'un business ne peut passer à `POC_SELECTED` que
+depuis `CANDIDATE`.
 
 Exemple de ce que ça permet : si Julien change dans Mission Control le
 modèle de « Trier les pages », ou ajoute une invocation entre « Trier les
 pages » et « Formuler des business », le cycle suivant en tient compte,
 sans redéploiement. À terme, une page de Mission Control permettra de
-modifier tout le pipeline sans écrire de code : ajouter une invocation,
-changer son rôle ou son modèle, tracer un lien.
+modifier tout le pipeline sans écrire de code, et de créer une invocation
+de toutes pièces : son rôle, son modèle, ce qu'elle reçoit, où elle écrit,
+ce qui la lance.
 
 **Aujourd'hui**, on n'y est qu'à moitié. Les réglages de chaque invocation
 LLM (prompt, modèle, tools, allumée) sont déjà en base et modifiables dans
@@ -224,7 +241,7 @@ Aujourd'hui, un objet retiré du code est aussi retiré de la base au
 démarrage. Avec la nouvelle règle, ça change : une invocation ou un lien
 créé ou modifié dans Mission Control n'est jamais effacé au démarrage, et
 une invocation supprimée dans Mission Control ne revient pas. Seule une
-brique de base retirée du code disparaît, et les invocations qui s'en
+capacité retirée du code est marquée absente, et les invocations qui s'en
 servaient sont signalées dans Mission Control.
 
 ---

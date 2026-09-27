@@ -118,8 +118,11 @@ fréquentes, que Julien peut compléter.
 
 **Plus tard, un éditeur sans code.** C'est le dernier lot du TODO : une
 page qui montre le pipeline comme un schéma et permet de le modifier en
-direct, sans écrire de code. On y ajoute ou retire une invocation, on
-change son rôle ou son modèle, on trace un lien, on ajoute un déclencheur.
+direct, sans écrire de code. On y crée une invocation de toutes pièces
+(rôle, modèle, prompt, ce qu'elle reçoit, ce qu'elle peut appeler, où elle
+écrit et avec quelles protections), on trace un lien, on ajoute un
+déclencheur. Tout ce que la page permet n'est que de l'écriture en base :
+elle ne demande jamais de code nouveau.
 Chaque changement est écrit au journal avec la date et l'auteur, pour
 pouvoir revenir en arrière.
 

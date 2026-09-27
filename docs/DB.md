@@ -148,6 +148,14 @@ parfois plusieurs invocations d'un coup, et chaque kind a son propre
 interrupteur. Le kind disparaît : une tâche désigne directement
 l'invocation à lancer, et l'interrupteur se trouve sur l'invocation.
 
+**L'écriture en base devient générale.** Un seul code d'écriture, piloté
+par des règles en base : pour chaque invocation, la table où elle écrit,
+l'opération (ajouter ou modifier), et quelle colonne reçoit quel champ de
+sa réponse. Les protections deviennent des tables de règles : les tables
+et colonnes qu'on a le droit d'écrire, les changements de statut permis,
+la façon de repérer un doublon, les écritures qui attendent la validation
+de Julien. Le détail est dans [`LOT6_CONCEPTION.md`](LOT6_CONCEPTION.md).
+
 **Les capsules disparaissent.** Les quatre tables des capsules
 (`db_readers`, `llm_point_readers`, `db_reader_fixed_params`,
 `db_reader_fixed_joins`) sont supprimées. Leur réglage va sur le lien entre
@@ -159,8 +167,9 @@ lui-même, et avec quels paramètres figés.
 une invocation qui n'est plus dans le code est supprimée au démarrage. Avec
 la nouvelle règle, une invocation ou un lien créé ou modifié dans Mission
 Control n'est jamais effacé au démarrage, et une invocation supprimée dans
-Mission Control ne revient pas. Seule une brique de base retirée du code
-(un tool, un traitement sans LLM) disparaît.
+Mission Control ne revient pas. Seule une capacité retirée du code est
+marquée absente, et ce qui s'en servait est signalé dans Mission
+Control.
 
 **De nouvelles tables pour les conversations et les clients.** Une fiche
 produit par business, avec ses questions fréquentes. Une table des

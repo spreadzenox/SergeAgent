@@ -19,8 +19,11 @@ Les décisions de conception en cours : `docs/DECISIONS_REVUE.md`.
   ajoute les objets nouveaux, on n'écrase jamais un réglage existant.
 - **Le code n'est qu'un interpréteur de la base.** L'ordre des invocations
   et tous leurs paramètres sont en base, jamais en dur dans le code. Le
-  code ne fournit que les briques : tools, traitements sans LLM, écritures
-  autorisées, protections déterministes.
+  code est rangé par capacité (lire, écrire, appeler un modèle, web, bac à
+  sable, API décrite en base, canal, ticket), jamais par invocation. Même
+  l'écriture et ses protections sont des règles en base. Le nom d'une
+  invocation n'apparaît jamais dans le code, sauf dans le fichier qui
+  remplit une nouvelle instance.
 - **Tests** : d'abord des scénarios de bout en bout par étape (faux LLM,
   vraie base), puis Mission Control dans un navigateur. Passant + refusé
   pour tout ce qui touche le monde extérieur.

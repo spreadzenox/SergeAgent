@@ -812,6 +812,32 @@ reste. Il n'y a rien à interrompre. Ce qui change :
   modifier en direct le pipeline : le nombre d'invocations, leur ordre,
   leur rôle, leur modèle, ce qu'elles voient.
 
+### Q56 — Jamais de code propre à une invocation, même pour écrire (validé par Clem)
+- On doit pouvoir créer une invocation de toutes pièces depuis MC, à terme,
+  donc depuis la base. Le code est un interpréteur très paramétrique, sans
+  rien de scripté pour une invocation particulière.
+- L'écriture en base est générique elle aussi : un seul code d'écriture,
+  piloté par des règles en base (quelle table, quelle opération, quelle
+  colonne reçoit quel champ de la réponse). Ce n'est jamais le modèle qui
+  choisit où écrire : la destination est fixée dans les réglages de
+  l'invocation.
+- Les protections deviennent des règles en base : tables et colonnes
+  autorisées, changements de statut permis, repérage des doublons, champs
+  obligatoires, validation par Julien avant d'agir. Chaque refus est écrit
+  au journal automatiquement.
+- Le code est rangé par capacité, jamais par invocation : lire la base,
+  écrire la base, appeler un modèle, chercher sur le web, agir dans un bac
+  à sable, appeler une API décrite en base, envoyer ou relever sur un
+  canal, ouvrir un ticket. Test simple : le nom d'une invocation ne doit
+  jamais apparaître dans le code, sauf dans le fichier qui remplit une
+  nouvelle instance.
+- Vaut pour tous les lots futurs : le bac à sable, l'agent web, les
+  connecteurs vers des services, les canaux, l'agent vocal, les tickets.
+  Chacun est une capacité générique réglée en base. Exemple : un connecteur
+  vers un service n'est pas du code écrit par Serge, mais la description du
+  service en base (adresse, secret à utiliser, points d'entrée), exécutée
+  par une seule capacité « appeler une API ».
+
 ### Q55 — Nouvel ordre des lots (validé)
 Lots 1 à 5 faits. Ensuite :
 6. Le runner et le pipeline en base : d'abord le runner (une tâche après

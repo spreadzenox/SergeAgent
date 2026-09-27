@@ -21,6 +21,37 @@ question posée à Julien, où l'on peut discuter avant qu'il tranche.
 
 ---
 
+## La règle qui vaut pour tous les lots
+
+Julien et Clem ont fixé une règle qui s'applique à chaque tâche de ce
+fichier, y compris celles qu'on attaquera dans plusieurs semaines : **tout
+se fait depuis la base de données, et le code n'est qu'un interpréteur.**
+Il n'y a jamais de code propre à une invocation. À terme, on doit pouvoir
+créer une invocation de toutes pièces depuis Mission Control : son rôle,
+son modèle, son prompt, ce qu'elle reçoit, ce qu'elle peut appeler, où elle
+écrit sa réponse, avec quelles protections, et ce qui la lance.
+
+Le code est donc rangé par **capacité**, jamais par invocation. Une
+capacité est un savoir-faire général, réglé par des paramètres lus en
+base : lire la base, écrire dans la base, appeler un modèle, chercher sur
+le web, agir dans un bac à sable, appeler une API décrite en base, envoyer
+ou relever des messages sur un canal, ouvrir un ticket. Une capacité ne
+connaît jamais une invocation, une étape ou un business en particulier.
+
+Un test simple permet de vérifier la règle : **le nom d'une invocation ne
+doit jamais apparaître dans le code**, sauf dans le fichier qui remplit une
+nouvelle instance. Si une tâche semble demander du code pour une
+invocation précise, c'est qu'il manque une capacité générique, ou un
+réglage en base : on ajoute ce qui manque, de façon générale. Exemple :
+pour qu'une invocation refuse un business déjà en test, on n'écrit pas une
+fonction spéciale, on déclare en base que le statut d'un business peut
+passer de `CANDIDATE` à `POC_SELECTED`, et jamais d'un autre statut.
+
+Les parties sur le web, le bac à sable, les connecteurs, les canaux et
+l'agent vocal, plus bas, rappellent comment cette règle s'y applique.
+
+---
+
 ## Dans quel ordre
 
 On avance par lots. Un lot est un ensemble de tâches qui vont ensemble ;
@@ -64,11 +95,14 @@ données (business, contacts, abonnements).
 - [ ] **Lot 12 « Web ».** On donne à Serge de quoi chercher, lire des
   pages et agir sur n'importe quel site : créer un compte, publier,
   écrire. On le met tard parce que c'est un gros chantier, mais plusieurs
-  tâches des étapes 3 et 6 en dépendent.
+  tâches des étapes 3 et 6 en dépendent. Le bac à sable, l'agent web et
+  les connecteurs y sont des capacités générales réglées en base, jamais
+  du code écrit pour une invocation.
 - [ ] **Lot 13 « L'éditeur sans code ».** Une page de Mission Control
-  pour modifier le pipeline en direct : ajouter ou retirer des
-  invocations, changer leur ordre, leur rôle, leur modèle et ce qu'elles
-  voient, sans toucher au code. Il n'est possible qu'une fois le lot 6
+  pour modifier le pipeline en direct et créer une invocation de toutes
+  pièces : ajouter ou retirer des invocations, changer leur ordre, leur
+  rôle, leur modèle, ce qu'elles voient et où elles écrivent, sans
+  toucher au code. Il n'est possible qu'une fois le lot 6
   fait.
 
 ---
@@ -85,13 +119,14 @@ modèle de « Trier les pages », ou ajoute une invocation entre « Trier les
 pages » et « Formuler des business », le prochain cycle en tient compte,
 sans redéploiement.
 
-Le code garde seulement les briques de base : les tools (chercher sur le
-web, lire une table, envoyer un e-mail), les traitements sans LLM (par
-exemple écarter les doublons) et la liste des écritures autorisées dans
-chaque table. La base dit lesquelles utiliser, dans quel ordre et avec
-quels paramètres. C'est déjà le cas pour les tools de lecture de la base :
-la liste des tables et des colonnes qu'ils ont le droit de lire est en
-base, et le code ne fait qu'exécuter.
+Le code garde seulement des capacités générales, comme expliqué dans « La
+règle qui vaut pour tous les lots » : lire la base, écrire dans la base,
+appeler un modèle, chercher sur le web, envoyer un e-mail. La base dit
+lesquelles utiliser, dans quel ordre et avec quels paramètres. C'est déjà
+le cas pour la lecture de la base : la liste des tables et des colonnes
+qu'une invocation a le droit de lire est en base, et un seul bout de code
+sait lire n'importe laquelle. Ce lot fait la même chose pour l'écriture,
+et pour tout le reste.
 
 La proposition de tables, en cours de discussion avec Clem, est dans
 [`docs/LOT6_CONCEPTION.md`](docs/LOT6_CONCEPTION.md).
@@ -136,7 +171,7 @@ La proposition de tables, en cours de discussion avec Clem, est dans
   écrite ; sa priorité et sa file ; si elle est allumée ; si elle reçoit le
   texte « Qui est Serge et quelle est ta place » ; le nombre maximum de
   lignes qu'on lui donne. Pour chaque invocation sans LLM, la base dit
-  quelle brique du code elle utilise et avec quels paramètres. Aujourd'hui,
+  quelle capacité du code elle utilise et avec quels paramètres. Aujourd'hui,
   une partie de ces réglages est déjà en base (prompt, modèle, tools,
   allumée), mais le reste est écrit dans le code. Les tables doivent rester
   simples à lire : une table par sorte de chose, pas de texte JSON fourre-
@@ -228,17 +263,27 @@ La proposition de tables, en cours de discussion avec Clem, est dans
   règles est dans [`docs/MEMOIRE.md`](docs/MEMOIRE.md). Cette tâche vient
   après les liens et les tools.
 
-- [ ] **Écrire la réponse d'une invocation là où la base l'indique.**
-  Aujourd'hui, c'est du code propre à chaque invocation qui lit la réponse
-  du LLM et l'écrit dans la bonne table : par exemple, le code du cycle
-  d'écoute transforme chaque fiche rendue par « Formuler des business » en
-  une ligne de la table des business. Il faut que la base décrive le
-  format de la réponse (les champs attendus) et où chaque champ est écrit
-  (quelle table, quelle colonne). Comme pour la lecture, le code tient la
-  liste des écritures autorisées : une invocation ne peut écrire que là où
-  cette liste le permet, et les protections qui ne doivent pas dépendre
-  d'un prompt restent dans le code. Exemple : refuser un business déjà en
-  test.
+- [ ] **Une seule façon d'écrire en base, réglée en base.** Aujourd'hui,
+  c'est du code propre à chaque invocation qui lit la réponse du LLM et
+  l'écrit dans la bonne table : par exemple, le code du cycle d'écoute
+  transforme chaque fiche rendue par « Formuler des business » en une
+  ligne de la table des business. Il faut un seul code d'écriture,
+  générique, piloté par des règles en base. Pour chaque invocation, la
+  base dit dans quelle table elle écrit, si elle ajoute ou modifie des
+  lignes, une ligne pour quel élément de sa réponse, et quelle colonne
+  reçoit quel champ. Exemple : « Chercheur d'idées » ajoute une ligne dans
+  la table des business pour chaque fiche de sa réponse ; le titre va dans
+  la colonne du nom, la description dans celle de la description, et le
+  statut est fixé à `CANDIDATE`. Ce n'est jamais le modèle qui choisit où
+  écrire : une réponse ratée, ou un texte piégé lu sur le web, ne doit pas
+  pouvoir écrire n'importe où. Les protections deviennent elles aussi des
+  règles en base : la liste des tables et colonnes qu'une invocation a le
+  droit d'écrire ; les changements de statut permis (un business peut
+  passer de `CANDIDATE` à `POC_SELECTED`, jamais de `SMOKE_RUNNING` à
+  `POC_SELECTED`) ; la façon de repérer un doublon dans une table (par
+  exemple, au moins 72 % de mots en commun) ; les champs obligatoires ;
+  les écritures qui attendent la validation de Julien. Chaque refus est
+  écrit au journal automatiquement, avec l'invocation et la raison.
 
 - [ ] **Une priorité par invocation.** Quand plusieurs tâches sont
   prêtes, le runner doit toujours prendre la plus urgente. Chaque
@@ -258,9 +303,25 @@ La proposition de tables, en cours de discussion avec Clem, est dans
   instance, et à ajouter sur une instance existante les objets nouveaux,
   sans jamais rien écraser ni supprimer. Une invocation que Julien
   supprime dans MC ne doit pas revenir au démarrage suivant : la base
-  garde la trace de sa suppression. Seule une brique de base retirée
-  du code (un tool, un traitement sans LLM) disparaît ; les invocations qui
-  s'en servaient sont signalées dans MC au lieu d'être effacées.
+  garde la trace de sa suppression. Seule une capacité retirée du code
+  est marquée absente ; les invocations qui s'en servaient sont signalées
+  dans MC au lieu d'être effacées.
+
+- [ ] **Réécrire le pipeline d'aujourd'hui en lignes de base.** Chaque
+  enchaînement qui existe aujourd'hui (le cycle d'écoute, la relève de la
+  boîte mail, le circuit des réponses, les envois, la consolidation) doit
+  être décrit par des lignes en base : ses invocations, leurs liens, leurs
+  déclencheurs, leurs règles d'écriture. Le code propre à chaque
+  enchaînement est ensuite supprimé. Le pipeline de départ d'une nouvelle
+  instance est rangé dans un seul fichier lisible, qui sert uniquement à
+  remplir la base ; c'est le seul endroit où les noms des invocations
+  apparaissent.
+
+- [ ] **Vérifier automatiquement la règle.** Un test doit échouer si le
+  nom d'une invocation apparaît dans le code, ailleurs que dans le fichier
+  qui remplit une nouvelle instance. Ce test protège la règle pour tous
+  les lots futurs : un développeur, humain ou LLM, qui écrirait du code
+  propre à une invocation serait arrêté tout de suite.
 
 ---
 
@@ -334,6 +395,9 @@ et Serge sait demander de l'aide quand il ne sait pas.
   le brouillon de réponse proposé par Serge ; pourquoi Serge a besoin
   d'aide et la question précise posée ; un lien vers la fiche du prospect
   dans MC. La réponse donnée dans Discord repart dans la conversation.
+  Ouvrir un ticket est une capacité générale : le ticket reprend ce que
+  l'invocation a reçu et ce qu'elle a répondu, dans l'ordre réglé en base.
+  On n'écrit pas un modèle de ticket par invocation.
 
 - [ ] **Des délais de réponse réglables canal par canal.** Serge ne
   répond pas à la seconde, pour paraître humain. Aujourd'hui, le délai est
@@ -363,7 +427,10 @@ et Serge sait demander de l'aide quand il ne sait pas.
   collègue) : n'importe qui peut prétendre être quelqu'un au téléphone.
   Après l'appel, le résumé entre dans le fil du prospect, et « Traiter une
   réponse » est lancée s'il y a une suite à donner, par exemple envoyer le
-  devis promis par e-mail.
+  devis promis par e-mail. L'agent vocal suit la même règle que le reste :
+  son prompt, son modèle, ce qu'il reçoit au décrochage et ses tools sont
+  réglés en base, comme une invocation ; seul le programme qui transporte
+  la voix en direct est du code, et il ne sait rien de ce qu'on dit.
 
 ---
 
@@ -413,25 +480,40 @@ et Serge sait demander de l'aide quand il ne sait pas.
 
 - [ ] **Le web.** Serge doit pouvoir tout faire sur le web avec son
   e-mail, son téléphone et sa carte, sans qu'un humain intervienne à
-  chaque nouveau site. Il faut d'abord installer sur le serveur un moteur
-  de recherche gratuit et sans clé (SearXNG), et s'en servir à la place de
-  la page de résultats de DuckDuckGo. Il faut ensuite un tool « Lire une
-  page » qui monte d'un cran seulement si nécessaire : une simple requête,
-  puis un vrai navigateur Chrome piloté si la page a besoin de JavaScript,
-  puis un service de navigateur distant si le site bloque ; chaque montée
-  est écrite au journal. Il faut une invocation « Agent web » qui
-  accomplit une mission sur un site, par exemple « crée un compte sur ce
-  forum », avec une session par compte qui garde ses cookies. Créer un
-  compte doit marcher de bout en bout : identité de Serge, code de
-  confirmation lu dans sa boîte mail ou ses SMS, captcha résolu par un
-  humain via un ticket Discord qui donne un lien vers l'écran en direct
-  dans MC, et compte enregistré dans la base. Enfin, quand un site a une
-  API gratuite, une invocation « Construire un connecteur » écrit le code
-  pour s'en servir, et Julien valide ce code par ticket avant qu'il soit
-  activé. Le tool « navigateur » prévu jusqu'ici disparaît au profit de
-  tout ça. Comme le reste, les accès de Serge à un bac à sable (un espace
-  isolé pour tester du code, naviguer, créer des comptes) sont déclarés en
-  base, et chaque invocation n'a que les accès que la base lui donne.
+  chaque nouveau site. C'est le chantier où la tentation d'écrire du code
+  pour un cas précis sera la plus forte ; la règle de ce fichier s'y
+  applique entièrement. Il faut d'abord installer sur le serveur un
+  moteur de recherche gratuit et sans clé (SearXNG), et s'en servir à la
+  place de la page de résultats de DuckDuckGo. Il faut ensuite une
+  capacité « Lire une page » qui monte d'un cran seulement si nécessaire :
+  une simple requête, puis un vrai navigateur Chrome piloté si la page a
+  besoin de JavaScript, puis un service de navigateur distant si le site
+  bloque ; chaque montée est écrite au journal. **Le bac à sable est une
+  capacité générique, réglée en base.** Un bac à sable est un espace isolé
+  où Serge peut naviguer, écrire des fichiers et lancer des commandes. La
+  base décrit chaque profil de bac à sable : ce qui y est installé, les
+  sites qu'il peut joindre, le temps et la mémoire permis, les secrets et
+  les comptes auxquels il a accès. Une invocation dit en base quel profil
+  elle utilise ; les tools du bac à sable (ouvrir une page, cliquer,
+  remplir un formulaire, lire un fichier, lancer une commande) sont des
+  capacités comme les autres, qu'on lui donne ou non. **L'« Agent web »
+  n'est donc pas du code** : c'est une invocation LLM réglée en base, qui
+  reçoit une mission en paramètre (par exemple « crée un compte sur ce
+  forum ») et les tools du navigateur dans son bac à sable, avec une
+  session par compte qui garde ses cookies. Créer un compte de bout en
+  bout est un enchaînement d'invocations en base : l'agent web remplit le
+  formulaire, une invocation lit le code de confirmation dans la boîte
+  mail ou les SMS, un ticket demande à un humain de résoudre un captcha
+  (avec un lien vers l'écran en direct dans MC), et le compte est écrit en
+  base par la capacité d'écriture générique. **Un connecteur n'est pas du
+  code non plus** : quand un site a une API gratuite, le service est
+  décrit en base (son adresse, le secret à utiliser, ses points d'entrée
+  et leurs paramètres), et une seule capacité « Appeler une API » sait
+  appeler n'importe quel service décrit ainsi. L'invocation « Construire
+  un connecteur » lit la documentation du service et écrit cette
+  description en base ; Julien la valide par ticket avant qu'elle soit
+  utilisable, grâce à une règle d'écriture « validation par Julien ». Le
+  tool « navigateur » prévu jusqu'ici disparaît au profit de tout ça.
 
 - [ ] **Brancher la garde de santé des comptes.** Un compte web trop
   sollicité se fait bannir. Le code d'une garde existe déjà : avant chaque
@@ -458,18 +540,22 @@ et Serge sait demander de l'aide quand il ne sait pas.
   lourd, les options de pivot, le plan de passage à l'échelle, l'arbitre
   du budget, la construction d'un livrable, la relecture d'un livrable, le
   résumé de la dette de construction, l'hypothèse de test léger, et la
-  découverte de contacts. Pour chacune, il faut soit la brancher dans le
-  nouveau pipeline, soit la supprimer. On ne garde pas de code mort.
+  découverte de contacts. Pour chacune, il faut soit la décrire en base
+  dans le nouveau pipeline, soit la supprimer, et dans les deux cas
+  supprimer le code qui lui était propre. On ne garde pas de code mort.
 
 - [ ] **L'éditeur sans code dans Mission Control.** C'est le but du
   lot 6 à terme. Une fois tout le pipeline décrit en base, une page de MC
-  doit permettre de le modifier en direct, sans écrire de code : ajouter
-  ou retirer une invocation, changer son rôle, son modèle, son prompt, ce
-  qu'elle reçoit et les tools qu'elle peut appeler, tracer ou effacer un
-  lien entre deux invocations, ajouter un déclencheur. La page montre le
-  pipeline comme un schéma, et chaque changement est écrit au journal avec
-  la date et l'auteur, pour pouvoir revenir en arrière. C'est le dernier
-  lot.
+  doit permettre de le modifier en direct, sans écrire de code, et de
+  créer une invocation de toutes pièces : son rôle, son modèle, son
+  prompt, ce qu'elle reçoit et les tools qu'elle peut appeler, le format
+  de sa réponse, où elle l'écrit et avec quelles protections, les liens
+  qui l'enchaînent aux autres et les déclencheurs qui la lancent. La page
+  montre le pipeline comme un schéma, et chaque changement est écrit au
+  journal avec la date et l'auteur, pour pouvoir revenir en arrière.
+  C'est le dernier lot. Il ne doit demander aucun code nouveau pour une
+  invocation : s'il en manque, c'est que le lot 6 a laissé quelque chose
+  en dur.
 
 ---
 
@@ -479,24 +565,26 @@ et Serge sait demander de l'aide quand il ne sait pas.
   rôle.** Aujourd'hui, deux invocations « Explorer les besoins » font tout
   à la fois : chercher sur le web, lire, repérer des besoins et en tirer
   des idées de business. Il faut découper le travail. D'abord, une
-  invocation sans LLM lit les flux RSS suivis. Ensuite, « Explorer le
-  web » cherche des pages à partir du petit texte de guidage que Julien
-  écrit dans MC et des business déjà connus. « Trier les pages », avec un
-  modèle rapide, met une étiquette sur chaque page nouvelle : elle
-  enrichit un business déjà connu, elle signale un besoin nouveau, ou
-  c'est du bruit. Deux invocations « Formuler des business », A et B,
-  lisent les pages qui signalent un besoin et écrivent chacune des fiches
-  de business avec leurs pages de preuve ; B ne voit jamais ce qu'a écrit
-  A, pour avoir des idées variées. Une invocation sans LLM écarte les
-  doublons et enregistre le reste comme candidats. « Choisir les business
-  à tester » en choisit autant qu'il y a de places libres en prospection
-  légère. Enfin, une invocation sans LLM refuse tout business déjà en
-  test : c'est une protection écrite dans le code, pas une consigne dans
-  un prompt. Le cycle se lance à la main depuis MC, et ne tourne que s'il
-  reste une place libre. Le prompt des invocations qui formulent et
-  choisissent doit dire que le business doit être légal, et les
-  encourager à ne pas s'arrêter sur des scrupules moraux qui ne sont pas
-  contraires à la loi. Le détail est dans
+  invocation sans LLM lit les flux RSS suivis. Ensuite, « Explorer le web »
+  cherche des pages à partir du petit texte de guidage que Julien écrit
+  dans MC et des business déjà connus. « Trier les pages », avec un modèle
+  rapide, met une étiquette sur chaque page nouvelle : elle enrichit un
+  business déjà connu, elle signale un besoin nouveau, ou c'est du bruit.
+  Deux invocations « Formuler des business », A et B, lisent les pages qui
+  signalent un besoin et écrivent chacune des fiches de business avec
+  leurs pages de preuve ; B ne voit jamais ce qu'a écrit A, pour avoir des
+  idées variées. Les doublons sont écartés au moment de l'écriture, par la
+  règle de doublons déclarée en base pour la table des business, et le
+  reste est enregistré comme candidat. « Choisir les business à tester »
+  en choisit autant qu'il y a de places libres en prospection légère. Tout
+  business déjà en test est refusé par la règle des changements de statut
+  permis, déclarée en base : c'est une protection appliquée par le code
+  d'écriture générique, pas une consigne dans un prompt, et pas du code
+  propre à cette invocation. Le cycle se lance à la main depuis MC, et ne
+  tourne que s'il reste une place libre. Le prompt des invocations qui
+  formulent et choisissent doit dire que le business doit être légal, et
+  les encourager à ne pas s'arrêter sur des scrupules moraux qui ne sont
+  pas contraires à la loi. Le détail est dans
   [`docs/etapes/1-pre-prospection.md`](docs/etapes/1-pre-prospection.md).
   Cette tâche a besoin du lot 6 et des places de test : les sept
   invocations, leurs liens et leurs réglages sont décrits en base.
@@ -562,15 +650,22 @@ et Serge sait demander de l'aide quand il ne sait pas.
 - [ ] **Prospecter sur LinkedIn.** LinkedIn est un canal important pour
   vendre à des professionnels. Serge l'utilise avec son propre compte, à
   un volume modéré, et Julien valide chaque message et chaque publication
-  avant qu'ils partent. Les garde-fous d'envoi doivent connaître ce canal.
-  Cette tâche a besoin du web.
+  avant qu'ils partent. Cette validation n'est pas du code propre à
+  LinkedIn : c'est un réglage en base sur l'invocation d'envoi, « validation
+  par Julien avant d'agir », que n'importe quelle invocation peut avoir.
+  Les garde-fous d'envoi doivent connaître ce canal. Cette tâche a besoin
+  du web.
 
 - [ ] **Les autres canaux.** Chaque type de business n'a pas le même bon
   canal. Il faut ajouter WhatsApp, la publication sur des forums ou
   Reddit, la publicité (Google, Meta, LinkedIn, Reddit) et l'envoi de SMS.
-  Pour chaque canal, il faut le code qui envoie vraiment, son barème de
-  points et sa fiche dans le catalogue de MC. Cette tâche a besoin du web
-  et de la grille de points.
+  Pour chaque canal, il faut une façon d'envoyer et de relever, son barème
+  de points et sa fiche dans le catalogue de MC. Envoyer et relever passent
+  soit par un service décrit en base et la capacité « Appeler une API »,
+  soit par l'agent web ; on n'écrit un adaptateur de code que si le canal
+  ne peut vraiment pas passer par là (le téléphone, par exemple), et cet
+  adaptateur sert alors toutes les invocations, jamais une seule. Cette
+  tâche a besoin du web et de la grille de points.
 
 ---
 
@@ -597,10 +692,14 @@ et Serge sait demander de l'aide quand il ne sait pas.
   produit (voir le lot 8), une autre les critique, puis Julien valide dans
   un ticket, en fixant le prix définitif. Serge construit ensuite le
   produit avec un duo : un constructeur qui écrit, un relecteur qui répond
-  « bon », « à corriger » ou « il faut une nouvelle capacité ». Le produit
+  « bon », « à corriger » ou « il faut une nouvelle capacité ». Ce duo est
+  fait de deux invocations LLM réglées en base, qui travaillent dans un bac
+  à sable avec ses tools génériques (écrire un fichier, lancer les tests,
+  ouvrir la page) ; aucune ligne de code ne leur est propre. Le produit
   est mis en ligne sur un domaine acheté pour lui. Serge crée le produit
-  et son prix dans Stripe, en inscrivant sur le prix l'identifiant du
-  business, pour que chaque abonnement soit rattaché au bon business. Il
+  et son prix dans Stripe, par la capacité « Appeler une API » et la
+  description de Stripe en base, en inscrivant sur le prix l'identifiant
+  du business, pour que chaque abonnement soit rattaché au bon business. Il
   fait enfin un paiement de test de 1 € qu'il se rembourse, pour vérifier
   que tout marche.
 
@@ -610,7 +709,9 @@ et Serge sait demander de l'aide quand il ne sait pas.
   business principal. Chaque version d'un livrable est rangée dans son
   propre dossier (le business, le livrable, puis le numéro de version), et
   n'est plus jamais modifiée une fois publiée. Chaque fichier a sa fiche
-  dans la base.
+  dans la base. Publier est une capacité générale (« publier ce dossier à
+  cette adresse »), réglée par ses paramètres, qui sert à tous les
+  livrables.
 
 ---
 
