@@ -17,6 +17,10 @@ Les décisions de conception en cours : `docs/DECISIONS_REVUE.md`.
 - **Noms en anglais, textes en français.** On dit « invocation LLM ».
 - **La base SQLite fait foi.** Code et YAML = valeurs de départ : on
   ajoute les objets nouveaux, on n'écrase jamais un réglage existant.
+- **Le code n'est qu'un interpréteur de la base.** L'ordre des invocations
+  et tous leurs paramètres sont en base, jamais en dur dans le code. Le
+  code ne fournit que les briques : tools, traitements sans LLM, écritures
+  autorisées, protections déterministes.
 - **Tests** : d'abord des scénarios de bout en bout par étape (faux LLM,
   vraie base), puis Mission Control dans un navigateur. Passant + refusé
   pour tout ce qui touche le monde extérieur.

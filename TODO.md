@@ -25,69 +25,133 @@ question posée à Julien, où l'on peut discuter avant qu'il tranche.
 
 On avance par lots. Un lot est un ensemble de tâches qui vont ensemble ;
 chaque lot se termine par des tests verts et un commit, puis Julien ou
-Clem regarde le résultat avant qu'on attaque le suivant.
+Clem regarde le résultat avant qu'on attaque le suivant. Les lots 1 à 5
+sont faits : fusion des branches, correction de deux bugs graves,
+nettoyage du code mort, nouvelle documentation, et remise en ordre des
+données (business, contacts, abonnements).
 
-- [ ] **Lot « Invocations et liens ».** C'est la fondation de tout le
-  reste, donc on le fait en premier. Aujourd'hui, l'enchaînement des
-  invocations est écrit en dur dans le code, et MC ne montre pas vraiment
-  ce qui tourne. Ce lot supprime les « kinds » (les types de tâches du
-  code), fait circuler les données d'une invocation à la suivante par des
-  liens visibles dans MC, remplace les « capsules » de lecture de la base
-  par un réglage sur le lien entre une invocation et ses tools, donne une
-  priorité à chaque invocation, et donne automatiquement à chaque
-  invocation les quelques tools dont elle a toujours besoin. Les tâches
-  détaillées sont dans la partie « Pour tout Serge » plus bas.
-- [ ] **Lot « Étape 1 ».** On refait la pré-prospection en sept
+- [ ] **Lot 6 « Le runner et le pipeline en base ».** C'est la fondation
+  de tout le reste, et Clem et Julien veulent l'attaquer ensemble. Il
+  commence par le runner, le programme qui exécute les tâches : il doit
+  exécuter une tâche après l'autre et enregistrer en base après chacune,
+  sur deux files en parallèle, parce qu'aujourd'hui un plantage peut faire
+  envoyer deux fois le même e-mail. Ensuite, tout le pipeline passe en
+  base : l'ordre des invocations, leur modèle, leur prompt, ce qu'elles
+  reçoivent, leurs tools, où elles écrivent, ce qui les déclenche. Le code
+  ne fait plus que lire la base et exécuter ce qu'elle décrit. Les tâches
+  détaillées sont dans la partie « Lot 6 » plus bas.
+- [ ] **Lot 7 « Étape 1 ».** On refait la pré-prospection en sept
   invocations qui ont chacune un seul rôle, on garde toutes les pages lues
-  comme preuves, et on met la liste des flux RSS en base. Ce lot vient
-  juste après le premier parce qu'il a besoin des liens entre invocations.
-- [ ] **Lot « Conversations ».** On crée un fil de discussion par
-  prospect, une seule invocation pour lire et traiter une réponse, et des
-  relances qui ne partent jamais vers quelqu'un qui a déjà répondu. C'est
-  ce qui permet de parler à de vrais prospects sans faire d'erreur gênante.
-- [ ] **Lot « Grille de points ».** On donne des points à chaque réaction
-  d'un prospect, avec un barème par canal, pour pouvoir comparer deux
-  tests faits sur des canaux différents.
-- [ ] **Lot « Concevoir et construire ».** On écrit le plan d'un POC, on
-  le fait critiquer, Julien le valide, puis Serge construit et met en
-  ligne, d'abord le POC, ensuite le vrai produit. Ce sont les étapes 2
-  et 5.
-- [ ] **Lot « Le reste des étapes ».** Trouver des prospects (étape 3),
+  comme preuves, et on met la liste des flux RSS en base. Ce lot est le
+  premier à être décrit entièrement en base grâce au lot 6.
+- [ ] **Lot 8 « Conversations ».** On crée un fil de discussion par
+  prospect, une seule invocation pour lire et traiter une réponse, une
+  fiche produit détaillée pour répondre juste, des tickets qu'on comprend
+  sans suivre Serge, des délais de réponse réglables par canal, et un agent
+  vocal qui sait à qui il parle. C'est ce qui permet de parler à de vrais
+  prospects sans faire d'erreur gênante.
+- [ ] **Lot 9 « Grille de points ».** On donne des points à chaque
+  réaction d'un prospect, avec un barème par canal, pour pouvoir comparer
+  deux tests faits sur des canaux différents.
+- [ ] **Lot 10 « Concevoir et construire ».** On écrit le plan d'un POC
+  et sa fiche produit, on les fait critiquer, Julien les valide, puis
+  Serge construit et met en ligne, d'abord le POC, ensuite le vrai
+  produit. Ce sont les étapes 2 et 5.
+- [ ] **Lot 11 « Le reste des étapes ».** Trouver des prospects (étape 3),
   choisir le business principal (étape 4), la prospection lourde et la vie
   du business (étape 6), des leçons plus précises (étape 7) et une caisse
   propre (étape 8).
-- [ ] **Lot « Web ».** On donne à Serge de quoi chercher, lire des pages
-  et agir sur n'importe quel site : créer un compte, publier, écrire. On
-  le met en dernier parce que c'est le plus gros chantier, mais plusieurs
+- [ ] **Lot 12 « Web ».** On donne à Serge de quoi chercher, lire des
+  pages et agir sur n'importe quel site : créer un compte, publier,
+  écrire. On le met tard parce que c'est un gros chantier, mais plusieurs
   tâches des étapes 3 et 6 en dépendent.
+- [ ] **Lot 13 « L'éditeur sans code ».** Une page de Mission Control
+  pour modifier le pipeline en direct : ajouter ou retirer des
+  invocations, changer leur ordre, leur rôle, leur modèle et ce qu'elles
+  voient, sans toucher au code. Il n'est possible qu'une fois le lot 6
+  fait.
 
 ---
 
-## Pour tout Serge
+## Lot 6 — Le runner et le pipeline en base
 
-- [ ] **Les places de test.** Serge ne doit pas tester plus de business
-  qu'il ne peut en suivre. Il faut trois places en prospection légère et
-  une seule en prospection lourde. Un business prend une place de
-  prospection légère dès qu'il est choisi à l'étape 1 et la garde pendant
-  les étapes 2 et 3. Il n'y a pas de file d'attente : quand les trois
-  places sont prises, l'étape 1 ne lance plus de cycle et MC affiche
-  « 3 places sur 3 occupées ». Les deux nombres (3 et 1) doivent être
-  modifiables dans MC. Aujourd'hui, le code impose seulement « un seul
-  business actif à la fois », ce qui ne correspond plus à ce qu'on veut.
+La règle, décidée par Clem et Julien : **le code n'est qu'un interpréteur
+de la base de données.** L'ordre des invocations et tous leurs paramètres
+sont en base, et seulement en base. Aucun paramètre n'est écrit en dur
+dans le code. Le runner prend les tâches une par une ; pour chacune, le
+code lit en base la description de l'invocation à lancer, et l'exécute
+exactement comme elle est décrite. Exemple : si Julien change dans MC le
+modèle de « Trier les pages », ou ajoute une invocation entre « Trier les
+pages » et « Formuler des business », le prochain cycle en tient compte,
+sans redéploiement.
 
-- [ ] **Les livraisons et les demandes des clients.** Serge ne sait pas
-  aujourd'hui ce qui reste à livrer à un client, ni ce que les clients lui
-  ont demandé. Il faut une table des livraisons, avec une ligne par chose
-  vendue à livrer : le business, le client, le paiement, ce qu'il faut
-  livrer, la date promise, l'état (à faire, en cours, livrée, problème) et
-  le fichier livré. Une ligne est créée à chaque paiement d'un produit qui
-  n'est pas livré instantanément, et une livraison en retard apparaît dans
-  MC et passe en priorité haute. Il faut aussi une table des demandes
-  clients : les bugs, les insatisfactions et les idées d'amélioration. Ces
-  deux tables sont créées en même temps que le code qui les remplit (le
-  traitement des réponses et l'encaissement), pour ne pas laisser dans la
-  base une table vide que personne n'écrit. Sans elles, on ne peut pas
-  savoir quand un business peut être fermé.
+Le code garde seulement les briques de base : les tools (chercher sur le
+web, lire une table, envoyer un e-mail), les traitements sans LLM (par
+exemple écarter les doublons) et la liste des écritures autorisées dans
+chaque table. La base dit lesquelles utiliser, dans quel ordre et avec
+quels paramètres. C'est déjà le cas pour les tools de lecture de la base :
+la liste des tables et des colonnes qu'ils ont le droit de lire est en
+base, et le code ne fait qu'exécuter.
+
+- [ ] **Une tâche après l'autre, enregistrée tout de suite.**
+  Aujourd'hui, le runner est relancé une minute après la fin du passage
+  précédent, traite jusqu'à dix tâches à la suite, et n'enregistre en base
+  qu'à la toute fin. Si le programme plante à la septième tâche, tout ce
+  qui a été écrit depuis le début est annulé, y compris la note « e-mail
+  envoyé » alors que l'e-mail est bien parti : au passage suivant, Serge le
+  renvoie. Et pendant tout le passage, qui peut durer quinze minutes,
+  Mission Control, le bot Discord et la réception des paiements ne peuvent
+  pas écrire en base. Il faut que le runner devienne un programme qui
+  tourne en continu : il prend la tâche prête la plus prioritaire,
+  l'exécute, enregistre en base, puis prend la suivante, sans attente
+  d'une minute et sans limite de dix. C'est la première chose à faire.
+
+- [ ] **Deux files en parallèle.** Une construction de produit peut
+  durer quarante minutes ; pendant ce temps, la réponse à un prospect
+  attendrait, même avec la priorité la plus haute. Il faut donc deux files
+  qui tournent en même temps. La file des conversations prend les tâches
+  courtes : relever les boîtes, traiter une réponse, envoyer, relancer. La
+  file des travaux prend les tâches longues : écoute du web, conception,
+  construction, point hebdomadaire. Chaque file prend toujours sa tâche la
+  plus prioritaire. Faire tourner deux invocations en même temps ne pose
+  pas de problème à la machine : elle ne fait qu'attendre la réponse du
+  fournisseur du LLM. La file de chaque invocation se règle dans MC.
+
+- [ ] **Ne jamais agir deux fois à l'extérieur.** Une tâche qui agit
+  hors de Serge (envoyer un e-mail, passer un appel, rembourser un client)
+  doit enregistrer « en cours » en base avant d'agir, puis « fait » juste
+  après. Si le programme plante entre les deux, la tâche reste marquée
+  « en cours » et n'est pas relancée toute seule : elle apparaît dans MC
+  pour qu'on vérifie. Chaque envoi porte déjà une clé unique, qu'il faut
+  garder.
+
+- [ ] **Décrire chaque invocation entièrement en base.** Pour chaque
+  invocation LLM, la base doit dire : son titre et son rôle, en une phrase
+  lisible par un humain ; son étape ; le modèle appelé ; son prompt ; ce
+  qu'elle reçoit dès le départ ; les tools qu'elle peut appeler et avec
+  quels paramètres figés ; le format de sa réponse ; où sa réponse est
+  écrite ; sa priorité et sa file ; si elle est allumée ; si elle reçoit le
+  texte « Qui est Serge et quelle est ta place » ; le nombre maximum de
+  lignes qu'on lui donne. Pour chaque invocation sans LLM, la base dit
+  quelle brique du code elle utilise et avec quels paramètres. Aujourd'hui,
+  une partie de ces réglages est déjà en base (prompt, modèle, tools,
+  allumée), mais le reste est écrit dans le code. Les tables doivent rester
+  simples à lire : une table par sorte de chose, pas de texte JSON fourre-
+  tout.
+
+- [ ] **Un seul programme qui exécute n'importe quelle invocation.**
+  Aujourd'hui, chaque enchaînement a son propre code : par exemple, la
+  fonction du cycle d'écoute appelle « Explorer A », puis « Explorer B »,
+  puis « Choisir », dans cet ordre écrit en dur. Il faut un seul
+  programme, le même pour toutes les invocations, qui reçoit le numéro de
+  l'invocation à lancer et fait toujours la même chose : il lit sa
+  description en base, rassemble ce qu'elle doit recevoir, construit le
+  prompt, appelle le modèle indiqué, le laisse appeler les tools autorisés,
+  vérifie que la réponse a le bon format, l'écrit là où la base l'indique,
+  puis lance les invocations suivantes selon les liens. Les bibliothèques
+  qu'on utilise pour appeler les modèles acceptent déjà tous ces réglages
+  comme des paramètres : il suffit de les lire en base au lieu de les
+  écrire dans le code.
 
 - [ ] **Supprimer les « kinds ».** Aujourd'hui, le moteur qui exécute les
   tâches (le runner) reçoit des tâches typées par un « kind », par exemple
@@ -113,7 +177,23 @@ Clem regarde le résultat avant qu'on attaque le suivant.
   automatique » ; quand il est allumé, une petite invocation sans LLM fait
   le passage toute seule. La structure en base doit rester simple à lire :
   une table des liens, et on voit dans MC ce qui est passé et ce qui
-  attend. Cette tâche vient après la suppression des kinds.
+  attend. Cette tâche vient après la suppression des kinds. Les enchaînements
+  écrits en dur aujourd'hui (le cycle d'écoute, le circuit des réponses,
+  la consolidation) sont tous réécrits sous forme de liens en base, et la
+  liste d'ordre utilisée seulement pour l'affichage dans MC disparaît.
+
+- [ ] **Des déclencheurs en base.** Certaines invocations ne sont pas
+  lancées par celle d'avant, mais par un événement. Un déclencheur dit :
+  « quand cet événement arrive, ajoute cette invocation à la file, avec
+  ces paramètres ». Trois sortes d'événements suffisent pour commencer :
+  un message reçu d'un prospect, sur n'importe quel canal (il lance
+  « Traiter une réponse » pour ce prospect) ; une heure ou un intervalle
+  (relever la boîte mail toutes les 5 minutes, faire le point chaque
+  lundi) ; un bouton dans MC (lancer un cycle d'écoute). Les déclencheurs
+  sont en base et visibles dans MC, comme les liens. Une même invocation ne
+  doit pas être en file deux fois pour le même objet : si un prospect
+  envoie deux messages coup sur coup, une seule tâche « Traiter une
+  réponse » existe pour lui.
 
 - [ ] **Remplacer les « capsules » par un réglage sur le lien entre une
   invocation et un tool.** Une capsule est aujourd'hui un tool de lecture
@@ -145,6 +225,18 @@ Clem regarde le résultat avant qu'on attaque le suivant.
   règles est dans [`docs/MEMOIRE.md`](docs/MEMOIRE.md). Cette tâche vient
   après les liens et les tools.
 
+- [ ] **Écrire la réponse d'une invocation là où la base l'indique.**
+  Aujourd'hui, c'est du code propre à chaque invocation qui lit la réponse
+  du LLM et l'écrit dans la bonne table : par exemple, le code du cycle
+  d'écoute transforme chaque fiche rendue par « Formuler des business » en
+  une ligne de la table des business. Il faut que la base décrive le
+  format de la réponse (les champs attendus) et où chaque champ est écrit
+  (quelle table, quelle colonne). Comme pour la lecture, le code tient la
+  liste des écritures autorisées : une invocation ne peut écrire que là où
+  cette liste le permet, et les protections qui ne doivent pas dépendre
+  d'un prompt restent dans le code. Exemple : refuser un business déjà en
+  test.
+
 - [ ] **Une priorité par invocation.** Quand plusieurs tâches sont
   prêtes, le runner doit toujours prendre la plus urgente. Chaque
   invocation a donc une priorité, modifiable dans MC. Valeurs de départ :
@@ -152,7 +244,151 @@ Clem regarde le résultat avant qu'on attaque le suivant.
   relever les boîtes mail et les autres messages entrants, 50 pour les
   envois et les relances, 30 pour la construction, 10 pour l'écoute du
   web, la veille et la consolidation des leçons. Répondre à un prospect
-  passe avant tout le reste.
+  passe avant tout le reste. La priorité vit en base, sur la
+  description de l'invocation, à côté de sa file.
+
+- [ ] **Ne plus rien effacer au démarrage.** Aujourd'hui, à chaque
+  démarrage, Serge supprime de la base les invocations qui ne sont pas
+  dans le code. Avec la nouvelle règle, une invocation ou un lien créé ou
+  modifié dans MC serait effacé au redémarrage suivant. Il faut que les
+  réglages écrits dans le code ne servent plus qu'à remplir une nouvelle
+  instance, et à ajouter sur une instance existante les objets nouveaux,
+  sans jamais rien écraser ni supprimer. Une invocation que Julien
+  supprime dans MC ne doit pas revenir au démarrage suivant : la base
+  garde la trace de sa suppression. Seule une brique de base retirée
+  du code (un tool, un traitement sans LLM) disparaît ; les invocations qui
+  s'en servaient sont signalées dans MC au lieu d'être effacées.
+
+---
+
+## Lot 8 — Conversations avec les prospects et les clients
+
+Les messages des prospects et des clients sont imprévisibles : questions
+sur le produit, demandes de changement, questions de délais, sujets sans
+rapport. On ne peut pas tout prévoir, mais on calibre les cas classiques,
+et Serge sait demander de l'aide quand il ne sait pas.
+
+- [ ] **Un fil de discussion par prospect, et des relances qui ne gênent
+  personne.** La règle est simple : on ne relance jamais quelqu'un qui a
+  déjà répondu. Pour la tenir, il faut un fil par prospect, tous canaux
+  confondus, qui garde aussi le texte de ce que Serge a envoyé. Chaque
+  réponse reçue doit être rattachée au bon prospect, y compris quand elle
+  arrive dans le fil d'un e-mail. Une relance ne part que si le dernier
+  événement du fil est un envoi de Serge resté sans réponse, et ce
+  contrôle est refait au moment exact de l'envoi. Si les réponses d'un
+  canal n'ont pas été relevées depuis plus d'une heure, aucune relance ne
+  part sur ce canal.
+
+- [ ] **Une seule invocation pour traiter une réponse.** Aujourd'hui,
+  trois ou quatre invocations lisent le même message de prospect chacune
+  de leur côté : l'une le classe, l'autre cherche l'intention, une autre
+  cherche un rendez-vous. Il faut les remplacer par une seule invocation,
+  « Traiter une réponse ». Elle reçoit en entier le fil du prospect, sa
+  fiche, la fiche du business et la fiche produit, et rend trois choses :
+  la réaction du prospect, la réponse à envoyer (ou « pas de réponse »),
+  et si Julien doit intervenir. Elle repère aussi les demandes sur le
+  produit (bug, insatisfaction, idée) et les range dans la table des
+  demandes clients. La réponse part après le délai réglé pour le canal
+  (voir plus bas). Si Julien doit intervenir, ou si un garde-fou bloque
+  l'envoi, il reçoit un ticket avec le brouillon. Cette invocation a son
+  propre interrupteur, car elle sert aussi pendant la prospection légère.
+  Elle a besoin du fil de discussion.
+
+- [ ] **Une fiche produit détaillée pour chaque business.** Pour
+  répondre juste à une question sur le produit, l'invocation qui répond
+  doit tout savoir du produit. Aujourd'hui, la fiche d'un business n'a que
+  trois textes courts (description, observations, offre vendable), et
+  aucune fiche produit n'existe. Il faut une fiche produit par business, en
+  base : ce que fait le produit et pour qui, ce qu'il ne fait pas, le prix,
+  les délais habituels de livraison, comment on l'utilise, et une liste de
+  questions fréquentes avec leurs réponses. Elle est écrite par
+  l'invocation qui conçoit le produit (à l'étape 2 pour le POC, à l'étape 5
+  pour le vrai produit) et validée par Julien avec le plan ; il y en aura
+  peu. Elle est mise à jour à chaque nouvelle version du produit. On ne
+  fait jamais appel à l'invocation qui a construit le produit pour
+  répondre : elle ne garde aucun souvenir d'un appel à l'autre, tout doit
+  être dans la fiche. Quand Julien répond à un ticket sur une question
+  produit, sa réponse est ajoutée aux questions fréquentes : la fois
+  suivante, Serge répond seul.
+
+- [ ] **Répondre prudemment aux questions de délais.** Les questions de
+  délais sont les plus difficiles à prévoir. On laisse le LLM répondre
+  seul, avec la fiche produit, mais son prompt contient trois consignes de
+  prudence : ne jamais promettre une date ou un délai qui n'est pas dans la
+  fiche ; ne jamais promettre une fonctionnalité qui n'existe pas (la
+  demande devient une demande client, étudiée pour une prochaine
+  version) ; en cas de doute, répondre sans s'engager, par exemple « je
+  vérifie et je reviens vers vous », et ouvrir un ticket.
+
+- [ ] **Des tickets qu'on comprend sans suivre Serge.** Julien et Clem
+  ne regardent pas ce que fait Serge au quotidien : c'est tout l'intérêt.
+  Quand un ticket leur arrive, ils ne connaissent ni le business ni le
+  prospect. Aujourd'hui, un ticket de réponse ne contient que le brouillon
+  et une phrase de motif. Il faut que chaque ticket de conversation
+  contienne toujours, dans cet ordre : le business en trois lignes (nom, ce
+  qu'il vend, prix, où il en est) ; le prospect (nom, entreprise, où il en
+  est) ; le fil de la conversation, avec les derniers messages en entier ;
+  le brouillon de réponse proposé par Serge ; pourquoi Serge a besoin
+  d'aide et la question précise posée ; un lien vers la fiche du prospect
+  dans MC. La réponse donnée dans Discord repart dans la conversation.
+
+- [ ] **Des délais de réponse réglables canal par canal.** Serge ne
+  répond pas à la seconde, pour paraître humain. Aujourd'hui, le délai est
+  un seul réglage pour tous les canaux. Il faut le mettre sur la fiche de
+  chaque canal, modifiable dans MC : délai minimum, délai maximum, heures
+  et jours ouvrés. Exemple : par e-mail entre 5 et 20 minutes, sur
+  LinkedIn entre 1 et 4 heures, par SMS tout de suite. On pourra ainsi
+  essayer différents réglages et voir ce qui marche le mieux.
+
+- [ ] **Un agent vocal qui sait à qui il parle.** Un appel ne passe pas
+  par la file des tâches : le standard téléphonique installé sur le
+  serveur décroche et confie l'appel à un programme vocal séparé, qui
+  parle en direct avec un modèle vocal et tourne en parallèle du reste. Il
+  n'y a donc rien à interrompre quand un appel arrive. Mais aujourd'hui,
+  l'agent vocal a le même prompt fixe pour tous les appels et ne sait rien
+  de celui qui appelle. Il faut qu'au décrochage, le numéro soit cherché en
+  base ; s'il est connu, l'agent reçoit la fiche du prospect, son fil, la
+  fiche du business et la fiche produit. S'il est inconnu, l'agent dit
+  « Bonjour, je suis Serge, en quoi puis-je vous aider ? », demande à qui
+  il parle, et cherche la fiche avec un tool (par nom, entreprise, e-mail
+  ou numéro). Si l'appelant propose quelque chose à Serge, comme un
+  partenariat, l'agent répond poliment qu'il ne peut pas traiter ce genre
+  de demande pour l'instant, et le résumé est quand même écrit au journal.
+  Quand la personne est reconnue seulement parce qu'elle a dit son nom, et
+  pas par son numéro, l'agent se sert de sa fiche pour comprendre, mais ne
+  répète aucune information sensible (montants, adresses, propos d'un
+  collègue) : n'importe qui peut prétendre être quelqu'un au téléphone.
+  Après l'appel, le résumé entre dans le fil du prospect, et « Traiter une
+  réponse » est lancée s'il y a une suite à donner, par exemple envoyer le
+  devis promis par e-mail.
+
+---
+
+## Pour tout Serge
+
+- [ ] **Les places de test.** Serge ne doit pas tester plus de business
+  qu'il ne peut en suivre. Il faut trois places en prospection légère et
+  une seule en prospection lourde. Un business prend une place de
+  prospection légère dès qu'il est choisi à l'étape 1 et la garde pendant
+  les étapes 2 et 3. Il n'y a pas de file d'attente : quand les trois
+  places sont prises, l'étape 1 ne lance plus de cycle et MC affiche
+  « 3 places sur 3 occupées ». Les deux nombres (3 et 1) doivent être
+  modifiables dans MC. Aujourd'hui, le code impose seulement « un seul
+  business actif à la fois », ce qui ne correspond plus à ce qu'on veut.
+
+- [ ] **Les livraisons et les demandes des clients.** Serge ne sait pas
+  aujourd'hui ce qui reste à livrer à un client, ni ce que les clients lui
+  ont demandé. Il faut une table des livraisons, avec une ligne par chose
+  vendue à livrer : le business, le client, le paiement, ce qu'il faut
+  livrer, la date promise, l'état (à faire, en cours, livrée, problème) et
+  le fichier livré. Une ligne est créée à chaque paiement d'un produit qui
+  n'est pas livré instantanément, et une livraison en retard apparaît dans
+  MC et passe en priorité haute. Il faut aussi une table des demandes
+  clients : les bugs, les insatisfactions et les idées d'amélioration. Ces
+  deux tables sont créées en même temps que le code qui les remplit (le
+  traitement des réponses et l'encaissement), pour ne pas laisser dans la
+  base une table vide que personne n'écrit. Sans elles, on ne peut pas
+  savoir quand un business peut être fermé.
 
 - [ ] **La grille de points.** Chaque canal (e-mail, appel, publicité,
   réseau social, page web) traduit déjà ce qui se passe en réactions
@@ -190,7 +426,9 @@ Clem regarde le résultat avant qu'on attaque le suivant.
   API gratuite, une invocation « Construire un connecteur » écrit le code
   pour s'en servir, et Julien valide ce code par ticket avant qu'il soit
   activé. Le tool « navigateur » prévu jusqu'ici disparaît au profit de
-  tout ça.
+  tout ça. Comme le reste, les accès de Serge à un bac à sable (un espace
+  isolé pour tester du code, naviguer, créer des comptes) sont déclarés en
+  base, et chaque invocation n'a que les accès que la base lui donne.
 
 - [ ] **Brancher la garde de santé des comptes.** Un compte web trop
   sollicité se fait bannir. Le code d'une garde existe déjà : avant chaque
@@ -220,6 +458,16 @@ Clem regarde le résultat avant qu'on attaque le suivant.
   découverte de contacts. Pour chacune, il faut soit la brancher dans le
   nouveau pipeline, soit la supprimer. On ne garde pas de code mort.
 
+- [ ] **L'éditeur sans code dans Mission Control.** C'est le but du
+  lot 6 à terme. Une fois tout le pipeline décrit en base, une page de MC
+  doit permettre de le modifier en direct, sans écrire de code : ajouter
+  ou retirer une invocation, changer son rôle, son modèle, son prompt, ce
+  qu'elle reçoit et les tools qu'elle peut appeler, tracer ou effacer un
+  lien entre deux invocations, ajouter un déclencheur. La page montre le
+  pipeline comme un schéma, et chaque changement est écrit au journal avec
+  la date et l'auteur, pour pouvoir revenir en arrière. C'est le dernier
+  lot.
+
 ---
 
 ## Étape 1 — Pré-prospection
@@ -247,7 +495,8 @@ Clem regarde le résultat avant qu'on attaque le suivant.
   encourager à ne pas s'arrêter sur des scrupules moraux qui ne sont pas
   contraires à la loi. Le détail est dans
   [`docs/etapes/1-pre-prospection.md`](docs/etapes/1-pre-prospection.md).
-  Cette tâche a besoin des liens entre invocations et des places de test.
+  Cette tâche a besoin du lot 6 et des places de test : les sept
+  invocations, leurs liens et leurs réglages sont décrits en base.
 
 - [ ] **Garder toutes les pages lues.** Aujourd'hui, les pages trouvées
   par la recherche web ne sont pas enregistrées, et comme aucun flux RSS
@@ -279,11 +528,12 @@ Clem regarde le résultat avant qu'on attaque le suivant.
   proposer quelque chose de concret à essayer, pas seulement une promesse.
   Pour chaque business choisi, une invocation « Concevoir le POC » écrit
   un plan de A à Z : le livrable d'essai, les prospects visés, les canaux,
-  le rythme des relances. Une deuxième invocation, « Challenger le POC »,
-  relit ce plan et ne peut répondre que deux choses par remarque : « à
-  corriger » ou « il faut une nouvelle capacité ». On fait au plus trois
-  allers-retours, et le plan final doit être réalisable avec ce que Serge
-  sait faire. Julien valide ensuite le plan dans un ticket Discord ; sans
+  le rythme des relances, et la fiche produit du POC (voir le lot 8). Une
+  deuxième invocation, « Challenger le POC », relit ce plan et ne peut
+  répondre que deux choses par remarque : « à corriger » ou « il faut une
+  nouvelle capacité ». On fait au plus trois allers-retours, et le plan
+  final doit être réalisable avec ce que Serge sait faire. Julien valide
+  ensuite le plan et la fiche produit dans un ticket Discord ; sans
   réponse sous 48 heures, le plan s'applique. Serge construit alors le
   livrable, le met en ligne sur un sous-domaine, et crée la campagne de
   test. Le détail est dans
@@ -305,17 +555,6 @@ Clem regarde le résultat avant qu'on attaque le suivant.
   la table des adresses de contact). Par e-mail et par téléphone, on ne
   contacte que des professionnels. Ce que l'invocation rend exactement
   reste à définir. Cette tâche a besoin du web.
-
-- [ ] **Un fil de discussion par prospect, et des relances qui ne gênent
-  personne.** La règle est simple : on ne relance jamais quelqu'un qui a
-  déjà répondu. Pour la tenir, il faut un fil par prospect, tous canaux
-  confondus, qui garde aussi le texte de ce que Serge a envoyé. Chaque
-  réponse reçue doit être rattachée au bon prospect, y compris quand elle
-  arrive dans le fil d'un e-mail. Une relance ne part que si le dernier
-  événement du fil est un envoi de Serge resté sans réponse, et ce
-  contrôle est refait au moment exact de l'envoi. Si les réponses d'un
-  canal n'ont pas été relevées depuis plus d'une heure, aucune relance ne
-  part sur ce canal.
 
 - [ ] **Prospecter sur LinkedIn.** LinkedIn est un canal important pour
   vendre à des professionnels. Serge l'utilise avec son propre compte, à
@@ -351,15 +590,16 @@ Clem regarde le résultat avant qu'on attaque le suivant.
 ## Étape 5 — Construction
 
 - [ ] **Construire le vrai produit.** Pas de prospection lourde sans
-  pouvoir encaisser. Une invocation conçoit le produit, une autre le
-  critique, puis Julien valide dans un ticket, en fixant le prix
-  définitif. Serge construit ensuite le produit avec un duo : un
-  constructeur qui écrit, un relecteur qui répond « bon », « à corriger »
-  ou « il faut une nouvelle capacité ». Le produit est mis en ligne sur un
-  domaine acheté pour lui. Serge crée le produit et son prix dans Stripe,
-  en inscrivant sur le prix l'identifiant du business, pour que chaque
-  abonnement soit rattaché au bon business. Il fait enfin un paiement de
-  test de 1 € qu'il se rembourse, pour vérifier que tout marche.
+  pouvoir encaisser. Une invocation conçoit le produit et écrit sa fiche
+  produit (voir le lot 8), une autre les critique, puis Julien valide dans
+  un ticket, en fixant le prix définitif. Serge construit ensuite le
+  produit avec un duo : un constructeur qui écrit, un relecteur qui répond
+  « bon », « à corriger » ou « il faut une nouvelle capacité ». Le produit
+  est mis en ligne sur un domaine acheté pour lui. Serge crée le produit
+  et son prix dans Stripe, en inscrivant sur le prix l'identifiant du
+  business, pour que chaque abonnement soit rattaché au bon business. Il
+  fait enfin un paiement de test de 1 € qu'il se rembourse, pour vérifier
+  que tout marche.
 
 - [ ] **Mettre en ligne et ranger les fichiers.** Les livrables doivent
   être en ligne et faciles à retrouver. Serge les publie sur son serveur,
@@ -372,18 +612,6 @@ Clem regarde le résultat avant qu'on attaque le suivant.
 ---
 
 ## Étape 6 — Prospection lourde
-
-- [ ] **Une seule invocation pour traiter une réponse.** Aujourd'hui,
-  trois ou quatre invocations lisent le même message de prospect chacune
-  de leur côté : l'une le classe, l'autre cherche l'intention, une autre
-  cherche un rendez-vous. Il faut les remplacer par une seule invocation,
-  « Traiter une réponse ». Elle lit le fil du prospect et rend trois
-  choses : la réaction du prospect, la réponse à envoyer (ou « pas de
-  réponse »), et si Julien doit intervenir. La réponse part entre 5 et 20
-  minutes après le message du prospect pendant les heures de bureau, et le
-  lendemain matin sinon. Cette invocation a son propre interrupteur, car
-  elle sert aussi pendant la prospection légère. Elle a besoin du fil de
-  discussion.
 
 - [ ] **Faire le point chaque semaine sur le business principal.** Une
   seule question compte : on continue, et à quelle vitesse ? Une fois par

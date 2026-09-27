@@ -39,11 +39,16 @@ l'utilise. Aucune mise en ligne, aucune capture d'écran n'est codée.
 1. **Concevoir le produit** (invocation LLM). Elle part du livrable
    d'essai, du plan du POC et de ce que les prospects ont dit. Elle écrit
    le plan du vrai produit : ce qu'on ajoute, ce qu'on corrige, le prix
-   définitif, la page de vente.
+   définitif, la page de vente. Elle écrit aussi la **fiche produit** :
+   ce que fait le produit et pour qui, ce qu'il ne fait pas, le prix, les
+   délais habituels de livraison, comment on l'utilise, et les questions
+   fréquentes. C'est cette fiche que lira l'invocation qui répond aux
+   clients.
 2. **Challenger le produit** : même boucle qu'à l'étape 2 (3 tours,
    remarques « à corriger » ou « nouvelle capacité nécessaire »).
 3. **Ticket Discord pour Julien** avant de construire. Julien valide
-   notamment **le prix définitif**.
+   notamment **le prix définitif** et la fiche produit ; il y en aura peu,
+   donc c'est une relecture rapide.
 4. **Construire** avec le couple builder / reviewer ci-dessus. Les réponses
    du reviewer sont alignées sur la critique : « bon », « à corriger » ou
    « nouvelle capacité nécessaire ». La même mécanique sert aux étapes 2
@@ -57,7 +62,9 @@ l'utilise. Aucune mise en ligne, aucune capture d'écran n'est codée.
 
 Les **versions suivantes** (corrections, améliorations) sont publiées
 automatiquement dès que la relecture est bonne, avec un ticket
-d'information.
+d'information. À chaque nouvelle version, la fiche produit est mise à
+jour, pour que Serge ne réponde jamais aux clients sur une ancienne
+version.
 
 ### Mise en ligne
 

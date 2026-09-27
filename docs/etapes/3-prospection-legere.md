@@ -102,7 +102,11 @@ Le but numéro un : **ne jamais relancer quelqu'un qui a déjà répondu.**
 
 ### Répondre aux prospects
 
-Le circuit des réponses sert les étapes 3 et 6. Il est décrit dans
+Le circuit des réponses sert les étapes 3 et 6 : une seule invocation,
+« Traiter une réponse », lit le fil du prospect avec la fiche du business
+et la fiche produit, et répond après le délai réglé pour le canal. Les
+appels entrants sont pris par un agent vocal qui cherche d'abord à qui il
+parle. Tout est décrit dans
 [`6-prospection-lourde.md`](6-prospection-lourde.md).
 
 ### LinkedIn

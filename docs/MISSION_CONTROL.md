@@ -72,7 +72,56 @@ Pour couper les appels, on coupe `voice.send`. L'ancien fichier
 `KILL_SWITCH` a été supprimé.
 
 **Décidé** : les « kinds » disparaissent. Le troisième niveau devient
-« une invocation ».
+« une invocation » : on coupe une invocation précise, par exemple
+« Traiter une réponse », et seulement elle.
+
+---
+
+## Décidé : ce qui va changer
+
+Julien et Clem ont décidé que le code n'est qu'un interpréteur de la base
+(voir [`PIPELINE.md`](PIPELINE.md)). Mission Control devient donc l'endroit
+où l'on voit et règle tout le pipeline, et pas seulement les prompts.
+
+**Chaque invocation se règle entièrement depuis sa fiche.** Aujourd'hui,
+on peut modifier le prompt d'une invocation LLM, l'éteindre ou la
+rallumer. Demain, sa fiche montrera et permettra de modifier tout ce qui la
+décrit : son rôle, son modèle, ce qu'elle reçoit dès le départ, les tools
+qu'elle peut appeler et avec quels paramètres, le format de sa réponse et
+où elle est écrite, sa priorité et sa file (conversations ou travaux). À
+chaque passage, elle affichera combien de lignes l'invocation a reçues.
+
+**Les liens et les déclencheurs sont visibles.** On voit, pour chaque
+lien entre deux invocations, ce qui est déjà passé et ce qui attend, avec
+un bouton « passer à la suite » et un interrupteur « passage
+automatique ». On voit aussi les déclencheurs : par exemple « quand un
+prospect répond, lancer "Traiter une réponse" ». La liste d'ordre écrite
+dans le code, utilisée aujourd'hui seulement pour l'affichage, disparaît :
+Mission Control montre l'ordre réel, lu en base.
+
+**Les deux files du runner sont visibles**, avec la tâche en cours dans
+chacune. Une tâche qui agissait à l'extérieur (un envoi, un remboursement)
+et qui s'est arrêtée au milieu apparaît pour qu'on vérifie avant de la
+relancer.
+
+**La fiche d'un prospect montre son fil de discussion**, tous canaux
+confondus : ce que Serge a envoyé, avec le texte, et ce que la personne a
+répondu. Les réponses qu'on n'a pas pu rattacher à un prospect ont leur
+propre liste, pour qu'aucune ne soit ignorée.
+
+**La fiche d'un canal porte ses délais de réponse** : délai minimum,
+délai maximum, heures et jours ouvrés. Exemple : e-mail entre 5 et
+20 minutes, LinkedIn entre 1 et 4 heures.
+
+**La fiche d'un business montre sa fiche produit**, avec ses questions
+fréquentes, que Julien peut compléter.
+
+**Plus tard, un éditeur sans code.** C'est le dernier lot du TODO : une
+page qui montre le pipeline comme un schéma et permet de le modifier en
+direct, sans écrire de code. On y ajoute ou retire une invocation, on
+change son rôle ou son modèle, on trace un lien, on ajoute un déclencheur.
+Chaque changement est écrit au journal avec la date et l'auteur, pour
+pouvoir revenir en arrière.
 
 ---
 

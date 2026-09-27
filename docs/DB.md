@@ -30,20 +30,22 @@ recrée jamais ensuite.
 
 ### La règle « insérer sans écraser »
 
-- Un objet **nouveau** dans le code (exemple : une nouvelle invocation)
-  est **ajouté** à la base.
-- Un objet **existant** n'est **jamais modifié** par le code pour ce que
-  Julien peut régler dans Mission Control : prompt, allumé ou éteint,
-  niveau de modèle, tools.
-- Serge met à jour à chaque démarrage les informations qu'il calcule
-  lui-même : empreinte des fichiers, chemin du code.
-- Un objet **retiré** du code est retiré de la base. L'historique
-  (exemple : `llm_usage`) reste.
+Les réglages écrits dans le code ne servent qu'à remplir la base. Un objet
+**nouveau** dans le code, par exemple une nouvelle invocation, est
+**ajouté** à la base. Un objet **existant** n'est **jamais modifié** par le
+code pour tout ce que Julien peut régler dans Mission Control : prompt,
+allumé ou éteint, niveau de modèle, tools. Serge met seulement à jour, à
+chaque démarrage, les informations qu'il calcule lui-même : l'empreinte des
+fichiers et le chemin du code.
 
 Exemple : Julien modifie le prompt de « Explorer les besoins A » dans
 Mission Control. Un développeur modifie ensuite le prompt de départ dans le
 code. Au déploiement, l'instance de Julien garde son prompt ; une nouvelle
 instance reçoit celui du code.
+
+Aujourd'hui, un objet **retiré** du code est aussi retiré de la base au
+démarrage (l'historique, comme les appels au LLM, reste). Ça va changer :
+voir la fin de ce document.
 
 ---
 
@@ -124,19 +126,55 @@ catalogue et la mécanique.
 
 ## Décidé : ce qui va changer
 
-Voir [`TODO.md`](../TODO.md) pour l'ordre des chantiers.
+L'ordre des chantiers est dans le [`TODO.md`](../TODO.md). Voici ce qu'ils
+changent dans la base.
 
-- Nouveaux statuts de `ventures` : `PARKED`, `MAINTENANCE`, `CLOSED`, avec
-  le code qui les pose.
-- Nouvelles tables : `deliveries` (ce qui reste à livrer), `product_requests`
-  (les demandes des clients), `listen_feeds` (les flux suivis), et une
-  table de barème de points par canal et par signal.
-- Les capsules (`db_readers` et tables associées) disparaissent : leurs
-  réglages vont sur `llm_point_tools`.
-- `work_items.kind` et les interrupteurs par kind disparaissent : une tâche
-  pointe vers une invocation.
-- `etape_liens` est remplacée par des liens entre invocations, qui
-  transportent des données.
+**Le pipeline entier passe en base.** Julien et Clem ont décidé que le code
+n'est qu'un interpréteur de la base : l'ordre des invocations et tous leurs
+paramètres sont en base, et seulement en base. Il faudra donc des tables
+pour décrire chaque invocation en entier (son rôle, son modèle, son prompt,
+ce qu'elle reçoit dès le départ, le format de sa réponse et où elle est
+écrite, sa priorité et sa file), les liens entre invocations (quel
+résultat passe de l'une à l'autre, avec quels paramètres), et les
+déclencheurs (quel événement ou quelle heure lance quelle invocation). Les
+tables doivent rester simples à lire : une table par sorte de chose, pas
+de texte JSON fourre-tout. La liste actuelle des liens entre étapes
+(`etape_liens`), qui ne sert qu'à afficher un compteur, sera remplacée par
+ces liens entre invocations.
+
+**Les tâches pointent vers une invocation.** Aujourd'hui, chaque tâche de
+la file est typée par un « kind » (colonne `work_items.kind`), qui lance
+parfois plusieurs invocations d'un coup, et chaque kind a son propre
+interrupteur. Le kind disparaît : une tâche désigne directement
+l'invocation à lancer, et l'interrupteur se trouve sur l'invocation.
+
+**Les capsules disparaissent.** Les quatre tables des capsules
+(`db_readers`, `llm_point_readers`, `db_reader_fixed_params`,
+`db_reader_fixed_joins`) sont supprimées. Leur réglage va sur le lien entre
+une invocation et un tool (`llm_point_tools`) : ce lien dit si le tool est
+lu avant l'appel et mis dans le prompt, ou si le modèle peut l'appeler
+lui-même, et avec quels paramètres figés.
+
+**Ce qui est retiré du code n'est plus effacé de la base.** Aujourd'hui,
+une invocation qui n'est plus dans le code est supprimée au démarrage. Avec
+la nouvelle règle, une invocation ou un lien créé ou modifié dans Mission
+Control n'est jamais effacé au démarrage, et une invocation supprimée dans
+Mission Control ne revient pas. Seule une brique de base retirée du code
+(un tool, un traitement sans LLM) disparaît.
+
+**De nouvelles tables pour les conversations et les clients.** Une fiche
+produit par business, avec ses questions fréquentes. Une table des
+livraisons (ce qui reste à livrer à chaque client) et une table des
+demandes clients (bugs, insatisfactions, idées). Sur la fiche de chaque
+canal (table `canaux`), les délais de réponse : minimum, maximum, heures et
+jours ouvrés.
+
+**De nouvelles tables pour l'étape 1 et la mesure des tests.** La liste des
+flux RSS suivis (`listen_feeds`), et une table de barème qui donne des
+points à chaque réaction, canal par canal.
+
+**De nouveaux statuts de business** : mis de côté (`PARKED`), en
+maintenance (`MAINTENANCE`) et fermé (`CLOSED`), avec le code qui les pose.
 
 ---
 

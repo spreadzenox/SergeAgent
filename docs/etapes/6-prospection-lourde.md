@@ -50,28 +50,78 @@ des clients.
 
 ## Décidé
 
-### Une seule invocation pour répondre
+### Répondre aux prospects et aux clients
 
-**« Traiter une réponse »** lit le fil complet du prospect et rend trois
-choses :
+Les messages des prospects et des clients sont imprévisibles : questions
+sur le produit, demandes de changement, questions de délais, sujets sans
+rapport. On ne peut pas tout prévoir, mais on calibre les cas classiques,
+et Serge demande de l'aide quand il ne sait pas. Ce circuit sert les
+étapes 3 et 6, et il a son propre interrupteur, pour ne pas dépendre de
+l'étape 6.
 
-- **le signal**, dans une liste fermée : intéressé, question, objection,
-  refus, désinscription, hors sujet ;
-- **la réponse à envoyer**, ou « pas de réponse » ;
-- **« besoin de Julien : oui ou non »**, avec la raison. Exemple : le
-  prospect demande un prix que le plan ne prévoit pas.
+**Une seule invocation répond : « Traiter une réponse ».** Quand un
+message arrive, elle est ajoutée à la file avec la priorité la plus haute.
+Elle reçoit en entier le fil de discussion du prospect, sa fiche, la fiche
+du business et la fiche produit. Elle rend trois choses : la réaction du
+prospect, dans une liste fermée (intéressé, question, objection, refus,
+désinscription, hors sujet) ; la réponse à envoyer, ou « pas de réponse » ;
+et s'il faut Julien, avec la raison. Exemple : le prospect demande un prix
+que le plan ne prévoit pas. Elle remplace quatre invocations actuelles :
+« Classer une réponse », « Répondre à une intention », « Relire un message
+autre » et « Extraire un rendez-vous ».
 
-Elle remplace « Classer une réponse », « Répondre à une intention »,
-« Relire un message autre » et « Extraire un rendez-vous ». La réponse part
-automatiquement, sauf si elle dit « besoin de Julien » ou si un garde-fou
-refuse : Julien reçoit alors un ticket avec le brouillon.
+**Les questions sur le produit** trouvent leur réponse dans la fiche
+produit. Quand Julien répond à un ticket sur une question produit, sa
+réponse est ajoutée aux questions fréquentes de la fiche : la fois
+suivante, Serge répond seul.
 
-Ce circuit sert **les étapes 3 et 6**. Il a son propre interrupteur, pour
-ne pas dépendre de l'étape 6.
+**Les questions de délais** sont les plus difficiles à prévoir. Le LLM
+répond seul, avec trois consignes de prudence dans son prompt : ne jamais
+promettre une date ou un délai qui n'est pas dans la fiche produit ; ne
+jamais promettre une fonctionnalité qui n'existe pas (la demande devient
+une demande client) ; en cas de doute, répondre sans s'engager, par
+exemple « je vérifie et je reviens vers vous », et ouvrir un ticket.
 
-**Délai** : entre 5 et 20 minutes après le message pendant les heures
-ouvrées (exemple : 8 h à 20 h, du lundi au samedi), le lendemain matin
-sinon.
+**Les tickets doivent se comprendre sans suivre Serge.** Quand
+l'invocation dit « besoin de Julien », ou qu'un garde-fou bloque l'envoi,
+Julien reçoit un ticket qui contient, dans cet ordre : le business en trois
+lignes (nom, ce qu'il vend, prix, où il en est) ; le prospect (nom,
+entreprise, où il en est) ; le fil de la conversation, avec les derniers
+messages en entier ; le brouillon de Serge ; pourquoi Serge a besoin
+d'aide et la question précise ; un lien vers la fiche du prospect dans
+Mission Control.
+
+**Le délai de réponse se règle canal par canal** dans Mission Control, sur
+la fiche du canal : délai minimum, délai maximum, heures et jours ouvrés.
+Exemple : par e-mail entre 5 et 20 minutes pendant les heures de bureau et
+le lendemain matin sinon, sur LinkedIn entre 1 et 4 heures, par SMS tout
+de suite. Juste avant d'envoyer, Serge vérifie que le prospect n'a rien
+écrit de nouveau ; s'il a réécrit, l'envoi est annulé et le fil complet est
+retraité.
+
+### Les appels entrants
+
+Un appel ne passe pas par la file des tâches. Le standard téléphonique
+décroche et confie l'appel à un agent vocal, un programme séparé qui parle
+en direct et tourne en parallèle du reste de Serge. Quand un appel arrive
+pendant une construction, il n'y a donc rien à interrompre.
+
+Au décrochage, le numéro est cherché en base. S'il est connu, l'agent
+reçoit la fiche du prospect, son fil, la fiche du business et la fiche
+produit. S'il est inconnu, l'agent dit « Bonjour, je suis Serge, en quoi
+puis-je vous aider ? », demande à qui il parle, et cherche la fiche avec un
+tool, par nom, entreprise, e-mail ou numéro. Si l'appelant propose quelque
+chose à Serge, comme un partenariat, l'agent répond poliment qu'il ne peut
+pas traiter ce genre de demande pour l'instant ; le résumé est quand même
+écrit au journal. Quand la personne est reconnue seulement parce qu'elle a
+dit son nom, et pas par son numéro, l'agent se sert de sa fiche pour
+comprendre, mais ne répète aucune information sensible (montants,
+adresses, propos d'un collègue). Après l'appel, le résumé entre dans le fil
+du prospect, et « Traiter une réponse » est lancée s'il y a une suite à
+donner.
+
+Aujourd'hui, l'agent vocal a le même prompt fixe pour tous les appels, ne
+sait rien de celui qui appelle et n'a aucun tool.
 
 ### Le point hebdomadaire
 
