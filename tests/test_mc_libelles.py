@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Libellés FR : kinds, phrase noyau, dates, anti-jargon DOM."""
+"""Libellés FR : événements, phrase noyau, dates, anti-jargon DOM."""
 
 from __future__ import annotations
 
@@ -13,7 +13,6 @@ sys.path.insert(0, str(ROOT))
 from serge.mc.libelles import (  # noqa: E402
     phrase_noyau,
     phrase_recit,
-    titre_llm,
     verbe,
 )
 from tests.mc_server_case import McBrowserCase  # noqa: E402
@@ -21,22 +20,22 @@ from tests.mc_server_case import McBrowserCase  # noqa: E402
 
 class LibellesUnitTests(unittest.TestCase):
     def test_verbe_humain(self) -> None:
-        self.assertEqual(
-            verbe('inbound.classify'), 'Classification d’une réponse'
-        )
-        self.assertEqual(verbe('work.enqueued'), 'Tâche mise en file')
-        self.assertNotIn('.', verbe('email.send'))
+        self.assertEqual(verbe('task.failed'), 'Tâche échouée')
+        self.assertEqual(verbe('write.skipped'), 'Doublon écarté')
+        self.assertEqual(verbe('inconnu.x'), 'inconnu · x')
 
     def test_phrase_noyau(self) -> None:
         self.assertIn('urgent', phrase_noyau(2, None, 0))
-        self.assertIn('e-mail', phrase_noyau(0, {'kind': 'email.send'}, 0))
+        self.assertIn(
+            'envoyer un e-mail',
+            phrase_noyau(0, {'kind': 'Envoyer un e-mail'}, 0),
+        )
         self.assertIn('encaissé', phrase_noyau(0, None, 100))
 
-    def test_recit_et_llm(self) -> None:
+    def test_recit(self) -> None:
         self.assertIn(
             'touchées', phrase_recit('Atelier', 'SMOKE_RUNNING', 5, 2, 1, 80)
         )
-        self.assertEqual(titre_llm('classify_reply'), 'Classer une réponse')
 
 
 class LibellesDomTests(McBrowserCase):

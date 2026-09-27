@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
-"""Empreinte d’un objet catalogue : contenus des fichiers + sous-objets.
+"""L'empreinte du code derrière un objet : étape, canal ou capacité.
 
-Calculée au démarrage, jamais recopiée à la main.
+Calculée au démarrage, jamais recopiée à la main. Quand le code d'un objet
+change, son empreinte change et sa date ``updated_at`` prend la date du
+démarrage : Mission Control affiche ainsi « code modifié le … ».
+
+Les invocations, les outils, les liens et les déclencheurs sont des lignes
+en base, pas du code : ils n'ont pas d'empreinte.
 """
 
 from __future__ import annotations
@@ -11,22 +16,14 @@ import sqlite3
 from collections.abc import Iterable
 from pathlib import Path
 
-KINDS = ('etape', 'llm', 'tech', 'outil', 'lien', 'canal', 'capacite')
-
 TABLES = {
     'etape': 'pipeline_steps',
-    'llm': 'llm_points',
-    'tech': 'tech_invocations',
-    'outil': 'tools',
-    'lien': 'etape_liens',
     'canal': 'canaux',
     'capacite': 'capabilities',
 }
 
 _FICHIERS_FIXES = {
     'etape': ('serge/etapes.py', 'serge/etape_fiches.py'),
-    'lien': ('serge/etape_fiches.py',),
-    'llm': ('config/llm-points.yaml',),
     'canal': ('serge/canaux.py',),
 }
 
@@ -42,28 +39,12 @@ def sha256_fichier(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def objets_en_base(conn: sqlite3.Connection) -> set[tuple[str, str]]:
-    """Objets catalogue présents (kind, id)."""
-    out: set[tuple[str, str]] = set()
-    for kind, table in TABLES.items():
-        rows = conn.execute(f'SELECT id FROM {table}').fetchall()
-        out.update((kind, str(row[0])) for row in rows)
-    return out
-
-
 def fichiers(kind: str, ident: str, conn: sqlite3.Connection) -> list[str]:
-    """Chemins relatifs qui encodent l’objet (hors sous-objets)."""
+    """Les fichiers (chemins relatifs) qui portent le code de l'objet."""
     rels = list(_FICHIERS_FIXES.get(kind, ()))
-    table = TABLES.get(kind)
-    if table in (
-        'llm_points',
-        'tech_invocations',
-        'tools',
-        'canaux',
-        'capabilities',
-    ):
+    if kind in ('canal', 'capacite'):
         row = conn.execute(
-            f'SELECT code_path FROM {table} WHERE id=?', (ident,)
+            f'SELECT code_path FROM {TABLES[kind]} WHERE id=?', (ident,)
         ).fetchone()
         path = str(row[0] or '') if row else ''
         if path:
@@ -71,41 +52,16 @@ def fichiers(kind: str, ident: str, conn: sqlite3.Connection) -> list[str]:
     return rels
 
 
-def enfants(
-    kind: str, ident: str, conn: sqlite3.Connection
-) -> list[tuple[str, str]]:
-    """Sous-objets (kind, id), ordre stable."""
-    if kind == 'etape':
-        llms = conn.execute(
-            'SELECT id FROM llm_points WHERE etape_id=? ORDER BY id',
-            (ident,),
-        ).fetchall()
-        techs = conn.execute(
-            'SELECT id FROM tech_invocations WHERE etape_id=? ORDER BY id',
-            (ident,),
-        ).fetchall()
-        return [('llm', str(r[0])) for r in llms] + [
-            ('tech', str(r[0])) for r in techs
-        ]
-    if kind == 'llm':
-        rows = conn.execute(
-            'SELECT tool_id FROM llm_point_tools WHERE point_id=? ORDER BY tool_id',
-            (ident,),
-        ).fetchall()
-        return [('outil', str(r[0])) for r in rows]
-    return []
-
-
-def sha_arbre(
+def sha_objet(
     root: Path, kind: str, ident: str, conn: sqlite3.Connection
 ) -> tuple[str, list[str]]:
-    """SHA actuel (fichiers + enfants) et écarts (fichier manquant).
+    """L'empreinte actuelle de l'objet, et les fichiers manquants.
 
     Args:
-        root: Racine du repo.
-        kind: ``etape`` / ``llm`` / ``tech`` / ``outil`` / ``lien`` / ``canal``.
-        ident: Id d’objet.
-        conn: Canon (chemins et jonctions).
+        root: Racine du dépôt.
+        kind: ``etape``, ``canal`` ou ``capacite``.
+        ident: Id de l'objet.
+        conn: Connexion à la base (chemins du code).
 
     Returns:
         ``(sha, erreurs)``.
@@ -118,22 +74,18 @@ def sha_arbre(
             erreurs.append(f'{kind}.{ident} : fichier manquant ({rel})')
             continue
         parts.append(sha256_fichier(full))
-    for child_kind, child_id in enfants(kind, ident, conn):
-        child_sha, child_err = sha_arbre(root, child_kind, child_id, conn)
-        erreurs.extend(child_err)
-        parts.append(child_sha)
     return composer(parts), erreurs
 
 
 def poser_shas(conn: sqlite3.Connection, root: Path | None = None) -> None:
-    """Calcule au boot l’empreinte de chaque objet et la date du changement.
+    """Calcule au démarrage l'empreinte de chaque objet et la date du changement.
 
-    Exemple : si ``serge/memory/search.py`` change, l’outil
+    Exemple : si ``serge/memory/search.py`` change, la capacité
     ``memory_search`` reçoit une nouvelle empreinte et ``updated_at`` prend
-    la date du boot. Mission Control peut ainsi afficher « code modifié le … ».
+    la date du démarrage.
 
     Args:
-        conn: Canon (commit par l’appelant).
+        conn: Connexion à la base (commit par l'appelant).
         root: Racine du dépôt (défaut : celle de ce fichier).
     """
     from serge.horloge import iso_utc
@@ -142,7 +94,7 @@ def poser_shas(conn: sqlite3.Connection, root: Path | None = None) -> None:
     now = iso_utc()
     for kind, table in TABLES.items():
         for (ident,) in conn.execute(f'SELECT id FROM {table}').fetchall():
-            sha, _ = sha_arbre(base, kind, str(ident), conn)
+            sha, _ = sha_objet(base, kind, str(ident), conn)
             row = conn.execute(
                 f'SELECT files_sha FROM {table} WHERE id=?', (ident,)
             ).fetchone()
@@ -151,13 +103,7 @@ def poser_shas(conn: sqlite3.Connection, root: Path | None = None) -> None:
                     f'UPDATE {table} SET files_sha=?, updated_at=? WHERE id=?',
                     (sha, now, ident),
                 )
-    for table in (
-        'tools',
-        'llm_points',
-        'tech_invocations',
-        'canaux',
-        'capabilities',
-    ):
+    for table in ('canaux', 'capabilities'):
         rows = conn.execute(
             f"SELECT id, code_path FROM {table} WHERE code_path!=''"
         ).fetchall()

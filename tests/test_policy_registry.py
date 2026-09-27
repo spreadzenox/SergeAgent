@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Registres versionnés: points LLM (matrice C) et types de tickets (H)."""
+"""Le registre des types de tickets."""
 
 from __future__ import annotations
 
@@ -10,43 +10,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from serge.registry import (  # noqa: E402
-    llm_enabled,
-    load_llm_points,
-    load_ticket_types,
-)
+from serge.registry import load_ticket_types  # noqa: E402
 
 
 class RegistryTests(unittest.TestCase):
-    def test_llm_registry_complete(self) -> None:
-        points = load_llm_points()
-        for name in (
-            'voice_dialog',
-            'build_artifact',
-            'review_build',
-            'classify_reply',
-            'judge_allocator',
-            'consolidate',
-            'judge_consequence',
-            'install_guide',
-        ):
-            self.assertIn(name, points)
-            self.assertTrue(points[name]['enabled'])
-        self.assertEqual(points['build_artifact']['tier'], 'T3')
-        self.assertEqual(points['judge_allocator']['tier'], 'T3')
-        self.assertEqual(points['classify_reply']['tier'], 'T1')
-
-    def test_kill_switch_defaults_closed_on_unknown(self) -> None:
-        self.assertTrue(llm_enabled('classify_reply'))
-        self.assertFalse(llm_enabled('nope_unknown_point'))
-
-    def test_llm_contract_uses_normalized_fields(self) -> None:
-        points = load_llm_points()
-        for point in points.values():
-            self.assertIn(point['output_mode'], {'structured', 'text'})
-            self.assertIsInstance(point['external_info'], bool)
-            self.assertLessEqual(set(point['context']), {'tool_quotas'})
-
     def test_ticket_taxonomy_complete(self) -> None:
         types = load_ticket_types()
         for name in (

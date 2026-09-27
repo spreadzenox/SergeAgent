@@ -251,7 +251,7 @@ class InstanceBuilderTests(unittest.TestCase):
             )
             paths = [route.get('path') for route in inventory['routes']]
             self.assertIn('/hooks/stripe', paths)
-            pipeline = tmp / 'home/.config/systemd/user/serge-pipeline.service'
+            pipeline = tmp / 'home/.config/systemd/user/serge-queue@.service'
             text = pipeline.read_text(encoding='utf-8')
             self.assertIn('SERGE_INSTANCE_FILE=', text)
             self.assertIn(
@@ -482,7 +482,7 @@ class InstanceBuilderTests(unittest.TestCase):
             self.assertEqual(secret.read_text(encoding='utf-8'), 'pw-fake-2\n')
             mode = oct(secret.stat().st_mode & 0o777)
             self.assertEqual(mode, '0o600')
-            unit = tmp / 'home/.config/systemd/user/serge-pipeline.service'
+            unit = tmp / 'home/.config/systemd/user/serge-queue@.service'
             self.assertIn(
                 'Environment=SERGE_EMAIL_BACKEND=smtp',
                 unit.read_text(encoding='utf-8'),

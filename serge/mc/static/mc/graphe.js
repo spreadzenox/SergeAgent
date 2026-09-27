@@ -1,6 +1,6 @@
 // Carte Serge : nœuds HTML, arêtes canvas, panneau d’étape.
 import {icone} from './icones.js';
-import {TYPES_OBJET, allerObjet, verbe} from './libelles.js';
+import {TYPES_OBJET, allerObjet} from './libelles.js';
 
 const EPINE_X = {
   pre_prospection: 0.06,
@@ -137,24 +137,9 @@ function remplirPanneau(box, etape, verrouille, onUnlock) {
       el('p', 'texte-panneau', 'Aucune invocation ici — surtout des règles et de l’encaissement.'),
     );
   }
-  const kinds = etape.kinds || [];
-  if (kinds.length) {
+  if (etape.marche === false) {
     box.append(
-      el(
-        'p',
-        'texte-panneau',
-        etape.marche === false
-          ? 'Coupée — l’ordonnanceur n’accepte aucune de ces tâches.'
-          : `Tâches de cette étape : ${kinds.map((k) => verbe(k)).join(', ')}.`,
-      ),
-    );
-  } else {
-    box.append(
-      el(
-        'p',
-        'texte-panneau',
-        'Pas de tâche d’ordonnanceur ici pour l’instant.',
-      ),
+      el('p', 'texte-panneau', 'Coupée — ses invocations ne tournent pas.'),
     );
   }
   const actions = el('div', 'actions-panneau');

@@ -12,7 +12,12 @@ from typing import Any
 
 from kit.builder.guards import BuilderError
 from kit.builder.seed import dest_is_empty
-from kit.units import system_units_to_enable, units_to_enable
+from kit.units import (
+    OBSOLETE_UNIT_FILES,
+    REPLACED_UNITS,
+    system_units_to_enable,
+    units_to_enable,
+)
 from kit.update import loaded_from_instance, update_instance
 
 Runner = Callable[..., subprocess.CompletedProcess[str]]
@@ -140,6 +145,37 @@ def restart_system_active(runner: Runner, names: Sequence[str]) -> list[str]:
     return restarted
 
 
+def replace_obsolete_units(runner: Runner, user_dir: Path) -> list[str]:
+    """Arrête les units retirées et lance leurs remplaçantes.
+
+    Exemple : ``serge-pipeline.timer`` (l'ancien runner) est arrêté,
+    désactivé et effacé ; s'il tournait, les deux files
+    ``serge-queue@….service`` sont lancées à sa place. Une instance qui
+    n'avait pas l'ancien timer n'est pas touchée.
+
+    Returns:
+        Les units lancées à la place d'une unit retirée.
+    """
+    started: list[str] = []
+    for old, new in REPLACED_UNITS.items():
+        if not (user_dir / old).is_file():
+            continue
+        was_on = unit_active_state(runner, old) in RESTART_STATES
+        systemctl_user(runner, 'disable', '--now', old)
+        if was_on:
+            started.extend(new)
+    for rel in OBSOLETE_UNIT_FILES:
+        path = user_dir / rel
+        if path.is_file():
+            systemctl_user(runner, 'stop', path.name)
+            path.unlink()
+            if path.parent != user_dir and not any(path.parent.iterdir()):
+                path.parent.rmdir()
+    if started:
+        return enable_now(runner, started)
+    return started
+
+
 def restart_active(runner: Runner, names: Sequence[str]) -> list[str]:
     reload = systemctl_user(runner, 'daemon-reload')
     if reload.returncode != 0:
@@ -252,6 +288,8 @@ def deploy_instance(
         uid=uid,
     )
     install_system_units(run, system_names, _system_unit_dir(loaded))
+    user_dir = Path(str(loaded['paths']['home'])) / '.config/systemd/user'
+    receipt['units_replaced'] = replace_obsolete_units(run, user_dir)
     restarted = restart_active(run, names)
     restarted.extend(restart_system_active(run, system_names))
     receipt['units_restarted'] = restarted

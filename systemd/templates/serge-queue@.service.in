@@ -1,8 +1,9 @@
 [Unit]
-Description=Serge bounded autonomous pipeline
+Description=Serge : la file de tâches %i (une tâche après l'autre)
+After=network.target
 
 [Service]
-Type=oneshot
+Type=simple
 WorkingDirectory=__SYSTEM_ROOT__
 Environment=HOME=__HOME__
 Environment=USER=__USER__
@@ -16,8 +17,9 @@ Environment=SERGE_MANDATE_PATH=__POLICY__
 Environment=SERGE_POLICY_PATH=__POLICY__
 Environment=XDG_RUNTIME_DIR=/run/user/__UID__
 Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/__UID__/bus
-__GMAIL_UNIT_LINES____EMAIL_BACKEND_LINES__ExecStart=/bin/bash -c '/usr/bin/flock -n __SYSTEM_ROOT__/state/pipeline.lock __PYTHON__ __SYSTEM_ROOT__/scripts/serge-runner.py --once; c=$?; if [ "$c" -eq 1 ]; then echo "{\"status\":\"ok\",\"skipped\":\"overlap\"}"; exit 0; fi; exit "$c"'
-TimeoutStartSec=15min
+__GMAIL_UNIT_LINES____EMAIL_BACKEND_LINES__ExecStart=__PYTHON__ __SYSTEM_ROOT__/scripts/serge-queue.py --queue %i
+Restart=always
+RestartSec=10
 NoNewPrivileges=yes
 PrivateTmp=yes
 ProtectSystem=strict

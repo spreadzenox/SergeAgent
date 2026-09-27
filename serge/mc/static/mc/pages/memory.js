@@ -88,9 +88,10 @@ function renderConsolidation(main, payload, sig) {
   const derniere = payload.last_run
     ? rel(payload.last_run)
     : 'jamais exécutée';
-  status.textContent =
-    `Dernière exécution : ${derniere}.`
-    + ` État : ${payload.due ? 'Échéance atteinte (due)' : 'À jour'}.`;
+  status.textContent = payload.branchee === false
+    ? `Pas encore branchée au pipeline. Dernière exécution : ${derniere}.`
+    : `Dernière exécution : ${derniere}.`
+      + ` État : ${payload.due ? 'Échéance atteinte (due)' : 'À jour'}.`;
   const liste = main.querySelector(
     '[data-section="consolidation"] [data-list="events"]',
   );

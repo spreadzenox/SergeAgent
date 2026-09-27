@@ -30,128 +30,85 @@ base.
   sans jamais écraser ni recréer ce qui a été supprimé),
   `tests/test_pipeline_seed.py`.
 
-## Ce qui est fait sur `Clem`, pas encore fusionné
+## Ce qui est fait sur `Clem` : l'étape 6.2 (la bascule), tests verts
 
-- **L'interpréteur** (commit « Écrire l'interpréteur qui exécute n'importe
-  quelle invocation »), dans `serge/interpreter/` :
-  - `tasks.py` : la file des tâches, avec une clé stable ;
-  - `tools.py` : une fonction par capacité (`RUNNERS`), l'exécution d'un
-    outil avec ses paramètres figés, le schéma montré au modèle ;
-  - `output.py` : décrire et vérifier le format de réponse ;
-  - `rules.py` et `writer.py` : l'écriture générique et ses protections ;
-  - `flow.py` : les liens et les déclencheurs ;
-  - `prompt.py` : le prompt, les outils donnés d'office, la conversation
-    avec les outils appelables ;
-  - `run.py` : exécuter une tâche de bout en bout ;
-  - `queue.py` : vider une file, une tâche après l'autre, en enregistrant
-    après chacune.
+- **L'interpréteur** (`serge/interpreter/`) : la file des tâches
+  (`tasks.py`), une fonction par capacité (`tools.py`), le format de
+  réponse (`output.py`), l'écriture générique et ses protections
+  (`rules.py`, `writer.py`), les liens et déclencheurs (`flow.py`), le
+  prompt et la conversation avec les outils (`prompt.py`), une tâche de
+  bout en bout (`run.py`), vider une file (`queue.py`).
+- **L'ancien code en dur est rangé** dans `pas_encore_branche/` (voir son
+  README), avec ses tests. `strip_ids` est sorti vers `serge/text_ids.py`.
+- **Les imports cassés sont retirés** : `serge/db/boot.py`,
+  `serge/registry.py` (ne garde que les types de tickets),
+  `serge/llm/runtime.py` (modèle par niveau, clé, tokens du jour, plafond
+  de dépense), `serge/coupe_circuit.py` (Serge, étape, file, invocation),
+  `serge/observe/`, `serge/discord/bot.py` (ticket recopié sans résumé
+  LLM, messages libres de Julien ignorés), `serge/canaux.py`,
+  `serge/objet_sha.py`, `serge/etapes.py`, `serge/etape_fiches.py` (plus
+  de liens d'épine écrits en dur).
+- **Les outils sont dans `config/pipeline.yaml`** (section `tools`) : les
+  quatre lectures de l'ancien catalogue, `web_search`, `memory_search`,
+  `demande_capacite`. Le catalogue de lecture est rempli par
+  `serge/db/query_catalogue.py` (`seed_read_catalogue`), et ses jointures
+  sont toujours faites : les pages d'un cycle reviennent avec leur titre et
+  leur texte (c'était le bug des capsules).
+- **Migration v25** (`serge/db/v025.py`) : les anciennes tables sont
+  supprimées, `tools` est recréée sans `kind`, le catalogue de lecture est
+  vidé puis rempli de nouveau au démarrage, `kinds_json` et les
+  interrupteurs `kind.*`/`llm.*` disparaissent.
+- **Le nouveau runner** : `scripts/serge-queue.py --queue <file>`, lancé
+  par le modèle d'unit `serge-queue@.service` (deux instances,
+  `Restart=always`). Il expire aussi les tickets dus à chaque tour. Au
+  déploiement, `kit/deploy.py` arrête, désactive et efface l'ancien
+  `serge-pipeline.timer`, et lance les deux files s'il tournait.
+  `bin/serge-runner` devient `bin/serge-queue`.
+- **Mission Control lit les nouvelles tables** : la file (`proj_taches.py`,
+  fiche `task`), le graphe et les étapes (ordre des invocations lu dans les
+  liens), la page Cerveau (toutes les invocations ; « Éteindre » passe par
+  le coupe-circuit), la fiche d'une invocation (tout ce que la base dit
+  d'elle), la fiche d'un outil (sa capacité et son catalogue de lecture),
+  la page Écoute (le bouton lance le déclencheur « bouton » de l'étape 1,
+  `POST /owner/api/bouton`), la page Mémoire (consolidation « pas encore
+  branchée »), les coupe-circuits (étapes, files, invocations).
+  `POST /owner/api/invocation` modifie prompt, niveau, file, priorité et
+  interrupteur. `llm_roles.py` (un texte écrit à la main par invocation)
+  est rangé dans `pas_encore_branche/`.
+- **Tests** : tous verts, `ruff`, `ty` et le scan des secrets aussi.
 
-  Testé par `tests/test_interpreter.py` (vert).
+### Choix faits pendant 6.2, à faire valider par Clem ou Julien
 
-## Ce qui est en cours sur `Clem` : la bascule (étape 6.2)
+1. **`brique_canaux` est supprimée**, pas seulement vidée : une table que
+   personne n'écrit n'a pas sa place (charte). Le lien entre un canal et
+   ses outils d'envoi reviendra au lot 8.
+2. **Le plafond de dépense LLM du jour est gardé** : l'ancien runtime
+   refusait d'appeler le modèle au-delà du plafond de la policy. La file
+   laisse maintenant attendre les tâches LLM jusqu'au lendemain ; les
+   autres continuent (`serge/llm/runtime.py`, `budget_spent`).
+3. **Les outils « partout »** (`tools.montre_partout` = 1, par exemple
+   `demande_capacite`) sont appelables par toutes les invocations LLM,
+   sans paramètre figé.
+4. **Le bouton de la page Écoute est générique** : il lance le premier
+   déclencheur `button` des invocations de l'étape 1, avec le champ
+   « guide » du formulaire. Plus de route `listen/start` propre à l'écoute.
+5. **Le déploiement remplace l'ancien timer** tout seul (voir plus haut),
+   pour ne pas laisser tourner chaque minute un runner qui n'existe plus.
+6. **Une tâche interrompue est reprise** : au démarrage d'une file, une
+   tâche restée « en cours » (programme arrêté pendant l'appel au modèle,
+   par exemple par un déploiement) repart de zéro, avec une note
+   `task.resumed` au journal. C'est sans risque tant qu'aucune capacité
+   n'agit hors de Serge ; le lot 8 ajoutera l'état « à vérifier ».
+7. **Quand Serge est arrêté en entier**, les déclencheurs horaires ne
+   créent plus de tâche (sinon un arrêt d'une nuit laisserait une pile de
+   tâches à rattraper).
+8. **La charte n'est pas à jour** : sa partie 4 cite encore `llm_points` et
+   `config/llm-points.yaml`. Seul Julien peut la modifier.
 
-Le dernier commit de `Clem` est un **travail en cours** : les tests ne
-passent pas. Ne pas fusionner dans `main` avant la fin de l'étape 6.2.
+### Reste à faire pour finir 6.2
 
-### Déjà fait dans ce commit
-
-- L'ancien code en dur est **rangé** (pas détruit) dans
-  `pas_encore_branche/`, en gardant les mêmes chemins : `serge/workers/`,
-  `serge/points/`, `serge/allocator/`, `serge/scheduler.py`,
-  `serge/runner.py`, `serge/llm_registre.py`, `config/llm-points.yaml`,
-  `serge/tech_registre.py`, `serge/db_readers.py`,
-  `serge/db_reader_exec.py`, `serge/llm/boucle.py`,
-  `serge/llm/outils_exec.py`, `serge/observe/router.py`,
-  `serge/memory/consolidate.py`, `serge/discord/owner_flow.py`,
-  `serge/discord/owner_in.py`, `serge/listen/memory.py`,
-  `serge/catalogue.py`, `serge/outils.py`, `scripts/serge-runner.py`.
-  Une copie complète de `serge/registry.py`, `serge/llm/runtime.py` et
-  `serge/coupe_circuit.py` y est aussi, parce que ces trois fichiers
-  restent en production mais vont perdre leurs parties liées à l'ancien
-  fonctionnement.
-- Leurs tests sont rangés dans `pas_encore_branche/tests/`.
-- `strip_ids` a été sorti de `serge/points/interact.py` vers
-  `serge/text_ids.py`, parce que Mission Control et le rendu Discord s'en
-  servent.
-
-### Reste à faire pour finir 6.2, dans l'ordre
-
-1. **Retirer les imports cassés** (lancer les tests pour les voir tous) :
-   - `serge/db/boot.py` : retirer `ensure_llm_points`, `ensure_db_readers`,
-     `ensure_tech_invocations`, `ensure_etape_liens`, `ensure_tools`,
-     `verifier_catalogue` ;
-   - `serge/registry.py` : garder `load_ticket_types` et ce qui sert aux
-     tickets ; retirer les invocations LLM (`load_llm_points`,
-     `llm_enabled`, `runtime_allows`, `poser_kill`, `retirer_kill`) ;
-   - `serge/llm/runtime.py` : garder `resolve_model`, `read_api_key`,
-     `daily_tokens` ; retirer `run_point`, `run_registered_point` ; adapter
-     `serge/llm/__init__.py` ;
-   - `serge/coupe_circuit.py` : retirer tout ce qui concerne les « kinds »
-     (garder la coupure générale, `heartbeat_marche`) ;
-   - `serge/observe/__init__.py` : n'exporte plus `ingest` ;
-   - `serge/discord/bot.py` : retirer `render_context_fr` (le ticket est
-     recopié sans résumé LLM) et le traitement des messages libres de
-     Julien (`on_message` ne fait plus rien, en le disant dans sa
-     docstring) ;
-   - `serge/canaux.py` : la jonction `brique_canaux` pointait vers
-     `llm_points` et `tech_invocations` ; la vider ;
-   - `serge/objet_sha.py` : retirer les sortes `llm`, `tech`, `lien` ;
-   - `serge/etapes.py` : retirer `kinds_json`.
-2. **Les outils passent dans `config/pipeline.yaml`** : ajouter à
-   `serge/pipeline_seed.py` une section `tools` (id, titre, description,
-   capacité, `montre_partout`, et pour une lecture de la base son
-   catalogue : tables, colonnes, filtres, jointures, paramètres, qui
-   remplissent les tables `tool_db_*` existantes). Recopier dans le YAML
-   les outils de lecture de `pas_encore_branche/serge/db_readers.py`
-   (`current_listen_cycle`, `listen_cycle_documents`,
-   `known_business_candidates`, `eligible_poc_candidates`) et les outils
-   `web_search`, `memory_search`, `demande_capacite` avec leur capacité.
-3. **Migration v25** (`serge/db/v025.py`) : supprimer `llm_points`,
-   `llm_point_tools`, `tech_invocations`, `db_readers`,
-   `llm_point_readers`, `db_reader_fixed_params`, `db_reader_fixed_joins`,
-   `etape_liens`, `work_items`, les lignes de `brique_canaux`, la colonne
-   `kinds_json` de `pipeline_steps`, la colonne `kind` de `tools`, et les
-   interrupteurs `kind.*` et `llm.*` de `runtime_flags`. Ce qui existait
-   avant n'a pas à être recopié (décision Q58). Mettre à jour
-   `SCHEMA_VERSION`, `TABLES` dans `serge/db/schema.py`, et `DB.md`.
-4. **Le nouveau runner** : un script `scripts/serge-queue.py --queue
-   <conversations|works>` qui ouvre la base et appelle
-   `serge.interpreter.queue.run_forever`, en expirant aussi les tickets
-   dus (`serge.tickets.expire_due`) à chaque tour. Remplacer, dans
-   `systemd/templates/` et `kit/units.py`, `serge-pipeline.service` et son
-   timer par deux services qui tournent en continu (un par file,
-   `Restart=always`).
-5. **Mission Control sur les nouvelles tables** (étape 6.2c). Garder les
-   mêmes formats JSON pour ne pas toucher au JavaScript quand c'est
-   possible :
-   - `proj_live.py`, `proj_ilots.py`, `proj_public.py`, `proj_trace.py`,
-     `proj_traces.py` : lire `tasks` et `task_params` au lieu de
-     `work_items` ;
-   - `proj_cerveau.py`, `proj_llm.py`, `llm_actions.py`, `actions.py` :
-     lire et modifier `invocations` (prompt, `model_tier`, `priority`,
-     `enabled`) au lieu de `llm_points` ; éteindre une invocation, c'est
-     `enabled` = 0 ;
-   - `proj_etape.py`, `proj_graphe.py` : l'ordre et les liens viennent de
-     `invocations` et `links` (plus de liste `ORDRE` écrite dans le code,
-     plus de `etape_liens`) ;
-   - `proj_ecoute.py`, `ecoute_actions.py` : le bouton « lancer un cycle »
-     appelle `serge.interpreter.flow.fire_button` (le déclencheur sera
-     écrit à l'étape 6.3) ;
-   - `coupe_actions.py`, `proj_coupes.py`, `proj_voice.py` : plus de
-     « kinds » ; on coupe Serge entier, une étape, une file ou une
-     invocation ;
-   - `proj_memory.py` : la consolidation est « pas encore branchée » ;
-   - `proj_objet.py`, `proj_outil.py`, `proj_sqlite.py` : fiches des
-     nouvelles tables, plus de fiches pour les tables supprimées ;
-   - adapter les tests MC (`tests/test_mc_*.py`) qui insèrent des
-     `work_items` ou lisent `llm_points`, et `scripts/mc-demo.py`.
-6. **Tests à adapter hors MC** : `test_demande_capacite.py` (retirer la
-   partie `outils_exec`), `test_policy_registry.py` (retirer les tests des
-   invocations LLM), `test_canaux.py`, `test_coupe_circuit.py`,
-   `test_discord_bot.py`.
-7. **Vérifier** : `ruff check`, `ruff format --check`, `.venv/bin/ty
-   check`, puis toute la suite (voir plus bas). Committer, pousser sur
-   `Clem`, puis fusionner dans `main` par une pull request.
+Pousser `Clem` et fusionner dans `main` par une pull request (chaque
+fusion redéploie Serge sur le serveur de Julien).
 
 ## Ensuite : l'étape 6.3
 
@@ -160,9 +117,15 @@ passent pas. Ne pas fusionner dans `main` avant la fin de l'étape 6.2.
   bout en bout et un faux modèle, sur le modèle de
   `tests/test_interpreter.py`. Les prompts d'origine sont dans
   `pas_encore_branche/serge/points/listen_pts.py`.
-- Mission Control affiche tout ce qui est en base : capacités, outils,
-  invocations et leurs réglages, format de réponse, règles d'écriture,
-  liens, déclencheurs, files, tâches, lignes reçues (`task_inputs`).
+- Mission Control : la fiche d'une invocation, d'un outil et d'une tâche
+  montrent déjà tout ce qui les décrit. Il manque une vue d'ensemble des
+  capacités, des outils, des liens (avec ce qui est passé, ce qui attend,
+  et un bouton « passer à la suite ») et des déclencheurs.
+- Les outils donnés partout : lire l'historique de l'objet traité, lire
+  ses leçons (seul « demander une nouvelle capacité » existe).
+- Ce que voit une invocation : les lignes les plus récentes d'abord (le
+  catalogue de lecture n'a pas encore d'ordre), la version courte des
+  tables où elle écrit, ses leçons.
 - Le test de la règle : il échoue si le nom d'une invocation de
   `config/pipeline.yaml` apparaît dans `serge/`, `scripts/` ou `kit/`.
   `pas_encore_branche/` et `tests/` sont ignorés.

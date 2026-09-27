@@ -42,11 +42,9 @@ from serge.mc.proj_health import (
     project_versions_drift,
 )
 from serge.mc.proj_identite import project_identite_page
-from serge.mc.proj_ilots import project_ilots, project_scheduler
+from serge.mc.proj_ilots import project_ilots
 from serge.mc.proj_live import (
     project_feed,
-    project_file,
-    project_hero,
     project_jauges,
     project_urgents,
 )
@@ -59,6 +57,11 @@ from serge.mc.proj_policy import (
     project_politique_active,
     project_testing_froid,
     project_trust_candidates,
+)
+from serge.mc.proj_taches import (
+    project_file,
+    project_hero,
+    project_scheduler,
 )
 from serge.mc.proj_tickets import project_tickets
 from serge.mc.proj_voice import (

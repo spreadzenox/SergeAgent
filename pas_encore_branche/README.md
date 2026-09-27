@@ -30,6 +30,9 @@ Ce qui s'y trouve :
 - `serge/memory/consolidate.py` : la consolidation de la mémoire.
 - `serge/discord/owner_flow.py`, `serge/discord/owner_in.py` : les messages
   libres de Julien sur Discord.
+- `serge/mc/llm_roles.py` : pour chaque invocation, un texte écrit à la
+  main (son rôle, ce qu'elle reçoit, ce qu'elle rend) qu'affichait
+  Mission Control. Le rôle vit maintenant dans `invocations.role`.
 - `serge/allocator/`, `serge/tech_registre.py`, `serge/catalogue.py`,
   `serge/outils.py`, `serge/listen/memory.py`.
 - Une copie de `serge/registry.py`, `serge/llm/runtime.py` et

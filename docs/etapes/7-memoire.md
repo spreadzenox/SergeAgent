@@ -17,15 +17,16 @@ Le fonctionnement général de la mémoire est dans
 
 ## Aujourd'hui
 
-- **La consolidation tourne tous les 3 jours**
-  (`serge/memory/consolidate.py`). L'invocation « Consolider la mémoire »
-  (`consolidate`) lit le journal de la période et propose des leçons, des
-  procédures et des pièges. Julien reçoit un ticket « Mémoire » pour
-  garder, modifier ou jeter chaque proposition. Sans réponse sous 48 h,
-  tout est accepté.
-- Jusqu'à fin septembre 2026, la consolidation ne s'exécutait jamais : la
-  tâche n'était rattachée à aucune venture et l'ordonnanceur l'ignorait.
-  C'est corrigé.
+- **La consolidation est débranchée** depuis le lot 6. Son code
+  (l'invocation « Consolider la mémoire », qui lisait le journal tous les
+  3 jours et proposait des leçons, des procédures et des pièges dans un
+  ticket « Mémoire ») est rangé dans `pas_encore_branche/`. Elle reviendra
+  décrite en base : un déclencheur régulier, une invocation qui lit le
+  journal, et une règle d'écriture qui ajoute des leçons « proposées »,
+  que Julien garde ou jette (voir « Plus tard » dans le
+  [`TODO.md`](../../TODO.md)).
+- La page Mémoire de Mission Control montre toujours les leçons existantes
+  et les derniers événements de consolidation.
 - `SERGE.md` (un résumé de Serge réécrit à chaque consolidation) a été
   supprimé.
 

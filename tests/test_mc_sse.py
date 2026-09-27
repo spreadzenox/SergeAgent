@@ -20,6 +20,7 @@ sys.path.insert(0, str(ROOT))
 from serge.mc.projectors import PROJECTORS, SnapshotCache, sig  # noqa: E402
 from serge.mc.sse import format_event, stream_page  # noqa: E402
 from tests.mc_server_case import McServerCase  # noqa: E402
+from tests.taches_fixtures import invocations, tache  # noqa: E402
 
 
 class SseUnitTests(unittest.TestCase):
@@ -173,11 +174,11 @@ class SseE2ETests(McServerCase):
     def test_trace_trouvee(self) -> None:
         conn = sqlite3.connect(self.db_path)
         try:
-            conn.execute(
-                'INSERT INTO work_items(id, kind, venture_id, status,'
-                ' priority, idempotency_key, payload_json, created_at,'
-                " updated_at) VALUES('w1','email.send','v1','DONE',0,"
-                "'k1','{}','t','t')"
+            invocations(
+                conn, ('envoyer', 'Envoyer un e-mail', 'prospection_light')
+            )
+            self.task = tache(
+                conn, 'envoyer', {'venture_id': 'v1'}, key='k1', status='done'
             )
             conn.commit()
         finally:
@@ -185,11 +186,13 @@ class SseE2ETests(McServerCase):
         status, headers, _ = self._login()
         cookie = self._cookie(headers)
         status, _, body = self._request(
-            'GET', '/owner/api/trace?item=w1', headers={'Cookie': cookie}
+            'GET',
+            f'/owner/api/trace?item={self.task}',
+            headers={'Cookie': cookie},
         )
         self.assertEqual(status, 200)
         payload = json.loads(body.decode('utf-8'))
-        self.assertEqual(payload['item']['kind'], 'email.send')
+        self.assertEqual(payload['item']['kind'], 'Envoyer un e-mail')
 
 
 if __name__ == '__main__':

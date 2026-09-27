@@ -69,15 +69,16 @@ class CanonTests(unittest.TestCase):
         try:
             init_schema(connection)
             connection.execute(
-                'INSERT INTO work_items(id, kind, idempotency_key, created_at,'
-                " updated_at) VALUES('w1','k','same',?,?)",
-                (utcnow(), utcnow()),
+                'INSERT INTO tasks(id, invocation_id, queue_id,'
+                " idempotency_key, created_at) VALUES('t1','i','works','same',?)",
+                (utcnow(),),
             )
             with self.assertRaises(sqlite3.IntegrityError):
                 connection.execute(
-                    'INSERT INTO work_items(id, kind, idempotency_key,'
-                    " created_at, updated_at) VALUES('w2','k','same',?,?)",
-                    (utcnow(), utcnow()),
+                    'INSERT INTO tasks(id, invocation_id, queue_id,'
+                    ' idempotency_key, created_at)'
+                    " VALUES('t2','i','works','same',?)",
+                    (utcnow(),),
                 )
             connection.execute(
                 'INSERT INTO transactions(id, venture_id, kind, amount_eur,'

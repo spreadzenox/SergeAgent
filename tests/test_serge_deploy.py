@@ -87,7 +87,7 @@ class SergeDeployTests(unittest.TestCase):
                 if cmd[:3] == ['systemctl', '--user', 'enable']
             ]
             self.assertTrue(enable)
-            self.assertIn('serge-pipeline.timer', enable[0])
+            self.assertIn('serge-queue@conversations.service', enable[0])
 
     def test_existing_root_restarts_active_units_only(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
@@ -109,7 +109,7 @@ class SergeDeployTests(unittest.TestCase):
                     name = argv[-1]
                     state = (
                         'active'
-                        if name == 'serge-pipeline.timer'
+                        if name == 'serge-queue@works.service'
                         else 'inactive'
                     )
                     return subprocess.CompletedProcess(
@@ -140,7 +140,7 @@ class SergeDeployTests(unittest.TestCase):
             patched.assert_called_once()
             self.assertEqual(receipt['status'], 'updated')
             self.assertEqual(
-                receipt['units_restarted'], ['serge-pipeline.timer']
+                receipt['units_restarted'], ['serge-queue@works.service']
             )
             self.assertFalse(
                 any('serge-install.py' in ' '.join(cmd) for cmd in seen)
@@ -165,7 +165,7 @@ class SergeDeployTests(unittest.TestCase):
                     name = argv[-1]
                     state = (
                         'failed'
-                        if name == 'serge-pipeline.timer'
+                        if name == 'serge-queue@works.service'
                         else 'inactive'
                     )
                     return subprocess.CompletedProcess(
@@ -194,17 +194,81 @@ class SergeDeployTests(unittest.TestCase):
                     runner=runner,
                 )
             self.assertEqual(
-                receipt['units_restarted'], ['serge-pipeline.timer']
+                receipt['units_restarted'], ['serge-queue@works.service']
             )
             self.assertIn(
                 [
                     'systemctl',
                     '--user',
                     'reset-failed',
+                    'serge-queue@works.service',
+                ],
+                seen,
+            )
+
+    def test_l_ancien_timer_est_remplace_par_les_deux_files(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            tmp = Path(raw)
+            dest = tmp / 'dest'
+            dest.mkdir()
+            (dest / 'state').mkdir()
+            home = tmp / 'home'
+            units = home / '.config/systemd/user'
+            (units / 'serge-pipeline.timer.d').mkdir(parents=True)
+            for rel in (
+                'serge-pipeline.service',
+                'serge-pipeline.timer',
+                'serge-pipeline.timer.d/production-continuous.conf',
+            ):
+                (units / rel).write_text('[Unit]\n', encoding='utf-8')
+            instance = tmp / 'serge.instance.toml'
+            instance.write_text(_toml(home, dest), encoding='utf-8')
+            mandate = tmp / 'mandate.yaml'
+            mandate.write_text('schema_version: 1\n', encoding='utf-8')
+            seen: list[list[str]] = []
+
+            def runner(argv, **_kwargs):
+                seen.append(list(argv))
+                if argv[:3] == ['systemctl', '--user', 'show']:
+                    on = argv[-1] == 'serge-pipeline.timer'
+                    return subprocess.CompletedProcess(
+                        args=argv,
+                        returncode=0,
+                        stdout='active\n' if on else 'inactive\n',
+                        stderr='',
+                    )
+                return _ok()
+
+            with mock.patch(
+                'kit.deploy.update_instance',
+                return_value={'status': 'updated', 'canon_recreated': False},
+            ):
+                receipt = deploy_instance(
+                    instance_file=instance,
+                    mandate=mandate,
+                    source_repo=ROOT,
+                    git_sha='HEAD',
+                    kit_root=ROOT,
+                    runner=runner,
+                )
+            self.assertIn(
+                [
+                    'systemctl',
+                    '--user',
+                    'disable',
+                    '--now',
                     'serge-pipeline.timer',
                 ],
                 seen,
             )
+            self.assertEqual(
+                receipt['units_replaced'],
+                [
+                    'serge-queue@conversations.service',
+                    'serge-queue@works.service',
+                ],
+            )
+            self.assertEqual(list(units.iterdir()), [])
 
     def test_privileged_install_enables_system_caddy(self) -> None:
         with tempfile.TemporaryDirectory() as raw:

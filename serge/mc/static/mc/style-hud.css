@@ -223,7 +223,8 @@ main {
   white-space: pre-wrap;
 }
 
-.rang-kill-kinds .btn-kill {
+.rang-kill-files .btn-kill,
+.rang-kill-invocations .btn-kill {
   font-size: 0.86rem;
   padding: 0.32rem 0.55rem;
 }

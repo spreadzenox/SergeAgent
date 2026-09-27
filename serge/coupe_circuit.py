@@ -1,5 +1,17 @@
 #!/usr/bin/env python3
-"""Coupe-circuits : heartbeat ordonnanceur + kinds (flags runtime)."""
+"""Les coupe-circuits : arrêter Serge, une étape, une file ou une invocation.
+
+- **Serge** : plus aucune file ne prend de tâche (drapeau
+  ``scheduler.heartbeat`` dans ``runtime_flags``).
+- **Une étape** : ses invocations ne tournent plus
+  (``pipeline_steps.enabled``).
+- **Une file** : ``conversations`` ou ``works`` ne prend plus de tâche
+  (``queues.enabled``).
+- **Une invocation** : ses tâches attendent (``invocations.enabled``).
+
+Tout est en base : couper dans Mission Control agit au tour suivant de
+chaque file, sans redémarrage.
+"""
 
 from __future__ import annotations
 
@@ -9,155 +21,97 @@ from typing import Any
 from serge.db.store import utcnow
 from serge.etapes import (
     ETAPE_IDS,
-    SEED,
     EtapeError,
     ensure_pipeline_steps,
     set_etape_marche,
 )
 
-CIBLES = frozenset({'serge', 'etape', 'kind'})
+CIBLES = frozenset({'serge', 'etape', 'file', 'invocation'})
 FLAG_HEARTBEAT = 'scheduler.heartbeat'
 
 
 class CoupeError(ValueError):
-    """Cible, étape ou kind hors enum."""
-
-
-def _flag_kind(kind: str) -> str:
-    return f'kind.{kind}'
-
-
-def _est_kill(
-    conn: sqlite3.Connection, name: str, now: str | None = None
-) -> bool:
-    moment = now or utcnow()
-    row = conn.execute(
-        'SELECT value, expires_at FROM runtime_flags WHERE name=?',
-        (name,),
-    ).fetchone()
-    if row is None:
-        return False
-    if str(row[1] or '') and str(row[1]) <= moment:
-        return False
-    return str(row[0]) == 'kill'
-
-
-def _poser(
-    conn: sqlite3.Connection,
-    name: str,
-    *,
-    coupe: bool,
-    now: str | None = None,
-) -> None:
-    moment = now or utcnow()
-    if coupe:
-        conn.execute(
-            'INSERT OR REPLACE INTO runtime_flags(name, value, set_by,'
-            " set_at, expires_at, reason) VALUES(?, 'kill', 'owner', ?, '',"
-            " 'coupe-circuit MC')",
-            (name, moment),
-        )
-        return
-    conn.execute('DELETE FROM runtime_flags WHERE name=?', (name,))
+    """Cible, étape, file ou invocation inconnue."""
 
 
 def heartbeat_marche(conn: sqlite3.Connection, now: str | None = None) -> bool:
-    """True si l’ordonnanceur peut prendre une tâche.
+    """Vrai si Serge n'est pas arrêté en entier.
 
     Args:
-        conn: Canon.
-        now: ISO UTC (défaut : horloge).
-
-    Returns:
-        False si le heartbeat est coupé.
+        conn: Connexion à la base.
+        now: ISO UTC (défaut : horloge). Un arrêt expiré ne compte plus.
     """
-    return not _est_kill(conn, FLAG_HEARTBEAT, now)
-
-
-def kinds_interrompus(
-    conn: sqlite3.Connection, now: str | None = None
-) -> frozenset[str]:
-    """Kinds coupés un par un (indépendant des sacs).
-
-    Args:
-        conn: Canon.
-        now: ISO UTC (défaut : horloge).
-
-    Returns:
-        Ensemble de kinds (vide si tous marchent).
-    """
-    return frozenset(
-        kind
-        for _ident, _rang, kinds in SEED
-        for kind in kinds
-        if _est_kill(conn, _flag_kind(kind), now)
-    )
+    moment = now or utcnow()
+    row = conn.execute(
+        'SELECT value, expires_at FROM runtime_flags WHERE name=?',
+        (FLAG_HEARTBEAT,),
+    ).fetchone()
+    if row is None:
+        return True
+    if str(row[1] or '') and str(row[1]) <= moment:
+        return True
+    return str(row[0]) != 'kill'
 
 
 def set_heartbeat(
     conn: sqlite3.Connection, marche: bool, now: str | None = None
 ) -> dict[str, Any]:
-    """Coupe ou remet le heartbeat de l’ordonnanceur.
+    """Arrête ou remet Serge en marche.
 
     Args:
-        conn: Canon (commit par l’appelant).
-        marche: True = le cycle peut claim.
+        conn: Connexion à la base (commit par l'appelant).
+        marche: True = les files peuvent prendre des tâches.
         now: ISO UTC (défaut : horloge).
 
     Returns:
         ``{cible, marche}``.
     """
-    _poser(conn, FLAG_HEARTBEAT, coupe=not marche, now=now)
+    moment = now or utcnow()
+    if marche:
+        conn.execute(
+            'DELETE FROM runtime_flags WHERE name=?', (FLAG_HEARTBEAT,)
+        )
+    else:
+        conn.execute(
+            'INSERT OR REPLACE INTO runtime_flags(name, value, set_by,'
+            " set_at, expires_at, reason) VALUES(?, 'kill', 'owner', ?, '',"
+            " 'coupe-circuit MC')",
+            (FLAG_HEARTBEAT, moment),
+        )
     return {'cible': 'serge', 'marche': heartbeat_marche(conn, now)}
 
 
-def set_kind_marche(
-    conn: sqlite3.Connection,
-    kind: str,
-    marche: bool,
-    now: str | None = None,
-) -> dict[str, Any]:
-    """Coupe ou remet un kind, toutes étapes confondues.
-
-    Args:
-        conn: Canon (commit par l’appelant).
-        kind: Kind du seed (`KIND_DEFAUT`).
-        marche: True = l’ordonnanceur accepte ce kind.
-        now: ISO UTC (défaut : horloge).
-
-    Returns:
-        ``{cible, id, marche}``.
-
-    Raises:
-        CoupeError: Kind hors enum.
-    """
-    connus = {k for _i, _r, ks in SEED for k in ks}
-    if kind not in connus:
-        raise CoupeError(f'kind inconnu : {kind}')
-    _poser(conn, _flag_kind(kind), coupe=not marche, now=now)
-    return {
-        'cible': 'kind',
-        'id': kind,
-        'marche': kind not in kinds_interrompus(conn, now),
-    }
+def _set_enabled(
+    conn: sqlite3.Connection, table: str, ident: str, marche: bool
+) -> bool:
+    """Pose ``enabled`` sur une file ou une invocation. Faux si inconnue."""
+    extra = ''
+    params: tuple[Any, ...] = (int(marche), ident)
+    if table == 'invocations':
+        extra = ", updated_at=?, updated_by='mc'"
+        params = (int(marche), utcnow(), ident)
+    cursor = conn.execute(
+        f'UPDATE {table} SET enabled=?{extra} WHERE id=?', params
+    )
+    return cursor.rowcount == 1
 
 
 def appliquer_coupe(
     conn: sqlite3.Connection, cible: str, ident: str, marche: bool
 ) -> dict[str, Any]:
-    """Applique un coupe-circuit (enum fermé).
+    """Applique un coupe-circuit.
 
     Args:
-        conn: Canon (commit par l’appelant).
-        cible: ``serge``, ``etape`` ou ``kind``.
-        ident: Id d’étape ou de kind (ignoré pour Serge).
+        conn: Connexion à la base (commit par l'appelant).
+        cible: ``serge``, ``etape``, ``file`` ou ``invocation``.
+        ident: Id visé (ignoré pour Serge).
         marche: True = en marche.
 
     Returns:
-        Dict typé selon la cible.
+        ``{cible, marche}``, plus ``id`` sauf pour Serge.
 
     Raises:
-        CoupeError: Cible, étape ou kind hors enum.
+        CoupeError: Cible ou id inconnu.
     """
     if cible not in CIBLES:
         raise CoupeError(f'cible inconnue : {cible}')
@@ -169,49 +123,55 @@ def appliquer_coupe(
         except EtapeError as exc:
             raise CoupeError(str(exc)) from exc
         return {'cible': 'etape', **etat}
-    return set_kind_marche(conn, ident, marche)
+    table = 'queues' if cible == 'file' else 'invocations'
+    if not _set_enabled(conn, table, ident, marche):
+        raise CoupeError(f'{cible} inconnue : {ident}')
+    return {'cible': cible, 'id': ident, 'marche': marche}
 
 
 def etat_coupes(
     conn: sqlite3.Connection, now: str | None = None
 ) -> dict[str, Any]:
-    """État des trois nappes de coupe-circuits (MC Live).
+    """L'état de tous les coupe-circuits, pour Mission Control.
 
     Args:
-        conn: Canon (peut semer les étapes).
+        conn: Connexion à la base.
         now: ISO UTC (défaut : horloge).
 
     Returns:
-        ``{serge, etapes, kinds}``.
+        ``{serge, etapes, files, invocations}`` ; chaque élément a ``id``,
+        ``titre`` et ``marche`` (et ``etape_id`` pour une invocation).
     """
     ensure_pipeline_steps(conn)
-    etapes: list[dict[str, Any]] = []
-    for row in conn.execute(
-        'SELECT id, titre, enabled FROM pipeline_steps ORDER BY rang, id'
-    ):
-        ident = str(row[0])
-        if ident not in ETAPE_IDS:
-            continue
-        etapes.append(
-            {
-                'id': ident,
-                'titre': str(row[1] or ident),
-                'marche': bool(row[2]),
-            }
-        )
-    morts = kinds_interrompus(conn, now)
-    kinds: list[dict[str, Any]] = []
-    for ident, _rang, ks in SEED:
-        for kind in ks:
-            kinds.append(
-                {
-                    'id': kind,
-                    'marche': kind not in morts,
-                    'etape_id': ident,
-                }
-            )
+    etapes = [
+        {'id': str(r[0]), 'titre': str(r[1] or r[0]), 'marche': bool(r[2])}
+        for r in conn.execute(
+            'SELECT id, titre, enabled FROM pipeline_steps ORDER BY rang, id'
+        ).fetchall()
+        if str(r[0]) in ETAPE_IDS
+    ]
+    files = [
+        {'id': str(r[0]), 'titre': str(r[1] or r[0]), 'marche': bool(r[2])}
+        for r in conn.execute(
+            'SELECT id, title, enabled FROM queues ORDER BY id'
+        ).fetchall()
+    ]
+    invocations = [
+        {
+            'id': str(r[0]),
+            'titre': str(r[1] or r[0]),
+            'marche': bool(r[2]),
+            'etape_id': str(r[3]),
+        }
+        for r in conn.execute(
+            'SELECT i.id, i.title, i.enabled, i.step_id FROM invocations i'
+            ' LEFT JOIN pipeline_steps s ON s.id=i.step_id'
+            " WHERE i.deleted_at='' ORDER BY COALESCE(s.rang, 99), i.id"
+        ).fetchall()
+    ]
     return {
         'serge': heartbeat_marche(conn, now),
         'etapes': etapes,
-        'kinds': kinds,
+        'files': files,
+        'invocations': invocations,
     }

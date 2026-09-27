@@ -33,3 +33,103 @@ serge_texts:
       encaisse. Il agit seul la plupart du temps, et demande à Julien de
       valider les décisions importantes. Sa seule limite est la légalité :
       il ne trompe personne et assume d'être un agent IA.
+
+# Les outils : une capacité du code, réglée pour un usage précis. On les
+# donne aux invocations, d'office (lus avant l'appel et mis dans le prompt)
+# ou appelables (le modèle décide). Un outil « everywhere » est appelable
+# par toutes les invocations LLM.
+tools:
+  - id: web_search
+    title: Chercher sur le web public
+    doc: Recherche publique en lecture seule, sans compte ni action externe.
+    capability: web_search
+  - id: memory_search
+    title: Chercher dans la mémoire
+    doc: >-
+      Cherche des mots dans les leçons, les événements et les tickets de
+      Serge, et rend quelques extraits. Lecture seule : ça informe, ça
+      n'écrit pas.
+    capability: memory_search
+  - id: demande_capacite
+    title: Demander une nouvelle capacité
+    doc: >-
+      Quand Serge ne peut pas faire ce qu'on lui demande (pas de canal, pas
+      d'outil), il ouvre une demande à Julien (« j'ai besoin de X ») plutôt
+      que d'inventer. Le même besoin déjà ouvert n'est pas recréé.
+    capability: request_capability
+    everywhere: true
+  - id: current_listen_cycle
+    title: Lire le cycle d'écoute
+    doc: Le texte de guidage et l'état d'un cycle d'écoute.
+    capability: db_read
+    read:
+      tables: [listen_cycles]
+      columns:
+        - {table: listen_cycles, name: id}
+        - {table: listen_cycles, name: guide}
+        - {table: listen_cycles, name: needs_target}
+        - {table: listen_cycles, name: business_target}
+        - {table: listen_cycles, name: status}
+        - {table: listen_cycles, name: created_at}
+        - {table: listen_cycles, name: started_at}
+        - {table: listen_cycles, name: finished_at}
+      filters:
+        - {id: cycle, table: listen_cycles, column: id, param: cycle_id}
+      params:
+        - {name: cycle_id, required: true, description: Identifiant du cycle.}
+  - id: listen_cycle_documents
+    title: Lire les pages du cycle
+    doc: Les pages figées pour un cycle d'écoute, avec leur titre et leur texte.
+    capability: db_read
+    read:
+      tables: [listen_cycle_docs, listen_docs]
+      columns:
+        - {table: listen_cycle_docs, name: cycle_id}
+        - {table: listen_cycle_docs, name: doc_id}
+        - {table: listen_docs, name: id}
+        - {table: listen_docs, name: source}
+        - {table: listen_docs, name: url}
+        - {table: listen_docs, name: title}
+        - {table: listen_docs, name: excerpt}
+        - {table: listen_docs, name: published}
+      joins:
+        - {id: page, left: listen_cycle_docs.doc_id, right: listen_docs.id}
+      filters:
+        - {id: cycle, table: listen_cycle_docs, column: cycle_id, param: cycle_id}
+      params:
+        - {name: cycle_id, required: true, description: Identifiant du cycle.}
+        - {name: limit, type: integer, default: '200', description: Nombre maximal de pages.}
+  - id: known_business_candidates
+    title: Lire les business connus
+    doc: Les business déjà en base, pour ne pas reproposer ce qui existe.
+    capability: db_read
+    read:
+      tables: [ventures]
+      columns:
+        - {table: ventures, name: id}
+        - {table: ventures, name: name, as: title}
+        - {table: ventures, name: description, as: content}
+        - {table: ventures, name: observations}
+        - {table: ventures, name: sellable_offer}
+        - {table: ventures, name: lifecycle, as: status}
+        - {table: ventures, name: created_at}
+        - {table: ventures, name: updated_at}
+      params:
+        - {name: limit, type: integer, default: '200', description: Nombre maximal de business.}
+  - id: eligible_poc_candidates
+    title: Lire les business candidats
+    doc: Les business encore candidats, ceux qu'on peut choisir de tester.
+    capability: db_read
+    read:
+      tables: [ventures]
+      columns:
+        - {table: ventures, name: id}
+        - {table: ventures, name: name, as: title}
+        - {table: ventures, name: description, as: content}
+        - {table: ventures, name: observations}
+        - {table: ventures, name: sellable_offer}
+        - {table: ventures, name: lifecycle, as: status}
+      filters:
+        - {id: candidats, table: ventures, column: lifecycle, fixed: CANDIDATE}
+      params:
+        - {name: limit, type: integer, default: '200', description: Nombre maximal de business.}

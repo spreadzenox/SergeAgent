@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Query builder fermé pour les tools ``kind='db_read'``.
+"""Construire la requête d'un outil de lecture (capacité ``db_read``).
 
 Les identifiants SQL viennent exclusivement du catalogue relationnel du tool.
 Les valeurs venant du modèle ou de l'ordonnanceur restent des paramètres
@@ -329,19 +329,19 @@ def _where(
 
 
 def build_db_read_query(
-    conn: sqlite3.Connection,
-    tool_id: str,
-    arguments: Mapping[str, Any],
-    *,
-    fixed_joins: Sequence[Mapping[str, Any]] = (),
+    conn: sqlite3.Connection, tool_id: str, arguments: Mapping[str, Any]
 ) -> tuple[str, list[Any], list[str]]:
-    """Construit une requête bornée à un contrat DB, sans l'exécuter."""
+    """Construit une requête bornée au catalogue de l'outil, sans l'exécuter.
+
+    Les jointures du catalogue sont toujours appliquées ; le modèle peut en
+    demander d'autres entre les tables autorisées.
+    """
     if not isinstance(arguments, Mapping):
         raise DbReadError('arguments objet attendus')
     catalogue = tool_catalogue(conn, tool_id)
     tables, _columns_set = _validate_catalogue(conn, catalogue)
     values = _parameters(catalogue, arguments)
-    joins = _join_items(catalogue, arguments.get('joins'), fixed_joins)
+    joins = _join_items(catalogue, arguments.get('joins'), catalogue['joins'])
     included, join_sql = _join_path(catalogue, joins)
     root = str(catalogue['tables'][0]['name'])
     selected = _columns(catalogue, arguments.get('columns'), included)
@@ -379,16 +379,10 @@ def build_db_read_query(
 
 
 def execute_db_read(
-    conn: sqlite3.Connection,
-    tool_id: str,
-    arguments: Mapping[str, Any],
-    *,
-    fixed_joins: Sequence[Mapping[str, Any]] = (),
+    conn: sqlite3.Connection, tool_id: str, arguments: Mapping[str, Any]
 ) -> dict[str, Any]:
-    """Exécute un tool DB individualisé et retourne des lignes bornées."""
-    sql, bound, aliases = build_db_read_query(
-        conn, tool_id, arguments, fixed_joins=fixed_joins
-    )
+    """Exécute un outil de lecture et rend des lignes bornées."""
+    sql, bound, aliases = build_db_read_query(conn, tool_id, arguments)
     rows = conn.execute(sql, bound).fetchall()
     data = [
         {alias: row[index] for index, alias in enumerate(aliases)}

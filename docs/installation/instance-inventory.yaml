@@ -339,19 +339,19 @@ entries:
     portable: "no"
     notes: Owner-provisioned legal identity; required for payments_live and economic gates.
 
-  - id: unit.pipeline
+  - id: unit.queues
     kind: unit
-    current_location: /home/serge/.config/systemd/user/serge-pipeline.service
+    current_location: /home/serge/.config/systemd/user/serge-queue@.service
     required_for: pipeline
     portable: "yes"
-    notes: ExecStart scripts/serge-runner.py --once (flock). SERGE_AGENT_RUNTIME=direct_llm. Gmail via EnvironmentFile secrets/gog.env.
+    notes: Two continuous instances, serge-queue@conversations and serge-queue@works (scripts/serge-queue.py --queue %i, Restart=always). SERGE_AGENT_RUNTIME=direct_llm. Gmail via EnvironmentFile secrets/gog.env.
 
   - id: unit.pipeline_timer
     kind: unit
-    current_location: /home/serge/.config/systemd/user/serge-pipeline.timer
-    required_for: pipeline
-    portable: "yes"
-    notes: Timer → serge-pipeline.service → scripts/serge-runner.py --once (flock state/pipeline.lock).
+    current_location: retired
+    required_for: none
+    portable: "n/a"
+    notes: Old runner timer (serge-pipeline.timer + .service), replaced by unit.queues in lot 6; removed by the deploy.
 
   - id: unit.daily_report
     kind: unit
@@ -482,9 +482,9 @@ entries:
   - id: host_dep.flock
     kind: host_dep
     current_location: /usr/bin/flock
-    required_for: pipeline
+    required_for: none
     portable: "yes"
-    notes: systemd.lock overlap guard in serge-pipeline.service ExecStart.
+    notes: No longer used since lot 6 (each queue is a single continuous service).
 
   - id: host_dep.chromium
     kind: host_dep

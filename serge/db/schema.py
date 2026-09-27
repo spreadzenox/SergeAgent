@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import sqlite3
 
-SCHEMA_VERSION = 24
+SCHEMA_VERSION = 25
 
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS schema_version (
@@ -258,7 +258,6 @@ TABLES = (
     'blocklist',
     'transactions',
     'events',
-    'work_items',
     'tickets',
     'ticket_items',
     'ticket_events',
@@ -277,14 +276,7 @@ TABLES = (
     'runtime_flags',
     'pipeline_steps',
     'tools',
-    'llm_points',
-    'llm_point_tools',
-    'tech_invocations',
-    'etape_liens',
     'canaux',
-    'brique_canaux',
-    'db_readers',
-    'llm_point_readers',
     'listen_cycles',
     'listen_cycle_docs',
     'venture_sources',
@@ -296,8 +288,6 @@ TABLES = (
     'tool_db_joins',
     'tool_db_params',
     'tool_db_param_enums',
-    'db_reader_fixed_params',
-    'db_reader_fixed_joins',
     'capabilities',
     'capability_params',
     'invocations',

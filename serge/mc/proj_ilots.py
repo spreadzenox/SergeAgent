@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Projecteurs P1 : îlots + scheduler (purs, goldens).
+"""Projecteur P1 : les îlots de la page Système (purs, goldens).
 
-Fenêtre 24 h, RUNNING suspect après 30 min, îlots sans source = 'inconnu'.
+Fenêtre 24 h, tâche en cours suspecte après 30 min, îlots sans source =
+'inconnu'. La file des tâches est lue par ``proj_taches.py``.
 """
 
 from __future__ import annotations
@@ -12,7 +13,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from serge.mc.proj_outils import avant_iso
-from serge.scheduler import next_ready
+from serge.mc.proj_taches import prochaines
 
 
 def _compte(conn: sqlite3.Connection, sql: str, params: tuple = ()) -> int:
@@ -30,30 +31,25 @@ def _groupes(
 
 
 def _ilot_scheduler(conn: sqlite3.Connection, now: str) -> dict[str, Any]:
-    ready = _compte(
-        conn, "SELECT COUNT(*) FROM work_items WHERE status='READY'"
-    )
+    ready = _compte(conn, "SELECT COUNT(*) FROM tasks WHERE status='ready'")
     running = _compte(
-        conn, "SELECT COUNT(*) FROM work_items WHERE status='RUNNING'"
+        conn, "SELECT COUNT(*) FROM tasks WHERE status='running'"
     )
     bloques = _compte(
         conn,
-        "SELECT COUNT(*) FROM work_items WHERE status='READY'"
-        ' AND blocked_until>?',
+        "SELECT COUNT(*) FROM tasks WHERE status='ready' AND not_before>?",
         (now,),
     )
-    prochain = next_ready(conn, now)
-    if ready - bloques > 0 and prochain is None:
-        sante = 'erreur'  # READY non servi = ventures non schedulables (B5)
-    elif ready > 0 and prochain is None:
-        sante = 'degrade'  # tout bloqué (retries planifiés)
+    servies = prochaines(conn, now)
+    if ready - bloques > 0 and not servies:
+        sante = 'degrade'  # tâches prêtes non servies : file ou étape coupée
     else:
         sante = 'ok'
-    resume = f'{ready} prêts, {running} en cours'
-    resume += f', {bloques} bloqués' if bloques else ''
+    resume = f'{ready} prêtes, {running} en cours'
+    resume += f', {bloques} en attente de leur heure' if bloques else ''
     return {
         'id': 'scheduler',
-        'label': 'Ordonnanceur',
+        'label': 'Files de tâches',
         'sante': sante,
         'activite': min(1.0, (running + ready) / 10),
         'resume': resume,
@@ -64,18 +60,16 @@ def _ilot_workers(
     conn: sqlite3.Connection, now: str, depuis: str
 ) -> dict[str, Any]:
     par_statut = _groupes(
-        conn, 'SELECT status, COUNT(*) FROM work_items GROUP BY status'
+        conn, 'SELECT status, COUNT(*) FROM tasks GROUP BY status'
     )
     failed24 = _compte(
         conn,
-        "SELECT COUNT(*) FROM work_items WHERE status='FAILED'"
-        ' AND updated_at>?',
+        "SELECT COUNT(*) FROM tasks WHERE status='failed' AND finished_at>?",
         (depuis,),
     )
     suspect = _compte(
         conn,
-        "SELECT COUNT(*) FROM work_items WHERE status='RUNNING'"
-        ' AND updated_at<?',
+        "SELECT COUNT(*) FROM tasks WHERE status='running' AND started_at<?",
         (avant_iso(now, minutes=30),),
     )
     if failed24 > 0:
@@ -84,10 +78,10 @@ def _ilot_workers(
         sante = 'degrade'
     else:
         sante = 'ok'
-    running = par_statut.get('RUNNING', 0)
-    ready = par_statut.get('READY', 0)
-    resume = f'{running} en cours, {ready} prêts'
-    resume += f', {failed24} échoués (24 h)' if failed24 else ''
+    running = par_statut.get('running', 0)
+    ready = par_statut.get('ready', 0)
+    resume = f'{running} en cours, {ready} prêtes'
+    resume += f', {failed24} échouées (24 h)' if failed24 else ''
     return {
         'id': 'workers',
         'label': 'Exécution',
@@ -184,32 +178,19 @@ def _ilot_sms(conn: sqlite3.Connection, depuis: str) -> dict[str, Any]:
     }
 
 
-def _ilot_email(conn: sqlite3.Connection, depuis: str) -> dict[str, Any]:
+def _ilot_email(conn: sqlite3.Connection) -> dict[str, Any]:
     par_statut = _groupes(
         conn,
         "SELECT status, COUNT(*) FROM touches WHERE channel='email'"
         ' GROUP BY status',
     )
-    file = _compte(
-        conn,
-        "SELECT COUNT(*) FROM work_items WHERE status IN ('READY','RUNNING')"
-        " AND kind LIKE 'email.%'",
-    )
-    failed = _compte(
-        conn,
-        "SELECT COUNT(*) FROM work_items WHERE status='FAILED'"
-        " AND kind LIKE 'email.%' AND updated_at>?",
-        (depuis,),
-    )
     envoyes = par_statut.get('sent', 0) + par_statut.get('delivered', 0)
-    resume = f'{file} en file, {envoyes} envoyés'
-    resume += f', {failed} échoués (24 h)' if failed else ''
     return {
         'id': 'email',
         'label': 'Email',
-        'sante': 'erreur' if failed else 'ok',
-        'activite': min(1.0, (file + envoyes) / 10),
-        'resume': resume,
+        'sante': 'inconnu',
+        'activite': min(1.0, envoyes / 10),
+        'resume': f'{envoyes} envoyés — envoi pas encore branché (lot 8)',
     }
 
 
@@ -247,47 +228,8 @@ def project_ilots(
         _ilot_listen(conn, depuis),
         _ilot_inconnu('allocator', 'Arbitre', 'Pas de source (lot 6).'),
         _ilot_sms(conn, depuis),
-        _ilot_email(conn, depuis),
+        _ilot_email(conn),
         _ilot_inconnu('discord', 'Discord', 'Sonde gateway au lot 12.'),
         _ilot_inconnu('voix', 'Voix', 'Ledger voix au lot 11.'),
     ]
     return {'items': items}
-
-
-def project_scheduler(
-    conn: sqlite3.Connection, policy: Mapping[str, Any], now: str
-) -> dict[str, Any]:
-    """Prochain READY + compteurs de file (P1 scheduler).
-
-    Args:
-        conn: Connexion canon (lecture).
-        policy: Policy (ignorée, uniformité).
-        now: Maintenant ISO UTC.
-
-    Returns:
-        Dict {next: {id, kind, venture_id} | None, ready, running, bloques}.
-    """
-    _ = policy
-    prochain = next_ready(conn, now)
-    suivant = None
-    if prochain is not None:
-        suivant = {
-            'id': str(prochain['id']),
-            'kind': str(prochain['kind']),
-            'venture_id': str(prochain.get('venture_id') or ''),
-        }
-    return {
-        'next': suivant,
-        'ready': _compte(
-            conn, "SELECT COUNT(*) FROM work_items WHERE status='READY'"
-        ),
-        'running': _compte(
-            conn, "SELECT COUNT(*) FROM work_items WHERE status='RUNNING'"
-        ),
-        'bloques': _compte(
-            conn,
-            "SELECT COUNT(*) FROM work_items WHERE status='READY'"
-            ' AND blocked_until>?',
-            (now,),
-        ),
-    }

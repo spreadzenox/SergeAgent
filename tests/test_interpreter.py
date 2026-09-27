@@ -24,8 +24,11 @@ sys.path.insert(0, str(ROOT))
 from serge.db.boot import init_schema  # noqa: E402
 from serge.interpreter import tools as tools_mod  # noqa: E402
 from serge.interpreter.flow import fire_button, fire_due_triggers  # noqa: E402
-from serge.interpreter.queue import process_one  # noqa: E402
-from serge.interpreter.tasks import enqueue_task  # noqa: E402
+from serge.interpreter.queue import (  # noqa: E402
+    process_one,
+    resume_interrupted,
+)
+from serge.interpreter.tasks import enqueue_task, start_task  # noqa: E402
 from serge.llm.client import ChatResult, ToolCall  # noqa: E402
 from serge.pipeline_seed import seed_pipeline  # noqa: E402
 
@@ -235,13 +238,6 @@ class InterpreterTests(unittest.TestCase):
         self.addCleanup(self.conn.close)
         init_schema(self.conn)
         self.conn.execute(
-            "UPDATE tools SET capability_id='db_read'"
-            " WHERE id='known_business_candidates'"
-        )
-        self.conn.execute(
-            "UPDATE tools SET capability_id='web_search' WHERE id='web_search'"
-        )
-        self.conn.execute(
             'INSERT INTO ventures(id, name, description, lifecycle,'
             " created_at, updated_at) VALUES('v_old', 'Relance des impayés',"
             " 'outil de relance des impayés des artisans', 'SMOKE_RUNNING',"
@@ -400,6 +396,48 @@ class InterpreterTests(unittest.TestCase):
             "SELECT COUNT(*) FROM tasks WHERE origin='trigger'"
         ).fetchone()
         self.assertEqual(count, (2,))
+
+    def test_plafond_llm_du_jour_atteint(self) -> None:
+        """Plafond atteint : la tâche LLM attend, la tâche sans LLM passe.
+
+        Avec la policy de départ (5 € par jour, 0,004 € pour 1 000 tokens),
+        le plafond est atteint à 1 250 000 tokens dans la journée.
+        """
+        self.conn.execute(
+            'INSERT INTO llm_usage(point, tier, model, tokens_in,'
+            " tokens_out, latency_ms, verdict, created_at) VALUES('x', 'mid',"
+            " 'm', 1000000, 300000, 1, 'ok', ?)",
+            (NOW,),
+        )
+        llm = enqueue_task(self.conn, 'chercheur', {'sujet': 'cy5'})
+        sans_llm = enqueue_task(self.conn, 'ouvrir', {'sujet': 'cy5'})
+        self.conn.commit()
+        model = FakeModel()
+        self.assertEqual(self._run(model), sans_llm)
+        self.assertIsNone(self._run(model))
+        self.assertEqual(model.calls, [])
+        self.assertEqual(
+            self.conn.execute(
+                'SELECT status FROM tasks WHERE id=?', (llm,)
+            ).fetchone(),
+            ('ready',),
+        )
+
+    def test_une_tache_interrompue_est_reprise(self) -> None:
+        """Arrêt pendant une tâche : au redémarrage, elle repart de zéro."""
+        task = enqueue_task(self.conn, 'ouvrir', {'sujet': 'cy6'})
+        start_task(self.conn, str(task))
+        self.conn.commit()
+        self.assertIsNone(self._run(FakeModel()))
+        self.assertEqual(resume_interrupted(self.conn, 'works'), [task])
+        self.assertEqual(self._run(FakeModel()), task)
+        self.assertEqual(
+            self.conn.execute(
+                'SELECT status, attempts FROM tasks WHERE id=?', (task,)
+            ).fetchone(),
+            ('done', 2),
+        )
+        self.assertEqual(len(self._events('task.resumed')), 1)
 
 
 if __name__ == '__main__':

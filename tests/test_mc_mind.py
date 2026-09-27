@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""MC P2 Cerveau : registre sections + page lecture (matrice, listes)."""
+"""MC P2 Cerveau : sections, invocations en base, allumer et éteindre."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from serge.mc.projectors import (  # noqa: E402
     PROJECTORS,
     SLOW_SECTIONS,
 )
-from serge.registry import load_llm_points  # noqa: E402
+from serge.pipeline_seed import seed_pipeline  # noqa: E402
 from tests.mc_server_case import McBrowserCase  # noqa: E402
 
 
@@ -39,36 +39,46 @@ class McMindTests(McBrowserCase):
         iso = datetime.now(UTC).isoformat()
         conn = sqlite3.connect(self.db_path)
         try:
+            seed_pipeline(
+                conn,
+                {
+                    'schema_version': 1,
+                    'invocations': [
+                        {
+                            'id': 'classer',
+                            'title': 'Classer une réponse',
+                            'type': 'llm',
+                            'model_tier': 'fast',
+                            'step': 'prospection_lourde',
+                        },
+                        {
+                            'id': 'arbitrer',
+                            'title': 'Arbitrer',
+                            'type': 'llm',
+                            'step': 'prospection_lourde',
+                            'enabled': False,
+                        },
+                    ],
+                },
+            )
             conn.execute(
                 'INSERT INTO llm_usage(point, tier, model, tokens_in,'
                 ' tokens_out, latency_ms, verdict, created_at)'
-                " VALUES('classify_reply','T1','nemo',1000,500,100,"
+                " VALUES('classer','fast','nemo',1000,500,100,"
                 "'ok',?)",
                 (iso,),
             )
             conn.execute(
                 'INSERT INTO llm_usage(point, tier, model, tokens_in,'
                 ' tokens_out, latency_ms, verdict, created_at)'
-                " VALUES('classify_reply','T1','nemo',2000,1000,200,"
-                "'recall',?)",
+                " VALUES('classer','fast','nemo',2000,1000,200,"
+                "'format_invalide',?)",
                 (iso,),
             )
             conn.execute(
                 'INSERT INTO inbound_events(id, contact_id, channel,'
                 ' native_type, signal, class, score, received_at)'
                 " VALUES('b1','p1','sms','MO','reply','positive',0.9,?)",
-                (iso,),
-            )
-            conn.execute(
-                'INSERT INTO listen_docs(id, source, title, cluster_id,'
-                " fetched_at) VALUES('d1','rss','Bruit prix','cA',?),"
-                "('d2','rss','Bug synchro','cA',?)",
-                (iso, iso),
-            )
-            conn.execute(
-                'INSERT INTO runtime_flags(name, value, set_by, set_at,'
-                " expires_at, reason) VALUES('llm.judge_allocator',"
-                "'kill','test',?,'2999-01-01T00:00:00+00:00','x')",
                 (iso,),
             )
             conn.commit()
@@ -83,23 +93,32 @@ class McMindTests(McBrowserCase):
         page.locator('table.matrice tbody tr').first.wait_for(timeout=10000)
         return page
 
+    def _enabled(self, ident: str) -> int:
+        import sqlite3
+
+        conn = sqlite3.connect(self.db_path)
+        try:
+            return conn.execute(
+                'SELECT enabled FROM invocations WHERE id=?', (ident,)
+            ).fetchone()[0]
+        finally:
+            conn.close()
+
     def test_page_cerveau_rendu(self) -> None:
         from playwright.sync_api import expect
 
         page = self._page_cerveau()
-        expect(page.locator('table.matrice tbody tr')).to_have_count(
-            len(load_llm_points())
-        )
+        expect(page.locator('table.matrice tbody tr')).to_have_count(2)
         matrice = page.locator('[data-section="matrice"]')
-        expect(matrice).to_contain_text('classify_reply')
-        expect(matrice).to_contain_text('Tué (temporaire)')
-        expect(matrice).to_contain_text('En service')
+        expect(matrice).to_contain_text('Classer une réponse')
+        expect(matrice).to_contain_text('Allumée')
+        expect(matrice).to_contain_text('Éteinte')
         expect(page.locator('[data-section="pensees"]')).to_contain_text(
             'Aucune pensée pour le moment.'
         )
         decisions = page.locator('[data-section="decisions"]')
-        expect(decisions).to_contain_text('classify_reply — ok')
-        expect(decisions).to_contain_text('recall')
+        expect(decisions).to_contain_text('classer — ok')
+        expect(decisions).to_contain_text('format_invalide')
         expect(page.locator('[data-section="signaux"]')).to_contain_text(
             'sms reply (positive)'
         )
@@ -110,12 +129,8 @@ class McMindTests(McBrowserCase):
         page = self._auth_context().new_page()
         self._watch_errors(page)
         page.goto(f'{self.base}/owner#/mind')
-        page.locator('table.matrice tbody tr').first.wait_for(timeout=10000)
-        expect(page.locator('table.matrice tbody tr')).to_have_count(
-            len(load_llm_points())
-        )
         expect(page.locator('[data-section="matrice"]')).to_contain_text(
-            'En service'
+            'Aucune invocation en base'
         )
         for section, text in (
             ('pensees', 'Aucune pensée pour le moment.'),
@@ -126,62 +141,36 @@ class McMindTests(McBrowserCase):
                 page.locator(f'[data-section="{section}"]')
             ).to_contain_text(text)
 
-    def test_fiche_et_kill(self) -> None:
-        import sqlite3
-
+    def test_fiche_et_eteindre(self) -> None:
         from playwright.sync_api import expect
 
         page = self._page_cerveau()
-        page.get_by_role('button', name='classify_reply').click()
+        page.get_by_role('button', name='Classer une réponse').click()
         tiroir = page.locator('.drawer')
-        expect(tiroir).to_contain_text('Point classify_reply')
-        expect(tiroir).to_contain_text('Garde-fou')
-        expect(tiroir).to_contain_text('En service')
-        tiroir.get_by_role('button', name='Tuer').click()
+        expect(tiroir).to_contain_text('Classer une réponse')
+        expect(tiroir).to_contain_text('Allumée')
+        tiroir.get_by_role('button', name='Éteindre').click()
         modale = page.locator('.modale')
-        modale.locator('input[name="raison"]').fill('dérive vue en matrice')
-        modale.get_by_role('button', name='Tuer').click()
+        modale.get_by_role('button', name='Éteindre').click()
         expect(page.locator('.toast-succes')).to_contain_text(
-            'classify_reply tué'
+            'Classer une réponse éteinte'
         )
-        expect(tiroir).to_contain_text('Tué (temporaire)')
-        conn = sqlite3.connect(self.db_path)
-        try:
-            flag = conn.execute(
-                'SELECT value FROM runtime_flags'
-                " WHERE name='llm.classify_reply'"
-            ).fetchone()
-            ticket = conn.execute(
-                "SELECT type FROM tickets WHERE type='POLICY'"
-            ).fetchone()
-        finally:
-            conn.close()
-        self.assertEqual(flag[0], 'kill')
-        self.assertEqual(ticket[0], 'POLICY')
+        expect(tiroir).to_contain_text('Éteinte')
+        self.assertEqual(self._enabled('classer'), 0)
 
-    def test_unkill(self) -> None:
-        import sqlite3
-
+    def test_allumer(self) -> None:
         from playwright.sync_api import expect
 
         page = self._page_cerveau()
-        page.get_by_role('button', name='judge_allocator').click()
+        page.get_by_role('button', name='Arbitrer').click()
         tiroir = page.locator('.drawer')
-        expect(tiroir).to_contain_text('Tué (temporaire)')
-        tiroir.get_by_role('button', name='Relancer').click()
+        expect(tiroir).to_contain_text('Éteinte')
+        tiroir.get_by_role('button', name='Allumer').click()
         modale = page.locator('.modale')
-        expect(modale).to_contain_text('Relancer judge_allocator ?')
-        modale.get_by_role('button', name='Relancer').click()
+        expect(modale).to_contain_text('Allumer Arbitrer ?')
+        modale.get_by_role('button', name='Allumer').click()
         expect(page.locator('.toast-succes')).to_contain_text(
-            'judge_allocator relancé'
+            'Arbitrer allumée'
         )
-        expect(tiroir).to_contain_text('En service')
-        conn = sqlite3.connect(self.db_path)
-        try:
-            flag = conn.execute(
-                'SELECT value FROM runtime_flags'
-                " WHERE name='llm.judge_allocator'"
-            ).fetchone()
-        finally:
-            conn.close()
-        self.assertIsNone(flag)
+        expect(tiroir).to_contain_text('Allumée')
+        self.assertEqual(self._enabled('arbitrer'), 1)

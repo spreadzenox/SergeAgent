@@ -23,7 +23,7 @@ class EmpreintesTests(unittest.TestCase):
 
     def test_boot_calcule_les_empreintes(self) -> None:
         code_sha, files_sha = self.conn.execute(
-            "SELECT code_sha, files_sha FROM tools WHERE id='memory_search'"
+            "SELECT code_sha, files_sha FROM capabilities WHERE id='memory_search'"
         ).fetchone()
         self.assertEqual(
             code_sha, sha256_fichier(ROOT / 'serge/memory/search.py')
@@ -32,23 +32,23 @@ class EmpreintesTests(unittest.TestCase):
 
     def test_code_modifie_change_empreinte_et_date(self) -> None:
         self.conn.execute(
-            "UPDATE tools SET files_sha='ancien', updated_at='2020-01-01'"
+            "UPDATE capabilities SET files_sha='ancien', updated_at='2020-01-01'"
             " WHERE id='memory_search'"
         )
         poser_shas(self.conn)
         files_sha, updated_at = self.conn.execute(
-            "SELECT files_sha, updated_at FROM tools WHERE id='memory_search'"
+            "SELECT files_sha, updated_at FROM capabilities WHERE id='memory_search'"
         ).fetchone()
         self.assertNotEqual(files_sha, 'ancien')
         self.assertNotEqual(updated_at, '2020-01-01')
 
     def test_code_inchange_garde_la_date(self) -> None:
         self.conn.execute(
-            "UPDATE tools SET updated_at='2020-01-01' WHERE id='memory_search'"
+            "UPDATE capabilities SET updated_at='2020-01-01' WHERE id='memory_search'"
         )
         poser_shas(self.conn)
         updated_at = self.conn.execute(
-            "SELECT updated_at FROM tools WHERE id='memory_search'"
+            "SELECT updated_at FROM capabilities WHERE id='memory_search'"
         ).fetchone()[0]
         self.assertEqual(updated_at, '2020-01-01')
 

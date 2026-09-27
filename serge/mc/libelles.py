@@ -1,20 +1,7 @@
 #!/usr/bin/env python3
-"""Libellés FR Mission Control : kinds, events, enums, phrases pédagogiques."""
+"""Libellés FR Mission Control : événements, états, phrases pédagogiques."""
 
 from __future__ import annotations
-
-KINDS = {
-    'email.send': 'Envoi d’e-mail',
-    'email.poll': 'Collecte de la boîte',
-    'voice.send': 'Appel sortant',
-    'voice.score': 'Notation d’un appel',
-    'inbound.classify': 'Classification d’une réponse',
-    'inbound.reply_priority': 'Réponse prioritaire',
-    'inbound.judge_other': 'Arbitrage des messages autres',
-    'listen.collect': 'Ramasser des pages',
-    'memory.consolidate': 'Consolidation de la mémoire',
-    'memory.apply': 'Application d’une leçon',
-}
 
 EVENTS = {
     'cycle': 'Cycle',
@@ -25,21 +12,16 @@ EVENTS = {
     'email.delivered': 'E-mail livré',
     'email.queued': 'E-mail en file',
     'sms.sent': 'SMS envoyé',
-    'work.enqueued': 'Tâche mise en file',
-    'work.claimed': 'Tâche prise en charge',
-    'work.completed': 'Tâche terminée',
-    'work.failed': 'Tâche échouée',
+    'task.done': 'Tâche terminée',
+    'task.failed': 'Tâche échouée',
+    'task.resumed': 'Tâche reprise après un arrêt',
+    'write.inserted': 'Ligne ajoutée',
+    'write.updated': 'Ligne modifiée',
+    'write.refused': 'Écriture refusée',
+    'write.skipped': 'Doublon écarté',
     'mc_act': 'Acte owner',
-    'llm.io': 'Réflexion d’un agent',
     'transition.approved': 'Approuvé',
     'transition.rejected': 'Rejeté',
-}
-
-ETATS_WORK = {
-    'READY': 'Prêt',
-    'RUNNING': 'En cours',
-    'DONE': 'Terminé',
-    'FAILED': 'Échoué',
 }
 
 TYPES_TICKET = {
@@ -94,7 +76,7 @@ ORBITES = {
         'pourquoi': 'Une seule vérité. Tout le reste est un miroir.',
     },
     'scheduler': {
-        'titre': 'Ordonnanceur',
+        'titre': 'Files de tâches',
         'pourquoi': 'Le prochain travail est une requête, pas une intuition.',
     },
     'mail': {
@@ -123,38 +105,6 @@ ORBITES = {
     },
 }
 
-LLM_ETAPE = {
-    'listen_discover_needs_a': 'pre_prospection',
-    'listen_discover_needs_b': 'pre_prospection',
-    'listen_choose_poc': 'pre_prospection',
-    'discover_contacts': 'prospection_light',
-    'draft_hypothesis_smoke': 'conception_poc',
-    'draft_hypothesis_full': 'choix_venture',
-    'resume_test': 'choix_venture',
-    'plan_scale': 'prospection_lourde',
-    'options_pivot': 'choix_venture',
-    'fill_slots': 'prospection_light',
-    'score_lead_departage': 'prospection_light',
-    'write_followup': 'prospection_lourde',
-    'voice_script': 'prospection_lourde',
-    'voice_dialog': 'prospection_lourde',
-    'summarize_thread': 'prospection_lourde',
-    'classify_reply': 'prospection_lourde',
-    'extract_meeting': 'prospection_lourde',
-    'reply_intent': 'prospection_lourde',
-    'review_other': 'prospection_lourde',
-    'score_call': 'prospection_lourde',
-    'judge_allocator': 'prospection_lourde',
-    'consolidate': 'collect_feedback',
-    'build_artifact': 'build_venture',
-    'review_build': 'build_venture',
-    'summarize_build_debt': 'build_venture',
-    'render_context_fr': 'prospection_lourde',
-    'classify_owner_intent': 'policy',
-    'judge_consequence': 'policy',
-    'install_guide': 'policy',
-}
-
 SECTIONS_POLICY = {
     'budget': 'Budget',
     'quotas': 'Quotas',
@@ -173,37 +123,6 @@ SECTIONS_POLICY = {
     'listen': 'Écoute',
 }
 
-
-LLM_TITRES = {
-    'draft_hypothesis_smoke': 'Écrire l’idée de business',
-    'draft_hypothesis_full': 'Écrire l’idée (après essai)',
-    'plan_scale': 'Comment grandir',
-    'options_pivot': 'Trois autres idées',
-    'resume_test': 'Raconter l’essai',
-    'fill_slots': 'Remplir les créneaux',
-    'write_followup': 'Écrire une relance',
-    'voice_script': 'Écrire un script d’appel',
-    'voice_dialog': 'Dialoguer à l’oral',
-    'summarize_thread': 'Résumer un fil',
-    'score_lead_departage': 'Départager deux pistes',
-    'build_artifact': 'Construire un livrable',
-    'review_build': 'Relire un livrable',
-    'summarize_build_debt': 'Résumer la dette builder',
-    'classify_reply': 'Classer une réponse',
-    'extract_meeting': 'Extraire un rendez-vous',
-    'reply_intent': 'Répondre à une intention',
-    'review_other': 'Relire un message autre',
-    'score_call': 'Noter un appel',
-    'judge_allocator': 'Arbitrer l’allocation',
-    'consolidate': 'Consolider la mémoire',
-    'render_context_fr': 'Rendre le contexte FR',
-    'classify_owner_intent': 'Lire l’intention owner',
-    'judge_consequence': 'Juger une conséquence',
-    'listen_discover_needs_a': 'Explorer les besoins A',
-    'listen_discover_needs_b': 'Explorer les besoins B',
-    'listen_choose_poc': 'Choisir les business à tester',
-    'install_guide': 'Guider l’installation',
-}
 
 ETATS_CAMPAGNE = {
     'RUNNING': 'En cours',
@@ -238,13 +157,8 @@ ETATS_FACTURE = {
 
 
 def verbe(kind: str) -> str:
-    """Libellé humain d’un kind worker ou event (jamais le brut)."""
-    return KINDS.get(kind) or EVENTS.get(kind) or kind.replace('.', ' · ')
-
-
-def titre_llm(nom: str) -> str:
-    """Nom humain d’un point LLM (jamais le snake_case seul)."""
-    return LLM_TITRES.get(nom) or nom.replace('_', ' ')
+    """Libellé humain d’un événement (jamais le brut)."""
+    return EVENTS.get(kind) or kind.replace('.', ' · ')
 
 
 def phrase_noyau(urgents: int, running: dict | None, paid: float) -> str:

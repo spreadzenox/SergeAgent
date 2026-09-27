@@ -14,11 +14,9 @@ sys.path.insert(0, str(ROOT))
 from serge.db.boot import init_schema  # noqa: E402
 from serge.db.store import append_event  # noqa: E402
 from serge.funnels.contacts import add_address  # noqa: E402
-from serge.mc.proj_ilots import (  # noqa: E402
-    project_ilots,
-    project_scheduler,
-)
-from serge.scheduler import claim, enqueue  # noqa: E402
+from serge.mc.proj_ilots import project_ilots  # noqa: E402
+from serge.mc.proj_taches import project_scheduler  # noqa: E402
+from tests.taches_fixtures import invocations, tache  # noqa: E402
 
 NOW = '2026-09-10T12:00:00+00:00'
 POLICY: dict = {}
@@ -148,36 +146,31 @@ class ProjSystemFixtures(unittest.TestCase):
             " updated_at) VALUES('s2','sms','+331',"
             "'2026-09-10T10:00:00+00:00','t')"
         )
-        running = enqueue(
-            conn, kind='email.send', idempotency_key='k-run', venture_id='v1'
-        )
-        claim(conn, running)
-        conn.execute(
-            "UPDATE work_items SET updated_at='2026-09-10T11:30:00+00:00'"
-            ' WHERE id=?',
-            (running,),
-        )
-        self.w_ready = enqueue(
+        invocations(
             conn,
-            kind='inbound.classify',
-            idempotency_key='k-r1',
-            venture_id='v1',
+            ('envoyer', 'Envoyer un e-mail', 'prospection_light'),
+            ('classer', 'Classer une réponse', 'prospection_lourde'),
+            ('ramasser', 'Ramasser des pages', 'pre_prospection'),
+            ('relever', 'Relever la boîte', 'prospection_lourde'),
         )
-        enqueue(
+        v1 = {'venture_id': 'v1'}
+        tache(
             conn,
-            kind='listen.collect',
-            idempotency_key='k-r2',
-            venture_id='v1',
-            blocked_until='2026-09-10T13:00:00+00:00',
+            'envoyer',
+            v1,
+            key='k-run',
+            status='running',
+            created_at='2026-09-10T11:30:00+00:00',
         )
-        failed = enqueue(
-            conn, kind='email.poll', idempotency_key='k-f1', venture_id='v1'
+        self.w_ready = tache(conn, 'classer', v1, key='k-r1')
+        tache(
+            conn,
+            'ramasser',
+            v1,
+            key='k-r2',
+            not_before='2026-09-10T13:00:00+00:00',
         )
-        conn.execute(
-            "UPDATE work_items SET status='FAILED',"
-            " updated_at='2026-09-10T11:15:00+00:00' WHERE id=?",
-            (failed,),
-        )
+        tache(conn, 'relever', v1, key='k-f1', status='failed')
         append_event(
             conn, actor='guards', type='guard', payload={'allowed': True}
         )
@@ -225,17 +218,18 @@ class ProjIlotsTests(ProjSystemFixtures):
                 'items': [
                     {
                         'id': 'scheduler',
-                        'label': 'Ordonnanceur',
+                        'label': 'Files de tâches',
                         'sante': 'ok',
                         'activite': 0.3,
-                        'resume': '2 prêts, 1 en cours, 1 bloqués',
+                        'resume': '2 prêtes, 1 en cours,'
+                        ' 1 en attente de leur heure',
                     },
                     {
                         'id': 'workers',
                         'label': 'Exécution',
                         'sante': 'erreur',
                         'activite': 0.3,
-                        'resume': '1 en cours, 2 prêts, 1 échoués (24 h)',
+                        'resume': '1 en cours, 2 prêtes, 1 échouées (24 h)',
                     },
                     {
                         'id': 'guards',
@@ -282,9 +276,10 @@ class ProjIlotsTests(ProjSystemFixtures):
                     {
                         'id': 'email',
                         'label': 'Email',
-                        'sante': 'erreur',
-                        'activite': 0.2,
-                        'resume': '1 en file, 1 envoyés, 1 échoués (24 h)',
+                        'sante': 'inconnu',
+                        'activite': 0.1,
+                        'resume': '1 envoyés — envoi pas encore branché'
+                        ' (lot 8)',
                     },
                     {
                         'id': 'discord',
@@ -310,8 +305,10 @@ class ProjIlotsTests(ProjSystemFixtures):
             {
                 'next': {
                     'id': self.w_ready,
-                    'kind': 'inbound.classify',
+                    'kind': 'Classer une réponse',
                     'venture_id': 'v1',
+                    'since': '',
+                    'file': 'works',
                 },
                 'ready': 2,
                 'running': 1,
@@ -319,21 +316,22 @@ class ProjIlotsTests(ProjSystemFixtures):
             },
         )
 
-    def test_scheduler_file_coincee_erreur(self) -> None:
-        self.conn.execute('UPDATE ventures SET schedulable=0')
+    def test_taches_pretes_non_servies_degrade(self) -> None:
+        self.conn.execute('UPDATE invocations SET enabled=0')
         projete = project_scheduler(self.conn, POLICY, NOW)
         self.assertIsNone(projete['next'])
         self.assertEqual(projete['ready'], 2)
         ilots = project_ilots(self.conn, POLICY, NOW)['items']
-        self.assertEqual(ilots[0]['sante'], 'erreur')
+        self.assertEqual(ilots[0]['sante'], 'degrade')
 
     def test_workers_suspect_degrade(self) -> None:
-        self.conn.execute('DELETE FROM work_items')
-        self.conn.execute(
-            'INSERT INTO work_items(id, kind, venture_id, status,'
-            ' idempotency_key, created_at, updated_at) VALUES'
-            "('w-vieux','email.send','v1','RUNNING','k-vieux',"
-            "'2026-09-10T10:00:00+00:00','2026-09-10T10:00:00+00:00')"
+        self.conn.execute('DELETE FROM tasks')
+        tache(
+            self.conn,
+            'envoyer',
+            key='k-vieux',
+            status='running',
+            created_at='2026-09-10T10:00:00+00:00',
         )
         ilots = project_ilots(self.conn, POLICY, NOW)['items']
         self.assertEqual(ilots[1]['sante'], 'degrade')

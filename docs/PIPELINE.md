@@ -131,29 +131,36 @@ C'est ce qui permet à une chaîne fixe (les huit étapes) de réagir à ce qui
 arrive : quand un prospect répond, une tâche « Traiter une réponse »
 s'ajoute à la file, avec la priorité la plus haute.
 
-**Aujourd'hui**, le runner est relancé une minute après la fin de son
-passage précédent, traite jusqu'à dix tâches à la suite, et n'enregistre en
-base qu'à la toute fin du passage. C'est dangereux : si le programme plante
-à la septième tâche, tout est annulé, y compris la note « e-mail envoyé »
-alors que l'e-mail est parti, et Serge le renvoie au passage suivant.
+Le runner tourne en continu, en deux copies, une par file
+(`scripts/serge-queue.py`, services `serge-queue@conversations` et
+`serge-queue@works`) :
 
-**Décidé** :
-
-- Le runner tourne en continu, exécute une tâche après l'autre, et
-  enregistre en base après chacune.
-- Deux files tournent en parallèle. La file des conversations prend les
-  tâches courtes (relever les boîtes, traiter une réponse, envoyer,
-  relancer). La file des travaux prend les tâches longues (écoute du web,
-  conception, construction). Ainsi, une construction de quarante minutes ne
-  retarde jamais la réponse à un prospect.
-- Une tâche qui agit à l'extérieur (envoyer un e-mail, rembourser)
-  enregistre « en cours » avant d'agir et « fait » après, pour ne jamais
-  agir deux fois.
+- La file des conversations prend les tâches courtes (relever les boîtes,
+  traiter une réponse, envoyer, relancer). La file des travaux prend les
+  tâches longues (écoute du web, conception, construction). Ainsi, une
+  construction de quarante minutes ne retarde jamais la réponse à un
+  prospect. La file de chaque invocation se règle dans Mission Control.
+- Chaque file exécute une tâche après l'autre et enregistre en base après
+  chacune. Si une tâche échoue, seules ses écritures sont annulées ; elle
+  est marquée en échec, avec la raison, et la file continue. Si le
+  programme est arrêté au milieu d'une tâche (un redéploiement, par
+  exemple), la tâche est reprise depuis le début au redémarrage, et c'est
+  noté au journal.
 - Chaque invocation a une priorité, réglable dans Mission Control. Valeurs
   de départ : 100 pour traiter une réponse ou une désinscription, 80 pour
   relever les boîtes et les messages entrants, 50 pour les envois et les
   relances, 30 pour la construction, 10 pour l'écoute, la veille et la
   consolidation.
+- Quand le plafond de dépense LLM du jour est atteint (réglé dans la
+  policy, par exemple 5 €), les tâches LLM attendent le lendemain ; les
+  autres continuent.
+- À chaque tour, les tickets dont le délai est passé sont expirés : leur
+  choix par défaut s'applique.
+
+**Pas encore fait** (lot 8) : une tâche qui agit à l'extérieur (envoyer un
+e-mail, rembourser) enregistrera « en cours » avant d'agir et « fait »
+après, pour ne jamais agir deux fois. Aujourd'hui, aucune capacité n'agit
+encore à l'extérieur.
 
 Les appels téléphoniques sont à part : le standard téléphonique décroche et
 confie l'appel à un programme vocal séparé, qui parle en direct et tourne
@@ -213,36 +220,33 @@ modifier tout le pipeline sans écrire de code, et de créer une invocation
 de toutes pièces : son rôle, son modèle, ce qu'elle reçoit, où elle écrit,
 ce qui la lance.
 
-**Aujourd'hui**, on n'y est qu'à moitié. Les réglages de chaque invocation
-LLM (prompt, modèle, tools, allumée) sont déjà en base et modifiables dans
-Mission Control. Mais l'ordre des invocations est écrit en dur dans le code
-de chaque enchaînement (par exemple, la fonction du cycle d'écoute appelle
-« Explorer A », puis « Explorer B », puis « Choisir »), et une autre liste,
-écrite elle aussi dans le code, sert seulement à l'affichage dans Mission
-Control. Les liens affichés relient des étapes et ne transportent rien.
-Une tâche est aussi typée par un « kind », qui lance parfois plusieurs
-invocations d'un coup.
+**Où on en est (lot 6)** : les tables qui décrivent le pipeline existent,
+et un seul programme, l'interpréteur (`serge/interpreter/`), exécute
+n'importe quelle invocation décrite en base. Tout le code écrit en dur pour
+un enchaînement (le cycle d'écoute, la relève du mail, le circuit des
+réponses, la consolidation) a été rangé dans `pas_encore_branche/`. Le
+pipeline de départ (`config/pipeline.yaml`) ne contient encore que les
+files, les modèles, la présentation de Serge et les outils : le cycle
+d'écoute y sera décrit à l'étape suivante. Serge ne peut donc pas encore
+être allumé pour de vrai.
 
 ### Ce que le code met dans la base
 
-Le code contient les réglages de départ de chaque objet. Ils servent à
-remplir la base d'une nouvelle instance, et à ajouter sur une instance
-existante les objets nouveaux. Ils ne modifient jamais un objet qui existe
-déjà. Exemple : Julien modifie le prompt de « Explorer les besoins A » dans
-Mission Control ; un développeur modifie ensuite le prompt de départ dans
-le code ; au déploiement, l'instance de Julien garde son prompt, et une
-nouvelle instance reçoit celui du code.
+Le fichier `config/pipeline.yaml` contient le pipeline de départ. Il sert
+à remplir la base d'une nouvelle instance, et à ajouter sur une instance
+existante les objets nouveaux. Il ne modifie jamais un objet qui existe
+déjà. Exemple : Julien modifie le prompt d'une invocation dans Mission
+Control ; un développeur modifie ensuite le prompt de départ dans le
+fichier ; au déploiement, l'instance de Julien garde son prompt, et une
+nouvelle instance reçoit celui du fichier.
 
-Au démarrage, Serge calcule aussi l'empreinte des fichiers de code de
-chaque objet. Quand un fichier change, Mission Control peut afficher
-« code modifié le … ».
+Le code, lui, déclare au démarrage ses capacités (`serge/capabilities.py`)
+et calcule l'empreinte de leurs fichiers. Quand un fichier change, Mission
+Control peut afficher « code modifié le … ».
 
-Aujourd'hui, un objet retiré du code est aussi retiré de la base au
-démarrage. Avec la nouvelle règle, ça change : une invocation ou un lien
-créé ou modifié dans Mission Control n'est jamais effacé au démarrage, et
-une invocation supprimée dans Mission Control ne revient pas. Seule une
-capacité retirée du code est marquée absente, et les invocations qui s'en
-servaient sont signalées dans Mission Control.
+Rien n'est effacé au démarrage : une invocation supprimée dans Mission
+Control ne revient pas. Seule une capacité retirée du code est marquée
+absente, et la fiche des outils qui s'en servaient le signale.
 
 ---
 
@@ -287,8 +291,9 @@ a déjà répondu, et il le vérifie au moment même de l'envoi.
 Serge ne répond pas à la seconde, pour paraître humain. Le délai se règle
 canal par canal dans Mission Control : par exemple entre 5 et 20 minutes
 par e-mail pendant les heures de bureau, et le lendemain matin en dehors.
-Serge relève sa boîte mail toutes les 5 minutes ; c'est en place
-aujourd'hui (réglage `windows.email_poll_minutes`).
+La relève de la boîte mail toutes les 5 minutes est débranchée depuis le
+lot 6 : elle reviendra au lot 8 comme un déclencheur « toutes les
+5 minutes » en base, avec la capacité « relever une boîte ».
 
 Le détail de ce chantier est dans le [`TODO.md`](../TODO.md), lot 8.
 

@@ -115,10 +115,16 @@ def system_prompt(
 
 def callable_tools(
     conn: sqlite3.Connection, inv: Invocation, task: Mapping[str, str]
-) -> tuple[list[dict[str, Any]], dict[str, int]]:
-    """Les schémas des outils appelables, et leur lien (par nom d'outil)."""
+) -> tuple[list[dict[str, Any]], dict[str, int | None]]:
+    """Les schémas des outils appelables, et leur lien (par nom d'outil).
+
+    En plus des outils de l'invocation, chaque invocation LLM peut appeler
+    les outils marqués « partout » (``tools.montre_partout``), par exemple
+    « Demander une nouvelle capacité ». Ceux-là n'ont pas de lien, donc
+    pas de paramètre figé.
+    """
     schemas: list[dict[str, Any]] = []
-    links: dict[str, int] = {}
+    links: dict[str, int | None] = {}
     for link_id, tool_id in conn.execute(
         'SELECT id, tool_id FROM invocation_tools'
         " WHERE invocation_id=? AND mode='callable' ORDER BY position",
@@ -127,6 +133,13 @@ def callable_tools(
         fixed = set(fixed_params(conn, inv.id, int(link_id), task))
         schemas.append(tool_schema(conn, str(tool_id), fixed))
         links[str(tool_id)] = int(link_id)
+    for (tool_id,) in conn.execute(
+        'SELECT t.id FROM tools t JOIN capabilities c ON c.id=t.capability_id'
+        ' WHERE t.montre_partout=1 AND c.available=1 ORDER BY t.id'
+    ).fetchall():
+        if str(tool_id) not in links:
+            schemas.append(tool_schema(conn, str(tool_id), set()))
+            links[str(tool_id)] = None
     return schemas, links
 
 
@@ -214,7 +227,7 @@ def converse(
 def _call_tool(
     conn: sqlite3.Connection,
     inv: Invocation,
-    links: Mapping[str, int],
+    links: Mapping[str, int | None],
     name: str,
     raw_args: str,
     task: Mapping[str, str],

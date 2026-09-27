@@ -1,4 +1,4 @@
-// Coupe-circuits En direct : Serge, étapes, kinds.
+// Coupe-circuits En direct : Serge, étapes, files, invocations.
 import {toast} from '../components.js';
 import {patchSection} from '../patch.js';
 import {fetchState} from '../sse.js';
@@ -57,9 +57,13 @@ export function renderCoupes(main, payload, sig) {
   if (slotEtapes) {
     remplirRang(slotEtapes, payload.etapes || [], 'etape');
   }
-  const slotKinds = main.querySelector('[data-coupes="kinds"]');
-  if (slotKinds) {
-    remplirRang(slotKinds, payload.kinds || [], 'kind');
+  const slotFiles = main.querySelector('[data-coupes="files"]');
+  if (slotFiles) {
+    remplirRang(slotFiles, payload.files || [], 'file');
+  }
+  const slotInvocations = main.querySelector('[data-coupes="invocations"]');
+  if (slotInvocations) {
+    remplirRang(slotInvocations, payload.invocations || [], 'invocation');
   }
 }
 

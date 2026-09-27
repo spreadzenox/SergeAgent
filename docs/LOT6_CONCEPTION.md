@@ -526,14 +526,18 @@ apparaissent.
   `db_reader_fixed_params`, `db_reader_fixed_joins`.
 - `etape_liens`, remplacée par `links`.
 - `work_items`, remplacée par `tasks` et `task_params`.
+- `brique_canaux`, qui reliait un canal aux anciennes invocations. Le
+  lien entre un canal et ses outils d'envoi reviendra avec le lot 8.
 - La colonne `kind` de `tools`, la colonne `kinds_json` de
-  `pipeline_steps`, et les interrupteurs `kind.*`.
+  `pipeline_steps`, et les interrupteurs `kind.*` et `llm.*`.
 - Tout le code propre à une invocation : les fonctions des enchaînements
   (cycle d'écoute, circuit des réponses…) et leur code d'écriture. Il est
   rangé dans `pas_encore_branche/`, pas détruit.
 
-Une migration recopie tout ce qui existe : les réglages modifiés dans
-Mission Control sont gardés.
+La migration v25 supprime ces tables sans les recopier (décision Q58) : les
+réglages des anciennes invocations restent lisibles dans
+`pas_encore_branche/`, et le pipeline est décrit de nouveau dans
+`config/pipeline.yaml`.
 
 ---
 

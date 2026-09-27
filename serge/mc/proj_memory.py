@@ -8,7 +8,6 @@ from collections.abc import Mapping
 from typing import Any
 
 from serge.mc.proj_outils import charge_json
-from serge.memory.consolidate import due_for_consolidation, last_run
 from serge.text_ids import strip_ids
 
 
@@ -132,25 +131,29 @@ def project_couches(
 def project_consolidation(
     conn: sqlite3.Connection, policy: Mapping[str, Any], now: str
 ) -> dict[str, Any]:
-    """État et cadence du moteur de consolidation (P4 Mémoire).
+    """La consolidation de la mémoire (P4 Mémoire) : pas encore branchée.
+
+    Son code est rangé dans ``pas_encore_branche/`` : elle reviendra comme
+    une invocation décrite en base (voir « Plus tard » dans ``TODO.md``).
+    On montre seulement ses derniers événements passés.
 
     Args:
-        conn: Connexion canon (lecture).
-        policy: Policy (rythme memory.consolidation_days).
-        now: Maintenant ISO UTC.
+        conn: Connexion à la base (lecture).
+        policy: Policy (ignorée, uniformité).
+        now: Maintenant ISO UTC (ignoré, uniformité).
 
     Returns:
-        Dict {last_run, due, events}.
+        ``{branchee, last_run, due, events}``.
     """
-    derniere = last_run(conn)
-    est_due = due_for_consolidation(conn, policy, now)
+    _ = (policy, now)
     ev_rows = conn.execute(
         "SELECT ts, actor, type, payload_json FROM events WHERE actor='consolidate'"
         " OR type LIKE 'consolidate%' ORDER BY id DESC LIMIT 5"
     ).fetchall()
     return {
-        'last_run': derniere,
-        'due': est_due,
+        'branchee': False,
+        'last_run': str(ev_rows[0][0]) if ev_rows else '',
+        'due': False,
         'events': [
             {
                 'ts': str(row[0]),

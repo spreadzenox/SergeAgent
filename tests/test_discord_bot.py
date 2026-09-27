@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bot Discord : interactions, réactions, miroir dû, délégation owner."""
+"""Bot Discord : interactions, réactions, miroir des tickets dus."""
 
 from __future__ import annotations
 
@@ -107,19 +107,16 @@ class DiscordBotTests(unittest.TestCase):
         ).fetchone()[0]
         self.assertEqual(state, 'OPEN')
 
-    def test_on_message_delegue_et_refresh(self) -> None:
+    def test_message_libre_de_julien_ignore(self) -> None:
         bot = self._bot()
         bot.bot_user_id = BOT_ID
-        with (
-            mock.patch(
-                'serge.discord.owner_flow.handle_owner_message',
-                return_value={'handled': True, 'ticket_id': 't_x'},
-            ) as handled,
-            mock.patch.object(bot, '_refresh') as refreshed,
-        ):
-            bot.on_message({'author': {'id': OWNER}, 'content': 'x'})
-        handled.assert_called_once()
-        refreshed.assert_called_once_with('t_x')
+        with mock.patch.object(bot, '_refresh') as refreshed:
+            bot.on_gateway_event(
+                'MESSAGE_CREATE', {'author': {'id': OWNER}, 'content': 'x'}
+            )
+        refreshed.assert_not_called()
+        count = self.conn.execute('SELECT COUNT(*) FROM tickets').fetchone()[0]
+        self.assertEqual(count, 0)
 
     def test_reaction_fil_digest(self) -> None:
         bot = self._bot()
@@ -139,37 +136,20 @@ class DiscordBotTests(unittest.TestCase):
         count = self.conn.execute('SELECT COUNT(*) FROM tickets').fetchone()[0]
         self.assertEqual(count, 1)
 
-    def test_mirror_due_h1_creation(self) -> None:
+    def test_mirror_due_recopie_le_ticket_sans_resume(self) -> None:
         ticket_id = create_ticket(
             self.conn, self.types, 'QNA', 'Q ?', {'question': 'q?'}, now=NOW
         )
         publish(self.conn, ticket_id)
         bot = self._bot()
-        h1 = {
-            'titre': 't',
-            'ou': 'o',
-            'enjeu': 'e',
-            'attente': 'a',
-            'fallback': '',
-        }
-        with (
-            mock.patch(
-                'serge.discord.bot.render_context_fr', return_value=h1
-            ) as rendered,
-            mock.patch(
-                'serge.discord.bot.mirror_ticket',
-                return_value={'forum': 'created'},
-            ) as mirrored,
-        ):
+        with mock.patch(
+            'serge.discord.bot.mirror_ticket',
+            return_value={'forum': 'created'},
+        ) as mirrored:
             count = bot.mirror_due()
         self.assertEqual(count, 1)
-        rendered.assert_called_once()
-        sent_h1 = mirrored.call_args[1]['h1']
-        assert sent_h1 is not None
-        self.assertEqual(
-            sent_h1,
-            {key: h1[key] for key in ('titre', 'ou', 'enjeu', 'attente')},
-        )
+        self.assertIsNone(mirrored.call_args[1]['h1'])
+        self.assertEqual(mirrored.call_args[0][3]['id'], ticket_id)
 
 
 if __name__ == '__main__':

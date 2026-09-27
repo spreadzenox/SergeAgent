@@ -26,8 +26,8 @@ class McEtapeTests(McServerCase):
         )
         self.assertEqual(status, 200)
         data = json.loads(body.decode('utf-8'))
+        self.assertEqual(data['id'], 'pre_prospection')
         self.assertFalse(data['marche'])
-        self.assertIn('listen.collect', data['kinds'])
         status, _, body = self._api_post(
             '/owner/api/etape',
             {'id': 'pre_prospection', 'marche': True},
@@ -62,7 +62,6 @@ class ProjEtapeMarcheTests(unittest.TestCase):
             n for n in data['epine'] if n['id'] == 'prospection_lourde'
         )
         self.assertFalse(lourde['marche'])
-        self.assertIn('inbound.classify', lourde['kinds'])
         self.assertTrue(etats_etapes(conn)['pre_prospection']['marche'])
         conn.close()
 

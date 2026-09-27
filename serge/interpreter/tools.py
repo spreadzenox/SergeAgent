@@ -99,11 +99,16 @@ def tool_capability(conn: sqlite3.Connection, tool_id: str) -> str:
 def fixed_params(
     conn: sqlite3.Connection,
     invocation_id: str,
-    invocation_tool_id: int,
+    invocation_tool_id: int | None,
     task: Mapping[str, str],
 ) -> dict[str, str]:
-    """Les paramètres figés d'un outil (ou de la capacité, si l'id vaut 0)."""
+    """Les paramètres figés d'un outil (ou de la capacité, si l'id vaut 0).
+
+    Un outil donné partout n'a pas de lien (``None``), donc rien de figé.
+    """
     out: dict[str, str] = {}
+    if invocation_tool_id is None:
+        return out
     for name, source, value in conn.execute(
         'SELECT param_name, source, value FROM invocation_tool_params'
         ' WHERE invocation_id=? AND invocation_tool_id=?',
@@ -132,7 +137,7 @@ def run_capability(
 def run_tool(
     conn: sqlite3.Connection,
     invocation_id: str,
-    invocation_tool_id: int,
+    invocation_tool_id: int | None,
     tool_id: str,
     model_args: Mapping[str, Any],
     task: Mapping[str, str],

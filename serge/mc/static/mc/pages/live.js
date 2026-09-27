@@ -191,7 +191,7 @@ function renderFile(main, payload, sig, store) {
     btn.type = 'button';
     btn.className = 'clic-ligne';
     btn.textContent = `${verbe(item.kind)} (${nomVenture(store, item.venture_id)})`;
-    btn.addEventListener('click', () => allerObjet('work_item', item.id));
+    btn.addEventListener('click', () => allerObjet('task', item.id));
     node.append(btn);
     return node;
   });
@@ -229,8 +229,8 @@ function renderFeed(main, payload, sig) {
       cible = ['touch', extra.touch_id];
     } else if (extra.event_id) {
       cible = ['event', extra.event_id];
-    } else if (extra.id && String(item.kind || '').startsWith('work.')) {
-      cible = ['work_item', extra.id];
+    } else if (extra.task && String(item.kind || '').startsWith('task.')) {
+      cible = ['task', extra.task];
     }
     btn.textContent = `${rel(item.ts)} · ${verbe(item.kind)}${item.titre ? ` — ${item.titre}` : ''}`;
     if (cible) {
@@ -299,7 +299,7 @@ function renderPensee(main, io) {
   titre.textContent = io.sortie ? 'Dernière réflexion' : 'En train d’écrire';
   lignePensee(fil, 'Invocation', io.jugement, 'llm', io.point);
   lignePensee(fil, 'Étape', io.etape_titre, 'etape', io.etape);
-  lignePensee(fil, 'Tâche', io.tache, 'work_item', io.tache_id);
+  lignePensee(fil, 'Tâche', io.tache, 'task', io.tache_id);
   lignePensee(fil, 'Venture', io.venture, 'venture', io.venture_id);
   if (tw && !io.sortie && io.prompt && !tw.textContent) {
     tw.textContent = io.prompt;
@@ -345,7 +345,7 @@ function etatDepuisStore(store) {
   return {
     urgents: urgentsItems.length,
     running: hero && hero.payload ? hero.payload.running : null,
-    echecRecent: items.length > 0 && items[0].kind === 'work.failed',
+    echecRecent: items.length > 0 && items[0].kind === 'task.failed',
   };
 }
 
@@ -376,7 +376,7 @@ export function mount(main, store) {
         (hero && hero.payload && hero.payload.next)
         || (file && file.payload && file.payload.next);
       if (nxt) {
-        allerObjet('work_item', nxt.id);
+        allerObjet('task', nxt.id);
       }
     }
   });

@@ -45,7 +45,7 @@ Si `doctor` échoue (drift de format entre versions), passe en (b).
 
 - `features.gmail = true` → le wizard demande `gog_env` (3 lignes, fin =
   ligne vide) → sidecar v2 → `~/.config/serge/secrets/gog.env` (`0600`).
-- L'unit `serge-pipeline.service` charge le fichier (`EnvironmentFile`
+- Les units `serge-queue@….service` chargent le fichier (`EnvironmentFile`
   optionnel : sans lui, le service démarre et les workers Gmail échouent
   proprement en `MailError` — jamais silencieux).
 

@@ -13,12 +13,20 @@ from typing import Any
 from kit.instance_file import FEATURE_KEYS, as_table
 
 PLACEHOLDER = re.compile(r'__[A-Z][A-Z0-9_]*__')
-CORE_UNIT_FILES = (
+# Le runner : une copie du service par file, qui tourne en continu.
+QUEUE_UNITS = (
+    'serge-queue@conversations.service',
+    'serge-queue@works.service',
+)
+ALWAYS_ENABLE = QUEUE_UNITS
+# Units retirées : l'ancien runner, relancé chaque minute par un timer, a
+# été remplacé au lot 6 par les deux files (QUEUE_UNITS).
+OBSOLETE_UNIT_FILES = (
     'serge-pipeline.service',
     'serge-pipeline.timer',
     'serge-pipeline.timer.d/production-continuous.conf',
 )
-ALWAYS_ENABLE = ('serge-pipeline.timer',)
+REPLACED_UNITS = {'serge-pipeline.timer': QUEUE_UNITS}
 
 
 class UnitError(ValueError):
@@ -134,13 +142,7 @@ def selected_units(
     """Return (dest_relpath, template_stem, scope)."""
     del mode
     chosen: list[tuple[str, str, str]] = [
-        ('serge-pipeline.service', 'serge-pipeline.service', 'user'),
-        ('serge-pipeline.timer', 'serge-pipeline.timer', 'user'),
-        (
-            'serge-pipeline.timer.d/production-continuous.conf',
-            'serge-pipeline.timer.d/production-continuous.conf',
-            'user',
-        ),
+        ('serge-queue@.service', 'serge-queue@.service', 'user'),
     ]
     if features.get('ingress'):
         privileged = listen == 'privileged'

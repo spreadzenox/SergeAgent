@@ -12,6 +12,7 @@ sys.path.insert(0, str(ROOT))
 
 from kit.instance_file import FEATURE_KEYS  # noqa: E402
 from kit.units import (  # noqa: E402
+    QUEUE_UNITS,
     UnitError,
     render_template,
     render_units,
@@ -63,29 +64,29 @@ class InstanceUnitTests(unittest.TestCase):
     def test_core_units_for_sandbox_without_optional_features(self) -> None:
         rendered = render_units(_loaded(), {'user': 'owner', 'uid': '1000'})
         files = rendered['files']
-        self.assertIn('serge-pipeline.service', files)
-        self.assertIn('serge-pipeline.timer', files)
+        self.assertIn('serge-queue@.service', files)
+        self.assertNotIn('serge-pipeline.timer', files)
         self.assertNotIn('serge-daily-report.service', files)
         self.assertNotIn('serge-burn-in-failure.service', files)
         self.assertNotIn('serge-web-ingress.service', files)
         self.assertNotIn('serge-public-dashboard.service', files)
         self.assertFalse(rendered['installed'])
         self.assertFalse(rendered['metagrok_units_included'])
-        pipeline = files['serge-pipeline.service']
+        pipeline = files['serge-queue@.service']
         self.assertIn(
             'SERGE_INSTANCE_FILE=/home/owner/.config/serge/serge.instance.toml',
             pipeline,
         )
         self.assertIn('SERGE_AGENT_RUNTIME=direct_llm', pipeline)
-        self.assertIn('scripts/serge-runner.py --once', pipeline)
-        self.assertIn('state/pipeline.lock', pipeline)
+        self.assertIn('scripts/serge-queue.py --queue %i', pipeline)
+        self.assertIn('Restart=always', pipeline)
         self.assertNotIn('orchestrator/sergectl.py', pipeline)
         self.assertNotIn('openclaw-gateway', pipeline)
         self.assertNotIn('SERGE_OPENCLAW', pipeline)
         self.assertNotIn('/home/serge', pipeline)
         self.assertNotIn('/run/user/1002', pipeline)
         self.assertIn('/run/user/1000', pipeline)
-        self.assertEqual(rendered['enable'], ['serge-pipeline.timer'])
+        self.assertEqual(rendered['enable'], list(QUEUE_UNITS))
 
     def test_ingress_and_owner_ui_are_feature_gated(self) -> None:
         rendered = render_units(
@@ -132,7 +133,7 @@ class InstanceUnitTests(unittest.TestCase):
             )
             self.assertNotIn('serge-daily-report.service', rendered['files'])
             self.assertNotIn('serge-daily-report.timer', rendered['files'])
-            self.assertEqual(rendered['enable'], ['serge-pipeline.timer'])
+            self.assertEqual(rendered['enable'], list(QUEUE_UNITS))
 
     def test_phone_units_are_feature_gated(self) -> None:
         rendered = render_units(_loaded(features={'phone_sms': True}))
@@ -208,20 +209,20 @@ class InstanceUnitTests(unittest.TestCase):
 
     def test_pipeline_gmail_environment_file(self) -> None:
         with_gmail = render_units(_loaded(features={'gmail': True}))
-        pipeline = with_gmail['files']['serge-pipeline.service']
+        pipeline = with_gmail['files']['serge-queue@.service']
         self.assertIn(
             'EnvironmentFile=-/home/owner/.config/serge/secrets/gog.env',
             pipeline,
         )
-        without = render_units(_loaded())['files']['serge-pipeline.service']
+        without = render_units(_loaded())['files']['serge-queue@.service']
         self.assertNotIn('EnvironmentFile', without)
         self.assertNotIn('GMAIL_UNIT_LINES', pipeline + without)
 
     def test_pipeline_mailbox_backend(self) -> None:
         with_box = render_units(_loaded(features={'mailbox': True}))
-        pipeline = with_box['files']['serge-pipeline.service']
+        pipeline = with_box['files']['serge-queue@.service']
         self.assertIn('SERGE_EMAIL_BACKEND=smtp', pipeline)
-        without = render_units(_loaded())['files']['serge-pipeline.service']
+        without = render_units(_loaded())['files']['serge-queue@.service']
         self.assertNotIn('SERGE_EMAIL_BACKEND', without)
         self.assertNotIn('EMAIL_BACKEND_LINES', pipeline + without)
 
@@ -233,7 +234,7 @@ class InstanceUnitTests(unittest.TestCase):
             'caddy': '/x/caddy',
         }
         rendered = render_units(_loaded(features={'discord': True}), facts)
-        pipeline = rendered['files']['serge-pipeline.service']
+        pipeline = rendered['files']['serge-queue@.service']
         self.assertIn('/x/py ', pipeline)
         bot = rendered['files']['serge-discord-bot.service']
         self.assertIn('ExecStart=/x/py ', bot)

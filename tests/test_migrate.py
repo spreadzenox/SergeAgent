@@ -330,7 +330,7 @@ class MigrateTests(unittest.TestCase):
     def test_v7_vers_v8_remappe_les_etapes(self) -> None:
         conn = sqlite3.connect(':memory:')
         self.addCleanup(conn.close)
-        from serge.db.migrate import stamp
+        from serge.db.migrate import MIGRATIONS, stamp
         from serge.db.schema import apply_v007
 
         apply_v007(conn)
@@ -343,15 +343,60 @@ class MigrateTests(unittest.TestCase):
             'INSERT INTO work_items(id, kind, idempotency_key, created_at,'
             " updated_at) VALUES('w1','listen.collect','k','t','t')"
         )
-        self.assertEqual(apply_pending(conn), SCHEMA_VERSION)
+        self.assertEqual(apply_pending(conn, MIGRATIONS[:2], head=8), 8)
         etape = conn.execute(
             "SELECT etape_id FROM work_items WHERE id='w1'"
         ).fetchone()[0]
         self.assertEqual(etape, 'pre_prospection')
+        self.assertEqual(apply_pending(conn), SCHEMA_VERSION)
         marche = conn.execute(
             "SELECT enabled FROM pipeline_steps WHERE id='pre_prospection'"
         ).fetchone()[0]
         self.assertEqual(marche, 0)
+
+    def test_v25_retire_l_ancien_fonctionnement(self) -> None:
+        conn = sqlite3.connect(':memory:')
+        self.addCleanup(conn.close)
+        from serge.db.migrate import MIGRATIONS
+
+        apply_pending(conn, MIGRATIONS[:-1], head=24)
+        conn.execute(
+            'INSERT INTO runtime_flags(name, value, set_at) VALUES'
+            " ('kind.email.send', 'kill', 't'), ('llm.fill_slots', 'kill',"
+            " 't'), ('scheduler.heartbeat', 'kill', 't')"
+        )
+        self.assertEqual(apply_pending(conn), SCHEMA_VERSION)
+        tables = {
+            str(r[0])
+            for r in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            )
+        }
+        for old in (
+            'llm_points',
+            'llm_point_tools',
+            'tech_invocations',
+            'db_readers',
+            'llm_point_readers',
+            'db_reader_fixed_params',
+            'db_reader_fixed_joins',
+            'etape_liens',
+            'work_items',
+            'brique_canaux',
+        ):
+            self.assertNotIn(old, tables)
+        colonnes = {
+            str(r[1]) for r in conn.execute('PRAGMA table_info(tools)')
+        }
+        self.assertNotIn('kind', colonnes)
+        self.assertIn('capability_id', colonnes)
+        colonnes = {
+            str(r[1])
+            for r in conn.execute('PRAGMA table_info(pipeline_steps)')
+        }
+        self.assertNotIn('kinds_json', colonnes)
+        flags = [r[0] for r in conn.execute('SELECT name FROM runtime_flags')]
+        self.assertEqual(flags, ['scheduler.heartbeat'])
 
     def test_init_schema_seme_apres_migrate(self) -> None:
         conn = sqlite3.connect(':memory:')
@@ -365,12 +410,15 @@ class MigrateTests(unittest.TestCase):
         self.assertEqual(row[1], 'Pré-prospection')
         self.assertTrue(row[2])
         self.assertTrue(row[3])
-        lien = conn.execute(
-            "SELECT de, vers, debit FROM etape_liens WHERE id='lourde-caisse'"
+        outil = conn.execute(
+            "SELECT capability_id FROM tools WHERE id='listen_cycle_documents'"
         ).fetchone()
-        self.assertEqual(
-            tuple(lien), ('prospection_lourde', 'caisse', 'transactions')
-        )
+        self.assertEqual(outil, ('db_read',))
+        jointure = conn.execute(
+            'SELECT left_table, right_table FROM tool_db_joins'
+            " WHERE tool_id='listen_cycle_documents'"
+        ).fetchone()
+        self.assertEqual(jointure, ('listen_cycle_docs', 'listen_docs'))
 
 
 if __name__ == '__main__':

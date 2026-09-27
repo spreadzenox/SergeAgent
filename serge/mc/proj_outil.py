@@ -1,85 +1,104 @@
 #!/usr/bin/env python3
-"""Projection Mission Control d’un tool, y compris les tools DB."""
+"""Fiche Mission Control d'un outil : sa capacité, et ce qu'il lit."""
 
 from __future__ import annotations
 
 import sqlite3
-from pathlib import Path
 from typing import Any
+
+
+def _catalogue(conn: sqlite3.Connection, ident: str) -> dict[str, Any]:
+    """Ce qu'un outil de lecture a le droit de lire, en clair."""
+    from serge.db.query_catalogue import tool_catalogue
+
+    contract = tool_catalogue(conn, ident)
+    colonnes = ', '.join(
+        f'{c["table"]}.{c["name"]}'
+        + (f' (rendue « {c["output_name"]} »)' if c['output_name'] else '')
+        for c in contract['columns']
+    )
+    filtres = ', '.join(
+        f'{f["table"]}.{f["column"]} {f["operator"]} '
+        + (
+            f'« {f["value_text"]} »'
+            if f['value_kind'] == 'fixed'
+            else f'le paramètre {f["param_name"]}'
+        )
+        for f in contract['filters']
+    )
+    jointures = ', '.join(
+        f'{j["left_table"]}.{j["left_column"]} ='
+        f' {j["right_table"]}.{j["right_column"]}'
+        for j in contract['joins']
+    )
+    return {
+        'titre': 'Ce qu’il a le droit de lire',
+        'champs': [
+            {
+                'k': 'Tables',
+                'v': ', '.join(t['name'] for t in contract['tables']),
+            },
+            {'k': 'Colonnes', 'v': colonnes or '—'},
+            {'k': 'Toujours filtré par', 'v': filtres or 'rien'},
+            {'k': 'Jointures toujours faites', 'v': jointures or 'aucune'},
+            {
+                'k': 'Paramètres',
+                'v': ', '.join(p['name'] for p in contract['params'])
+                or 'aucun',
+            },
+        ],
+    }
 
 
 def project_outil(
     conn: sqlite3.Connection, ident: str
 ) -> dict[str, Any] | None:
-    """Une fiche d’outil lue dans ``tools`` et son contrat DB éventuel."""
-    from serge.outils import mtime_fichier, outil_par_id
-
-    found = outil_par_id(conn, ident)
-    if not found:
+    """La fiche d'un outil (table ``tools``)."""
+    row = conn.execute(
+        'SELECT t.id, t.titre, t.doc_md, t.capability_id, t.montre_partout,'
+        ' c.title, c.available, c.code_path, c.updated_at FROM tools t'
+        ' LEFT JOIN capabilities c ON c.id=t.capability_id WHERE t.id=?',
+        (ident,),
+    ).fetchone()
+    if row is None:
         return None
-    todo = ''
-    if found['etat'] == 'prevu':
-        todo = (
-            'Pas encore un bouton que l’invocation peut presser toute seule.'
-        )
-    labels = {
-        'deterministe': 'déterministe',
-        'agent': 'agent',
-        'web': 'web',
-        'db_read': 'lecture DB cataloguée',
-    }
-    champs: list[dict[str, str]] = [
-        {'k': 'Genre', 'v': labels.get(found['kind'], found['kind'])}
-    ]
-    root = Path(__file__).resolve().parents[2]
-    if found['code_path']:
-        champs.append({'k': 'Fichier', 'v': found['code_path']})
-    champs.append(
+    champs = [
+        {'k': 'Capacité', 'v': str(row[5] or row[3])},
         {
-            'k': 'Dernière modification',
-            'v': found.get('updated_at')
-            or mtime_fichier(root, found.get('code_path') or '')
-            or '—',
-        }
-    )
-    cadres = [{'titre': 'État', 'todo': todo}] if todo else []
-    if found['kind'] == 'db_read':
-        from serge.db.query_builder import tool_catalogue
-
-        contract = tool_catalogue(conn, ident)
+            'k': 'Donné à toutes les invocations',
+            'v': 'oui' if row[4] else 'non',
+        },
+        {'k': 'Fichier de la capacité', 'v': str(row[7] or '—')},
+        {'k': 'Code modifié le', 'v': str(row[8] or '—')},
+    ]
+    cadres: list[dict[str, Any]] = []
+    if not row[6]:
         cadres.append(
             {
-                'titre': 'Contrat DB',
-                'champs': [
-                    {
-                        'k': 'Tables',
-                        'v': ', '.join(
-                            item['name'] for item in contract['tables']
-                        ),
-                    },
-                    {'k': 'Colonnes', 'v': str(len(contract['columns']))},
-                    {
-                        'k': 'Paramètres',
-                        'v': ', '.join(
-                            item['name'] for item in contract['params']
-                        )
-                        or 'aucun',
-                    },
-                    {
-                        'k': 'Jointures paramétrables',
-                        'v': ', '.join(
-                            item['name'] for item in contract['tables']
-                        )
-                        or 'aucune',
-                    },
-                ],
+                'titre': 'État',
+                'todo': 'Sa capacité a été retirée du code : l’outil ne'
+                ' peut plus tourner.',
             }
         )
+    if row[3] == 'db_read':
+        cadres.append(_catalogue(conn, ident))
+    utilisateurs = [
+        {'type': 'llm', 'id': str(r[0]), 'titre': str(r[1] or r[0])}
+        for r in conn.execute(
+            'SELECT DISTINCT i.id, i.title FROM invocation_tools it'
+            ' JOIN invocations i ON i.id=it.invocation_id'
+            " WHERE it.tool_id=? AND i.deleted_at='' ORDER BY i.id",
+            (ident,),
+        ).fetchall()
+    ]
+    cadres.append(
+        {'titre': 'Invocations qui s’en servent', 'liens': utilisateurs}
+    )
     return {
         'type': 'outil',
-        'id': found['id'],
-        'titre': found['titre'],
-        'pourquoi': found['doc_md'],
+        'id': str(row[0]),
+        'titre': str(row[1] or row[0]),
+        'pourquoi': str(row[2] or ''),
         'champs': champs,
         'cadres': cadres,
         'enfants': [],

@@ -83,7 +83,7 @@ class McHealthTests(McBrowserCase):
             'en attente : 1'
         )
         expect(page.locator('[data-section="units_systemd"]')).to_contain_text(
-            'Ordonnanceur'
+            'File des travaux'
         )
         expect(page.locator('#health-versions')).to_contain_text(
             'Mission Control : v1'

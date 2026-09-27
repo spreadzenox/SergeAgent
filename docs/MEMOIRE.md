@@ -53,15 +53,21 @@ trois familles à la fois.
 
 ## Ce que voit une invocation aujourd'hui
 
-Chaque invocation LLM a, dans la base, la liste des tools qu'elle a le
-droit d'appeler. Pendant son exécution, elle peut les appeler autant
-qu'elle veut, dans la limite de douze allers-retours avec le modèle. Le
-tool « demander une nouvelle capacité », qui permet de dire à Julien
-qu'il manque quelque chose à Serge, est donné à toutes les invocations.
+Chaque invocation LLM a, dans la base, ses outils
+(`invocation_tools`) : un outil est soit **donné d'office** (Serge le lit
+avant l'appel et met le résultat dans le prompt), soit **appelable** (le
+modèle décide de l'appeler). Le lien entre l'invocation et l'outil dit
+aussi quels paramètres sont figés : le modèle ne peut pas les changer,
+qu'il appelle l'outil lui-même ou non. Pendant son exécution, elle peut
+appeler ses outils dans la limite réglée sur l'invocation (douze
+allers-retours par défaut). L'outil « demander une nouvelle capacité »,
+qui permet de dire à Julien qu'il manque quelque chose à Serge, est
+appelable par toutes les invocations.
 
-Certaines invocations de l'étape 1 utilisent aussi des « capsules » : des
-tools de lecture de la base avec des paramètres figés à l'avance. Elles
-posent un problème, expliqué plus bas, et vont disparaître.
+Chaque outil donné d'office a un nombre maximum de lignes (50 par défaut,
+réglable par invocation) ; s'il y en a plus, l'invocation reçoit une
+phrase qui dit combien ne sont pas montrées, et la fiche de la tâche dans
+Mission Control affiche « 50 lignes, 90 laissées de côté ».
 
 Il y a aussi un défaut connu : le tool de recherche dans la mémoire
 cherche dans un index que rien ne remplit en production. Il ne renvoie
@@ -183,13 +189,6 @@ toujours gardée.
 
 ## Ce qui reste à faire
 
-- [ ] **Remplacer les capsules par un réglage sur le lien entre une
-  invocation et un tool.** Aujourd'hui, quand le modèle appelle lui-même
-  un tool de capsule, les paramètres figés ne sont pas appliqués ; par
-  exemple, la lecture des pages d'un cycle renvoie seulement leurs
-  numéros, sans leur titre ni leur texte. Le lien entre l'invocation et
-  le tool doit dire si le tool est donné d'office ou appelable, et quels
-  paramètres sont figés.
 - [ ] **Construire les trois cercles, le maximum de lignes, les leçons
   propres à chaque invocation et le bloc « Qui est Serge ».** Tout ce qui
   est décrit dans la partie « Ce que verra une invocation demain », avec

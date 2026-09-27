@@ -7,7 +7,7 @@ import sqlite3
 from collections.abc import Mapping
 from typing import Any
 
-from serge.coupe_circuit import heartbeat_marche, kinds_interrompus
+from serge.coupe_circuit import heartbeat_marche
 from serge.mc.signedlinks import signer_url
 from serge.voice.ledger import assurer_colonnes_calls
 from serge.voice.policy import default_ledger_path
@@ -118,10 +118,8 @@ def project_bridge_statut(
         Dict {kill_switch_active, mode, trunk_status}.
     """
     _ = policy
-    # Même levier que partout : heartbeat ou kind voice.send coupé en base.
-    is_killed = not heartbeat_marche(conn, now) or 'voice.send' in (
-        kinds_interrompus(conn, now)
-    )
+    # Même levier que partout : Serge arrêté en entier.
+    is_killed = not heartbeat_marche(conn, now)
 
     # Récupération fail-soft du statut bridge
     from serge.voice.bridge import health as bridge_health

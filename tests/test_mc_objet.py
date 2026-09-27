@@ -15,10 +15,87 @@ sys.path.insert(0, str(ROOT))
 from serge.db.boot import init_schema  # noqa: E402
 from serge.funnels.contacts import add_address  # noqa: E402
 from serge.mc.proj_objet import project_objet  # noqa: E402
-from serge.scheduler import enqueue  # noqa: E402
+from serge.pipeline_seed import seed_pipeline  # noqa: E402
 from tests.mc_server_case import McServerCase  # noqa: E402
+from tests.taches_fixtures import tache  # noqa: E402
 
 NOW = '2026-09-11T12:00:00+00:00'
+
+
+def _v(source: str, value: str = '') -> dict[str, str]:
+    return {'source': source, 'value': value}
+
+
+# Un bouton lance « Ouvrir » (sans LLM), qui passe la main à « Chercheur »
+# (LLM), qui écrit des business.
+PIPELINE = {
+    'schema_version': 1,
+    'writable_tables': [
+        {
+            'table': 'ventures',
+            'insert': True,
+            'columns': [{'name': 'name'}, {'name': 'lifecycle'}],
+        }
+    ],
+    'invocations': [
+        {
+            'id': 'ouvrir',
+            'title': 'Ouvrir',
+            'role': 'Ouvre un cycle.',
+            'type': 'capability',
+            'capability': 'echo',
+            'step': 'pre_prospection',
+            'params': {'guide': _v('task', 'guide')},
+        },
+        {
+            'id': 'chercheur',
+            'title': 'Chercheur',
+            'role': 'Propose des business.',
+            'type': 'llm',
+            'model_tier': 'smart',
+            'step': 'pre_prospection',
+            'prompt': 'Propose.',
+            'tools': [
+                {
+                    'tool': 'known_business_candidates',
+                    'mode': 'given',
+                    'label': 'Business connus',
+                    'max_rows': 20,
+                },
+                {'tool': 'web_search', 'mode': 'callable'},
+            ],
+            'output': [
+                {'path': 'fiches', 'type': 'list'},
+                {'path': 'fiches.title', 'type': 'text'},
+            ],
+            'writes': [
+                {
+                    'table': 'ventures',
+                    'operation': 'insert',
+                    'for_each': 'fiches',
+                    'values': {
+                        'name': _v('field', 'fiches.title'),
+                        'lifecycle': _v('fixed', 'CANDIDATE'),
+                    },
+                }
+            ],
+        },
+    ],
+    'links': [{'id': 'l1', 'from': 'ouvrir', 'to': 'chercheur'}],
+    'triggers': [
+        {
+            'id': 'lancer',
+            'title': 'Lancer un cycle',
+            'invocation': 'ouvrir',
+            'event': 'button',
+            'params': {'guide': _v('form', 'guide')},
+        }
+    ],
+}
+
+
+def _cadre(fiche: dict, titre: str) -> dict:
+    return next(c for c in fiche['cadres'] if c['titre'] == titre)
 
 
 class ProjObjetTests(unittest.TestCase):
@@ -64,6 +141,7 @@ class ProjObjetTests(unittest.TestCase):
             "'u/serge','pw-demo')",
             (NOW,),
         )
+        seed_pipeline(self.conn, PIPELINE)
         self.conn.commit()
 
     def test_prospect_vs_client(self) -> None:
@@ -74,20 +152,53 @@ class ProjObjetTests(unittest.TestCase):
         self.assertEqual(c['type'], 'client')
         self.assertIn('payé', c['pourquoi'])
 
-    def test_llm_connu(self) -> None:
-        fiche = project_objet(self.conn, 'llm', 'classify_reply')
-        self.assertIsNotNone(fiche)
+    def test_fiche_invocation_llm(self) -> None:
+        fiche = project_objet(self.conn, 'llm', 'chercheur')
+        assert fiche is not None
         self.assertEqual(fiche['type'], 'llm')
-        self.assertTrue(fiche['champs'])
-        titres = [c['titre'] for c in fiche['cadres']]
-        self.assertIn('À quoi ça sert', titres)
-        self.assertIn('D’où ça vient, où ça va', titres)
-        self.assertIn('Le texte qu’on lui donne (prompt)', titres)
-        self.assertIn('Ce qu’il a le droit de lire', titres)
-        self.assertIn('Outils', titres)
+        self.assertEqual(fiche['titre'], 'Chercheur')
+        self.assertEqual(fiche['pourquoi'], 'Propose des business.')
+        champs = {c['k']: c['v'] for c in fiche['champs']}
+        self.assertTrue(champs['Niveau de modèle'].startswith('Intelligent'))
+        self.assertEqual(
+            _cadre(fiche, 'Le texte qu’on lui donne (prompt)')['texte'],
+            'Propose.',
+        )
+        donnes = _cadre(fiche, 'Ce qu’elle reçoit d’office')
+        self.assertIn('20 lignes au plus', donnes['champs'][0]['v'])
+        appelables = [
+            lien['id']
+            for lien in _cadre(fiche, 'Ce qu’elle peut appeler')['liens']
+        ]
+        self.assertEqual(appelables, ['web_search', 'demande_capacite'])
+        self.assertEqual(
+            _cadre(fiche, 'Le format de sa réponse')['champs'][1]['k'],
+            'fiches.title',
+        )
+        ecriture = _cadre(fiche, 'Où sa réponse est écrite')['champs'][0]
+        self.assertIn('Ajouter dans ventures', ecriture['k'])
+        self.assertIn('name ← le champ « fiches.title »', ecriture['v'])
+        self.assertIn('lifecycle ← « CANDIDATE »', ecriture['v'])
+        lance_par = _cadre(fiche, 'Ce qui la lance')['liens']
+        self.assertEqual([lien['id'] for lien in lance_par], ['ouvrir'])
         self.assertEqual(
             fiche['tableau']['titre'], 'Passages récents de cette invocation'
         )
+
+    def test_fiche_invocation_sans_llm(self) -> None:
+        fiche = project_objet(self.conn, 'llm', 'ouvrir')
+        assert fiche is not None
+        champs = {c['k']: c['v'] for c in fiche['champs']}
+        self.assertEqual(champs['Sorte'], 'sans modèle, capacité « echo »')
+        self.assertIn('guide ←', champs['Paramètres de la capacité'])
+        declencheur = _cadre(fiche, 'Ce qui la lance')['champs'][0]
+        self.assertEqual(
+            declencheur,
+            {'k': 'Lancer un cycle', 'v': 'un bouton de Mission Control'},
+        )
+        suite = _cadre(fiche, 'Ce qu’elle lance ensuite')['liens']
+        self.assertEqual([lien['id'] for lien in suite], ['chercheur'])
+        self.assertIsNone(project_objet(self.conn, 'llm', 'inconnue'))
 
     def test_pages_vides_ne_feignent_pas(self) -> None:
         self.conn.execute('DELETE FROM listen_docs')
@@ -100,21 +211,25 @@ class ProjObjetTests(unittest.TestCase):
         self.assertEqual(pages['type'], 'ecoute')
         self.assertIn('vraiment lues', pages['titre'])
         outil = project_objet(self.conn, 'outil', 'memory_search')
-        self.assertIn('mémoire', outil['pourquoi'])
+        self.assertIn('leçons', outil['pourquoi'])
         self.assertEqual(
             project_objet(self.conn, 'outil', 'memory_search')['id'],
             'memory_search',
         )
-        fiche = project_objet(self.conn, 'llm', 'listen_discover_needs_a')
-        ids_outils = [
-            lien['id']
-            for c in fiche['cadres']
-            if c['titre'] == 'Outils'
-            for lien in c['liens']
-        ]
-        self.assertEqual(ids_outils.count('memory_search'), 1)
-        nav = project_objet(self.conn, 'outil', 'navigateur')
-        self.assertTrue(nav['cadres'][0].get('todo'))
+        lecture = project_objet(
+            self.conn, 'outil', 'known_business_candidates'
+        )
+        assert lecture is not None
+        champs = {
+            c['k']: c['v']
+            for c in _cadre(lecture, 'Ce qu’il a le droit de lire')['champs']
+        }
+        self.assertEqual(champs['Tables'], 'ventures')
+        utilisateurs = _cadre(lecture, 'Invocations qui s’en servent')
+        self.assertEqual(
+            [lien['id'] for lien in utilisateurs['liens']], ['chercheur']
+        )
+        self.assertIsNone(project_objet(self.conn, 'outil', 'navigateur'))
 
     def test_sqlite_et_table(self) -> None:
         cat = project_objet(self.conn, 'sqlite', 'sqlite')
@@ -127,21 +242,19 @@ class ProjObjetTests(unittest.TestCase):
         self.assertIn('id', str(table['tableau']['lignes']))
         self.assertGreater(int(table['champs'][2]['v']), 0)
 
-    def test_llm_usage_et_contexte(self) -> None:
+    def test_llm_usage(self) -> None:
         self.conn.execute(
             'INSERT INTO llm_usage(point, tier, model, tokens_in,'
             ' tokens_out, latency_ms, verdict, created_at)'
-            " VALUES('classify_reply','T1','nemo',10,4,40,'ok',?)",
+            " VALUES('chercheur','smart','nemo',10,4,40,'ok',?)",
             (NOW,),
         )
         self.conn.commit()
         rid = self.conn.execute('SELECT id FROM llm_usage').fetchone()[0]
-        fiche = project_objet(self.conn, 'llm_usage', f'classify_reply:{rid}')
+        fiche = project_objet(self.conn, 'llm_usage', f'chercheur:{rid}')
         self.assertEqual(fiche['type'], 'llm_usage')
+        self.assertEqual(fiche['titre'], f'Chercheur · passage {rid}')
         self.assertIn('Jetons lus', [c['k'] for c in fiche['champs']])
-        mat = project_objet(self.conn, 'contexte', 'policy')
-        self.assertEqual(mat['type'], 'contexte')
-        self.assertIn('autorisent', mat['pourquoi'])
 
     def test_compte_web(self) -> None:
         fiche = project_objet(self.conn, 'compte', 's1')
@@ -159,32 +272,38 @@ class ProjObjetTests(unittest.TestCase):
         self.assertIsNone(project_objet(self.conn, 'dragon', 'x'))
         self.assertIsNone(project_objet(self.conn, 'venture', 'nope'))
 
-    def test_file_canon(self) -> None:
-        enqueue(
-            self.conn,
-            kind='inbound.classify',
-            idempotency_key='k-file',
-            venture_id='v1',
-        )
+    def test_file_canon_et_tache(self) -> None:
+        task = tache(self.conn, 'ouvrir', {'guide': 'artisans'}, key='k-file')
         fiche = project_objet(self.conn, 'file', 'canon')
         self.assertEqual(fiche['type'], 'file')
         self.assertEqual(fiche['id'], 'canon')
-        self.assertTrue(fiche['tableau']['lignes'])
-        self.assertNotIn('inbound.classify', str(fiche['tableau']))
+        ligne = fiche['tableau']['lignes'][0]
+        self.assertEqual(
+            ligne['cellules'][1:4], ['Ouvrir', 'works', 'Prochaine']
+        )
+        fiche = project_objet(self.conn, 'task', task)
+        assert fiche is not None
+        self.assertEqual(fiche['titre'], 'Ouvrir')
+        champs = {c['k']: c['v'] for c in fiche['champs']}
+        self.assertEqual(champs['Paramètre guide'], 'artisans')
 
     def test_etape_ecoute(self) -> None:
         fiche = project_objet(self.conn, 'etape', 'pre_prospection')
         self.assertEqual(fiche['type'], 'etape')
         self.assertIn('demande réelle', fiche['pourquoi'])
         titres = [c['titre'] for c in fiche['cadres']]
-        self.assertIn('Invocations, dans l’ordre', titres)
+        self.assertIn('Invocations, dans l’ordre des liens', titres)
         self.assertIn('Pourquoi ça dépend de avant', titres)
+        ordre = _cadre(fiche, 'Invocations, dans l’ordre des liens')
+        self.assertEqual(
+            [lien['titre'] for lien in ordre['liens']],
+            ['1. Ouvrir', '2. Chercheur'],
+        )
         liens = [
             lien['id']
             for cadre in fiche['cadres']
             for lien in cadre.get('liens') or []
         ]
-        self.assertIn('listen_discover_needs_a', liens)
         self.assertIn('pages', liens)
 
     def test_etape_inconnue(self) -> None:

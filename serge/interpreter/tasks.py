@@ -113,12 +113,17 @@ def task_params(conn: sqlite3.Connection, task_id: str) -> dict[str, str]:
     }
 
 
-def next_task(conn: sqlite3.Connection, queue_id: str, now: str) -> str | None:
+def next_task(
+    conn: sqlite3.Connection, queue_id: str, now: str, *, llm: bool = True
+) -> str | None:
     """La tâche prête la plus prioritaire de cette file, ou ``None``.
 
     Une tâche est prête si sa date « pas avant » est passée, si son
     invocation est allumée, et si l'étape de l'invocation n'est pas coupée.
+    Avec ``llm`` faux (plafond de dépense du jour atteint), les tâches des
+    invocations LLM attendent le lendemain.
     """
+    no_llm = '' if llm else " AND i.type<>'llm'"
     row = conn.execute(
         'SELECT t.id FROM tasks t'
         ' JOIN invocations i ON i.id=t.invocation_id'
@@ -126,7 +131,7 @@ def next_task(conn: sqlite3.Connection, queue_id: str, now: str) -> str | None:
         " WHERE t.queue_id=? AND t.status='ready'"
         " AND (t.not_before='' OR t.not_before<=?)"
         " AND i.enabled=1 AND i.deleted_at=''"
-        ' AND COALESCE(s.enabled, 1)=1'
+        f' AND COALESCE(s.enabled, 1)=1{no_llm}'
         ' ORDER BY t.priority DESC, t.created_at, t.id LIMIT 1',
         (queue_id, now),
     ).fetchone()

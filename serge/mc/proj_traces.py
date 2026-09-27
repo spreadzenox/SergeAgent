@@ -9,7 +9,6 @@ from typing import Any
 
 from serge.mc.libelles import (
     ETATS_TICKET,
-    ETATS_WORK,
     TYPES_TICKET,
     verbe,
 )
@@ -73,39 +72,6 @@ def _playbook(conn: sqlite3.Connection, ident: str) -> dict | None:
         ),
         'enfants': [],
         'preuve': row['steps_json'] or '',
-    }
-
-
-def _work(conn: sqlite3.Connection, ident: str) -> dict | None:
-    row = _row(conn, 'SELECT * FROM work_items WHERE id=?', (ident,))
-    if row is None:
-        return None
-    return {
-        'type': 'work_item',
-        'id': ident,
-        'titre': verbe(row['kind']),
-        'pourquoi': 'Un tout petit travail (e-mail, classement…). La file est faite de ça.',
-        'champs': _champs(
-            [
-                ('État', ETATS_WORK.get(row['status'], row['status'])),
-                ('Essais', row['attempts']),
-                ('Venture', row['venture_id'] or '—'),
-                ('Contact', row['contact_id'] or '—'),
-            ]
-        ),
-        'enfants': _liens(
-            (
-                [('venture', row['venture_id'], 'Venture')]
-                if row['venture_id']
-                else []
-            )
-            + (
-                [('ticket', row['ticket_id'], 'Ticket')]
-                if row['ticket_id']
-                else []
-            )
-        ),
-        'preuve': row['payload_json'] or '',
     }
 
 
@@ -238,7 +204,6 @@ def project_fait_trace(
         'ticket': _ticket,
         'lesson': _lesson,
         'playbook': _playbook,
-        'work_item': _work,
         'touch': _touch,
         'inbound_event': _inbound,
         'listen_doc': _listen,

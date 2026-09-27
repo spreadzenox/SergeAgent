@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Trace d'exécution : fiche + contexte (golden)."""
+"""Trace d'exécution d'une tâche : fiche + contexte (golden)."""
 
 from __future__ import annotations
 
@@ -15,6 +15,7 @@ sys.path.insert(0, str(ROOT))
 from serge.db.boot import init_schema  # noqa: E402
 from serge.funnels.contacts import add_address  # noqa: E402
 from serge.mc.proj_trace import project_trace  # noqa: E402
+from tests.taches_fixtures import invocations, tache  # noqa: E402
 
 NOW = '2026-09-10T12:00:00+00:00'
 
@@ -34,23 +35,19 @@ class ProjTraceTests(unittest.TestCase):
             ),
         )
         add_address(self.conn, 'p1', 'email', 'ada@x.io')
-        self.conn.execute(
-            'INSERT INTO tickets(id, type, title, state,'
-            " created_at, updated_at) VALUES('t1','GUICHET','Captcha',"
-            "'OPEN','t','t')"
-        )
-        payload = json.dumps({'result': {'note': 'Appel propre.'}})
-        self.conn.execute(
-            'INSERT INTO work_items(id, kind, venture_id, contact_id,'
-            ' ticket_id, status, priority, idempotency_key, payload_json,'
-            " created_at, updated_at) VALUES('w1','voice.send','v1','p1',"
-            "'t1','DONE',0,'k1',?,?,?)",
-            (payload, NOW, NOW),
+        invocations(self.conn, ('appeler', 'Appeler', 'prospection_lourde'))
+        self.task = tache(
+            self.conn,
+            'appeler',
+            {'venture_id': 'v1', 'contact_id': 'p1'},
+            key='k1',
+            status='failed',
+            error='ligne occupée',
         )
         self.conn.execute(
             'INSERT INTO events(actor, type, venture_id, payload_json, ts)'
-            " VALUES('scheduler','work.completed','',?,?)",
-            (json.dumps({'id': 'w1'}), NOW),
+            " VALUES('invocation:appeler','task.failed','',?,?)",
+            (json.dumps({'task': self.task}), NOW),
         )
         self.conn.execute(
             'INSERT INTO events(actor, type, venture_id, payload_json, ts)'
@@ -63,13 +60,14 @@ class ProjTraceTests(unittest.TestCase):
         self.conn.close()
 
     def test_trace_complete(self) -> None:
-        trace = project_trace(self.conn, 'w1')
-        self.assertEqual(trace['item']['kind'], 'voice.send')
-        self.assertEqual(trace['note'], 'Appel propre.')
-        self.assertEqual(trace['ticket']['titre'], 'Captcha')
+        trace = project_trace(self.conn, self.task)
+        self.assertEqual(trace['item']['kind'], 'Appeler')
+        self.assertEqual(trace['item']['statut'], 'failed')
+        self.assertEqual(trace['note'], 'ligne occupée')
+        self.assertIsNone(trace['ticket'])
         self.assertEqual(trace['contact']['display'], 'Ada')
         kinds = [event['type'] for event in trace['evenements']]
-        self.assertIn('work.completed', kinds)
+        self.assertIn('task.failed', kinds)
         self.assertIn('cycle', kinds)
         stamps = [event['ts'] for event in trace['evenements']]
         self.assertEqual(stamps, sorted(stamps, reverse=True))

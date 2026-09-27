@@ -32,10 +32,10 @@ navigateur au fil de l'eau.
 
 | Page | Adresse | Ce qu'on y voit | Ce qu'on y fait |
 |---|---|---|---|
-| **En direct** | `#/live` | La chaîne des 8 étapes et leurs débits, les tickets urgents, la file des tâches, l'activité récente, les budgets du jour. | Couper ou relancer Serge, une étape ou un type de tâche. |
-| **Écoute** | `#/ecoute` | Le dernier cycle de l'étape 1, les invocations et ce qu'elles peuvent lire, les business candidats. | Écrire un texte de guidage et lancer un cycle. |
-| **Système** | `#/system` | Les îlots (sous-systèmes), l'ordonnanceur, les campagnes, la population de prospects, l'e-mail. | Lecture. Accessible par `Ctrl+K`. |
-| **Cerveau** | `#/mind` | Les invocations LLM : pensées, décisions récentes, tableau de toutes les invocations avec leur usage, signaux entrants. | Ouvrir la fiche d'une invocation, l'éteindre ou la rallumer, modifier son prompt. |
+| **En direct** | `#/live` | La chaîne des 8 étapes, leurs invocations dans l'ordre des liens, et le nombre de résultats passés d'une étape à l'autre ; les tickets urgents, les deux files de tâches, l'activité récente, les budgets du jour. | Couper ou relancer Serge, une étape, une file ou une invocation. |
+| **Écoute** | `#/ecoute` | Le dernier cycle de l'étape 1, les invocations de l'étape, le bouton de lancement tel qu'il est déclaré en base, les business candidats. | Écrire un texte de guidage et cliquer le bouton : il lance l'invocation de son déclencheur. |
+| **Système** | `#/system` | Les îlots (sous-systèmes), les files de tâches, les campagnes, la population de prospects, l'e-mail. | Lecture. Accessible par `Ctrl+K`. |
+| **Cerveau** | `#/mind` | Pensées, décisions récentes, tableau de toutes les invocations en base (niveau, file, priorité, usage sur 7 jours), signaux entrants. | Ouvrir la fiche d'une invocation, l'éteindre ou la rallumer. |
 | **Décisions** | `#/tickets` | Les tickets à trancher, ce qui a changé, le rythme des décisions, le résumé quotidien. | Répondre à un ticket (mêmes boutons que sur Discord), discuter. |
 | **Mémoire** | `#/memory` | Épisodes archivés, procédures, pièges, leçons, dernière consolidation, demandes de nouvelles capacités. | Chercher dans la mémoire, garder, modifier ou jeter une leçon. |
 | **Policy** | `#/policy` | Toutes les règles : quotas, heures, budgets, taille des essais, réglages de l'écoute. | Modifier une règle et l'enregistrer. Chaque version est gardée. |
@@ -47,33 +47,38 @@ navigateur au fil de l'eau.
 ### Les fiches
 
 Presque tout est cliquable et ouvre une fiche : `#/objet/<type>/<id>`.
-Exemples : `#/objet/etape/pre_prospection`, `#/objet/llm/classify_reply`,
-`#/objet/outil/memory_search`, `#/objet/canal/email`,
-`#/objet/ecoute/pages` (les pages vraiment lues).
+Exemples : `#/objet/etape/pre_prospection`, `#/objet/llm/<id>` (une
+invocation), `#/objet/outil/memory_search`, `#/objet/task/<id>` (une
+tâche), `#/objet/canal/email`, `#/objet/ecoute/pages` (les pages vraiment
+lues).
 
 Le texte d'une fiche vient des colonnes de la base (exemple : `doc_md`),
-pas du code JavaScript.
+pas du code JavaScript. La fiche d'une invocation montre tout ce que la
+base dit d'elle : son rôle, sa sorte (avec ou sans LLM), son étape, sa
+file, sa priorité, son niveau de modèle, son prompt, ce qu'elle reçoit
+d'office, ce qu'elle peut appeler, le format de sa réponse, où sa réponse
+est écrite, ce qui la lance, ce qu'elle lance ensuite, et ses derniers
+passages. La fiche d'une tâche montre ses paramètres et ce qu'elle a reçu
+(par exemple « 50 lignes, 90 laissées de côté »).
 
 ---
 
 ## Couper quelque chose
 
 Tout passe par la même route, `POST /owner/api/coupe`, et est enregistré en
-base. Trois niveaux :
+base. Quatre niveaux, tous en bas de la page En direct (sauf le premier) :
 
 1. **Serge entier** : le gros bouton rouge en haut de En direct. Plus
-   aucune tâche ne démarre (`runtime_flags`, `scheduler.heartbeat`).
-2. **Une étape** : `pipeline_steps.enabled`. Les tâches de l'étape ne
-   démarrent plus.
-3. **Un type de tâche** (aujourd'hui un « kind », exemple : `voice.send`) :
-   coupé dans toutes les étapes.
+   aucune file ne prend de tâche (`runtime_flags`, `scheduler.heartbeat`).
+2. **Une étape** : `pipeline_steps.enabled`. Les tâches des invocations de
+   l'étape attendent.
+3. **Une file** : `queues.enabled`. Exemple : couper `works` arrête les
+   travaux longs, les conversations continuent.
+4. **Une invocation** : `invocations.enabled`. Ses tâches attendent, et
+   aucune nouvelle tâche n'est créée pour elle. C'est aussi le bouton
+   « Éteindre » de la page Cerveau.
 
-Pour couper les appels, on coupe `voice.send`. L'ancien fichier
-`KILL_SWITCH` a été supprimé.
-
-**Décidé** : les « kinds » disparaissent. Le troisième niveau devient
-« une invocation » : on coupe une invocation précise, par exemple
-« Traiter une réponse », et seulement elle.
+L'ancien fichier `KILL_SWITCH` et les « kinds » ont été supprimés.
 
 ---
 
@@ -84,25 +89,20 @@ Julien et Clem ont décidé que le code n'est qu'un interpréteur de la base
 où l'on voit et règle tout le pipeline, et pas seulement les prompts.
 
 **Chaque invocation se règle entièrement depuis sa fiche.** Aujourd'hui,
-on peut modifier le prompt d'une invocation LLM, l'éteindre ou la
-rallumer. Demain, sa fiche montrera et permettra de modifier tout ce qui la
-décrit : son rôle, son modèle, ce qu'elle reçoit dès le départ, les tools
-qu'elle peut appeler et avec quels paramètres, le format de sa réponse et
-où elle est écrite, sa priorité et sa file (conversations ou travaux). À
-chaque passage, elle affichera combien de lignes l'invocation a reçues.
+sa fiche montre tout ce qui la décrit, et l'API
+`POST /owner/api/invocation` modifie son prompt, son niveau de modèle, sa
+file, sa priorité et son interrupteur. Demain, la fiche permettra de
+modifier tout le reste (ce qu'elle reçoit, ses outils, le format de sa
+réponse, où elle écrit) : c'est l'éditeur sans code, plus bas.
 
-**Les liens et les déclencheurs sont visibles.** On voit, pour chaque
-lien entre deux invocations, ce qui est déjà passé et ce qui attend, avec
-un bouton « passer à la suite » et un interrupteur « passage
-automatique ». On voit aussi les déclencheurs : par exemple « quand un
-prospect répond, lancer "Traiter une réponse" ». La liste d'ordre écrite
-dans le code, utilisée aujourd'hui seulement pour l'affichage, disparaît :
-Mission Control montre l'ordre réel, lu en base.
+**Les liens se passent à la main.** La fiche d'une invocation montre déjà
+ses liens et ses déclencheurs, et l'ordre des invocations d'une étape est
+lu dans les liens. Il manque, pour chaque lien, ce qui est déjà passé et ce
+qui attend, avec un bouton « passer à la suite » et un interrupteur
+« passage automatique ».
 
-**Les deux files du runner sont visibles**, avec la tâche en cours dans
-chacune. Une tâche qui agissait à l'extérieur (un envoi, un remboursement)
-et qui s'est arrêtée au milieu apparaît pour qu'on vérifie avant de la
-relancer.
+**Une tâche arrêtée au milieu d'une action extérieure** (un envoi, un
+remboursement) apparaîtra pour qu'on vérifie avant de la relancer (lot 8).
 
 **La fiche d'un prospect montre son fil de discussion**, tous canaux
 confondus : ce que Serge a envoyé, avec le texte, et ce que la personne a
@@ -141,14 +141,13 @@ Toutes demandent le jeton owner.
 | `GET /owner/api/ticket/carte` | La carte d'un ticket. |
 | `GET /owner/api/memory/items`, `/owner/api/memory/search` | Lire et chercher la mémoire. |
 | `GET /owner/api/voice/audio` | Un enregistrement d'appel (lien signé). |
-| `POST /owner/api/coupe` | Couper ou relancer (Serge, étape, kind). |
-| `POST /owner/api/kill`, `/owner/api/unkill` | Éteindre ou rallumer une invocation LLM. |
-| `POST /owner/api/llm-point` | Modifier une invocation LLM : prompt, mode de sortie, information externe. |
+| `POST /owner/api/coupe` | Couper ou relancer (Serge, étape, file, invocation). |
+| `POST /owner/api/invocation` | Modifier une invocation : prompt, niveau de modèle, file, priorité, allumée. |
 | `POST /owner/api/etape` | Allumer ou éteindre une étape. |
 | `POST /owner/api/ticket/acte`, `/ticket/item`, `/ticket/discuter` | Répondre à un ticket. |
 | `POST /owner/api/memory/lesson` | Garder, modifier ou jeter une leçon. |
 | `POST /owner/api/policy/edit`, `/policy/testing`, `/policy/propose` | Modifier la policy. |
-| `POST /owner/api/listen/start` | Lancer un cycle de l'étape 1. |
+| `POST /owner/api/bouton` | Un déclencheur « bouton » : crée la tâche de son invocation, avec les champs du formulaire. |
 
 ---
 
@@ -156,8 +155,9 @@ Toutes demandent le jeton owner.
 
 Le bot (`serge/discord/`) recopie les tickets dans un forum Discord privé,
 avec un canal pour les urgences et un résumé quotidien. Les boutons ont le
-même effet que dans Mission Control. Julien peut aussi écrire à Serge :
-trois invocations LLM traitent ses messages : « Rendre le contexte FR »,
-« Lire l'intention owner » et « Juger une conséquence ».
+même effet que dans Mission Control. Le ticket est recopié tel qu'il est
+en base, sans résumé par un modèle. Les messages libres de Julien ne sont
+plus traités depuis le lot 6 : ils reviendront par le pipeline en base
+(voir « Plus tard » dans le [`TODO.md`](../TODO.md)).
 
 Installation : [`installation/DISCORD_SETUP.md`](installation/DISCORD_SETUP.md).
