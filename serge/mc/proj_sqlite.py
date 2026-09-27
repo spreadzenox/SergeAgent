@@ -26,10 +26,16 @@ CATALOGUE: dict[str, tuple[str, str, str, str]] = {
         'lifecycle = le statut : CANDIDATE, POC_SELECTED, SMOKE_…, FULL_…',
     ),
     'contacts': (
-        'Une fiche avec des références JSON indexées par canal et lieu.',
-        'upsert_trace, qualification, inbound, owner.',
-        'touches, inbound_events, campagnes.',
-        'contact_reference_by_canal + funnel_state + regime.',
+        'Une fiche par personne, dans un business : où elle en est.',
+        'Tool contact_upsert, qualification, réponses reçues.',
+        'contact_addresses, touches, inbound_events, campagnes.',
+        'funnel_state = l’étape du prospect, regime = qui a écrit en premier.',
+    ),
+    'contact_addresses': (
+        'Les adresses d’une personne : une ligne par adresse, jamais écrasée.',
+        'Tool contact_upsert.',
+        'Envois (e-mail, appel), relève de la boîte mail.',
+        'channel = email, phone ou un réseau. active = 0 : ne plus écrire là.',
     ),
     'campaigns': (
         'Un test sur un canal (e-mail, voix…) pour une venture.',

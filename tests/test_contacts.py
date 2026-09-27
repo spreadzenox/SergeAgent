@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import json
 import sqlite3
 import sys
 import unittest
@@ -15,6 +14,8 @@ sys.path.insert(0, str(ROOT))
 from serge.db.boot import init_schema  # noqa: E402
 from serge.funnels.contacts import (  # noqa: E402
     ContactError,
+    address_value,
+    addresses,
     create_contact,
     mark_blocked,
     mark_engaged,
@@ -53,24 +54,24 @@ class ContactTests(unittest.TestCase):
             self.connection,
             'v1',
             'Ada',
-            {'channel': 'email', 'address': 'ada@x.io'},
+            [{'channel': 'email', 'value': 'ada@x.io'}],
         )
 
-    def test_mail_pose_la_trace(self) -> None:
+    def test_mail_pose_une_adresse(self) -> None:
         ident = self._make()
-        row = self.connection.execute(
-            'SELECT contact_reference_by_canal FROM contacts WHERE id=?',
-            (ident,),
-        ).fetchone()
-        references = json.loads(row[0])
-        self.assertEqual(references['email']['address'], 'ada@x.io')
-        self.assertTrue(references['email']['active'])
+        self.assertEqual(
+            addresses(self.connection, ident),
+            [{'channel': 'email', 'value': 'ada@x.io', 'active': True}],
+        )
+        self.assertEqual(
+            address_value(self.connection, ident, 'email'), 'ada@x.io'
+        )
         columns = {
             row[1]
             for row in self.connection.execute('PRAGMA table_info(contacts)')
         }
         self.assertNotIn('email', columns)
-        self.assertNotIn('phone', columns)
+        self.assertNotIn('contact_reference_by_canal', columns)
 
     def _state(self, contact_id: str) -> tuple[str, str]:
         row = self.connection.execute(

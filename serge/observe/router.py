@@ -20,6 +20,7 @@ from typing import Any
 from serge.db.store import append_event, utcnow
 from serge.funnels.contacts import (
     ContactError,
+    addresses,
     mark_intent,
     mark_invalid,
     mark_unreachable,
@@ -249,6 +250,9 @@ def ingest(
             _block_subject(conn, channel, subject, moment)
             actions.append('blocked')
         if contact_id:
+            # Le désabonnement vaut pour la personne : toutes ses adresses.
+            for adresse in addresses(conn, contact_id):
+                _block_subject(conn, '*', adresse['value'], moment)
             try:
                 opt_out(conn, contact_id)
                 actions.append('contact_opted_out')

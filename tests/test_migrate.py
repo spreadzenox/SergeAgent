@@ -23,6 +23,7 @@ from serge.db.v015 import apply_v015  # noqa: E402
 from serge.db.v018 import apply_v018  # noqa: E402
 from serge.db.v020 import apply_v020  # noqa: E402
 from serge.db.v021 import apply_v021  # noqa: E402
+from serge.db.v022 import apply_v022  # noqa: E402
 
 
 class MigrateTests(unittest.TestCase):
@@ -175,6 +176,59 @@ class MigrateTests(unittest.TestCase):
         self.assertEqual(references['voice']['phone'], '+33612345678')
         self.assertEqual(references['linkedin']['handle'], 'ada')
         self.assertEqual(row[1:], ('INBOUND', 'ENGAGED'))
+
+    def test_v22_range_les_adresses_une_par_ligne(self) -> None:
+        conn = sqlite3.connect(':memory:')
+        self.addCleanup(conn.close)
+        conn.execute(
+            """CREATE TABLE contacts (
+                id TEXT PRIMARY KEY, venture_id TEXT NOT NULL,
+                display TEXT NOT NULL DEFAULT '',
+                contact_reference_by_canal TEXT NOT NULL DEFAULT '{}',
+                regime TEXT NOT NULL DEFAULT 'OUTBOUND',
+                funnel_state TEXT NOT NULL DEFAULT 'NEW',
+                last_inbound_at TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL, updated_at TEXT NOT NULL)
+            """
+        )
+        references = {
+            'email': {'address': 'Ada@X.io', 'active': False},
+            'voice': {'phone': '+33 6 12 34 56 78', 'active': True},
+            'linkedin': {
+                'handle': 'ada',
+                'profile_url': 'https://linkedin.test/ada',
+            },
+        }
+        conn.execute(
+            'INSERT INTO contacts(id, venture_id, display,'
+            ' contact_reference_by_canal, created_at, updated_at)'
+            " VALUES('p1','v1','Ada',?,'t','t')",
+            (json.dumps(references),),
+        )
+        apply_v022(conn)
+        apply_v022(conn)
+        columns = {
+            row[1] for row in conn.execute('PRAGMA table_info(contacts)')
+        }
+        self.assertNotIn('contact_reference_by_canal', columns)
+        rows = conn.execute(
+            'SELECT channel, value, value_norm, active FROM contact_addresses'
+            " WHERE contact_id='p1' ORDER BY channel, value"
+        ).fetchall()
+        self.assertEqual(
+            rows,
+            [
+                ('email', 'Ada@X.io', 'ada@x.io', 0),
+                ('linkedin', 'ada', 'ada', 1),
+                (
+                    'linkedin',
+                    'https://linkedin.test/ada',
+                    'https://linkedin.test/ada',
+                    1,
+                ),
+                ('phone', '+33 6 12 34 56 78', '+33612345678', 1),
+            ],
+        )
 
     def test_vide_atteint_la_tete(self) -> None:
         conn = sqlite3.connect(':memory:')

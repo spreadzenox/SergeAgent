@@ -7,7 +7,7 @@ import sqlite3
 from collections.abc import Mapping
 from typing import Any
 
-from serge.funnels.contacts import ContactError, upsert_contact_references
+from serge.funnels.contacts import ContactError, upsert_contact
 
 
 def _schema(
@@ -29,64 +29,42 @@ def _schema(
 
 SCHEMA: dict[str, Any] = _schema(
     'contact_upsert',
-    'Crée ou enrichit un contact avec des références JSON par canal. '
-    'La déduplication est faite dans toute la venture avant toute création.',
+    'Crée la fiche d’un prospect, ou ajoute des adresses à sa fiche. '
+    'Une adresse déjà connue dans ce business désigne la même personne ; '
+    'une boîte partagée (contact@, info@…) ne regroupe jamais.',
     {
         'venture_id': {
             'type': 'string',
-            'description': 'Identifiant de la venture dans le contexte courant',
+            'description': 'Identifiant du business dans le contexte courant',
         },
         'display': {
             'type': 'string',
             'description': 'Nom affiché du contact, sans secret',
         },
-        'contact_reference_by_canal': {
-            'type': 'object',
+        'addresses': {
+            'type': 'array',
             'description': (
-                'Map canal -> référence. Email: address; voice: phone; '
-                'autres canaux: handle ou profile_url.'
+                'Les adresses de la personne. Exemples : '
+                "{'channel':'email','value':'ada@acme.fr'}, "
+                "{'channel':'phone','value':'+33612345678'}, "
+                "{'channel':'linkedin','value':'https://linkedin.com/in/ada'}."
             ),
-            'additionalProperties': {
+            'minItems': 1,
+            'items': {
                 'type': 'object',
                 'properties': {
+                    'channel': {'type': 'string'},
+                    'value': {'type': 'string'},
                     'active': {'type': 'boolean'},
-                    'address': {'type': 'string'},
-                    'phone': {'type': 'string'},
-                    'handle': {'type': 'string'},
-                    'profile_url': {'type': 'string'},
                 },
+                'required': ['channel', 'value'],
                 'additionalProperties': False,
             },
         },
-        'reference': {
-            'type': 'object',
-            'description': (
-                'Référence unique structurée, par exemple '
-                "{'channel':'email','address':'...'}"
-            ),
-            'properties': {
-                'channel': {'type': 'string'},
-                'canal': {'type': 'string'},
-                'active': {'type': 'boolean'},
-                'address': {'type': 'string'},
-                'phone': {'type': 'string'},
-                'handle': {'type': 'string'},
-                'profile_url': {'type': 'string'},
-            },
-            'additionalProperties': False,
-        },
     },
-    ['venture_id', 'display'],
+    ['venture_id', 'display', 'addresses'],
 )
-SCHEMA['function']['parameters'].update(
-    {
-        'additionalProperties': False,
-        'anyOf': [
-            {'required': ['contact_reference_by_canal']},
-            {'required': ['reference']},
-        ],
-    }
-)
+SCHEMA['function']['parameters']['additionalProperties'] = False
 
 
 def executer_contact_upsert(
@@ -94,14 +72,7 @@ def executer_contact_upsert(
     spec: Mapping[str, Any],
     args: dict[str, Any],
 ) -> dict[str, Any]:
-    """Upsert contact borné aux références JSON canoniques."""
-    forbidden = {'email', 'phone', 'venue', 'handle', 'profile_url'}
-    if forbidden.intersection(args):
-        return {
-            'ok': False,
-            'code': 'invalide',
-            'detail': 'les anciennes colonnes de contact sont interdites',
-        }
+    """Crée ou complète une fiche contact à partir de ses adresses."""
     context = spec.get('context')
     context = context if isinstance(context, Mapping) else {}
     venture_id = str(
@@ -121,47 +92,16 @@ def executer_contact_upsert(
         is None
     ):
         return {'ok': False, 'code': 'invalide', 'detail': 'venture inconnue'}
-
-    reference_map = args.get('contact_reference_by_canal')
-    single_reference = args.get('reference')
-    if reference_map is not None and single_reference is not None:
+    raw = args.get('addresses')
+    if not isinstance(raw, list) or not all(
+        isinstance(item, Mapping) for item in raw
+    ):
         return {
             'ok': False,
             'code': 'invalide',
-            'detail': 'une seule forme de référence est acceptée',
-        }
-    raw_references = (
-        reference_map if reference_map is not None else single_reference
-    )
-    if not isinstance(raw_references, Mapping):
-        return {
-            'ok': False,
-            'code': 'invalide',
-            'detail': 'référence JSON requise',
+            'detail': 'addresses doit être une liste d’objets',
         }
     try:
-        references = raw_references
-        is_single = bool(
-            single_reference is not None
-            or references.get('channel')
-            or references.get('canal')
-        )
-        candidates = [references] if is_single else list(references.values())
-        for reference in candidates:
-            if not isinstance(reference, Mapping):
-                continue
-            if 'venue' in reference:
-                return {
-                    'ok': False,
-                    'code': 'invalide',
-                    'detail': 'le champ legacy venue est interdit',
-                }
-            if not isinstance(reference.get('active', True), bool):
-                return {
-                    'ok': False,
-                    'code': 'invalide',
-                    'detail': 'active doit être booléen',
-                }
-        return upsert_contact_references(conn, venture_id, display, references)
-    except (ContactError, TypeError, ValueError) as exc:
+        return upsert_contact(conn, venture_id, display, raw)
+    except ContactError as exc:
         return {'ok': False, 'code': 'invalide', 'detail': str(exc)}

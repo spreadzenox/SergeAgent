@@ -19,7 +19,7 @@ est indiqué entre parenthèses, exemple : Q13).
 
 On avance par petits lots : un sujet, un commit, des tests verts.
 
-1. **Données** : contacts, abonnements (section Transverse).
+1. **Données** : abonnements (section Transverse).
 2. **Invocations et liens** : suppression des kinds et des capsules,
    liens entre invocations, priorités, tools automatiques (Transverse).
 3. **Étape 1** refaite.
@@ -41,16 +41,6 @@ On avance par petits lots : un sujet, un commit, des tests verts.
   3 places légères sont prises, l'étape 1 ne lance pas de cycle et Mission
   Control affiche « 3 places sur 3 occupées ».
 - **Pourquoi** : ne pas tester plus de business qu'on ne peut en suivre.
-
-### Contacts : une fiche par personne (Q17)
-
-- **Quoi** : une ligne par personne dans `contacts`, et une nouvelle table
-  avec une ligne par adresse (canal, valeur, active ou non). Regroupement
-  automatique seulement sur un e-mail ou un téléphone identique, jamais sur
-  une adresse générique comme `contact@…`. Supprimer la colonne JSON
-  `contact_reference_by_canal`.
-- **Pourquoi** : aujourd'hui, une nouvelle adresse écrase l'ancienne sans
-  prévenir, et un désabonnement doit valoir pour la personne entière.
 
 ### Livraisons, demandes clients, abonnements (Q43, Q45)
 
@@ -257,11 +247,12 @@ On avance par petits lots : un sujet, un commit, des tests verts.
 
 - **Quoi** : une invocation qui cherche et qualifie des prospects
   pertinents, avec des adresses qui ne rebondissent pas, et garde la page
-  source de chaque adresse. Sortie exacte à définir. Seulement vers des
+  source de chaque adresse (nouvelle colonne dans `contact_addresses`).
+  Sortie exacte à définir. Seulement vers des
   professionnels pour l'e-mail et l'appel.
 - **Pourquoi** : Serge sait écrire et appeler, mais ne sait pas encore à
   qui.
-- **Dépend de** : web ; contacts.
+- **Dépend de** : web.
 
 ### Fil de discussion et relances réactives (Q37)
 
@@ -271,7 +262,6 @@ On avance par petits lots : un sujet, un commit, des tests verts.
   Serge sans réponse, vérifié au moment de l'envoi. Aucune relance si les
   réponses d'un canal n'ont pas été relevées depuis plus d'une heure.
 - **Pourquoi** : ne jamais relancer quelqu'un qui a déjà répondu.
-- **Dépend de** : contacts.
 
 ### LinkedIn (Q48)
 

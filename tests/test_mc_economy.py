@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import json
 import sys
 import unittest
 from datetime import UTC, datetime
@@ -13,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from serge.db.store import open_db  # noqa: E402
+from serge.funnels.contacts import add_address  # noqa: E402
 from serge.mc.projectors import (  # noqa: E402
     PAGE_SECTIONS,
     PROJECTORS,
@@ -58,25 +58,16 @@ class McEconomyTests(McBrowserCase):
                 (iso, iso),
             )
             conn.execute(
-                'INSERT INTO contacts(id, venture_id, display,'
-                ' contact_reference_by_canal, created_at, updated_at)'
-                ' VALUES(?,?,?,?,?,?)',
+                'INSERT INTO contacts(id, venture_id, display, created_at, updated_at) VALUES(?,?,?,?,?)',
                 (
                     'ct_eco',
                     'v_eco',
                     'Bernard',
-                    json.dumps(
-                        {
-                            'email': {
-                                'address': 'bernard@test.com',
-                                'active': True,
-                            }
-                        }
-                    ),
                     iso,
                     iso,
                 ),
             )
+            add_address(conn, 'ct_eco', 'email', 'bernard@test.com')
             conn.execute(
                 'INSERT INTO touches(id, campaign_id, contact_id, channel, status, cost_eur, idempotency_key, created_at, updated_at)'
                 " VALUES('t_eco', 'c_eco', 'ct_eco', 'email', 'sent', 0.05, 'k_eco', ?, ?)",

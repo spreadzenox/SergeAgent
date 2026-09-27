@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from serge.db.boot import init_schema  # noqa: E402
+from serge.funnels.contacts import add_address  # noqa: E402
 from serge.mc.proj_trace import project_trace  # noqa: E402
 
 NOW = '2026-09-10T12:00:00+00:00'
@@ -23,18 +24,16 @@ class ProjTraceTests(unittest.TestCase):
         self.conn = sqlite3.connect(':memory:')
         init_schema(self.conn)
         self.conn.execute(
-            'INSERT INTO contacts(id, venture_id, display,'
-            ' contact_reference_by_canal, created_at, updated_at)'
-            ' VALUES(?,?,?,?,?,?)',
+            'INSERT INTO contacts(id, venture_id, display, created_at, updated_at) VALUES(?,?,?,?,?)',
             (
                 'p1',
                 'v1',
                 'Ada',
-                json.dumps({'email': {'address': 'ada@x.io', 'active': True}}),
                 't',
                 't',
             ),
         )
+        add_address(self.conn, 'p1', 'email', 'ada@x.io')
         self.conn.execute(
             'INSERT INTO tickets(id, type, title, state,'
             " created_at, updated_at) VALUES('t1','GUICHET','Captcha',"

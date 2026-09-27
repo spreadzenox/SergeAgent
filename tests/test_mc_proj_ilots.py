@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import json
 import sqlite3
 import sys
 import unittest
@@ -14,6 +13,7 @@ sys.path.insert(0, str(ROOT))
 
 from serge.db.boot import init_schema  # noqa: E402
 from serge.db.store import append_event  # noqa: E402
+from serge.funnels.contacts import add_address  # noqa: E402
 from serge.mc.proj_ilots import (  # noqa: E402
     project_ilots,
     project_scheduler,
@@ -41,35 +41,31 @@ class ProjSystemFixtures(unittest.TestCase):
             " updated_at) VALUES('v2','CANDIDATE',0,'t','t')"
         )
         conn.execute(
-            'INSERT INTO contacts(id, venture_id, display,'
-            ' contact_reference_by_canal, regime, funnel_state, created_at,'
-            ' updated_at) VALUES(?,?,?,?,?,?,?,?)',
+            'INSERT INTO contacts(id, venture_id, display, regime, funnel_state, created_at, updated_at) VALUES(?,?,?,?,?,?,?)',
             (
                 'p1',
                 'v1',
                 'Ada',
-                json.dumps({'email': {'address': 'ada@x.io', 'active': True}}),
                 'OUTBOUND',
                 'CONTACTING',
                 't',
                 't',
             ),
         )
+        add_address(conn, 'p1', 'email', 'ada@x.io')
         conn.execute(
-            'INSERT INTO contacts(id, venture_id, display,'
-            ' contact_reference_by_canal, regime, funnel_state, created_at,'
-            ' updated_at) VALUES(?,?,?,?,?,?,?,?)',
+            'INSERT INTO contacts(id, venture_id, display, regime, funnel_state, created_at, updated_at) VALUES(?,?,?,?,?,?,?)',
             (
                 'p2',
                 'v1',
                 'Bob',
-                json.dumps({'email': {'address': 'bob@x.io', 'active': True}}),
                 'OUTBOUND',
                 'NEW',
                 't',
                 't',
             ),
         )
+        add_address(conn, 'p2', 'email', 'bob@x.io')
         conn.execute(
             'INSERT INTO campaigns(id, venture_id, family, channel, state,'
             ' n_target, created_at, updated_at) VALUES'

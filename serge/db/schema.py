@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import sqlite3
 
-SCHEMA_VERSION = 21
+SCHEMA_VERSION = 22
 
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS schema_version (
@@ -288,6 +288,7 @@ TABLES = (
     'listen_cycles',
     'listen_cycle_docs',
     'venture_sources',
+    'contact_addresses',
     'tool_db_tables',
     'tool_db_columns',
     'tool_db_filters',

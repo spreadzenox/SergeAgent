@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import json
 import sqlite3
 import sys
 import unittest
@@ -14,6 +13,7 @@ sys.path.insert(0, str(ROOT))
 
 from serge.db.boot import init_schema  # noqa: E402
 from serge.db.store import append_event  # noqa: E402
+from serge.funnels.contacts import add_address  # noqa: E402
 from serge.mc.proj_graphe import project_business, project_graphe  # noqa: E402
 from serge.scheduler import claim, enqueue  # noqa: E402
 
@@ -38,20 +38,18 @@ class ProjGrapheTests(unittest.TestCase):
             (NOW, NOW),
         )
         self.conn.execute(
-            'INSERT INTO contacts(id, venture_id, display,'
-            ' contact_reference_by_canal, regime, funnel_state, created_at,'
-            ' updated_at) VALUES(?,?,?,?,?,?,?,?)',
+            'INSERT INTO contacts(id, venture_id, display, regime, funnel_state, created_at, updated_at) VALUES(?,?,?,?,?,?,?)',
             (
                 'p1',
                 'v1',
                 'Ada',
-                json.dumps({'email': {'address': 'a@x.io', 'active': True}}),
                 'OUTBOUND',
                 'INTENT',
                 NOW,
                 NOW,
             ),
         )
+        add_address(self.conn, 'p1', 'email', 'a@x.io')
         self.conn.execute(
             'INSERT INTO touches(id, campaign_id, contact_id, channel,'
             ' status, idempotency_key, created_at, updated_at) VALUES'

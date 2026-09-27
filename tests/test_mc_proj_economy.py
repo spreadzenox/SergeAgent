@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import json
 import sqlite3
 import sys
 import unittest
@@ -13,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from serge.db.boot import init_schema  # noqa: E402
+from serge.funnels.contacts import add_address  # noqa: E402
 from serge.mc.proj_economy import (  # noqa: E402
     project_audit_reponses,
     project_couts_cognitifs,
@@ -40,20 +40,16 @@ class ProjEconomyTests(unittest.TestCase):
             " VALUES('c1', 'v1', 'named', 'email', 'RUNNING', 10, '2026-09-02T10:00:00+00:00', 't')"
         )
         conn.execute(
-            'INSERT INTO contacts(id, venture_id, display,'
-            ' contact_reference_by_canal, created_at, updated_at)'
-            ' VALUES(?,?,?,?,?,?)',
+            'INSERT INTO contacts(id, venture_id, display, created_at, updated_at) VALUES(?,?,?,?,?)',
             (
                 'ct1',
                 'v1',
                 'Alice',
-                json.dumps(
-                    {'email': {'address': 'alice@test.com', 'active': True}}
-                ),
                 't',
                 't',
             ),
         )
+        add_address(conn, 'ct1', 'email', 'alice@test.com')
         conn.execute(
             'INSERT INTO touches(id, campaign_id, contact_id, channel, status, cost_eur, idempotency_key, created_at, updated_at)'
             " VALUES('t1', 'c1', 'ct1', 'email', 'sent', 0.02, 'k1', '2026-09-03T10:00:00+00:00', 't')"

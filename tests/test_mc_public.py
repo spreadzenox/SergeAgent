@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from serge.db.boot import init_schema  # noqa: E402
+from serge.funnels.contacts import add_address  # noqa: E402
 from serge.mc.proj_public import (  # noqa: E402
     PublicSafetyViolation,
     assert_public_safe,
@@ -90,27 +91,16 @@ class PublicEndpointTests(McServerCase):
             init_schema(conn)
             # Injection de données piégées dans la base
             conn.execute(
-                'INSERT INTO contacts(id, venture_id, contact_reference_by_canal,'
-                ' created_at, updated_at) VALUES(?,?,?,?,?)',
+                'INSERT INTO contacts(id, venture_id, created_at, updated_at) VALUES(?,?,?,?)',
                 (
                     'c1',
                     'v1',
-                    json.dumps(
-                        {
-                            'email': {
-                                'address': 'fuite@prive.com',
-                                'active': True,
-                            },
-                            'voice': {
-                                'phone': '+33699887766',
-                                'active': True,
-                            },
-                        }
-                    ),
                     't',
                     't',
                 ),
             )
+            add_address(conn, 'c1', 'email', 'fuite@prive.com')
+            add_address(conn, 'c1', 'phone', '+33699887766')
             conn.commit()
             payload = project_public_statut(conn, {}, '')
             # Aucune fuite ne doit traverser

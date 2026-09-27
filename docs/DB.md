@@ -17,9 +17,9 @@ recrée jamais ensuite.
 1. **Les migrations** (`serge/db/migrate.py`). Chaque changement de
    structure est une fonction `apply_v0NN` (fichiers `serge/db/v0NN.py`).
    Serge applique celles qui manquent, dans l'ordre. Version actuelle :
-   **21**.
+   **22**.
    - Une base neuve saute directement à la version 7 (le socle,
-     `serge/db/schema.py`), puis applique 8, 9, … 21.
+     `serge/db/schema.py`), puis applique 8, 9, … 22.
    - Une base **plus récente** que le code refuse de démarrer
      (`MigrateError`). Revenir à un ancien commit ne défait pas une
      migration.
@@ -59,7 +59,8 @@ catalogue et la mécanique.
 | `ventures` | Les business, de leur découverte à leur fermeture. Colonne `lifecycle` : le statut. Fiche : `name`, `description`, `observations`, `sellable_offer`. `dedup_key` sert à écarter les doublons. |
 | `venture_sources` | Les pages qui prouvent le besoin derrière un business. |
 | `campaigns` | Les campagnes de test : business, canal, taille, fenêtre, seuils. |
-| `contacts` | Les prospects et clients. Leurs adresses sont aujourd'hui dans une colonne JSON, `contact_reference_by_canal` (une adresse par canal). |
+| `contacts` | Les prospects et clients : une fiche par personne dans un business. Colonne `funnel_state` : où la personne en est. |
+| `contact_addresses` | Les adresses d'une personne : une ligne par adresse (`channel` = `email`, `phone` ou un réseau, `value`, `active`). Une adresse n'est jamais écrasée : une nouvelle s'ajoute à côté. |
 | `accounts_standing` | Les comptes web que Serge a créés : lieu, identifiant, mot de passe en clair, dossier de session, santé du compte. |
 | `consents`, `blocklist` | Consentements et personnes à ne plus contacter. |
 | `transactions` | Les paiements. |
@@ -127,10 +128,6 @@ Voir [`TODO.md`](../TODO.md) pour l'ordre des chantiers.
 
 - Nouveaux statuts de `ventures` : `PARKED`, `MAINTENANCE`, `CLOSED`, avec
   le code qui les pose.
-- `contacts` : une ligne par personne, et une nouvelle table avec **une
-  ligne par adresse** (canal, valeur, active ou non). Regroupement
-  automatique seulement sur un e-mail ou un téléphone identique. La
-  colonne JSON disparaît.
 - Nouvelles tables : `deliveries` (ce qui reste à livrer), `product_requests`
   (les demandes des clients), `listen_feeds` (les flux suivis), et une
   table de barème de points par canal et par signal.
