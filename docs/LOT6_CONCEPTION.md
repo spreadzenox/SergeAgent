@@ -220,6 +220,47 @@ Colonnes :
 Une invocation qui rend seulement un texte (par exemple une relance à
 envoyer) a un seul champ, de type texte.
 
+### Comment la réponse arrive en base, pas à pas
+
+Le modèle n'écrit jamais lui-même en base, et l'écriture n'est pas une
+invocation à part. Tout se passe dans la même tâche, dans cet ordre :
+
+1. Serge prépare le prompt : les consignes, puis tout ce qui est donné
+   d'office.
+2. Le modèle travaille. Il peut appeler ses tools appelables, par exemple
+   la recherche web, autant de fois que permis.
+3. Quand il a fini, il rend sa réponse finale au format décrit dans
+   `invocation_output_fields`. Exemple : une liste de trois fiches de
+   business, chacune avec un titre, une description et ses pages de
+   preuve.
+4. Serge vérifie ce format. Si une fiche n'a pas de titre, il redemande au
+   modèle, avec l'erreur, un nombre limité de fois.
+5. Serge passe la réponse vérifiée à la brique d'écriture indiquée sur
+   l'invocation (`writer_brick_id`). C'est du code, sans LLM. Exemple :
+   « Enregistrer des business candidats » écarte les doublons, écrit
+   chaque fiche dans la table des business et note au journal chaque
+   fiche écartée.
+6. Serge enregistre la tâche comme finie, puis lance les invocations
+   suivantes selon les liens.
+
+L'écriture n'est pas un tool que le modèle appelle, pour trois raisons. Le
+modèle pourrait oublier de l'appeler, ou l'appeler au milieu de sa
+réflexion avec une idée pas encore aboutie. On ne pourrait vérifier la
+réponse qu'une fois écrite. Et une réponse vérifiée en entier, puis écrite
+d'un coup, ne laisse jamais une moitié de résultat en base si quelque
+chose plante.
+
+Ce n'est pas non plus une invocation à part, parce qu'une tâche de plus
+dans la file ajouterait un moment où le programme peut s'arrêter entre la
+réponse et son écriture, sans rien apporter.
+
+Il reste un cas où un tool qui écrit a du sens : quand l'écriture fait
+partie du travail en cours de route, et pas du résultat final. Exemple :
+l'invocation qui cherche des prospects enregistre chaque contact trouvé au
+fur et à mesure, avec le tool « Créer ou compléter un contact », qui
+existe déjà. Ces tools-là sont des briques comme les autres, avec leurs
+protections.
+
 ### Pourquoi une brique d'écriture, et pas « n'importe quelle table »
 
 On aurait pu laisser la base dire « écris ce champ dans telle colonne de
