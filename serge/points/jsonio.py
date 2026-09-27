@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """IO JSON des points LLM-1/LLM-B : extraction + recalls bornés (P3).
 
-Contrat P3 : output structuré (enum fermé + `requested`). Réponse malformée
+Contrat P3 : output structuré (enum fermé). Réponse malformée
 = recall avec consigne de réparation (N en policy, jamais de retry aveugle :
 on change le message). Fallback runtime (killed/budget/error) = pas de
 recall, le point bascule sur son repli dét.
@@ -62,7 +62,6 @@ def run_json(
     *,
     root: Path | None = None,
     caller: Callable[..., ChatResult] | None = None,
-    max_tokens: int = 800,
 ) -> tuple[dict[str, Any] | None, RunResult | None]:
     """Appelle un point + parse JSON avec recalls bornés.
 
@@ -74,7 +73,6 @@ def run_json(
         validate: Prédicat sur l'objet parsé (schéma du point).
         root: config_root (défaut : instance).
         caller: Appel LLM (défaut : client réel).
-        max_tokens: Cap réponse.
 
     Returns:
         Tuple (objet validé ou None, dernier RunResult ou None).
@@ -87,7 +85,7 @@ def run_json(
     attempts = [messages]
     last: RunResult | None = None
     for attempt in range(max(0, recalls) + 1):
-        kwargs: dict[str, Any] = {'root': root, 'max_tokens': max_tokens}
+        kwargs: dict[str, Any] = {'root': root}
         if caller is not None:
             kwargs['caller'] = caller
         last = run_registered_point(

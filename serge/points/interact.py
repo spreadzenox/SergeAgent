@@ -81,7 +81,7 @@ def render_context_fr(
         {'role': 'system', 'content': RENDER_SYSTEM},
         {'role': 'user', 'content': ticket_text[:1500]},
     ]
-    kwargs: dict[str, Any] = {'root': root, 'max_tokens': 400}
+    kwargs: dict[str, Any] = {'root': root}
     if caller is not None:
         kwargs['caller'] = caller
     data, result = run_json(
@@ -144,7 +144,7 @@ def classify_owner_intent(
             'content': f'Message : {message[:800]}\nThread : {thread_text[:1000]}',
         },
     ]
-    kwargs: dict[str, Any] = {'root': root, 'max_tokens': 200}
+    kwargs: dict[str, Any] = {'root': root}
     if caller is not None:
         kwargs['caller'] = caller
     data, result = run_json(
@@ -223,7 +223,7 @@ def judge_consequence(
             'content': f'Ordre : {ordre_text[:800]}\nContexte : {contexte_text[:1500]}',
         },
     ]
-    kwargs: dict[str, Any] = {'root': root, 'max_tokens': 300}
+    kwargs: dict[str, Any] = {'root': root}
     if caller is not None:
         kwargs['caller'] = caller
     data, result = run_json(

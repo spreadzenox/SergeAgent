@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""U1-U5 : LLM classe, code compte. 0 jugement, que des compteurs.
+"""U1-U5 : LLM classe, code compte. 0 invocation, que des compteurs.
 
 U1 reach = touches envoyées (statut sent, INVALID exclus pour N).
 U2 engagement = signaux ENGAGED + REPLIED.

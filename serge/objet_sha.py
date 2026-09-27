@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""SHA d’un objet catalogue : contenus des fichiers + sous-objets."""
+"""Empreinte d’un objet catalogue : contenus des fichiers + sous-objets.
+
+Calculée au démarrage, jamais recopiée à la main.
+"""
 
 from __future__ import annotations
 
@@ -36,25 +39,6 @@ def composer(parts: Iterable[str]) -> str:
 def sha256_fichier(path: Path) -> str:
     """SHA-256 hex du contenu seul."""
     return hashlib.sha256(path.read_bytes()).hexdigest()
-
-
-def ids_semence() -> set[tuple[str, str]]:
-    """Ids que le code déclare (semences), pas encore la base."""
-    from serge.canaux import SEED as CANAL_SEED
-    from serge.etape_fiches import LIENS
-    from serge.etapes import ETAPE_IDS
-    from serge.llm_registre import POINT_LOCKS
-    from serge.outils import SEED as TOOL_SEED
-    from serge.tech_registre import SEED as TECH_SEED
-
-    return (
-        {('etape', ident) for ident in ETAPE_IDS}
-        | {('llm', ident) for ident in POINT_LOCKS}
-        | {('outil', row[0]) for row in TOOL_SEED}
-        | {('tech', row[0]) for row in TECH_SEED}
-        | {('lien', row[0]) for row in LIENS}
-        | {('canal', row[0]) for row in CANAL_SEED}
-    )
 
 
 def objets_en_base(conn: sqlite3.Connection) -> set[tuple[str, str]]:
@@ -134,71 +118,39 @@ def sha_arbre(
     return composer(parts), erreurs
 
 
-def sha_en_base(conn: sqlite3.Connection, kind: str, ident: str) -> str:
-    """``files_sha`` stocké, ou vide."""
-    table = TABLES[kind]
-    row = conn.execute(
-        f'SELECT files_sha FROM {table} WHERE id=?', (ident,)
-    ).fetchone()
-    return str(row[0] or '') if row else ''
+def poser_shas(conn: sqlite3.Connection, root: Path | None = None) -> None:
+    """Calcule au boot l’empreinte de chaque objet et la date du changement.
 
-
-def poser_shas(conn: sqlite3.Connection) -> None:
-    """Écrit le SHA figé et la date si le SHA change.
+    Exemple : si ``serge/memory/search.py`` change, l’outil
+    ``memory_search`` reçoit une nouvelle empreinte et ``updated_at`` prend
+    la date du boot. Mission Control peut ainsi afficher « code modifié le … ».
 
     Args:
         conn: Canon (commit par l’appelant).
+        root: Racine du dépôt (défaut : celle de ce fichier).
     """
-    from serge.catalogue_lock import SHA_ATTENDUS
     from serge.horloge import iso_utc
 
+    base = root or Path(__file__).resolve().parents[1]
     now = iso_utc()
-    for (kind, ident), sha in SHA_ATTENDUS.items():
-        table = TABLES[kind]
-        row = conn.execute(
-            f'SELECT files_sha, updated_at FROM {table} WHERE id=?',
-            (ident,),
-        ).fetchone()
-        if row is None:
-            continue
-        if str(row[0] or '') != sha:
+    for kind, table in TABLES.items():
+        for (ident,) in conn.execute(f'SELECT id FROM {table}').fetchall():
+            sha, _ = sha_arbre(base, kind, str(ident), conn)
+            row = conn.execute(
+                f'SELECT files_sha FROM {table} WHERE id=?', (ident,)
+            ).fetchone()
+            if str(row[0] or '') != sha:
+                conn.execute(
+                    f'UPDATE {table} SET files_sha=?, updated_at=? WHERE id=?',
+                    (sha, now, ident),
+                )
+    for table in ('tools', 'llm_points', 'tech_invocations', 'canaux'):
+        rows = conn.execute(
+            f"SELECT id, code_path FROM {table} WHERE code_path!=''"
+        ).fetchall()
+        for ident, rel in rows:
+            full = base / str(rel)
+            sha = sha256_fichier(full) if full.is_file() else ''
             conn.execute(
-                f'UPDATE {table} SET files_sha=?, updated_at=? WHERE id=?',
-                (sha, now, ident),
+                f'UPDATE {table} SET code_sha=? WHERE id=?', (sha, ident)
             )
-        elif not str(row[1] or ''):
-            conn.execute(
-                f'UPDATE {table} SET updated_at=? WHERE id=?',
-                (now, ident),
-            )
-
-
-def verifier_objets(conn: sqlite3.Connection, root: Path) -> list[str]:
-    """Écarts catalogue : ajout, suppression, SHA fichiers ≠ base.
-
-    Args:
-        conn: Canon déjà semé.
-        root: Racine du repo.
-
-    Returns:
-        Messages (vide = OK).
-    """
-    from serge.catalogue_lock import SHA_ATTENDUS
-
-    erreurs: list[str] = []
-    attendus = set(SHA_ATTENDUS)
-    presents = objets_en_base(conn)
-    for kind, ident in sorted(presents - attendus):
-        erreurs.append(f'objet rajouté : {kind}.{ident}')
-    for kind, ident in sorted(attendus - presents):
-        erreurs.append(f'objet supprimé : {kind}.{ident}')
-    for kind, ident in sorted(attendus & presents):
-        actuel, manques = sha_arbre(root, kind, ident, conn)
-        erreurs.extend(manques)
-        stocke = sha_en_base(conn, kind, ident)
-        if actuel != stocke:
-            erreurs.append(
-                f'{kind}.{ident} : fichiers modifiés (SHA ≠ base).'
-                f' Nouveau : {actuel}'
-            )
-    return erreurs

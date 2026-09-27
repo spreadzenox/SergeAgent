@@ -90,19 +90,12 @@ def within_legal_hours(moment: datetime) -> bool:
     return False
 
 
-def kill_switch_active(system_root: Path) -> bool:
-    return (system_root / 'orchestrator/runtime/KILL_SWITCH').exists() or (
-        system_root / 'state/KILL_SWITCH'
-    ).exists()
-
-
 @dataclass(frozen=True)
 class VoicePolicy:
     mode: str
     mandate_outbound_allowed: bool
     mandate_inbound_allowed: bool
     external_actions: bool
-    kill_switch: bool
     cli_expected: str
     max_calls_per_day: int
 
@@ -173,7 +166,6 @@ def resolve_policy(
         mandate_outbound_allowed=outbound,
         mandate_inbound_allowed=inbound,
         external_actions=external,
-        kill_switch=kill_switch_active(base),
         cli_expected=str(identity.get('phone_voice_number') or ''),
         max_calls_per_day=max(1, max_calls),
     )

@@ -36,7 +36,6 @@ def _policy(**overrides) -> VoicePolicy:
         'mandate_outbound_allowed': True,
         'mandate_inbound_allowed': True,
         'external_actions': True,
-        'kill_switch': False,
         'cli_expected': CLI,
         'max_calls_per_day': 50,
     }
@@ -94,11 +93,10 @@ class VoiceBrokerTests(unittest.TestCase):
         self.assertTrue(result['cdr_id'].startswith('cdr_'))
         self.assertFalse(result['duplicate'])
 
-    def test_sandbox_killswitch_external_mandate_deny(self) -> None:
+    def test_sandbox_external_mandate_deny(self) -> None:
         self.ledger.grant_consent(TO, 'contract')
         for overrides, reason in (
             ({'mode': 'sandbox'}, 'sandbox_no_outbound'),
-            ({'kill_switch': True}, 'kill_switch_active'),
             ({'external_actions': False}, 'external_actions_disabled'),
             ({'mandate_outbound_allowed': False}, 'mandate_deny'),
         ):

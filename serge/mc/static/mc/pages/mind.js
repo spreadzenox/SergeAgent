@@ -1,4 +1,4 @@
-// Page P2 Cerveau : stream, décisions, matrice, signaux, clusters + kills.
+// Page P2 Cerveau : stream, décisions, matrice, signaux + kills.
 import {
   confirmModal,
   fillList,
@@ -136,17 +136,6 @@ function renderSignaux(main, payload, sig) {
   section.dataset.sig = sig;
 }
 
-function renderClusters(main, payload, sig) {
-  const section = main.querySelector('[data-section="clusters"]');
-  fillList(
-    section.querySelector('[data-list="items"]'),
-    payload.items,
-    'Aucun cluster chaud.',
-    (item) => li(`${item.id} — ${item.docs} docs (${item.titres.join(', ')})`),
-  );
-  section.dataset.sig = sig;
-}
-
 export function mount(main, store) {
   const tpl = document.getElementById('page-mind');
   main.replaceChildren(tpl.content.cloneNode(true));
@@ -155,7 +144,6 @@ export function mount(main, store) {
     decisions: renderDecisions,
     matrice: renderMatrice,
     signaux: renderSignaux,
-    clusters: renderClusters,
   };
   const unsubs = Object.keys(rendus).map((section) =>
     store.subscribe(section, (payload, sg) => {

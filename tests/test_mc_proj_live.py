@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import sqlite3
 import sys
 import unittest
@@ -44,9 +45,19 @@ class ProjLiveTests(unittest.TestCase):
             " updated_at) VALUES('v1','SMOKE_RUNNING',1,'t','t')"
         )
         self.conn.execute(
-            'INSERT INTO contacts(id, venture_id, display, email,'
-            " regime, funnel_state, created_at, updated_at) VALUES('p1','v1',"
-            "'Ada','ada@x.io','OUTBOUND','CONTACTING','t','t')"
+            'INSERT INTO contacts(id, venture_id, display,'
+            ' contact_reference_by_canal, regime, funnel_state, created_at,'
+            ' updated_at) VALUES(?,?,?,?,?,?,?,?)',
+            (
+                'p1',
+                'v1',
+                'Ada',
+                json.dumps({'email': {'address': 'ada@x.io', 'active': True}}),
+                'OUTBOUND',
+                'CONTACTING',
+                't',
+                't',
+            ),
         )
         running = enqueue(
             self.conn,

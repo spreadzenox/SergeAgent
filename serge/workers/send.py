@@ -18,6 +18,10 @@ from typing import Any
 from serge.channels import MailError, send_email
 from serge.funnels import contacts as contact_mod
 from serge.funnels.campaigns import thresholds as campaign_thresholds
+from serge.funnels.contacts import (
+    contact_reference_active,
+    contact_reference_value,
+)
 from serge.guards import check
 from serge.points.write import fill_slots, write_followup
 
@@ -34,8 +38,8 @@ def _contact_row(
     conn: sqlite3.Connection, contact_id: str
 ) -> dict[str, Any] | None:
     row = conn.execute(
-        'SELECT id, display, email, phone, funnel_state FROM contacts'
-        ' WHERE id=?',
+        'SELECT id, display, contact_reference_by_canal, funnel_state'
+        ' FROM contacts WHERE id=?',
         (contact_id,),
     ).fetchone()
     if not row:
@@ -43,9 +47,10 @@ def _contact_row(
     return {
         'id': row[0],
         'display': row[1],
-        'email': row[2],
-        'phone': row[3],
-        'funnel_state': row[4],
+        'email': contact_reference_value(row, 'email'),
+        'email_active': contact_reference_active(row, 'email'),
+        'phone': contact_reference_value(row, 'voice'),
+        'funnel_state': row[3],
     }
 
 
@@ -111,7 +116,7 @@ def run_email_send(
     payload = _payload(item)
     contact_id = str(payload.get('contact_id') or item.get('contact_id') or '')
     contact = _contact_row(conn, contact_id)
-    if contact is None or not contact['email']:
+    if contact is None or not contact['email'] or not contact['email_active']:
         return {'status': 'error', 'error': 'destinataire_inconnu'}
     campaign_id = str(
         payload.get('campaign_id') or item.get('campaign_id') or ''

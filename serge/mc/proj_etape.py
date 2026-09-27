@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Étapes du pipe : textes, ordre des jugements, fiche MC."""
+"""Étapes du pipe : textes, ordre des invocations, fiche MC."""
 
 from __future__ import annotations
 
@@ -13,10 +13,13 @@ from serge.mc.llm_roles import role_de
 
 # Ordre d’exécution réel (pas l’ordre du YAML). Le reste = « à part ».
 ORDRE: dict[str, list[str]] = {
-    'pre_prospection': ['cluster_demand'],
+    'pre_prospection': [
+        'listen_discover_needs_a',
+        'listen_discover_needs_b',
+        'listen_choose_poc',
+    ],
     'conception_poc': ['draft_hypothesis_smoke'],
     'prospection_light': [
-        'qualify_prospect',
         'fill_slots',
         'score_lead_departage',
     ],
@@ -42,12 +45,13 @@ ORDRE: dict[str, list[str]] = {
         'voice_script',
         'voice_dialog',
         'score_call',
-        'draft_price',
         'judge_allocator',
     ],
-    'collect_feedback': ['consolidate', 'edit_serge_md'],
+    'collect_feedback': ['consolidate'],
     'caisse': [],
 }
+
+RESTE: dict[str, list[str]] = {}
 
 
 def _court(nom: str) -> str:
@@ -59,7 +63,7 @@ def _court(nom: str) -> str:
 def lister_jugements(
     conn: sqlite3.Connection, etape: str, chauds: set[str] | None = None
 ) -> list[dict[str, Any]]:
-    """Jugements d’une étape : d’abord l’ordre, puis le reste à part.
+    """Invocations d’une étape : d’abord l’ordre, puis le reste à part.
 
     Args:
         conn: Canon (``llm_points``).
@@ -71,13 +75,14 @@ def lister_jugements(
     """
     chauds = chauds or set()
     rows = conn.execute(
-        'SELECT id, titre FROM llm_points WHERE etape_id=? ORDER BY id',
+        'SELECT id, titre FROM llm_points WHERE etape_id=?',
         (etape,),
     ).fetchall()
     titres = {str(r[0]): str(r[1] or '') for r in rows}
     connus = list(titres)
     suite = [n for n in ORDRE.get(etape, []) if n in titres]
-    reste = [n for n in connus if n not in suite]
+    reste = [n for n in RESTE.get(etape, []) if n in titres and n not in suite]
+    reste.extend(n for n in connus if n not in suite and n not in reste)
     lignes = []
     for i, nom in enumerate(suite, 1):
         lignes.append(
@@ -107,7 +112,7 @@ def lister_jugements(
 def project_etape(
     conn: sqlite3.Connection, ident: str
 ) -> dict[str, Any] | None:
-    """Fiche d’une étape du pipe : rôle, dépendance, jugements cliquables.
+    """Fiche d’une étape du pipe : rôle, dépendance, invocations cliquables.
 
     Args:
         conn: Canon (lecture des points chauds).
@@ -182,11 +187,11 @@ def project_etape(
         },
         {'titre': 'Comment c’est fait vraiment', 'texte': spec['comment']},
         {
-            'titre': 'Jugements, dans l’ordre',
+            'titre': 'Invocations, dans l’ordre',
             'texte': (
-                'Chaque ligne ouvre la page du jugement.'
+                'Chaque ligne ouvre la page de l’invocation.'
                 if liens_ord
-                else 'Pas de jugement LLM ici — surtout des règles et Stripe.'
+                else 'Pas d’invocation LLM ici — surtout des règles et Stripe.'
             ),
             'liens': liens_ord,
         },
@@ -194,7 +199,7 @@ def project_etape(
     if liens_reste:
         cadres.append(
             {
-                'titre': 'Autres jugements (pas d’ordre fixe)',
+                'titre': 'Autres invocations (pas d’ordre fixe)',
                 'liens': liens_reste,
             }
         )

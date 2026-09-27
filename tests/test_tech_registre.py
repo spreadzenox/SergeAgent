@@ -28,11 +28,11 @@ class TechRegistreTests(unittest.TestCase):
         init_schema(self.conn)
 
     def test_semence_rattachee(self) -> None:
-        self.assertEqual(SCHEMA_VERSION, 14)
+        self.assertEqual(SCHEMA_VERSION, 20)
         rows = tech_par_etape(self.conn, 'pre_prospection')
         ids = [r['id'] for r in rows]
-        self.assertIn('cluster_listen', ids)
-        self.assertEqual(rows[0]['kind'], 'cluster')
+        self.assertIn('listen_collect', ids)
+        self.assertEqual(rows[0]['kind'], 'transform')
         choix = tech_par_etape(self.conn, 'choix_venture')
         self.assertIn('select_pre_venture', [r['id'] for r in choix])
 
@@ -41,7 +41,7 @@ class TechRegistreTests(unittest.TestCase):
         from serge import tech_registre as mod
 
         ancien = mod.SEED
-        mod.SEED = (('x', 'caisse', 'pas-un-kind', '', '', 'X', ''),)
+        mod.SEED = (('x', 'caisse', 'pas-un-kind', '', 'X', ''),)
         self.addCleanup(setattr, mod, 'SEED', ancien)
         with self.assertRaises(TechError):
             ensure_tech_invocations(self.conn)

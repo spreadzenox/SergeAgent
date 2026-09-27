@@ -145,7 +145,7 @@ def build_artifact(
             ),
         },
     ]
-    kwargs: dict[str, Any] = {'root': root, 'max_tokens': 4000}
+    kwargs: dict[str, Any] = {'root': root}
     if caller is not None:
         kwargs['caller'] = caller
     data, result = run_json(

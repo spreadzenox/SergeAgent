@@ -74,7 +74,7 @@ def plan_scale(
             'content': f'Full : {full_text[:2000]}\nBudget : {budget_text[:800]}',
         },
     ]
-    kwargs: dict[str, Any] = {'root': root, 'max_tokens': 1500}
+    kwargs: dict[str, Any] = {'root': root}
     if caller is not None:
         kwargs['caller'] = caller
     data, result = run_json(
@@ -148,7 +148,7 @@ def options_pivot(
         {'role': 'system', 'content': PIVOT_SYSTEM},
         {'role': 'user', 'content': f'Objections : {objections_text[:1500]}'},
     ]
-    kwargs: dict[str, Any] = {'root': root, 'max_tokens': 1200}
+    kwargs: dict[str, Any] = {'root': root}
     if caller is not None:
         kwargs['caller'] = caller
     data, result = run_json(
@@ -219,7 +219,7 @@ def resume_test(
             'content': f'Mesures : {metrics}\nVerdict : {verdict_text[:800]}',
         },
     ]
-    kwargs: dict[str, Any] = {'root': root, 'max_tokens': 800}
+    kwargs: dict[str, Any] = {'root': root}
     if caller is not None:
         kwargs['caller'] = caller
     data, result = run_json(

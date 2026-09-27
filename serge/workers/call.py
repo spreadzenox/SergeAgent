@@ -14,6 +14,10 @@ from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any
 
+from serge.funnels.contacts import (
+    contact_reference_active,
+    contact_reference_value,
+)
 from serge.voice.bridge import originate
 from serge.voice.policy import VoiceBrokerDenied
 
@@ -51,9 +55,14 @@ def run_voice_send(
     phone = ''
     if contact_id:
         row = conn.execute(
-            'SELECT phone FROM contacts WHERE id=?', (contact_id,)
+            'SELECT contact_reference_by_canal FROM contacts WHERE id=?',
+            (contact_id,),
         ).fetchone()
-        phone = str(row[0] or '') if row else ''
+        phone = (
+            contact_reference_value(row, 'voice')
+            if row and contact_reference_active(row, 'voice')
+            else ''
+        )
     if not phone:
         return {'status': 'error', 'error': 'telephone_inconnu'}
     item_id = str(item.get('id') or '')

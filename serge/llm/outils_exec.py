@@ -13,9 +13,11 @@ from dataclasses import dataclass
 from typing import Any
 
 from serge.demande_capacite import CapaciteError, poser_demande
+from serge.funnels.contact_tool import SCHEMA as CONTACT_UPSERT_SCHEMA
+from serge.funnels.contact_tool import executer_contact_upsert
 from serge.identite import IdentiteError, identite_serge
+from serge.listen.web import search_public
 from serge.memory.search import memory_search
-from serge.outils import SEED as TOOL_SEED
 
 CODES_REFUS = frozenset({'inconnu', 'quota_couple', 'deja_fait', 'invalide'})
 
@@ -24,7 +26,7 @@ TOURS_MAX_ABSOLU = 12
 
 @dataclass(frozen=True)
 class ContexteOutil:
-    """Contexte passé à chaque handler (canon + contrat du jugement)."""
+    """Contexte passé à chaque handler (canon + contrat de l’invocation)."""
 
     conn: sqlite3.Connection
     policy: Mapping[str, Any]
@@ -53,6 +55,7 @@ def _schema(
 
 
 SCHEMAS: dict[str, dict[str, Any]] = {
+    'contact_upsert': CONTACT_UPSERT_SCHEMA,
     'memory_search': _schema(
         'memory_search',
         'Fouille la mémoire (leçons, épisodes, tickets). Lecture seule.',
@@ -67,6 +70,15 @@ SCHEMAS: dict[str, dict[str, Any]] = {
             'since': {'type': 'string'},
             'tags': {'type': 'array', 'items': {'type': 'string'}},
             'top_k': {'type': 'integer'},
+        },
+        ['query'],
+    ),
+    'web_search': _schema(
+        'web_search',
+        'Cherche sur le web public, en lecture seule.',
+        {
+            'query': {'type': 'string'},
+            'limit': {'type': 'integer'},
         },
         ['query'],
     ),
@@ -100,14 +112,6 @@ def _exec_memory_search(
     query = str(args.get('query') or '').strip()
     if not query:
         return {'ok': False, 'code': 'invalide', 'detail': 'query vide'}
-    context = ctx.spec.get('context')
-    context = context if isinstance(context, dict) else {}
-    couche = context.get('couche5')
-    couche = couche if isinstance(couche, dict) else {}
-    budget = couche.get('budget_tokens', 2000)
-    if isinstance(budget, bool) or not isinstance(budget, int) or budget < 1:
-        budget = 2000
-    forbidden = context.get('forbidden')
     types = args.get('types')
     tags = args.get('tags')
     top_k = args.get('top_k', 5)
@@ -122,8 +126,6 @@ def _exec_memory_search(
         since=str(args.get('since') or ''),
         tags=tags if isinstance(tags, list) else None,
         top_k=top_k,
-        budget_tokens=budget,
-        forbidden=forbidden if isinstance(forbidden, list) else None,
     )
 
 
@@ -135,6 +137,28 @@ def _exec_identity_basique(
         return identite_serge(volet='basique')
     except IdentiteError as exc:
         return {'ok': False, 'code': 'invalide', 'detail': str(exc)}
+
+
+def _exec_db_read_tool(
+    ctx: ContexteOutil, tool_id: str, args: dict[str, Any]
+) -> dict[str, Any]:
+    from serge.db.query_builder import execute_db_read
+
+    try:
+        return execute_db_read(ctx.conn, tool_id, args)
+    except (ValueError, sqlite3.Error) as exc:
+        return {'ok': False, 'code': 'invalide', 'detail': str(exc)}
+
+
+def _exec_web_search(
+    ctx: ContexteOutil, args: dict[str, Any]
+) -> dict[str, Any]:
+    del ctx
+    query = str(args.get('query') or '')
+    limit = args.get('limit', 5)
+    if isinstance(limit, bool) or not isinstance(limit, int):
+        limit = 5
+    return search_public(query, limit)
 
 
 def _exec_demande_capacite(
@@ -154,8 +178,24 @@ def _exec_demande_capacite(
 HANDLERS: dict[str, Handler] = {
     'memory_search': _exec_memory_search,
     'identity_basique': _exec_identity_basique,
+    'contact_upsert': lambda ctx, args: executer_contact_upsert(
+        ctx.conn, ctx.spec, args
+    ),
+    'web_search': _exec_web_search,
     'demande_capacite': _exec_demande_capacite,
 }
+
+
+def _db_tool_ids(conn: sqlite3.Connection | None) -> set[str]:
+    if conn is None:
+        return set()
+    from serge.db.query_builder import db_read_tool_ids
+
+    return set(db_read_tool_ids(conn))
+
+
+def _handler_exists(conn: sqlite3.Connection | None, tool_id: str) -> bool:
+    return tool_id in HANDLERS or tool_id in _db_tool_ids(conn)
 
 
 def tours_max(policy: Mapping[str, Any]) -> int:
@@ -174,41 +214,36 @@ def tours_max(policy: Mapping[str, Any]) -> int:
     return max(0, min(TOURS_MAX_ABSOLU, raw))
 
 
-def outils_pressables(spec: Mapping[str, Any]) -> tuple[str, ...]:
-    """Outils offerts à ce jugement : handler + contrat (couche 5 / yaml).
+def outils_pressables(
+    spec: Mapping[str, Any], conn: sqlite3.Connection | None = None
+) -> tuple[str, ...]:
+    """Outils offerts à cette invocation : handlers et jonction DB.
 
     Args:
         spec: Déclaration du point (registre).
 
     Returns:
-        Ids stables : couche 5, puis yaml, puis outils partout.
+        Ids stables : tools affectés au point, puis outils offerts partout.
     """
-    context = spec.get('context')
-    context = context if isinstance(context, dict) else {}
-    couche = context.get('couche5')
-    couche = couche if isinstance(couche, dict) else {}
     ids: list[str] = []
-    if couche.get('allowed') is True and 'memory_search' in HANDLERS:
-        ids.append('memory_search')
-    extra = context.get('tools')
-    if isinstance(extra, list):
-        for raw in extra:
+    declared = spec.get('db_tools')
+    if isinstance(declared, (list, tuple)):
+        for raw in declared:
             ident = str(raw or '')
-            if ident == 'memory_search':
-                continue
-            if ident in HANDLERS and ident not in ids:
+            if _handler_exists(conn, ident) and ident not in ids:
                 ids.append(ident)
-    for row in TOOL_SEED:
-        ident = row[0]
-        partout = row[7]
-        if partout != 1 or ident == 'memory_search':
-            continue
-        if ident in HANDLERS and ident not in ids:
-            ids.append(ident)
+    if conn is not None:
+        for (ident,) in conn.execute(
+            'SELECT id FROM tools WHERE montre_partout=1 ORDER BY id'
+        ).fetchall():
+            if str(ident) in HANDLERS and str(ident) not in ids:
+                ids.append(str(ident))
     return tuple(ids)
 
 
-def schemas_openai(ids: tuple[str, ...]) -> list[dict[str, Any]]:
+def schemas_openai(
+    ids: tuple[str, ...], conn: sqlite3.Connection | None = None
+) -> list[dict[str, Any]]:
     """Schémas OpenAI des ids pressables (ignore un id sans schéma).
 
     Args:
@@ -217,7 +252,15 @@ def schemas_openai(ids: tuple[str, ...]) -> list[dict[str, Any]]:
     Returns:
         Liste de blocs ``type=function``.
     """
-    return [SCHEMAS[ident] for ident in ids if ident in SCHEMAS]
+    from serge.db.query_builder import openai_schema_for_tool
+
+    out: list[dict[str, Any]] = []
+    for ident in ids:
+        if ident in SCHEMAS:
+            out.append(SCHEMAS[ident])
+        elif conn is not None and ident in _db_tool_ids(conn):
+            out.append(openai_schema_for_tool(conn, ident))
+    return out
 
 
 CLE_QUOTAS = 'serge_outil_quotas'
@@ -235,7 +278,7 @@ def restants_par_outil(
     """Appels encore possibles par outil (min couple / tours globaux).
 
     Args:
-        pressables: Outils offerts à ce jugement.
+        pressables: Outils offerts à cette invocation.
         spent: Appels déjà réussis dans cette boucle.
         spec: Déclaration du point.
         policy: Policy (plafonds).
@@ -280,7 +323,7 @@ def payload_quotas(
 def quota_couple(
     spec: Mapping[str, Any], tool_id: str, policy: Mapping[str, Any]
 ) -> int | None:
-    """Plafond optionnel pour ce couple (outil × jugement). None = illimité.
+    """Plafond optionnel pour ce couple (outil × invocation). None = illimité.
 
     Args:
         spec: Déclaration du point.
@@ -299,11 +342,6 @@ def quota_couple(
             return 0
         return value
     if tool_id == 'memory_search':
-        couche = context.get('couche5')
-        couche = couche if isinstance(couche, dict) else {}
-        max_calls = couche.get('max_calls')
-        if isinstance(max_calls, int) and not isinstance(max_calls, bool):
-            return max(0, max_calls)
         quotas = policy.get('quotas') if isinstance(policy, Mapping) else {}
         fallback = (quotas or {}).get('memory_search_per_cycle_per_point')
         if isinstance(fallback, int) and not isinstance(fallback, bool):
@@ -316,6 +354,7 @@ def quota_couple(
 def peut_appeler(
     tool_id: str,
     *,
+    conn: sqlite3.Connection | None = None,
     pressables: tuple[str, ...],
     spent: Mapping[str, int],
     spec: Mapping[str, Any],
@@ -327,7 +366,7 @@ def peut_appeler(
 
     Args:
         tool_id: Outil demandé.
-        pressables: Outils offerts à ce jugement.
+        pressables: Outils offerts à cette invocation.
         spent: Appels déjà réussis.
         spec: Déclaration du point.
         policy: Policy.
@@ -337,7 +376,7 @@ def peut_appeler(
     Returns:
         Code de refus, ou ``None``.
     """
-    if tool_id not in HANDLERS or tool_id not in pressables:
+    if not _handler_exists(conn, tool_id) or tool_id not in pressables:
         return 'inconnu'
     if (tool_id, arguments) in deja:
         return 'deja_fait'

@@ -90,13 +90,10 @@ class ClassifyTests(unittest.TestCase):
 
     def test_basse_confiance_review(self) -> None:
         caller = _caller_for(
-            json.dumps(
-                {'classe': 'QUESTION', 'confiance': 0.4, 'requested': 'x'}
-            )
+            json.dumps({'classe': 'QUESTION', 'confiance': 0.4})
         )
         result = classify_reply(self.conn, POLICY, 'hmm ?', caller=caller)
         self.assertTrue(result['needs_review'])
-        self.assertEqual(result['requested'], 'x')
 
     def test_opt_out_force(self) -> None:
         caller = _caller_for(

@@ -57,7 +57,7 @@ class McHealthTests(McBrowserCase):
                     iso,
                     'owner',
                     'mc_act',
-                    '{"acte": "kill", "point": "qualify_prospect"}',
+                    '{"acte": "kill", "point": "classify_reply"}',
                 ),
             )
             conn.commit()

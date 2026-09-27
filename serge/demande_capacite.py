@@ -32,7 +32,7 @@ def poser_demande(
     Args:
         conn: Canon (commit par l’appelant).
         besoin: Ce qui manque (canal, outil, acte).
-        point: Jugement appelant.
+        point: Invocation appelante.
         contexte: Pourquoi, une phrase.
         types: Registre tickets (tests).
 

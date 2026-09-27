@@ -31,7 +31,6 @@ POLICY = {
     'memory': {
         'consolidation_days': 3,
         'consolidate_max_items': 10,
-        'serge_md_max_lines': 100,
     },
 }
 
@@ -156,7 +155,6 @@ class MemoryWorkerTests(unittest.TestCase):
                     'pitfalls': [],
                 }
             ),
-            json.dumps({'serge_md': '# S\n', 'changements': ['init']}),
         )
         result = execute(
             self.conn,

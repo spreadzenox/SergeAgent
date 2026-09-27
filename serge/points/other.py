@@ -91,7 +91,7 @@ def review_other_batch(
         {'role': 'system', 'content': OTHER_SYSTEM},
         {'role': 'user', 'content': '\n'.join(lines)},
     ]
-    kwargs: dict[str, Any] = {'root': root, 'max_tokens': 1200}
+    kwargs: dict[str, Any] = {'root': root}
     if caller is not None:
         kwargs['caller'] = caller
     data, result = run_json(

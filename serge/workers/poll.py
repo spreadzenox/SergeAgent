@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from serge.channels import MailError, get_message, search_emails
+from serge.funnels.contacts import find_contact_by_reference
 from serge.observe.router import ingest
 
 DEFAULT_QUERY = 'newer_than:1d -in:sent'
@@ -68,11 +69,12 @@ def _match_contact(conn: sqlite3.Connection, from_header: str) -> str:
     match = re.search(r'[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}', from_header)
     if not match:
         return ''
-    row = conn.execute(
-        'SELECT id FROM contacts WHERE lower(email)=?',
-        (match.group(0).lower(),),
-    ).fetchone()
-    return str(row[0]) if row else ''
+    return (
+        find_contact_by_reference(
+            conn, '', 'email', {'address': match.group(0)}
+        )
+        or ''
+    )
 
 
 def _seen(conn: sqlite3.Connection, message_id: str) -> bool:

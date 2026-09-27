@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import sys
 import unittest
 from datetime import UTC, datetime, timedelta
@@ -51,17 +52,38 @@ class McSystemTests(McBrowserCase):
                 (iso, iso),
             )
             conn.execute(
-                'INSERT INTO contacts(id, venture_id, display, email,'
-                ' regime, funnel_state, created_at, updated_at)'
-                " VALUES('p1','v1','Ada','ada@x.io','OUTBOUND',"
-                "'CONTACTING',?,?)",
-                (iso, iso),
+                'INSERT INTO contacts(id, venture_id, display,'
+                ' contact_reference_by_canal, regime, funnel_state,'
+                ' created_at, updated_at) VALUES(?,?,?,?,?,?,?,?)',
+                (
+                    'p1',
+                    'v1',
+                    'Ada',
+                    json.dumps(
+                        {'email': {'address': 'ada@x.io', 'active': True}}
+                    ),
+                    'OUTBOUND',
+                    'CONTACTING',
+                    iso,
+                    iso,
+                ),
             )
             conn.execute(
-                'INSERT INTO contacts(id, venture_id, display, email,'
-                ' regime, funnel_state, created_at, updated_at)'
-                " VALUES('p2','v1','Bob','bob@x.io','OUTBOUND','NEW',?,?)",
-                (iso, iso),
+                'INSERT INTO contacts(id, venture_id, display,'
+                ' contact_reference_by_canal, regime, funnel_state,'
+                ' created_at, updated_at) VALUES(?,?,?,?,?,?,?,?)',
+                (
+                    'p2',
+                    'v1',
+                    'Bob',
+                    json.dumps(
+                        {'email': {'address': 'bob@x.io', 'active': True}}
+                    ),
+                    'OUTBOUND',
+                    'NEW',
+                    iso,
+                    iso,
+                ),
             )
             conn.execute(
                 'INSERT INTO campaigns(id, venture_id, family, channel,'

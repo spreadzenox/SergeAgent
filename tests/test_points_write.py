@@ -85,7 +85,7 @@ class WriteTests(unittest.TestCase):
             POLICY,
             'Bonjour !',
             'fiche',
-            forbidden=['garanti'],
+            forbidden_words=['garanti'],
             caller=caller,
         )
         self.assertEqual(result['text'], 'Bonjour !')

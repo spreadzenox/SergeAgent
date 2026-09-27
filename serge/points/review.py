@@ -121,7 +121,7 @@ def review_build(
         {'role': 'system', 'content': REVIEW_SYSTEM},
         {'role': 'user', 'content': user_blocks},
     ]
-    kwargs: dict[str, Any] = {'root': root, 'max_tokens': 1500}
+    kwargs: dict[str, Any] = {'root': root}
     if caller is not None:
         kwargs['caller'] = caller
     data, result = run_json(
@@ -205,7 +205,7 @@ def summarize_build_debt(
         {'role': 'system', 'content': DEBT_SYSTEM},
         {'role': 'user', 'content': f'Verdict : {verdict_text[:800]}'},
     ]
-    kwargs: dict[str, Any] = {'root': root, 'max_tokens': 600}
+    kwargs: dict[str, Any] = {'root': root}
     if caller is not None:
         kwargs['caller'] = caller
     data, result = run_json(

@@ -90,8 +90,26 @@ class PublicEndpointTests(McServerCase):
             init_schema(conn)
             # Injection de données piégées dans la base
             conn.execute(
-                'INSERT INTO contacts(id, venture_id, email, phone, created_at, updated_at)'
-                " VALUES('c1', 'v1', 'fuite@prive.com', '+33699887766', 't', 't')"
+                'INSERT INTO contacts(id, venture_id, contact_reference_by_canal,'
+                ' created_at, updated_at) VALUES(?,?,?,?,?)',
+                (
+                    'c1',
+                    'v1',
+                    json.dumps(
+                        {
+                            'email': {
+                                'address': 'fuite@prive.com',
+                                'active': True,
+                            },
+                            'voice': {
+                                'phone': '+33699887766',
+                                'active': True,
+                            },
+                        }
+                    ),
+                    't',
+                    't',
+                ),
             )
             conn.commit()
             payload = project_public_statut(conn, {}, '')

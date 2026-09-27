@@ -5,7 +5,7 @@ CANDIDATE → SMOKE_READY → SMOKE_RUNNING → SMOKE_DONE → FULL_READY →
 FULL_RUNNING → SCALE | PIVOT | EXTEND | KILLED | INVALID_RETRY.
 Gates : campagne READY (runs), hypothèse full approuvée + canary 1 €
 réussi (full). Chaque transition = événement. Le lifecycle VÉRIFIE ;
-l'allocteur/séquenceur crée tickets et campagnes.
+    l'allocteur crée tickets et campagnes.
 """
 
 from __future__ import annotations

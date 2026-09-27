@@ -54,6 +54,7 @@ def _executer_un(
     arguments = _args_norm(call.arguments)
     code = peut_appeler(
         call.name,
+        conn=ctx.conn,
         pressables=pressables,
         spent=spent,
         spec=ctx.spec,
@@ -64,7 +65,13 @@ def _executer_un(
     if code:
         return _refus(code)
     handler = HANDLERS.get(call.name)
-    if handler is None:
+    is_db_tool = call.name in {
+        str(row[0])
+        for row in ctx.conn.execute(
+            "SELECT id FROM tools WHERE kind='db_read'"
+        ).fetchall()
+    }
+    if handler is None and not is_db_tool:
         return _refus('inconnu')
     try:
         parsed = json.loads(call.arguments or '{}')
@@ -73,7 +80,12 @@ def _executer_un(
     if not isinstance(parsed, dict):
         return _refus('invalide', 'arguments : objet attendu')
     try:
-        result = handler(ctx, parsed)
+        if handler is None:
+            from serge.llm.outils_exec import _exec_db_read_tool
+
+            result = _exec_db_read_tool(ctx, call.name, parsed)
+        else:
+            result = handler(ctx, parsed)
     except Exception as exc:  # noqa: BLE001 — toujours un résultat outil
         return _refus('invalide', str(exc))
     if not isinstance(result, dict):
@@ -144,7 +156,6 @@ def executer_boucle(
     conn: sqlite3.Connection,
     point_name: str,
     referer: str = '',
-    max_tokens: int = 800,
     temperature: float = 0.3,
 ) -> ChatResult:
     """Enchaîne generate → outils → generate jusqu’au texte ou au cap.
@@ -157,15 +168,14 @@ def executer_boucle(
         spec: Déclaration du point.
         policy: Policy (plafond tours).
         conn: Canon (handlers lecture).
-        point_name: Nom du jugement (traçabilité).
+        point_name: Nom de l’invocation (traçabilité).
         referer: HTTP-Referer.
-        max_tokens: Cap par generate.
         temperature: Température.
 
     Returns:
         ChatResult agrégé (texte final, tokens et latence sommés).
     """
-    pressables = outils_pressables(spec)
+    pressables = outils_pressables(spec, conn)
     cap = tours_max(policy)
     hist = [dict(item) for item in messages]
     spent: dict[str, int] = {}
@@ -192,7 +202,7 @@ def executer_boucle(
         encore = tuple(
             ident for ident in pressables if restants.get(ident, 0) > 0
         )
-        tools = schemas_openai(encore)
+        tools = schemas_openai(encore, conn)
         if pressables:
             _injecter_quotas(hist, restants, tours_restants)
         force_texte = not tools or tours >= cap
@@ -201,7 +211,6 @@ def executer_boucle(
             model,
             hist,
             referer=referer,
-            max_tokens=max_tokens,
             temperature=temperature,
             tools=tools or None,
             tool_choice='none' if force_texte and tools else None,

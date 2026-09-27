@@ -1,6 +1,6 @@
 # Outillage dev — lint, tests, hooks, CI
 
-Socle en place (charte R2 / P5). Après clone : `uv sync --group dev`,
+Après clone : `uv sync --group dev`,
 `uv run pre-commit install`, Chromium Playwright, clé OpenRouter
 instance. Rien de rouge ne part.
 
@@ -16,7 +16,7 @@ Trois couches, volontairement inégales :
 Rouge à n’importe quelle couche = le git s’arrête (commit, push) ou le
 merge est bloqué (check requis `lint tests e2e` sur `main`).
 Le deploy VPS part **après** le merge, sur le runner de la machine live.
-Détail : [DEPLOY_VPS.md](DEPLOY_VPS.md).
+Détail : [DEPLOY_VPS.md](installation/DEPLOY_VPS.md).
 
 ## Branches et PR
 
@@ -50,7 +50,7 @@ servir, sauf urgence réelle.
 - `scripts/scan-repo-secrets.py`
 
 Pas de `--check` format sur tout le dépôt : reformater `proj_objet.py`
-le ferait dépasser P1 (500 lignes). Le hook formate le diff.
+le ferait dépasser 500 lignes. Le hook formate le diff.
 
 **Push** (`scripts/pre-push-check.py`) — le gros check local :
 
@@ -71,7 +71,7 @@ le ferait dépasser P1 (500 lignes). Le hook formate le diff.
 
 - `uv sync --frozen`, Chromium + deps, puis `scripts/ci.sh`
 - `SERGE_CI=1`, aucun secret injecté, `SERGE_ENV` unset
-- live LLM / Discord / Stripe **skippés** (charte P5 : hors PR)
+- live LLM / Discord / Stripe **skippés** (jamais d'action réelle en CI)
 - check GitHub : nom exact `lint tests e2e`
 
 **Deploy** (`.github/workflows/deploy.yml`, push `main` seulement) :
@@ -135,7 +135,7 @@ Le pre-push local = `ci.sh` + le passage OpenRouter.
 | `.github/workflows/ci.yml` | Actions : PR + `main`, job `lint tests e2e` |
 | `.github/workflows/deploy.yml` | Actions : push `main` → VPS `julien-vps` |
 | `scripts/serge-deploy.py` | Install vierge ou update + units |
-| `docs/DEPLOY_VPS.md` | Runner, couple live, prérequis VPS |
+| `docs/installation/DEPLOY_VPS.md` | Runner, couple live, prérequis VPS |
 | `scripts/scan-repo-secrets.py` | Interdit un secret versionné |
 
 `uv.lock` est commité. `.venv/` ne l’est pas.
@@ -143,5 +143,4 @@ Le pre-push local = `ci.sh` + le passage OpenRouter.
 Pour bloquer le merge si la CI est rouge : GitHub → Settings → Rules →
 ruleset `main` → Require status checks → `lint tests e2e`.
 
-Rationnel ty / uv : charte R2
-([CODEBASE_CHARTER.md](CODEBASE_CHARTER.md)).
+Règles de code : [CHARTE.md](CHARTE.md).

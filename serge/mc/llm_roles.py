@@ -1,29 +1,10 @@
 #!/usr/bin/env python3
-"""Textes simples des jugements LLM : rôle, flux, lectures autorisées."""
+"""Textes simples des invocations LLM : rôle, flux, lectures autorisées."""
 
 from __future__ import annotations
 
 # role, entre, sort, vers, forme
 ROLES: dict[str, tuple[str, str, str, str, str]] = {
-    'cluster_demand': (
-        'Serge lit ce que des inconnus ont écrit sur internet'
-        ' (forums, fils RSS… aujourd’hui surtout des flux, pas encore'
-        ' LinkedIn en direct). Il met ensemble les gens qui veulent'
-        ' à peu près la même chose. Ça sert à trouver une idée de'
-        ' business assez répétée pour valoir un petit essai — pas'
-        ' une intuition sortie de nulle part.',
-        'Les pages vraiment lues (titre, extrait, source), plus une'
-        ' grille de notation, plus un moule pour nommer un paquet,'
-        ' plus un échantillon des phrases des gens. Les leçons déjà'
-        ' apprises et la mémoire peuvent s’ajouter s’il demande plus.',
-        'Des paquets de demandes qui se ressemblent. Chaque paquet'
-        ' a un nom en français (ex. « indépendants qui veulent un'
-        ' timer pour facturer ») et une note : on en voit beaucoup,'
-        ' ou presque pas.',
-        'L’étape suivante : écrire une idée de business à tester'
-        ' sur un petit groupe.',
-        'Une liste de paquets : nom, note de volume, quelques extraits.',
-    ),
     'draft_hypothesis_smoke': (
         'Écrit l’idée de business à tester tout de suite : quoi vendre,'
         ' à quel prix de départ, par quel canal (e-mail, appel…), à'
@@ -69,15 +50,6 @@ ROLES: dict[str, tuple[str, str, str, str, str]] = {
         'Trois pistes + ce qui change par rapport à avant.',
         'Toi : tu en choisis une (ou aucune).',
         'Trois fiches d’idée, chacune avec un écart visible.',
-    ),
-    'qualify_prospect': (
-        'Regarde une personne et dit : « elle est dans la cible de'
-        ' cette idée de business, ou on perd notre temps ? » Un non'
-        ' ici évite des e-mails inutiles.',
-        'La fiche de la personne + les critères de l’idée en cours.',
-        'Oui / non, avec une raison simple.',
-        'La suite : on lui écrit, ou on passe à quelqu’un d’autre.',
-        'Décision + phrase de motif.',
     ),
     'fill_slots': (
         'Remplit les cases vides d’une fiche (besoin, créneau, ville)'
@@ -125,7 +97,7 @@ ROLES: dict[str, tuple[str, str, str, str, str]] = {
         ' tout relire. Les messages bruts restent dans le journal.',
         'Les messages échangés.',
         'Un résumé daté.',
-        'Toi, et le prochain jugement qui a besoin du fil.',
+        'Toi, et la prochaine invocation qui a besoin du fil.',
         'Un paragraphe + numéro de version.',
     ),
     'classify_reply': (
@@ -170,14 +142,6 @@ ROLES: dict[str, tuple[str, str, str, str, str]] = {
         'La qualité voix et les leçons.',
         'Note + motifs.',
     ),
-    'draft_price': (
-        'Propose un prix, seulement entre le minimum et le maximum'
-        ' autorisés. Hors fourchette : ça ne part pas.',
-        'L’offre, les leçons sur les prix, les bornes.',
-        'Un montant + pourquoi ce montant.',
-        'Le devis (pas encore payé).',
-        'Euros + motif.',
-    ),
     'judge_allocator': (
         'Où mettre le prochain euro : plus d’e-mails, un appel, ou'
         ' on pause. Il justifie. Il ne dépense pas tout seul.',
@@ -218,14 +182,6 @@ ROLES: dict[str, tuple[str, str, str, str, str]] = {
         'La mémoire (table des leçons).',
         'Énoncé + d’où ça vient + confiance.',
     ),
-    'edit_serge_md': (
-        'Propose une modification de tes envies écrites (SERGE.md).'
-        ' Jamais en silence : tu vois le avant / après.',
-        'Le texte actuel + ce que tu viens de demander.',
-        'Un diff.',
-        'Toi : tu acceptes ou non.',
-        'Patch texte.',
-    ),
     'render_context_fr': (
         'Traduit un truc technique en français simple, pour toi ou'
         ' pour un appel. Pas de jargon brut.',
@@ -261,14 +217,6 @@ ROLES: dict[str, tuple[str, str, str, str, str]] = {
 }
 
 MATERIEL: dict[str, tuple[str, str]] = {
-    'rubric_volume_intensite_recurrence_willingness': (
-        'Grille de notation des demandes',
-        'Quatre questions toutes bêtes, pour chaque paquet :'
-        ' on en voit beaucoup ? (volume) les gens ont l’air'
-        ' embêtés pour de vrai ? (intensité) ça revient souvent ?'
-        ' (récurrence) est-ce qu’ils paieraient ? (volonté).'
-        ' Ce n’est pas un code secret : c’est un barème.',
-    ),
     'template_cluster': (
         'Moule pour nommer un paquet',
         'La recette pour écrire le nom et le résumé d’un paquet'
@@ -302,11 +250,6 @@ MATERIEL: dict[str, tuple[str, str]] = {
     'template_resume': (
         'Moule du résumé d’essai',
         'Un canevas : chiffres d’abord, blabla ensuite. Pas l’inverse.',
-    ),
-    'serge_md': (
-        'Tes envies écrites',
-        'Le petit texte versionné où tu dis qui tu es et ce que'
-        ' Serge a le droit de poursuivre. C’est SERGE.md.',
     ),
     'seuils_A': (
         'Ce qui compte comme « ça a marché »',
@@ -411,7 +354,7 @@ MATERIEL: dict[str, tuple[str, str]] = {
     ),
     'secrets': (
         'Interdit : secrets',
-        'Mots de passe, jetons, clés. Jamais dans un jugement.',
+        'Mots de passe, jetons, clés. Jamais dans une invocation.',
     ),
     'pii_tiers': (
         'Interdit : vies privées des autres',
@@ -467,9 +410,9 @@ def role_de(nom: str) -> tuple[str, str, str, str, str]:
         return found
     titre = nom.replace('_', ' ')
     return (
-        f'Un jugement « {titre} » : il lit un dossier borné, décide,'
+        f'Une invocation « {titre} » : elle lit un dossier borné, décide,'
         ' et rend la main. Rien n’est dépensé sans les règles.',
-        'Le dossier prévu pour ce jugement (lectures + éventuellement recherche).',
+        'Le dossier prévu pour cette invocation (lectures + éventuellement recherche).',
         'Une décision structurée, pas un roman.',
         'L’étape suivante du travail (message, ticket, ou toi).',
         'Un petit objet clair (oui/non, texte, liste).',
@@ -495,6 +438,6 @@ def texte_materiel(cle: str) -> str:
         return MATERIEL[cle][1]
     return (
         f'« {titre_materiel(cle)} » : un morceau du dossier prévu'
-        ' pour ce jugement. On ne lui donne que ça, pour limiter'
+        ' pour cette invocation. On ne lui donne que ça, pour limiter'
         ' le coût et éviter de tout lui verser.'
     )

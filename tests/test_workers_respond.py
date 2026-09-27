@@ -53,9 +53,19 @@ class RespondWorkerTests(unittest.TestCase):
             " updated_at) VALUES('v1','SMOKE_RUNNING',1,'t','t')"
         )
         self.conn.execute(
-            'INSERT INTO contacts(id, venture_id, display, email, regime,'
-            " funnel_state, created_at, updated_at) VALUES('p1','v1','Ada',"
-            " 'ada@x.io','INBOUND','ENGAGED','t','t')"
+            'INSERT INTO contacts(id, venture_id, display,'
+            ' contact_reference_by_canal, regime, funnel_state, created_at,'
+            ' updated_at) VALUES(?,?,?,?,?,?,?,?)',
+            (
+                'p1',
+                'v1',
+                'Ada',
+                json.dumps({'email': {'address': 'ada@x.io', 'active': True}}),
+                'INBOUND',
+                'ENGAGED',
+                't',
+                't',
+            ),
         )
         self.conn.commit()
 

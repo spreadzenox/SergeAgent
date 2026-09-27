@@ -9,7 +9,6 @@ from serge.funnels import (
     lifecycle,
     metrics,
     rules,
-    sequencer,
 )
 
 __all__ = [
@@ -18,5 +17,4 @@ __all__ = [
     'lifecycle',
     'metrics',
     'rules',
-    'sequencer',
 ]

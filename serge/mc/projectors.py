@@ -21,7 +21,6 @@ from serge.mc.proj_campagnes import (
     project_population,
 )
 from serge.mc.proj_cerveau import (
-    project_clusters,
     project_decisions,
     project_matrice,
     project_pensees,
@@ -34,6 +33,7 @@ from serge.mc.proj_economy import (
     project_entonnoir,
     project_transactions_subscriptions,
 )
+from serge.mc.proj_ecoute import project_ecoute
 from serge.mc.proj_graphe import project_business, project_graphe
 from serge.mc.proj_health import (
     project_audit_trail,
@@ -74,7 +74,6 @@ SLOW_SECTIONS = frozenset(
         'jauges',
         'population',
         'matrice',
-        'clusters',
         'diffs',
         'metriques',
         'couches',
@@ -200,7 +199,6 @@ PROJECTORS: dict[str, Callable[..., dict[str, Any]]] = {
     'decisions': project_decisions,
     'matrice': project_matrice,
     'signaux': project_signaux,
-    'clusters': project_clusters,
     'tickets': project_tickets,
     'diffs': project_diffs,
     'metriques': project_metriques_tickets,
@@ -223,6 +221,7 @@ PROJECTORS: dict[str, Callable[..., dict[str, Any]]] = {
     'versions_drift': project_versions_drift,
     'units_systemd': project_units_systemd,
     'identite': project_identite_page,
+    'ecoute': project_ecoute,
 }
 
 PAGE_SECTIONS: dict[str, list[str]] = {
@@ -238,7 +237,7 @@ PAGE_SECTIONS: dict[str, list[str]] = {
         'jauges',
     ],
     'p1': ['meta', 'ilots', 'scheduler', 'campagnes', 'population', 'email'],
-    'p2': ['meta', 'pensees', 'decisions', 'matrice', 'signaux', 'clusters'],
+    'p2': ['meta', 'pensees', 'decisions', 'matrice', 'signaux'],
     'p3': ['meta', 'tickets', 'diffs', 'metriques', 'digest'],
     'p4': ['meta', 'couches', 'consolidation', 'requested'],
     'p5': [
@@ -268,4 +267,5 @@ PAGE_SECTIONS: dict[str, list[str]] = {
         'units_systemd',
     ],
     'p9': ['meta', 'identite'],
+    'p10': ['meta', 'ecoute'],
 }

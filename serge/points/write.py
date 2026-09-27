@@ -48,9 +48,8 @@ def _run_text(
     *,
     root: Path | None = None,
     caller: Any = None,
-    max_tokens: int = 600,
 ) -> tuple[str | None, str]:
-    kwargs: dict[str, Any] = {'root': root, 'max_tokens': max_tokens}
+    kwargs: dict[str, Any] = {'root': root}
     if caller is not None:
         kwargs['caller'] = caller
     data, result = run_json(
@@ -91,7 +90,7 @@ def _regen_or_fallback(
             'content': f'Défaut détecté : {defect}. Corrige et réponds le JSON seul.',
         }
     )
-    kwargs: dict[str, Any] = {'root': root, 'max_tokens': 600}
+    kwargs: dict[str, Any] = {'root': root}
     if caller is not None:
         kwargs['caller'] = caller
     data, _ = run_json(conn, policy, point_name, retry, _valid_text, **kwargs)
@@ -109,7 +108,7 @@ def fill_slots(
     template: str,
     fiche_text: str,
     *,
-    forbidden: Sequence[str] = (),
+    forbidden_words: Sequence[str] = (),
     sources: str = '',
     max_chars: int = 2000,
     root: Path | None = None,
@@ -122,7 +121,7 @@ def fill_slots(
         policy: Policy (contrat uniforme).
         template: Template avec {slots}.
         fiche_text: Fiche prospect (tronquée 600c).
-        forbidden: Mots interdits venture.
+        forbidden_words: Mots interdits vérifiés par le checker de contenu.
         sources: Sources chiffres autorisés.
         max_chars: Longueur max.
         root: config_root (défaut : instance).
@@ -142,7 +141,7 @@ def fill_slots(
     def _check_slots(candidate: str) -> str:
         flaw = check_length(candidate, max_chars)
         if not flaw:
-            bad = check_forbidden(candidate, forbidden)
+            bad = check_forbidden(candidate, forbidden_words)
             if bad:
                 flaw = f'interdit:{bad}'
         if not flaw:
@@ -192,7 +191,7 @@ def write_followup(
     history_text: str,
     playbook_text: str = '',
     *,
-    forbidden: Sequence[str] = (),
+    forbidden_words: Sequence[str] = (),
     max_chars: int = 1200,
     root: Path | None = None,
     caller: Any = None,
@@ -204,7 +203,7 @@ def write_followup(
         policy: Policy (contrat uniforme).
         history_text: Historique ou résumé+K (tronqué 2000c).
         playbook_text: Objections + réponses (tronqué 800c).
-        forbidden: Mots interdits venture.
+        forbidden_words: Mots interdits vérifiés par le checker de contenu.
         max_chars: Longueur max.
         root: config_root (défaut : instance).
         caller: Appel LLM (défaut : client réel).
@@ -223,7 +222,7 @@ def write_followup(
     def _check_followup(candidate: str) -> str:
         flaw = check_length(candidate, max_chars)
         if not flaw:
-            bad = check_forbidden(candidate, forbidden)
+            bad = check_forbidden(candidate, forbidden_words)
             if bad:
                 flaw = f'interdit:{bad}'
         if not flaw:
@@ -239,7 +238,6 @@ def write_followup(
         messages,
         root=root,
         caller=caller,
-        max_tokens=500,
     )
     if text is None:
         return {

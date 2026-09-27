@@ -14,6 +14,10 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
+from serge.funnels.contacts import (
+    contact_reference_active,
+    contact_reference_value,
+)
 from serge.guards import check
 from serge.points.other import review_other_batch
 from serge.points.reply import draft_intent_reply
@@ -91,13 +95,22 @@ def _subject_for(
     if not contact_id:
         return ''
     row = conn.execute(
-        'SELECT email, phone FROM contacts WHERE id=?', (contact_id,)
+        'SELECT contact_reference_by_canal FROM contacts WHERE id=?',
+        (contact_id,),
     ).fetchone()
     if not row:
         return ''
     if channel in {'voice', 'sms'}:
-        return str(row[1] or '')
-    return str(row[0] or '')
+        return (
+            contact_reference_value(row, 'voice')
+            if contact_reference_active(row, 'voice')
+            else ''
+        )
+    return (
+        contact_reference_value(row, 'email')
+        if contact_reference_active(row, 'email')
+        else ''
+    )
 
 
 def _open_qna(

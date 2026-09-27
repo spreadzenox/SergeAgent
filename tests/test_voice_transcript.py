@@ -39,7 +39,6 @@ class VoiceTranscriptTests(unittest.TestCase):
             mandate_outbound_allowed=True,
             mandate_inbound_allowed=True,
             external_actions=True,
-            kill_switch=False,
             cli_expected=CLI,
             max_calls_per_day=10,
         )

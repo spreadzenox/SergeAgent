@@ -13,7 +13,6 @@ from typing import TYPE_CHECKING, Any, Protocol
 
 from serge.db.store import append_event
 from serge.memory.lessons import delete_lesson, update_lesson
-from serge.memory.summaries import rollback_summary
 from serge.registry import KillError, poser_kill, retirer_kill
 from serge.tickets import (
     already_applied,
@@ -463,26 +462,3 @@ class ActionsMixin(_Base):
         self._send_json(
             200, {'ok': True, 'action': action, 'lesson_id': lesson_id}
         )
-
-    def _api_memory_rollback(self) -> None:
-        if not self._require_owner():
-            return
-        body = self._json_body() or {}
-        decision = str(body.get('decision_id') or '')
-        with self._db() as conn:
-            reussi = rollback_summary(conn, 'serge_md')
-            if not reussi:
-                self._refus(
-                    404,
-                    'Aucune version précédente pour SERGE.md.',
-                    'rollback',
-                    'Pas de révision antérieure.',
-                )
-                return
-            append_event(
-                conn,
-                actor='owner',
-                type='mc_act',
-                payload={'acte': 'rollback_serge_md', 'decision_id': decision},
-            )
-        self._send_json(200, {'ok': True, 'restaure': True})

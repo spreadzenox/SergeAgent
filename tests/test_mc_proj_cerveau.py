@@ -16,7 +16,6 @@ sys.path.insert(0, str(ROOT))
 
 from serge.db.boot import init_schema  # noqa: E402
 from serge.mc.proj_cerveau import (  # noqa: E402
-    project_clusters,
     project_decisions,
     project_matrice,
     project_pensees,
@@ -135,21 +134,6 @@ class ProjCerveauTests(unittest.TestCase):
             },
         )
 
-    def test_clusters_golden(self) -> None:
-        self.assertEqual(
-            project_clusters(self.conn, POLICY, NOW),
-            {
-                'items': [
-                    {
-                        'id': 'cA',
-                        'docs': 2,
-                        'dernier': '2026-09-10T11:30:00+00:00',
-                        'titres': ['Bug synchro', 'Bruit prix'],
-                    }
-                ]
-            },
-        )
-
     def test_decisions_golden(self) -> None:
         projete = project_decisions(self.conn, POLICY, NOW)['items']
         self.assertEqual(
@@ -199,18 +183,18 @@ points:
   qualify:
     verdict: LLM-1
     tier: T1
-    checklist: {entree: true}
-    context: {fixed: [], retrieved: [], couche5: {allowed: false},
-      forbidden: [], envelope_tokens: 2500}
+    output_mode: structured
+    external_info: false
+    context: {}
     garde_fou: strict
     repli: manuel
     enabled: true
   score:
     verdict: LLM-1
     tier: T1
-    checklist: {entree: true}
-    context: {fixed: [], retrieved: [], couche5: {allowed: false},
-      forbidden: [], envelope_tokens: 1000}
+    output_mode: structured
+    external_info: false
+    context: {}
     garde_fou: strict
     repli: manuel
     enabled: false
@@ -269,15 +253,14 @@ class ProjMatriceTests(unittest.TestCase):
                         'tier': 'T1',
                         'verdict': 'LLM-1',
                         'enabled': True,
-                        'checklist': {'entree': True},
+                        'output_mode': 'structured',
+                        'external_info': False,
                         'garde_fou': 'strict',
                         'repli': 'manuel',
-                        'enveloppe': 2500,
                         'appels_7j': 3,
                         'tokens_7j': 450,
                         'latence_ms': 10,
                         'verdicts': {'ok': 3},
-                        'derive': '',
                         'tue_runtime': False,
                     },
                     {
@@ -285,15 +268,14 @@ class ProjMatriceTests(unittest.TestCase):
                         'tier': 'T1',
                         'verdict': 'LLM-1',
                         'enabled': False,
-                        'checklist': {'entree': True},
+                        'output_mode': 'structured',
+                        'external_info': False,
                         'garde_fou': 'strict',
                         'repli': 'manuel',
-                        'enveloppe': 1000,
                         'appels_7j': 8,
                         'tokens_7j': 1200,
                         'latence_ms': 10,
                         'verdicts': {'ok': 8},
-                        'derive': 'volume',
                         'tue_runtime': False,
                     },
                 ]

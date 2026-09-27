@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Couche 4 : résumés régénérables, versionnés (N-1 gardé).
 
-Un résumé par (kind, subject) : put bump version + previous. SERGE.md =
-kind 'serge_md' (diff + rollback via previous). Toujours régénérable :
+Un résumé par (kind, subject) : put bump version + previous (rollback via
+previous). Toujours régénérable :
 supprimer = reconstruit (appelant).
 """
 
@@ -28,7 +28,7 @@ def put_summary(
 
     Args:
         conn: Connexion canon (commit par l'appelant).
-        kind: serge_md | thread | venture | ticket | digest.
+        kind: thread | venture | ticket | digest | consolidation.
         content: Contenu markdown.
         subject_id: Sujet ('' = global).
 
@@ -105,16 +105,3 @@ def rollback_summary(
         return False
     put_summary(conn, kind, str(current['previous']), subject_id)
     return True
-
-
-def serge_md_text(conn: sqlite3.Connection) -> str:
-    """SERGE.md courant (contexte fixed universel, '' si absent).
-
-    Args:
-        conn: Connexion canon (lecture).
-
-    Returns:
-        Le markdown ou ''.
-    """
-    found = get_summary(conn, 'serge_md')
-    return str(found['content']) if found else ''
