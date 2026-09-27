@@ -79,9 +79,17 @@ tourne que s'il reste une place libre en prospection légère.
 | 2 | Explorer le web | LLM | le texte de Julien + les business connus | des pages en base + des flux proposés |
 | 3 | Trier les pages | LLM (modèle rapide) | les pages nouvelles | une étiquette par page : enrichit un business existant / signal d'un besoin nouveau / bruit |
 | 4 | Formuler des business A et B | LLM | les pages « signal » | des fiches business avec leurs pages de preuve |
-| 5 | Dédoublonner | technique | les fiches de A et B | des business au statut `CANDIDATE` |
+| 5 | Dédoublonner | règle d'écriture | les fiches de A et B | des business au statut `CANDIDATE` |
 | 6 | Choisir les business à tester | LLM | les business éligibles | une sélection, autant que de places libres |
-| 7 | Refuser les business déjà en test | technique | la sélection | des business au statut `POC_SELECTED` |
+| 7 | Refuser les business déjà en test | règle d'écriture | la sélection | des business au statut `POC_SELECTED` |
+
+Les étapes 5 et 7 ne sont plus des invocations à part : ce sont des
+règles déclarées en base et appliquées au moment où la réponse est écrite
+(voir [`LOT6_CONCEPTION.md`](../LOT6_CONCEPTION.md)). Le doublon est
+repéré par la règle de doublons de la table des business ; le refus vient
+de la règle des changements de statut permis, qui n'autorise le passage à
+`POC_SELECTED` que depuis `CANDIDATE`. Aucune de ces sept étapes n'a de
+code qui lui est propre.
 
 Autres décisions :
 

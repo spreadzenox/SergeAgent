@@ -95,6 +95,24 @@ sécurité.
 - Le code et les YAML sont des **valeurs de départ** : ils remplissent une
   base neuve, ajoutent les objets nouveaux à une base existante, et ne
   modifient jamais un réglage déjà en base. Détails : [`DB.md`](DB.md).
+- **Le code n'est qu'un interpréteur de la base.** L'ordre des
+  invocations et tous leurs paramètres (rôle, modèle, prompt, ce qu'elles
+  reçoivent, leurs tools, où elles écrivent, leur priorité, leurs liens et
+  leurs déclencheurs) sont en base, jamais en dur dans le code. Le code est
+  rangé par **capacité**, jamais par invocation : lire la base, écrire
+  dans la base, appeler un modèle, chercher sur le web, agir dans un bac à
+  sable, appeler une API décrite en base, envoyer ou relever sur un canal,
+  ouvrir un ticket. Même l'écriture et ses protections (tables autorisées,
+  changements de statut permis, doublons, validation par Julien) sont des
+  règles en base. **Jamais de code propre à une invocation** : son nom
+  n'apparaît dans le code que dans le fichier qui remplit une nouvelle
+  instance. Exemple : pour ajouter une invocation entre « Trier les
+  pages » et « Formuler des business », on ajoute des lignes en base, on
+  n'écrit pas une nouvelle fonction qui les appelle dans l'ordre. Si une
+  tâche semble demander du code pour une invocation précise, il manque une
+  capacité générale ou un réglage en base : on ajoute ce qui manque, de
+  façon générale. Ce n'est pas encore vrai partout : voir le lot 6 du
+  [`TODO.md`](../TODO.md).
 - Une exception à cette règle doit être justifiée par une contrainte
   technique dure.
 - Les empreintes du code sont calculées au démarrage, jamais recopiées à

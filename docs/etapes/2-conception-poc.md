@@ -36,7 +36,12 @@ de test léger prête pour l'étape 3.
    - la description du livrable d'essai (exemple : « un générateur de devis
      en ligne, 3 devis gratuits, puis 39 €/mois ») ;
    - **un plan de A à Z** : de quoi le produit a besoin, ce que le builder
-     doit faire, pourquoi et comment ça va marcher.
+     doit faire, pourquoi et comment ça va marcher ;
+   - **la fiche produit du POC**, qui servira à répondre aux prospects :
+     ce que fait le livrable et pour qui, ce qu'il ne fait pas, le prix,
+     les délais, comment on l'utilise, et les questions fréquentes qu'on
+     peut prévoir. Sans elle, l'invocation qui répond aux prospects
+     inventerait ou se tromperait.
 2. **Challenger le POC** (invocation LLM distincte). Elle critique la
    faisabilité technique, les limites du produit et le réalisme commercial.
    Chaque remarque est de l'un de ces deux types seulement :
@@ -50,7 +55,9 @@ de test léger prête pour l'étape 3.
 3. **La conception reprend son plan** en tenant compte de la critique.
    **3 tours maximum.** Les prompts forcent à arriver à un plan qui marche.
 4. **Ticket Discord pour Julien**, avant toute construction. Il contient le
-   plan final, la critique, ce qui a été corrigé et ce qui reste. Julien
+   plan final, la fiche produit, la critique, ce qui a été corrigé et ce
+   qui reste. Il commence par décrire le business en quelques lignes, pour
+   que Julien le comprenne sans avoir suivi Serge. Julien
    valide, refuse ou discute. Sans réponse sous 48 h, le plan s'applique.
    S'il reste une « nouvelle capacité nécessaire » après 3 tours, le ticket
    arrive dans cet état : c'est à Julien de créer la capacité.

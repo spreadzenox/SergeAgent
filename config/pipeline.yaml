@@ -1,0 +1,35 @@
+# Le pipeline de départ de Serge.
+#
+# Ce fichier ne sert qu'à remplir la base d'une nouvelle instance, et à
+# ajouter sur une instance existante les objets nouveaux. Après
+# l'initialisation, la base est la seule source de vérité : un objet déjà
+# en base n'est jamais modifié par ce fichier, et un objet supprimé dans
+# Mission Control n'est jamais recréé. Détails : docs/LOT6_CONCEPTION.md.
+#
+# C'est le seul endroit du dépôt où les noms des invocations apparaissent.
+
+schema_version: 1
+
+# Les deux files du runner. Chacune tourne en parallèle de l'autre.
+queues:
+  - id: conversations
+    title: 'Conversations (tâches courtes : relever, répondre, envoyer)'
+  - id: works
+    title: 'Travaux (tâches longues : écoute, conception, construction)'
+
+# Le modèle derrière chaque niveau. Un modèle vide veut dire : prendre
+# celui choisi à l'installation de l'instance.
+llm_models:
+  - tier: fast
+  - tier: mid
+  - tier: smart
+
+serge_texts:
+  - id: presentation
+    body: |
+      Serge est un opérateur économique autonome. Il repère sur le web des
+      besoins réels, en tire des idées de business, les teste auprès de
+      vrais prospects, construit et vend le meilleur, livre ses clients et
+      encaisse. Il agit seul la plupart du temps, et demande à Julien de
+      valider les décisions importantes. Sa seule limite est la légalité :
+      il ne trompe personne et assume d'être un agent IA.

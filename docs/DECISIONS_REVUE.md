@@ -29,6 +29,13 @@ fichier au début de chaque lot.
   en a plus, elle reçoit les 50 plus récents et un message qui dit combien
   ont été laissés de côté. »
   S'applique à la doc, au TODO ET aux conversations.
+- Style des documents (demande de Clem, après la réécriture du TODO) :
+  chaque tâche du TODO est une case à cocher, un titre en gras, puis un
+  paragraphe descriptif qui dit d'où on part, ce qu'il faut faire,
+  pourquoi, et ce qui doit être réglable dans Mission Control. Pas de
+  rubriques du type « Quoi / Pourquoi / Dépend de », pas de renvois
+  « Q13 ». Les autres documents suivent le même esprit : des phrases qui
+  décrivent, avec des exemples, plutôt que des listes de mots-clés.
 
 ## Questions / réponses
 
@@ -680,3 +687,229 @@ Le point hebdomadaire (Q42) lit aussi ces demandes.
 code mort et doublons. 4. Nouvelle doc + TODO + charte. Puis 5. Données,
 6. Invocations et liens, 7. Étape 1, 8. Conversations, 9. Grille de points,
 10. Étapes 2 et 5, 11. Étapes 3, 4, 6, 7, 8, 12. Web.
+
+---
+
+## Suite de la revue, avec Clem (septembre 2026)
+
+Clem a repris la conversation après le lot 5. Les décisions suivantes ont
+été prises avec lui, puis validées avec Julien pour la Q54.
+
+### Q50 — Répondre aux prospects et aux clients (validé)
+Les messages des prospects et des clients sont imprévisibles : questions
+sur le produit, demandes de changement, questions de délais, sujets sans
+rapport. On ne peut pas tout prévoir, mais on calibre les cas classiques.
+- Chaque business a une fiche produit détaillée, en base : ce que fait le
+  produit et pour qui, ce qu'il ne fait pas, le prix, les délais habituels
+  de livraison, comment on l'utilise, et une liste de questions fréquentes
+  avec leurs réponses. Elle est écrite par l'invocation qui conçoit le
+  produit (étape 2 pour le POC, étape 5 pour le vrai produit) et validée
+  par Julien avec le plan (il y en aura peu). Elle est mise à jour à chaque
+  nouvelle version du produit.
+- On ne fait pas appel à l'invocation qui a construit le produit : elle ne
+  garde aucun souvenir d'un appel à l'autre. Tout ce qu'il faut savoir est
+  dans la fiche.
+- « Traiter une réponse » reçoit en entier, dans ce qu'elle traite, la
+  fiche du business, la fiche produit, la fiche du prospect et tout son
+  fil de discussion. Les tables doivent être assez bien écrites pour
+  qu'elle puisse répondre aux questions.
+- Questions de délais : le LLM répond seul avec la fiche produit, avec des
+  consignes de prudence dans son prompt. Il ne promet jamais une date ou un
+  délai absent de la fiche, ni une fonctionnalité qui n'existe pas (elle
+  devient une demande client). En cas de doute, il répond sans s'engager
+  et ouvre un ticket.
+- Quand Julien répond à un ticket sur une question produit, la réponse est
+  ajoutée aux questions fréquentes de la fiche : la fois suivante, Serge
+  répond seul.
+- Un ticket de conversation doit être compréhensible par quelqu'un qui ne
+  suit pas Serge. Il contient toujours, dans cet ordre : le business en
+  trois lignes, le prospect, le fil de la conversation, le brouillon de
+  Serge, pourquoi Serge a besoin d'aide et la question précise, et un lien
+  vers la fiche du prospect dans MC.
+
+### Q51 — Le runner : une tâche après l'autre, deux files (validé)
+Constat : le runner est relancé une minute après la fin du passage
+précédent, traite jusqu'à 10 tâches, et n'enregistre en base qu'à la fin
+du passage. Ce n'était pas une décision de Julien. Conséquences : un
+plantage à la 7e tâche annule tout ce qui a été écrit depuis le début, y
+compris la note « e-mail envoyé » alors que l'e-mail est parti (risque de
+double envoi) ; MC ne peut pas écrire pendant un passage (jusqu'à
+15 minutes) ; deux files en parallèle se bloqueraient.
+- L'idée de Julien d'une file de priorité où s'ajoutent les invocations
+  déclenchées est gardée.
+- Chaque file est un programme qui tourne en continu : il prend la tâche
+  prête la plus prioritaire, l'exécute, enregistre en base, puis prend la
+  suivante. Plus d'attente d'une minute, plus de limite de 10.
+- Deux files en parallèle : la file des conversations (relever les
+  boîtes, traiter une réponse, envoyer, relancer : des tâches courtes) et
+  la file des travaux (écoute du web, conception, construction, point
+  hebdomadaire : des tâches longues). Une construction de 40 minutes ne
+  retarde plus la réponse à un prospect. Deux invocations en même temps ne
+  posent pas de problème : la machine ne fait qu'attendre la réponse du
+  fournisseur du LLM.
+- Une tâche qui agit à l'extérieur (envoyer un e-mail, rembourser)
+  enregistre « en cours » avant d'agir, puis « fait » après : même un
+  plantage au mauvais moment ne provoque jamais de double action.
+- Priorité : c'est la première chose à faire dans le lot 6, à cause du
+  risque de double envoi.
+
+### Q52 — Délais de réponse par canal (validé)
+Le délai avant de répondre à un prospect se règle canal par canal dans
+MC, sur la fiche du canal : délai minimum, délai maximum, heures et jours
+ouvrés. Exemple : e-mail entre 5 et 20 minutes, LinkedIn entre 1 et
+4 heures, SMS tout de suite. Aujourd'hui c'est un seul réglage pour tous.
+
+### Q53 — L'agent vocal (validé)
+Un appel ne passe pas par la file : le standard téléphonique décroche et
+confie l'appel à un programme vocal séparé, qui tourne en parallèle du
+reste. Il n'y a rien à interrompre. Ce qui change :
+- Au décrochage, le numéro est cherché en base. S'il est connu, l'agent
+  reçoit dans ce qu'il traite la fiche du prospect, son fil, la fiche du
+  business et la fiche produit.
+- S'il est inconnu, l'agent dit « Bonjour, je suis Serge, en quoi puis-je
+  vous aider ? », demande à qui il parle, et cherche la fiche avec un tool
+  (nom, entreprise, e-mail, numéro).
+- Si l'appelant propose quelque chose à Serge (partenariat, offre),
+  l'agent répond poliment qu'il ne peut pas traiter ce genre de demande
+  pour l'instant. Le résumé est quand même écrit au journal.
+- Une personne reconnue seulement parce qu'elle a dit son nom (pas par son
+  numéro) : l'agent se sert de sa fiche pour comprendre, mais ne répète
+  aucune information sensible (montants, adresses, propos d'un collègue).
+- Après l'appel, le résumé entre dans le fil du prospect, et « Traiter une
+  réponse » est lancée s'il y a une suite à donner.
+- Aujourd'hui, l'agent vocal a le même prompt fixe pour tous les appels et
+  aucun tool.
+
+### Q54 — Le pipeline entièrement en base : le code n'est qu'un interpréteur (validé par Clem et Julien)
+- L'ordre des invocations et tous leurs paramètres sont uniquement en
+  base. Jamais un paramètre en dur dans le code. Le code lit la base et
+  crée chaque invocation, une tâche après l'autre, dans l'ordre donné par
+  le runner.
+- Paramètres en base pour chaque invocation LLM : son rôle, le modèle
+  appelé, le prompt, ce qu'elle reçoit dès le départ, les tools qu'elle
+  peut appeler et avec quels paramètres figés, le format de sa réponse et
+  où cette réponse est écrite, sa priorité, sa file, ses liens avec les
+  invocations d'avant et d'après, et les déclencheurs qui la lancent.
+- Plus tard, les accès à un bac à sable (pour tester, concevoir un
+  produit, naviguer sur le web, créer des comptes) seront eux aussi
+  déclarés en base.
+- Le code garde les briques de base : les tools, les traitements sans LLM
+  (exemple : écarter les doublons) et les écritures autorisées dans chaque
+  table. La base dit lesquelles utiliser, dans quel ordre, avec quels
+  paramètres. Exemple déjà existant : la liste des tables et colonnes
+  qu'un tool de lecture a le droit de lire est en base.
+- Conséquence sur Q3 : les réglages du code ne servent qu'à remplir une
+  nouvelle instance. Une invocation ou un lien créé ou modifié dans MC
+  n'est jamais supprimé au démarrage. Seule une brique de base retirée du
+  code disparaît ; les invocations qui s'en servaient sont signalées dans
+  MC.
+- Validé ensuite par Clem : une invocation supprimée dans MC ne revient
+  pas au démarrage suivant. La base garde la trace de la suppression et
+  reste la source de vérité, pour que le code et la base ne se
+  désynchronisent pas.
+- Conception des tables en cours : [`LOT6_CONCEPTION.md`](LOT6_CONCEPTION.md).
+- But à terme (lot plus loin) : un éditeur sans code dans MC, pour
+  modifier en direct le pipeline : le nombre d'invocations, leur ordre,
+  leur rôle, leur modèle, ce qu'elles voient.
+
+### Q56 — Jamais de code propre à une invocation, même pour écrire (validé par Clem)
+- On doit pouvoir créer une invocation de toutes pièces depuis MC, à terme,
+  donc depuis la base. Le code est un interpréteur très paramétrique, sans
+  rien de scripté pour une invocation particulière.
+- L'écriture en base est générique elle aussi : un seul code d'écriture,
+  piloté par des règles en base (quelle table, quelle opération, quelle
+  colonne reçoit quel champ de la réponse). Ce n'est jamais le modèle qui
+  choisit où écrire : la destination est fixée dans les réglages de
+  l'invocation.
+- Les protections deviennent des règles en base : tables et colonnes
+  autorisées, changements de statut permis, repérage des doublons, champs
+  obligatoires, validation par Julien avant d'agir. Chaque refus est écrit
+  au journal automatiquement.
+- Le code est rangé par capacité, jamais par invocation : lire la base,
+  écrire la base, appeler un modèle, chercher sur le web, agir dans un bac
+  à sable, appeler une API décrite en base, envoyer ou relever sur un
+  canal, ouvrir un ticket. Test simple : le nom d'une invocation ne doit
+  jamais apparaître dans le code, sauf dans le fichier qui remplit une
+  nouvelle instance.
+- Vaut pour tous les lots futurs : le bac à sable, l'agent web, les
+  connecteurs vers des services, les canaux, l'agent vocal, les tickets.
+  Chacun est une capacité générique réglée en base. Exemple : un connecteur
+  vers un service n'est pas du code écrit par Serge, mais la description du
+  service en base (adresse, secret à utiliser, points d'entrée), exécutée
+  par une seule capacité « appeler une API ».
+
+### Q57 — Réponses de Clem sur la conception du lot 6 (validé)
+1. Une seule table pour toutes les invocations, avec ou sans LLM.
+2. Le modèle se choisit seulement par niveau (rapide, moyen,
+   intelligent), jamais un modèle précis par invocation.
+3. Le pipeline de départ est dans `config/pipeline.yaml`. Il remplit la
+   base à l'initialisation ; ensuite, la base est la seule source de
+   vérité.
+4. L'historique des réglages attendra : le journal suffit pour commencer.
+   Noté à la fin du TODO.
+5. Vocabulaire validé : une « capacité » est un savoir-faire général du
+   code ; un « outil » est une capacité réglée en base qu'on donne à une
+   invocation.
+6. Doublons : les méthodes « identique » et « mots en commun » suffisent
+   pour une première version. C'est un filet de sécurité : l'invocation
+   reçoit d'office la liste courte de ce qui existe, et son prompt lui
+   demande de ne pas le reproposer. Un doublon écarté est visible au
+   journal.
+
+### Q58 — Comment mener le lot 6 (validé par Clem)
+1. Pas de transition : on passe directement à la version durable. Tout le
+   code écrit en dur pour un enchaînement est retiré de la production. Ce
+   qui existait avant n'a pas à rester en marche. (Précisé en Q59 : ce
+   code n'est pas détruit, il est rangé dans le dossier « pas encore
+   branché ».)
+2. On ne crée que les colonnes et les capacités dont le lot a besoin. Les
+   fonctions futures (conditions sur les liens, validation par Julien, une
+   seule tâche en attente par prospect, délais par canal, actions hors de
+   Serge, bac à sable, désinscription…) ajouteront leurs colonnes et leurs
+   capacités dans leur propre lot ; elles sont notées dans le TODO.
+3. Les capacités sont listées en base et affichées dans MC ; c'est là
+   qu'on les choisira pour une invocation. Première capacité importante :
+   écrire en base, de façon générique, à partir de la réponse d'une
+   invocation.
+4. À la fin du lot 6, MC affiche tout ce qui est en base, en direct, et
+   garde ce qui existe déjà. Créer une invocation depuis le site viendra
+   plus tard.
+5. Fusion dans `main` après chaque étape, avec des tests verts qui portent
+   seulement sur ce qui est construit. Serge ne peut pas être allumé pour
+   de vrai tant que toutes les capacités ne sont pas là ; c'est accepté.
+
+### Q59 — Ce qui reste, ce qui est débranché (validé par Clem)
+1. Le code de bas niveau qui ne connaît aucune invocation (envoi d'e-mail,
+   pont téléphonique, réception des SMS et de Stripe, garde-fous, fiches de
+   contacts) reste en place avec ses tests : ce sont les futures
+   capacités, pas encore branchées.
+2. Tous les appels au LLM devront passer par le pipeline, y compris la
+   consolidation de la mémoire et le bot Discord. Pas dans le lot 6 : leur
+   code est rangé dans un dossier « pas encore branché », hors de la
+   production, et débranché du runner, du bot et de MC. Leur passage dans
+   le pipeline est noté en fin de TODO.
+3. La production, c'est tout ce qui a été fait aux lots 1 à 6 et la
+   structure qui ne change pas.
+4. Clem s'est corrigé : le code des enchaînements en dur (écoute,
+   réponses, envois, relances, code propre à chaque invocation) n'est pas
+   détruit non plus. Il va dans le même dossier `pas_encore_branche/`, à la
+   racine du dépôt, avec ses tests et ses prompts, parce qu'il contient
+   beaucoup de choses utiles et que les prochains LLM doivent pouvoir le
+   lire facilement. Ce dossier n'est ni importé, ni testé, ni vérifié par
+   les outils de qualité, et le test « aucun nom d'invocation dans le
+   code » l'ignore.
+
+### Q55 — Nouvel ordre des lots (validé)
+Lots 1 à 5 faits. Ensuite :
+6. Le runner et le pipeline en base : d'abord le runner (une tâche après
+   l'autre, un enregistrement après chaque tâche, deux files), puis les
+   invocations, les liens et les déclencheurs entièrement en base (Q54).
+   Clem et Julien veulent l'attaquer ensemble.
+7. Étape 1.
+8. Conversations (fil, traiter une réponse, fiche produit, tickets, délais
+   par canal, agent vocal).
+9. Grille de points.
+10. Étapes 2 et 5.
+11. Étapes 3, 4, 6, 7, 8.
+12. Web.
+13. L'éditeur sans code dans MC.

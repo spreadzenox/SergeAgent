@@ -13,6 +13,7 @@ def init_schema(connection: sqlite3.Connection) -> None:
         connection: Connexion (commit par l’appelant).
     """
     from serge.canaux import ensure_canaux
+    from serge.capabilities import ensure_capabilities
     from serge.catalogue import verifier_catalogue
     from serge.comptes import ensure_account_columns
     from serge.db.migrate import apply_pending
@@ -22,6 +23,7 @@ def init_schema(connection: sqlite3.Connection) -> None:
     from serge.llm_registre import ensure_llm_points
     from serge.objet_sha import poser_shas
     from serge.outils import ensure_tools
+    from serge.pipeline_seed import ensure_pipeline
     from serge.tech_registre import ensure_tech_invocations
 
     apply_pending(connection)
@@ -33,5 +35,7 @@ def init_schema(connection: sqlite3.Connection) -> None:
     ensure_tech_invocations(connection)
     ensure_etape_liens(connection)
     ensure_canaux(connection)
+    ensure_capabilities(connection)
+    ensure_pipeline(connection)
     poser_shas(connection)
     verifier_catalogue(connection)

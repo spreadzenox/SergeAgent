@@ -22,7 +22,10 @@ les prospects et clients, les campagnes de test, les paiements. Une ligne
 d'état peut être modifiée : quand un business passe du test léger à la
 construction, on change son statut sur sa ligne. C'est le code qui écrit
 l'état, jamais le LLM directement. Exemple : « le business *devis-artisan*
-est en test léger » est un fait d'état.
+est en test léger » est un fait d'état. La fiche produit d'un business
+(ce que fait le produit, son prix, ses délais, les questions fréquentes)
+fait aussi partie de l'état : elle est mise à jour à chaque nouvelle
+version du produit.
 
 **Le journal répond à la question « que s'est-il passé ? ».** C'est la
 liste de tout ce qui est arrivé, dans l'ordre : chaque envoi à un
@@ -72,6 +75,13 @@ Julien a validé les règles suivantes. Elles ne sont pas encore
 construites ; la liste des tâches est à la fin de ce document et dans le
 [`TODO.md`](../TODO.md).
 
+**Tout ce que voit une invocation est décrit en base.** Julien et Clem
+ont décidé que le code n'est qu'un interpréteur de la base (voir
+[`PIPELINE.md`](PIPELINE.md)). Ce qu'une invocation reçoit dès le départ,
+les tools qu'elle peut appeler, leurs paramètres figés et le nombre
+maximum de lignes sont donc des lignes en base, modifiables dans Mission
+Control, et jamais des valeurs écrites dans le code.
+
 **Une invocation ne voit que ce qu'on lui a donné.** Rien n'est ajouté
 par défaut dans son prompt, et tout ce qu'elle reçoit est affiché sur sa
 fiche dans Mission Control, pour qu'on puisse toujours savoir sur quoi
@@ -115,6 +125,13 @@ qui forment sa version courte (pour un business, son numéro et son
 titre ; pour une page, son adresse et son titre) ; le maximum de lignes
 par défaut ; et, à la main dans Mission Control, les quelques exceptions.
 
+**Exemple : ce que reçoit « Traiter une réponse ».** Quand un prospect
+répond, l'invocation qui lui répond reçoit en entier, dans ce qu'elle
+traite, tout son fil de discussion, sa fiche, la fiche du business et la
+fiche produit. C'est ce qui lui permet de répondre juste à une question
+sur le produit sans rien inventer. L'agent vocal reçoit les mêmes
+informations quand il reconnaît le numéro de celui qui appelle.
+
 **Chaque invocation reçoit ses propres leçons.** Une leçon est rattachée
 à l'invocation qu'elle concerne, sinon à une étape de la chaîne, sinon à
 tout Serge. Une invocation reçoit d'office les leçons qui la concernent
@@ -156,10 +173,11 @@ dans [`etapes/7-memoire.md`](etapes/7-memoire.md).
 
 Serge n'efface presque rien, mais il range. Les événements anciens du
 journal peuvent être archivés dans des fichiers compressés, et on peut
-toujours les relire. Une leçon contredite plusieurs fois n'est pas
-effacée : elle est marquée comme dépassée. Enfin, une fois l'étape 1 refaite, une page web marquée
-« bruit » sera oubliée au bout d'un certain nombre de jours, réglable,
-alors qu'une page qui sert de preuve à un business sera toujours gardée.
+toujours les relire. Une leçon contredite plusieurs fois n'est pas effacée :
+elle est marquée comme dépassée. Enfin, une fois l'étape 1 refaite, une
+page web marquée « bruit » sera oubliée au bout d'un certain nombre de
+jours, réglable, alors qu'une page qui sert de preuve à un business sera
+toujours gardée.
 
 ---
 
