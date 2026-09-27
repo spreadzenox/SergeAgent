@@ -850,6 +850,11 @@ reste. Il n'y a rien à interrompre. Ce qui change :
 5. Vocabulaire validé : une « capacité » est un savoir-faire général du
    code ; un « outil » est une capacité réglée en base qu'on donne à une
    invocation.
+6. Doublons : les méthodes « identique » et « mots en commun » suffisent
+   pour une première version. C'est un filet de sécurité : l'invocation
+   reçoit d'office la liste courte de ce qui existe, et son prompt lui
+   demande de ne pas le reproposer. Un doublon écarté est visible au
+   journal.
 
 ### Q55 — Nouvel ordre des lots (validé)
 Lots 1 à 5 faits. Ensuite :

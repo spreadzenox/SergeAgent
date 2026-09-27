@@ -310,6 +310,14 @@ en test est refusé, avec une note au journal. C'est la protection d'aujourd'hui
 Chaque ligne écartée est notée au journal avec la ligne existante qui lui
 ressemble.
 
+Cette règle est un filet de sécurité, pas le moyen principal d'éviter les
+doublons. L'invocation doit d'abord éviter elle-même de proposer ce qui
+existe déjà : elle reçoit d'office la liste courte de ce qui est en base
+(par exemple le nom de chaque business connu), et son prompt lui demande de
+ne pas reproposer ce qui y figure. Si elle le fait quand même, la règle
+l'écarte, et le journal le montre : on voit ainsi quand une invocation
+travaille mal.
+
 ### Ce que le code d'écriture fait tout seul
 
 Pour chaque écriture, il vérifie le catalogue, les champs obligatoires, les
@@ -598,5 +606,9 @@ l'invocation.
 4. **L'historique des réglages** attendra : le journal suffit pour
    commencer. On veut d'abord une petite version qui marche. C'est noté à
    la fin du [`TODO.md`](../TODO.md).
-5. **Les méthodes de doublon** : question précisée, réponse en attente.
+5. **Les méthodes de doublon** : « identique » et « mots en commun »
+   suffisent pour une première version. La comparaison par le sens
+   (embeddings ou LLM) viendra plus tard si besoin. La règle reste un
+   filet de sécurité : l'invocation reçoit la liste courte de ce qui
+   existe, et son prompt lui demande de ne pas le reproposer.
 6. **Le vocabulaire** « capacité » et « outil » est validé.
