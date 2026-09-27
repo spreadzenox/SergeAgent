@@ -17,9 +17,9 @@ recrée jamais ensuite.
 1. **Les migrations** (`serge/db/migrate.py`). Chaque changement de
    structure est une fonction `apply_v0NN` (fichiers `serge/db/v0NN.py`).
    Serge applique celles qui manquent, dans l'ordre. Version actuelle :
-   **22**.
+   **23**.
    - Une base neuve saute directement à la version 7 (le socle,
-     `serge/db/schema.py`), puis applique 8, 9, … 22.
+     `serge/db/schema.py`), puis applique 8, 9, … 23.
    - Une base **plus récente** que le code refuse de démarrer
      (`MigrateError`). Revenir à un ancien commit ne défait pas une
      migration.
@@ -64,7 +64,7 @@ catalogue et la mécanique.
 | `accounts_standing` | Les comptes web que Serge a créés : lieu, identifiant, mot de passe en clair, dossier de session, santé du compte. |
 | `consents`, `blocklist` | Consentements et personnes à ne plus contacter. |
 | `transactions` | Les paiements. |
-| `subscriptions` | Les abonnements Stripe. |
+| `subscriptions` | Les abonnements Stripe, chacun rattaché à son business (lu dans le champ `metadata.venture_id` du prix ou de l'abonnement Stripe). `venture_id` vide : business inconnu, signalé au journal. |
 | `artifacts` | Les livrables (pas encore utilisée). |
 | `listen_docs` | Les pages lues par l'écoute. |
 | `listen_cycles`, `listen_cycle_docs` | Les cycles de l'étape 1 et les pages figées pour chacun. |
@@ -131,7 +131,6 @@ Voir [`TODO.md`](../TODO.md) pour l'ordre des chantiers.
 - Nouvelles tables : `deliveries` (ce qui reste à livrer), `product_requests`
   (les demandes des clients), `listen_feeds` (les flux suivis), et une
   table de barème de points par canal et par signal.
-- `subscriptions` : chaque abonnement est rattaché à son vrai business.
 - Les capsules (`db_readers` et tables associées) disparaissent : leurs
   réglages vont sur `llm_point_tools`.
 - `work_items.kind` et les interrupteurs par kind disparaissent : une tâche

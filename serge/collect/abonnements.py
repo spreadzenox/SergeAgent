@@ -1,5 +1,15 @@
 #!/usr/bin/env python3
-"""Abonnements Stripe : table ``subscriptions`` reliée aux transactions."""
+"""Abonnements Stripe : table ``subscriptions`` reliée aux transactions.
+
+Chaque abonnement est rattaché à son business. Serge écrit l'identifiant
+du business dans le champ ``metadata.venture_id`` du prix Stripe (ou de
+l'abonnement) ; Stripe le renvoie dans chaque événement. Exemple :
+``{'metadata': {'venture_id': 'v1'}}`` → l'abonnement va au business ``v1``.
+
+Sans identifiant, ou avec un business inconnu, l'abonnement est gardé sans
+business et un événement ``collect.subscription_unattached`` est écrit au
+journal à sa création.
+"""
 
 from __future__ import annotations
 
@@ -13,9 +23,9 @@ from serge.collect.intents import (
     mark_paid,
     to_issued,
 )
-from serge.db.store import utcnow
+from serge.db.store import append_event, utcnow
 
-VENTURE = 'serge-collect-stripe'
+CLE_BUSINESS = 'venture_id'
 STATUTS = frozenset(
     {
         'active',
@@ -30,22 +40,59 @@ STATUTS = frozenset(
 )
 
 
-def assurer_colonnes(conn: sqlite3.Connection) -> None:
-    """Ajoute ``last_transaction_id`` si la table existe déjà sans."""
-    cols = {
-        str(row[1]) for row in conn.execute('PRAGMA table_info(subscriptions)')
-    }
-    if cols and 'last_transaction_id' not in cols:
-        conn.execute(
-            'ALTER TABLE subscriptions ADD COLUMN last_transaction_id'
-            " TEXT NOT NULL DEFAULT ''"
-        )
-
-
 def _inner(event: dict[str, Any]) -> dict[str, Any]:
     data = event.get('data') if isinstance(event.get('data'), dict) else {}
     obj = data.get('object') if isinstance(data, dict) else {}
     return obj if isinstance(obj, dict) else {}
+
+
+def _premier(liste: object) -> dict[str, Any]:
+    """Premier élément de ``{'data': [...]}``, ou ``{}``."""
+    data = liste.get('data') if isinstance(liste, dict) else None
+    if isinstance(data, list) and data and isinstance(data[0], dict):
+        return data[0]
+    return {}
+
+
+def _venture_lue(*objets: object) -> str:
+    """Premier ``metadata.venture_id`` trouvé dans ces objets Stripe."""
+    for objet in objets:
+        if not isinstance(objet, dict):
+            continue
+        metadata = objet.get('metadata')
+        if isinstance(metadata, dict):
+            valeur = str(metadata.get(CLE_BUSINESS) or '').strip()
+            if valeur:
+                return valeur
+    return ''
+
+
+def venture_de_l_abonnement(obj: dict[str, Any]) -> str:
+    """Business inscrit sur l'abonnement, son prix ou son plan."""
+    ligne = _premier(obj.get('items'))
+    return _venture_lue(obj, ligne.get('price'), ligne.get('plan'))
+
+
+def venture_de_la_facture(obj: dict[str, Any]) -> str:
+    """Business inscrit sur la facture, son abonnement ou son prix."""
+    ligne = _premier(obj.get('lines'))
+    return _venture_lue(
+        obj.get('subscription_details'),
+        obj,
+        ligne.get('price'),
+        ligne,
+    )
+
+
+def _venture_connue(conn: sqlite3.Connection, venture_id: str) -> str:
+    if (
+        venture_id
+        and conn.execute(
+            'SELECT 1 FROM ventures WHERE id=?', (venture_id,)
+        ).fetchone()
+    ):
+        return venture_id
+    return ''
 
 
 def _euros_depuis_centimes(raw: object) -> float:
@@ -88,18 +135,21 @@ def upsert_abonnement(
     obj: dict[str, Any],
     *,
     last_tx: str = '',
+    venture_id: str = '',
 ) -> dict[str, Any]:
     """Crée ou met à jour un abonnement depuis l’objet Stripe.
+
+    Un business déjà rattaché n'est jamais remplacé.
 
     Args:
         conn: Canon.
         obj: Objet ``subscription`` Stripe.
         last_tx: Id transaction liée (facture encaissée).
+        venture_id: Business lu ailleurs (facture), si l'objet n'en dit rien.
 
     Returns:
-        ``{id, status}``.
+        ``{id, statut_abo, venture_id}``.
     """
-    assurer_colonnes(conn)
     external = str(obj.get('id') or '')
     if not external.startswith('sub_'):
         return {'id': '', 'status': 'ignored'}
@@ -111,6 +161,7 @@ def upsert_abonnement(
         'SELECT id FROM subscriptions WHERE external_id=?', (external,)
     ).fetchone()
     ident = str(row[0]) if row else f'abo_{external[4:16]}'
+    venture = _venture_connue(conn, venture_de_l_abonnement(obj) or venture_id)
     montant = _montant_sub(obj)
     renews = _renews(obj)
     if row is None:
@@ -121,7 +172,7 @@ def upsert_abonnement(
             ' VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',
             (
                 ident,
-                VENTURE,
+                venture,
                 'stripe',
                 external,
                 montant,
@@ -140,7 +191,9 @@ def upsert_abonnement(
             ' amount_eur=CASE WHEN ?>0 THEN ? ELSE amount_eur END,'
             " renews_at=CASE WHEN ?!='' THEN ? ELSE renews_at END,"
             " last_transaction_id=CASE WHEN ?!='' THEN ? ELSE"
-            ' last_transaction_id END WHERE id=?',
+            ' last_transaction_id END,'
+            " venture_id=CASE WHEN venture_id='' THEN ? ELSE venture_id END"
+            ' WHERE id=?',
             (
                 statut,
                 moment,
@@ -150,10 +203,22 @@ def upsert_abonnement(
                 renews,
                 last_tx,
                 last_tx,
+                venture,
                 ident,
             ),
         )
-    return {'id': ident, 'statut_abo': statut}
+    final = conn.execute(
+        'SELECT venture_id FROM subscriptions WHERE id=?', (ident,)
+    ).fetchone()
+    rattache = str(final[0]) if final else ''
+    if not rattache and row is None:
+        append_event(
+            conn,
+            actor='collect.stripe',
+            type='collect.subscription_unattached',
+            payload={'subscription': external},
+        )
+    return {'id': ident, 'statut_abo': statut, 'venture_id': rattache}
 
 
 def appliquer_facture_abo(
@@ -173,6 +238,13 @@ def appliquer_facture_abo(
     euros = _euros_depuis_centimes(obj.get('amount_paid'))
     if euros <= 0:
         return {'status': 'ignored', 'reason': 'montant'}
+    venture = _venture_connue(conn, venture_de_la_facture(obj))
+    if not venture and sub_id:
+        row = conn.execute(
+            'SELECT venture_id FROM subscriptions WHERE external_id=?',
+            (sub_id,),
+        ).fetchone()
+        venture = str(row[0]) if row else ''
     tx_id = ''
     if pi_id.startswith('pi_'):
         row = conn.execute(
@@ -183,7 +255,7 @@ def appliquer_facture_abo(
             try:
                 tx_id = create_intent(
                     conn,
-                    VENTURE,
+                    venture,
                     'invoice',
                     euros,
                     intent_key=pi_id,
@@ -209,7 +281,10 @@ def appliquer_facture_abo(
                     return {'status': 'refused', 'error': str(exc)}
     if sub_id.startswith('sub_'):
         upsert_abonnement(
-            conn, {'id': sub_id, 'status': 'active'}, last_tx=tx_id
+            conn,
+            {'id': sub_id, 'status': 'active'},
+            last_tx=tx_id,
+            venture_id=venture,
         )
     return {'status': 'ok', 'id': tx_id, 'subscription': sub_id}
 

@@ -19,16 +19,15 @@ est indiqué entre parenthèses, exemple : Q13).
 
 On avance par petits lots : un sujet, un commit, des tests verts.
 
-1. **Données** : abonnements (section Transverse).
-2. **Invocations et liens** : suppression des kinds et des capsules,
+1. **Invocations et liens** : suppression des kinds et des capsules,
    liens entre invocations, priorités, tools automatiques (Transverse).
-3. **Étape 1** refaite.
-4. **Conversations** : fil par prospect, « Traiter une réponse », relances
+2. **Étape 1** refaite.
+3. **Conversations** : fil par prospect, « Traiter une réponse », relances
    (Étapes 3 et 6).
-5. **Grille de points** (Transverse).
-6. **Étapes 2 et 5** : concevoir, challenger, construire, mettre en ligne.
-7. **Étapes 3, 4, 6, 7, 8.**
-8. **Web** : navigation, agent web, connecteurs (Transverse).
+4. **Grille de points** (Transverse).
+5. **Étapes 2 et 5** : concevoir, challenger, construire, mettre en ligne.
+6. **Étapes 3, 4, 6, 7, 8.**
+7. **Web** : navigation, agent web, connecteurs (Transverse).
 
 ---
 
@@ -42,23 +41,17 @@ On avance par petits lots : un sujet, un commit, des tests verts.
   Control affiche « 3 places sur 3 occupées ».
 - **Pourquoi** : ne pas tester plus de business qu'on ne peut en suivre.
 
-### Livraisons, demandes clients, abonnements (Q43, Q45)
+### Livraisons et demandes clients (Q43, Q45)
 
 - **Quoi** :
   - une table `deliveries` : une ligne par chose vendue à livrer, créée à
     chaque paiement d'un produit qui n'est pas instantané ;
   - une table `product_requests` : les bugs, insatisfactions et demandes
-    des clients ;
-  - rattacher chaque abonnement Stripe à son vrai business. Aujourd'hui
-    ils sont tous rattachés à `serge-collect-stripe`, écrit en dur dans
-    `serge/collect/abonnements.py`. Remplacer aussi les colonnes ajoutées à
-    la volée (`assurer_colonnes`) par une migration.
+    des clients.
 - **Pourquoi** : sans ça, Serge ne sait pas ce qui reste à livrer ni quand
   un business peut être fermé.
-- **Quand** : l'abonnement rattaché fait partie du lot Données. Les tables
-  `deliveries` et `product_requests` sont créées avec le code qui les
-  remplit (« Traiter une réponse », encaissement), pour ne pas laisser de
-  table vide sans écrivain.
+- **Quand** : avec le code qui les remplit (« Traiter une réponse »,
+  encaissement), pour ne pas laisser de table vide sans écrivain.
 
 ### Supprimer les kinds (Q7)
 
@@ -301,8 +294,9 @@ On avance par petits lots : un sujet, un commit, des tests verts.
 - **Quoi** : Concevoir le produit, le challenger, ticket Julien (prix
   définitif), construire avec le couple builder / reviewer (réponses
   « bon », « à corriger », « nouvelle capacité nécessaire »), mettre en
-  ligne sur un domaine dédié, créer le produit Stripe et faire un paiement
-  test de 1 € remboursé.
+  ligne sur un domaine dédié, créer le produit et le prix Stripe (avec
+  `metadata.venture_id` sur le prix, pour rattacher les abonnements) et
+  faire un paiement test de 1 € remboursé.
 - **Pourquoi** : pas de prospection lourde sans pouvoir encaisser.
 
 ### Mettre en ligne et stocker (Q39, Q40)

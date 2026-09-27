@@ -24,6 +24,7 @@ from serge.db.v018 import apply_v018  # noqa: E402
 from serge.db.v020 import apply_v020  # noqa: E402
 from serge.db.v021 import apply_v021  # noqa: E402
 from serge.db.v022 import apply_v022  # noqa: E402
+from serge.db.v023 import apply_v023  # noqa: E402
 
 
 class MigrateTests(unittest.TestCase):
@@ -228,6 +229,40 @@ class MigrateTests(unittest.TestCase):
                 ),
                 ('phone', '+33 6 12 34 56 78', '+33612345678', 1),
             ],
+        )
+
+    def test_v23_retire_le_faux_business_des_abonnements(self) -> None:
+        conn = sqlite3.connect(':memory:')
+        self.addCleanup(conn.close)
+        conn.executescript(
+            """
+            CREATE TABLE subscriptions (
+                id TEXT PRIMARY KEY, venture_id TEXT NOT NULL DEFAULT '',
+                provider TEXT NOT NULL, created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL);
+            CREATE TABLE transactions (
+                id TEXT PRIMARY KEY, venture_id TEXT NOT NULL);
+            INSERT INTO subscriptions VALUES
+                ('abo_1','serge-collect-stripe','stripe','t','t'),
+                ('abo_2','v1','stripe','t','t');
+            INSERT INTO transactions VALUES
+                ('tx_1','serge-collect-stripe'), ('tx_2','v1');
+            """
+        )
+        apply_v023(conn)
+        apply_v023(conn)
+        self.assertEqual(
+            conn.execute(
+                'SELECT venture_id, last_transaction_id FROM subscriptions'
+                ' ORDER BY id'
+            ).fetchall(),
+            [('', ''), ('v1', '')],
+        )
+        self.assertEqual(
+            conn.execute(
+                'SELECT venture_id FROM transactions ORDER BY id'
+            ).fetchall(),
+            [('',), ('v1',)],
         )
 
     def test_vide_atteint_la_tete(self) -> None:
