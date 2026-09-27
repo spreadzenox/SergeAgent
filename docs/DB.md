@@ -17,9 +17,9 @@ recrée jamais ensuite.
 1. **Les migrations** (`serge/db/migrate.py`). Chaque changement de
    structure est une fonction `apply_v0NN` (fichiers `serge/db/v0NN.py`).
    Serge applique celles qui manquent, dans l'ordre. Version actuelle :
-   **23**.
+   **24**.
    - Une base neuve saute directement à la version 7 (le socle,
-     `serge/db/schema.py`), puis applique 8, 9, … 23.
+     `serge/db/schema.py`), puis applique 8, 9, … 24.
    - Une base **plus récente** que le code refuse de démarrer
      (`MigrateError`). Revenir à un ancien commit ne défait pas une
      migration.
@@ -107,6 +107,29 @@ catalogue et la mécanique.
 | `canaux`, `brique_canaux` | Les canaux et les invocations qui écrivent par eux. |
 | `db_readers`, `llm_point_readers`, `db_reader_fixed_params`, `db_reader_fixed_joins` | Les capsules de lecture de la base (à supprimer, voir ci-dessous). |
 | `tool_db_*` | Pour chaque tool de lecture de la base : tables, colonnes, filtres, jointures et paramètres autorisés. Le modèle n'écrit jamais de SQL. |
+
+### Le pipeline décrit en base (en construction, lot 6)
+
+Ces tables existent depuis la version 24 de la base, mais rien ne s'en sert
+encore pour faire tourner Serge : l'interpréteur arrive à l'étape suivante
+du lot 6. Elles sont remplies au démarrage à partir de
+`config/pipeline.yaml`, sans jamais écraser ce qui est déjà en base.
+Chaque table est expliquée dans [`LOT6_CONCEPTION.md`](LOT6_CONCEPTION.md).
+
+| Table | Contenu |
+|---|---|
+| `capabilities`, `capability_params` | Ce que le code sait faire, déclaré par le code au démarrage. |
+| `invocations` | Chaque invocation, avec ou sans LLM, et tous ses réglages. |
+| `invocation_tools`, `invocation_tool_params` | Les outils de chaque invocation et leurs paramètres figés. |
+| `invocation_output_fields` | Le format de la réponse de chaque invocation. |
+| `writable_tables`, `writable_columns` | Ce qu'une invocation a le droit d'écrire. |
+| `invocation_writes`, `invocation_write_values` | Où chaque invocation écrit sa réponse. |
+| `status_transitions`, `dedup_rules`, `dedup_rule_columns` | Les protections : changements de statut permis, doublons. |
+| `links`, `link_params`, `link_passages` | Les liens entre invocations. |
+| `triggers`, `trigger_params` | Ce qui lance une invocation. |
+| `queues`, `tasks`, `task_params`, `task_inputs` | Les deux files et leurs tâches. |
+| `llm_models` | Le modèle derrière chaque niveau (rapide, moyen, intelligent). |
+| `serge_texts` | Les textes de Serge, dont sa présentation. |
 
 ### La mécanique
 

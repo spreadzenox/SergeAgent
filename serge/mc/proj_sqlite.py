@@ -13,6 +13,49 @@ _NOM_TABLE = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
 
 # role court, remplie par, sort vers, détail
 CATALOGUE: dict[str, tuple[str, str, str, str]] = {
+    'capabilities': (
+        'Ce que le code sait faire : lire la base, chercher sur le web…',
+        'Le code, au démarrage.',
+        'Les outils et les invocations sans LLM.',
+        'available = 0 : la capacité a été retirée du code.',
+    ),
+    'invocations': (
+        'Chaque invocation, avec ou sans LLM, et tous ses réglages.',
+        'pipeline.yaml au départ, puis Mission Control.',
+        'Le runner, qui lit ces réglages pour chaque tâche.',
+        'deleted_at rempli : supprimée, jamais recréée au démarrage.',
+    ),
+    'invocation_tools': (
+        'Les outils de chaque invocation : donnés d’office ou appelables.',
+        'pipeline.yaml au départ, puis Mission Control.',
+        'Le prompt de l’invocation et ses appels d’outils.',
+        'mode = given : lu avant l’appel ; callable : le modèle décide.',
+    ),
+    'invocation_writes': (
+        'Où chaque invocation écrit sa réponse, et comment.',
+        'pipeline.yaml au départ, puis Mission Control.',
+        'Le code d’écriture générique.',
+        'Une ligne par table visée ; les colonnes sont dans'
+        ' invocation_write_values.',
+    ),
+    'links': (
+        'Les liens entre invocations : qui passe la main à qui.',
+        'pipeline.yaml au départ, puis Mission Control.',
+        'Le runner, à la fin de chaque tâche.',
+        'mode = per_row : une tâche par ligne écrite.',
+    ),
+    'triggers': (
+        'Ce qui lance une invocation : une ligne écrite, une heure, un bouton.',
+        'pipeline.yaml au départ, puis Mission Control.',
+        'Le runner.',
+        'event = every, at, row_written ou button.',
+    ),
+    'tasks': (
+        'La file des tâches : une tâche lance une invocation.',
+        'Les liens, les déclencheurs et les boutons.',
+        'Le runner, deux files en parallèle.',
+        'Les paramètres de chaque tâche sont dans task_params.',
+    ),
     'schema_version': (
         'Version du schéma. Si ça dérive, Health le dit.',
         'Migration au boot.',

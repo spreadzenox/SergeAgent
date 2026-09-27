@@ -11,7 +11,7 @@ import sqlite3
 from collections.abc import Iterable
 from pathlib import Path
 
-KINDS = ('etape', 'llm', 'tech', 'outil', 'lien', 'canal')
+KINDS = ('etape', 'llm', 'tech', 'outil', 'lien', 'canal', 'capacite')
 
 TABLES = {
     'etape': 'pipeline_steps',
@@ -20,6 +20,7 @@ TABLES = {
     'outil': 'tools',
     'lien': 'etape_liens',
     'canal': 'canaux',
+    'capacite': 'capabilities',
 }
 
 _FICHIERS_FIXES = {
@@ -54,7 +55,13 @@ def fichiers(kind: str, ident: str, conn: sqlite3.Connection) -> list[str]:
     """Chemins relatifs qui encodent l’objet (hors sous-objets)."""
     rels = list(_FICHIERS_FIXES.get(kind, ()))
     table = TABLES.get(kind)
-    if table in ('llm_points', 'tech_invocations', 'tools', 'canaux'):
+    if table in (
+        'llm_points',
+        'tech_invocations',
+        'tools',
+        'canaux',
+        'capabilities',
+    ):
         row = conn.execute(
             f'SELECT code_path FROM {table} WHERE id=?', (ident,)
         ).fetchone()
@@ -144,7 +151,13 @@ def poser_shas(conn: sqlite3.Connection, root: Path | None = None) -> None:
                     f'UPDATE {table} SET files_sha=?, updated_at=? WHERE id=?',
                     (sha, now, ident),
                 )
-    for table in ('tools', 'llm_points', 'tech_invocations', 'canaux'):
+    for table in (
+        'tools',
+        'llm_points',
+        'tech_invocations',
+        'canaux',
+        'capabilities',
+    ):
         rows = conn.execute(
             f"SELECT id, code_path FROM {table} WHERE code_path!=''"
         ).fetchall()
