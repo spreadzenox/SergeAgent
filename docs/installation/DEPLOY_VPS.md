@@ -39,9 +39,14 @@ sont recopiées vers `/etc/systemd/system` avant restart — un simple
 restart laisserait l’ancienne unit. `daemon-reload`, restart des units
 actives **ou en échec** (un crash-loop n’est pas un arrêt manuel).
 
-Pipeline : `scripts/serge-runner.py --once` derrière `flock` sur
-`state/pipeline.lock`. Plus de `sergectl`, plus de daily-report, plus de
-burn-in. Le digest reste Discord `📣-digest` + MC
+Runner : deux services qui tournent en continu, un par file de tâches,
+`serge-queue@conversations.service` et `serge-queue@works.service`
+(`scripts/serge-queue.py --queue …`, `Restart=always`). Ils restent
+inactifs tant que Serge n'a pas été démarré dans Mission Control (bouton
+« Démarrer Serge ») : un déploiement ne démarre jamais Serge. Au premier
+déploiement après le lot 6, l'ancien `serge-pipeline.timer` est arrêté,
+désactivé et effacé ; s'il tournait, les deux files sont lancées à sa
+place. Plus de `sergectl`, plus de daily-report, plus de burn-in. Le digest reste Discord `📣-digest` + MC
 (`tickets.digest_hour`).
 
 Ingress : `serge/ingress/caddy.py` (inventaire + Caddyfile). Caddy est

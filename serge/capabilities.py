@@ -65,6 +65,25 @@ CAPABILITIES: tuple[Capability, ...] = (
         ),
     ),
     Capability(
+        'echo',
+        'Rendre ses paramètres',
+        'Rend tels quels les paramètres qu’on lui donne. Sert aux invocations'
+        ' sans LLM qui ne font qu’écrire en base ce qu’on leur transmet, par'
+        ' exemple ouvrir un cycle avec le texte de guidage.',
+        'serge/interpreter/tools.py',
+    ),
+    Capability(
+        'db_write',
+        'Écrire dans la base',
+        'Écrit la réponse d’une invocation en base, selon ses règles'
+        ' d’écriture : la table, ajouter ou modifier, quelle colonne reçoit'
+        ' quel champ. Applique les protections réglées en base (tables'
+        ' autorisées, changements de statut permis, doublons) et note chaque'
+        ' écriture et chaque refus au journal. Toutes les invocations s’en'
+        ' servent ; on ne la donne pas comme outil.',
+        'serge/interpreter/writer.py',
+    ),
+    Capability(
         'request_capability',
         'Demander une nouvelle capacité',
         'Ouvre une demande à Julien quand il manque à Serge un outil ou un'

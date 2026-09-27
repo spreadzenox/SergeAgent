@@ -13,6 +13,8 @@ sys.path.insert(0, str(ROOT))
 
 from serge.capabilities import CAPABILITIES, ensure_capabilities  # noqa: E402
 from serge.db.boot import init_schema  # noqa: E402
+from serge.db.query_builder import execute_db_read  # noqa: E402
+from serge.db.query_errors import DbReadError  # noqa: E402
 from serge.pipeline_seed import PipelineSeedError, seed_pipeline  # noqa: E402
 
 
@@ -242,6 +244,94 @@ class PipelineSeedTests(unittest.TestCase):
             "SELECT code_sha FROM capabilities WHERE id='web_search'"
         )
         self.assertEqual(len(sha[0]), 64)
+
+    def test_les_outils_de_depart_ont_leur_capacite(self) -> None:
+        outils = dict(
+            self.conn.execute('SELECT id, capability_id FROM tools').fetchall()
+        )
+        self.assertEqual(outils['web_search'], 'web_search')
+        self.assertEqual(outils['listen_cycle_documents'], 'db_read')
+        self.assertEqual(
+            self._one(
+                "SELECT montre_partout FROM tools WHERE id='demande_capacite'"
+            ),
+            (1,),
+        )
+
+    def test_les_pages_d_un_cycle_viennent_avec_leur_texte(self) -> None:
+        """La jointure du catalogue est toujours faite (bug des capsules)."""
+        for ident, titre in (('d1', 'Devis trop longs'), ('d2', 'Autre')):
+            self.conn.execute(
+                'INSERT INTO listen_docs(id, source, title, excerpt,'
+                " fetched_at) VALUES(?, 'rss', ?, 'extrait', 't')",
+                (ident, titre),
+            )
+        self.conn.execute(
+            "INSERT INTO listen_cycle_docs(cycle_id, doc_id) VALUES('c1','d1')"
+        )
+        self.conn.execute(
+            "INSERT INTO listen_cycle_docs(cycle_id, doc_id) VALUES('c2','d2')"
+        )
+        rows = execute_db_read(
+            self.conn, 'listen_cycle_documents', {'cycle_id': 'c1'}
+        )['data']
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]['title'], 'Devis trop longs')
+        self.assertEqual(rows[0]['excerpt'], 'extrait')
+
+    def test_un_outil_deja_en_base_n_est_pas_ecrase(self) -> None:
+        self.conn.execute(
+            "UPDATE tools SET titre='Réglé dans MC' WHERE id='web_search'"
+        )
+        seed_pipeline(
+            self.conn,
+            {
+                'schema_version': 1,
+                'tools': [
+                    {
+                        'id': 'web_search',
+                        'title': 'Autre titre',
+                        'capability': 'web_search',
+                    }
+                ],
+            },
+        )
+        self.assertEqual(
+            self._one("SELECT titre FROM tools WHERE id='web_search'"),
+            ('Réglé dans MC',),
+        )
+
+    def test_un_outil_mal_decrit_est_refuse(self) -> None:
+        for tool, erreur in (
+            ({'id': 'x1', 'capability': 'db_read'}, PipelineSeedError),
+            (
+                {'id': 'x2', 'capability': 'web_search', 'read': {}},
+                PipelineSeedError,
+            ),
+            (
+                {
+                    'id': 'x3',
+                    'capability': 'db_read',
+                    'read': {
+                        'tables': ['ventures'],
+                        'filters': [
+                            {
+                                'id': 'f',
+                                'table': 'ventures',
+                                'column': 'lifecycle',
+                                'fixed': 'CANDIDATE',
+                                'param': 'statut',
+                            }
+                        ],
+                    },
+                },
+                DbReadError,
+            ),
+        ):
+            with self.assertRaises(erreur):
+                seed_pipeline(
+                    self.conn, {'schema_version': 1, 'tools': [tool]}
+                )
 
 
 if __name__ == '__main__':

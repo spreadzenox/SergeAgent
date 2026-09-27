@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Bot Discord : gateway + miroir + actes (DB = vérité, H §1).
 
-Boucle : poll gateway (interactions/boutons, mentions, réactions) +
-miroir tickets dus (H1 à la création, réutilisé aux edits).
+Boucle : poll gateway (interactions/boutons, réactions) + miroir des
+tickets dus.
 CLI dans cli.py. Secrets : sidecar uniquement.
 """
 
@@ -30,7 +30,6 @@ from serge.discord.rest import (  # noqa: E402
     interaction_callback,
     verify_token,
 )
-from serge.points.interact import render_context_fr  # noqa: E402
 from serge.registry import load_ticket_types  # noqa: E402
 from serge.tickets import create_ticket, publish  # noqa: E402
 
@@ -88,14 +87,17 @@ class Bot:
         self._ack(interaction, 4, {'content': text[:2000], 'flags': 64})
 
     def on_gateway_event(self, kind: str, data: dict[str, Any]) -> None:
-        """Dispatch READY/MESSAGE_CREATE/INTERACTION_CREATE/REACTION_ADD."""
+        """Dispatch READY/INTERACTION_CREATE/REACTION_ADD.
+
+        Les messages libres de Julien (``MESSAGE_CREATE``) ne sont pas
+        traités : ils passeront par le pipeline en base (voir « Plus tard »
+        dans ``TODO.md``).
+        """
         if kind == 'READY':
             user = data.get('user') or {}
             self.bot_user_id = str(user.get('id') or '')
         elif kind == 'INTERACTION_CREATE':
             self.on_interaction(data)
-        elif kind == 'MESSAGE_CREATE':
-            self.on_message(data)
         elif kind == 'MESSAGE_REACTION_ADD':
             self.on_reaction(data)
         self.conn.commit()
@@ -154,22 +156,6 @@ class Bot:
         except (DiscordError, ValueError):
             pass
 
-    def on_message(self, message: dict[str, Any]) -> None:
-        """Mention @Serge → flux owner (+ refresh carte)."""
-        from serge.discord.owner_flow import handle_owner_message
-
-        result = handle_owner_message(
-            self.conn,
-            self.policy,
-            self.types,
-            self.token,
-            str(self.cfg.get('owner_user_id')),
-            self.bot_user_id,
-            message,
-        )
-        if result.get('ticket_id'):
-            self._refresh(str(result['ticket_id']))
-
     def on_reaction(self, event: dict[str, Any]) -> None:
         """🧵 sur digest → ticket de discussion (H §2)."""
         emoji = event.get('emoji') or {}
@@ -199,7 +185,11 @@ class Bot:
         self._refresh(ticket_id)
 
     def mirror_due(self) -> int:
-        """Miroirise les tickets dus (H1 à la création, réutilisé sinon)."""
+        """Recopie dans Discord les tickets dus.
+
+        Le ticket est recopié tel qu'il est en base, sans résumé par un
+        modèle. Un résumé déjà enregistré (``h1``) est réutilisé.
+        """
         from serge.discord.mirror import due_tickets as _due
         from serge.tickets import get_ticket
 
@@ -219,21 +209,6 @@ class Bot:
                 if isinstance(stored, dict)
                 else None
             )
-            if not ref.get('post_id') and h1 is None:
-                rendered = render_context_fr(
-                    self.conn,
-                    self.policy,
-                    json.dumps(
-                        {
-                            'titre': ticket.get('title'),
-                            'type': ticket.get('type'),
-                            'payload': ticket.get('payload_json'),
-                        },
-                        ensure_ascii=False,
-                    ),
-                )
-                if not rendered.get('fallback'):
-                    h1 = {key: rendered.get(key, '') for key in H1_KEYS}
             try:
                 mirror_ticket(
                     self.conn,

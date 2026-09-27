@@ -13,12 +13,15 @@ def project_objet(
     """Fiche objet {type, id, titre, champs, enfants, preuve} ou None."""
     if typ == 'file':
         from serge.db.store import utcnow
-        from serge.mc.proj_live import project_file_detail
+        from serge.mc.proj_taches import project_file_detail
 
         return project_file_detail(conn, utcnow())
-    if typ in ('llm', 'llm_usage', 'contexte', 'ecoute', 'outil'):
+    if typ == 'task':
+        from serge.mc.proj_taches import fiche_tache
+
+        return fiche_tache(conn, ident)
+    if typ in ('llm', 'llm_usage', 'ecoute', 'outil'):
         from serge.mc.proj_llm import (
-            project_contexte,
             project_ecoute,
             project_llm,
             project_llm_usage,
@@ -28,7 +31,6 @@ def project_objet(
         return {
             'llm': project_llm,
             'llm_usage': project_llm_usage,
-            'contexte': project_contexte,
             'ecoute': project_ecoute,
             'outil': project_outil,
         }[typ](conn, ident)
@@ -36,10 +38,6 @@ def project_objet(
         from serge.mc.proj_identite import project_identite
 
         return project_identite(ident)
-    if typ == 'tech':
-        from serge.tech_registre import fiche_tech
-
-        return fiche_tech(conn, ident)
     if typ == 'canal':
         from serge.canaux import fiche_canal
 

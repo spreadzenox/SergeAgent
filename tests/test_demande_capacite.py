@@ -12,9 +12,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from serge.coupe_circuit import set_heartbeat  # noqa: E402
 from serge.db.boot import init_schema  # noqa: E402
 from serge.demande_capacite import CapaciteError, poser_demande  # noqa: E402
-from serge.llm.outils_exec import HANDLERS, ContexteOutil  # noqa: E402
+from serge.interpreter.queue import process_one  # noqa: E402
+from serge.interpreter.tasks import enqueue_task  # noqa: E402
+from serge.llm.client import ChatResult, ToolCall  # noqa: E402
+from serge.pipeline_seed import seed_pipeline  # noqa: E402
 from serge.registry import load_ticket_types  # noqa: E402
 
 
@@ -67,10 +71,52 @@ class DemandeCapaciteTests(unittest.TestCase):
         n = self.conn.execute('SELECT COUNT(*) FROM tickets').fetchone()[0]
         self.assertEqual(n, 1)
 
-    def test_handler_invalide(self) -> None:
-        ctx = ContexteOutil(self.conn, {}, {'context': {}}, 'voice_dialog')
-        body = HANDLERS['demande_capacite'](ctx, {'besoin': ''})
-        self.assertEqual(body['code'], 'invalide')
+    def test_toute_invocation_peut_demander_une_capacite(self) -> None:
+        """Une invocation sans outil déclaré demande quand même à Julien.
+
+        L'outil « Demander une nouvelle capacité » est donné partout : le
+        faux modèle l'appelle deux fois (une demande vide, refusée, puis
+        une vraie), puis rend sa réponse.
+        """
+        seed_pipeline(
+            self.conn,
+            {
+                'schema_version': 1,
+                'invocations': [
+                    {'id': 'redacteur', 'type': 'llm', 'prompt': 'Écris.'}
+                ],
+            },
+        )
+        enqueue_task(self.conn, 'redacteur', {})
+        set_heartbeat(self.conn, True)
+        self.conn.commit()
+        seen: list[list] = []
+
+        def model(_key, name, messages, **kwargs):
+            seen.append([t['function']['name'] for t in kwargs['tools']])
+            answers = [m for m in messages if m.get('role') == 'tool']
+            if not answers:
+                calls = (
+                    ToolCall('c1', 'demande_capacite', '{"need": " "}'),
+                    ToolCall(
+                        'c2',
+                        'demande_capacite',
+                        '{"need": "écrire sur LinkedIn"}',
+                    ),
+                )
+                return ChatResult('', 5, 5, name, 1, calls)
+            self.assertIn('echec', answers[0]['content'])
+            return ChatResult('Fait.', 5, 5, name, 1)
+
+        process_one(
+            self.conn, 'works', now='2026-09-28T10:00:00+00:00', caller=model
+        )
+        self.assertEqual(seen[0], ['demande_capacite'])
+        row = self.conn.execute(
+            "SELECT title, payload_json FROM tickets WHERE type='REQUESTED'"
+        ).fetchone()
+        self.assertEqual(row[0], 'écrire sur LinkedIn')
+        self.assertEqual(json.loads(row[1])['point_llm'], 'redacteur')
 
 
 if __name__ == '__main__':

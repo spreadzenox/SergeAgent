@@ -18,6 +18,7 @@ from serge.mc.projectors import (  # noqa: E402
     SLOW_SECTIONS,
 )
 from tests.mc_server_case import McBrowserCase  # noqa: E402
+from tests.taches_fixtures import invocations, tache  # noqa: E402
 
 
 class SystemRegistryTests(unittest.TestCase):
@@ -95,12 +96,10 @@ class McSystemTests(McBrowserCase):
                 " VALUES('x1','v1','invoice',50.0,'in-1','overdue',?,?)",
                 (iso, iso),
             )
-            conn.execute(
-                'INSERT INTO work_items(id, kind, venture_id, status,'
-                ' priority, idempotency_key, created_at, updated_at)'
-                " VALUES('w1','email.send','v1','READY',0,'k-w1',?,?)",
-                (iso, iso),
+            invocations(
+                conn, ('envoyer', 'Envoyer un e-mail', 'prospection_light')
             )
+            tache(conn, 'envoyer', {'venture_id': 'v1'}, key='k-w1')
             conn.execute(
                 'INSERT INTO accounts_standing(id, venue, handle,'
                 ' cooldown_until, updated_at) VALUES'
@@ -168,5 +167,5 @@ class McSystemTests(McBrowserCase):
         self._watch_errors(page)
         page.goto(f'{self.base}/owner#/system')
         page.locator('#live-headline').wait_for(timeout=10000)
-        expect(page.locator('#page')).to_contain_text('Rien en cours')
+        expect(page.locator('#page')).to_contain_text('Serge est arrêté')
         expect(page.locator('#page')).to_contain_text('File vide')

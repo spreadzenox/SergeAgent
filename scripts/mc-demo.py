@@ -12,12 +12,18 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from serge.coupe_circuit import set_heartbeat  # noqa: E402
 from serge.db.boot import init_schema  # noqa: E402
 from serge.db.store import append_event  # noqa: E402
 from serge.funnels.contacts import add_address  # noqa: E402
+from serge.interpreter.tasks import (  # noqa: E402
+    enqueue_task,
+    finish_task,
+    start_task,
+)
 from serge.mc.auth import RateLimiter  # noqa: E402
 from serge.mc.server import McConfig, create_server  # noqa: E402
-from serge.scheduler import claim, enqueue  # noqa: E402
+from serge.pipeline_seed import seed_pipeline  # noqa: E402
 
 DB = Path('/tmp/mc-demo.db')
 TOKEN = 'demo-locale'
@@ -204,36 +210,51 @@ def main() -> None:
             ),
         )
 
-    running = enqueue(
-        conn, kind='email.send', idempotency_key='k-run', venture_id='v1'
+    # Des invocations de démonstration, sans LLM, pour remplir les files.
+    demos = (
+        ('demo_ecrire', 'Écrire au prospect (démo)', 'prospection_light'),
+        ('demo_classer', 'Classer une réponse (démo)', 'prospection_lourde'),
+        ('demo_pages', 'Ramasser des pages (démo)', 'pre_prospection'),
+        ('demo_boite', 'Relever la boîte (démo)', 'prospection_lourde'),
     )
-    claim(conn, running)
-    conn.execute(
-        'UPDATE work_items SET contact_id=?, campaign_id=?, updated_at=?'
-        ' WHERE id=?',
-        ('p1', 'c1', _iso(now - timedelta(minutes=11)), running),
-    )
-    enqueue(
-        conn, kind='inbound.classify', idempotency_key='k-r1', venture_id='v1'
-    )
-    enqueue(
+    seed_pipeline(
         conn,
-        kind='listen.collect',
-        idempotency_key='k-r2',
-        venture_id='v1',
-        blocked_until=_iso(now + timedelta(hours=1)),
+        {
+            'schema_version': 1,
+            'invocations': [
+                {
+                    'id': ident,
+                    'title': titre,
+                    'role': 'Invocation de démonstration.',
+                    'type': 'capability',
+                    'capability': 'echo',
+                    'step': etape,
+                }
+                for ident, titre, etape in demos
+            ],
+        },
     )
-    failed = enqueue(
-        conn, kind='email.poll', idempotency_key='k-f1', venture_id='v1'
+    # Serge est arrêté par défaut ; la démo le montre démarré.
+    set_heartbeat(conn, True)
+    running = enqueue_task(
+        conn, 'demo_ecrire', {'venture_id': 'v1', 'contact_id': 'p1'}
     )
+    start_task(conn, str(running))
     conn.execute(
-        "UPDATE work_items SET status='FAILED', payload_json=?, updated_at=?"
-        ' WHERE id=?',
-        (
-            json.dumps({'motif': 'garde quota : 40 e-mails / boîte / jour'}),
-            _iso(now - timedelta(hours=1)),
-            failed,
-        ),
+        'UPDATE tasks SET started_at=? WHERE id=?',
+        (_iso(now - timedelta(minutes=11)), running),
+    )
+    enqueue_task(conn, 'demo_classer', {'venture_id': 'v1'})
+    enqueue_task(
+        conn,
+        'demo_pages',
+        {'venture_id': 'v1'},
+        not_before=_iso(now + timedelta(hours=1)),
+    )
+    failed = enqueue_task(conn, 'demo_boite', {'venture_id': 'v1'})
+    start_task(conn, str(failed))
+    finish_task(
+        conn, str(failed), error='garde quota : 40 e-mails / boîte / jour'
     )
 
     event(
@@ -260,33 +281,14 @@ def main() -> None:
     event(
         conn, 'runner', 'work.failed', {'id': failed}, now - timedelta(hours=1)
     )
-    prompt = (
-        'Contexte : Ada a répondu « Oui, envoyez le devis. »\n'
-        'Tâche : classer le signal (positive / objection / autre).\n'
-        'Leçon active : un prix affiché convertit mieux.'
-    )
-    sortie = (
-        'Classe : positive.\n'
-        'Confiance : 0,86.\n'
-        'Suite : préparer un devis à 180 €, prix affiché, sans fourchette.\n'
-        'Justification : le message ouvre la porte ; la leçon l1 interdit de flouer le montant.\n'
-        'Dernier caractère utile : ne pas relancer tant que le devis n’est pas parti.'
-    )
-    event(
-        conn,
-        'classify_reply',
-        'llm.io',
-        {'point': 'classify_reply', 'prompt': prompt, 'sortie': sortie},
-        now - timedelta(minutes=8),
-    )
     for point, tin, tout, lat, verdict, moment in (
-        ('classify_reply', 1000, 400, 90, 'ok', now - timedelta(hours=4)),
-        ('classify_reply', 1800, 700, 140, 'ok', now - timedelta(minutes=8)),
+        ('demo_classer', 1000, 400, 90, 'ok', now - timedelta(hours=4)),
+        ('demo_classer', 1800, 700, 140, 'ok', now - timedelta(minutes=8)),
     ):
         conn.execute(
             'INSERT INTO llm_usage(point, tier, model, tokens_in,'
             ' tokens_out, latency_ms, verdict, created_at)'
-            " VALUES(?,'T1','nemo',?,?,?,?,?)",
+            " VALUES(?,'fast','nemo',?,?,?,?,?)",
             (point, tin, tout, lat, verdict, _iso(moment)),
         )
 

@@ -84,7 +84,7 @@ def project_public_statut(
     try:
         # Vérification grossière de l'activité
         row = conn.execute(
-            "SELECT COUNT(*) FROM work_items WHERE status='RUNNING'"
+            "SELECT COUNT(*) FROM tasks WHERE status='running'"
         ).fetchone()
         actif = int(row[0]) > 0 if row else False
         statut = 'operationnel' if not actif else 'travail_en_cours'

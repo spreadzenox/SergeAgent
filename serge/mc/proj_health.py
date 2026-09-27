@@ -169,7 +169,16 @@ def project_units_systemd(
     """
     _ = (conn, policy, now)
     unites = (
-        ('serge-pipeline.timer', 'Ordonnanceur', 'battement chaque minute'),
+        (
+            'serge-queue@conversations.service',
+            'File des conversations',
+            'tâches courtes, en continu',
+        ),
+        (
+            'serge-queue@works.service',
+            'File des travaux',
+            'tâches longues, en continu',
+        ),
         ('serge-discord-bot.service', 'Bot Discord', 'écoute en continu'),
         ('serge-voice-bridge.service', 'Pont voix', 'appels'),
         (

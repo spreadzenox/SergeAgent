@@ -13,6 +13,11 @@ sys.path.insert(0, str(ROOT))
 
 from serge.funnels.contacts import add_address  # noqa: E402
 from tests.mc_server_case import McBrowserCase  # noqa: E402
+from tests.taches_fixtures import (  # noqa: E402
+    invocations,
+    sans_pipeline_de_depart,
+    tache,
+)
 
 
 class McFrontTests(McBrowserCase):
@@ -23,7 +28,7 @@ class McFrontTests(McBrowserCase):
         self._watch_errors(page)
         page.goto(f'{self.base}/owner')
         for text in (
-            'Rien en cours',
+            'Serge est arrêté',
             'Aucun urgent',
             'File vide',
             'Aucune activité',
@@ -48,6 +53,12 @@ class McFrontTests(McBrowserCase):
         self._wait_for(page, 'window.__MC && window.__MC.stats.skipped >= 1')
 
     def test_sidebar_navigation(self) -> None:
+        import sqlite3
+
+        conn = sqlite3.connect(self.db_path)
+        sans_pipeline_de_depart(conn)
+        conn.commit()
+        conn.close()
         page = self._auth_context().new_page()
         self._watch_errors(page)
         page.goto(f'{self.base}/owner')
@@ -55,7 +66,7 @@ class McFrontTests(McBrowserCase):
         self.assertEqual(links.count(), 10)
         self.assertEqual(links.nth(1).text_content().strip(), 'Cerveau')
         links.nth(1).click()
-        page.locator('table.matrice tbody tr').first.wait_for(timeout=10000)
+        page.get_by_text('Aucune invocation en base').wait_for(timeout=10000)
         self.assertEqual(page.evaluate('window.__MC.stats.page'), 'p2')
         active = page.locator('.barre-laterale a.actif')
         self.assertEqual(active.count(), 1)
@@ -117,11 +128,15 @@ class McFrontTests(McBrowserCase):
                 ),
             )
             add_address(conn, 'p1', 'email', 'ada@x.io')
-            conn.execute(
-                'INSERT INTO work_items(id, kind, venture_id, status,'
-                ' priority, idempotency_key, created_at, updated_at)'
-                " VALUES('w1','email.send','v1','RUNNING',0,'k1',?,?)",
-                (iso, iso),
+            invocations(
+                conn, ('envoyer', 'Envoyer un e-mail', 'prospection_light')
+            )
+            tache(
+                conn,
+                'envoyer',
+                {'venture_id': 'v1'},
+                key='k1',
+                status='running',
             )
             conn.execute(
                 'INSERT INTO tickets(id, type, title, state, expiry_at,'
@@ -148,7 +163,7 @@ class McFrontTests(McBrowserCase):
         self._watch_errors(page)
         page.goto(f'{self.base}/owner')
         for text in (
-            'Envoi d’e-mail',
+            'Envoyer un e-mail',
             'Captcha',
             'Guichet',
             'Ada',
@@ -163,16 +178,16 @@ class McFrontTests(McBrowserCase):
 
         conn = sqlite3.connect(self.db_path)
         try:
-            conn.execute(
-                'INSERT INTO work_items(id, kind, venture_id, status,'
-                ' priority, idempotency_key, payload_json, created_at,'
-                " updated_at) VALUES('w9','email.send','v1','RUNNING',0,"
-                "'k9',?,?,?)",
-                (
-                    '{"result": {"note": "Appel propre."}}',
-                    '2026-09-10T10:00:00+00:00',
-                    '2026-09-10T10:00:00+00:00',
-                ),
+            invocations(
+                conn, ('envoyer', 'Envoyer un e-mail', 'prospection_light')
+            )
+            tache(
+                conn,
+                'envoyer',
+                {'venture_id': 'v1', 'note': 'Appel propre.'},
+                key='k9',
+                status='running',
+                created_at='2026-09-10T10:00:00+00:00',
             )
             conn.commit()
         finally:
@@ -184,7 +199,7 @@ class McFrontTests(McBrowserCase):
         page.get_by_text('Preuve — jusqu’au dernier caractère').wait_for(
             timeout=10000
         )
-        expect(page.locator('#page')).to_contain_text('Envoi d’e-mail')
+        expect(page.locator('#page')).to_contain_text('Envoyer un e-mail')
         expect(page.locator('#page')).to_contain_text('Appel propre.')
 
     def test_composants_hud(self) -> None:

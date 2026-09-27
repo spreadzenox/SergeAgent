@@ -18,11 +18,9 @@ passent en `PARKED`.
 
 **Rien n'est branché.**
 
-- Trois invocations sont écrites mais jamais appelées : « Raconter
-  l'essai » (`resume_test`), « Écrire l'idée (après essai) »
-  (`draft_hypothesis_full`) et « Trois autres idées » (`options_pivot`).
-- L'invocation technique « Choisir une pré-venture »
-  (`select_pre_venture`) est décrite au catalogue, sans code.
+- Trois invocations écrites mais jamais appelées sont rangées dans
+  `pas_encore_branche/` : « Raconter l'essai », « Écrire l'idée (après
+  essai) » et « Trois autres idées ».
 - Le code impose une seule venture active à la fois
   (`serge/funnels/lifecycle.py`).
 

@@ -8,7 +8,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from serge.funnels.metrics import campaign_metrics
-from serge.points.interact import strip_ids
+from serge.text_ids import strip_ids
 
 
 def project_entonnoir(

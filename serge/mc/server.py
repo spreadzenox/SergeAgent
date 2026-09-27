@@ -351,9 +351,7 @@ class McHandler(
             self._logout()
             return
         apis = {
-            '/owner/api/kill': self._api_kill,
-            '/owner/api/unkill': self._api_unkill,
-            '/owner/api/llm-point': self._api_llm_point,
+            '/owner/api/invocation': self._api_invocation,
             '/owner/api/ticket/acte': self._api_ticket_acte,
             '/owner/api/ticket/item': self._api_ticket_item,
             '/owner/api/ticket/discuter': self._api_ticket_discuter,
@@ -363,7 +361,7 @@ class McHandler(
             '/owner/api/policy/propose': self._api_policy_propose,
             '/owner/api/coupe': self._api_coupe,
             '/owner/api/etape': self._api_etape,
-            '/owner/api/listen/start': self._api_listen_start,
+            '/owner/api/bouton': self._api_bouton,
         }
         acte = apis.get(path)
         if acte is None:

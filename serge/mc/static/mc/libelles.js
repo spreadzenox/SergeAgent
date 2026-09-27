@@ -1,17 +1,4 @@
-// Dictionnaire FR — miroir de serge/mc/libelles.py (kinds, dates, phrases).
-export const KINDS = {
-  'email.send': 'Envoi d’e-mail',
-  'email.poll': 'Collecte de la boîte',
-  'voice.send': 'Appel sortant',
-  'voice.score': 'Notation d’un appel',
-  'inbound.classify': 'Classification d’une réponse',
-  'inbound.reply_priority': 'Réponse prioritaire',
-  'inbound.judge_other': 'Arbitrage des messages autres',
-  'listen.collect': 'Ramasser des pages',
-  'memory.consolidate': 'Consolidation de la mémoire',
-  'memory.apply': 'Application d’une leçon',
-};
-
+// Dictionnaire FR — miroir de serge/mc/libelles.py (événements, dates, phrases).
 export const EVENTS = {
   cycle: 'Cycle',
   guard: 'Garde-fou',
@@ -21,21 +8,16 @@ export const EVENTS = {
   'email.delivered': 'E-mail livré',
   'email.queued': 'E-mail en file',
   'sms.sent': 'SMS envoyé',
-  'work.enqueued': 'Tâche mise en file',
-  'work.claimed': 'Tâche prise en charge',
-  'work.completed': 'Tâche terminée',
-  'work.failed': 'Tâche échouée',
+  'task.done': 'Tâche terminée',
+  'task.failed': 'Tâche échouée',
+  'task.resumed': 'Tâche reprise après un arrêt',
+  'write.inserted': 'Ligne ajoutée',
+  'write.updated': 'Ligne modifiée',
+  'write.refused': 'Écriture refusée',
+  'write.skipped': 'Doublon écarté',
   mc_act: 'Acte owner',
-  'llm.io': 'Réflexion d’un agent',
   'transition.approved': 'Approuvé',
   'transition.rejected': 'Rejeté',
-};
-
-export const ETATS_WORK = {
-  READY: 'Prêt',
-  RUNNING: 'En cours',
-  DONE: 'Terminé',
-  FAILED: 'Échoué',
 };
 
 export const TYPES_TICKET = {
@@ -82,34 +64,6 @@ export const FUNNEL = {
   INVALID: 'Fiche invalide',
 };
 
-export const LLM_TITRES = {
-  draft_hypothesis_smoke: 'Écrire l’idée de business',
-  draft_hypothesis_full: 'Écrire l’idée (après essai)',
-  plan_scale: 'Comment grandir',
-  options_pivot: 'Trois autres idées',
-  resume_test: 'Raconter l’essai',
-  fill_slots: 'Remplir les créneaux',
-  write_followup: 'Écrire une relance',
-  voice_script: 'Écrire un script d’appel',
-  voice_dialog: 'Dialoguer à l’oral',
-  summarize_thread: 'Résumer un fil',
-  score_lead_departage: 'Départager deux pistes',
-  build_artifact: 'Construire un livrable',
-  review_build: 'Relire un livrable',
-  summarize_build_debt: 'Résumer la dette builder',
-  classify_reply: 'Classer une réponse',
-  extract_meeting: 'Extraire un rendez-vous',
-  reply_intent: 'Répondre à une intention',
-  review_other: 'Relire un message autre',
-  score_call: 'Noter un appel',
-  judge_allocator: 'Arbitrer l’allocation',
-  consolidate: 'Consolider la mémoire',
-  render_context_fr: 'Rendre le contexte FR',
-  classify_owner_intent: 'Lire l’intention owner',
-  judge_consequence: 'Juger une conséquence',
-  install_guide: 'Guider l’installation',
-};
-
 export const ETATS_CAMPAGNE = {
   RUNNING: 'En cours',
   PAUSED: 'En pause',
@@ -140,7 +94,7 @@ export const TYPES_OBJET = {
   ticket: 'Question pour toi',
   lesson: 'Leçon',
   playbook: 'Recette',
-  work_item: 'Petit travail',
+  task: 'Tâche',
   touch: 'Prise de contact',
   inbound_event: 'Réponse reçue',
   listen_doc: 'Page lue',
@@ -149,20 +103,14 @@ export const TYPES_OBJET = {
   sqlite: 'SQLite',
   table: 'Table',
   llm_usage: 'Passage',
-  contexte: 'Lecture autorisée',
   ecoute: 'Pages lues',
   outil: 'Outil',
   etape: 'Étape',
-  tech: 'Invocation technique',
   canal: 'Canal',
 }
 
 export function verbe(kind) {
-  return KINDS[kind] || EVENTS[kind] || String(kind || '').replace(/\./g, ' · ');
-}
-
-export function titreLlm(nom) {
-  return LLM_TITRES[nom] || String(nom || '').replace(/_/g, ' ');
+  return EVENTS[kind] || String(kind || '').replace(/\./g, ' · ');
 }
 
 function duree(abs) {

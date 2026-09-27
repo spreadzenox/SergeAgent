@@ -3,13 +3,10 @@
 
 from __future__ import annotations
 
-import os
 import sqlite3
 import sys
-import tempfile
 import unittest
 from pathlib import Path
-from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -22,6 +19,8 @@ from serge.mc.proj_cerveau import (  # noqa: E402
     project_signaux,
     project_usage_points,
 )
+from serge.pipeline_seed import seed_pipeline  # noqa: E402
+from tests.taches_fixtures import sans_pipeline_de_depart  # noqa: E402
 
 NOW = '2026-09-10T12:00:00+00:00'
 POLICY: dict = {}
@@ -178,70 +177,55 @@ class ProjCerveauTests(unittest.TestCase):
         )
 
 
-REGISTRE_DEMO = """schema_version: 1
-points:
-  qualify:
-    verdict: LLM-1
-    tier: T1
-    output_mode: structured
-    external_info: false
-    context: {}
-    garde_fou: strict
-    repli: manuel
-    enabled: true
-  score:
-    verdict: LLM-1
-    tier: T1
-    output_mode: structured
-    external_info: false
-    context: {}
-    garde_fou: strict
-    repli: manuel
-    enabled: false
-"""
-
-
 class ProjMatriceTests(unittest.TestCase):
+    """La liste des invocations en base, avec leur usage sur 7 jours."""
+
     def setUp(self) -> None:
-        self.tmp = tempfile.TemporaryDirectory(prefix='serge-matrice-')
-        self.addCleanup(self.tmp.cleanup)
-        self.reg_path = Path(self.tmp.name) / 'llm-points.yaml'
-        self.reg_path.write_text(REGISTRE_DEMO, encoding='utf-8')
-        patcher = mock.patch.dict(
-            os.environ, {'SERGE_CONFIG_DIR': self.tmp.name}
-        )
-        patcher.start()
-        self.addCleanup(patcher.stop)
         self.conn = sqlite3.connect(':memory:')
         self.conn.row_factory = sqlite3.Row
+        self.addCleanup(self.conn.close)
         init_schema(self.conn)
+        sans_pipeline_de_depart(self.conn)
+        seed_pipeline(
+            self.conn,
+            {
+                'schema_version': 1,
+                'invocations': [
+                    {
+                        'id': 'score',
+                        'title': 'Noter',
+                        'type': 'llm',
+                        'model_tier': 'fast',
+                        'step': 'prospection_lourde',
+                        'queue': 'conversations',
+                        'enabled': False,
+                    },
+                    {
+                        'id': 'qualify',
+                        'title': 'Qualifier',
+                        'type': 'llm',
+                        'step': 'prospection_light',
+                        'priority': 50,
+                    },
+                ],
+            },
+        )
         _insere_usage(self.conn)
         for jour in ('2026-09-09', '2026-09-07', '2026-09-06'):
             self.conn.execute(
                 'INSERT INTO llm_usage(point, tier, model, tokens_in,'
                 ' tokens_out, latency_ms, verdict, created_at)'
-                " VALUES('qualify','T1','nemo',100,50,10,'ok',?)",
+                " VALUES('qualify','mid','nemo',100,50,10,'ok',?)",
                 (f'{jour}T10:00:00+00:00',),
             )
-        for jour in (
-            '2026-09-08',
-            '2026-09-07',
-            '2026-09-06',
-            '2026-09-05',
-        ):
-            self.conn.execute(
-                'INSERT INTO llm_usage(point, tier, model, tokens_in,'
-                ' tokens_out, latency_ms, verdict, created_at)'
-                " VALUES('score','T1','nemo',100,50,10,'ok',?)",
-                (f'{jour}T10:00:00+00:00',),
-            )
-        for heure in ('10', '11', '14', '15'):
-            self.conn.execute(
-                'INSERT INTO llm_usage(point, tier, model, tokens_in,'
-                ' tokens_out, latency_ms, verdict, created_at)'
-                " VALUES('score','T1','nemo',100,50,10,'ok',?)",
-                (f'2026-09-09T{heure}:00:00+00:00',),
-            )
+        for jour in ('2026-09-08', '2026-09-07', '2026-09-06', '2026-09-05'):
+            for heure in ('10', '11'):
+                self.conn.execute(
+                    'INSERT INTO llm_usage(point, tier, model, tokens_in,'
+                    ' tokens_out, latency_ms, verdict, created_at)'
+                    " VALUES('score','fast','nemo',100,50,10,'ok',?)",
+                    (f'{jour}T{heure}:00:00+00:00',),
+                )
 
     def test_matrice_golden(self) -> None:
         self.assertEqual(
@@ -250,54 +234,43 @@ class ProjMatriceTests(unittest.TestCase):
                 'points': [
                     {
                         'nom': 'qualify',
-                        'tier': 'T1',
-                        'verdict': 'LLM-1',
+                        'titre': 'Qualifier',
+                        'tier': 'mid',
+                        'type': 'llm',
                         'enabled': True,
-                        'output_mode': 'structured',
-                        'external_info': False,
-                        'garde_fou': 'strict',
-                        'repli': 'manuel',
-                        'appels_7j': 3,
-                        'tokens_7j': 450,
-                        'latence_ms': 10,
-                        'verdicts': {'ok': 3},
-                        'tue_runtime': False,
+                        'file': 'works',
+                        'priorite': 50,
+                        'etape': 'prospection_light',
+                        'appels_7j': 5,
+                        'tokens_7j': 4950,
+                        'latence_ms': 66,
+                        'verdicts': {'ok': 4, 'recall': 1},
                     },
                     {
                         'nom': 'score',
-                        'tier': 'T1',
-                        'verdict': 'LLM-1',
+                        'titre': 'Noter',
+                        'tier': 'fast',
+                        'type': 'llm',
                         'enabled': False,
-                        'output_mode': 'structured',
-                        'external_info': False,
-                        'garde_fou': 'strict',
-                        'repli': 'manuel',
-                        'appels_7j': 8,
-                        'tokens_7j': 1200,
-                        'latence_ms': 10,
-                        'verdicts': {'ok': 8},
-                        'tue_runtime': False,
+                        'file': 'conversations',
+                        'priorite': 10,
+                        'etape': 'prospection_lourde',
+                        'appels_7j': 9,
+                        'tokens_7j': 1800,
+                        'latence_ms': 14,
+                        'verdicts': {'ok': 9},
                     },
                 ]
             },
         )
 
-    def test_matrice_flag_runtime(self) -> None:
+    def test_une_invocation_supprimee_disparait(self) -> None:
         self.conn.execute(
-            'INSERT INTO runtime_flags(name, value, set_by, set_at,'
-            " expires_at, reason) VALUES('llm.score','kill','test',?,"
-            "'2026-09-11T12:00:00+00:00','x')",
-            (NOW,),
+            "UPDATE invocations SET deleted_at=? WHERE id='score'", (NOW,)
         )
         points = project_matrice(self.conn, POLICY, NOW)['points']
-        self.assertEqual(
-            [(p['nom'], p['tue_runtime']) for p in points],
-            [('qualify', False), ('score', True)],
-        )
+        self.assertEqual([p['nom'] for p in points], ['qualify'])
 
-    def test_matrice_registre_absent(self) -> None:
-        self.reg_path.unlink()
-        self.assertEqual(
-            project_matrice(self.conn, POLICY, NOW),
-            {'points': [], 'erreur': 'registre illisible'},
-        )
+
+if __name__ == '__main__':
+    unittest.main()

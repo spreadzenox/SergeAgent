@@ -11,7 +11,7 @@ from statistics import median
 from typing import Any
 
 from serge.mc.proj_outils import avant_iso, charge_json
-from serge.points.interact import strip_ids
+from serge.text_ids import strip_ids
 
 
 def project_memory_items(

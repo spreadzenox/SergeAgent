@@ -17,47 +17,41 @@ les pages web qui prouvent le besoin.
 
 ### Ce qui marche
 
-**Lancer un cycle depuis Mission Control** (page Écoute). Julien écrit un
-texte de guidage et clique. Serge crée un cycle (`listen_cycles`) et une
-tâche `listen.business_cycle`. Le cycle se déroule ainsi
-(`serge/workers/listen.py`) :
+**Un demi-cycle de démonstration**, décrit dans `config/pipeline.yaml`,
+pour vérifier que le pipeline en base s'enregistre, s'affiche dans Mission
+Control et tourne. Sur la page Écoute, le bouton « Lancer un cycle
+(démo) » (un déclencheur « bouton » en base) crée une tâche avec le texte
+de guidage ; elle ne tourne que si Serge a été démarré :
 
-1. Le cycle fige les pages de `listen_docs` jamais utilisées par un cycle
-   précédent.
-2. **« Explorer les besoins A »** (invocation LLM), puis **« Explorer les
-   besoins B »** : même consigne, même contexte. B ne voit jamais la sortie
-   de A. Chacune peut chercher sur le web (`web_search`), dans la mémoire
-   (`memory_search`) et lire la base (cycle courant, pages du cycle,
-   business déjà connus).
-3. Serge enregistre les fiches comme business `CANDIDATE` dans `ventures`,
-   avec leurs pages de preuve dans `venture_sources`. Il écarte les
-   doublons : même contenu, ou au moins 72 % de mots en commun avec un
-   business existant. Chaque fiche écartée est notée dans le journal
-   (`listen.candidate_rejected`).
-4. **« Choisir les business à tester »** (invocation LLM) lit les business
-   encore candidats et en choisit.
-5. Le code passe les business choisis en `POC_SELECTED`, et refuse tout
-   business qui n'est plus `CANDIDATE` (`serge/listen/memory.py`,
-   `select_poc`). Chaque choix et chaque refus est noté dans le journal.
+1. « Ouvrir un cycle (démo) », sans LLM, enregistre le cycle
+   (`listen_cycles`) avec le texte de guidage ;
+2. « Formuler deux idées (démo) » reçoit le cycle et les business déjà
+   connus, peut chercher sur le web et dans la mémoire, et écrit deux
+   business `CANDIDATE`. La règle de doublons de la table `ventures`
+   (72 % de mots en commun sur le nom et la description) écarte une fiche
+   trop proche d'un business existant, avec une note au journal ;
+3. « Choisir un business (démo) » passe au plus un candidat en
+   `POC_SELECTED`. La règle des changements de statut refuse un business
+   qui n'est plus candidat.
 
-Réglages (policy, page Policy) : `listen.discovery_needs_target` (5 besoins
-par découverte) et `listen.poc_business_target` (1 business choisi).
+Le vrai cycle, en sept invocations, remplacera cette démonstration au
+lot 7.
 
-**Collecter des flux RSS** : le worker `listen.collect` télécharge les
-articles d'une liste de flux et les range dans `listen_docs`, sans doublon.
+### Ce qui ne marche plus depuis le lot 6
 
-### Ce qui ne marche pas
+L'ancien cycle écrit en dur (« Explorer les besoins A » et « B »,
+« Choisir les business à tester ») et la collecte des flux RSS sont rangés
+dans `pas_encore_branche/` (`serge/workers/listen.py`,
+`serge/points/listen_pts.py`, `serge/listen/memory.py`). Leurs prompts
+serviront au lot 7.
 
-- **Rien ne lance la collecte RSS**, et aucune liste de flux n'est
-  configurée. Seul le script de démo `scripts/mc-demo.py` met des pages en
+### Ce qui manque
+
+- **Aucune page n'est collectée** : pas de liste de flux RSS, pas de
+  collecte. Seul le script de démo `scripts/mc-demo.py` met des pages en
   base.
 - **Les pages trouvées par la recherche web ne sont pas gardées.** Les
   preuves d'un besoin ne peuvent citer que des pages de `listen_docs`.
-  Comme la table est vide en production, les business sont enregistrés
-  sans preuve.
-- **La lecture des pages du cycle renvoie seulement leurs identifiants**,
-  pas leur titre ni leur extrait, sauf si le modèle demande lui-même la
-  jointure entre les deux tables.
 - **La recherche web lit la page de résultats de DuckDuckGo** (5 résultats,
   un extrait). Elle ne lit jamais les pages et peut être bloquée.
 

@@ -1,24 +1,16 @@
-// Page P2 Cerveau : stream, décisions, matrice, signaux + kills.
+// Page P2 Cerveau : stream, décisions, invocations, signaux.
 import {
   confirmModal,
   fillList,
   li,
   openDrawer,
-  promptModal,
   rel,
   toast,
 } from '../components.js';
-import {titreLlm} from '../libelles.js';
 import {fetchState} from '../sse.js';
 
 function etatPoint(item) {
-  if (item.tue_runtime) {
-    return 'Tué (temporaire)';
-  }
-  if (!item.enabled) {
-    return 'Coupé (registre)';
-  }
-  return 'En service';
+  return item.enabled ? 'Allumée' : 'Éteinte';
 }
 
 function verdictsCompacts(verdicts) {
@@ -58,21 +50,22 @@ function renderDecisions(main, payload, sig) {
 function renderMatrice(main, payload, sig, store) {
   const conteneur = main.querySelector('[data-matrice="table"]');
   conteneur.replaceChildren();
-  if (payload.erreur) {
-    const averti = document.createElement('p');
-    averti.textContent = 'Registre illisible — matrice indisponible.';
-    conteneur.append(averti);
+  if (!(payload.points || []).length) {
+    const vide = document.createElement('p');
+    vide.textContent = 'Aucune invocation en base pour l’instant.';
+    conteneur.append(vide);
   } else {
     const table = document.createElement('table');
     table.className = 'matrice';
     const tete = document.createElement('tr');
     for (const titre of [
-      'Point',
-      'Tier',
+      'Invocation',
+      'Niveau',
+      'File',
+      'Priorité',
       'Appels 7j',
       'Jetons 7j',
       'Verdicts',
-      'Dérive',
       'État',
     ]) {
       const th = document.createElement('th');
@@ -89,23 +82,24 @@ function renderMatrice(main, payload, sig, store) {
       const bouton = document.createElement('button');
       bouton.type = 'button';
       bouton.className = 'lien-point';
-      bouton.textContent = item.nom;
-      bouton.title = titreLlm(item.nom);
+      bouton.textContent = item.titre || item.nom;
+      bouton.title = item.nom;
       bouton.addEventListener('click', () => ouvrirFiche(store, item));
       tdNom.append(bouton);
       tr.append(tdNom);
       const cellules = [
         item.tier,
+        item.file,
+        String(item.priorite),
         String(item.appels_7j),
         item.tokens_7j.toLocaleString('fr-FR'),
         verdictsCompacts(item.verdicts),
-        item.derive ? `Dérive ${item.derive}` : '—',
         etatPoint(item),
       ];
       cellules.forEach((texte, i) => {
         const td = document.createElement('td');
         td.textContent = texte;
-        if ((i === 4 && item.derive) || (i === 5 && texte !== 'En service')) {
+        if (i === 6 && !item.enabled) {
           td.classList.add('alerte');
         }
         tr.append(td);
@@ -180,57 +174,34 @@ async function poster(chemin, charge) {
   return {ok: res.ok, data: await res.json()};
 }
 
-async function tuerPoint(store, item, rouvrir) {
-  const valeurs = await promptModal(document.body, {
-    title: `Tuer ${item.nom} ?`,
-    message: 'Coupure à chaud : flag temporaire + ticket POLICY auto.',
-    fields: [
-      {nom: 'raison', label: 'Raison : ', defaut: '', requis: true},
-      {nom: 'ttl_h', label: 'Durée (heures) : ', defaut: '24'},
-    ],
-    confirm: 'Tuer',
-  });
-  if (!valeurs) {
-    return;
-  }
-  try {
-    const {ok, data} = await poster('/owner/api/kill', {
-      point: item.nom,
-      raison: valeurs.raison,
-      ttl_h: valeurs.ttl_h,
-      decision_id: `mc-${Date.now()}-${item.nom}`,
-    });
-    if (!ok) {
-      toast(document.body, `Échec : ${data.erreur || 'refusé'}.`, 'erreur');
-      return;
-    }
-    toast(document.body, `${item.nom} tué (ticket ${data.ticket_id}).`, 'succes');
-    await rafraichir(store);
-    rouvrir();
-  } catch {
-    toast(document.body, 'Kill injoignable.', 'erreur');
-  }
-}
-
-async function retirerPoint(store, item, rouvrir) {
+async function basculer(store, item, rouvrir) {
+  const allumer = !item.enabled;
   const confirmer = await confirmModal(document.body, {
-    title: `Relancer ${item.nom} ?`,
-    message: 'Le flag temporaire sera retiré (registre inchangé).',
-    confirm: 'Relancer',
+    title: `${allumer ? 'Allumer' : 'Éteindre'} ${item.titre || item.nom} ?`,
+    message: allumer
+      ? 'Ses tâches en attente reprendront au prochain tour de sa file.'
+      : 'Ses tâches attendront ; aucune nouvelle tâche ne sera créée.',
+    confirm: allumer ? 'Allumer' : 'Éteindre',
   });
   if (!confirmer) {
     return;
   }
   try {
-    const {ok, data} = await poster('/owner/api/unkill', {
-      point: item.nom,
+    const {ok, data} = await poster('/owner/api/coupe', {
+      cible: 'invocation',
+      id: item.nom,
+      marche: allumer,
       decision_id: `mc-${Date.now()}-${item.nom}`,
     });
     if (!ok) {
       toast(document.body, `Échec : ${data.erreur || 'refusé'}.`, 'erreur');
       return;
     }
-    toast(document.body, `${item.nom} relancé.`, 'succes');
+    toast(
+      document.body,
+      `${item.titre || item.nom} ${allumer ? 'allumée' : 'éteinte'}.`,
+      'succes',
+    );
     await rafraichir(store);
     rouvrir();
   } catch {
@@ -240,21 +211,16 @@ async function retirerPoint(store, item, rouvrir) {
 
 function ouvrirFiche(store, item) {
   const corps = document.createElement('div');
-  const cochees = Object.keys(item.checklist || {}).filter((k) => item.checklist[k]);
   const lignes = [
     ['État', etatPoint(item)],
-    ['Tier', item.tier],
-    ['Verdict', item.verdict],
-    ['Garde-fou', item.garde_fou],
-    ['Repli', item.repli],
-    ['Enveloppe', `${item.enveloppe} jetons`],
+    ['Niveau', item.tier],
+    ['File', item.file],
+    ['Priorité', String(item.priorite)],
     [
       '7 jours',
       `${item.appels_7j} appels, ${item.tokens_7j.toLocaleString('fr-FR')} jetons, ${item.latence_ms} ms`,
     ],
     ['Verdicts', verdictsCompacts(item.verdicts)],
-    ['Dérive', item.derive ? `Dérive ${item.derive}` : 'Aucune'],
-    ['Checklist', cochees.join(', ') || '—'],
   ];
   for (const [cle, valeur] of lignes) {
     const p = document.createElement('p');
@@ -263,11 +229,11 @@ function ouvrirFiche(store, item) {
   }
   const bouton = document.createElement('button');
   bouton.type = 'button';
-  bouton.textContent = item.tue_runtime ? 'Relancer' : 'Tuer';
-  if (!item.tue_runtime) {
+  bouton.textContent = item.enabled ? 'Éteindre' : 'Allumer';
+  if (item.enabled) {
     bouton.classList.add('danger');
   }
-  const ferme = openDrawer(document.body, `Point ${item.nom}`, corps);
+  const ferme = openDrawer(document.body, item.titre || item.nom, corps);
   function rouvrir() {
     ferme();
     const env = store.get('matrice');
@@ -282,11 +248,7 @@ function ouvrirFiche(store, item) {
     const fin = () => {
       bouton.disabled = false;
     };
-    if (item.tue_runtime) {
-      retirerPoint(store, item, rouvrir).finally(fin);
-    } else {
-      tuerPoint(store, item, rouvrir).finally(fin);
-    }
+    basculer(store, item, rouvrir).finally(fin);
   });
   const fiche = document.createElement('button');
   fiche.type = 'button';

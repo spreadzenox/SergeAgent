@@ -1,4 +1,4 @@
-// Page Écoute : cycle manuel, paramètres DB et permissions des trois agents.
+// Page Écoute : bouton de lancement (déclencheur en base), cycle, candidats.
 import {toast} from '../components.js';
 import {fetchState} from '../sse.js';
 
@@ -22,11 +22,18 @@ function afficher(main, payload, sig) {
   main.querySelector('[data-ecoute="cycle"]').textContent = cycle
     ? `Cycle ${cycle.id} : ${cycle.status} (${cycle.needs_target} besoins, ${cycle.business_target} POC)`
     : 'Aucun cycle.';
-  const agents = main.querySelector('[data-ecoute="agents"]');
-  agents.replaceChildren(...(payload.agents || []).map((agent) => {
+  const bouton = (payload.boutons || [])[0];
+  const lancer = main.querySelector('[data-ecoute-action="lancer"]');
+  lancer.disabled = !bouton;
+  lancer.dataset.trigger = bouton ? bouton.id : '';
+  lancer.textContent = bouton ? bouton.titre : 'Lancer le cycle';
+  main.querySelector('[data-ecoute="bouton"]').textContent = bouton
+    ? `Lance « ${bouton.invocation_titre} ».`
+    : 'Aucun bouton en base pour cette étape : il sera ajouté au pipeline de départ.';
+  const invocations = main.querySelector('[data-ecoute="invocations"]');
+  invocations.replaceChildren(...(payload.invocations || []).map((inv) => {
     const item = document.createElement('li');
-    const readers = (agent.readers || []).filter((reader) => reader.enabled).map((reader) => reader.id).join(', ');
-    item.textContent = `${agent.id} : ${readers || 'aucun lecteur'}`;
+    item.textContent = inv.titre;
     return item;
   }));
   const candidates = main.querySelector('[data-ecoute="candidates"]');
@@ -41,10 +48,13 @@ function afficher(main, payload, sig) {
 export function mount(main, store) {
   const tpl = document.getElementById('page-ecoute');
   main.replaceChildren(tpl.content.cloneNode(true));
-  main.querySelector('[data-ecoute-action="lancer"]').addEventListener('click', async () => {
+  main.querySelector('[data-ecoute-action="lancer"]').addEventListener('click', async (ev) => {
     const guide = main.querySelector('[data-ecoute="guide"]').value;
-    const result = await poster('/owner/api/listen/start', {guide});
-    toast(document.body, result.ok ? 'Cycle placé dans la file.' : (result.data.erreur || 'Refusé.'), result.ok ? 'succes' : 'erreur');
+    const result = await poster('/owner/api/bouton', {
+      trigger_id: ev.currentTarget.dataset.trigger,
+      form: {guide},
+    });
+    toast(document.body, result.ok ? 'Tâche placée dans la file.' : (result.data.erreur || 'Refusé.'), result.ok ? 'succes' : 'erreur');
     if (result.ok) {
       await rafraichir(store);
     }

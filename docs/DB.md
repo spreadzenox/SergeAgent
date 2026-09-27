@@ -17,35 +17,38 @@ recrée jamais ensuite.
 1. **Les migrations** (`serge/db/migrate.py`). Chaque changement de
    structure est une fonction `apply_v0NN` (fichiers `serge/db/v0NN.py`).
    Serge applique celles qui manquent, dans l'ordre. Version actuelle :
-   **24**.
+   **25**.
    - Une base neuve saute directement à la version 7 (le socle,
-     `serge/db/schema.py`), puis applique 8, 9, … 24.
+     `serge/db/schema.py`), puis applique 8, 9, … 25.
    - Une base **plus récente** que le code refuse de démarrer
      (`MigrateError`). Revenir à un ancien commit ne défait pas une
      migration.
-2. **Le remplissage du catalogue** : étapes, tools, invocations LLM et
-   techniques, canaux, liens.
+2. **Le remplissage de départ** : les 8 étapes, les canaux, les
+   capacités déclarées par le code, puis le pipeline de départ
+   (`config/pipeline.yaml` : files, outils, invocations, règles
+   d'écriture, liens, déclencheurs).
 3. **Le calcul des empreintes** du code de chaque objet
    (`serge/objet_sha.py`).
 
 ### La règle « insérer sans écraser »
 
-Les réglages écrits dans le code ne servent qu'à remplir la base. Un objet
-**nouveau** dans le code, par exemple une nouvelle invocation, est
-**ajouté** à la base. Un objet **existant** n'est **jamais modifié** par le
-code pour tout ce que Julien peut régler dans Mission Control : prompt,
-allumé ou éteint, niveau de modèle, tools. Serge met seulement à jour, à
-chaque démarrage, les informations qu'il calcule lui-même : l'empreinte des
-fichiers et le chemin du code.
+Les réglages écrits dans le code et dans `config/pipeline.yaml` ne servent
+qu'à remplir la base. Un objet **nouveau**, par exemple une nouvelle
+invocation, est **ajouté** à la base, en entier. Un objet **existant**
+n'est **jamais modifié** : prompt, allumée ou éteinte, niveau de modèle,
+outils, règles d'écriture, liens. Serge met seulement à jour, à chaque
+démarrage, ce qu'il calcule lui-même : l'empreinte des fichiers et le
+chemin du code.
 
-Exemple : Julien modifie le prompt de « Explorer les besoins A » dans
-Mission Control. Un développeur modifie ensuite le prompt de départ dans le
-code. Au déploiement, l'instance de Julien garde son prompt ; une nouvelle
-instance reçoit celui du code.
+Exemple : Julien modifie le prompt d'une invocation dans Mission Control.
+Un développeur modifie ensuite le prompt de départ dans
+`config/pipeline.yaml`. Au déploiement, l'instance de Julien garde son
+prompt ; une nouvelle instance reçoit celui du fichier.
 
-Aujourd'hui, un objet **retiré** du code est aussi retiré de la base au
-démarrage (l'historique, comme les appels au LLM, reste). Ça va changer :
-voir la fin de ce document.
+Rien n'est effacé au démarrage : une invocation supprimée dans Mission
+Control (`deleted_at` rempli) ne revient pas. Seule une capacité retirée du
+code est marquée absente (`capabilities.available` = 0), et la fiche des
+outils qui s'en servaient le signale.
 
 ---
 
@@ -72,7 +75,7 @@ catalogue et la mécanique.
 | `listen_cycles`, `listen_cycle_docs` | Les cycles de l'étape 1 et les pages figées pour chacun. |
 | `tickets`, `ticket_items` | Les décisions à prendre par Julien. |
 | `policy_snapshots` | Les versions successives de la policy. La dernière fait foi. |
-| `runtime_flags` | Les interrupteurs : heartbeat, kinds coupés. |
+| `runtime_flags` | Les interrupteurs à chaud. Aujourd'hui : Serge démarré (`scheduler.heartbeat` à `on`). Sans cette ligne, Serge est arrêté. |
 
 ### Le journal (ce qui s'est passé, jamais modifié)
 
@@ -94,48 +97,38 @@ catalogue et la mécanique.
 | `pitfalls` | Les pièges à éviter. |
 | `summaries` | Des résumés versionnés (la version précédente est gardée). |
 
-### Le catalogue
+### Le pipeline décrit en base
+
+Le code n'est qu'un interpréteur de ces tables (`serge/interpreter/`) : il
+lit la description d'une invocation, l'exécute, écrit sa réponse selon ses
+règles, puis passe la main selon les liens. Elles sont remplies au
+démarrage à partir de `config/pipeline.yaml`, sans jamais écraser ce qui
+est déjà en base. Chaque table est expliquée dans
+[`LOT6_CONCEPTION.md`](LOT6_CONCEPTION.md).
 
 | Table | Contenu |
 |---|---|
-| `pipeline_steps` | Les 8 étapes : titre, texte d'explication, interrupteur. |
-| `etape_liens` | Les liens entre étapes. Colonne `debit` : le nom d'une table dont Mission Control compte les lignes. |
-| `llm_points` | Les invocations LLM : niveau de modèle, prompt, mode de sortie, allumée ou non. |
-| `llm_point_tools` | Quels tools chaque invocation peut appeler. |
-| `tech_invocations` | Les invocations techniques (sans LLM). |
-| `tools` | Les tools. `montre_partout = 1` : offert à toutes les invocations. |
-| `canaux`, `brique_canaux` | Les canaux et les invocations qui écrivent par eux. |
-| `db_readers`, `llm_point_readers`, `db_reader_fixed_params`, `db_reader_fixed_joins` | Les capsules de lecture de la base (à supprimer, voir ci-dessous). |
-| `tool_db_*` | Pour chaque tool de lecture de la base : tables, colonnes, filtres, jointures et paramètres autorisés. Le modèle n'écrit jamais de SQL. |
-
-### Le pipeline décrit en base (en construction, lot 6)
-
-Ces tables existent depuis la version 24 de la base, mais rien ne s'en sert
-encore pour faire tourner Serge : l'interpréteur arrive à l'étape suivante
-du lot 6. Elles sont remplies au démarrage à partir de
-`config/pipeline.yaml`, sans jamais écraser ce qui est déjà en base.
-Chaque table est expliquée dans [`LOT6_CONCEPTION.md`](LOT6_CONCEPTION.md).
-
-| Table | Contenu |
-|---|---|
+| `pipeline_steps` | Les 8 étapes : titre, texte d'explication, rang dans la chaîne, interrupteur. |
 | `capabilities`, `capability_params` | Ce que le code sait faire, déclaré par le code au démarrage. |
-| `invocations` | Chaque invocation, avec ou sans LLM, et tous ses réglages. |
-| `invocation_tools`, `invocation_tool_params` | Les outils de chaque invocation et leurs paramètres figés. |
+| `tools` | Les outils : une capacité réglée pour un usage précis (`capability_id`). `montre_partout = 1` : appelable par toutes les invocations LLM. |
+| `tool_db_*` | Pour chaque outil de lecture de la base : tables, colonnes, filtres, jointures (toujours faites) et paramètres autorisés. Le modèle n'écrit jamais de SQL. |
+| `invocations` | Chaque invocation, avec ou sans LLM, et tous ses réglages : rôle, étape, niveau de modèle, prompt, file, priorité, interrupteur. |
+| `invocation_tools`, `invocation_tool_params` | Les outils de chaque invocation (donnés d'office ou appelables) et leurs paramètres figés. |
 | `invocation_output_fields` | Le format de la réponse de chaque invocation. |
 | `writable_tables`, `writable_columns` | Ce qu'une invocation a le droit d'écrire. |
 | `invocation_writes`, `invocation_write_values` | Où chaque invocation écrit sa réponse. |
 | `status_transitions`, `dedup_rules`, `dedup_rule_columns` | Les protections : changements de statut permis, doublons. |
-| `links`, `link_params`, `link_passages` | Les liens entre invocations. |
-| `triggers`, `trigger_params` | Ce qui lance une invocation. |
-| `queues`, `tasks`, `task_params`, `task_inputs` | Les deux files et leurs tâches. |
+| `links`, `link_params`, `link_passages` | Les liens entre invocations, et ce qui est déjà passé. |
+| `triggers`, `trigger_params` | Ce qui lance une invocation : une ligne écrite, une heure, un bouton. |
+| `queues`, `tasks`, `task_params`, `task_inputs` | Les deux files (conversations, travaux), leurs tâches, et ce que chaque tâche a reçu. |
 | `llm_models` | Le modèle derrière chaque niveau (rapide, moyen, intelligent). |
 | `serge_texts` | Les textes de Serge, dont sa présentation. |
+| `canaux` | Les canaux par lesquels Serge écrit à un tiers (e-mail, voix). |
 
 ### La mécanique
 
 | Table | Contenu |
 |---|---|
-| `work_items` | La file des tâches du runner. |
 | `mc_sessions` | Les sessions de Mission Control (jeton haché, jamais en clair). |
 | `schema_version` | La version de la base. |
 
@@ -152,47 +145,11 @@ Chaque table est expliquée dans [`LOT6_CONCEPTION.md`](LOT6_CONCEPTION.md).
 L'ordre des chantiers est dans le [`TODO.md`](../TODO.md). Voici ce qu'ils
 changent dans la base.
 
-**Le pipeline entier passe en base.** Julien et Clem ont décidé que le code
-n'est qu'un interpréteur de la base : l'ordre des invocations et tous leurs
-paramètres sont en base, et seulement en base. Il faudra donc des tables
-pour décrire chaque invocation en entier (son rôle, son modèle, son prompt,
-ce qu'elle reçoit dès le départ, le format de sa réponse et où elle est
-écrite, sa priorité et sa file), les liens entre invocations (quel
-résultat passe de l'une à l'autre, avec quels paramètres), et les
-déclencheurs (quel événement ou quelle heure lance quelle invocation). Les
-tables doivent rester simples à lire : une table par sorte de chose, pas
-de texte JSON fourre-tout. La liste actuelle des liens entre étapes
-(`etape_liens`), qui ne sert qu'à afficher un compteur, sera remplacée par
-ces liens entre invocations.
-
-**Les tâches pointent vers une invocation.** Aujourd'hui, chaque tâche de
-la file est typée par un « kind » (colonne `work_items.kind`), qui lance
-parfois plusieurs invocations d'un coup, et chaque kind a son propre
-interrupteur. Le kind disparaît : une tâche désigne directement
-l'invocation à lancer, et l'interrupteur se trouve sur l'invocation.
-
-**L'écriture en base devient générale.** Un seul code d'écriture, piloté
-par des règles en base : pour chaque invocation, la table où elle écrit,
-l'opération (ajouter ou modifier), et quelle colonne reçoit quel champ de
-sa réponse. Les protections deviennent des tables de règles : les tables
-et colonnes qu'on a le droit d'écrire, les changements de statut permis,
-la façon de repérer un doublon, les écritures qui attendent la validation
-de Julien. Le détail est dans [`LOT6_CONCEPTION.md`](LOT6_CONCEPTION.md).
-
-**Les capsules disparaissent.** Les quatre tables des capsules
-(`db_readers`, `llm_point_readers`, `db_reader_fixed_params`,
-`db_reader_fixed_joins`) sont supprimées. Leur réglage va sur le lien entre
-une invocation et un tool (`llm_point_tools`) : ce lien dit si le tool est
-lu avant l'appel et mis dans le prompt, ou si le modèle peut l'appeler
-lui-même, et avec quels paramètres figés.
-
-**Ce qui est retiré du code n'est plus effacé de la base.** Aujourd'hui,
-une invocation qui n'est plus dans le code est supprimée au démarrage. Avec
-la nouvelle règle, une invocation ou un lien créé ou modifié dans Mission
-Control n'est jamais effacé au démarrage, et une invocation supprimée dans
-Mission Control ne revient pas. Seule une capacité retirée du code est
-marquée absente, et ce qui s'en servait est signalé dans Mission
-Control.
+**Le pipeline passe en base (lot 6).** C'est fait pour les tables, le
+runner et l'interpréteur (version 25 de la base). `config/pipeline.yaml`
+ne décrit encore qu'un demi-cycle de démonstration de l'étape 1 ; le vrai
+pipeline, étape par étape, est l'objet des lots suivants (à commencer par
+le lot 7).
 
 **De nouvelles tables pour les conversations et les clients.** Une fiche
 produit par business, avec ses questions fréquentes. Une table des

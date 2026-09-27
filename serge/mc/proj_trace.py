@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Trace d'exécution : fiche work_item + contexte (timeline §10, lot 3d)."""
+"""Trace d'exécution d'une tâche : son invocation, ses paramètres, son journal."""
 
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ def _item_events(
 ) -> list[dict[str, Any]]:
     rows = conn.execute(
         'SELECT ts, type, actor, payload_json FROM events'
-        " WHERE json_extract(payload_json,'$.id')=? ORDER BY id DESC",
+        " WHERE json_extract(payload_json,'$.task')=? ORDER BY id DESC",
         (item_id,),
     ).fetchall()
     items = [
@@ -56,56 +56,47 @@ def _item_events(
 def project_trace(
     conn: sqlite3.Connection, item_id: str
 ) -> dict[str, Any] | None:
-    """Fiche exécution + contexte venture/ticket/contact (lot 3d).
+    """Une tâche, avec le business et le contact de ses paramètres.
 
     Args:
-        conn: Connexion canon (lecture).
-        item_id: Id du work_item ('', inconnu -> None).
+        conn: Connexion à la base (lecture).
+        item_id: Id de la tâche ('' ou inconnu -> None).
 
     Returns:
-        Dict {item, note, ticket, contact, evenements} ou None.
-        Chaînage causal fin différé (llm_usage sans task_id — D12).
+        ``{item, note, ticket, contact, evenements}`` ou None. ``note``
+        porte l'erreur d'une tâche en échec ; ``evenements`` ce que la
+        tâche a écrit et refusé, puis le journal du business.
     """
     if not item_id:
         return None
     row = conn.execute(
-        'SELECT id, kind, venture_id, campaign_id, contact_id, ticket_id,'
-        ' status, priority, payload_json, blocked_until, attempts,'
-        ' created_at, updated_at FROM work_items WHERE id=?',
+        "SELECT t.id, COALESCE(NULLIF(i.title, ''), t.invocation_id),"
+        ' t.invocation_id, t.status, t.attempts, t.created_at,'
+        ' t.finished_at, t.last_error, t.queue_id FROM tasks t'
+        ' LEFT JOIN invocations i ON i.id=t.invocation_id WHERE t.id=?',
         (item_id,),
     ).fetchone()
     if row is None:
         return None
-    payload = _payload_json(row[8])
-    result = payload.get('result')
-    note = ''
-    if isinstance(result, dict):
-        note = str(result.get('note') or '')
+    params = {
+        str(name): str(value)
+        for name, value in conn.execute(
+            'SELECT name, value FROM task_params WHERE task_id=?', (item_id,)
+        ).fetchall()
+    }
     item = {
         'id': row[0],
         'kind': row[1],
-        'venture_id': row[2],
-        'campaign_id': row[3],
-        'contact_id': row[4],
-        'ticket_id': row[5],
-        'statut': row[6],
-        'attempts': row[10],
-        'created_at': row[11],
-        'updated_at': row[12],
+        'invocation_id': row[2],
+        'file': row[8],
+        'venture_id': params.get('venture_id', ''),
+        'contact_id': params.get('contact_id', ''),
+        'statut': row[3],
+        'attempts': row[4],
+        'created_at': row[5],
+        'updated_at': row[6],
+        'params': params,
     }
-    ticket = None
-    if item['ticket_id']:
-        found = conn.execute(
-            'SELECT id, type, title, state FROM tickets WHERE id=?',
-            (item['ticket_id'],),
-        ).fetchone()
-        if found is not None:
-            ticket = {
-                'id': found[0],
-                'type': found[1],
-                'titre': found[2],
-                'etat': found[3],
-            }
     contact = None
     if item['contact_id']:
         found = conn.execute(
@@ -119,8 +110,8 @@ def project_trace(
             }
     return {
         'item': item,
-        'note': note,
-        'ticket': ticket,
+        'note': str(row[7] or ''),
+        'ticket': None,
         'contact': contact,
         'evenements': _item_events(conn, item_id, str(item['venture_id'])),
     }

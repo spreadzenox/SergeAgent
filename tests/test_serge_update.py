@@ -114,7 +114,7 @@ class SergeUpdateTests(unittest.TestCase):
             self.assertEqual(
                 (dest / 'scripts/marker.txt').read_text(), 'new\n'
             )
-            self.assertTrue((units / 'serge-pipeline.timer').is_file())
+            self.assertTrue((units / 'serge-queue@.service').is_file())
             empty = tmp / 'empty'
             instance2 = tmp / 'empty.toml'
             instance2.write_text(_toml(home, empty), encoding='utf-8')

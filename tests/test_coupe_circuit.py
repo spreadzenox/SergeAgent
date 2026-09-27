@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-"""Coupe-circuits : heartbeat, kind, étape — passant et refusé."""
+"""Coupe-circuits : Serge (arrêté par défaut), étape, file, invocation.
+
+Scénario : deux invocations sans LLM, « a » (étape 1, priorité 50) et
+« b » (étape 8, priorité 10), ont chacune une tâche prête dans la file des
+travaux. On coupe l'un ou l'autre, et on regarde quelle tâche la file
+prend.
+"""
 
 from __future__ import annotations
 
@@ -16,89 +22,123 @@ from serge.coupe_circuit import (  # noqa: E402
     appliquer_coupe,
     etat_coupes,
     heartbeat_marche,
-    set_heartbeat,
-    set_kind_marche,
 )
 from serge.db.boot import init_schema  # noqa: E402
-from serge.etapes import set_etape_marche  # noqa: E402
-from serge.scheduler import enqueue, next_ready  # noqa: E402
+from serge.interpreter.queue import process_one  # noqa: E402
+from serge.interpreter.tasks import enqueue_task  # noqa: E402
+from serge.pipeline_seed import seed_pipeline  # noqa: E402
+from tests.taches_fixtures import sans_pipeline_de_depart  # noqa: E402
+
+NOW = '2026-09-28T10:00:00+00:00'
+
+
+def _invocation(ident: str, step: str, priority: int) -> dict:
+    return {
+        'id': ident,
+        'title': ident.upper(),
+        'type': 'capability',
+        'capability': 'echo',
+        'step': step,
+        'queue': 'works',
+        'priority': priority,
+    }
 
 
 class CoupeCircuitTests(unittest.TestCase):
     def setUp(self) -> None:
         self.conn = sqlite3.connect(':memory:')
         self.conn.row_factory = sqlite3.Row
+        self.addCleanup(self.conn.close)
         init_schema(self.conn)
-        self.conn.execute(
-            'INSERT INTO ventures(id, lifecycle, schedulable, created_at,'
-            " updated_at) VALUES('v1','SCALE',1,'t','t')"
+        sans_pipeline_de_depart(self.conn)
+        seed_pipeline(
+            self.conn,
+            {
+                'schema_version': 1,
+                'invocations': [
+                    _invocation('a', 'pre_prospection', 50),
+                    _invocation('b', 'caisse', 10),
+                ],
+            },
         )
+        self.tasks = {
+            ident: enqueue_task(self.conn, ident, {'n': ident})
+            for ident in ('a', 'b')
+        }
         self.conn.commit()
 
-    def tearDown(self) -> None:
-        self.conn.close()
-
-    def _ready(self, kind: str, key: str, etape_id: str = '') -> None:
-        enqueue(
-            self.conn,
-            kind=kind,
-            idempotency_key=key,
-            venture_id='v1',
-            etape_id=etape_id,
-            priority=10,
-        )
-
-    def test_heartbeat_coupe_rien_n_est_pret(self) -> None:
-        self._ready('email.send', 'k1')
-        self.assertIsNotNone(next_ready(self.conn))
-        set_heartbeat(self.conn, False)
+    def test_par_defaut_serge_est_arrete(self) -> None:
         self.assertFalse(heartbeat_marche(self.conn))
-        self.assertIsNone(next_ready(self.conn))
-        set_heartbeat(self.conn, True)
-        item = next_ready(self.conn)
-        assert item is not None
-        self.assertEqual(item['kind'], 'email.send')
+        self.assertIsNone(self._next())
+        self.assertFalse(etat_coupes(self.conn)['serge'])
+        appliquer_coupe(self.conn, 'serge', '', True)
+        self.assertTrue(heartbeat_marche(self.conn))
+        self.assertEqual(self._next(), self.tasks['a'])
 
-    def test_kind_coupe_ignore_ce_kind(self) -> None:
-        self._ready('email.send', 'k-mail')
-        self._ready('memory.consolidate', 'k-mem')
-        set_kind_marche(self.conn, 'email.send', False)
-        item = next_ready(self.conn)
-        assert item is not None
-        self.assertEqual(item['kind'], 'memory.consolidate')
-        set_kind_marche(self.conn, 'email.send', True)
-        item = next_ready(self.conn)
-        assert item is not None
-        self.assertEqual(item['kind'], 'email.send')
+    def _demarrer(self) -> None:
+        appliquer_coupe(self.conn, 'serge', '', True)
 
-    def test_kind_coupe_toutes_etapes(self) -> None:
-        self._ready('email.send', 'k-l', etape_id='prospection_light')
-        self._ready('email.send', 'k-d', etape_id='prospection_lourde')
-        set_kind_marche(self.conn, 'email.send', False)
-        self.assertIsNone(next_ready(self.conn))
+    def _next(self) -> str | None:
+        return process_one(self.conn, 'works', now=NOW)
 
-    def test_etape_coupe_laisse_l_autre_kind(self) -> None:
-        self._ready('email.send', 'k-mail')
-        self._ready('memory.consolidate', 'k-mem')
-        set_etape_marche(self.conn, 'prospection_light', False)
-        item = next_ready(self.conn)
-        assert item is not None
-        self.assertEqual(item['kind'], 'memory.consolidate')
+    def test_serge_arrete_rien_ne_tourne(self) -> None:
+        self.conn.execute(
+            'INSERT INTO triggers(id, invocation_id, event, every_minutes)'
+            " VALUES('toutes_5', 'b', 'every', 5)"
+        )
+        self._demarrer()
+        appliquer_coupe(self.conn, 'serge', '', False)
+        self.assertFalse(heartbeat_marche(self.conn))
+        self.assertIsNone(self._next())
+        creees = self.conn.execute(
+            "SELECT COUNT(*) FROM tasks WHERE origin='trigger'"
+        ).fetchone()[0]
+        self.assertEqual(creees, 0)
+        appliquer_coupe(self.conn, 'serge', '', True)
+        self.assertEqual(self._next(), self.tasks['a'])
 
-    def test_kind_inconnu_refuse(self) -> None:
-        with self.assertRaises(CoupeError):
-            set_kind_marche(self.conn, 'nexiste.pas', False)
+    def test_etape_coupee_laisse_passer_les_autres(self) -> None:
+        self._demarrer()
+        appliquer_coupe(self.conn, 'etape', 'pre_prospection', False)
+        self.assertEqual(self._next(), self.tasks['b'])
+        self.assertIsNone(self._next())
+        appliquer_coupe(self.conn, 'etape', 'pre_prospection', True)
+        self.assertEqual(self._next(), self.tasks['a'])
 
-    def test_cible_inconnue_refuse(self) -> None:
+    def test_file_coupee(self) -> None:
+        self._demarrer()
+        etat = appliquer_coupe(self.conn, 'file', 'works', False)
+        self.assertEqual(
+            etat, {'cible': 'file', 'id': 'works', 'marche': False}
+        )
+        self.assertIsNone(self._next())
+
+    def test_invocation_coupee(self) -> None:
+        self._demarrer()
+        appliquer_coupe(self.conn, 'invocation', 'a', False)
+        self.assertEqual(self._next(), self.tasks['b'])
+        self.assertIsNone(self._next())
+
+    def test_cible_ou_id_inconnu_refuse(self) -> None:
         with self.assertRaises(CoupeError):
             appliquer_coupe(self.conn, 'nuage', '', False)
+        with self.assertRaises(CoupeError):
+            appliquer_coupe(self.conn, 'etape', 'nexiste_pas', False)
+        with self.assertRaises(CoupeError):
+            appliquer_coupe(self.conn, 'invocation', 'nexiste_pas', False)
+        with self.assertRaises(CoupeError):
+            appliquer_coupe(self.conn, 'file', 'nexiste_pas', False)
 
     def test_etat_coupes_defaut_tout_marche(self) -> None:
         data = etat_coupes(self.conn)
-        self.assertTrue(data['serge'])
-        self.assertTrue(all(e['marche'] for e in data['etapes']))
-        self.assertTrue(all(k['marche'] for k in data['kinds']))
+        self.assertFalse(data['serge'])
         self.assertEqual(len(data['etapes']), 8)
+        self.assertEqual(
+            [f['id'] for f in data['files']], ['conversations', 'works']
+        )
+        self.assertEqual([i['id'] for i in data['invocations']], ['a', 'b'])
+        for groupe in ('etapes', 'files', 'invocations'):
+            self.assertTrue(all(item['marche'] for item in data[groupe]))
 
 
 if __name__ == '__main__':

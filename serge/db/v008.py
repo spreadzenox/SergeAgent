@@ -6,7 +6,47 @@ from __future__ import annotations
 import json
 import sqlite3
 
-from serge.etapes import KIND_DEFAUT, SEED, enabled_depuis_v7, etape_pour_kind
+# Les valeurs de l'époque, recopiées ici : une migration ne dépend pas du
+# code qui a changé depuis (les « kinds » ont disparu au lot 6).
+SEED: tuple[tuple[str, int, tuple[str, ...]], ...] = (
+    ('pre_prospection', 0, ('listen.collect', 'listen.business_cycle')),
+    ('conception_poc', 1, ()),
+    ('prospection_light', 2, ('email.send', 'voice.send')),
+    ('choix_venture', 3, ()),
+    ('build_venture', 4, ()),
+    (
+        'prospection_lourde',
+        5,
+        (
+            'inbound.classify',
+            'inbound.reply_priority',
+            'inbound.judge_other',
+            'email.poll',
+            'voice.score',
+        ),
+    ),
+    ('collect_feedback', 6, ('memory.consolidate', 'memory.apply')),
+    ('caisse', 7, ()),
+)
+KIND_DEFAUT: dict[str, str] = {
+    kind: ident for ident, _rang, kinds in SEED for kind in kinds
+}
+# enabled v7 → v8 (ET logique pour les fusions).
+_ANCIEN_ENABLED: dict[str, tuple[str, ...]] = {
+    'pre_prospection': ('ecoute',),
+    'conception_poc': ('hypothese',),
+    'prospection_light': ('test', 'qualif'),
+    'prospection_lourde': ('conversation', 'intent'),
+    'caisse': ('caisse',),
+}
+
+
+def enabled_depuis_v7(anciens: dict[str, int], ident: str) -> int:
+    """Transporte l’interrupteur v7. Nouveau sac → marche."""
+    sources = _ANCIEN_ENABLED.get(ident, ())
+    if not sources:
+        return 1
+    return 1 if all(anciens.get(src, 1) for src in sources) else 0
 
 
 def apply_v008(connection: sqlite3.Connection) -> None:
@@ -29,15 +69,6 @@ def apply_v008(connection: sqlite3.Connection) -> None:
             "UPDATE work_items SET etape_id=? WHERE etape_id='' AND kind=?",
             (etape, kind),
         )
-    for row in connection.execute(
-        "SELECT id, kind FROM work_items WHERE etape_id=''"
-    ).fetchall():
-        fallback = etape_pour_kind(str(row[1]))
-        if fallback:
-            connection.execute(
-                'UPDATE work_items SET etape_id=? WHERE id=?',
-                (fallback, row[0]),
-            )
     anciens = {
         str(row[0]): int(row[1])
         for row in connection.execute('SELECT id, enabled FROM pipeline_steps')

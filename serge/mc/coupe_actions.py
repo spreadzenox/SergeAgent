@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""MC : POST /owner/api/coupe (Serge, étape, kind)."""
+"""MC : POST /owner/api/coupe (Serge, étape, file, invocation)."""
 
 from __future__ import annotations
 
@@ -46,7 +46,7 @@ class CoupeActionsMixin(_Base):
                 400,
                 'Cible inconnue.',
                 'cible',
-                'cible : serge, etape ou kind.',
+                'cible : serge, etape, file ou invocation.',
             )
             return
         ident = str(body.get('id') or '').strip()
@@ -55,7 +55,7 @@ class CoupeActionsMixin(_Base):
                 400,
                 'Identifiant requis.',
                 'id',
-                'id : étape (pre_prospection) ou kind (email.send).',
+                'id : étape (pre_prospection), file (works) ou invocation.',
             )
             return
         if 'marche' not in body or not isinstance(body.get('marche'), bool):
@@ -88,8 +88,8 @@ class CoupeActionsMixin(_Base):
             self._refus(
                 404,
                 'Cible inconnue.',
-                cible if cible in {'etape', 'kind'} else 'cible',
-                'Ids : 8 sacs, ou kinds du seed.',
+                cible,
+                'Ids : une des 8 étapes, une file ou une invocation en base.',
             )
             return
         self._send_json(200, {'ok': True, **etat})

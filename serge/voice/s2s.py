@@ -15,6 +15,7 @@ import threading
 import time
 from typing import Literal
 
+from serge.coupe_circuit import serge_demarre
 from serge.voice.audiosocket import (
     LISTEN_HOST,
     LISTEN_PORT,
@@ -182,18 +183,28 @@ def pump(ast: socket.socket, max_s: float = MAX_CALL_S) -> None:
         ast.close()
 
 
+def handle_call(conn: socket.socket) -> None:
+    """Un appel arrivé par AudioSocket : l'agent vocal, si Serge est démarré.
+
+    Serge arrêté dans Mission Control : aucun modèle ne parle, la socket est
+    fermée et Asterisk passe à la suite du plan d'appel, qui raccroche aussi.
+    """
+    if not serge_demarre():
+        sys.stderr.write('voice-s2s: Serge arrêté, appel refusé\n')
+        conn.close()
+        return
+    try:
+        pump(conn)
+    except (RealtimeError, AudioSocketError, OSError) as exc:
+        sys.stderr.write(f'voice-s2s: fin ({type(exc).__name__})\n')
+        try:
+            conn.close()
+        except OSError:
+            pass
+
+
 def start_audiosocket_thread() -> None:
     """Listener daemon :8792. Bind raté = log, HTTP survit."""
-
-    def handle(conn: socket.socket) -> None:
-        try:
-            pump(conn)
-        except (RealtimeError, AudioSocketError, OSError) as exc:
-            sys.stderr.write(f'voice-s2s: fin ({type(exc).__name__})\n')
-            try:
-                conn.close()
-            except OSError:
-                pass
 
     def run() -> None:
         try:
@@ -208,7 +219,7 @@ def start_audiosocket_thread() -> None:
                 conn, _ = server.accept()
                 sys.stderr.write('voice-s2s: appel\n')
                 threading.Thread(
-                    target=handle, args=(conn,), daemon=True
+                    target=handle_call, args=(conn,), daemon=True
                 ).start()
         except OSError as exc:
             sys.stderr.write(f'voice-s2s: écoute impossible ({exc})\n')

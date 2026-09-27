@@ -9,9 +9,9 @@ from collections.abc import Mapping
 from typing import Any
 
 from serge.mc.proj_outils import apres_iso
-from serge.points.interact import strip_ids
 from serge.policy import PolicyError
 from serge.registry import load_ticket_types
+from serge.text_ids import strip_ids
 from serge.tickets import champs_carte, get_ticket
 from serge.tickets.lifecycle import OPENISH
 from serge.tickets.shared import TicketError

@@ -16,11 +16,11 @@ statut `SMOKE_DONE`.
 
 ## Aujourd'hui
 
-### Ce qui marche
+### Ce qui existe
 
-- **Ranger les prospects** (tool `contact_upsert`,
-  `serge/funnels/contacts.py`). Une fiche par personne dans `contacts`,
-  une ligne par adresse dans `contact_addresses`. Dans un même business :
+- **Ranger les prospects** (`serge/funnels/contacts.py`). Une fiche par
+  personne dans `contacts`, une ligne par adresse dans `contact_addresses`.
+  Dans un même business :
   1. une adresse déjà connue désigne la même personne. Exemple :
      `ada@acme.fr` puis `ADA@acme.fr` ajoute à la fiche d'Ada, sans en
      créer une autre ;
@@ -30,31 +30,27 @@ statut `SMOKE_DONE`.
   5. si les adresses désignent deux fiches différentes, rien n'est écrit :
      Serge ne fusionne jamais deux personnes tout seul.
 
-  Un désabonnement bloque toutes les adresses de la personne.
-- **Envoyer un e-mail** (`email.send`, `serge/workers/send.py`). Serge
-  remplit le modèle avec l'invocation « Remplir les créneaux »
-  (`fill_slots`), ou écrit une relance avec « Écrire une relance »
-  (`write_followup`). Avant l'envoi, il vérifie les garde-fous
-  (`serge/guards/check.py`) et le quota du jour, puis enregistre l'envoi
-  dans `touches`.
-- **Passer un appel** (`voice.send`, `serge/workers/call.py`). Seulement
-  dans les heures légales, avec un consentement ou un contrat enregistré,
-  et si le mandat l'autorise (`serge/voice/`).
-- **Relever la boîte mail** toutes les 5 minutes. Les réponses sont
-  traduites en signaux et traitées (voir l'étape 6, dont le circuit des
-  réponses dépend encore aujourd'hui).
+  Ce code n'est pas encore une capacité du pipeline.
+- **Le code d'envoi** (e-mail par Gog ou SMTP, garde-fous
+  `serge/guards/check.py`, quota) et **le pont téléphonique**
+  (`serge/voice/`, heures légales, consentement, mandat) existent. Ils
+  deviendront des capacités au lot 8.
+
+### Ce qui ne marche plus depuis le lot 6
+
+L'envoi d'e-mails, les appels sortants et la relève de la boîte mail
+étaient lancés par l'ancien runner, avec du code propre à chaque
+invocation (« Remplir les créneaux », « Écrire une relance »). Ce code est
+rangé dans `pas_encore_branche/` (`serge/workers/send.py`,
+`serge/workers/call.py`, `serge/workers/poll.py`).
 
 ### Ce qui manque
 
-- **Trouver des prospects.** L'invocation `discover_contacts` enregistre
-  seulement des contacts qu'on lui donne ; elle ne cherche rien. Elle n'est
-  appelée par personne.
-- **Lancer une campagne.** Aucun code ne prend les prospects d'une
-  campagne pour programmer les premiers envois. Un ancien « séquenceur »
-  existait sur `main` sans être branché ; il a été supprimé.
-- **Relancer au bon moment.** Rien ne programme les relances.
-- « Départager deux pistes » (`score_lead_departage`) n'est appelée par
-  personne.
+- **Trouver des prospects.** L'ancienne invocation de découverte de
+  contacts n'enregistrait que les contacts qu'on lui donnait, et personne
+  ne l'appelait.
+- **Lancer une campagne** et **relancer au bon moment** : rien ne
+  programme les premiers envois ni les relances.
 
 ---
 

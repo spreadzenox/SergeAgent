@@ -14,6 +14,8 @@ sys.path.insert(0, str(ROOT))
 
 from zoneinfo import ZoneInfo
 
+from serge.coupe_circuit import set_heartbeat  # noqa: E402
+from serge.db.store import open_db  # noqa: E402
 from serge.voice import (  # noqa: E402
     VoiceBrokerDenied,
     VoiceLedger,
@@ -46,10 +48,15 @@ def _policy(**overrides) -> VoicePolicy:
 class VoiceBrokerTests(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
-        self.ledger = VoiceLedger(
-            Path(self.tmp.name) / 'voice.db',
-            Path(self.tmp.name) / 'canon.db',
-        )
+        self.canon = Path(self.tmp.name) / 'canon.db'
+        self.ledger = VoiceLedger(Path(self.tmp.name) / 'voice.db', self.canon)
+        self._demarrer(True)
+
+    def _demarrer(self, marche: bool) -> None:
+        conn = open_db(self.canon)
+        set_heartbeat(conn, marche)
+        conn.commit()
+        conn.close()
 
     def tearDown(self) -> None:
         self.tmp.cleanup()
@@ -92,6 +99,12 @@ class VoiceBrokerTests(unittest.TestCase):
         self.assertEqual(result['decision'], 'allowed')
         self.assertTrue(result['cdr_id'].startswith('cdr_'))
         self.assertFalse(result['duplicate'])
+
+    def test_serge_arrete_refuse_tout_appel(self) -> None:
+        self._demarrer(False)
+        result = self._allowed_call()
+        self.assertEqual(result['decision'], 'denied')
+        self.assertEqual(result['reason'], 'serge_arrete')
 
     def test_sandbox_external_mandate_deny(self) -> None:
         self.ledger.grant_consent(TO, 'contract')

@@ -34,8 +34,9 @@ class EtapesTests(unittest.TestCase):
         etats = etats_etapes(self.conn)
         self.assertEqual(list(etats), list(ETAPE_IDS))
         self.assertTrue(all(e['marche'] for e in etats.values()))
-        self.assertIn('listen.collect', etats['pre_prospection']['kinds'])
-        self.assertIn('email.send', etats['prospection_light']['kinds'])
+        self.assertEqual(
+            [e['rang'] for e in etats.values()], list(range(len(ETAPE_IDS)))
+        )
         self.assertEqual(etapes_coupees(self.conn), frozenset())
 
     def test_couper_pre_prospection(self) -> None:
@@ -51,14 +52,11 @@ class EtapesTests(unittest.TestCase):
         with self.assertRaises(EtapeError):
             set_etape_marche(self.conn, 'nexistepas', False)
 
-    def test_kinds_mis_a_jour_sans_toucher_enabled(self) -> None:
+    def test_redemarrer_ne_touche_pas_l_interrupteur(self) -> None:
         set_etape_marche(self.conn, 'prospection_light', False)
         init_schema(self.conn)
         self.assertFalse(
             etats_etapes(self.conn)['prospection_light']['marche']
-        )
-        self.assertIn(
-            'voice.send', etats_etapes(self.conn)['prospection_light']['kinds']
         )
 
 

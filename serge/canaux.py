@@ -1,53 +1,48 @@
 #!/usr/bin/env python3
-"""Canaux d’écriture vers un tiers (pas l’owner)."""
+"""Les canaux par lesquels Serge écrit à un tiers (pas à Julien).
+
+Un canal a sa fiche dans Mission Control. Le code d'envoi existe, mais il
+n'est pas encore une capacité du pipeline : il le deviendra au lot 8
+(conversations), avec les outils d'envoi et de relève de chaque canal.
+"""
 
 from __future__ import annotations
 
 import sqlite3
 from typing import Any
 
-BRIQUE_KINDS = frozenset({'llm', 'tech'})
 ETATS = frozenset({'branche', 'prevu'})
 
-# id, titre, doc, path, etat (l’empreinte est calculée au boot)
+# id, titre, doc, chemin du code, état (l'empreinte est calculée au boot)
 SEED: tuple[tuple[str, str, str, str, str], ...] = (
     (
         'email',
         'E-mail',
-        'Sortie texte vers une boîte. Worker ``email.send`` :'
-        ' garde-fous, quota, touche, puis Gog ou SMTP.',
-        'serge/workers/send.py',
-        'branche',
+        'Sortie texte vers une boîte, par Gog ou SMTP, après les'
+        ' garde-fous et le quota. Pas encore une capacité du pipeline.',
+        'serge/channels/email_smtp.py',
+        'prevu',
     ),
     (
         'voice',
         'Voix',
-        'Appel sortant. Worker ``voice.send`` : le broker décide,'
-        ' le pont compose. Jamais de dial hors broker.',
-        'serge/workers/call.py',
-        'branche',
+        'Appel sortant : le broker décide, le pont compose. Jamais d’appel'
+        ' hors broker. Pas encore une capacité du pipeline.',
+        'serge/voice/bridge.py',
+        'prevu',
     ),
-)
-
-# canal, kind brique, id brique
-JONCTIONS: tuple[tuple[str, str, str], ...] = (
-    ('email', 'llm', 'fill_slots'),
-    ('email', 'llm', 'write_followup'),
-    ('email', 'tech', 'dunning'),
-    ('voice', 'llm', 'voice_script'),
-    ('voice', 'llm', 'voice_dialog'),
 )
 
 
 class CanalError(ValueError):
-    """Canal ou jonction invalide."""
+    """Canal invalide."""
 
 
 def ensure_canaux(conn: sqlite3.Connection) -> None:
-    """Sème les canaux. Titre/doc seulement à l’insert.
+    """Pose les canaux. Titre et texte seulement à la création.
 
     Args:
-        conn: Canon (commit par l’appelant).
+        conn: Connexion à la base (commit par l'appelant).
     """
     ids = {row[0] for row in SEED}
     for ident, titre, doc, path, etat in SEED:
@@ -72,17 +67,6 @@ def ensure_canaux(conn: sqlite3.Connection) -> None:
         f'DELETE FROM canaux WHERE id NOT IN ({holes})',
         tuple(ids),
     )
-    conn.execute('DELETE FROM brique_canaux')
-    for canal_id, kind, brique_id in JONCTIONS:
-        if canal_id not in ids:
-            raise CanalError(f'jonction : canal inconnu {canal_id}')
-        if kind not in BRIQUE_KINDS:
-            raise CanalError(f'kind brique inconnu : {kind}')
-        conn.execute(
-            'INSERT INTO brique_canaux(canal_id, brique_kind, brique_id)'
-            ' VALUES(?,?,?)',
-            (canal_id, kind, brique_id),
-        )
 
 
 def canal_par_id(
@@ -109,109 +93,40 @@ def canal_par_id(
     }
 
 
-def briques_du_canal(
-    conn: sqlite3.Connection, canal_id: str
-) -> list[dict[str, str]]:
-    """Briques reliées (llm / tech), ordre stable."""
-    ensure_canaux(conn)
-    rows = conn.execute(
-        'SELECT brique_kind, brique_id FROM brique_canaux'
-        ' WHERE canal_id=? ORDER BY brique_kind, brique_id',
-        (canal_id,),
-    ).fetchall()
-    return [{'kind': str(r[0]), 'id': str(r[1])} for r in rows]
-
-
-def canaux_de_brique(
-    conn: sqlite3.Connection, kind: str, ident: str
-) -> list[dict[str, str]]:
-    """Canaux qu’une brique utilise."""
-    ensure_canaux(conn)
-    rows = conn.execute(
-        'SELECT c.id, c.titre FROM brique_canaux j'
-        ' JOIN canaux c ON c.id=j.canal_id'
-        ' WHERE j.brique_kind=? AND j.brique_id=? ORDER BY c.id',
-        (kind, ident),
-    ).fetchall()
-    return [{'id': str(r[0]), 'titre': str(r[1])} for r in rows]
-
-
-def canaux_de_etape(
-    conn: sqlite3.Connection, etape_id: str
-) -> list[dict[str, str]]:
-    """Canaux touchés par une invocation de l’étape."""
-    ensure_canaux(conn)
-    rows = conn.execute(
-        'SELECT DISTINCT c.id, c.titre FROM brique_canaux j'
-        ' JOIN canaux c ON c.id=j.canal_id'
-        " LEFT JOIN llm_points p ON j.brique_kind='llm'"
-        ' AND p.id=j.brique_id'
-        " LEFT JOIN tech_invocations t ON j.brique_kind='tech'"
-        ' AND t.id=j.brique_id'
-        ' WHERE p.etape_id=? OR t.etape_id=? ORDER BY c.id',
-        (etape_id, etape_id),
-    ).fetchall()
-    return [{'id': str(r[0]), 'titre': str(r[1])} for r in rows]
-
-
-def liens_fiche_brique(
-    conn: sqlite3.Connection, kind: str, ident: str
-) -> list[dict[str, str]]:
-    """Liens MC ``type=canal`` pour une fiche brique."""
-    return [
-        {'type': 'canal', 'id': item['id'], 'titre': item['titre']}
-        for item in canaux_de_brique(conn, kind, ident)
-    ]
-
-
 def fiche_canal(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
-    """Fiche MC d’un canal.
+    """Fiche Mission Control d'un canal.
 
     Args:
-        conn: Canon.
-        ident: Id.
+        conn: Connexion à la base.
+        ident: Id du canal.
 
     Returns:
-        Payload fiche, ou None.
+        Contenu de la fiche, ou None.
     """
     found = canal_par_id(conn, ident)
     if found is None:
         return None
-    liens = []
-    for item in briques_du_canal(conn, ident):
-        titre = item['id']
-        if item['kind'] == 'llm':
-            from serge.mc.libelles import titre_llm
-
-            titre = titre_llm(item['id'])
-        liens.append({'type': item['kind'], 'id': item['id'], 'titre': titre})
-    todo = ''
-    if found['etat'] == 'prevu':
-        todo = 'Canal déclaré, pas encore un writer runtime.'
     champs = [{'k': 'État', 'v': found['etat']}]
     if found['code_path']:
         champs.append({'k': 'Fichier', 'v': found['code_path']})
     champs.append(
         {'k': 'Dernière modification', 'v': found['updated_at'] or '—'}
     )
+    cadres = []
+    if found['etat'] == 'prevu':
+        cadres.append(
+            {
+                'titre': 'État',
+                'todo': 'Pas encore une capacité du pipeline (lot 8).',
+            }
+        )
     return {
         'type': 'canal',
         'id': found['id'],
         'titre': found['titre'],
         'pourquoi': found['doc_md'],
         'champs': champs,
-        'cadres': [
-            {
-                'titre': 'Briques qui écrivent ici',
-                'texte': (
-                    'Invocations LLM et techniques reliées.'
-                    if liens
-                    else 'Aucune brique reliée pour l’instant.'
-                ),
-                'liens': liens,
-            },
-            *([{'titre': 'État', 'todo': todo}] if todo else []),
-        ],
+        'cadres': cadres,
         'enfants': [],
         'preuve': '',
     }

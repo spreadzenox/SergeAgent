@@ -53,22 +53,29 @@ Tout le reste du projet s'organise autour de cette chaîne.
 
 ## État
 
-Serge est en pleine refonte. Beaucoup de morceaux sont écrits mais pas
-encore branchés entre eux. Chaque page de [`docs/etapes/`](docs/etapes/)
-dit clairement ce qui marche aujourd'hui et ce qui est décidé mais reste à
-construire.
+Serge est en pleine refonte (lot 6 du [`TODO.md`](TODO.md)) : tout le
+pipeline passe en base, et le code n'en est plus que l'interpréteur. Le
+runner (deux files de tâches) et l'interpréteur sont en place, mais
+`config/pipeline.yaml` ne décrit encore qu'un demi-cycle de démonstration.
+Serge ne peut donc pas encore être allumé pour de vrai. L'ancien code écrit
+en dur pour chaque enchaînement (étape 1, envois, relève de la boîte mail,
+réponses, consolidation) est rangé dans
+[`pas_encore_branche/`](pas_encore_branche/README.md).
 
-Ce qui est branché aujourd'hui dans le code :
+Ce qui tourne aujourd'hui :
 
-- Mission Control et le bot Discord ;
-- l'étape 1, lancée à la main depuis Mission Control ;
-- l'envoi d'e-mails et d'appels, la relève de la boîte mail toutes les
-  5 minutes, le traitement des réponses ;
-- la consolidation de la mémoire tous les 3 jours ;
-- la réception des paiements Stripe.
+- Mission Control, qui montre et règle tout ce qui est en base ;
+- le bot Discord (tickets et leurs boutons) ;
+- les deux files de tâches et l'interpréteur, avec un demi-cycle de
+  démonstration de l'étape 1 ;
+- la réception des paiements Stripe et des SMS.
 
-Tout le reste (trouver des prospects, concevoir un POC, construire, choisir
-le business principal…) est décidé mais pas encore construit.
+**Serge est arrêté par défaut**, même après un déploiement : les files et
+la voix ne font rien tant que personne n'a cliqué « Démarrer Serge » en
+haut de la page En direct de Mission Control.
+
+Chaque page de [`docs/etapes/`](docs/etapes/) dit ce qui marche aujourd'hui
+et ce qui est décidé mais reste à construire.
 
 ## Démarrer
 

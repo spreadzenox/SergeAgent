@@ -135,6 +135,8 @@ et pour tout le reste.
 
 La conception des tables, validée avec Clem, est dans
 [`docs/LOT6_CONCEPTION.md`](docs/LOT6_CONCEPTION.md).
+Pour reprendre le lot en cours de route, lire d'abord
+[`docs/REPRISE_LOT6.md`](docs/REPRISE_LOT6.md).
 
 Clem a fixé la façon de mener ce lot. On passe directement à la version
 durable : tout ce qui est écrit en dur pour un enchaînement (le cycle
@@ -151,232 +153,55 @@ seulement sur ce qui est construit. Mission Control affiche tout ce qui
 est en base, en direct ; créer une invocation depuis le site viendra au
 lot 13.
 
-- [ ] **Une tâche après l'autre, enregistrée tout de suite.**
-  Aujourd'hui, le runner est relancé une minute après la fin du passage
-  précédent, traite jusqu'à dix tâches à la suite, et n'enregistre en base
-  qu'à la toute fin. Si le programme plante à la septième tâche, tout ce
-  qui a été écrit depuis le début est annulé, y compris la note « e-mail
-  envoyé » alors que l'e-mail est bien parti : au passage suivant, Serge le
-  renvoie. Et pendant tout le passage, qui peut durer quinze minutes,
-  Mission Control, le bot Discord et la réception des paiements ne peuvent
-  pas écrire en base. Il faut que le runner devienne un programme qui
-  tourne en continu : il prend la tâche prête la plus prioritaire,
-  l'exécute, enregistre en base, puis prend la suivante, sans attente
-  d'une minute et sans limite de dix. C'est la première chose à faire.
+Ce qui est fait : les tables du pipeline (version 24 de la base), les
+deux files du runner qui tournent en continu et enregistrent après chaque
+tâche, l'interpréteur qui exécute n'importe quelle invocation décrite en
+base (sans « kinds »), l'écriture générique et ses protections, la
+priorité et l'interrupteur de chaque invocation, le remplissage de départ
+qui n'efface et n'écrase rien, le rangement de l'ancien code dans
+`pas_encore_branche/` (version 25 de la base), Mission Control branché sur
+les nouvelles tables, un demi-cycle de démonstration de l'étape 1 dans
+`config/pipeline.yaml`, et le test qui vérifie la règle
+(`tests/test_regle_interpreteur.py`). Serge est arrêté par défaut : il ne
+tourne qu'après un clic sur « Démarrer Serge » dans Mission Control. Le
+vrai pipeline, étape par étape, est l'objet des lots suivants. Ce qui
+reste dans ce lot :
 
-- [ ] **Deux files en parallèle.** Une construction de produit peut
-  durer quarante minutes ; pendant ce temps, la réponse à un prospect
-  attendrait, même avec la priorité la plus haute. Il faut donc deux files
-  qui tournent en même temps. La file des conversations prend les tâches
-  courtes : relever les boîtes, traiter une réponse, envoyer, relancer. La
-  file des travaux prend les tâches longues : écoute du web, conception,
-  construction, point hebdomadaire. Chaque file prend toujours sa tâche la
-  plus prioritaire. Faire tourner deux invocations en même temps ne pose
-  pas de problème à la machine : elle ne fait qu'attendre la réponse du
-  fournisseur du LLM. La file de chaque invocation se règle dans MC.
+- [ ] **Passer un lien à la main.** Un lien relie déjà deux invocations
+  et transmet des données, une seule fois par résultat, et la fiche d'une
+  invocation montre ses liens. Mais un lien dont le passage automatique
+  est coupé attend un clic qu'on ne peut pas encore faire. Il faut, dans
+  Mission Control, voir pour chaque lien ce qui est déjà passé et ce qui
+  attend, un bouton « passer à la suite » et un interrupteur « passage
+  automatique ».
 
-- [ ] **Décrire chaque invocation entièrement en base.** Pour chaque
-  invocation LLM, la base doit dire : son titre et son rôle, en une phrase
-  lisible par un humain ; son étape ; le modèle appelé ; son prompt ; ce
-  qu'elle reçoit dès le départ ; les tools qu'elle peut appeler et avec
-  quels paramètres figés ; le format de sa réponse ; où sa réponse est
-  écrite ; sa priorité et sa file ; si elle est allumée ; si elle reçoit le
-  texte « Qui est Serge et quelle est ta place » ; le nombre maximum de
-  lignes qu'on lui donne. Pour chaque invocation sans LLM, la base dit
-  quelle capacité du code elle utilise et avec quels paramètres. Aujourd'hui,
-  une partie de ces réglages est déjà en base (prompt, modèle, tools,
-  allumée), mais le reste est écrit dans le code. Les tables doivent rester
-  simples à lire : une table par sorte de chose, pas de texte JSON fourre-
-  tout.
-
-- [ ] **Un seul programme qui exécute n'importe quelle invocation.**
-  Aujourd'hui, chaque enchaînement a son propre code : par exemple, la
-  fonction du cycle d'écoute appelle « Explorer A », puis « Explorer B »,
-  puis « Choisir », dans cet ordre écrit en dur. Il faut un seul
-  programme, le même pour toutes les invocations, qui reçoit le numéro de
-  l'invocation à lancer et fait toujours la même chose : il lit sa
-  description en base, rassemble ce qu'elle doit recevoir, construit le
-  prompt, appelle le modèle indiqué, le laisse appeler les tools autorisés,
-  vérifie que la réponse a le bon format, l'écrit là où la base l'indique,
-  puis lance les invocations suivantes selon les liens. Les bibliothèques
-  qu'on utilise pour appeler les modèles acceptent déjà tous ces réglages
-  comme des paramètres : il suffit de les lire en base au lieu de les
-  écrire dans le code.
-
-- [ ] **Supprimer les « kinds ».** Aujourd'hui, le moteur qui exécute les
-  tâches (le runner) reçoit des tâches typées par un « kind », par exemple
-  « lancer un cycle d'écoute ». Un kind lance plusieurs invocations d'un
-  coup, et chaque kind a son propre interrupteur. Résultat : ce que MC
-  affiche comme catalogue d'invocations ne correspond pas exactement à ce
-  qui tourne. Il faut qu'une tâche en file pointe directement vers une
-  invocation, et que l'interrupteur pour couper quelque chose se trouve
-  sur l'invocation elle-même. Au passage, il faut corriger la façon dont
-  une tâche reçoit son identifiant : il est calculé avec une fonction de
-  Python qui donne un résultat différent à chaque redémarrage, ce qui peut
-  créer des doublons.
-
-- [ ] **Des liens entre invocations qui transportent des données.**
-  Aujourd'hui, les liens affichés dans MC relient des étapes et ne servent
-  qu'à afficher un compteur ; l'enchaînement réel est écrit en dur dans le
-  code. Il faut qu'un lien relie deux invocations et transmette des
-  données de l'une à l'autre. Par exemple, chaque business choisi à
-  l'étape 1 doit lancer la conception de son POC, avec l'identifiant du
-  business en paramètre. Un même résultat ne doit être transmis qu'une
-  seule fois. Dans MC, chaque lien a un bouton « passer à la suite » pour
-  déclencher le passage à la main, et un interrupteur « passage
-  automatique » ; quand il est allumé, une petite invocation sans LLM fait
-  le passage toute seule. La structure en base doit rester simple à lire :
-  une table des liens, et on voit dans MC ce qui est passé et ce qui
-  attend. Cette tâche vient après la suppression des kinds. Les enchaînements
-  écrits en dur aujourd'hui (le cycle d'écoute, le circuit des réponses,
-  la consolidation) sont tous réécrits sous forme de liens en base, et la
-  liste d'ordre utilisée seulement pour l'affichage dans MC disparaît.
-
-- [ ] **Des déclencheurs en base.** Certaines invocations ne sont pas
-  lancées par celle d'avant, mais par un événement. Un déclencheur dit :
-  « quand cet événement arrive, ajoute cette invocation à la file, avec
-  ces paramètres ». Trois sortes d'événements suffisent pour commencer :
-  un message reçu d'un prospect, sur n'importe quel canal (il lance
-  « Traiter une réponse » pour ce prospect) ; une heure ou un intervalle
-  (relever la boîte mail toutes les 5 minutes, faire le point chaque
-  lundi) ; un bouton dans MC (lancer un cycle d'écoute). Les déclencheurs
-  sont en base et visibles dans MC, comme les liens. Une même invocation ne
-  doit pas être en file deux fois pour le même objet : si un prospect
-  envoie deux messages coup sur coup, une seule tâche « Traiter une
-  réponse » existe pour lui.
-
-- [ ] **Remplacer les « capsules » par un réglage sur le lien entre une
-  invocation et un tool.** Une capsule est aujourd'hui un tool de lecture
-  de la base avec des paramètres figés, décrit dans quatre tables à part.
-  Le problème : quand le modèle appelle ce tool lui-même, les paramètres
-  figés ne sont pas appliqués. Par exemple, la lecture des pages d'un
-  cycle renvoie seulement leurs numéros, pas leur titre ni leur texte. Il
-  faut supprimer ces quatre tables et mettre le réglage sur le lien entre
-  l'invocation et le tool : ce lien dit si le tool est donné d'office
-  (Serge fait la lecture avant l'appel et met le résultat dans le prompt)
-  ou appelable (le modèle décide de l'appeler), et quels paramètres sont
-  figés. En plus, chaque invocation doit recevoir automatiquement trois
-  tools : lire l'historique de l'objet qu'elle traite, lire les leçons, et
-  demander une nouvelle capacité à Julien.
+- [ ] **Les outils donnés à chaque invocation.** L'outil « demander une
+  nouvelle capacité » est déjà appelable par toutes les invocations. Il
+  faut aussi que chacune puisse lire l'historique de l'objet qu'elle
+  traite (par exemple, tout ce qui est arrivé à ce business) et ses
+  propres leçons. Ce sont des outils comme les autres, réglés en base, et
+  donnés partout.
 
 - [ ] **Ce que voit chaque invocation.** Une invocation doit avoir tout
   ce qu'il lui faut pour travailler, sans qu'on noie son prompt sous des
-  informations inutiles. Elle reçoit en entier ce que le lien entrant lui
-  apporte (par exemple, la page qu'elle doit trier). Elle reçoit une
-  version courte des tables où elle écrit, pour pouvoir comparer (par
-  exemple, juste le numéro et le titre des business déjà connus). Chaque
-  information donnée d'office a un nombre maximum de lignes, 50 par
-  défaut, réglable invocation par invocation ; s'il y en a plus,
-  l'invocation reçoit les plus récentes et une phrase qui dit combien ne
-  sont pas montrées. Elle reçoit aussi ses propres leçons, et, si elle
-  utilise un modèle moyen ou intelligent, un court texte qui lui explique
-  qui est Serge et où elle se trouve dans la chaîne. MC affiche, à chaque
-  passage, combien de lignes l'invocation a reçues. Le détail de ces
-  règles est dans [`docs/MEMOIRE.md`](docs/MEMOIRE.md). Cette tâche vient
-  après les liens et les tools.
+  informations inutiles. Aujourd'hui, chaque information donnée d'office a
+  déjà un nombre maximum de lignes, 50 par défaut, réglable ; au-delà,
+  l'invocation reçoit une phrase qui dit combien ne sont pas montrées, et
+  la fiche de la tâche dans MC l'affiche. Il reste : lui donner les lignes
+  les plus récentes (aujourd'hui, ce sont les premières lues), une version
+  courte des tables où elle écrit pour pouvoir comparer, et ses propres
+  leçons. Le texte « Qui est Serge » est déjà donné aux invocations qui le
+  demandent. Le détail de ces règles est dans
+  [`docs/MEMOIRE.md`](docs/MEMOIRE.md).
 
-- [ ] **Les premières capacités.** Le lot crée seulement les capacités
-  de base, qui suffisent à construire la plus grande partie du pipeline :
-  lire la base (elle existe déjà), écrire dans la base à partir de la
-  réponse d'une invocation, appeler un modèle en lui donnant ses outils,
-  chercher sur le web, chercher dans la mémoire, demander une nouvelle
-  capacité, et rendre les paramètres de la tâche (pour une invocation sans
-  LLM qui ne fait qu'écrire ce qu'on lui a donné). Les capacités sont
-  listées en base, et Mission Control les affiche : c'est dans cette
-  liste qu'on choisira, plus tard, celles qu'on donne à une nouvelle
-  invocation. Les autres capacités (envoyer un e-mail, relever une boîte,
-  appeler, ouvrir un ticket, bloquer les adresses d'une personne qui se
-  désinscrit, le bac à sable…) seront créées par les lots qui en ont
-  besoin.
-
-- [ ] **Une seule façon d'écrire en base, réglée en base.** Aujourd'hui,
-  c'est du code propre à chaque invocation qui lit la réponse du LLM et
-  l'écrit dans la bonne table : par exemple, le code du cycle d'écoute
-  transforme chaque fiche rendue par « Formuler des business » en une
-  ligne de la table des business. Il faut un seul code d'écriture,
-  générique, piloté par des règles en base. Pour chaque invocation, la
-  base dit dans quelle table elle écrit, si elle ajoute ou modifie des
-  lignes, une ligne pour quel élément de sa réponse, et quelle colonne
-  reçoit quel champ. Exemple : « Chercheur d'idées » ajoute une ligne dans
-  la table des business pour chaque fiche de sa réponse ; le titre va dans
-  la colonne du nom, la description dans celle de la description, et le
-  statut est fixé à `CANDIDATE`. Ce n'est jamais le modèle qui choisit où
-  écrire : une réponse ratée, ou un texte piégé lu sur le web, ne doit pas
-  pouvoir écrire n'importe où. Les protections deviennent elles aussi des
-  règles en base : la liste des tables et colonnes qu'une invocation a le
-  droit d'écrire ; les changements de statut permis (un business peut
-  passer de `CANDIDATE` à `POC_SELECTED`, jamais de `SMOKE_RUNNING` à
-  `POC_SELECTED`) ; la façon de repérer un doublon dans une table (par
-  exemple, au moins 72 % de mots en commun) ; les champs obligatoires ;
-  les écritures qui attendent la validation de Julien. Chaque refus est
-  écrit au journal automatiquement, avec l'invocation et la raison.
-
-- [ ] **Une priorité par invocation.** Quand plusieurs tâches sont
-  prêtes, le runner doit toujours prendre la plus urgente. Chaque
-  invocation a donc une priorité, modifiable dans MC. Valeurs de départ :
-  100 pour traiter la réponse d'un prospect ou une désinscription, 80 pour
-  relever les boîtes mail et les autres messages entrants, 50 pour les
-  envois et les relances, 30 pour la construction, 10 pour l'écoute du
-  web, la veille et la consolidation des leçons. Répondre à un prospect
-  passe avant tout le reste. La priorité vit en base, sur la
-  description de l'invocation, à côté de sa file.
-
-- [ ] **Ne plus rien effacer au démarrage.** Aujourd'hui, à chaque
-  démarrage, Serge supprime de la base les invocations qui ne sont pas
-  dans le code. Avec la nouvelle règle, une invocation ou un lien créé ou
-  modifié dans MC serait effacé au redémarrage suivant. Il faut que les
-  réglages écrits dans le code ne servent plus qu'à remplir une nouvelle
-  instance, et à ajouter sur une instance existante les objets nouveaux,
-  sans jamais rien écraser ni supprimer. Une invocation que Julien
-  supprime dans MC ne doit pas revenir au démarrage suivant : la base
-  garde la trace de sa suppression. Seule une capacité retirée du code
-  est marquée absente ; les invocations qui s'en servaient sont signalées
-  dans MC au lieu d'être effacées.
-
-- [ ] **Ranger le code en dur et écrire le pipeline de départ.** Tout
-  le code propre à un enchaînement (le cycle d'écoute, la relève de la
-  boîte mail, le circuit des réponses, les envois, la consolidation) est
-  retiré de la production, sans période de transition. Il n'est pas
-  détruit : il est rangé, avec ses tests et ses prompts, dans le dossier
-  `pas_encore_branche/` à la racine du dépôt, parce qu'il contient
-  beaucoup de choses utiles pour les lots suivants. Le pipeline de
-  départ d'une nouvelle instance est écrit dans `config/pipeline.yaml`,
-  qui sert uniquement à remplir la base : on y décrit tout ce qui peut
-  l'être avec les capacités de ce lot, à commencer par le cycle d'écoute.
-  Les enchaînements qui ont besoin d'une capacité absente (répondre à un
-  prospect, envoyer, relever) y seront ajoutés par leur lot. C'est le seul
-  endroit du dépôt où les noms des invocations apparaissent.
-
-- [ ] **Débrancher ce qui appelle le LLM hors du pipeline.** Tous les
-  appels au LLM doivent passer par le pipeline en base, y compris la
-  consolidation de la mémoire et le bot Discord quand Julien écrit à
-  Serge. Ce n'est pas pour ce lot : on le fera dans un lot suivant (voir
-  « Plus tard »). En attendant, leur code n'est pas perdu : il est rangé
-  dans le dossier `pas_encore_branche/`, hors de ce qui tourne en
-  production, et débranché du runner, du bot et de Mission Control. Le bot
-  Discord continue de recopier les tickets et de faire marcher leurs
-  boutons, qui n'appellent pas le LLM. Le code de bas niveau qui ne
-  connaît aucune invocation (envoyer un e-mail, le pont téléphonique, la
-  réception des SMS et des paiements, les garde-fous d'envoi, les fiches
-  de contacts) reste à sa place avec ses tests : ce sont les futures
-  capacités, pas encore branchées.
-
-- [ ] **Mission Control affiche le pipeline tel qu'il est en base.**
-  Toutes les invocations avec tous leurs réglages, les capacités et les
-  outils, ce que chaque invocation reçoit, le format de sa réponse et ses
-  règles d'écriture, les liens et les déclencheurs, les deux files et les
-  tâches en cours, tout est lu en base et mis à jour en direct. Ce qui
-  existe déjà reste : modifier un prompt, allumer ou éteindre une
-  invocation. On ajoute seulement le niveau de modèle et la priorité.
-  Créer ou modifier le reste depuis le site est le travail du lot 13 ;
-  d'ici là, on le fait en base, ou dans `config/pipeline.yaml` pour une
-  nouvelle instance.
-
-- [ ] **Vérifier automatiquement la règle.** Un test doit échouer si le
-  nom d'une invocation apparaît dans le code, ailleurs que dans le fichier
-  qui remplit une nouvelle instance. Ce test protège la règle pour tous
-  les lots futurs : un développeur, humain ou LLM, qui écrirait du code
-  propre à une invocation serait arrêté tout de suite.
+- [ ] **Mission Control affiche le pipeline tel qu'il est en base.** La
+  fiche d'une invocation montre déjà tous ses réglages ; la page Cerveau,
+  toutes les invocations ; la page En direct, les étapes, les deux files
+  et les coupe-circuits. Il manque une vue d'ensemble des capacités, des
+  outils, des liens et des déclencheurs, et des lignes reçues par chaque
+  tâche. Créer ou modifier le reste depuis le site est le travail du
+  lot 13 ; d'ici là, on le fait en base, ou dans `config/pipeline.yaml`
+  pour une nouvelle instance.
 
 ---
 
@@ -667,7 +492,11 @@ et Serge sait demander de l'aide quand il ne sait pas.
   pas contraires à la loi. Le détail est dans
   [`docs/etapes/1-pre-prospection.md`](docs/etapes/1-pre-prospection.md).
   Cette tâche a besoin du lot 6 et des places de test : les sept
-  invocations, leurs liens et leurs réglages sont décrits en base.
+  invocations, leurs liens et leurs réglages sont décrits en base. Les
+  prompts de l'ancien cycle sont dans `pas_encore_branche/`. Le demi-cycle
+  de démonstration du lot 6 est alors retiré de `config/pipeline.yaml` et
+  marqué supprimé en base : retirer une ligne du fichier ne l'efface pas
+  d'une instance existante.
 
 - [ ] **Garder toutes les pages lues.** Aujourd'hui, les pages trouvées
   par la recherche web ne sont pas enregistrées, et comme aucun flux RSS

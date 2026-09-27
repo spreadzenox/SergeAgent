@@ -14,18 +14,19 @@ d'essai, son plan de POC et les retours des prospects.
 
 ## Aujourd'hui
 
-**Écrit mais pas branché.** Aucune de ces invocations n'est appelée :
+**Écrit mais pas branché**, et rangé dans `pas_encore_branche/` depuis le
+lot 6 (`serge/points/build.py`, `serge/points/review.py`) :
 
-- **« Construire un livrable »** (`build_artifact`,
-  `serge/points/build.py`) : à partir d'une description, elle produit des
-  fichiers (page d'atterrissage, document, script, modèle). Le code vérifie
-  ensuite qu'il n'y a ni secret, ni traceur non déclaré, ni prix inventé.
-- **« Relire un livrable »** (`review_build`, `serge/points/review.py`) :
-  une invocation distincte, qui regarde des captures d'écran du rendu sur
-  ordinateur et sur mobile. Elle répond « on publie », « à corriger
-  (5 points maximum) » ou « à refaire ». 3 passages au maximum.
-- **« Résumer la dette builder »** (`summarize_build_debt`) : liste ce qui
-  a été publié avec des défauts connus.
+- « Construire un livrable » : à partir d'une description, elle produit des
+  fichiers (page d'atterrissage, document, script, modèle). Le code
+  vérifiait ensuite qu'il n'y a ni secret, ni traceur non déclaré, ni prix
+  inventé.
+- « Relire un livrable » : une invocation distincte, qui regarde des
+  captures d'écran du rendu sur ordinateur et sur mobile. Elle répond « on
+  publie », « à corriger (5 points maximum) » ou « à refaire ». 3 passages
+  au maximum.
+- « Résumer la dette builder » : liste ce qui a été publié avec des
+  défauts connus.
 
 La table `artifacts` existe pour ranger les livrables, mais rien ne
 l'utilise. Aucune mise en ligne, aucune capture d'écran n'est codée.

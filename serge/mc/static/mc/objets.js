@@ -2,7 +2,7 @@
 import {TYPES_OBJET, allerObjet, depuis} from './libelles.js';
 
 const TIROIRS = new Set([
-  'work_item',
+  'task',
   'event',
   'touch',
   'inbound_event',

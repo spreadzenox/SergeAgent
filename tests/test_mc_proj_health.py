@@ -68,7 +68,7 @@ class ProjHealthTests(unittest.TestCase):
     def test_units_systemd(self) -> None:
         with mock.patch('shutil.which', return_value=None):
             data = project_units_systemd(self.conn, POLICY, NOW)
-            self.assertEqual(len(data['units']), 4)
+            self.assertEqual(len(data['units']), 5)
             self.assertEqual(data['units'][0]['status'], 'inconnu')
 
 

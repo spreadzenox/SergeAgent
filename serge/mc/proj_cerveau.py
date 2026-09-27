@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Projecteurs P2 Cerveau : signaux, décisions, pensées, usage.
+"""Projecteurs P2 Cerveau : signaux, décisions, pensées, invocations.
 
-Lecture seule. Registre de seed + métadonnées DB + kills = lot 6b.
+Lecture seule. Allumer ou éteindre une invocation passe par le
+coupe-circuit (``/owner/api/coupe``, cible ``invocation``).
 """
 
 from __future__ import annotations
@@ -10,10 +11,8 @@ import sqlite3
 from collections.abc import Mapping
 from typing import Any
 
-from serge.llm_registre import ensure_llm_points
+from serge.mc.proj_etape import lister_invocations
 from serge.mc.proj_outils import avant_iso
-from serge.policy import PolicyError
-from serge.registry import load_llm_points, runtime_allows
 
 
 def project_signaux(
@@ -150,91 +149,62 @@ def project_usage_points(
 def project_matrice(
     conn: sqlite3.Connection, policy: Mapping[str, Any], now: str
 ) -> dict[str, Any]:
-    """Matrice registre × réel + dérives J-1 vs médiane 7j (P2 matrice).
-
-    Dérive = J-1 (complet) > 3× médiane(J-8..J-2), volume puis tokens
-    moyens. Médiane nulle = pas de dérive (activation, pas anomalie).
+    """Toutes les invocations en base, avec leur usage des 7 derniers jours.
 
     Args:
-        conn: Connexion canon (lecture).
+        conn: Connexion à la base (lecture).
         policy: Policy (ignorée, uniformité).
         now: Maintenant ISO UTC.
 
     Returns:
-        Dict {points: [{nom, tier, verdict, enabled, output_mode,
-        external_info, garde_fou, repli, appels_7j, tokens_7j,
-        latence_ms, verdicts, tue_runtime}]} (triés, fail-soft).
+        ``{points: [{nom, titre, tier, type, enabled, file, priorite,
+        etape, appels_7j, tokens_7j, latence_ms, verdicts}]}``, dans
+        l'ordre des étapes, puis des liens.
     """
     _ = policy
-    try:
-        registre = load_llm_points()
-    except PolicyError:
-        return {'points': [], 'erreur': 'registre illisible'}
-    ensure_llm_points(conn)
-    db_points = {
-        str(row[0]): {
-            'tier': str(row[1]),
-            'verdict': str(row[2]),
-            'enabled': bool(row[3]),
-        }
-        for row in conn.execute(
-            'SELECT id, tier, verdict, enabled FROM llm_points'
-        ).fetchall()
-    }
-    depuis = avant_iso(now, hours=24 * 8)
-    buckets: dict[tuple[str, str], list[int]] = {}
-    for row in conn.execute(
-        'SELECT point, substr(created_at,1,10), COUNT(*),'
-        ' SUM(tokens_in + tokens_out) FROM llm_usage'
-        ' WHERE created_at>=? GROUP BY point, substr(created_at,1,10)',
+    depuis = avant_iso(now, hours=24 * 7)
+    usage: dict[str, list[int]] = {}
+    verdicts: dict[str, dict[str, int]] = {}
+    for nom, verdict, appels, tokens, latence in conn.execute(
+        'SELECT point, verdict, COUNT(*), SUM(tokens_in + tokens_out),'
+        ' SUM(latency_ms) FROM llm_usage WHERE created_at>=?'
+        ' GROUP BY point, verdict',
         (depuis,),
     ).fetchall():
-        buckets[(str(row[0]), str(row[1]))] = [int(row[2]), int(row[3])]
-    hier = avant_iso(now, hours=24)[:10]
-    passe = [avant_iso(now, hours=24 * k)[:10] for k in range(2, 9)]
-    semaine = [hier, *passe[:6]]
-    verdicts: dict[str, dict[str, int]] = {}
-    latences: dict[str, list[int]] = {}
-    marques = ','.join('?' * len(semaine))
-    for row in conn.execute(
-        'SELECT point, verdict, COUNT(*), SUM(latency_ms) FROM llm_usage'
-        f' WHERE substr(created_at,1,10) IN ({marques})'
-        ' GROUP BY point, verdict',
-        semaine,
-    ).fetchall():
-        nom = str(row[0])
-        verdicts.setdefault(nom, {})[str(row[1])] = int(row[2])
-        latences.setdefault(nom, [0, 0])
-        latences[nom][0] += int(row[3])
-        latences[nom][1] += int(row[2])
+        total = usage.setdefault(str(nom), [0, 0, 0])
+        total[0] += int(appels)
+        total[1] += int(tokens or 0)
+        total[2] += int(latence or 0)
+        verdicts.setdefault(str(nom), {})[str(verdict)] = int(appels)
+    ordre: dict[str, tuple[int, int]] = {}
+    for rang, (etape,) in enumerate(
+        conn.execute('SELECT id FROM pipeline_steps ORDER BY rang, id')
+    ):
+        for place, ligne in enumerate(lister_invocations(conn, str(etape))):
+            ordre[ligne['id']] = (rang, place)
     points = []
-    for nom in sorted(registre):
-        spec = registre[nom]
-        db_spec = db_points.get(nom, {})
-        metadata = conn.execute(
-            'SELECT output_mode, external_info FROM llm_points WHERE id=?',
-            (nom,),
-        ).fetchone()
-        total_lat, total_n = latences.get(nom, [0, 0])
+    rows = conn.execute(
+        'SELECT id, title, model_tier, type, enabled, queue_id, priority,'
+        " step_id FROM invocations WHERE deleted_at='' ORDER BY id"
+    ).fetchall()
+    rows = sorted(rows, key=lambda r: ordre.get(str(r[0]), (99, 0)))
+    for row in rows:
+        nom = str(row[0])
+        appels, tokens, latence = usage.get(nom, [0, 0, 0])
         points.append(
             {
                 'nom': nom,
-                'tier': str(db_spec.get('tier', spec.get('tier'))),
-                'verdict': str(db_spec.get('verdict', spec.get('verdict'))),
-                'enabled': bool(db_spec.get('enabled', spec.get('enabled'))),
-                'output_mode': str(metadata[0] if metadata else 'text'),
-                'external_info': bool(metadata[1]) if metadata else False,
-                'garde_fou': str(spec.get('garde_fou')),
-                'repli': str(spec.get('repli')),
-                'appels_7j': sum(
-                    buckets.get((nom, jour), [0, 0])[0] for jour in semaine
-                ),
-                'tokens_7j': sum(
-                    buckets.get((nom, jour), [0, 0])[1] for jour in semaine
-                ),
-                'latence_ms': round(total_lat / total_n) if total_n else 0,
+                'titre': str(row[1] or nom),
+                'tier': str(row[2] or '—'),
+                'type': str(row[3]),
+                'enabled': bool(row[4]),
+                'file': str(row[5]),
+                'priorite': int(row[6]),
+                'etape': str(row[7]),
+                'appels_7j': appels,
+                'tokens_7j': tokens,
+                'latence_ms': round(latence / appels) if appels else 0,
                 'verdicts': verdicts.get(nom, {}),
-                'tue_runtime': not runtime_allows(conn, nom, now),
             }
         )
     return {'points': points}

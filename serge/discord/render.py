@@ -12,7 +12,7 @@ from collections.abc import Mapping
 from datetime import datetime
 from typing import Any
 
-from serge.points.interact import strip_ids
+from serge.text_ids import strip_ids
 from serge.tickets.shared import champs_carte
 
 BUTTONS: dict[str, dict[str, Any]] = {

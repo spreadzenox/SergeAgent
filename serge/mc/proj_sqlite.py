@@ -56,6 +56,36 @@ CATALOGUE: dict[str, tuple[str, str, str, str]] = {
         'Le runner, deux files en parallèle.',
         'Les paramètres de chaque tâche sont dans task_params.',
     ),
+    'task_inputs': (
+        'Ce qu’une tâche a reçu d’office : lignes données, lignes laissées.',
+        'L’interpréteur, avant l’appel au modèle.',
+        'Fiche d’une tâche.',
+        'Une ligne par outil donné d’office.',
+    ),
+    'writable_tables': (
+        'Les tables qu’une invocation a le droit d’écrire.',
+        'pipeline.yaml au départ.',
+        'Le code d’écriture générique (refus sinon).',
+        'Colonnes permises dans writable_columns.',
+    ),
+    'status_transitions': (
+        'Les changements de statut permis, par table et colonne.',
+        'pipeline.yaml au départ.',
+        'Le code d’écriture générique.',
+        'Exemple : CANDIDATE → POC_SELECTED ; tout autre passage est refusé.',
+    ),
+    'dedup_rules': (
+        'Comment repérer un doublon dans une table.',
+        'pipeline.yaml au départ.',
+        'Le code d’écriture générique (ligne écartée, notée au journal).',
+        'method exact ou shared_words (un seuil en %).',
+    ),
+    'queues': (
+        'Les deux files : conversations et travaux.',
+        'pipeline.yaml au départ ; le coupe-circuit de MC.',
+        'Les deux programmes serge-queue.',
+        'enabled = 0 : la file ne prend plus de tâche.',
+    ),
     'schema_version': (
         'Version du schéma. Si ça dérive, Health le dit.',
         'Migration au boot.',
@@ -65,7 +95,7 @@ CATALOGUE: dict[str, tuple[str, str, str, str]] = {
     'ventures': (
         'Les business, de leur découverte à leur fermeture. Une ligne par business.',
         'Étape 1 (découverte, choix), puis le cycle de vie.',
-        'campaigns, contacts, transactions, work_items.',
+        'campaigns, contacts, transactions, venture_sources.',
         'lifecycle = le statut : CANDIDATE, POC_SELECTED, SMOKE_…, FULL_…',
     ),
     'contacts': (
@@ -118,15 +148,9 @@ CATALOGUE: dict[str, tuple[str, str, str, str]] = {
     ),
     'events': (
         'Le journal append-only. Rien ne s’écrase.',
-        'Tous les acteurs (workers, gardes, MC, LLM).',
-        'Feed, preuves, mémoire, typewriter.',
-        'type + payload_json. C’est ici qu’on lit un llm.io.',
-    ),
-    'work_items': (
-        'La file : READY, RUNNING, DONE, échoué.',
-        'Ordonnanceur (enqueue).',
-        'Workers (claim), file MC, tickets si blocage.',
-        'priority + blocked_until. Une tâche = un kind.',
+        'Tous les acteurs (tâches, écritures, gardes, MC).',
+        'Feed, preuves, mémoire.',
+        'type + payload_json. Chaque écriture et chaque refus y sont notés.',
     ),
     'tickets': (
         'Ce que toi seul peux trancher (veto, guichet, hypothèse).',
@@ -197,10 +221,10 @@ CATALOGUE: dict[str, tuple[str, str, str, str]] = {
         'content_hash + active_from.',
     ),
     'llm_usage': (
-        'Compteur de chaque invocation : jetons, latence, verdict.',
-        'run_point() uniquement.',
-        'Cerveau (matrice), jauges €, fiches LLM.',
-        'Pas le prompt : juste le mètre. Le texte est dans events.',
+        'Compteur de chaque appel au modèle : jetons, durée, verdict.',
+        'L’interpréteur, à chaque appel.',
+        'Cerveau (invocations), jauges €, fiches invocation.',
+        'point = l’invocation. Pas le prompt : juste le mètre.',
     ),
     'episode_archives': (
         'Archives de vieux épisodes (fichiers + empreinte).',
@@ -210,9 +234,9 @@ CATALOGUE: dict[str, tuple[str, str, str, str]] = {
     ),
     'listen_docs': (
         'Pages ramassées sur le web (écoute).',
-        'Worker listen.collect.',
-        'cluster_demand, nœud Écoute.',
-        'excerpt borné. cluster_id après regroupement.',
+        'L’écoute du web (étape 1).',
+        'Cycles d’écoute, preuves des business.',
+        'excerpt borné.',
     ),
     'mc_sessions': (
         'Sessions owner (cookie). Pas du métier.',
@@ -221,47 +245,22 @@ CATALOGUE: dict[str, tuple[str, str, str, str]] = {
         'token_hash + expires_at.',
     ),
     'runtime_flags': (
-        'Kills runtime (couper un point LLM sans redeploy).',
-        'Cerveau (Tuer / Relancer).',
-        'run_point() (verdict killed).',
+        'Interrupteurs à chaud. Aujourd’hui : Serge arrêté en entier.',
+        'Coupe-circuit « Serge » de la page En direct.',
+        'Les deux files (elles ne prennent plus de tâche).',
         'name + expires_at + reason.',
     ),
     'pipeline_steps': (
-        'Les 7 étapes du pipe : en marche ou coupée, et quels kinds.',
+        'Les 8 étapes de la chaîne : en marche ou coupée.',
         'Semence au boot ; toi via la carte Live.',
-        'Ordonnanceur (next_ready ignore les kinds coupés).',
-        'enabled + kinds_json. Un kind sans étape n’est jamais coupé.',
+        'Les files : une étape coupée laisse ses tâches attendre.',
+        'enabled + rang (l’ordre de la chaîne).',
     ),
     'tools': (
-        'Outils qu’une invocation peut presser (mémoire, web, ticket…).',
-        'Semence git + SHA du fichier.',
-        'Fiches MC, jonction llm_point_tools.',
-        'kind déterministe/agent/web/db_read. Un db_read est individualisé.',
-    ),
-    'llm_points': (
-        'Les invocations LLM : un id, un fichier, un SHA, une étape et'
-        ' leurs métadonnées runtime.',
-        'Seed initial depuis llm-points.yaml + verrou fichier.',
-        'Fiches MC et runtime lisent prompt/output_mode/external_info ici.',
-        'code_sha doit matcher le .py (test).',
-    ),
-    'llm_point_tools': (
-        'Quelle invocation a le droit d’utiliser quel outil.',
-        'Recalculé au boot depuis tools du YAML.',
-        'Fiche invocation, rubrique Outils.',
-        'usage : autorise, interdit, declare.',
-    ),
-    'db_readers': (
-        'Capsules mémoire persistées : texte métier + tool DB sous-jacent.',
-        'Semence code idempotente ; paramètres fixes en DB.',
-        'Fiches agents et onglet Écoute.',
-        'Le nom historique db_readers est conservé pour la migration.',
-    ),
-    'llm_point_readers': (
-        'Affectation capsule mémoire ↔ point LLM.',
-        'Affectation initiale code; autorité et édition en DB.',
-        'Runtime et Mission Control.',
-        'Le tool sous-jacent est ensuite relié dans llm_point_tools.',
+        'Les outils : une capacité réglée pour un usage précis.',
+        'pipeline.yaml au départ.',
+        'invocation_tools, fiches outil.',
+        'capability_id ; montre_partout = donné à toutes les invocations.',
     ),
     'tool_db_tables': (
         'Tables accessibles par un tool db_read.',
@@ -288,10 +287,10 @@ CATALOGUE: dict[str, tuple[str, str, str, str]] = {
         'Aucun WHERE libre.',
     ),
     'tool_db_joins': (
-        'Ancien catalogue de jointures de tools, conservé vide pour migration.',
-        'Migration du catalogue DB.',
-        'Compatibilité des bases existantes.',
-        'Les tools génériques demandent leurs jointures entre endpoints autorisés.',
+        'Jointures toujours faites par un outil de lecture.',
+        'pipeline.yaml au départ.',
+        'Query builder.',
+        'Exemple : les pages d’un cycle avec leur titre et leur texte.',
     ),
     'tool_db_params': (
         'Paramètres dynamiques déclarés par un tool db_read.',
@@ -305,22 +304,10 @@ CATALOGUE: dict[str, tuple[str, str, str, str]] = {
         'Query builder et schémas OpenAI.',
         'Valeurs et libellés séparés, sans JSON.',
     ),
-    'db_reader_fixed_params': (
-        'Paramètres fixes d’une capsule mémoire.',
-        'Mission Control ou semence capsule.',
-        'execute_memory_capsule.',
-        'Le contexte d’ordonnancement fournit seulement les paramètres dynamiques.',
-    ),
-    'db_reader_fixed_joins': (
-        'Jointures imposées par une capsule mémoire.',
-        'Mission Control ou semence capsule.',
-        'execute_memory_capsule.',
-        'Une capsule ajoute ces jointures au tool DB avant son exécution.',
-    ),
     'listen_cycles': (
         'Cycles de recherche business avec cibles explicites et guide owner.',
-        'Mission Control, cycle lancé manuellement.',
-        'Agents d’écoute et onglet Écoute.',
+        'L’invocation qui ouvre un cycle.',
+        'Invocations de l’étape 1 et onglet Écoute.',
         'Le guide et les paramètres sont historisés.',
     ),
     'venture_sources': (
@@ -330,16 +317,10 @@ CATALOGUE: dict[str, tuple[str, str, str, str]] = {
         'Une ligne par business, page et cycle.',
     ),
     'canaux': (
-        'Moyens d’écrire vers l’extérieur (e-mail, voix, Discord…).',
-        'Semence git + SHA du fichier writer.',
-        'Fiches MC, jonction brique_canaux.',
+        'Moyens d’écrire vers l’extérieur (e-mail, voix).',
+        'Semence git + SHA du fichier d’envoi.',
+        'Fiches MC.',
         'etat branche/prevu. doc_md = texte de la fiche.',
-    ),
-    'brique_canaux': (
-        'Quelle brique (LLM ou tech) utilise quel canal.',
-        'Recalculé au boot depuis serge/canaux.py.',
-        'Fiches canal / invocation / étape.',
-        'brique_kind : llm ou tech.',
     ),
 }
 

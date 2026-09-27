@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Projecteurs P0 : golden sur fixtures (hero, urgents, file, feed, jauges)."""
+"""Projecteurs P0 : golden sur fixtures (hero, urgents, files, feed, jauges)."""
 
 from __future__ import annotations
 
@@ -16,13 +16,15 @@ from serge.db.store import append_event  # noqa: E402
 from serge.funnels.contacts import add_address  # noqa: E402
 from serge.mc.proj_live import (  # noqa: E402
     project_feed,
-    project_file,
-    project_file_detail,
-    project_hero,
     project_jauges,
     project_urgents,
 )
-from serge.scheduler import claim, enqueue  # noqa: E402
+from serge.mc.proj_taches import (  # noqa: E402
+    project_file,
+    project_file_detail,
+    project_hero,
+)
+from tests.taches_fixtures import invocations, tache  # noqa: E402
 
 NOW = '2026-09-10T12:00:00+00:00'
 POLICY = {
@@ -57,34 +59,27 @@ class ProjLiveTests(unittest.TestCase):
             ),
         )
         add_address(self.conn, 'p1', 'email', 'ada@x.io')
-        running = enqueue(
+        invocations(
             self.conn,
-            kind='email.send',
-            idempotency_key='k-run',
-            venture_id='v1',
+            ('envoyer', 'Envoyer un e-mail', 'prospection_light'),
+            ('classer', 'Classer une réponse', 'prospection_lourde'),
         )
-        claim(self.conn, running)
-        first = enqueue(
+        tache(
             self.conn,
-            kind='inbound.classify',
-            idempotency_key='k-r1',
-            venture_id='v1',
+            'envoyer',
+            {'venture_id': 'v1'},
+            key='k-run',
+            status='running',
+            created_at='2026-09-10T11:00:00+00:00',
         )
-        enqueue(
+        self.first = tache(
             self.conn,
-            kind='inbound.classify',
-            idempotency_key='k-r2',
-            venture_id='v1',
+            'classer',
+            {'venture_id': 'v1'},
+            key='k-r1',
+            created_at='2026-09-10T10:00:00+00:00',
         )
-        self.conn.execute(
-            "UPDATE work_items SET created_at='2026-09-10T10:00:00+00:00'"
-            ' WHERE id=?',
-            (first,),
-        )
-        self.conn.execute(
-            "UPDATE work_items SET created_at='2026-09-10T11:00:00+00:00'"
-            " WHERE status='RUNNING'"
-        )
+        tache(self.conn, 'classer', {'venture_id': 'v1'}, key='k-r2')
         for tid, typ, title, expiry in (
             ('t-guichet', 'GUICHET', 'Captcha', '2026-09-10T12:10:00+00:00'),
             ('t-veto30', 'VETO_AMONT', 'Prix', '2026-09-10T12:30:00+00:00'),
@@ -129,10 +124,10 @@ class ProjLiveTests(unittest.TestCase):
 
     def test_hero_running_et_ready(self) -> None:
         hero = project_hero(self.conn, POLICY, NOW)
-        self.assertEqual(hero['running']['kind'], 'email.send')
+        self.assertEqual(hero['running']['kind'], 'Envoyer un e-mail')
         self.assertEqual(hero['running']['venture_id'], 'v1')
         self.assertEqual(hero['ready'], 2)
-        self.assertEqual(hero['next']['kind'], 'inbound.classify')
+        self.assertEqual(hero['next']['kind'], 'Classer une réponse')
 
     def test_urgents_ordonnes(self) -> None:
         items = project_urgents(self.conn, POLICY, NOW)['items']
@@ -145,23 +140,19 @@ class ProjLiveTests(unittest.TestCase):
         file = project_file(self.conn, POLICY, NOW)
         self.assertEqual(len(file['running']), 1)
         self.assertEqual(file['ready_count'], 2)
-        conn = self.conn.execute(
-            "SELECT id FROM work_items WHERE created_at LIKE '2026-09-10T10%'"
-        ).fetchone()[0]
-        self.assertEqual(file['next']['id'], conn)
+        self.assertEqual(file['next']['id'], self.first)
 
     def test_file_detail_ordre_et_libelles(self) -> None:
         fiche = project_file_detail(self.conn, NOW)
         self.assertEqual(fiche['type'], 'file')
         lignes = fiche['tableau']['lignes']
         self.assertEqual(len(lignes), 3)
-        self.assertEqual(lignes[0]['cellules'][1], 'Envoi d’e-mail')
-        self.assertEqual(lignes[0]['cellules'][2], 'En cours')
-        self.assertEqual(lignes[1]['cellules'][2], 'Prochain')
-        self.assertEqual(
-            lignes[1]['cellules'][1], 'Classification d’une réponse'
-        )
-        self.assertEqual(lignes[2]['cellules'][2], 'Prêt')
+        self.assertEqual(lignes[0]['cellules'][1], 'Envoyer un e-mail')
+        self.assertEqual(lignes[0]['cellules'][3], 'En cours')
+        self.assertEqual(lignes[1]['cellules'][3], 'Prochaine')
+        self.assertEqual(lignes[1]['cellules'][1], 'Classer une réponse')
+        self.assertEqual(lignes[1]['id'], self.first)
+        self.assertEqual(lignes[2]['cellules'][3], 'Prête')
 
     def test_feed_tri_et_sources(self) -> None:
         items = project_feed(self.conn, POLICY, NOW)['items']

@@ -1,17 +1,15 @@
 #!/usr/bin/env python3
-"""Actions Mission Control de l'onglet Écoute."""
+"""MC : un bouton de Mission Control lance son invocation (déclencheur en base)."""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Protocol
 
 from serge.db.store import append_event
-from serge.listen.memory import create_cycle
-from serge.policy_snapshots import policy_en_vigueur
-from serge.scheduler import enqueue
+from serge.interpreter.flow import fire_button
 
 
-class _ListenHandler(Protocol):
+class _BoutonHandler(Protocol):
     def _require_owner(self) -> bool: ...
     def _json_body(self) -> dict | None: ...
     def _refus(self, http: int, erreur: str, code: str, aide: str) -> None: ...
@@ -20,38 +18,46 @@ class _ListenHandler(Protocol):
 
 
 if TYPE_CHECKING:
-    _Base = _ListenHandler
+    _Base = _BoutonHandler
 else:
     _Base = object
 
 
 class EcouteActionsMixin(_Base):
-    """Mutations owner du cycle de pré-prospection."""
+    """POST /owner/api/bouton : ``{trigger_id, form}``."""
 
-    def _api_listen_start(self) -> None:
+    def _api_bouton(self) -> None:
         if not self._require_owner():
             return
         body = self._json_body() or {}
-        guide = str(body.get('guide') or '').strip()
-        with self._db() as conn:
-            policy = policy_en_vigueur(conn)
-            listen = policy.get('listen') or {}
-            needs_target = int(listen['discovery_needs_target'])
-            business_target = int(listen['poc_business_target'])
-            cycle_id = create_cycle(conn, guide, needs_target, business_target)
-            item_id = enqueue(
-                conn,
-                kind='listen.business_cycle',
-                idempotency_key=f'listen:business_cycle:{cycle_id}',
-                priority=50,
-                payload={'cycle_id': cycle_id},
+        trigger_id = str(body.get('trigger_id') or '').strip()
+        form = body.get('form') or {}
+        if not trigger_id or not isinstance(form, dict):
+            self._refus(
+                400,
+                'Bouton inconnu.',
+                'trigger',
+                'Envoie {"trigger_id": "...", "form": {...}}.',
             )
+            return
+        with self._db() as conn:
+            task_id = fire_button(conn, trigger_id, form)
+            if task_id is None:
+                self._refus(
+                    409,
+                    'Ce bouton ne peut pas lancer de tâche.',
+                    'trigger',
+                    'Le déclencheur ou son invocation est éteint, ou absent.',
+                )
+                return
             append_event(
                 conn,
                 actor='owner',
-                type='listen.cycle_start',
-                payload={'cycle_id': cycle_id, 'work_item_id': item_id},
+                type='mc_act',
+                payload={
+                    'acte': 'bouton',
+                    'trigger_id': trigger_id,
+                    'task': task_id,
+                },
             )
-        self._send_json(
-            200, {'ok': True, 'cycle_id': cycle_id, 'work_item_id': item_id}
-        )
+        self._send_json(200, {'ok': True, 'task_id': task_id})

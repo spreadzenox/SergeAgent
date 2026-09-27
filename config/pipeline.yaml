@@ -33,3 +33,273 @@ serge_texts:
       encaisse. Il agit seul la plupart du temps, et demande à Julien de
       valider les décisions importantes. Sa seule limite est la légalité :
       il ne trompe personne et assume d'être un agent IA.
+
+# Les outils : une capacité du code, réglée pour un usage précis. On les
+# donne aux invocations, d'office (lus avant l'appel et mis dans le prompt)
+# ou appelables (le modèle décide). Un outil « everywhere » est appelable
+# par toutes les invocations LLM.
+tools:
+  - id: web_search
+    title: Chercher sur le web public
+    doc: Recherche publique en lecture seule, sans compte ni action externe.
+    capability: web_search
+  - id: memory_search
+    title: Chercher dans la mémoire
+    doc: >-
+      Cherche des mots dans les leçons, les événements et les tickets de
+      Serge, et rend quelques extraits. Lecture seule : ça informe, ça
+      n'écrit pas.
+    capability: memory_search
+  - id: demande_capacite
+    title: Demander une nouvelle capacité
+    doc: >-
+      Quand Serge ne peut pas faire ce qu'on lui demande (pas de canal, pas
+      d'outil), il ouvre une demande à Julien (« j'ai besoin de X ») plutôt
+      que d'inventer. Le même besoin déjà ouvert n'est pas recréé.
+    capability: request_capability
+    everywhere: true
+  - id: current_listen_cycle
+    title: Lire le cycle d'écoute
+    doc: Le texte de guidage et l'état d'un cycle d'écoute.
+    capability: db_read
+    read:
+      tables: [listen_cycles]
+      columns:
+        - {table: listen_cycles, name: id}
+        - {table: listen_cycles, name: guide}
+        - {table: listen_cycles, name: needs_target}
+        - {table: listen_cycles, name: business_target}
+        - {table: listen_cycles, name: status}
+        - {table: listen_cycles, name: created_at}
+        - {table: listen_cycles, name: started_at}
+        - {table: listen_cycles, name: finished_at}
+      filters:
+        - {id: cycle, table: listen_cycles, column: id, param: cycle_id}
+      params:
+        - {name: cycle_id, required: true, description: Identifiant du cycle.}
+  - id: listen_cycle_documents
+    title: Lire les pages du cycle
+    doc: Les pages figées pour un cycle d'écoute, avec leur titre et leur texte.
+    capability: db_read
+    read:
+      tables: [listen_cycle_docs, listen_docs]
+      columns:
+        - {table: listen_cycle_docs, name: cycle_id}
+        - {table: listen_cycle_docs, name: doc_id}
+        - {table: listen_docs, name: id}
+        - {table: listen_docs, name: source}
+        - {table: listen_docs, name: url}
+        - {table: listen_docs, name: title}
+        - {table: listen_docs, name: excerpt}
+        - {table: listen_docs, name: published}
+      joins:
+        - {id: page, left: listen_cycle_docs.doc_id, right: listen_docs.id}
+      filters:
+        - {id: cycle, table: listen_cycle_docs, column: cycle_id, param: cycle_id}
+      params:
+        - {name: cycle_id, required: true, description: Identifiant du cycle.}
+        - {name: limit, type: integer, default: '200', description: Nombre maximal de pages.}
+  - id: known_business_candidates
+    title: Lire les business connus
+    doc: Les business déjà en base, pour ne pas reproposer ce qui existe.
+    capability: db_read
+    read:
+      tables: [ventures]
+      columns:
+        - {table: ventures, name: id}
+        - {table: ventures, name: name, as: title}
+        - {table: ventures, name: description, as: content}
+        - {table: ventures, name: observations}
+        - {table: ventures, name: sellable_offer}
+        - {table: ventures, name: lifecycle, as: status}
+        - {table: ventures, name: created_at}
+        - {table: ventures, name: updated_at}
+      params:
+        - {name: limit, type: integer, default: '200', description: Nombre maximal de business.}
+  - id: eligible_poc_candidates
+    title: Lire les business candidats
+    doc: Les business encore candidats, ceux qu'on peut choisir de tester.
+    capability: db_read
+    read:
+      tables: [ventures]
+      columns:
+        - {table: ventures, name: id}
+        - {table: ventures, name: name, as: title}
+        - {table: ventures, name: description, as: content}
+        - {table: ventures, name: observations}
+        - {table: ventures, name: sellable_offer}
+        - {table: ventures, name: lifecycle, as: status}
+      filters:
+        - {id: candidats, table: ventures, column: lifecycle, fixed: CANDIDATE}
+      params:
+        - {name: limit, type: integer, default: '200', description: Nombre maximal de business.}
+
+# Ce qu'une invocation a le droit d'écrire, et les protections des tables.
+# Ces règles valent pour toutes les invocations : elles sont réglées sur la
+# table, pas sur l'invocation.
+writable_tables:
+  - table: listen_cycles
+    insert: true
+    description: Les cycles d'écoute de l'étape 1.
+    columns:
+      - {name: guide, description: Le texte de guidage écrit dans Mission Control.}
+      - {name: needs_target, description: Le nombre de besoins visés.}
+      - {name: business_target, description: Le nombre de business à choisir.}
+      - {name: status, description: L'état du cycle.}
+  - table: ventures
+    insert: true
+    update: true
+    description: Les business.
+    columns:
+      - {name: name, description: Le nom du business.}
+      - {name: description, description: Ce qu'il vend et à qui.}
+      - {name: sellable_offer, description: L'offre qu'on peut vendre tout de suite.}
+      - {name: lifecycle, description: Le statut du business.}
+
+# Un business naît candidat, et seul un candidat peut être choisi pour un
+# POC : un business déjà en test est refusé par le code d'écriture.
+status_transitions:
+  - {table: ventures, column: lifecycle, from: '', to: CANDIDATE}
+  - {table: ventures, column: lifecycle, from: CANDIDATE, to: POC_SELECTED}
+
+# Une fiche trop proche d'un business existant (72 % de mots en commun sur
+# le nom et la description) est écartée, avec une note au journal.
+dedup_rules:
+  - id: business_proches
+    table: ventures
+    method: shared_words
+    threshold: 72
+    on_duplicate: skip
+    columns: [name, description]
+
+# --- Demi-cycle de démonstration (lot 6) ---------------------------------
+# Trois invocations volontairement simples, pour vérifier que le pipeline
+# décrit en base s'enregistre, s'affiche dans Mission Control et tourne
+# avec l'interpréteur. Le vrai cycle de l'étape 1 les remplacera au lot 7
+# (il faudra alors les marquer supprimées en base : retirer ces lignes du
+# fichier ne les efface pas d'une instance existante).
+invocations:
+  - id: demo_ouvrir_cycle
+    title: Ouvrir un cycle (démo)
+    role: >-
+      Enregistre un cycle d'écoute avec le texte de guidage écrit dans
+      Mission Control. Sans LLM : elle rend ses paramètres, et sa règle
+      d'écriture les range dans la table des cycles.
+    step: pre_prospection
+    type: capability
+    capability: echo
+    queue: works
+    priority: 10
+    params:
+      guide: {source: task, value: guide}
+    output:
+      - {path: guide, type: text, required: false, description: Le texte de guidage.}
+    writes:
+      - table: listen_cycles
+        operation: insert
+        values:
+          guide: {source: field, value: guide}
+          needs_target: {source: fixed, value: '3'}
+          business_target: {source: fixed, value: '1'}
+          status: {source: fixed, value: OPEN}
+
+  - id: demo_formuler
+    title: Formuler deux idées (démo)
+    role: >-
+      Imagine deux idées de business à partir du texte de guidage du cycle,
+      sans reproposer un business déjà connu. Chaque idée devient un
+      business candidat.
+    step: pre_prospection
+    type: llm
+    model_tier: mid
+    queue: works
+    priority: 10
+    gets_serge_intro: true
+    default_max_rows: 20
+    max_tool_turns: 4
+    prompt: |
+      Ceci est une démonstration du pipeline décrit en base.
+      Propose exactement deux idées de business simples, inspirées du
+      texte de guidage du cycle. N'en propose aucune qui ressemble à un
+      business déjà connu. Chaque idée doit être légale.
+    tools:
+      - tool: current_listen_cycle
+        mode: given
+        label: Le cycle en cours
+        params:
+          cycle_id: {source: task, value: cycle_id}
+      - tool: known_business_candidates
+        mode: given
+        label: Les business déjà connus
+        max_rows: 20
+      - {tool: web_search, mode: callable}
+      - {tool: memory_search, mode: callable}
+    output:
+      - {path: fiches, type: list, description: Les deux idées.}
+      - {path: fiches.title, type: text, description: Le nom court du business.}
+      - {path: fiches.description, type: text, description: Ce qu'il vend et à qui.}
+      - {path: fiches.offre, type: text, required: false, description: L'offre qu'on pourrait vendre tout de suite.}
+    writes:
+      - table: ventures
+        operation: insert
+        for_each: fiches
+        values:
+          name: {source: field, value: fiches.title}
+          description: {source: field, value: fiches.description}
+          sellable_offer: {source: field, value: fiches.offre}
+          lifecycle: {source: fixed, value: CANDIDATE}
+
+  - id: demo_choisir
+    title: Choisir un business (démo)
+    role: >-
+      Choisit au plus un business candidat à tester. Un business déjà en
+      test est refusé par la règle des changements de statut.
+    step: pre_prospection
+    type: llm
+    model_tier: fast
+    queue: works
+    priority: 10
+    prompt: |
+      Ceci est une démonstration du pipeline décrit en base.
+      Parmi les business candidats, choisis-en au plus un, le plus simple à
+      tester, et dis pourquoi en une phrase.
+    tools:
+      - tool: eligible_poc_candidates
+        mode: given
+        label: Les business candidats
+        max_rows: 10
+    output:
+      - {path: choix, type: list, description: Le business choisi (au plus un).}
+      - {path: choix.venture_id, type: text, description: L'identifiant du business.}
+      - {path: choix.raison, type: text, required: false, description: Pourquoi, en une phrase.}
+    writes:
+      - table: ventures
+        operation: update
+        for_each: choix
+        key: {column: id, source: field, value: choix.venture_id}
+        values:
+          lifecycle: {source: fixed, value: POC_SELECTED}
+
+links:
+  - id: demo_cycle_vers_formuler
+    title: Le cycle ouvert part en exploration
+    from: demo_ouvrir_cycle
+    to: demo_formuler
+    mode: per_row
+    write: 0
+    params:
+      cycle_id: {source: row, value: id}
+  - id: demo_formuler_vers_choisir
+    title: Les idées formulées passent au choix
+    from: demo_formuler
+    to: demo_choisir
+    params:
+      cycle_id: {source: task, value: cycle_id}
+
+triggers:
+  - id: demo_lancer_cycle
+    title: Lancer un cycle (démo)
+    invocation: demo_ouvrir_cycle
+    event: button
+    params:
+      guide: {source: form, value: guide}
