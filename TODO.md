@@ -139,7 +139,9 @@ La conception des tables, validée avec Clem, est dans
 Clem a fixé la façon de mener ce lot. On passe directement à la version
 durable : tout ce qui est écrit en dur pour un enchaînement (le cycle
 d'écoute, le circuit des réponses, les envois, la relève, la
-consolidation) est supprimé, avec ses tests, sans période de transition.
+consolidation) est retiré de la production, sans période de transition,
+et rangé avec ses tests et ses prompts dans le dossier
+`pas_encore_branche/`, pour les lots suivants.
 On ne crée que les colonnes et les capacités dont ce lot a besoin : celles
 des fonctions futures (validation par Julien, bac à sable, délais par
 canal, désinscription…) seront ajoutées par leur propre lot, et elles sont
@@ -331,10 +333,13 @@ lot 13.
   est marquée absente ; les invocations qui s'en servaient sont signalées
   dans MC au lieu d'être effacées.
 
-- [ ] **Supprimer le code en dur et écrire le pipeline de départ.** Tout
+- [ ] **Ranger le code en dur et écrire le pipeline de départ.** Tout
   le code propre à un enchaînement (le cycle d'écoute, la relève de la
   boîte mail, le circuit des réponses, les envois, la consolidation) est
-  supprimé avec ses tests, sans période de transition. Le pipeline de
+  retiré de la production, sans période de transition. Il n'est pas
+  détruit : il est rangé, avec ses tests et ses prompts, dans le dossier
+  `pas_encore_branche/` à la racine du dépôt, parce qu'il contient
+  beaucoup de choses utiles pour les lots suivants. Le pipeline de
   départ d'une nouvelle instance est écrit dans `config/pipeline.yaml`,
   qui sert uniquement à remplir la base : on y décrit tout ce qui peut
   l'être avec les capacités de ce lot, à commencer par le cycle d'écoute.
@@ -347,7 +352,7 @@ lot 13.
   consolidation de la mémoire et le bot Discord quand Julien écrit à
   Serge. Ce n'est pas pour ce lot : on le fera dans un lot suivant (voir
   « Plus tard »). En attendant, leur code n'est pas perdu : il est rangé
-  dans un dossier de code « pas encore branché », hors de ce qui tourne en
+  dans le dossier `pas_encore_branche/`, hors de ce qui tourne en
   production, et débranché du runner, du bot et de Mission Control. Le bot
   Discord continue de recopier les tickets et de faire marcher leurs
   boutons, qui n'appellent pas le LLM. Le code de bas niveau qui ne

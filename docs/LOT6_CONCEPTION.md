@@ -37,8 +37,10 @@ nouvelle instance.
 ## Ce que le lot 6 construit, et ce qu'il laisse aux lots suivants
 
 Clem a fixé le périmètre. On passe directement à la version durable : tout
-le code écrit en dur pour un enchaînement est supprimé avec ses tests, sans
-période de transition. Le lot construit le runner, les tables de ce
+le code écrit en dur pour un enchaînement est retiré de la production, sans
+période de transition. Il n'est pas détruit : il est rangé, avec ses tests
+et ses prompts, dans le dossier `pas_encore_branche/` à la racine du dépôt,
+pour que les lots suivants puissent s'en servir. Le lot construit le runner, les tables de ce
 document, l'interpréteur, les premières capacités et l'affichage dans
 Mission Control. À la fin du lot, Serge ne peut pas encore être allumé
 pour de vrai, parce que certaines capacités manquent ; mais en modifiant la
@@ -527,7 +529,8 @@ apparaissent.
 - La colonne `kind` de `tools`, la colonne `kinds_json` de
   `pipeline_steps`, et les interrupteurs `kind.*`.
 - Tout le code propre à une invocation : les fonctions des enchaînements
-  (cycle d'écoute, circuit des réponses…) et leur code d'écriture.
+  (cycle d'écoute, circuit des réponses…) et leur code d'écriture. Il est
+  rangé dans `pas_encore_branche/`, pas détruit.
 
 Une migration recopie tout ce qui existe : les réglages modifiés dans
 Mission Control sont gardés.

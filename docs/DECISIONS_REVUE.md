@@ -858,8 +858,10 @@ reste. Il n'y a rien à interrompre. Ce qui change :
 
 ### Q58 — Comment mener le lot 6 (validé par Clem)
 1. Pas de transition : on passe directement à la version durable. Tout le
-   code écrit en dur pour un enchaînement est supprimé avec ses tests. Ce
-   qui existait avant n'a pas à rester en marche.
+   code écrit en dur pour un enchaînement est retiré de la production. Ce
+   qui existait avant n'a pas à rester en marche. (Précisé en Q59 : ce
+   code n'est pas détruit, il est rangé dans le dossier « pas encore
+   branché ».)
 2. On ne crée que les colonnes et les capacités dont le lot a besoin. Les
    fonctions futures (conditions sur les liens, validation par Julien, une
    seule tâche en attente par prospect, délais par canal, actions hors de
@@ -888,6 +890,14 @@ reste. Il n'y a rien à interrompre. Ce qui change :
    le pipeline est noté en fin de TODO.
 3. La production, c'est tout ce qui a été fait aux lots 1 à 6 et la
    structure qui ne change pas.
+4. Clem s'est corrigé : le code des enchaînements en dur (écoute,
+   réponses, envois, relances, code propre à chaque invocation) n'est pas
+   détruit non plus. Il va dans le même dossier `pas_encore_branche/`, à la
+   racine du dépôt, avec ses tests et ses prompts, parce qu'il contient
+   beaucoup de choses utiles et que les prochains LLM doivent pouvoir le
+   lire facilement. Ce dossier n'est ni importé, ni testé, ni vérifié par
+   les outils de qualité, et le test « aucun nom d'invocation dans le
+   code » l'ignore.
 
 ### Q55 — Nouvel ordre des lots (validé)
 Lots 1 à 5 faits. Ensuite :
