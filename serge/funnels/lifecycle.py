@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Lifecycle ventures (B §1) : états, gates, une seule ACTIVE.
+"""Statuts d'une venture : transitions autorisées, une seule active.
 
-CANDIDATE → SMOKE_READY → SMOKE_RUNNING → SMOKE_DONE → FULL_READY →
-FULL_RUNNING → SCALE | PIVOT | EXTEND | KILLED | INVALID_RETRY.
-Gates : campagne READY (runs), hypothèse full approuvée + canary 1 €
-réussi (full). Chaque transition = événement. Le lifecycle VÉRIFIE ;
-    l'allocteur crée tickets et campagnes.
+CANDIDATE → POC_SELECTED → SMOKE_READY → SMOKE_RUNNING → SMOKE_DONE →
+FULL_READY → FULL_RUNNING → SCALE | PIVOT | EXTEND | KILLED | INVALID_RETRY.
+Conditions : une campagne READY pour lancer un test, une hypothèse
+approuvée et un paiement test de 1 € réussi pour le test complet. Chaque
+transition est écrite dans le journal. Les dates de début et de fin du
+test léger sont gardées sur la fiche (smoke_started_at, smoke_ended_at).
 """
 
 from __future__ import annotations
@@ -152,7 +153,9 @@ def to_smoke_ready(conn: sqlite3.Connection, venture_id: str) -> None:
     _move(
         conn,
         venture_id,
-        frozenset({'CANDIDATE', 'PIVOT', 'EXTEND', 'INVALID_RETRY'}),
+        frozenset(
+            {'CANDIDATE', 'POC_SELECTED', 'PIVOT', 'EXTEND', 'INVALID_RETRY'}
+        ),
         'SMOKE_READY',
     )
 
@@ -161,10 +164,18 @@ def to_smoke_running(conn: sqlite3.Connection, venture_id: str) -> None:
     if not _ready_campaign(conn, venture_id):
         raise VentureError(f'{venture_id} : campagne READY requise (smoke)')
     _move(conn, venture_id, frozenset({'SMOKE_READY'}), 'SMOKE_RUNNING')
+    conn.execute(
+        'UPDATE ventures SET smoke_started_at=? WHERE id=?',
+        (utcnow(), venture_id),
+    )
 
 
 def to_smoke_done(conn: sqlite3.Connection, venture_id: str) -> None:
     _move(conn, venture_id, frozenset({'SMOKE_RUNNING'}), 'SMOKE_DONE')
+    conn.execute(
+        'UPDATE ventures SET smoke_ended_at=? WHERE id=?',
+        (utcnow(), venture_id),
+    )
 
 
 def to_full_ready(conn: sqlite3.Connection, venture_id: str) -> None:

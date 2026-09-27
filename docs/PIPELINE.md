@@ -54,14 +54,15 @@ Chaque étape a sa page : [`docs/etapes/`](etapes/).
 Un business est une seule ligne dans la table `ventures`. Seul son statut
 change au fil de sa vie.
 
-**Aujourd'hui**, deux autres tables stockent aussi des business pendant
-l'étape 1 : `business_candidates` et `poc_selections`. Les statuts de
-`ventures` sont `CANDIDATE`, `SMOKE_READY`, `SMOKE_RUNNING`, `SMOKE_DONE`,
-`FULL_READY`, `FULL_RUNNING`, `SCALE`, `PIVOT`, `EXTEND`, `KILLED`,
-`INVALID_RETRY`.
+**Aujourd'hui**, les statuts de `ventures` sont `CANDIDATE`,
+`POC_SELECTED`, `SMOKE_READY`, `SMOKE_RUNNING`, `SMOKE_DONE`, `FULL_READY`,
+`FULL_RUNNING`, `SCALE`, `PIVOT`, `EXTEND`, `KILLED`, `INVALID_RETRY`. Les
+business trouvés par l'étape 1 y sont écrits directement, avec leur fiche
+(description, observations, offre vendable) ; leurs pages de preuve sont
+dans `venture_sources`. Les dates de début et de fin du test léger sont sur
+la fiche (`smoke_started_at`, `smoke_ended_at`).
 
-**Décidé** : une seule table, `ventures`. Les deux autres disparaissent. Le
-parcours devient :
+**Décidé** : le parcours devient :
 
 ```text
 CANDIDATE        trouvé par l'étape 1

@@ -20,10 +20,10 @@ CATALOGUE: dict[str, tuple[str, str, str, str]] = {
         'Une ligne : le numéro appliqué. Pas de métier ici.',
     ),
     'ventures': (
-        'Les paris : une offre, un cycle, schedulable ou non.',
-        'Cycle de vie, owner, builder.',
+        'Les business, de leur découverte à leur fermeture. Une ligne par business.',
+        'Étape 1 (découverte, choix), puis le cycle de vie.',
         'campaigns, contacts, transactions, work_items.',
-        'Objet cliquable « venture ». SMOKE / FULL / SCALE vivent ici.',
+        'lifecycle = le statut : CANDIDATE, POC_SELECTED, SMOKE_…, FULL_…',
     ),
     'contacts': (
         'Une fiche avec des références JSON indexées par canal et lieu.',
@@ -274,11 +274,11 @@ CATALOGUE: dict[str, tuple[str, str, str, str]] = {
         'Agents d’écoute et onglet Écoute.',
         'Le guide et les paramètres sont historisés.',
     ),
-    'business_candidates': (
-        'Mémoire canonique des besoins et business pré-prospectés.',
-        'Writer déterministe après invocations.',
-        'Sélection POC et Mission Control.',
-        'normalized_key et status empêchent les doublons et le rechoix.',
+    'venture_sources': (
+        'Pages qui prouvent le besoin derrière un business.',
+        'Étape 1, à l’écriture des business trouvés.',
+        'Fiche business, Mission Control.',
+        'Une ligne par business, page et cycle.',
     ),
     'canaux': (
         'Moyens d’écrire vers l’extérieur (e-mail, voix, Discord…).',

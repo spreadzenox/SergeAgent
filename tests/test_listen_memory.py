@@ -113,7 +113,7 @@ class ListenMemoryTests(unittest.TestCase):
             1,
         )
         candidate = self.conn.execute(
-            'SELECT id FROM business_candidates'
+            "SELECT id FROM ventures WHERE lifecycle='CANDIDATE'"
         ).fetchone()[0]
         selected = select_poc(
             self.conn, cycle, {'candidate_ids': [candidate]}, 1
@@ -122,6 +122,39 @@ class ListenMemoryTests(unittest.TestCase):
         self.assertEqual(
             select_poc(self.conn, cycle, {'candidate_ids': [candidate]}, 1), []
         )
+        journal = [
+            row[0]
+            for row in self.conn.execute(
+                'SELECT type FROM events WHERE venture_id=? ORDER BY id',
+                (candidate,),
+            )
+        ]
+        self.assertEqual(
+            journal,
+            [
+                'venture.candidate',
+                'venture.poc_selected',
+                'listen.selection_refused',
+            ],
+        )
+
+    def test_doublon_ecarte_et_note_au_journal(self) -> None:
+        cycle = create_cycle(self.conn, '', 5, 1)
+        fiche = {
+            'title': 'Devis vocal',
+            'content': 'Outil de devis pour artisans',
+        }
+        self.assertEqual(
+            save_candidates(self.conn, cycle, {'needs': [fiche]}), 1
+        )
+        self.assertEqual(
+            save_candidates(self.conn, cycle, {'needs': [fiche]}), 0
+        )
+        rejet = self.conn.execute(
+            "SELECT payload_json FROM events WHERE type='listen.candidate_rejected'"
+        ).fetchone()
+        self.assertIsNotNone(rejet)
+        self.assertIn('doublon', rejet[0])
 
 
 if __name__ == '__main__':

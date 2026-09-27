@@ -13,7 +13,6 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from serge.db.boot import init_schema  # noqa: E402
-from serge.db.schema import SCHEMA_VERSION  # noqa: E402
 from serge.funnels.contact_canal import (  # noqa: E402
     ContactCanalError,
     upsert_trace,
@@ -31,9 +30,6 @@ class ContactCanalTests(unittest.TestCase):
             'INSERT INTO ventures(id, created_at, updated_at)'
             " VALUES('v1','t','t')"
         )
-
-    def test_schema(self) -> None:
-        self.assertEqual(SCHEMA_VERSION, 20)
 
     def test_meme_lieu_enrichit(self) -> None:
         premier = upsert_trace(

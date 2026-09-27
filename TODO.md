@@ -19,8 +19,7 @@ est indiqué entre parenthèses, exemple : Q13).
 
 On avance par petits lots : un sujet, un commit, des tests verts.
 
-1. **Données** : ventures, contacts, livraisons, demandes clients,
-   abonnements (section Transverse).
+1. **Données** : contacts, abonnements (section Transverse).
 2. **Invocations et liens** : suppression des kinds et des capsules,
    liens entre invocations, priorités, tools automatiques (Transverse).
 3. **Étape 1** refaite.
@@ -35,16 +34,6 @@ On avance par petits lots : un sujet, un commit, des tests verts.
 
 ## Transverse
 
-### Une seule table pour les business (Q13, Q15, Q44)
-
-- **Quoi** : fondre `business_candidates` et `poc_selections` dans
-  `ventures`. Ajouter les colonnes de la fiche (titre, description,
-  observations, offre vendable), les statuts `POC_SELECTED`, `PARKED`,
-  `MAINTENANCE`, `CLOSED`, et les dates de début et de fin du test léger.
-  Écrire chaque changement de statut dans le journal.
-- **Pourquoi** : aujourd'hui, un même business peut exister dans trois
-  tables qui se contredisent.
-
 ### Les places de test (Q14)
 
 - **Quoi** : deux réglages dans la policy, 3 places en prospection légère
@@ -52,7 +41,6 @@ On avance par petits lots : un sujet, un commit, des tests verts.
   3 places légères sont prises, l'étape 1 ne lance pas de cycle et Mission
   Control affiche « 3 places sur 3 occupées ».
 - **Pourquoi** : ne pas tester plus de business qu'on ne peut en suivre.
-- **Dépend de** : une seule table pour les business.
 
 ### Contacts : une fiche par personne (Q17)
 
@@ -77,6 +65,10 @@ On avance par petits lots : un sujet, un commit, des tests verts.
     la volée (`assurer_colonnes`) par une migration.
 - **Pourquoi** : sans ça, Serge ne sait pas ce qui reste à livrer ni quand
   un business peut être fermé.
+- **Quand** : l'abonnement rattaché fait partie du lot Données. Les tables
+  `deliveries` et `product_requests` sont créées avec le code qui les
+  remplit (« Traiter une réponse », encaissement), pour ne pas laisser de
+  table vide sans écrivain.
 
 ### Supprimer les kinds (Q7)
 
@@ -219,8 +211,7 @@ On avance par petits lots : un sujet, un commit, des tests verts.
   (technique). Détail : [`docs/etapes/1-pre-prospection.md`](docs/etapes/1-pre-prospection.md).
 - **Pourquoi** : une invocation, un rôle ; aujourd'hui les découvertes font
   tout à la fois.
-- **Dépend de** : liens entre invocations ; une seule table pour les
-  business ; places.
+- **Dépend de** : liens entre invocations ; places.
 
 ### Garder toutes les pages lues (Q8)
 

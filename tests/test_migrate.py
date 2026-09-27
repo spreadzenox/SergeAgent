@@ -19,8 +19,10 @@ from serge.db.migrate import (  # noqa: E402
     read_version,
 )
 from serge.db.schema import SCHEMA_VERSION, TABLES  # noqa: E402
+from serge.db.v015 import apply_v015  # noqa: E402
 from serge.db.v018 import apply_v018  # noqa: E402
 from serge.db.v020 import apply_v020  # noqa: E402
+from serge.db.v021 import apply_v021  # noqa: E402
 
 
 class MigrateTests(unittest.TestCase):
@@ -54,6 +56,85 @@ class MigrateTests(unittest.TestCase):
                 'SELECT prompt, output_mode, external_info FROM llm_points'
             ).fetchone(),
             ('', 'text', 0),
+        )
+
+    def test_v21_fond_les_business_dans_ventures(self) -> None:
+        conn = sqlite3.connect(':memory:')
+        self.addCleanup(conn.close)
+        conn.executescript(
+            """
+            CREATE TABLE ventures (
+                id TEXT PRIMARY KEY, name TEXT NOT NULL DEFAULT '',
+                lifecycle TEXT NOT NULL DEFAULT 'CANDIDATE',
+                schedulable INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
+            CREATE TABLE events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT NOT NULL,
+                actor TEXT NOT NULL, venture_id TEXT NOT NULL DEFAULT '',
+                type TEXT NOT NULL, payload_json TEXT NOT NULL DEFAULT '{}',
+                links_json TEXT NOT NULL DEFAULT '{}');
+            CREATE TABLE tool_db_tables (tool_id TEXT, table_name TEXT,
+                position INTEGER);
+            """
+        )
+        apply_v015(conn)
+        conn.executescript(
+            """
+            INSERT INTO business_candidates(id, title, content,
+                normalized_key, status, created_at, updated_at)
+            VALUES ('b1', 'Devis vocal', 'Outil pour artisans', 'k1',
+                'POC_SELECTED', 't1', 't1'),
+                ('b2', 'Autre', 'Autre besoin', 'k2', 'CANDIDATE', 't2', 't2');
+            INSERT INTO business_candidate_sources VALUES ('b1', 'd1', 'c1');
+            INSERT INTO poc_selections(id, cycle_id, candidate_id, rank,
+                selected_at) VALUES ('c1:b1', 'c1', 'b1', 1, 't3');
+            INSERT INTO tool_db_tables VALUES
+                ('eligible_poc_candidates', 'business_candidates', 0);
+            """
+        )
+        apply_v021(conn)
+        self.assertEqual(
+            conn.execute(
+                'SELECT id, name, lifecycle, description, dedup_key'
+                ' FROM ventures ORDER BY id'
+            ).fetchall(),
+            [
+                (
+                    'b1',
+                    'Devis vocal',
+                    'POC_SELECTED',
+                    'Outil pour artisans',
+                    'k1',
+                ),
+                ('b2', 'Autre', 'CANDIDATE', 'Autre besoin', 'k2'),
+            ],
+        )
+        self.assertEqual(
+            conn.execute('SELECT * FROM venture_sources').fetchall(),
+            [('b1', 'd1', 'c1')],
+        )
+        evenement = conn.execute(
+            'SELECT venture_id, type, payload_json FROM events'
+        ).fetchone()
+        self.assertEqual(evenement[:2], ('b1', 'venture.poc_selected'))
+        self.assertEqual(json.loads(evenement[2])['cycle_id'], 'c1')
+        restantes = {
+            row[0]
+            for row in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            )
+        }
+        self.assertFalse(
+            {
+                'business_candidates',
+                'business_candidate_sources',
+                'poc_selections',
+            }
+            & restantes
+        )
+        self.assertEqual(
+            conn.execute('SELECT COUNT(*) FROM tool_db_tables').fetchone()[0],
+            0,
         )
 
     def test_v18_backfill_reconstruit_contacts(self) -> None:

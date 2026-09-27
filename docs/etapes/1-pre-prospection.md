@@ -29,13 +29,16 @@ tâche `listen.business_cycle`. Le cycle se déroule ainsi
    de A. Chacune peut chercher sur le web (`web_search`), dans la mémoire
    (`memory_search`) et lire la base (cycle courant, pages du cycle,
    business déjà connus).
-3. Serge enregistre les fiches dans `business_candidates` en écartant les
-   doublons : même contenu, ou au moins 72 % de mots en commun avec une
-   fiche existante.
+3. Serge enregistre les fiches comme business `CANDIDATE` dans `ventures`,
+   avec leurs pages de preuve dans `venture_sources`. Il écarte les
+   doublons : même contenu, ou au moins 72 % de mots en commun avec un
+   business existant. Chaque fiche écartée est notée dans le journal
+   (`listen.candidate_rejected`).
 4. **« Choisir les business à tester »** (invocation LLM) lit les business
    encore candidats et en choisit.
-5. Le code refuse un business déjà choisi pour un test
-   (`serge/listen/memory.py`, `select_poc`).
+5. Le code passe les business choisis en `POC_SELECTED`, et refuse tout
+   business qui n'est plus `CANDIDATE` (`serge/listen/memory.py`,
+   `select_poc`). Chaque choix et chaque refus est noté dans le journal.
 
 Réglages (policy, page Policy) : `listen.discovery_needs_target` (5 besoins
 par découverte) et `listen.poc_business_target` (1 business choisi).
