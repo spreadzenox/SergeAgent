@@ -856,6 +856,26 @@ reste. Il n'y a rien à interrompre. Ce qui change :
    demande de ne pas le reproposer. Un doublon écarté est visible au
    journal.
 
+### Q58 — Comment mener le lot 6 (validé par Clem)
+1. Pas de transition : on passe directement à la version durable. Tout le
+   code écrit en dur pour un enchaînement est supprimé avec ses tests. Ce
+   qui existait avant n'a pas à rester en marche.
+2. On ne crée que les colonnes et les capacités dont le lot a besoin. Les
+   fonctions futures (conditions sur les liens, validation par Julien, une
+   seule tâche en attente par prospect, délais par canal, actions hors de
+   Serge, bac à sable, désinscription…) ajouteront leurs colonnes et leurs
+   capacités dans leur propre lot ; elles sont notées dans le TODO.
+3. Les capacités sont listées en base et affichées dans MC ; c'est là
+   qu'on les choisira pour une invocation. Première capacité importante :
+   écrire en base, de façon générique, à partir de la réponse d'une
+   invocation.
+4. À la fin du lot 6, MC affiche tout ce qui est en base, en direct, et
+   garde ce qui existe déjà. Créer une invocation depuis le site viendra
+   plus tard.
+5. Fusion dans `main` après chaque étape, avec des tests verts qui portent
+   seulement sur ce qui est construit. Serge ne peut pas être allumé pour
+   de vrai tant que toutes les capacités ne sont pas là ; c'est accepté.
+
 ### Q55 — Nouvel ordre des lots (validé)
 Lots 1 à 5 faits. Ensuite :
 6. Le runner et le pipeline en base : d'abord le runner (une tâche après

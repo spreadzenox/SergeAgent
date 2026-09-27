@@ -34,11 +34,48 @@ nouvelle instance.
 
 ---
 
+## Ce que le lot 6 construit, et ce qu'il laisse aux lots suivants
+
+Clem a fixé le périmètre. On passe directement à la version durable : tout
+le code écrit en dur pour un enchaînement est supprimé avec ses tests, sans
+période de transition. Le lot construit le runner, les tables de ce
+document, l'interpréteur, les premières capacités et l'affichage dans
+Mission Control. À la fin du lot, Serge ne peut pas encore être allumé
+pour de vrai, parce que certaines capacités manquent ; mais en modifiant la
+base, on peut construire n'importe quel pipeline avec les capacités qui
+existent.
+
+**On ne crée que les colonnes dont ce lot a besoin.** Les colonnes des
+fonctions futures (validation par Julien, bac à sable, délais par canal,
+conditions sur les liens…) ne sont pas créées maintenant : chaque lot
+ajoutera les siennes. La partie 9 de ce document les liste, pour montrer
+qu'elles tiendront dans la règle, et le [`TODO.md`](../TODO.md) les note à
+l'endroit où elles serviront.
+
+**Les premières capacités** : lire la base (elle existe déjà), écrire dans
+la base, appeler un modèle avec ses outils, chercher sur le web, chercher
+dans la mémoire, demander une nouvelle capacité, et rendre les paramètres
+de la tâche (pour une invocation sans LLM qui ne fait qu'écrire ce qu'on
+lui donne).
+
+**Mission Control** affiche tout ce qui est en base, en direct : les
+invocations et leurs réglages, les capacités et les outils, les règles
+d'écriture, les liens, les déclencheurs, les files et les tâches. Ce qui
+existe déjà reste (modifier un prompt, allumer ou éteindre). Créer une
+invocation depuis le site viendra au lot 13.
+
+**Fusion dans `main`** après chaque étape du lot, avec des tests verts qui
+portent seulement sur ce qui est construit.
+
+---
+
 ## Comment se déroule une invocation
 
 Toutes les invocations se déroulent de la même façon, qu'elles appellent
 un LLM ou non. C'est ce qui permet d'avoir un seul programme pour toutes.
-Pour chaque tâche prise dans la file, l'interpréteur fait, dans l'ordre :
+Pour chaque tâche prise dans la file, l'interpréteur fait, dans l'ordre
+(un temps « demander à Julien » s'ajoutera entre la vérification et
+l'écriture au lot 8) :
 
 1. **Préparer.** Il lit les réglages de l'invocation en base, et lance les
    lectures données d'office (par exemple, les business déjà connus, en
@@ -52,14 +89,10 @@ Pour chaque tâche prise dans la file, l'interpréteur fait, dans l'ordre :
 3. **Vérifier.** Il contrôle que la réponse a le format déclaré. Si ce
    n'est pas le cas, il redemande au modèle, avec l'erreur, un nombre
    limité de fois.
-4. **Demander à Julien, si c'est réglé ainsi.** Si l'invocation demande
-   une validation, ou si sa réponse dit « besoin de Julien », il ouvre un
-   ticket avec tout ce que l'invocation a reçu et répondu, et la tâche
-   attend la réponse de Julien.
-5. **Écrire.** Il écrit la réponse en base en suivant les règles
+4. **Écrire.** Il écrit la réponse en base en suivant les règles
    d'écriture de l'invocation, et en appliquant les protections déclarées
    en base. Chaque écriture et chaque refus sont notés au journal.
-6. **Passer la main.** Il marque la tâche comme finie, puis lance les
+5. **Passer la main.** Il marque la tâche comme finie, puis lance les
    invocations suivantes selon les liens, et les déclencheurs réagissent
    aux lignes écrites.
 
@@ -108,9 +141,6 @@ Colonnes :
 
 - `id` : par exemple `db_read`, `web_search`, `send_email`, `http_call`.
 - `title`, `doc_md` : son nom et ce qu'elle fait, en français.
-- `acts_outside` : 1 si elle agit hors de Serge (envoyer un e-mail,
-  passer un appel, payer). L'interpréteur enregistre alors « en cours »
-  avant de l'appeler et « fait » après, pour ne jamais agir deux fois.
 - `available` : 1 si le code la fournit encore.
 - `code_path`, `code_sha`, `files_sha`, `updated_at` : calculés au
   démarrage.
@@ -157,16 +187,6 @@ Colonnes communes :
 - `enabled` : son interrupteur.
 - `queue_id` : `conversations` ou `works`.
 - `priority` : de 0 à 100, copiée sur chaque tâche à sa création.
-- `single_pending_param` : facultatif. Avec `contact_id`, une seule tâche
-  de cette invocation peut attendre pour un même prospect.
-- `approval` : `none` ou `julien`. Avec `julien`, chaque réponse passe par
-  un ticket avant d'être écrite ou exécutée. Exemple : l'envoi d'un
-  message LinkedIn.
-- `ask_julien_field` : facultatif, le nom d'un champ oui/non de la
-  réponse. S'il vaut oui, un ticket est ouvert. Exemple : le champ
-  `besoin_de_julien` de « Traiter une réponse ».
-- `sandbox_profile_id` : facultatif, pour plus tard. Le bac à sable dans
-  lequel ses outils s'exécutent.
 - `origin` (`code` ou `mc`), `deleted_at`, `updated_at`, `updated_by`.
 
 Colonnes pour une invocation LLM :
@@ -250,8 +270,7 @@ Le catalogue de ce qu'une invocation peut écrire, sur le modèle du
 catalogue de lecture.
 
 - `writable_tables` : `table_name`, `can_insert`, `can_update`,
-  `needs_approval` (toute écriture dans cette table passe par un ticket ;
-  exemple : la description d'un nouveau service à appeler), `description`.
+  `description`.
 - `writable_columns` : `table_name`, `column_name`, `description`.
 
 Une table absente du catalogue ne peut jamais être écrite par une
@@ -341,9 +360,6 @@ Elle remplace `etape_liens`. Colonnes :
 - `write_id` : pour `per_row`, l'écriture dont les lignes comptent.
 - `auto` : 1 pour passer tout seul, 0 pour attendre un clic sur « passer à
   la suite » dans Mission Control.
-- `delay` : `none` ou `channel`. Avec `channel`, la tâche suivante porte
-  une date « pas avant », tirée entre le délai minimum et le délai maximum
-  du canal.
 - `enabled`, `origin`, `deleted_at`, `updated_at`, `updated_by`.
 
 ### `link_params` — ce que le lien transmet
@@ -390,9 +406,8 @@ programme tourne en continu pour chaque file.
 ### `tasks` et `task_params` — la file des tâches
 
 `tasks` remplace `work_items`. Colonnes : `id`, `invocation_id`,
-`queue_id`, `priority`, `status` (`ready`, `running`, `waiting_julien`,
-`done`, `failed`, `cancelled`, `to_check`), `outside_state` (vide,
-`started`, `done`), `not_before`, `attempts`, `last_error`, `origin`
+`queue_id`, `priority`, `status` (`ready`, `running`, `done`, `failed`,
+`cancelled`), `not_before`, `attempts`, `last_error`, `origin`
 (`link`, `trigger`, `button`), `origin_ref`, `idempotency_key` (unique,
 calculée de façon stable), `created_at`, `started_at`, `finished_at`.
 
@@ -420,10 +435,33 @@ Control affiche ainsi « 50 business donnés, 90 laissés de côté ».
 
 ## 9. Préparer les lots futurs sans code propre
 
-Le lot 6 ne construit pas le bac à sable, l'agent web ni les connecteurs.
-Mais la conception doit déjà montrer qu'ils tiendront dans la règle, pour
+Le lot 6 ne construit pas ce qui suit, et ne crée aucune de ces colonnes.
+Mais la conception doit déjà montrer que tout tiendra dans la règle, pour
 qu'on ne soit pas tenté, dans quelques semaines, d'écrire du code pour un
 cas précis.
+
+**Ce que le lot 8 (conversations) ajoutera** :
+
+- sur `capabilities`, une colonne `acts_outside` (1 si la capacité agit
+  hors de Serge : envoyer un e-mail, appeler, payer), et sur `tasks` un
+  état `outside_state` et un statut `to_check`. L'interpréteur enregistre
+  « en cours » avant d'agir et « fait » après ; une tâche arrêtée entre les
+  deux attend qu'on vérifie, pour ne jamais agir deux fois ;
+- sur `invocations`, `single_pending_param` (une seule tâche en attente
+  par prospect), `approval` (validation par Julien avant d'écrire ou
+  d'agir, par exemple pour LinkedIn) et `ask_julien_field` (un champ
+  oui/non de la réponse qui ouvre un ticket), avec un statut
+  `waiting_julien` sur les tâches ;
+- sur `links` et `invocation_writes`, une condition simple (« seulement si
+  le champ `reaction` vaut `désinscription` »), et sur `links` un délai
+  tiré entre le minimum et le maximum du canal ;
+- les capacités relever une boîte mail, envoyer un e-mail, ouvrir un
+  ticket complet, bloquer les adresses d'une personne qui se désinscrit.
+
+**Ce que le lot 12 (web) ajoutera** : les profils de bac à sable, la
+colonne `sandbox_profile_id` sur `invocations`, les services décrits en
+base pour la capacité « appeler une API », et une colonne `needs_approval`
+sur `writable_tables` pour les écritures qui demandent l'accord de Julien.
 
 **Le bac à sable** sera une table de profils, `sandbox_profiles` : ce qui y
 est installé, les sites qu'il peut joindre, le temps et la mémoire permis,
@@ -550,7 +588,10 @@ de statut refuse tout business qui n'est plus `CANDIDATE`.
 
 Aucune ligne de ce pipeline n'est du code propre à l'écoute.
 
-## 13. Exemple : un prospect répond à un e-mail
+## 13. Exemple : un prospect répond à un e-mail (après le lot 8)
+
+Cet exemple utilise des capacités et des colonnes qui viendront au lot 8.
+Il sert à vérifier que la conception tiendra.
 
 1. Un déclencheur `every` (5 minutes) lance « Relever la boîte mail »
    (sans LLM, capacité de relève du canal e-mail, file des conversations).

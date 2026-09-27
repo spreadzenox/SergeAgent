@@ -69,8 +69,13 @@ données (business, contacts, abonnements).
   envoyer deux fois le même e-mail. Ensuite, tout le pipeline passe en
   base : l'ordre des invocations, leur modèle, leur prompt, ce qu'elles
   reçoivent, leurs tools, où elles écrivent, ce qui les déclenche. Le code
-  ne fait plus que lire la base et exécuter ce qu'elle décrit. Les tâches
-  détaillées sont dans la partie « Lot 6 » plus bas.
+  ne fait plus que lire la base et exécuter ce qu'elle décrit. Tout le
+  code écrit en dur pour un enchaînement est supprimé, sans chercher à le
+  garder en marche. À la fin du lot, Serge ne peut pas encore être
+  allumé pour de vrai, parce que certaines capacités manquent ; mais en
+  modifiant la base, on peut déjà construire n'importe quel pipeline avec
+  les capacités qui existent. Les tâches détaillées sont dans la partie
+  « Lot 6 » plus bas.
 - [ ] **Lot 7 « Étape 1 ».** On refait la pré-prospection en sept
   invocations qui ont chacune un seul rôle, on garde toutes les pages lues
   comme preuves, et on met la liste des flux RSS en base. Ce lot est le
@@ -128,8 +133,21 @@ qu'une invocation a le droit de lire est en base, et un seul bout de code
 sait lire n'importe laquelle. Ce lot fait la même chose pour l'écriture,
 et pour tout le reste.
 
-La proposition de tables, en cours de discussion avec Clem, est dans
+La conception des tables, validée avec Clem, est dans
 [`docs/LOT6_CONCEPTION.md`](docs/LOT6_CONCEPTION.md).
+
+Clem a fixé la façon de mener ce lot. On passe directement à la version
+durable : tout ce qui est écrit en dur pour un enchaînement (le cycle
+d'écoute, le circuit des réponses, les envois, la relève, la
+consolidation) est supprimé, avec ses tests, sans période de transition.
+On ne crée que les colonnes et les capacités dont ce lot a besoin : celles
+des fonctions futures (validation par Julien, bac à sable, délais par
+canal, désinscription…) seront ajoutées par leur propre lot, et elles sont
+notées dans ce fichier à l'endroit où elles serviront. On fusionne dans
+`main` après chaque étape du lot, avec des tests verts qui portent
+seulement sur ce qui est construit. Mission Control affiche tout ce qui
+est en base, en direct ; créer une invocation depuis le site viendra au
+lot 13.
 
 - [ ] **Une tâche après l'autre, enregistrée tout de suite.**
   Aujourd'hui, le runner est relancé une minute après la fin du passage
@@ -154,14 +172,6 @@ La proposition de tables, en cours de discussion avec Clem, est dans
   plus prioritaire. Faire tourner deux invocations en même temps ne pose
   pas de problème à la machine : elle ne fait qu'attendre la réponse du
   fournisseur du LLM. La file de chaque invocation se règle dans MC.
-
-- [ ] **Ne jamais agir deux fois à l'extérieur.** Une tâche qui agit
-  hors de Serge (envoyer un e-mail, passer un appel, rembourser un client)
-  doit enregistrer « en cours » en base avant d'agir, puis « fait » juste
-  après. Si le programme plante entre les deux, la tâche reste marquée
-  « en cours » et n'est pas relancée toute seule : elle apparaît dans MC
-  pour qu'on vérifie. Chaque envoi porte déjà une clé unique, qu'il faut
-  garder.
 
 - [ ] **Décrire chaque invocation entièrement en base.** Pour chaque
   invocation LLM, la base doit dire : son titre et son rôle, en une phrase
@@ -263,6 +273,20 @@ La proposition de tables, en cours de discussion avec Clem, est dans
   règles est dans [`docs/MEMOIRE.md`](docs/MEMOIRE.md). Cette tâche vient
   après les liens et les tools.
 
+- [ ] **Les premières capacités.** Le lot crée seulement les capacités
+  de base, qui suffisent à construire la plus grande partie du pipeline :
+  lire la base (elle existe déjà), écrire dans la base à partir de la
+  réponse d'une invocation, appeler un modèle en lui donnant ses outils,
+  chercher sur le web, chercher dans la mémoire, demander une nouvelle
+  capacité, et rendre les paramètres de la tâche (pour une invocation sans
+  LLM qui ne fait qu'écrire ce qu'on lui a donné). Les capacités sont
+  listées en base, et Mission Control les affiche : c'est dans cette
+  liste qu'on choisira, plus tard, celles qu'on donne à une nouvelle
+  invocation. Les autres capacités (envoyer un e-mail, relever une boîte,
+  appeler, ouvrir un ticket, bloquer les adresses d'une personne qui se
+  désinscrit, le bac à sable…) seront créées par les lots qui en ont
+  besoin.
+
 - [ ] **Une seule façon d'écrire en base, réglée en base.** Aujourd'hui,
   c'est du code propre à chaque invocation qui lit la réponse du LLM et
   l'écrit dans la bonne table : par exemple, le code du cycle d'écoute
@@ -307,15 +331,27 @@ La proposition de tables, en cours de discussion avec Clem, est dans
   est marquée absente ; les invocations qui s'en servaient sont signalées
   dans MC au lieu d'être effacées.
 
-- [ ] **Réécrire le pipeline d'aujourd'hui en lignes de base.** Chaque
-  enchaînement qui existe aujourd'hui (le cycle d'écoute, la relève de la
-  boîte mail, le circuit des réponses, les envois, la consolidation) doit
-  être décrit par des lignes en base : ses invocations, leurs liens, leurs
-  déclencheurs, leurs règles d'écriture. Le code propre à chaque
-  enchaînement est ensuite supprimé. Le pipeline de départ d'une nouvelle
-  instance est rangé dans un seul fichier lisible, qui sert uniquement à
-  remplir la base ; c'est le seul endroit où les noms des invocations
-  apparaissent.
+- [ ] **Supprimer le code en dur et écrire le pipeline de départ.** Tout
+  le code propre à un enchaînement (le cycle d'écoute, la relève de la
+  boîte mail, le circuit des réponses, les envois, la consolidation) est
+  supprimé avec ses tests, sans période de transition. Le pipeline de
+  départ d'une nouvelle instance est écrit dans `config/pipeline.yaml`,
+  qui sert uniquement à remplir la base : on y décrit tout ce qui peut
+  l'être avec les capacités de ce lot, à commencer par le cycle d'écoute.
+  Les enchaînements qui ont besoin d'une capacité absente (répondre à un
+  prospect, envoyer, relever) y seront ajoutés par leur lot. C'est le seul
+  endroit du dépôt où les noms des invocations apparaissent.
+
+- [ ] **Mission Control affiche le pipeline tel qu'il est en base.**
+  Toutes les invocations avec tous leurs réglages, les capacités et les
+  outils, ce que chaque invocation reçoit, le format de sa réponse et ses
+  règles d'écriture, les liens et les déclencheurs, les deux files et les
+  tâches en cours, tout est lu en base et mis à jour en direct. Ce qui
+  existe déjà reste : modifier un prompt, allumer ou éteindre une
+  invocation. On ajoute seulement le niveau de modèle et la priorité.
+  Créer ou modifier le reste depuis le site est le travail du lot 13 ;
+  d'ici là, on le fait en base, ou dans `config/pipeline.yaml` pour une
+  nouvelle instance.
 
 - [ ] **Vérifier automatiquement la règle.** Un test doit échouer si le
   nom d'une invocation apparaît dans le code, ailleurs que dans le fichier
@@ -331,6 +367,28 @@ Les messages des prospects et des clients sont imprévisibles : questions
 sur le produit, demandes de changement, questions de délais, sujets sans
 rapport. On ne peut pas tout prévoir, mais on calibre les cas classiques,
 et Serge sait demander de l'aide quand il ne sait pas.
+
+- [ ] **Ne jamais agir deux fois à l'extérieur.** À faire quand on crée la
+  première capacité qui agit hors de Serge (envoyer un e-mail). Une tâche
+  qui agit hors de Serge (envoyer un e-mail, passer un appel, rembourser
+  un client) doit enregistrer « en cours » en base avant d'agir, puis
+  « fait » juste après. Si le programme plante entre les deux, la tâche
+  reste marquée « en cours » et n'est pas relancée toute seule : elle
+  apparaît dans MC pour qu'on vérifie. Chaque envoi porte déjà une clé
+  unique, qu'il faut garder. Il faudra pour cela une colonne sur les
+  capacités (« agit hors de Serge ») et un état de plus sur les tâches.
+
+- [ ] **Les capacités et réglages des conversations.** Ce lot ajoute ce
+  que le lot 6 a volontairement laissé de côté. Des capacités : relever
+  une boîte mail, envoyer un e-mail, ouvrir un ticket complet, et bloquer
+  toutes les adresses d'une personne qui se désinscrit. Des réglages en
+  base : une condition simple sur un lien ou une écriture (par exemple
+  « seulement si le champ `reaction` vaut `désinscription` »), pour que la
+  suite dépende de la réponse sans code propre ; « une seule tâche en
+  attente par prospect », pour que deux messages coup sur coup ne créent
+  qu'une réponse ; un délai sur un lien, tiré entre le minimum et le
+  maximum du canal ; et « demander à Julien si tel champ vaut oui », qui
+  ouvre un ticket et fait attendre la tâche.
 
 - [ ] **Un fil de discussion par prospect, et des relances qui ne gênent
   personne.** La règle est simple : on ne relance jamais quelqu'un qui a
@@ -512,7 +570,10 @@ et Serge sait demander de l'aide quand il ne sait pas.
   appeler n'importe quel service décrit ainsi. L'invocation « Construire
   un connecteur » lit la documentation du service et écrit cette
   description en base ; Julien la valide par ticket avant qu'elle soit
-  utilisable, grâce à une règle d'écriture « validation par Julien ». Le
+  utilisable, grâce à une règle d'écriture « validation par Julien »,
+  qui sera ajoutée au catalogue d'écriture à ce moment-là. Le choix d'un
+  profil de bac à sable par invocation sera aussi une colonne ajoutée par
+  ce lot. Le
   tool « navigateur » prévu jusqu'ici disparaît au profit de tout ça.
 
 - [ ] **Brancher la garde de santé des comptes.** Un compte web trop
