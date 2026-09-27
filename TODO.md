@@ -93,6 +93,9 @@ quels paramètres. C'est déjà le cas pour les tools de lecture de la base :
 la liste des tables et des colonnes qu'ils ont le droit de lire est en
 base, et le code ne fait qu'exécuter.
 
+La proposition de tables, en cours de discussion avec Clem, est dans
+[`docs/LOT6_CONCEPTION.md`](docs/LOT6_CONCEPTION.md).
+
 - [ ] **Une tâche après l'autre, enregistrée tout de suite.**
   Aujourd'hui, le runner est relancé une minute après la fin du passage
   précédent, traite jusqu'à dix tâches à la suite, et n'enregistre en base

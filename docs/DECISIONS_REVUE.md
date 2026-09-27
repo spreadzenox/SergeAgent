@@ -803,6 +803,11 @@ reste. Il n'y a rien à interrompre. Ce qui change :
   n'est jamais supprimé au démarrage. Seule une brique de base retirée du
   code disparaît ; les invocations qui s'en servaient sont signalées dans
   MC.
+- Validé ensuite par Clem : une invocation supprimée dans MC ne revient
+  pas au démarrage suivant. La base garde la trace de la suppression et
+  reste la source de vérité, pour que le code et la base ne se
+  désynchronisent pas.
+- Conception des tables en cours : [`LOT6_CONCEPTION.md`](LOT6_CONCEPTION.md).
 - But à terme (lot plus loin) : un éditeur sans code dans MC, pour
   modifier en direct le pipeline : le nombre d'invocations, leur ordre,
   leur rôle, leur modèle, ce qu'elles voient.
