@@ -14,10 +14,7 @@ from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any
 
-from serge.funnels.contacts import (
-    contact_reference_active,
-    contact_reference_value,
-)
+from serge.funnels.contacts import address_value
 from serge.voice.bridge import originate
 from serge.voice.policy import VoiceBrokerDenied
 
@@ -52,17 +49,7 @@ def run_voice_send(
     contact_id = str(
         (payload or {}).get('contact_id') or item.get('contact_id') or ''
     )
-    phone = ''
-    if contact_id:
-        row = conn.execute(
-            'SELECT contact_reference_by_canal FROM contacts WHERE id=?',
-            (contact_id,),
-        ).fetchone()
-        phone = (
-            contact_reference_value(row, 'voice')
-            if row and contact_reference_active(row, 'voice')
-            else ''
-        )
+    phone = address_value(conn, contact_id, 'phone') if contact_id else ''
     if not phone:
         return {'status': 'error', 'error': 'telephone_inconnu'}
     item_id = str(item.get('id') or '')

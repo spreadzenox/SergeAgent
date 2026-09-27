@@ -19,7 +19,6 @@ from serge.comptes_sante import (  # noqa: E402
     etat,
 )
 from serge.db.boot import init_schema  # noqa: E402
-from serge.db.schema import SCHEMA_VERSION  # noqa: E402
 
 T0 = '2026-09-15T12:00:00+00:00'
 T3 = '2026-09-15T15:00:00+00:00'
@@ -44,7 +43,6 @@ class ComptesSanteTests(unittest.TestCase):
         )
 
     def test_schema(self) -> None:
-        self.assertEqual(SCHEMA_VERSION, 20)
         have = {
             str(row[1])
             for row in self.conn.execute(

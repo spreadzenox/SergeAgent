@@ -21,9 +21,15 @@ Identifiant : `caisse`.
   vérifiée. Un paiement confirmé passe en « payé » tout seul. Installation :
   [`installation/STRIPE.md`](../installation/STRIPE.md).
 - **Abonnements** (`serge/collect/abonnements.py`, table `subscriptions`)
-  : mis à jour par Stripe. **Défaut** : chaque abonnement est rattaché à un
-  faux business unique, `serge-collect-stripe`, écrit en dur dans le code.
-  On ne sait donc pas à quel business il appartient.
+  : mis à jour par Stripe. Chaque abonnement est rattaché à son business
+  grâce au champ `metadata.venture_id` du prix (ou de l'abonnement) dans
+  Stripe. Exemple : un prix Stripe avec `venture_id = v1` → l'abonnement et
+  ses factures payées vont au business `v1`. Sans ce champ, l'abonnement est
+  gardé sans business et le journal le signale
+  (`collect.subscription_unattached`). Un business rattaché n'est jamais
+  remplacé.
+- **Ce qui manque** : Serge ne crée pas encore lui-même ses prix Stripe ;
+  il faudra qu'il y inscrive `venture_id` en les créant.
 - **Relances d'impayés** (`serge/collect/dunning.py`) : polie à J+7, ferme
   à J+14, puis arrêt et ticket. **Codées mais jamais programmées.**
 
@@ -42,7 +48,8 @@ Identifiant : `caisse`.
    policy), automatiques avec un ticket d'information. Au-dessus, ticket
    Discord pour Julien.
 4. **Chaque abonnement est rattaché à son business** : Serge inscrit
-   l'identifiant du business dans le produit Stripe.
+   l'identifiant du business dans le prix Stripe. **Fait** pour la
+   lecture ; reste l'écriture, avec la création des prix.
 5. **Mission Control montre, par business**, ce qui a été encaissé, ce qui
    est dû et ce qui est en retard.
 6. **Le prix** vient du plan du POC (indicatif), puis du plan du produit

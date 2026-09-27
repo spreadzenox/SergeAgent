@@ -20,7 +20,6 @@ from serge.canaux import (  # noqa: E402
 )
 from serge.catalogue import CatalogueError, verifier_catalogue  # noqa: E402
 from serge.db.boot import init_schema  # noqa: E402
-from serge.db.schema import SCHEMA_VERSION  # noqa: E402
 from serge.mc.proj_objet import project_objet  # noqa: E402
 
 
@@ -31,7 +30,6 @@ class CanauxTests(unittest.TestCase):
         init_schema(self.conn)
 
     def test_semence_ecriture_seulement(self) -> None:
-        self.assertEqual(SCHEMA_VERSION, 20)
         ids = {str(r[0]) for r in self.conn.execute('SELECT id FROM canaux')}
         self.assertEqual(ids, {'email', 'voice'})
         self.assertNotIn('discord', ids)

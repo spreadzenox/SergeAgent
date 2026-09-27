@@ -1,131 +1,183 @@
 # La mémoire de Serge
 
-Ce document explique ce dont Serge se souvient, et ce que chaque invocation
-LLM a le droit de voir.
+Ce document explique ce dont Serge se souvient, où il le range, et ce que
+chaque invocation a le droit de voir quand elle travaille. Une invocation
+est une brique de travail de Serge : soit un appel au LLM avec son prompt,
+soit un traitement sans LLM.
 
-Il remplace l'ancien modèle « 5 couches ». On garde le plus simple
-possible, et on n'ajoute de la complexité que face à un vrai problème.
-
----
-
-## Trois familles et un outil
-
-| Famille | Question | Où | Qui écrit |
-|---|---|---|---|
-| **L'état** | Qu'est-ce qui est vrai maintenant ? | Les tables métier : `ventures`, `contacts`, `campaigns`, `transactions`… | Le code. Une ligne peut être modifiée. |
-| **Le journal** | Que s'est-il passé ? | `events`, `touches`, `inbound_events`, `ticket_events` | Le code. On ajoute, on ne modifie jamais. |
-| **La connaissance** | Qu'a-t-on appris ? | `lessons`, `playbooks` (procédures qui marchent), `pitfalls` (pièges), `summaries` (résumés) | La consolidation (étape 7), validée par Julien. |
-
-**La recherche n'est pas une mémoire.** C'est un tool, `memory_search`, qui
-lit les trois familles.
-
-### Exemples
-
-- « Le business *devis-artisan* est en test léger » : c'est de l'**état**
-  (`ventures.lifecycle`).
-- « Le 12 septembre, la fiche *X* a été écartée parce qu'elle ressemblait
-  à *Y* » : c'est du **journal** (`events`). Chaque décision automatique
-  (doublon écarté, business refusé parce que déjà en test, relance
-  annulée) y est écrite, avec l'invocation qui l'a prise.
-- « Les artisans répondent surtout entre 7 h et 8 h » : c'est de la
-  **connaissance** (`lessons`).
+On a volontairement gardé le modèle le plus simple possible. Il remplace
+un ancien modèle en « 5 couches » qui était devenu difficile à suivre. On
+n'ajoute de la complexité que le jour où un vrai problème l'exige.
 
 ---
 
-## Ce que voit une invocation
+## Trois sortes de souvenirs
 
-### Aujourd'hui
+Serge range ce qu'il sait en trois familles, qui répondent chacune à une
+question différente. Toutes vivent dans la même base de données.
 
-- Chaque invocation LLM a une liste de tools en base (`llm_point_tools`).
-  Elle peut les appeler pendant son exécution, 12 tours maximum.
-- Certaines invocations de l'étape 1 ont aussi des « capsules »
-  (`db_readers`, `llm_point_readers`) : des tools de lecture de la base
-  avec des paramètres figés.
-- Le tool « Demander une nouvelle capacité » est offert à toutes les
-  invocations.
-- **Défaut connu** : `memory_search` cherche par mots-clés dans un index
-  que rien ne remplit en production. Il ne renvoie donc rien.
+**L'état répond à la question « qu'est-ce qui est vrai maintenant ? ».**
+Ce sont les tables qui décrivent le monde tel qu'il est : les business,
+les prospects et clients, les campagnes de test, les paiements. Une ligne
+d'état peut être modifiée : quand un business passe du test léger à la
+construction, on change son statut sur sa ligne. C'est le code qui écrit
+l'état, jamais le LLM directement. Exemple : « le business *devis-artisan*
+est en test léger » est un fait d'état.
 
-### Décidé : quatre règles
+**Le journal répond à la question « que s'est-il passé ? ».** C'est la
+liste de tout ce qui est arrivé, dans l'ordre : chaque envoi à un
+prospect, chaque réponse reçue, chaque décision prise, chaque changement
+de ticket. On y ajoute des lignes, on n'en modifie ni n'en supprime
+jamais. Chaque décision automatique y est notée avec l'invocation qui l'a
+prise, par exemple une fiche de business écartée parce qu'elle
+ressemblait trop à une autre, un business refusé parce qu'il était déjà
+en test, ou une relance annulée parce que le prospect avait répondu.
+Exemple : « le 12 septembre, la fiche *X* a été écartée parce qu'elle
+ressemblait à la fiche *Y* » est une ligne du journal.
 
-1. **Rien par défaut.** Une invocation ne voit que ce qu'on lui a donné,
-   et c'est écrit sur sa fiche dans Mission Control.
-2. **Trois cercles :**
-   - **ce qu'elle traite** : reçu en entier. Exemple : la page à trier ;
-   - **ce qui sert à comparer** : reçu en version courte. Exemple : la
-     liste des business déjà connus, juste leur numéro et leur titre ;
-   - **le reste** : sur demande, avec un tool. Exemple : la fiche complète
-     d'un business, ou les leçons.
-3. **Le journal n'est jamais donné d'office.** On peut seulement demander
-   l'historique de l'objet traité. Exemple : les 20 derniers événements
-   de ce business.
-4. **Un maximum de lignes** pour chaque information donnée d'office.
-   Exemple : on donne au plus 50 business à l'invocation. S'il y en a
-   plus, elle reçoit les 50 plus récents et un message qui dit « 140
-   autres business ne sont pas montrés ». Ce nombre se règle invocation
-   par invocation dans Mission Control. Mission Control affiche combien de
-   lignes l'invocation a reçues à chaque passage.
+**La connaissance répond à la question « qu'a-t-on appris ? ».** Ce sont
+les leçons, les procédures qui marchent, les pièges à éviter et des
+résumés. Elles sont proposées par la consolidation (l'étape 7 de la
+chaîne), qui relit le journal, et Julien garde ou jette chaque leçon.
+Exemple : « les artisans répondent surtout entre 7 h et 8 h » est une
+leçon.
 
-### Décidé : les cercles se déduisent tout seuls
-
-On ne règle pas chaque invocation à la main.
-
-- **Ce qu'elle traite** = ce que lui apporte le lien entrant. Exemple : le
-  lien « Trier les pages → Formuler des business » apporte les pages
-  marquées « signal ».
-- **Ce qui sert à comparer** = la version courte des tables où elle écrit,
-  ou auxquelles sa réponse fait référence. Exemple : « Formuler des
-  business » écrit des business, donc elle reçoit la liste des business
-  connus.
-- **Le reste** = trois tools donnés automatiquement à chaque invocation :
-  - « historique de l'objet traité » ;
-  - « leçons » (les siennes lui sont déjà données d'office, voir
-    ci-dessous) ;
-  - « demander une nouvelle capacité ».
-
-Réglages à faire :
-
-- **une fois par table**, les colonnes de la version courte. Exemple :
-  pour un business, le numéro et le titre ; pour une page, l'adresse et
-  le titre ;
-- **un maximum de lignes par défaut**, dans la policy (exemple : 50) ;
-- **des exceptions à la main** dans Mission Control.
-
-### Décidé : les leçons et le contexte général
-
-- Une leçon est rattachée à une invocation, sinon à une étape, sinon à
-  tout Serge. Une invocation reçoit d'office **ses propres leçons**, les
-  plus fiables d'abord.
-- Les invocations de niveau moyen et intelligent reçoivent un court bloc
-  **« Qui est Serge et quelle est ta place »**, fabriqué depuis la base à
-  chaque appel. Exemple :
-
-  > **Serge** est un opérateur économique autonome : il repère des
-  > besoins, teste des business, vend et livre, sous le contrôle de
-  > Julien.
-  > **La chaîne :** 1. Pré-prospection → 2. Conception du POC → … →
-  > 8. Caisse.
-  > **Ta place :** tu es « Formuler des business A », dans l'étape 1.
-  > **Avant toi :** « Trier les pages » t'a transmis les pages marquées
-  > « signal ».
-  > **Après toi :** tes fiches passent par « Dédoublonner », puis
-  > « Choisir les business à tester ».
-
-  Le texte de présentation est en base, modifiable dans Mission Control.
-  Une case sur la fiche de l'invocation l'active ou non.
+La recherche dans la mémoire n'est pas une quatrième famille. C'est un
+tool, que les invocations peuvent appeler pour chercher un mot dans les
+trois familles à la fois.
 
 ---
 
-## La consolidation
+## Ce que voit une invocation aujourd'hui
 
-Voir [`etapes/7-memoire.md`](etapes/7-memoire.md).
+Chaque invocation LLM a, dans la base, la liste des tools qu'elle a le
+droit d'appeler. Pendant son exécution, elle peut les appeler autant
+qu'elle veut, dans la limite de douze allers-retours avec le modèle. Le
+tool « demander une nouvelle capacité », qui permet de dire à Julien
+qu'il manque quelque chose à Serge, est donné à toutes les invocations.
 
-## L'oubli
+Certaines invocations de l'étape 1 utilisent aussi des « capsules » : des
+tools de lecture de la base avec des paramètres figés à l'avance. Elles
+posent un problème, expliqué plus bas, et vont disparaître.
 
-- Les événements anciens peuvent être archivés dans des fichiers
-  compressés (`serge/memory/archive.py`, table `episode_archives`). On
-  peut les relire.
-- Une leçon contredite plusieurs fois passe au statut `deprecated`. Elle
-  n'est pas effacée.
-- Une page d'écoute marquée « bruit » sera oubliée après X jours ; une page
-  qui sert de preuve est gardée (décidé, voir l'étape 1).
+Il y a aussi un défaut connu : le tool de recherche dans la mémoire
+cherche dans un index que rien ne remplit en production. Il ne renvoie
+donc jamais rien pour l'instant.
+
+---
+
+## Ce que verra une invocation demain
+
+Julien a validé les règles suivantes. Elles ne sont pas encore
+construites ; la liste des tâches est à la fin de ce document et dans le
+[`TODO.md`](../TODO.md).
+
+**Une invocation ne voit que ce qu'on lui a donné.** Rien n'est ajouté
+par défaut dans son prompt, et tout ce qu'elle reçoit est affiché sur sa
+fiche dans Mission Control, pour qu'on puisse toujours savoir sur quoi
+elle a travaillé.
+
+**Ce qu'elle reçoit se range en trois cercles.** Le premier cercle, c'est
+ce qu'elle doit traiter : elle le reçoit en entier. Par exemple, une
+invocation qui trie des pages web reçoit le texte complet de la page à
+trier. Le deuxième cercle, c'est ce qui lui sert à comparer : elle le
+reçoit en version courte. Par exemple, pour savoir si une idée de
+business est nouvelle, elle reçoit la liste des business déjà connus,
+mais seulement leur numéro et leur titre. Le troisième cercle, c'est tout
+le reste : elle peut le demander si elle en a besoin, avec un tool. Par
+exemple, la fiche complète d'un business, ou les leçons.
+
+**Le journal n'est jamais donné d'office.** Il est trop gros et
+l'invocation n'en a presque jamais besoin en entier. Elle peut seulement
+demander l'historique de l'objet qu'elle traite, par exemple les vingt
+derniers événements du business sur lequel elle travaille.
+
+**Chaque information donnée d'office a un nombre maximum de lignes.**
+Par exemple, on donne au plus 50 business à une invocation. S'il y en a
+140, elle reçoit les 50 plus récents, suivis d'une phrase qui dit « 90
+autres business ne sont pas montrés ». Ce maximum vaut 50 par défaut et
+se règle invocation par invocation dans Mission Control. À chaque
+passage, Mission Control affiche combien de lignes l'invocation a
+vraiment reçues.
+
+**On ne règle pas chaque invocation à la main : les cercles se déduisent
+de la chaîne.** Ce que l'invocation doit traiter, c'est ce que lui
+apporte l'invocation d'avant. Par exemple, quand « Trier les pages »
+passe la main à « Formuler des business », elle lui transmet les pages
+qu'elle a marquées comme signalant un besoin. Ce qui sert à comparer,
+c'est la version courte des tables où l'invocation écrit : « Formuler des
+business » écrit des business, donc elle reçoit la liste courte des
+business déjà connus. Le reste est accessible par trois tools donnés
+automatiquement à toutes les invocations : lire l'historique de l'objet
+traité, lire les leçons, et demander une nouvelle capacité. Il ne reste
+donc que trois choses à régler : une fois pour chaque table, les colonnes
+qui forment sa version courte (pour un business, son numéro et son
+titre ; pour une page, son adresse et son titre) ; le maximum de lignes
+par défaut ; et, à la main dans Mission Control, les quelques exceptions.
+
+**Chaque invocation reçoit ses propres leçons.** Une leçon est rattachée
+à l'invocation qu'elle concerne, sinon à une étape de la chaîne, sinon à
+tout Serge. Une invocation reçoit d'office les leçons qui la concernent
+directement, les plus fiables en premier.
+
+**Les invocations qui réfléchissent reçoivent un court texte qui leur
+explique où elles sont.** Les invocations qui utilisent un modèle moyen
+ou intelligent reçoivent, en tête de prompt, un bloc « Qui est Serge et
+quelle est ta place ». Il est fabriqué à chaque appel à partir de la
+base, pour être toujours à jour. Par exemple :
+
+> **Serge** est un opérateur économique autonome : il repère des
+> besoins, teste des business, vend et livre, sous le contrôle de
+> Julien.
+> **La chaîne :** 1. Pré-prospection → 2. Conception du POC → … →
+> 8. Caisse.
+> **Ta place :** tu es « Formuler des business A », dans l'étape 1.
+> **Avant toi :** « Trier les pages » t'a transmis les pages marquées
+> « signal ».
+> **Après toi :** tes fiches passent par « Dédoublonner », puis
+> « Choisir les business à tester ».
+
+Le texte de présentation de Serge est en base et modifiable dans Mission
+Control, et une case sur la fiche de chaque invocation permet de
+l'activer ou non.
+
+---
+
+## Tirer des leçons
+
+La consolidation relit régulièrement le journal et propose des leçons,
+des procédures et des pièges. Julien garde ou jette chacune ; sans
+réponse de sa part sous 48 heures, elles sont acceptées. Le détail est
+dans [`etapes/7-memoire.md`](etapes/7-memoire.md).
+
+---
+
+## Oublier
+
+Serge n'efface presque rien, mais il range. Les événements anciens du
+journal peuvent être archivés dans des fichiers compressés, et on peut
+toujours les relire. Une leçon contredite plusieurs fois n'est pas
+effacée : elle est marquée comme dépassée. Enfin, une fois l'étape 1 refaite, une page web marquée
+« bruit » sera oubliée au bout d'un certain nombre de jours, réglable,
+alors qu'une page qui sert de preuve à un business sera toujours gardée.
+
+---
+
+## Ce qui reste à faire
+
+- [ ] **Remplacer les capsules par un réglage sur le lien entre une
+  invocation et un tool.** Aujourd'hui, quand le modèle appelle lui-même
+  un tool de capsule, les paramètres figés ne sont pas appliqués ; par
+  exemple, la lecture des pages d'un cycle renvoie seulement leurs
+  numéros, sans leur titre ni leur texte. Le lien entre l'invocation et
+  le tool doit dire si le tool est donné d'office ou appelable, et quels
+  paramètres sont figés.
+- [ ] **Construire les trois cercles, le maximum de lignes, les leçons
+  propres à chaque invocation et le bloc « Qui est Serge ».** Tout ce qui
+  est décrit dans la partie « Ce que verra une invocation demain », avec
+  l'affichage dans Mission Control du nombre de lignes reçues à chaque
+  passage.
+- [ ] **Remplir l'index de recherche dans la mémoire.** Chaque nouvelle
+  leçon, chaque nouvel événement et chaque nouveau ticket doit y être
+  ajouté au moment où il est écrit, pour que la recherche renvoie enfin
+  quelque chose.

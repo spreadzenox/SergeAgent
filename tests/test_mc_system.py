@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import json
 import sys
 import unittest
 from datetime import UTC, datetime, timedelta
@@ -12,6 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from serge.funnels.contacts import add_address  # noqa: E402
 from serge.mc.projectors import (  # noqa: E402
     PAGE_SECTIONS,
     PROJECTORS,
@@ -52,39 +52,31 @@ class McSystemTests(McBrowserCase):
                 (iso, iso),
             )
             conn.execute(
-                'INSERT INTO contacts(id, venture_id, display,'
-                ' contact_reference_by_canal, regime, funnel_state,'
-                ' created_at, updated_at) VALUES(?,?,?,?,?,?,?,?)',
+                'INSERT INTO contacts(id, venture_id, display, regime, funnel_state, created_at, updated_at) VALUES(?,?,?,?,?,?,?)',
                 (
                     'p1',
                     'v1',
                     'Ada',
-                    json.dumps(
-                        {'email': {'address': 'ada@x.io', 'active': True}}
-                    ),
                     'OUTBOUND',
                     'CONTACTING',
                     iso,
                     iso,
                 ),
             )
+            add_address(conn, 'p1', 'email', 'ada@x.io')
             conn.execute(
-                'INSERT INTO contacts(id, venture_id, display,'
-                ' contact_reference_by_canal, regime, funnel_state,'
-                ' created_at, updated_at) VALUES(?,?,?,?,?,?,?,?)',
+                'INSERT INTO contacts(id, venture_id, display, regime, funnel_state, created_at, updated_at) VALUES(?,?,?,?,?,?,?)',
                 (
                     'p2',
                     'v1',
                     'Bob',
-                    json.dumps(
-                        {'email': {'address': 'bob@x.io', 'active': True}}
-                    ),
                     'OUTBOUND',
                     'NEW',
                     iso,
                     iso,
                 ),
             )
+            add_address(conn, 'p2', 'email', 'bob@x.io')
             conn.execute(
                 'INSERT INTO campaigns(id, venture_id, family, channel,'
                 ' state, n_target, created_at, updated_at)'

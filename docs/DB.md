@@ -17,9 +17,9 @@ recrée jamais ensuite.
 1. **Les migrations** (`serge/db/migrate.py`). Chaque changement de
    structure est une fonction `apply_v0NN` (fichiers `serge/db/v0NN.py`).
    Serge applique celles qui manquent, dans l'ordre. Version actuelle :
-   **20**.
+   **23**.
    - Une base neuve saute directement à la version 7 (le socle,
-     `serge/db/schema.py`), puis applique 8, 9, … 20.
+     `serge/db/schema.py`), puis applique 8, 9, … 23.
    - Une base **plus récente** que le code refuse de démarrer
      (`MigrateError`). Revenir à un ancien commit ne défait pas une
      migration.
@@ -56,17 +56,18 @@ catalogue et la mécanique.
 
 | Table | Contenu |
 |---|---|
-| `ventures` | Les business. Colonne `lifecycle` : le statut. |
+| `ventures` | Les business, de leur découverte à leur fermeture. Colonne `lifecycle` : le statut. Fiche : `name`, `description`, `observations`, `sellable_offer`. `dedup_key` sert à écarter les doublons. |
+| `venture_sources` | Les pages qui prouvent le besoin derrière un business. |
 | `campaigns` | Les campagnes de test : business, canal, taille, fenêtre, seuils. |
-| `contacts` | Les prospects et clients. Leurs adresses sont aujourd'hui dans une colonne JSON, `contact_reference_by_canal` (une adresse par canal). |
+| `contacts` | Les prospects et clients : une fiche par personne dans un business. Colonne `funnel_state` : où la personne en est. |
+| `contact_addresses` | Les adresses d'une personne : une ligne par adresse (`channel` = `email`, `phone` ou un réseau, `value`, `active`). Une adresse n'est jamais écrasée : une nouvelle s'ajoute à côté. |
 | `accounts_standing` | Les comptes web que Serge a créés : lieu, identifiant, mot de passe en clair, dossier de session, santé du compte. |
 | `consents`, `blocklist` | Consentements et personnes à ne plus contacter. |
 | `transactions` | Les paiements. |
-| `subscriptions` | Les abonnements Stripe. |
+| `subscriptions` | Les abonnements Stripe, chacun rattaché à son business (lu dans le champ `metadata.venture_id` du prix ou de l'abonnement Stripe). `venture_id` vide : business inconnu, signalé au journal. |
 | `artifacts` | Les livrables (pas encore utilisée). |
 | `listen_docs` | Les pages lues par l'écoute. |
 | `listen_cycles`, `listen_cycle_docs` | Les cycles de l'étape 1 et les pages figées pour chacun. |
-| `business_candidates`, `business_candidate_sources`, `poc_selections` | Les business trouvés par l'étape 1, leurs pages de preuve, les sélections. |
 | `tickets`, `ticket_items` | Les décisions à prendre par Julien. |
 | `policy_snapshots` | Les versions successives de la policy. La dernière fait foi. |
 | `runtime_flags` | Les interrupteurs : heartbeat, kinds coupés. |
@@ -125,18 +126,11 @@ catalogue et la mécanique.
 
 Voir [`TODO.md`](../TODO.md) pour l'ordre des chantiers.
 
-- `business_candidates`, `business_candidate_sources` et `poc_selections`
-  sont fondues dans `ventures`, avec de nouveaux statuts (`POC_SELECTED`,
-  `PARKED`, `MAINTENANCE`, `CLOSED`…). La table de liens business ↔ page
-  reste.
-- `contacts` : une ligne par personne, et une nouvelle table avec **une
-  ligne par adresse** (canal, valeur, active ou non). Regroupement
-  automatique seulement sur un e-mail ou un téléphone identique. La
-  colonne JSON disparaît.
+- Nouveaux statuts de `ventures` : `PARKED`, `MAINTENANCE`, `CLOSED`, avec
+  le code qui les pose.
 - Nouvelles tables : `deliveries` (ce qui reste à livrer), `product_requests`
   (les demandes des clients), `listen_feeds` (les flux suivis), et une
   table de barème de points par canal et par signal.
-- `subscriptions` : chaque abonnement est rattaché à son vrai business.
 - Les capsules (`db_readers` et tables associées) disparaissent : leurs
   réglages vont sur `llm_point_tools`.
 - `work_items.kind` et les interrupteurs par kind disparaissent : une tâche

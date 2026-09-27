@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from serge.db.boot import init_schema  # noqa: E402
+from serge.funnels.contacts import add_address  # noqa: E402
 from serge.mc.proj_objet import project_objet  # noqa: E402
 from serge.scheduler import enqueue  # noqa: E402
 from tests.mc_server_case import McServerCase  # noqa: E402
@@ -32,14 +33,11 @@ class ProjObjetTests(unittest.TestCase):
             (NOW, NOW),
         )
         self.conn.execute(
-            'INSERT INTO contacts(id, venture_id, display,'
-            ' contact_reference_by_canal, regime, funnel_state, created_at,'
-            ' updated_at) VALUES(?,?,?,?,?,?,?,?),(?,?,?,?,?,?,?,?)',
+            'INSERT INTO contacts(id, venture_id, display, regime, funnel_state, created_at, updated_at) VALUES(?,?,?,?,?,?,?),(?,?,?,?,?,?,?)',
             (
                 'p1',
                 'v1',
                 'Ada',
-                json.dumps({'email': {'address': 'a@x.io', 'active': True}}),
                 'OUTBOUND',
                 'INTENT',
                 NOW,
@@ -47,13 +45,14 @@ class ProjObjetTests(unittest.TestCase):
                 'p2',
                 'v1',
                 'Chloé',
-                json.dumps({'email': {'address': 'c@x.io', 'active': True}}),
                 'INBOUND',
                 'CUSTOMER',
                 NOW,
                 NOW,
             ),
         )
+        add_address(self.conn, 'p1', 'email', 'a@x.io')
+        add_address(self.conn, 'p2', 'email', 'c@x.io')
         self.conn.execute(
             'INSERT INTO accounts_standing(id, venue, handle, cooldown_until,'
             ' updated_at, role, profile_path, secret_ref, login_url,'

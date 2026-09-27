@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import base64
-import json
 import sqlite3
 import sys
 import unittest
@@ -15,6 +14,7 @@ sys.path.insert(0, str(ROOT))
 
 from serge.channels.email_gog import MailError  # noqa: E402
 from serge.db.boot import init_schema  # noqa: E402
+from serge.funnels.contacts import add_address  # noqa: E402
 from serge.scheduler import claim, enqueue  # noqa: E402
 from serge.voice.policy import VoiceBrokerDenied  # noqa: E402
 
@@ -38,28 +38,19 @@ class CallPollTests(unittest.TestCase):
             " updated_at) VALUES('v1','SMOKE_RUNNING',1,'t','t')"
         )
         self.conn.execute(
-            'INSERT INTO contacts(id, venture_id, display,'
-            ' contact_reference_by_canal, regime, funnel_state, created_at,'
-            ' updated_at) VALUES(?,?,?,?,?,?,?,?)',
+            'INSERT INTO contacts(id, venture_id, display, regime, funnel_state, created_at, updated_at) VALUES(?,?,?,?,?,?,?)',
             (
                 'p1',
                 'v1',
                 'Ada',
-                json.dumps(
-                    {
-                        'email': {'address': 'ada@x.io', 'active': True},
-                        'voice': {
-                            'phone': '+33612345678',
-                            'active': True,
-                        },
-                    }
-                ),
                 'OUTBOUND',
                 'CONTACTING',
                 't',
                 't',
             ),
         )
+        add_address(self.conn, 'p1', 'email', 'ada@x.io')
+        add_address(self.conn, 'p1', 'phone', '+33612345678')
         self.conn.commit()
 
     def tearDown(self) -> None:

@@ -13,11 +13,13 @@ sys.path.insert(0, str(ROOT))
 
 from serge.db.boot import init_schema  # noqa: E402
 from serge.funnels.contacts import (  # noqa: E402
+    add_address,
     create_contact,
     qualify,
     start_contacting,
 )
 from serge.observe import ingest  # noqa: E402
+from serge.privacy import subject_hash  # noqa: E402
 
 NOW = '2026-09-09T19:00:00+00:00'
 POLICY = {'observation': {'tech_fail_pattern_per_week': 3}}
@@ -186,6 +188,29 @@ class ObserveTests(unittest.TestCase):
             for row in self.connection.execute('SELECT channel FROM blocklist')
         }
         self.assertEqual(scopes, {'email', '*'})
+
+    def test_opt_out_bloque_toutes_les_adresses_de_la_personne(self) -> None:
+        contact_id = self._contact()
+        add_address(self.connection, contact_id, 'email', 'ada@perso.io')
+        add_address(self.connection, contact_id, 'phone', '+33612345678')
+        ingest(
+            self.connection,
+            POLICY,
+            {
+                'channel': 'email',
+                'native_type': 'COMPLAINED',
+                'contact_id': contact_id,
+                'subject': 'ada@x.io',
+                'venture_id': 'v1',
+            },
+            NOW,
+        )
+        for adresse in ('ada@x.io', 'ada@perso.io', '+33612345678'):
+            row = self.connection.execute(
+                "SELECT 1 FROM blocklist WHERE channel='*' AND subject_hash=?",
+                (subject_hash(adresse),),
+            ).fetchone()
+            self.assertIsNotNone(row, adresse)
 
     def test_seen_silencieux(self) -> None:
         result = ingest(

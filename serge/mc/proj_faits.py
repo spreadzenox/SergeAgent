@@ -6,10 +6,7 @@ from __future__ import annotations
 import sqlite3
 from typing import Any
 
-from serge.funnels.contacts import (
-    contact_reference_value,
-    load_contact_references,
-)
+from serge.funnels.contacts import addresses
 from serge.mc.libelles import (
     ETATS_CAMPAGNE,
     ETATS_FACTURE,
@@ -112,21 +109,15 @@ def _campagne(conn: sqlite3.Connection, ident: str) -> dict | None:
     }
 
 
+CANAUX_ADRESSE = {'email': 'E-mail', 'phone': 'Téléphone'}
+
+
 def _contact(conn: sqlite3.Connection, ident: str) -> dict | None:
     row = _row(conn, 'SELECT * FROM contacts WHERE id=?', (ident,))
     if row is None:
         return None
     typ = 'client' if row['funnel_state'] == 'CUSTOMER' else 'prospect'
-    references = load_contact_references(row['contact_reference_by_canal'])
-    trace_channel = next(
-        (
-            channel
-            for channel, reference in references.items()
-            if reference.get('handle') or reference.get('profile_url')
-        ),
-        '',
-    )
-    trace = references.get(trace_channel, {})
+    adresses = addresses(conn, ident)
     return {
         'type': typ,
         'id': ident,
@@ -146,10 +137,15 @@ def _contact(conn: sqlite3.Connection, ident: str) -> dict | None:
                     'Comment on s’est parlé',
                     REGIMES.get(row['regime'], row['regime']),
                 ),
-                ('E-mail', contact_reference_value(row, 'email')),
-                ('Lieu', trace.get('venue') or trace_channel or '—'),
-                ('Sur ce lieu', trace.get('handle') or '—'),
-                ('Profil', trace.get('profile_url') or '—'),
+            ]
+            + [
+                (
+                    CANAUX_ADRESSE.get(a['channel'], a['channel']),
+                    a['value'] if a['active'] else f'{a["value"]} (coupée)',
+                )
+                for a in adresses
+            ]
+            + [
                 ('Idée de business', row['venture_id']),
             ]
         ),

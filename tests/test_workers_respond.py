@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from serge.db.boot import init_schema  # noqa: E402
+from serge.funnels.contacts import add_address  # noqa: E402
 from serge.llm.client import ChatResult  # noqa: E402
 from serge.scheduler import claim, enqueue  # noqa: E402
 from serge.workers.dispatch import execute  # noqa: E402
@@ -53,20 +54,18 @@ class RespondWorkerTests(unittest.TestCase):
             " updated_at) VALUES('v1','SMOKE_RUNNING',1,'t','t')"
         )
         self.conn.execute(
-            'INSERT INTO contacts(id, venture_id, display,'
-            ' contact_reference_by_canal, regime, funnel_state, created_at,'
-            ' updated_at) VALUES(?,?,?,?,?,?,?,?)',
+            'INSERT INTO contacts(id, venture_id, display, regime, funnel_state, created_at, updated_at) VALUES(?,?,?,?,?,?,?)',
             (
                 'p1',
                 'v1',
                 'Ada',
-                json.dumps({'email': {'address': 'ada@x.io', 'active': True}}),
                 'INBOUND',
                 'ENGAGED',
                 't',
                 't',
             ),
         )
+        add_address(self.conn, 'p1', 'email', 'ada@x.io')
         self.conn.commit()
 
     def tearDown(self) -> None:

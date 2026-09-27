@@ -18,6 +18,19 @@ statut `SMOKE_DONE`.
 
 ### Ce qui marche
 
+- **Ranger les prospects** (tool `contact_upsert`,
+  `serge/funnels/contacts.py`). Une fiche par personne dans `contacts`,
+  une ligne par adresse dans `contact_addresses`. Dans un même business :
+  1. une adresse déjà connue désigne la même personne. Exemple :
+     `ada@acme.fr` puis `ADA@acme.fr` ajoute à la fiche d'Ada, sans en
+     créer une autre ;
+  2. une boîte partagée (`contact@`, `info@`…) ne regroupe jamais ;
+  3. ni le nom, ni un même pseudo sur deux réseaux ne regroupent ;
+  4. une nouvelle adresse s'ajoute à côté des anciennes, rien n'est écrasé ;
+  5. si les adresses désignent deux fiches différentes, rien n'est écrit :
+     Serge ne fusionne jamais deux personnes tout seul.
+
+  Un désabonnement bloque toutes les adresses de la personne.
 - **Envoyer un e-mail** (`email.send`, `serge/workers/send.py`). Serge
   remplit le modèle avec l'invocation « Remplir les créneaux »
   (`fill_slots`), ou écrit une relance avec « Écrire une relance »

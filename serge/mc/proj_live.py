@@ -8,7 +8,7 @@ import sqlite3
 from collections.abc import Mapping
 from typing import Any
 
-from serge.funnels.contacts import contact_reference_value
+from serge.funnels.contacts import address_value
 from serge.llm.runtime import daily_tokens
 from serge.mc.proj_outils import apres_iso
 from serge.scheduler import next_ready
@@ -193,7 +193,7 @@ def _feed_touches(conn: sqlite3.Connection) -> list[dict[str, Any]]:
     items = []
     for row in conn.execute(
         'SELECT t.id, t.created_at, t.channel, t.kind, t.status,'
-        ' c.display, c.contact_reference_by_canal, t.contact_id'
+        ' c.display, t.contact_id'
         ' FROM touches t LEFT JOIN contacts c ON c.id=t.contact_id'
         ' ORDER BY t.created_at DESC LIMIT 30'
     ).fetchall():
@@ -204,15 +204,15 @@ def _feed_touches(conn: sqlite3.Connection) -> list[dict[str, Any]]:
                 'kind': f'{row[2]}.{row[4]}',
                 'titre': str(
                     row[5]
-                    or contact_reference_value(row, 'email')
-                    or contact_reference_value(row, 'voice')
-                    or row[7]
+                    or address_value(conn, str(row[6] or ''), 'email')
+                    or address_value(conn, str(row[6] or ''), 'phone')
+                    or row[6]
                     or ''
                 ),
                 'extra': {
                     'contact_kind': row[3],
                     'touch_id': str(row[0]),
-                    'contact_id': str(row[7] or ''),
+                    'contact_id': str(row[6] or ''),
                 },
             }
         )

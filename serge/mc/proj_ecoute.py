@@ -21,8 +21,9 @@ def project_ecoute(
         'started_at, finished_at FROM listen_cycles ORDER BY created_at DESC LIMIT 1'
     ).fetchone()
     candidates = conn.execute(
-        'SELECT id, title, sellable_offer, status, updated_at '
-        'FROM business_candidates ORDER BY updated_at DESC LIMIT 100'
+        'SELECT id, name AS title, sellable_offer, lifecycle AS status,'
+        " updated_at FROM ventures WHERE dedup_key<>''"
+        ' ORDER BY updated_at DESC LIMIT 100'
     ).fetchall()
     agents = []
     for point in (

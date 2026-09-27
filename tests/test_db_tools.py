@@ -26,8 +26,8 @@ class DbToolsTests(unittest.TestCase):
         self.conn.row_factory = sqlite3.Row
         init_schema(self.conn)
         self.conn.executemany(
-            'INSERT INTO business_candidates'
-            '(id, title, content, normalized_key, status, created_at, updated_at)'
+            'INSERT INTO ventures'
+            '(id, name, description, dedup_key, lifecycle, created_at, updated_at)'
             ' VALUES(?,?,?,?,?,?,?)',
             [
                 ('b1', 'A', 'a', 'k1', 'CANDIDATE', 't', 't'),
@@ -101,7 +101,7 @@ class DbToolsTests(unittest.TestCase):
             execute_db_read(
                 self.conn,
                 'known_business_candidates',
-                {'columns': ['business_candidates.id;DROP TABLE tools']},
+                {'columns': ['ventures.id;DROP TABLE tools']},
             )
         with self.assertRaises(DbReadError):
             execute_db_read(

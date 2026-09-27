@@ -14,6 +14,7 @@ sys.path.insert(0, str(ROOT))
 
 from serge.db.boot import init_schema  # noqa: E402
 from serge.db.store import append_event  # noqa: E402
+from serge.funnels.contacts import add_address  # noqa: E402
 from serge.mc.auth import RateLimiter  # noqa: E402
 from serge.mc.server import McConfig, create_server  # noqa: E402
 from serge.scheduler import claim, enqueue  # noqa: E402
@@ -47,38 +48,17 @@ def main() -> None:
         "'SMOKE_RUNNING',1,?,?)",
         (_iso(now), _iso(now)),
     )
-    conn.execute(
-        'INSERT INTO contacts(id, venture_id, display,'
-        ' contact_reference_by_canal, regime, funnel_state, created_at,'
-        ' updated_at) VALUES(?,?,?,?,?,?,?,?),(?,?,?,?,?,?,?,?),'
-        '(?,?,?,?,?,?,?,?)',
-        (
-            'p1',
-            'v1',
-            'Ada Morel',
-            json.dumps({'email': {'address': 'ada@x.io', 'active': True}}),
-            'INBOUND',
-            'INTENT',
-            _iso(now),
-            _iso(now),
-            'p2',
-            'v1',
-            'Bob Klein',
-            json.dumps({'email': {'address': 'bob@x.io', 'active': True}}),
-            'OUTBOUND',
-            'CONTACTING',
-            _iso(now),
-            _iso(now),
-            'p3',
-            'v1',
-            'Chloé Martin',
-            json.dumps({'email': {'address': 'chloe@x.io', 'active': True}}),
-            'INBOUND',
-            'CUSTOMER',
-            _iso(now),
-            _iso(now),
-        ),
-    )
+    for ident, nom, email, regime, etat in (
+        ('p1', 'Ada Morel', 'ada@x.io', 'INBOUND', 'INTENT'),
+        ('p2', 'Bob Klein', 'bob@x.io', 'OUTBOUND', 'CONTACTING'),
+        ('p3', 'Chloé Martin', 'chloe@x.io', 'INBOUND', 'CUSTOMER'),
+    ):
+        conn.execute(
+            'INSERT INTO contacts(id, venture_id, display, regime,'
+            " funnel_state, created_at, updated_at) VALUES(?,'v1',?,?,?,?,?)",
+            (ident, nom, regime, etat, _iso(now), _iso(now)),
+        )
+        add_address(conn, ident, 'email', email)
     conn.execute(
         'INSERT INTO campaigns(id, venture_id, family, channel, state,'
         ' n_target, created_at, updated_at) VALUES'

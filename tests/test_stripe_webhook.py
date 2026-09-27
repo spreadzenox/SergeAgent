@@ -175,6 +175,76 @@ class StripeWebhookTests(unittest.TestCase):
         ).fetchone()[0]
         self.assertTrue(lien)
 
+    def _abo(self, metadata: dict | None = None, price_md: dict | None = None):
+        price: dict = {'unit_amount': 1500}
+        if price_md is not None:
+            price['metadata'] = price_md
+        objet: dict = {
+            'id': 'sub_v',
+            'status': 'active',
+            'items': {'data': [{'price': price}]},
+        }
+        if metadata is not None:
+            objet['metadata'] = metadata
+        return apply_event(
+            self.conn,
+            {
+                'type': 'customer.subscription.created',
+                'data': {'object': objet},
+            },
+        )
+
+    def _venture_de(self, external: str) -> str:
+        return self.conn.execute(
+            'SELECT venture_id FROM subscriptions WHERE external_id=?',
+            (external,),
+        ).fetchone()[0]
+
+    def test_abonnement_rattache_au_business_du_prix(self) -> None:
+        self._abo(price_md={'venture_id': 'v1'})
+        self.assertEqual(self._venture_de('sub_v'), 'v1')
+        paid = apply_event(
+            self.conn,
+            {
+                'type': 'invoice.paid',
+                'data': {
+                    'object': {
+                        'id': 'in_v',
+                        'subscription': 'sub_v',
+                        'payment_intent': 'pi_v',
+                        'amount_paid': 1500,
+                    }
+                },
+            },
+        )
+        self.assertEqual(paid['status'], 'ok')
+        tx = self.conn.execute(
+            "SELECT venture_id FROM transactions WHERE intent_id='pi_v'"
+        ).fetchone()
+        self.assertEqual(tx[0], 'v1')
+
+    def test_abonnement_sans_business_est_signale(self) -> None:
+        self._abo(metadata={'venture_id': 'inconnu'})
+        self.assertEqual(self._venture_de('sub_v'), '')
+        types = [
+            row[0]
+            for row in self.conn.execute('SELECT type FROM events').fetchall()
+        ]
+        self.assertEqual(types.count('collect.subscription_unattached'), 1)
+        self.conn.execute(
+            "INSERT INTO ventures(id, created_at, updated_at) VALUES('v2','t','t')"
+        )
+        self._abo(metadata={'venture_id': 'v2'})
+        self.assertEqual(self._venture_de('sub_v'), 'v2')
+
+    def test_business_rattache_jamais_remplace(self) -> None:
+        self.conn.execute(
+            "INSERT INTO ventures(id, created_at, updated_at) VALUES('v2','t','t')"
+        )
+        self._abo(metadata={'venture_id': 'v1'})
+        self._abo(metadata={'venture_id': 'v2'})
+        self.assertEqual(self._venture_de('sub_v'), 'v1')
+
 
 if __name__ == '__main__':
     unittest.main()
