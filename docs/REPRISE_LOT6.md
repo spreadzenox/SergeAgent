@@ -2,8 +2,8 @@
 
 Ce fichier sert à reprendre le travail dans une nouvelle session (par
 exemple Claude Code en local) sans avoir à réexpliquer le contexte. Il
-décrit exactement où on en est sur la branche `Clem`, ce qui est cassé
-exprès, et ce qu'il reste à faire, dans l'ordre. Une fois le lot 6 fini,
+décrit exactement où on en est sur la branche `Clem` et ce qu'il reste à
+faire, dans l'ordre. Une fois le lot 6 fini,
 ce fichier est supprimé.
 
 ## À lire d'abord, dans cet ordre
@@ -77,58 +77,60 @@ base.
   est rangé dans `pas_encore_branche/`.
 - **Tests** : tous verts, `ruff`, `ty` et le scan des secrets aussi.
 
-### Choix faits pendant 6.2, à faire valider par Clem ou Julien
+### Choix faits pendant 6.2, validés par Clem
 
-1. **`brique_canaux` est supprimée**, pas seulement vidée : une table que
-   personne n'écrit n'a pas sa place (charte). Le lien entre un canal et
-   ses outils d'envoi reviendra au lot 8.
-2. **Le plafond de dépense LLM du jour est gardé** : l'ancien runtime
-   refusait d'appeler le modèle au-delà du plafond de la policy. La file
-   laisse maintenant attendre les tâches LLM jusqu'au lendemain ; les
-   autres continuent (`serge/llm/runtime.py`, `budget_spent`).
-3. **Les outils « partout »** (`tools.montre_partout` = 1, par exemple
-   `demande_capacite`) sont appelables par toutes les invocations LLM,
-   sans paramètre figé.
-4. **Le bouton de la page Écoute est générique** : il lance le premier
-   déclencheur `button` des invocations de l'étape 1, avec le champ
-   « guide » du formulaire. Plus de route `listen/start` propre à l'écoute.
-5. **Le déploiement remplace l'ancien timer** tout seul (voir plus haut),
-   pour ne pas laisser tourner chaque minute un runner qui n'existe plus.
-6. **Une tâche interrompue est reprise** : au démarrage d'une file, une
-   tâche restée « en cours » (programme arrêté pendant l'appel au modèle,
-   par exemple par un déploiement) repart de zéro, avec une note
-   `task.resumed` au journal. C'est sans risque tant qu'aucune capacité
-   n'agit hors de Serge ; le lot 8 ajoutera l'état « à vérifier ».
-7. **Quand Serge est arrêté en entier**, les déclencheurs horaires ne
-   créent plus de tâche (sinon un arrêt d'une nuit laisserait une pile de
-   tâches à rattraper).
-8. **La charte n'est pas à jour** : sa partie 4 cite encore `llm_points` et
-   `config/llm-points.yaml`. Seul Julien peut la modifier.
+1. `brique_canaux` est supprimée : aucun code ne l'écrivait plus. Le lien
+   entre un canal et ses outils d'envoi reviendra au lot 8.
+2. Le plafond de dépense LLM du jour est gardé : au-delà, les tâches LLM
+   attendent le lendemain, les autres continuent.
+3. Les outils « partout » (`tools.montre_partout` = 1, par exemple
+   `demande_capacite`) sont appelables par toutes les invocations LLM.
+4. Le bouton de la page Écoute est générique : il lance le déclencheur
+   `button` des invocations de l'étape 1 (`POST /owner/api/bouton`).
+5. Le déploiement remplace l'ancien timer tout seul.
+6. Une tâche interrompue par un arrêt est reprise au démarrage de sa file.
+7. Quand Serge est arrêté, les déclencheurs horaires ne créent pas de
+   tâche.
+
+## Ce qui est fait sur `Clem` après 6.2, à la demande de Clem
+
+- **Serge est arrêté par défaut** (`serge/coupe_circuit.py`). Il ne tourne
+  qu'après un clic sur « Démarrer Serge » en haut de la page En direct
+  (avec une confirmation). Les deux services des files tournent mais ne
+  créent ni ne prennent de tâche ; la voix ne décroche pas (agent temps
+  réel et appel de secours) et n'appelle pas (`serge_arrete`). Un
+  déploiement ou une instance neuve ne démarre jamais Serge.
+- **Un demi-cycle de démonstration** dans `config/pipeline.yaml` : le
+  bouton « Lancer un cycle (démo) », puis « Ouvrir un cycle (démo) » (sans
+  LLM), « Formuler deux idées (démo) » et « Choisir un business (démo) »,
+  avec les protections de la table `ventures` (statuts permis, doublons).
+  Testé de bout en bout avec un faux modèle, et dans le navigateur
+  (`tests/test_pipeline_demo.py`). Le vrai pipeline est l'objet du lot 7.
+- **Le test de la règle** (`tests/test_regle_interpreteur.py`) : aucun nom
+  d'invocation de `config/pipeline.yaml` dans `serge/`, `scripts/`,
+  `kit/`, `bin/`.
+- **La charte** (partie 4) décrit les invocations en base ; Clem l'a
+  autorisé exceptionnellement.
 
 ### Reste à faire pour finir 6.2
 
 Pousser `Clem` et fusionner dans `main` par une pull request (chaque
-fusion redéploie Serge sur le serveur de Julien).
+fusion redéploie Serge sur le serveur de Julien ; Serge y restera arrêté
+jusqu'au clic sur « Démarrer Serge »).
 
-## Ensuite : l'étape 6.3
+## Ensuite : ce qui reste du lot 6
 
-- Décrire le cycle d'écoute d'aujourd'hui dans `config/pipeline.yaml`
-  (exemple complet dans `LOT6_CONCEPTION.md`, partie 12), avec un test de
-  bout en bout et un faux modèle, sur le modèle de
-  `tests/test_interpreter.py`. Les prompts d'origine sont dans
-  `pas_encore_branche/serge/points/listen_pts.py`.
-- Mission Control : la fiche d'une invocation, d'un outil et d'une tâche
-  montrent déjà tout ce qui les décrit. Il manque une vue d'ensemble des
-  capacités, des outils, des liens (avec ce qui est passé, ce qui attend,
-  et un bouton « passer à la suite ») et des déclencheurs.
+- Mission Control : une vue d'ensemble des capacités, des outils, des
+  liens (avec ce qui est passé, ce qui attend, et un bouton « passer à la
+  suite ») et des déclencheurs.
 - Les outils donnés partout : lire l'historique de l'objet traité, lire
   ses leçons (seul « demander une nouvelle capacité » existe).
 - Ce que voit une invocation : les lignes les plus récentes d'abord (le
   catalogue de lecture n'a pas encore d'ordre), la version courte des
   tables où elle écrit, ses leçons.
-- Le test de la règle : il échoue si le nom d'une invocation de
-  `config/pipeline.yaml` apparaît dans `serge/`, `scripts/` ou `kit/`.
-  `pas_encore_branche/` et `tests/` sont ignorés.
+
+Puis le lot 7 : le vrai cycle de l'étape 1, qui remplace le demi-cycle de
+démonstration (le marquer supprimé en base).
 
 ## Lancer les vérifications en local
 

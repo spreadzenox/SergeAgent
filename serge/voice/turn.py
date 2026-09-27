@@ -18,6 +18,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
+from serge.coupe_circuit import serge_demarre  # noqa: E402
 from serge.voice.agi import Agi, AgiHangup, strip_ext  # noqa: E402
 from serge.voice.ledger import VoiceLedger  # noqa: E402
 from serge.voice.policy import default_ledger_path  # noqa: E402
@@ -231,6 +232,10 @@ def main(argv: list[str] | None = None) -> int:
     try:
         agi = Agi()
     except (OSError, ValueError):
+        return 0
+    if not serge_demarre():
+        # Serge arrêté dans Mission Control : on ne décroche pas.
+        agi.hangup()
         return 0
     turn = VoiceTurn(agi, root, VoiceLedger(default_ledger_path(root)))
     try:

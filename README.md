@@ -55,8 +55,8 @@ Tout le reste du projet s'organise autour de cette chaîne.
 
 Serge est en pleine refonte (lot 6 du [`TODO.md`](TODO.md)) : tout le
 pipeline passe en base, et le code n'en est plus que l'interpréteur. Le
-runner (deux files de tâches) et l'interpréteur sont en place, mais le
-pipeline de départ n'est pas encore décrit dans `config/pipeline.yaml`.
+runner (deux files de tâches) et l'interpréteur sont en place, mais
+`config/pipeline.yaml` ne décrit encore qu'un demi-cycle de démonstration.
 Serge ne peut donc pas encore être allumé pour de vrai. L'ancien code écrit
 en dur pour chaque enchaînement (étape 1, envois, relève de la boîte mail,
 réponses, consolidation) est rangé dans
@@ -66,8 +66,13 @@ Ce qui tourne aujourd'hui :
 
 - Mission Control, qui montre et règle tout ce qui est en base ;
 - le bot Discord (tickets et leurs boutons) ;
-- les deux files de tâches et l'interpréteur ;
+- les deux files de tâches et l'interpréteur, avec un demi-cycle de
+  démonstration de l'étape 1 ;
 - la réception des paiements Stripe et des SMS.
+
+**Serge est arrêté par défaut**, même après un déploiement : les files et
+la voix ne font rien tant que personne n'a cliqué « Démarrer Serge » en
+haut de la page En direct de Mission Control.
 
 Chaque page de [`docs/etapes/`](docs/etapes/) dit ce qui marche aujourd'hui
 et ce qui est décidé mais reste à construire.

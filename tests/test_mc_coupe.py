@@ -16,11 +16,15 @@ from serge.db.store import open_db  # noqa: E402
 from serge.etapes import etats_etapes  # noqa: E402
 from serge.mc.proj_coupes import project_coupes  # noqa: E402
 from tests.mc_server_case import McBrowserCase, McServerCase  # noqa: E402
-from tests.taches_fixtures import invocations  # noqa: E402
+from tests.taches_fixtures import (  # noqa: E402
+    invocations,
+    sans_pipeline_de_depart,
+)
 
 
 def _avec_une_invocation(db_path: Path) -> None:
     conn = open_db(db_path)
+    sans_pipeline_de_depart(conn)
     invocations(conn, ('envoyer', 'Envoyer un e-mail', 'prospection_light'))
     conn.commit()
     conn.close()
@@ -28,6 +32,9 @@ def _avec_une_invocation(db_path: Path) -> None:
 
 class McCoupeApiTests(McServerCase):
     def test_couper_serge_et_remettre(self) -> None:
+        conn = open_db(self.db_path)
+        self.assertFalse(heartbeat_marche(conn))  # arrêté par défaut
+        conn.close()
         cookie = self._auth_cookie()
         status, _, body = self._api_post(
             '/owner/api/coupe',
@@ -117,11 +124,12 @@ class ProjCoupesTests(unittest.TestCase):
         conn = sqlite3.connect(':memory:')
         conn.row_factory = sqlite3.Row
         init_schema(conn)
+        sans_pipeline_de_depart(conn)
         invocations(
             conn, ('envoyer', 'Envoyer un e-mail', 'prospection_light')
         )
         data = project_coupes(conn, {}, '2026-09-14T12:00:00+00:00')
-        self.assertTrue(data['serge'])
+        self.assertFalse(data['serge'])  # arrêté par défaut
         self.assertEqual(data['etapes'][0]['id'], 'pre_prospection')
         self.assertIn('Pré-prospection', data['etapes'][0]['titre'])
         self.assertIn('Travaux', data['files'][1]['titre'])
@@ -150,7 +158,8 @@ class McCoupeFrontTests(McBrowserCase):
         page.locator('[data-section="coupes"]').wait_for(timeout=10000)
         btn = page.locator('.btn-kill-serge')
         expect(btn).to_be_visible()
-        expect(btn).to_have_text('Arrêter Serge')
+        expect(btn).to_have_text('Démarrer Serge')
+        expect(page.locator('#live-headline')).to_contain_text('arrêté')
         etapes = page.locator('[data-coupes="etapes"] .btn-kill')
         self.assertGreaterEqual(etapes.count(), 8)
         expect(page.locator('[data-coupes="files"] .btn-kill')).to_have_count(
@@ -160,7 +169,16 @@ class McCoupeFrontTests(McBrowserCase):
             page.locator('[data-coupes="invocations"] .btn-kill')
         ).to_have_text(['Couper Envoyer un e-mail'])
         btn.click()
-        expect(btn).to_have_text('Remettre Serge en marche', timeout=10000)
+        modale = page.locator('.modale')
+        expect(modale).to_contain_text('Démarrer Serge ?')
+        modale.get_by_role('button', name='Démarrer').click()
+        expect(btn).to_have_text('Arrêter Serge', timeout=10000)
+        expect(page.locator('#live-headline')).not_to_contain_text('arrêté')
+        conn = open_db(self.db_path)
+        self.assertTrue(heartbeat_marche(conn))
+        conn.close()
+        btn.click()
+        expect(btn).to_have_text('Démarrer Serge', timeout=10000)
         expect(page.locator('#live-headline')).to_contain_text('arrêté')
 
 

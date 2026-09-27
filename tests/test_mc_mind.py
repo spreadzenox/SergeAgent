@@ -18,6 +18,7 @@ from serge.mc.projectors import (  # noqa: E402
 )
 from serge.pipeline_seed import seed_pipeline  # noqa: E402
 from tests.mc_server_case import McBrowserCase  # noqa: E402
+from tests.taches_fixtures import sans_pipeline_de_depart  # noqa: E402
 
 
 class MindRegistryTests(unittest.TestCase):
@@ -39,6 +40,7 @@ class McMindTests(McBrowserCase):
         iso = datetime.now(UTC).isoformat()
         conn = sqlite3.connect(self.db_path)
         try:
+            sans_pipeline_de_depart(conn)
             seed_pipeline(
                 conn,
                 {
@@ -124,8 +126,14 @@ class McMindTests(McBrowserCase):
         )
 
     def test_page_cerveau_vide(self) -> None:
+        import sqlite3
+
         from playwright.sync_api import expect
 
+        conn = sqlite3.connect(self.db_path)
+        sans_pipeline_de_depart(conn)
+        conn.commit()
+        conn.close()
         page = self._auth_context().new_page()
         self._watch_errors(page)
         page.goto(f'{self.base}/owner#/mind')

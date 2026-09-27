@@ -73,15 +73,18 @@ sécurité.
 - On utilise le LLM quand une règle ne suffit pas : texte libre en entrée,
   réponse ouverte, information à aller chercher. Une entrée fermée et une
   réponse dans une liste fixe restent du code.
-- Chaque invocation est déclarée en base (`llm_points`). Son prompt, son
-  niveau de modèle, ses tools et son interrupteur se règlent dans Mission
-  Control. Le code et `config/llm-points.yaml` ne donnent que les valeurs
-  de départ.
+- Chaque invocation est décrite en base (`invocations` et les tables du
+  pipeline) et exécutée par un seul programme, l'interpréteur
+  (`serge/interpreter/`) : son rôle, son niveau de modèle, son prompt, ce
+  qu'elle reçoit, ses tools, le format de sa réponse, où elle écrit, sa
+  file, sa priorité et son interrupteur. `config/pipeline.yaml` ne donne
+  que les valeurs de départ d'une nouvelle instance.
 - Chaque appel est enregistré dans `llm_usage` : invocation, modèle,
   tokens, durée, résultat.
 - Une réponse structurée (JSON) est vérifiée par le code avant usage. En
   cas de réponse malformée, on redemande un nombre borné de fois, avec
-  l'erreur. Puis on applique le repli prévu.
+  l'erreur. Puis la tâche est marquée en échec, avec la raison, et rien
+  n'est écrit.
 - **Pas de limite de longueur** sur les réponses du LLM.
 - Pour dire « il me manque quelque chose », une invocation utilise le tool
   « Demander une nouvelle capacité ». Pas de champ libre dans la réponse.
@@ -111,8 +114,8 @@ sécurité.
   n'écrit pas une nouvelle fonction qui les appelle dans l'ordre. Si une
   tâche semble demander du code pour une invocation précise, il manque une
   capacité générale ou un réglage en base : on ajoute ce qui manque, de
-  façon générale. Ce n'est pas encore vrai partout : voir le lot 6 du
-  [`TODO.md`](../TODO.md).
+  façon générale. Un test le vérifie
+  (`tests/test_regle_interpreteur.py`).
 - Une exception à cette règle doit être justifiée par une contrainte
   technique dure.
 - Les empreintes du code sont calculées au démarrage, jamais recopiées à

@@ -207,6 +207,9 @@ def write_answer(
             values = _values(
                 conn, int(write_id), answer, ctx, task, parent_row
             )
+            # Un champ facultatif absent de la réponse n'écrit rien : la
+            # colonne garde sa valeur (ou sa valeur par défaut).
+            values = {k: v for k, v in values.items() if v is not None}
             check_catalogue(conn, table, str(operation), list(values))
             if operation == 'insert':
                 row = _insert(conn, invocation_id, task_id, table, values)

@@ -21,6 +21,7 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from serge.coupe_circuit import set_heartbeat  # noqa: E402
 from serge.db.boot import init_schema  # noqa: E402
 from serge.interpreter import tools as tools_mod  # noqa: E402
 from serge.interpreter.flow import fire_button, fire_due_triggers  # noqa: E402
@@ -50,7 +51,6 @@ PIPELINE: dict[str, Any] = {
                 {'name': 'name'},
                 {'name': 'description'},
                 {'name': 'lifecycle'},
-                {'name': 'schedulable'},
             ],
         },
         {
@@ -125,7 +125,6 @@ PIPELINE: dict[str, Any] = {
                         'name': _v('field', 'fiches.title'),
                         'description': _v('field', 'fiches.description'),
                         'lifecycle': _v('fixed', 'CANDIDATE'),
-                        'schedulable': _v('fixed', '0'),
                     },
                 },
                 {
@@ -244,6 +243,7 @@ class InterpreterTests(unittest.TestCase):
             " 't', 't')"
         )
         seed_pipeline(self.conn, PIPELINE)
+        set_heartbeat(self.conn, True)  # Serge est arrêté par défaut
         self.conn.commit()
         fake_search = mock.patch.dict(
             tools_mod.RUNNERS,

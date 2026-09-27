@@ -12,6 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from serge.coupe_circuit import set_heartbeat  # noqa: E402
 from serge.db.boot import init_schema  # noqa: E402
 from serge.demande_capacite import CapaciteError, poser_demande  # noqa: E402
 from serge.interpreter.queue import process_one  # noqa: E402
@@ -87,6 +88,7 @@ class DemandeCapaciteTests(unittest.TestCase):
             },
         )
         enqueue_task(self.conn, 'redacteur', {})
+        set_heartbeat(self.conn, True)
         self.conn.commit()
         seen: list[list] = []
 

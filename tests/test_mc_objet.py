@@ -17,7 +17,7 @@ from serge.funnels.contacts import add_address  # noqa: E402
 from serge.mc.proj_objet import project_objet  # noqa: E402
 from serge.pipeline_seed import seed_pipeline  # noqa: E402
 from tests.mc_server_case import McServerCase  # noqa: E402
-from tests.taches_fixtures import tache  # noqa: E402
+from tests.taches_fixtures import sans_pipeline_de_depart, tache  # noqa: E402
 
 NOW = '2026-09-11T12:00:00+00:00'
 
@@ -141,6 +141,7 @@ class ProjObjetTests(unittest.TestCase):
             "'u/serge','pw-demo')",
             (NOW,),
         )
+        sans_pipeline_de_depart(self.conn)
         seed_pipeline(self.conn, PIPELINE)
         self.conn.commit()
 

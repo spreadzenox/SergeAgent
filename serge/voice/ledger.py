@@ -9,6 +9,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+from serge.coupe_circuit import serge_demarre
 from serge.db.store import default_canon_path, open_db
 from serge.e164 import E164_RE
 from serge.voice.consents import (
@@ -263,6 +264,8 @@ class VoiceLedger:
         purpose: str,
         created: datetime,
     ) -> str:
+        if not serge_demarre(self.canon_path):
+            return 'serge_arrete'
         if not E164_RE.match(to_e164):
             return 'invalid_recipient_e164'
         if purpose not in PURPOSES:

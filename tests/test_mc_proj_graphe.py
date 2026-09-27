@@ -11,11 +11,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from serge.coupe_circuit import set_heartbeat  # noqa: E402
 from serge.db.boot import init_schema  # noqa: E402
 from serge.funnels.contacts import add_address  # noqa: E402
 from serge.mc.proj_graphe import project_business, project_graphe  # noqa: E402
 from serge.pipeline_seed import seed_pipeline  # noqa: E402
-from tests.taches_fixtures import tache  # noqa: E402
+from tests.taches_fixtures import sans_pipeline_de_depart, tache  # noqa: E402
 
 NOW = '2026-09-11T12:00:00+00:00'
 
@@ -97,6 +98,7 @@ class ProjGrapheTests(unittest.TestCase):
             "('x1','v1','invoice',80,'in-1','paid',?,?)",
             (NOW, NOW),
         )
+        sans_pipeline_de_depart(self.conn)
         seed_pipeline(self.conn, PIPELINE)
         self.conn.commit()
 
@@ -163,6 +165,8 @@ class ProjGrapheTests(unittest.TestCase):
         self.assertIn('pre_prospection', ids)
 
     def test_business_venture_et_voix(self) -> None:
+        self.assertIn('arrêté', project_business(self.conn, {}, NOW)['voix'])
+        set_heartbeat(self.conn, True)
         data = project_business(self.conn, {}, NOW)
         self.assertEqual(data['venture']['id'], 'v1')
         self.assertGreaterEqual(data['paid_eur'], 80)

@@ -159,20 +159,13 @@ tâche, l'interpréteur qui exécute n'importe quelle invocation décrite en
 base (sans « kinds »), l'écriture générique et ses protections, la
 priorité et l'interrupteur de chaque invocation, le remplissage de départ
 qui n'efface et n'écrase rien, le rangement de l'ancien code dans
-`pas_encore_branche/` (version 25 de la base), et Mission Control branché
-sur les nouvelles tables. Ce qui reste :
-
-- [ ] **Écrire le pipeline de départ.** L'ancien code de chaque
-  enchaînement est rangé dans `pas_encore_branche/`, mais
-  `config/pipeline.yaml` ne décrit encore que les files, les modèles, la
-  présentation de Serge et les outils. Il faut y décrire tout ce qui peut
-  l'être avec les capacités de ce lot, à commencer par le cycle d'écoute
-  d'aujourd'hui (l'exemple complet est dans
-  [`docs/LOT6_CONCEPTION.md`](docs/LOT6_CONCEPTION.md), partie 12), avec
-  ses prompts d'origine et un test de bout en bout avec un faux modèle.
-  C'est le seul endroit du dépôt où les noms des invocations apparaissent.
-  Les enchaînements qui ont besoin d'une capacité absente (répondre à un
-  prospect, envoyer, relever) y seront ajoutés par leur lot.
+`pas_encore_branche/` (version 25 de la base), Mission Control branché sur
+les nouvelles tables, un demi-cycle de démonstration de l'étape 1 dans
+`config/pipeline.yaml`, et le test qui vérifie la règle
+(`tests/test_regle_interpreteur.py`). Serge est arrêté par défaut : il ne
+tourne qu'après un clic sur « Démarrer Serge » dans Mission Control. Le
+vrai pipeline, étape par étape, est l'objet des lots suivants. Ce qui
+reste dans ce lot :
 
 - [ ] **Passer un lien à la main.** Un lien relie déjà deux invocations
   et transmet des données, une seule fois par résultat, et la fiche d'une
@@ -209,12 +202,6 @@ sur les nouvelles tables. Ce qui reste :
   tâche. Créer ou modifier le reste depuis le site est le travail du
   lot 13 ; d'ici là, on le fait en base, ou dans `config/pipeline.yaml`
   pour une nouvelle instance.
-
-- [ ] **Vérifier automatiquement la règle.** Un test doit échouer si le
-  nom d'une invocation apparaît dans le code, ailleurs que dans le fichier
-  qui remplit une nouvelle instance. Ce test protège la règle pour tous
-  les lots futurs : un développeur, humain ou LLM, qui écrirait du code
-  propre à une invocation serait arrêté tout de suite.
 
 ---
 
@@ -505,7 +492,11 @@ et Serge sait demander de l'aide quand il ne sait pas.
   pas contraires à la loi. Le détail est dans
   [`docs/etapes/1-pre-prospection.md`](docs/etapes/1-pre-prospection.md).
   Cette tâche a besoin du lot 6 et des places de test : les sept
-  invocations, leurs liens et leurs réglages sont décrits en base.
+  invocations, leurs liens et leurs réglages sont décrits en base. Les
+  prompts de l'ancien cycle sont dans `pas_encore_branche/`. Le demi-cycle
+  de démonstration du lot 6 est alors retiré de `config/pipeline.yaml` et
+  marqué supprimé en base : retirer une ligne du fichier ne l'efface pas
+  d'une instance existante.
 
 - [ ] **Garder toutes les pages lues.** Aujourd'hui, les pages trouvées
   par la recherche web ne sont pas enregistrées, et comme aucun flux RSS

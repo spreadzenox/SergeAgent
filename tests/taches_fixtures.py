@@ -73,3 +73,17 @@ def tache(
             (created_at, created_at, task_id),
         )
     return task_id
+
+
+def sans_pipeline_de_depart(conn: sqlite3.Connection) -> None:
+    """Marque supprimé tout ce que ``config/pipeline.yaml`` a mis en base.
+
+    Pour les tests qui partent d'un pipeline vide : le demi-cycle de
+    démonstration n'y apparaît plus, exactement comme si on l'avait
+    supprimé dans Mission Control. À appeler avant de poser ses propres
+    invocations.
+    """
+    for table in ('invocations', 'links', 'triggers'):
+        conn.execute(
+            f"UPDATE {table} SET deleted_at='test' WHERE deleted_at=''"
+        )

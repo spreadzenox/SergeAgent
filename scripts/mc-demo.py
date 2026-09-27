@@ -12,6 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from serge.coupe_circuit import set_heartbeat  # noqa: E402
 from serge.db.boot import init_schema  # noqa: E402
 from serge.db.store import append_event  # noqa: E402
 from serge.funnels.contacts import add_address  # noqa: E402
@@ -233,6 +234,8 @@ def main() -> None:
             ],
         },
     )
+    # Serge est arrêté par défaut ; la démo le montre démarré.
+    set_heartbeat(conn, True)
     running = enqueue_task(
         conn, 'demo_ecrire', {'venture_id': 'v1', 'contact_id': 'p1'}
     )

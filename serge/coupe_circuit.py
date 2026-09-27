@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
-"""Les coupe-circuits : arrêter Serge, une étape, une file ou une invocation.
+"""Les coupe-circuits : démarrer Serge, couper une étape, une file ou une invocation.
 
-- **Serge** : plus aucune file ne prend de tâche (drapeau
-  ``scheduler.heartbeat`` dans ``runtime_flags``).
+- **Serge** est **arrêté par défaut**. Il ne tourne que si quelqu'un l'a
+  démarré dans Mission Control (drapeau ``scheduler.heartbeat`` à ``on``
+  dans ``runtime_flags``). Arrêté, les files ne créent ni ne prennent de
+  tâche, et la voix ne décroche pas et n'appelle pas. Une instance neuve,
+  ou un déploiement, ne démarre donc jamais Serge tout seul.
 - **Une étape** : ses invocations ne tournent plus
   (``pipeline_steps.enabled``).
 - **Une file** : ``conversations`` ou ``works`` ne prend plus de tâche
@@ -16,6 +19,7 @@ chaque file, sans redémarrage.
 from __future__ import annotations
 
 import sqlite3
+from pathlib import Path
 from typing import Any
 
 from serge.db.store import utcnow
@@ -35,32 +39,54 @@ class CoupeError(ValueError):
 
 
 def heartbeat_marche(conn: sqlite3.Connection, now: str | None = None) -> bool:
-    """Vrai si Serge n'est pas arrêté en entier.
+    """Vrai seulement si Serge a été démarré dans Mission Control.
 
     Args:
         conn: Connexion à la base.
-        now: ISO UTC (défaut : horloge). Un arrêt expiré ne compte plus.
+        now: ISO UTC (défaut : horloge). Un démarrage expiré ne compte plus.
     """
     moment = now or utcnow()
     row = conn.execute(
         'SELECT value, expires_at FROM runtime_flags WHERE name=?',
         (FLAG_HEARTBEAT,),
     ).fetchone()
-    if row is None:
-        return True
-    if str(row[1] or '') and str(row[1]) <= moment:
-        return True
-    return str(row[0]) != 'kill'
+    if row is None or str(row[0]) != 'on':
+        return False
+    return not (str(row[1] or '') and str(row[1]) <= moment)
+
+
+def serge_demarre(path: Path | None = None) -> bool:
+    """L'interrupteur, lu par un programme hors des files (la voix).
+
+    La base est ouverte en lecture seule. Base absente ou illisible :
+    Serge est considéré comme arrêté.
+
+    Args:
+        path: Chemin de la base (défaut : celle de l'instance).
+    """
+    from serge.db.store import default_canon_path
+
+    target = path or default_canon_path()
+    try:
+        conn = sqlite3.connect(f'file:{target}?mode=ro', uri=True, timeout=5)
+    except sqlite3.Error:
+        return False
+    try:
+        return heartbeat_marche(conn)
+    except sqlite3.Error:
+        return False
+    finally:
+        conn.close()
 
 
 def set_heartbeat(
     conn: sqlite3.Connection, marche: bool, now: str | None = None
 ) -> dict[str, Any]:
-    """Arrête ou remet Serge en marche.
+    """Démarre ou arrête Serge.
 
     Args:
         conn: Connexion à la base (commit par l'appelant).
-        marche: True = les files peuvent prendre des tâches.
+        marche: True = les files prennent des tâches, la voix décroche.
         now: ISO UTC (défaut : horloge).
 
     Returns:
@@ -69,14 +95,14 @@ def set_heartbeat(
     moment = now or utcnow()
     if marche:
         conn.execute(
-            'DELETE FROM runtime_flags WHERE name=?', (FLAG_HEARTBEAT,)
+            'INSERT OR REPLACE INTO runtime_flags(name, value, set_by,'
+            " set_at, expires_at, reason) VALUES(?, 'on', 'owner', ?, '',"
+            " 'démarré dans Mission Control')",
+            (FLAG_HEARTBEAT, moment),
         )
     else:
         conn.execute(
-            'INSERT OR REPLACE INTO runtime_flags(name, value, set_by,'
-            " set_at, expires_at, reason) VALUES(?, 'kill', 'owner', ?, '',"
-            " 'coupe-circuit MC')",
-            (FLAG_HEARTBEAT, moment),
+            'DELETE FROM runtime_flags WHERE name=?', (FLAG_HEARTBEAT,)
         )
     return {'cible': 'serge', 'marche': heartbeat_marche(conn, now)}
 

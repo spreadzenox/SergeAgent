@@ -20,6 +20,7 @@ from serge.mc.proj_cerveau import (  # noqa: E402
     project_usage_points,
 )
 from serge.pipeline_seed import seed_pipeline  # noqa: E402
+from tests.taches_fixtures import sans_pipeline_de_depart  # noqa: E402
 
 NOW = '2026-09-10T12:00:00+00:00'
 POLICY: dict = {}
@@ -184,6 +185,7 @@ class ProjMatriceTests(unittest.TestCase):
         self.conn.row_factory = sqlite3.Row
         self.addCleanup(self.conn.close)
         init_schema(self.conn)
+        sans_pipeline_de_depart(self.conn)
         seed_pipeline(
             self.conn,
             {

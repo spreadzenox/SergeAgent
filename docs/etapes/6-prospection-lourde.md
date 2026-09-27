@@ -15,36 +15,29 @@ des clients.
 
 ## Aujourd'hui
 
-### Le circuit des réponses (branché pour l'e-mail)
+### Le circuit des réponses : débranché depuis le lot 6
 
-1. **Relever la boîte mail** (`email.poll`, toutes les 5 minutes). Chaque
-   nouveau message est rattaché à un prospect et traduit en signal.
-2. Selon le signal (`serge/observe/router.py`) :
-   - **désinscription** : la personne est bloquée tout de suite ;
-   - **refus** : réponse polie automatique ;
-   - **réponse** : « Classer une réponse » (`classify_reply`) choisit une
-     catégorie (demande de rendez-vous, objection de prix, question…), et
-     « Extraire un rendez-vous » (`extract_meeting`) cherche une date ;
-   - **intéressé** : « Répondre à une intention » (`reply_intent`) écrit
-     une réponse, envoyée automatiquement. En cas de doute, ou si un
-     garde-fou refuse l'envoi, Julien reçoit un ticket avec le brouillon ;
-   - **inclassable** : « Relire un message autre » (`review_other`) traite
-     ces cas en lot et propose de nouvelles catégories.
+Avant le lot 6, l'ancien runner relevait la boîte mail toutes les
+5 minutes, rattachait chaque message à un prospect, le traduisait en
+signal, puis appelait selon le cas « Classer une réponse », « Extraire un
+rendez-vous », « Répondre à une intention » ou « Relire un message
+autre » ; une désinscription bloquait tout de suite la personne. Ce code
+est rangé dans `pas_encore_branche/` (`serge/workers/`,
+`serge/observe/router.py`). Il reviendra au lot 8, avec une seule
+invocation « Traiter une réponse » décrite en base.
 
 ### La voix
 
-- Appels sortants et entrants en temps réel (`serge/voice/`), avec un pont
-  vers Asterisk.
-- « Noter un appel » (`score_call`) note chaque appel. Deux mauvaises
-  notes sur les dix derniers mettent la voix en pause.
-- « Écrire un script d'appel » (`voice_script`) et « Dialoguer à l'oral »
-  (`voice_dialog`) sont écrites mais pas appelées : la voix temps réel a
-  son propre prompt.
+- Le pont vers Asterisk et l'agent vocal temps réel (`serge/voice/`)
+  existent. Ils ne décrochent et n'appellent que si Serge a été démarré
+  dans Mission Control ; Serge est arrêté par défaut.
+- « Noter un appel », « Écrire un script d'appel » et « Dialoguer à
+  l'oral » sont rangées dans `pas_encore_branche/`.
 
 ### Écrit mais pas branché
 
-« Comment grandir » (`plan_scale`), « Arbitrer l'allocation »
-(`judge_allocator`) et « Résumer un fil » (`summarize_thread`).
+« Comment grandir », « Arbitrer l'allocation » et « Résumer un fil », dans
+`pas_encore_branche/`.
 
 ---
 

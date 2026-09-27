@@ -135,6 +135,11 @@ Le runner tourne en continu, en deux copies, une par file
 (`scripts/serge-queue.py`, services `serge-queue@conversations` et
 `serge-queue@works`) :
 
+- **Serge est arrêté par défaut.** Les deux services tournent, mais ne
+  créent ni ne prennent aucune tâche tant que personne n'a cliqué
+  « Démarrer Serge » dans Mission Control. Un déploiement ou une instance
+  neuve ne démarre jamais Serge tout seul. Même chose pour la voix : elle
+  ne décroche pas et n'appelle pas tant que Serge est arrêté.
 - La file des conversations prend les tâches courtes (relever les boîtes,
   traiter une réponse, envoyer, relancer). La file des travaux prend les
   tâches longues (écoute du web, conception, construction). Ainsi, une
@@ -226,9 +231,11 @@ n'importe quelle invocation décrite en base. Tout le code écrit en dur pour
 un enchaînement (le cycle d'écoute, la relève du mail, le circuit des
 réponses, la consolidation) a été rangé dans `pas_encore_branche/`. Le
 pipeline de départ (`config/pipeline.yaml`) ne contient encore que les
-files, les modèles, la présentation de Serge et les outils : le cycle
-d'écoute y sera décrit à l'étape suivante. Serge ne peut donc pas encore
-être allumé pour de vrai.
+files, les modèles, la présentation de Serge, les outils, les protections
+des tables et un demi-cycle de démonstration de l'étape 1 (voir
+[`etapes/1-pre-prospection.md`](etapes/1-pre-prospection.md)). Le vrai
+pipeline, étape par étape, est l'objet des lots suivants. Serge ne peut
+donc pas encore être allumé pour de vrai, et il est arrêté par défaut.
 
 ### Ce que le code met dans la base
 

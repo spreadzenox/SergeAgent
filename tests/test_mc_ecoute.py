@@ -20,6 +20,7 @@ sys.path.insert(0, str(ROOT))
 from serge.mc.proj_ecoute import project_ecoute  # noqa: E402
 from serge.pipeline_seed import seed_pipeline  # noqa: E402
 from tests.mc_server_case import McBrowserCase, McServerCase  # noqa: E402
+from tests.taches_fixtures import sans_pipeline_de_depart  # noqa: E402
 
 PIPELINE = {
     'schema_version': 1,
@@ -44,9 +45,11 @@ PIPELINE = {
 }
 
 
-def _seed(db_path: Path) -> None:
+def _seed(db_path: Path, pipeline: dict | None = PIPELINE) -> None:
     conn = sqlite3.connect(db_path)
-    seed_pipeline(conn, PIPELINE)
+    sans_pipeline_de_depart(conn)
+    if pipeline:
+        seed_pipeline(conn, pipeline)
     conn.commit()
     conn.close()
 
@@ -137,6 +140,7 @@ class McEcouteFrontTests(McBrowserCase):
     def test_sans_bouton_en_base(self) -> None:
         from playwright.sync_api import expect
 
+        _seed(self.db_path, None)
         page = self._auth_context().new_page()
         self._watch_errors(page)
         page.goto(f'{self.base}/owner#/ecoute')

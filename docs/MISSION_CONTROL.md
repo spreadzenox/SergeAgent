@@ -32,7 +32,7 @@ navigateur au fil de l'eau.
 
 | Page | Adresse | Ce qu'on y voit | Ce qu'on y fait |
 |---|---|---|---|
-| **En direct** | `#/live` | La chaîne des 8 étapes, leurs invocations dans l'ordre des liens, et le nombre de résultats passés d'une étape à l'autre ; les tickets urgents, les deux files de tâches, l'activité récente, les budgets du jour. | Couper ou relancer Serge, une étape, une file ou une invocation. |
+| **En direct** | `#/live` | La chaîne des 8 étapes, leurs invocations dans l'ordre des liens, et le nombre de résultats passés d'une étape à l'autre ; les tickets urgents, les deux files de tâches, l'activité récente, les budgets du jour. | Démarrer ou arrêter Serge ; couper une étape, une file ou une invocation. |
 | **Écoute** | `#/ecoute` | Le dernier cycle de l'étape 1, les invocations de l'étape, le bouton de lancement tel qu'il est déclaré en base, les business candidats. | Écrire un texte de guidage et cliquer le bouton : il lance l'invocation de son déclencheur. |
 | **Système** | `#/system` | Les îlots (sous-systèmes), les files de tâches, les campagnes, la population de prospects, l'e-mail. | Lecture. Accessible par `Ctrl+K`. |
 | **Cerveau** | `#/mind` | Pensées, décisions récentes, tableau de toutes les invocations en base (niveau, file, priorité, usage sur 7 jours), signaux entrants. | Ouvrir la fiche d'une invocation, l'éteindre ou la rallumer. |
@@ -68,8 +68,12 @@ passages. La fiche d'une tâche montre ses paramètres et ce qu'elle a reçu
 Tout passe par la même route, `POST /owner/api/coupe`, et est enregistré en
 base. Quatre niveaux, tous en bas de la page En direct (sauf le premier) :
 
-1. **Serge entier** : le gros bouton rouge en haut de En direct. Plus
-   aucune file ne prend de tâche (`runtime_flags`, `scheduler.heartbeat`).
+1. **Serge entier** : le gros bouton en haut de En direct. **Serge est
+   arrêté par défaut**, même sur une instance neuve et après chaque
+   déploiement : il ne tourne qu'après un clic sur « Démarrer Serge »
+   (avec une confirmation). Arrêté, les files ne créent ni ne prennent de
+   tâche, et la voix ne décroche pas et n'appelle pas (`runtime_flags`,
+   `scheduler.heartbeat` à `on`).
 2. **Une étape** : `pipeline_steps.enabled`. Les tâches des invocations de
    l'étape attendent.
 3. **Une file** : `queues.enabled`. Exemple : couper `works` arrête les

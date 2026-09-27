@@ -13,7 +13,11 @@ sys.path.insert(0, str(ROOT))
 
 from serge.funnels.contacts import add_address  # noqa: E402
 from tests.mc_server_case import McBrowserCase  # noqa: E402
-from tests.taches_fixtures import invocations, tache  # noqa: E402
+from tests.taches_fixtures import (  # noqa: E402
+    invocations,
+    sans_pipeline_de_depart,
+    tache,
+)
 
 
 class McFrontTests(McBrowserCase):
@@ -24,7 +28,7 @@ class McFrontTests(McBrowserCase):
         self._watch_errors(page)
         page.goto(f'{self.base}/owner')
         for text in (
-            'Rien en cours',
+            'Serge est arrêté',
             'Aucun urgent',
             'File vide',
             'Aucune activité',
@@ -49,6 +53,12 @@ class McFrontTests(McBrowserCase):
         self._wait_for(page, 'window.__MC && window.__MC.stats.skipped >= 1')
 
     def test_sidebar_navigation(self) -> None:
+        import sqlite3
+
+        conn = sqlite3.connect(self.db_path)
+        sans_pipeline_de_depart(conn)
+        conn.commit()
+        conn.close()
         page = self._auth_context().new_page()
         self._watch_errors(page)
         page.goto(f'{self.base}/owner')

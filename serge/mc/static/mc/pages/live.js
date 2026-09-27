@@ -34,7 +34,7 @@ function renderHero(main, payload, sig, store) {
   const coupes = store.get('coupes');
   if (coupes && coupes.payload && coupes.payload.serge === false) {
     headline.textContent =
-      'Serge est arrêté — l’ordonnanceur ne prend plus de tâche.';
+      'Serge est arrêté : rien ne tourne tant que tu ne le démarres pas.';
     return;
   }
   if (running) {

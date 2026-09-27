@@ -167,5 +167,5 @@ class McSystemTests(McBrowserCase):
         self._watch_errors(page)
         page.goto(f'{self.base}/owner#/system')
         page.locator('#live-headline').wait_for(timeout=10000)
-        expect(page.locator('#page')).to_contain_text('Rien en cours')
+        expect(page.locator('#page')).to_contain_text('Serge est arrêté')
         expect(page.locator('#page')).to_contain_text('File vide')

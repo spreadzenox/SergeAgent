@@ -15,14 +15,11 @@ de test léger prête pour l'étape 3.
 
 ## Aujourd'hui
 
-**Rien n'est branché.** Le code contient :
-
-- l'invocation **« Écrire l'idée de business »** (`draft_hypothesis_smoke`,
-  `serge/points/hypotheses.py`) : hypothèse, taille (30 à 50 prospects),
-  canaux, seuil de succès, durée (10 jours maximum), prix indicatif. Elle
-  n'est jamais appelée ;
-- de quoi créer une campagne de test (`serge/funnels/essai.py`), jamais
-  appelé non plus.
+**Rien n'est branché.** L'invocation « Écrire l'idée de business »
+(hypothèse, taille de 30 à 50 prospects, canaux, seuil de succès, durée
+de 10 jours au plus, prix indicatif), jamais appelée, est rangée dans
+`pas_encore_branche/` (`serge/points/hypotheses.py`). Le code qui crée une
+campagne de test (`serge/funnels/essai.py`) existe, mais rien ne l'appelle.
 
 ---
 

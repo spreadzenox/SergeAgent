@@ -75,7 +75,7 @@ catalogue et la mécanique.
 | `listen_cycles`, `listen_cycle_docs` | Les cycles de l'étape 1 et les pages figées pour chacun. |
 | `tickets`, `ticket_items` | Les décisions à prendre par Julien. |
 | `policy_snapshots` | Les versions successives de la policy. La dernière fait foi. |
-| `runtime_flags` | Les interrupteurs à chaud. Aujourd'hui : Serge arrêté en entier (`scheduler.heartbeat`). |
+| `runtime_flags` | Les interrupteurs à chaud. Aujourd'hui : Serge démarré (`scheduler.heartbeat` à `on`). Sans cette ligne, Serge est arrêté. |
 
 ### Le journal (ce qui s'est passé, jamais modifié)
 
@@ -146,9 +146,10 @@ L'ordre des chantiers est dans le [`TODO.md`](../TODO.md). Voici ce qu'ils
 changent dans la base.
 
 **Le pipeline passe en base (lot 6).** C'est fait pour les tables, le
-runner et l'interpréteur (version 25 de la base). Reste à décrire le
-pipeline de départ dans `config/pipeline.yaml`, à commencer par le cycle
-d'écoute : voir [`REPRISE_LOT6.md`](REPRISE_LOT6.md).
+runner et l'interpréteur (version 25 de la base). `config/pipeline.yaml`
+ne décrit encore qu'un demi-cycle de démonstration de l'étape 1 ; le vrai
+pipeline, étape par étape, est l'objet des lots suivants (à commencer par
+le lot 7).
 
 **De nouvelles tables pour les conversations et les clients.** Une fiche
 produit par business, avec ses questions fréquentes. Une table des

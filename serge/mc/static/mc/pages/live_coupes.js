@@ -1,5 +1,5 @@
 // Coupe-circuits En direct : Serge, étapes, files, invocations.
-import {toast} from '../components.js';
+import {confirmModal, toast} from '../components.js';
 import {patchSection} from '../patch.js';
 import {fetchState} from '../sse.js';
 
@@ -46,9 +46,7 @@ export function renderCoupes(main, payload, sig) {
   const slotSerge = sec.querySelector('[data-coupes="serge"]');
   if (slotSerge) {
     const marche = payload.serge !== false;
-    const texte = marche
-      ? 'Arrêter Serge'
-      : 'Remettre Serge en marche';
+    const texte = marche ? 'Arrêter Serge' : 'Démarrer Serge';
     slotSerge.replaceChildren(
       bouton('btn-kill-serge', texte, 'serge', '', marche),
     );
@@ -85,10 +83,22 @@ export function brancherCoupes(main, store) {
     if (btn.disabled) {
       return;
     }
-    btn.disabled = true;
     const cible = btn.dataset.coupeCible;
     const ident = btn.dataset.coupeId || '';
     const marche = btn.dataset.coupe === '1';
+    if (cible === 'serge' && marche) {
+      const ok = await confirmModal(document.body, {
+        title: 'Démarrer Serge ?',
+        message:
+          'Les deux files vont prendre des tâches et appeler les modèles,'
+          + ' et la voix décrochera. Rien ne tourne avant ce clic.',
+        confirm: 'Démarrer',
+      });
+      if (!ok) {
+        return;
+      }
+    }
+    btn.disabled = true;
     try {
       const {ok, data} = await poster('/owner/api/coupe', {
         cible,

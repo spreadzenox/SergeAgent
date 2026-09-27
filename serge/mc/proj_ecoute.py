@@ -61,7 +61,8 @@ def project_ecoute(
     ).fetchone()
     candidates = conn.execute(
         'SELECT id, name AS title, sellable_offer, lifecycle AS status,'
-        " updated_at FROM ventures WHERE dedup_key<>''"
+        " updated_at FROM ventures WHERE lifecycle IN ('CANDIDATE',"
+        " 'POC_SELECTED')"
         ' ORDER BY updated_at DESC LIMIT 100'
     ).fetchall()
     cols = ('id', 'guide', 'needs_target', 'business_target', 'status')

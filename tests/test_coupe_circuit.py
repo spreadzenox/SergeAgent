@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Coupe-circuits : Serge, étape, file, invocation — passant et refusé.
+"""Coupe-circuits : Serge (arrêté par défaut), étape, file, invocation.
 
 Scénario : deux invocations sans LLM, « a » (étape 1, priorité 50) et
 « b » (étape 8, priorité 10), ont chacune une tâche prête dans la file des
@@ -27,6 +27,7 @@ from serge.db.boot import init_schema  # noqa: E402
 from serge.interpreter.queue import process_one  # noqa: E402
 from serge.interpreter.tasks import enqueue_task  # noqa: E402
 from serge.pipeline_seed import seed_pipeline  # noqa: E402
+from tests.taches_fixtures import sans_pipeline_de_depart  # noqa: E402
 
 NOW = '2026-09-28T10:00:00+00:00'
 
@@ -49,6 +50,7 @@ class CoupeCircuitTests(unittest.TestCase):
         self.conn.row_factory = sqlite3.Row
         self.addCleanup(self.conn.close)
         init_schema(self.conn)
+        sans_pipeline_de_depart(self.conn)
         seed_pipeline(
             self.conn,
             {
@@ -65,6 +67,17 @@ class CoupeCircuitTests(unittest.TestCase):
         }
         self.conn.commit()
 
+    def test_par_defaut_serge_est_arrete(self) -> None:
+        self.assertFalse(heartbeat_marche(self.conn))
+        self.assertIsNone(self._next())
+        self.assertFalse(etat_coupes(self.conn)['serge'])
+        appliquer_coupe(self.conn, 'serge', '', True)
+        self.assertTrue(heartbeat_marche(self.conn))
+        self.assertEqual(self._next(), self.tasks['a'])
+
+    def _demarrer(self) -> None:
+        appliquer_coupe(self.conn, 'serge', '', True)
+
     def _next(self) -> str | None:
         return process_one(self.conn, 'works', now=NOW)
 
@@ -73,6 +86,7 @@ class CoupeCircuitTests(unittest.TestCase):
             'INSERT INTO triggers(id, invocation_id, event, every_minutes)'
             " VALUES('toutes_5', 'b', 'every', 5)"
         )
+        self._demarrer()
         appliquer_coupe(self.conn, 'serge', '', False)
         self.assertFalse(heartbeat_marche(self.conn))
         self.assertIsNone(self._next())
@@ -84,6 +98,7 @@ class CoupeCircuitTests(unittest.TestCase):
         self.assertEqual(self._next(), self.tasks['a'])
 
     def test_etape_coupee_laisse_passer_les_autres(self) -> None:
+        self._demarrer()
         appliquer_coupe(self.conn, 'etape', 'pre_prospection', False)
         self.assertEqual(self._next(), self.tasks['b'])
         self.assertIsNone(self._next())
@@ -91,6 +106,7 @@ class CoupeCircuitTests(unittest.TestCase):
         self.assertEqual(self._next(), self.tasks['a'])
 
     def test_file_coupee(self) -> None:
+        self._demarrer()
         etat = appliquer_coupe(self.conn, 'file', 'works', False)
         self.assertEqual(
             etat, {'cible': 'file', 'id': 'works', 'marche': False}
@@ -98,6 +114,7 @@ class CoupeCircuitTests(unittest.TestCase):
         self.assertIsNone(self._next())
 
     def test_invocation_coupee(self) -> None:
+        self._demarrer()
         appliquer_coupe(self.conn, 'invocation', 'a', False)
         self.assertEqual(self._next(), self.tasks['b'])
         self.assertIsNone(self._next())
@@ -114,7 +131,7 @@ class CoupeCircuitTests(unittest.TestCase):
 
     def test_etat_coupes_defaut_tout_marche(self) -> None:
         data = etat_coupes(self.conn)
-        self.assertTrue(data['serge'])
+        self.assertFalse(data['serge'])
         self.assertEqual(len(data['etapes']), 8)
         self.assertEqual(
             [f['id'] for f in data['files']], ['conversations', 'works']

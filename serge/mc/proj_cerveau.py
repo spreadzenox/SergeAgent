@@ -11,6 +11,7 @@ import sqlite3
 from collections.abc import Mapping
 from typing import Any
 
+from serge.mc.proj_etape import lister_invocations
 from serge.mc.proj_outils import avant_iso
 
 
@@ -158,7 +159,7 @@ def project_matrice(
     Returns:
         ``{points: [{nom, titre, tier, type, enabled, file, priorite,
         etape, appels_7j, tokens_7j, latence_ms, verdicts}]}``, dans
-        l'ordre des étapes.
+        l'ordre des étapes, puis des liens.
     """
     _ = policy
     depuis = avant_iso(now, hours=24 * 7)
@@ -175,13 +176,19 @@ def project_matrice(
         total[1] += int(tokens or 0)
         total[2] += int(latence or 0)
         verdicts.setdefault(str(nom), {})[str(verdict)] = int(appels)
+    ordre: dict[str, tuple[int, int]] = {}
+    for rang, (etape,) in enumerate(
+        conn.execute('SELECT id FROM pipeline_steps ORDER BY rang, id')
+    ):
+        for place, ligne in enumerate(lister_invocations(conn, str(etape))):
+            ordre[ligne['id']] = (rang, place)
     points = []
-    for row in conn.execute(
-        'SELECT i.id, i.title, i.model_tier, i.type, i.enabled, i.queue_id,'
-        ' i.priority, i.step_id FROM invocations i'
-        ' LEFT JOIN pipeline_steps s ON s.id=i.step_id'
-        " WHERE i.deleted_at='' ORDER BY COALESCE(s.rang, 99), i.id"
-    ).fetchall():
+    rows = conn.execute(
+        'SELECT id, title, model_tier, type, enabled, queue_id, priority,'
+        " step_id FROM invocations WHERE deleted_at='' ORDER BY id"
+    ).fetchall()
+    rows = sorted(rows, key=lambda r: ordre.get(str(r[0]), (99, 0)))
+    for row in rows:
         nom = str(row[0])
         appels, tokens, latence = usage.get(nom, [0, 0, 0])
         points.append(

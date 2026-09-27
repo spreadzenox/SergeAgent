@@ -12,6 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from serge.coupe_circuit import set_heartbeat  # noqa: E402
 from serge.db.boot import init_schema  # noqa: E402
 from serge.voice.ledger import VoiceLedger  # noqa: E402
 from serge.voice.policy import VoicePolicy  # noqa: E402
@@ -29,6 +30,8 @@ class VoiceTranscriptTests(unittest.TestCase):
         canon = root / 'serge.db'
         conn = __import__('sqlite3').connect(canon)
         init_schema(conn)
+        set_heartbeat(conn, True)  # Serge est arrêté par défaut
+        conn.commit()
         conn.close()
         self.ledger = VoiceLedger(root / 'voice.db', canon_path=canon)
         self.ledger.grant_consent(TO, 'contract')

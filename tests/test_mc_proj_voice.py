@@ -82,14 +82,14 @@ class ProjVoiceTests(unittest.TestCase):
         self.assertEqual(res1['note_moyenne'], 4.5)
 
     def test_bridge_statut(self) -> None:
+        set_heartbeat(self.conn, True)
         res = project_bridge_statut(self.conn, POLICY, NOW)
         self.assertFalse(res['kill_switch'])
         self.assertIn('bridge', res)
 
     def test_serge_arrete_visible_dans_le_statut(self) -> None:
-        set_heartbeat(self.conn, False)
         res = project_bridge_statut(self.conn, POLICY, NOW)
-        self.assertTrue(res['kill_switch'])
+        self.assertTrue(res['kill_switch'])  # arrêté par défaut
 
 
 if __name__ == '__main__':

@@ -7,6 +7,7 @@ import sqlite3
 from collections.abc import Mapping
 from typing import Any
 
+from serge.coupe_circuit import heartbeat_marche
 from serge.etape_fiches import fiche_etape
 from serge.etapes import ETAPE_IDS, etats_etapes
 from serge.mc.libelles import ORBITES, phrase_noyau, phrase_recit
@@ -236,7 +237,7 @@ def project_business(
         'u2': u2,
         'u3': u3,
         'paid_eur': paid,
-        'voix': phrase_noyau(urgents, running, paid),
+        'voix': phrase_noyau(urgents, running, paid, heartbeat_marche(conn)),
         'recit': recit,
         'running': running,
     }

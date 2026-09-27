@@ -31,6 +31,7 @@ class LibellesUnitTests(unittest.TestCase):
             phrase_noyau(0, {'kind': 'Envoyer un e-mail'}, 0),
         )
         self.assertIn('encaissé', phrase_noyau(0, None, 100))
+        self.assertIn('arrêté', phrase_noyau(2, None, 100, demarre=False))
 
     def test_recit(self) -> None:
         self.assertIn(

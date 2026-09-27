@@ -161,8 +161,12 @@ def verbe(kind: str) -> str:
     return EVENTS.get(kind) or kind.replace('.', ' · ')
 
 
-def phrase_noyau(urgents: int, running: dict | None, paid: float) -> str:
+def phrase_noyau(
+    urgents: int, running: dict | None, paid: float, demarre: bool = True
+) -> str:
     """Une phrase à la première personne pour le noyau."""
+    if not demarre:
+        return 'Je suis arrêté. Je ne travaille qu’après « Démarrer Serge ».'
     if urgents:
         return f'J’attends ta décision — {urgents} urgent(s) me bloquent.'
     if running:
