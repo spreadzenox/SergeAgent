@@ -876,6 +876,19 @@ reste. Il n'y a rien à interrompre. Ce qui change :
    seulement sur ce qui est construit. Serge ne peut pas être allumé pour
    de vrai tant que toutes les capacités ne sont pas là ; c'est accepté.
 
+### Q59 — Ce qui reste, ce qui est débranché (validé par Clem)
+1. Le code de bas niveau qui ne connaît aucune invocation (envoi d'e-mail,
+   pont téléphonique, réception des SMS et de Stripe, garde-fous, fiches de
+   contacts) reste en place avec ses tests : ce sont les futures
+   capacités, pas encore branchées.
+2. Tous les appels au LLM devront passer par le pipeline, y compris la
+   consolidation de la mémoire et le bot Discord. Pas dans le lot 6 : leur
+   code est rangé dans un dossier « pas encore branché », hors de la
+   production, et débranché du runner, du bot et de MC. Leur passage dans
+   le pipeline est noté en fin de TODO.
+3. La production, c'est tout ce qui a été fait aux lots 1 à 6 et la
+   structure qui ne change pas.
+
 ### Q55 — Nouvel ordre des lots (validé)
 Lots 1 à 5 faits. Ensuite :
 6. Le runner et le pipeline en base : d'abord le runner (une tâche après

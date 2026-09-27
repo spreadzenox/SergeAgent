@@ -342,6 +342,20 @@ lot 13.
   prospect, envoyer, relever) y seront ajoutés par leur lot. C'est le seul
   endroit du dépôt où les noms des invocations apparaissent.
 
+- [ ] **Débrancher ce qui appelle le LLM hors du pipeline.** Tous les
+  appels au LLM doivent passer par le pipeline en base, y compris la
+  consolidation de la mémoire et le bot Discord quand Julien écrit à
+  Serge. Ce n'est pas pour ce lot : on le fera dans un lot suivant (voir
+  « Plus tard »). En attendant, leur code n'est pas perdu : il est rangé
+  dans un dossier de code « pas encore branché », hors de ce qui tourne en
+  production, et débranché du runner, du bot et de Mission Control. Le bot
+  Discord continue de recopier les tickets et de faire marcher leurs
+  boutons, qui n'appellent pas le LLM. Le code de bas niveau qui ne
+  connaît aucune invocation (envoyer un e-mail, le pont téléphonique, la
+  réception des SMS et des paiements, les garde-fous d'envoi, les fiches
+  de contacts) reste à sa place avec ses tests : ce sont les futures
+  capacités, pas encore branchées.
+
 - [ ] **Mission Control affiche le pipeline tel qu'il est en base.**
   Toutes les invocations avec tous leurs réglages, les capacités et les
   outils, ce que chaque invocation reçoit, le format de sa réponse et ses
@@ -837,6 +851,24 @@ et Serge sait demander de l'aide quand il ne sait pas.
 ---
 
 ## Plus tard
+
+- [ ] **La consolidation de la mémoire dans le pipeline.** Aujourd'hui,
+  la consolidation (étape 7) relit chaque jour le journal et propose des
+  leçons, avec des appels au LLM écrits en dur. Au lot 6, son code est
+  rangé dans le dossier « pas encore branché ». Il faudra la décrire en
+  base comme le reste : un déclencheur quotidien, une invocation qui lit
+  le journal, et une règle d'écriture qui ajoute des leçons au statut
+  « proposée », que Julien garde ou jette.
+
+- [ ] **La conversation avec Julien sur Discord, dans le pipeline.**
+  Quand Julien écrit à Serge sur Discord, trois invocations écrites en dur
+  traduisent le contexte, lisent son intention et jugent les conséquences.
+  Au lot 6, ce code est rangé dans le dossier « pas encore branché » et le
+  bot ne traite plus les messages libres. Il faudra que le bot range
+  chaque message de Julien dans une table, et qu'un déclencheur « ligne
+  écrite » lance les invocations, décrites en base comme les autres. C'est
+  le même mécanisme que la réponse à un prospect : on le fera en même
+  temps que les conversations, ou juste après.
 
 - [ ] **Garder l'historique des réglages.** Pour l'instant, chaque
   changement de réglage fait dans Mission Control (un prompt, une règle
