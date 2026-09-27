@@ -171,7 +171,9 @@ Colonnes communes :
 
 Colonnes pour une invocation LLM :
 
-- `model_tier` (`fast`, `mid`, `smart`), `prompt`.
+- `model_tier` (`fast`, `mid`, `smart`), `prompt`. Il n'y a pas de
+  colonne pour un modèle précis : le modèle se choisit seulement par
+  niveau.
 - `gets_serge_intro` : 1 pour recevoir en tête le texte « Qui est Serge et
   quelle est ta place ».
 - `default_max_rows` (50 par défaut), `max_tool_turns` (12 par défaut).
@@ -401,7 +403,8 @@ Control affiche ainsi « 50 business donnés, 90 laissés de côté ».
 
 - `llm_models` : `tier`, `provider`, `model`. Trois lignes (`fast`,
   `mid`, `smart`). Le choix du modèle derrière chaque niveau passe du
-  fichier d'instance à la base.
+  fichier d'instance à la base. C'est le seul endroit où un modèle précis
+  est nommé.
 - `serge_texts` : `id`, `body`, `updated_at`. Pour commencer, un texte :
   `presentation`, le paragraphe « Qui est Serge ».
 
@@ -452,7 +455,22 @@ de ce qu'on dit.
 
 ---
 
-## 10. Ce qui disparaît
+## 10. Le pipeline de départ
+
+Une nouvelle instance démarre avec un pipeline complet, décrit dans un
+seul fichier lisible, `config/pipeline.yaml` : les invocations, leurs
+outils, le format de leurs réponses, leurs règles d'écriture, les liens,
+les déclencheurs, et les règles de protection des tables. Au démarrage,
+Serge ajoute en base ce qui n'y est pas encore ; il ne modifie jamais ce
+qui existe, et ne recrée jamais ce que Julien a supprimé. Après
+l'initialisation, la base est la seule source de vérité : modifier le
+fichier ne change rien sur une instance qui tourne, sauf pour les objets
+nouveaux. C'est le seul endroit du dépôt où les noms des invocations
+apparaissent.
+
+---
+
+## 11. Ce qui disparaît
 
 - `llm_points` et `tech_invocations`, remplacées par `invocations`.
 - `llm_point_tools`, remplacée par `invocation_tools`.
@@ -470,7 +488,7 @@ Mission Control sont gardés.
 
 ---
 
-## 11. Exemple : le cycle d'écoute d'aujourd'hui
+## 12. Exemple : le cycle d'écoute d'aujourd'hui
 
 Voici le cycle actuel de l'étape 1, décrit uniquement avec ces tables.
 
@@ -524,7 +542,7 @@ de statut refuse tout business qui n'est plus `CANDIDATE`.
 
 Aucune ligne de ce pipeline n'est du code propre à l'écoute.
 
-## 12. Exemple : un prospect répond à un e-mail
+## 13. Exemple : un prospect répond à un e-mail
 
 1. Un déclencheur `every` (5 minutes) lance « Relever la boîte mail »
    (sans LLM, capacité de relève du canal e-mail, file des conversations).
@@ -543,7 +561,7 @@ Aucune ligne de ce pipeline n'est du code propre à l'écoute.
    « Envoyer la réponse » (sans LLM, capacité `send_email`, qui agit hors
    de Serge) avec « pas avant 14 h 17 ».
 
-## 13. Exemple : créer une invocation de toutes pièces
+## 14. Exemple : créer une invocation de toutes pièces
 
 Julien veut une nouvelle invocation « Chercheur d'idées », qui sonde le web
 pour proposer des business. Il n'écrit aucune ligne de code. Dans Mission
@@ -566,22 +584,19 @@ l'invocation.
 
 ---
 
-## 14. Questions ouvertes
+## 15. Réponses de Clem
 
-1. **Une seule table pour les invocations avec et sans LLM**, comme
-   proposé, ou deux ? Une seule rend les liens et les tâches plus simples,
-   au prix de quelques colonnes vides.
-2. **Le choix du modèle** : seulement par niveau (rapide, moyen,
-   intelligent), ou aussi un modèle précis par invocation ?
-3. **Le pipeline de départ** d'une nouvelle instance : dans un seul fichier
-   lisible (`config/pipeline.yaml`), qui décrit invocations, outils, liens,
-   déclencheurs et règles d'écriture, et qui est le seul endroit où leurs
-   noms apparaissent ?
-4. **L'historique des réglages** : garder chaque ancienne version d'un
-   prompt ou d'une règle, pour revenir en arrière, ou le journal
-   suffit-il pour commencer ?
-5. **Les méthodes de doublon** : « identique » et « mots en commun »
-   suffisent-elles pour commencer ?
-6. **Le vocabulaire** : « capacité » pour le savoir-faire du code, et
-   « outil » pour une capacité réglée qu'on donne à une invocation. Ça te
-   va, ou tu préfères d'autres mots ?
+1. **Une seule table pour toutes les invocations**, avec ou sans LLM. Les
+   colonnes vides ne gênent pas.
+2. **Le modèle se choisit seulement par niveau** : rapide, moyen ou
+   intelligent. Jamais un modèle précis sur une invocation : c'est plus
+   lisible. Le modèle derrière chaque niveau se règle dans `llm_models`.
+3. **Le pipeline de départ est dans `config/pipeline.yaml`.** Ce fichier
+   ne sert qu'à remplir la base d'une nouvelle instance, et à ajouter les
+   objets nouveaux sur une instance existante. Après l'initialisation, il
+   n'est plus jamais la source de vérité : c'est la base.
+4. **L'historique des réglages** attendra : le journal suffit pour
+   commencer. On veut d'abord une petite version qui marche. C'est noté à
+   la fin du [`TODO.md`](../TODO.md).
+5. **Les méthodes de doublon** : question précisée, réponse en attente.
+6. **Le vocabulaire** « capacité » et « outil » est validé.

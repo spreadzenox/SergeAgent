@@ -772,3 +772,15 @@ et Serge sait demander de l'aide quand il ne sait pas.
   factures sont émises par Stripe, jamais fabriquées par Serge. MC
   affiche, business par business, ce qui a été encaissé, ce qui est dû et
   ce qui est en retard.
+
+---
+
+## Plus tard
+
+- [ ] **Garder l'historique des réglages.** Pour l'instant, chaque
+  changement de réglage fait dans Mission Control (un prompt, une règle
+  d'écriture, un lien) est seulement noté au journal. Clem a décidé que
+  ça suffit pour commencer : on veut d'abord une petite version qui
+  marche. Plus tard, il faudra garder chaque ancienne version d'un
+  réglage, avec sa date et son auteur, et un bouton dans Mission Control
+  pour revenir à une version précédente.

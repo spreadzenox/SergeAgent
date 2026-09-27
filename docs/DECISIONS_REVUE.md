@@ -838,6 +838,19 @@ reste. Il n'y a rien à interrompre. Ce qui change :
   service en base (adresse, secret à utiliser, points d'entrée), exécutée
   par une seule capacité « appeler une API ».
 
+### Q57 — Réponses de Clem sur la conception du lot 6 (validé)
+1. Une seule table pour toutes les invocations, avec ou sans LLM.
+2. Le modèle se choisit seulement par niveau (rapide, moyen,
+   intelligent), jamais un modèle précis par invocation.
+3. Le pipeline de départ est dans `config/pipeline.yaml`. Il remplit la
+   base à l'initialisation ; ensuite, la base est la seule source de
+   vérité.
+4. L'historique des réglages attendra : le journal suffit pour commencer.
+   Noté à la fin du TODO.
+5. Vocabulaire validé : une « capacité » est un savoir-faire général du
+   code ; un « outil » est une capacité réglée en base qu'on donne à une
+   invocation.
+
 ### Q55 — Nouvel ordre des lots (validé)
 Lots 1 à 5 faits. Ensuite :
 6. Le runner et le pipeline en base : d'abord le runner (une tâche après
