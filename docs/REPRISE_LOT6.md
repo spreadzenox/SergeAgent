@@ -120,16 +120,44 @@ La bascule 6.2 et ce qui suit sont fusionnés dans `main`
 remplacé par les deux files, et Serge y reste arrêté jusqu'au clic sur
 « Démarrer Serge ».
 
-## Ensuite : ce qui reste du lot 6
+## Ensuite : ce qui reste du lot 6 (sur `Clem`, pas encore dans `main`)
 
-- Mission Control : une vue d'ensemble des capacités, des outils, des
-  liens (avec ce qui est passé, ce qui attend, et un bouton « passer à la
-  suite ») et des déclencheurs.
-- Les outils donnés partout : lire l'historique de l'objet traité, lire
-  ses leçons (seul « demander une nouvelle capacité » existe).
-- Ce que voit une invocation : les lignes les plus récentes d'abord (le
-  catalogue de lecture n'a pas encore d'ordre), la version courte des
-  tables où elle écrit, ses leçons.
+Fait sur `Clem` depuis la fusion (commits locaux, pas encore poussés) :
+les finitions (jours en français, « Relancer la tâche », boutons de
+l'Écoute) et les réglages des invocations et quotas des tables sur la
+page Policy (migration v26). 648 tests passent.
+
+**Étape 3, à commencer : ce que voit une invocation** (conception :
+[`LOT6_CONCEPTION.md`](LOT6_CONCEPTION.md) partie 16). Plan arrêté :
+
+- Migration v27 : `table_views` (table, titre, description, colonne
+  d'ordre), `table_view_columns` (colonne, courte ou non, description),
+  `invocation_compare_tables` (ajouter ou retirer une table à comparer),
+  `event_rows` (quel événement du journal concerne quelle ligne, rempli
+  par l'écriture et par `append_event` pour `venture_id`, avec reprise des
+  anciens événements), `task_seen_tables` (lignes données et laissées de
+  côté, par table, pour la fiche de la tâche).
+- `config/pipeline.yaml` : une section `table_views` (business, cycles)
+  et deux outils « partout » : « Lire les tables que je vois » et « Lire
+  l'historique » ; retirer « Les business déjà connus » de la démo, que
+  la version courte remplace.
+- Deux capacités de plus dans `serge/capabilities.py`, portées par un
+  nouveau `serge/interpreter/seen.py` : leurs tables permises sont
+  calculées à chaque appel à partir de l'invocation (tables où elle
+  écrit, plus ou moins les ajustements), et le schéma montré au modèle ne
+  propose que ces tables.
+- Le catalogue de lecture trie par la colonne d'ordre de la table (les
+  plus récentes d'abord) et compte le total exact (au-delà de 200).
+- `serge/interpreter/intro.py` : le bloc « Qui est Serge » complet (les 8
+  étapes lues dans `pipeline_steps`, sa place, avant et après elle lus
+  dans les liens) et ses leçons (portée `invocation:<id>`, puis
+  `etape:<id>`, puis `global`, les plus fiables d'abord).
+- MC : sur la fiche d'une invocation, un cadre « Ce qu'elle voit pour
+  comparer » avec des boutons ajouter/retirer, et ses leçons ; sur la
+  fiche d'une tâche, les tables reçues. Dire « lecture donnée d'office »
+  et non « outil donné d'office » (Q64).
+
+**Étape 4** : passer un lien à la main, et la page « Pipeline » de MC.
 
 Puis le lot 7 : le vrai cycle de l'étape 1, qui remplace le demi-cycle de
 démonstration (le marquer supprimé en base).
