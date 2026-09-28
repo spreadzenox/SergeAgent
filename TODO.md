@@ -622,6 +622,14 @@ n'est propre à une de ces invocations.
   libres, et le dernier cycle : les pages trouvées, leur étiquette, les
   fiches écrites et les business choisis.
 
+- [ ] **Un bouton temporaire « Effacer les idées ».** Il détruit toutes
+  les idées (les business encore candidats ou choisis, et leurs
+  preuves), pour tester le cycle en production autant de fois qu'on veut
+  (Q65). À retirer avant le vrai lancement de Serge. Julien n'est pas
+  averti à la fin d'un cycle ; « Choisir » peut ne rien choisir, en
+  disant pourquoi ; une idée hors des 11 familles est rangée en
+  « autre ».
+
 - [ ] **Avant la fusion.** Montrer tous les prompts à Clem. Une seule
   fusion dans `main`, à la fin du lot. Le premier vrai cycle est lancé par
   Julien après la fusion, avec 1 idée par invocation pour un essai peu

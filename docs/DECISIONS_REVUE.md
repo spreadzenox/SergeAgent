@@ -1074,3 +1074,13 @@ direct.
     - Le premier vrai cycle est lancé par Julien après la fusion, avec 1
       idée par invocation pour un essai peu cher, puis 3.
     - Une seule fusion dans `main`, à la fin du lot 7.
+23. Après « Choisir » (validé par Clem) :
+    - « Choisir » choisit au plus autant que de places libres ; il peut
+      n'en choisir aucun, en disant pourquoi.
+    - Les places bloquées jusqu'au lot 10 ne posent pas de problème :
+      Serge ne sera vraiment lancé qu'une fois terminé. Un bouton
+      temporaire « Effacer les idées » détruit toutes les idées, pour
+      pouvoir tester en production autant de fois qu'on veut.
+    - Julien n'est pas averti à la fin d'un cycle.
+    - Une douzième famille, « autre », pour une idée qui n'entre dans
+      aucune des 11 familles.
