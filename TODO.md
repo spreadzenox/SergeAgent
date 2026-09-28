@@ -112,10 +112,12 @@ données (business, contacts, abonnements).
   modifiant la base, on peut déjà construire n'importe quel pipeline avec
   les capacités qui existent. Les tâches détaillées sont dans la partie
   « Lot 6 » plus bas.
-- [ ] **Lot 7 « Étape 1 ».** On refait la pré-prospection en sept
-  invocations qui ont chacune un seul rôle, on garde toutes les pages lues
-  comme preuves, et on met la liste des flux RSS en base. Ce lot est le
-  premier à être décrit entièrement en base grâce au lot 6.
+- [ ] **Lot 7 « Étape 1 ».** On refait la pré-prospection avec des
+  invocations qui ont chacune un seul rôle, on garde les pages retenues
+  comme preuves, et Serge choisit et lit lui-même ses flux RSS. Ce lot est
+  le premier à être décrit entièrement en base grâce au lot 6. Les
+  réponses de Clem sont dans la décision Q65 de
+  [`docs/DECISIONS_REVUE.md`](docs/DECISIONS_REVUE.md).
 - [ ] **Lot 8 « Conversations ».** On crée un fil de discussion par
   prospect, une seule invocation pour lire et traiter une réponse, une
   fiche produit détaillée pour répondre juste, des tickets qu'on comprend
@@ -372,8 +374,8 @@ et Serge sait demander de l'aide quand il ne sait pas.
   « 3 places sur 3 occupées ». Les deux nombres (3 et 1) doivent être
   modifiables dans MC. Le lot 6 a posé la première pierre : un quota de
   table, au plus 3 business au statut `POC_SELECTED` en même temps,
-  modifiable sur la page Policy. Il reste à compter aussi les statuts des
-  étapes 2 et 3, la place de prospection lourde, l'affichage « 3 places
+  modifiable sur la page Policy. Le lot 7 lui fait compter aussi les
+  statuts des étapes 2 et 3 (Q65). Il restera la place de prospection lourde, l'affichage « 3 places
   sur 3 occupées » et l'arrêt du cycle quand tout est pris. Par ailleurs,
   un ancien module, `serge/funnels/lifecycle.py`, impose encore en dur
   les statuts d'un business et « un seul business actif à la fois », ce
@@ -516,91 +518,105 @@ et Serge sait demander de l'aide quand il ne sait pas.
 
 ## Étape 1 — Pré-prospection
 
-- [ ] **Refaire l'étape en sept invocations qui ont chacune un seul
-  rôle.** Aujourd'hui, deux invocations « Explorer les besoins » font tout
-  à la fois : chercher sur le web, lire, repérer des besoins et en tirer
-  des idées de business. Il faut découper le travail. D'abord, une
-  invocation sans LLM lit les flux RSS suivis. Ensuite, « Explorer le web »
-  cherche des pages à partir du petit texte de guidage que Julien écrit
-  dans MC et des business déjà connus. « Trier les pages », avec un modèle
-  rapide, met une étiquette sur chaque page nouvelle : elle enrichit un
-  business déjà connu, elle signale un besoin nouveau, ou c'est du bruit.
-  Deux invocations « Formuler des business », A et B, lisent les pages qui
-  signalent un besoin et écrivent chacune des fiches de business avec
-  leurs pages de preuve ; B ne voit jamais ce qu'a écrit A, pour avoir des
-  idées variées. Les doublons sont écartés au moment de l'écriture, par la
-  règle de doublons déclarée en base pour la table des business, et le
-  reste est enregistré comme candidat. « Choisir les business à tester »
-  en choisit autant qu'il y a de places libres en prospection légère. Tout
-  business déjà en test est refusé par la règle des changements de statut
-  permis, déclarée en base : c'est une protection appliquée par le code
-  d'écriture générique, pas une consigne dans un prompt, et pas du code
-  propre à cette invocation. Le cycle se lance à la main depuis MC, et ne
-  tourne que s'il reste une place libre. Le prompt des invocations qui
-  formulent et choisissent doit dire que le business doit être légal, et
-  les encourager à ne pas s'arrêter sur des scrupules moraux qui ne sont
-  pas contraires à la loi. Le détail est dans
-  [`docs/etapes/1-pre-prospection.md`](docs/etapes/1-pre-prospection.md).
-  Cette tâche a besoin du lot 6 et des places de test : les sept
-  invocations, leurs liens et leurs réglages sont décrits en base. Les
-  prompts de l'ancien cycle sont dans `pas_encore_branche/`. Le demi-cycle
-  de démonstration du lot 6 est alors retiré de `config/pipeline.yaml` et
-  marqué supprimé en base : ses trois invocations, ses deux liens et son
-  bouton « Lancer un cycle (démo) », et l'outil « Lire les business
-  connus » s'il ne sert plus. Retirer une ligne du fichier ne l'efface
-  pas d'une instance existante.
+C'est le lot 7. Décisions de Clem : Q65 dans
+[`docs/DECISIONS_REVUE.md`](docs/DECISIONS_REVUE.md) ; le détail de
+l'étape est dans
+[`docs/etapes/1-pre-prospection.md`](docs/etapes/1-pre-prospection.md).
+Tout est décrit en base (`config/pipeline.yaml`) : aucune ligne de code
+n'est propre à une de ces invocations.
 
-  Ce que le lot 6 impose ou permet ici, à ne pas oublier :
-  - **Des vues de tables** pour les pages (`listen_docs`), les pages d'un
-    cycle, les flux (`listen_feeds`) et les preuves d'un business
-    (`venture_sources`), pour que les invocations puissent les comparer,
-    les lire en détail et lire leur historique.
-  - **« B ne voit jamais ce qu'a écrit A » entre en conflit avec la
-    version courte systématique** : B écrit des business, donc elle reçoit
-    d'office ceux déjà en base, y compris ceux que A vient d'écrire si A
-    passe avant. Il faut trancher : retirer les business des tables à
-    comparer de B (les doublons sont de toute façon écartés à
-    l'écriture), ou ne lui montrer que les business d'avant le cycle.
-  - **Les places libres** : le quota `business_choisis` (au plus 3
-    business `POC_SELECTED`) existe déjà et refuse le surplus. Pour que
-    « Choisir » choisisse « autant qu'il y a de places libres », elle doit
-    voir le statut des business en test : ajouter `lifecycle` à leur
-    version courte, ou lui donner une lecture d'office des business en
-    test. Le modèle compte lui-même ; on ne met pas de calcul dans les
-    réglages (Q63).
-  - **Le cycle ne se lance que s'il reste une place** : il faut une
-    condition sur un déclencheur, prévue au lot 8 (conditions simples) ;
-    à avancer ici si besoin.
-  - **Les chiffres de l'ancienne section « Écoute » de la policy**
-    (besoins visés, business retenus), retirée au lot 6, reviennent comme
-    réglages des invocations du cycle (Q64), comme `nombre_idees` de la
-    démo.
-  - Pour chaque invocation : le niveau de modèle, le bloc « Qui est
-    Serge » (utile pour les modèles moyen et intelligent), le maximum de
-    lignes données d'office et le nombre d'appels d'outils.
+- [ ] **Le cycle, une invocation par rôle.** Il se lance à la main depuis
+  la page Écoute (plus tard, automatiquement), et s'enchaîne ainsi :
+  1. **« Ouvrir un cycle »** (sans LLM) enregistre le cycle et le texte de
+     guidage de Julien.
+  2. **« Explorer le web »** (modèle moyen) cherche des pages à partir du
+     texte de guidage (sinon, dans les 11 familles de business de Q32) et
+     des business déjà connus, en France d'abord (recherches en français,
+     pages en anglais acceptées). Elle ne lit qu'un aperçu de chaque page
+     (un nombre de lignes réglable) et ne garde que les pages qu'elle
+     retient. Elle ajoute aussi les flux RSS qu'elle juge utiles : Serge
+     choisit ses flux lui-même, sans accord de Julien.
+  3. **Rattacher au cycle les pages pas encore triées** (sans LLM) : celles
+     des flux et du web, les plus récentes d'abord, au plus 60 (réglage).
+  4. **« Trier les pages »** (modèle rapide), par paquets de 20 pages
+     (réglage), sur leur aperçu seulement : chaque page enrichit un
+     business existant (elle lui est rattachée comme preuve), signale un
+     besoin nouveau, ou c'est du bruit.
+  5. **« Formuler des business A »** puis **« Formuler des business B »**
+     (modèle intelligent, l'une après l'autre) lisent en entier les pages
+     « besoin nouveau » qu'elles veulent, et écrivent chacune 3 idées
+     (réglage). Une fiche cite au moins une page de preuve et sa famille
+     de business (Q32). Une fois l'idée écrite, les pages utilisées sont
+     reclassées : elles deviennent des preuves rattachées à ce business.
+     B voit les business écrits par A (version courte donnée d'office) :
+     Serge ne fait pas deux fois la même chose. Leur prompt dit de ne
+     jamais reproposer un business qui existe déjà. Les doublons restants
+     sont écartés à l'écriture par la règle de doublons des business.
+  6. **« Choisir les business à tester »** (modèle moyen) en choisit au
+     plus autant qu'il y a de places libres, sur la force des preuves, la
+     facilité d'un test rapide, un premier revenu rapide et la légalité.
+     Un business déjà en test est refusé par la règle des statuts permis.
+     Le cycle est ensuite fermé.
 
-- [ ] **Garder toutes les pages lues.** Aujourd'hui, les pages trouvées
-  par la recherche web ne sont pas enregistrées, et comme aucun flux RSS
-  n'est configuré, la table des pages est vide en production. Résultat :
-  les business sont enregistrés sans aucune preuve du besoin. Il faut que
-  chaque page lue, par un flux ou par le web, soit enregistrée avec sa
-  source et le cycle qui l'a trouvée, pour pouvoir servir de preuve.
+  Le prompt des invocations qui formulent et choisissent dit que le
+  business doit être légal, et les encourage à ne pas s'arrêter sur des
+  scrupules moraux qui ne sont pas contraires à la loi (Q33). Les prompts
+  de l'ancien cycle sont dans `pas_encore_branche/`.
 
-- [ ] **Mettre la liste des flux RSS en base.** Aucun flux n'est
-  configuré aujourd'hui, et rien ne lance leur lecture. Il faut une table
-  des flux, modifiable dans MC, avec pour chaque flux son adresse, qui l'a
-  ajouté (Julien ou une invocation), s'il est actif, combien de pages il a
-  ramenées et combien étaient utiles. L'invocation « Explorer le web » peut
-  proposer de nouveaux flux. La lecture des flux tourne toute seule, à
-  intervalle régulier, sans LLM.
+- [ ] **Les places de test de l'étape 1.** Une place est occupée par un
+  business `POC_SELECTED`, `SMOKE_READY`, `SMOKE_RUNNING` ou `SMOKE_DONE`
+  (Q14 bis) : le quota `business_choisis` doit compter ces quatre statuts,
+  et « Choisir » doit voir les business en test pour compter les places
+  libres (une lecture d'office). La page Écoute affiche « places libres :
+  2 sur 3 ».
 
-- [ ] **Empêcher la base de grossir sans fin.** Il faut quatre réglages,
-  modifiables dans MC (des réglages des invocations marqués « policy », ou
-  des quotas de table, pas la policy générale) : le nombre maximum de pages triées par cycle, le
-  nombre de jours après lequel une page « bruit » est oubliée (une page qui
-  sert de preuve est toujours gardée), le nombre de cycles après lequel un
-  flux qui ne ramène que du bruit est désactivé, et la fréquence de
-  lecture des flux.
+- [ ] **Lire une page, à la bonne dose.** Une capacité « lire une page »
+  (une simple requête, sans navigateur), réglée par un nombre de lignes :
+  un aperçu pour les invocations qui trient ou retiennent des pages, la
+  page entière pour celles qui formulent des business. On ne sature pas
+  les invocations d'informations. La recherche reste DuckDuckGo ;
+  SearXNG vient au lot 12.
+
+- [ ] **Garder les pages retenues.** Les pages qu'« Explorer » retient et
+  celles des flux sont enregistrées, avec leur source, le cycle qui les a
+  trouvées, leur aperçu et leur étiquette de tri. Un résultat de
+  recherche non retenu n'est pas gardé (la base ne doit pas exploser),
+  mais une page déjà triée n'est jamais représentée comme nouvelle.
+
+- [ ] **Les flux RSS en base.** Une table des flux : adresse, ajouté par
+  quelle invocation, actif ou non. La lecture des flux actifs tourne
+  seule, toutes les 6 heures (réglage), sans LLM. Mission Control montre,
+  pour chaque flux, les pages ramenées et les pages utiles, avec un
+  bouton pour le couper ou le rallumer. Julien n'ajoute pas de flux au
+  lot 7.
+
+- [ ] **Empêcher la base de grossir sans fin.** Des réglages (des
+  invocations, marqués « policy », ou des quotas de table, pas la policy
+  générale) : 60 pages triées au plus par cycle ; une page « bruit » est
+  oubliée après 30 jours, c'est-à-dire que sa ligne est supprimée (jamais
+  une page qui sert de preuve), avec une note au journal. Couper un flux
+  qui ne ramène que du bruit se fait à la main au lot 7 ; plus tard,
+  automatiquement après 5 cycles de bruit.
+
+- [ ] **La page Écoute.** Les flux, le bouton du cycle avec les places
+  libres, et le dernier cycle : les pages trouvées, leur étiquette, les
+  fiches écrites et les business choisis.
+
+- [ ] **Retirer la démo du lot 6.** Retirer le demi-cycle de
+  `config/pipeline.yaml` et le marquer supprimé en base : ses trois
+  invocations, ses deux liens, son bouton « Lancer un cycle (démo) », et
+  l'outil « Lire les business connus » s'il ne sert plus. Supprimer aussi
+  les business et les cycles qu'elle a laissés sur le serveur de Julien
+  (Q65). Retirer une ligne du fichier ne l'efface pas d'une instance
+  existante.
+
+- [ ] **Ce que le lot 6 demande ici.** Des vues de tables (`table_views`)
+  pour les pages, les pages d'un cycle, les flux et les preuves d'un
+  business ; les tables inscriptibles et leurs protections ; les chiffres
+  en réglages des invocations (les chiffres de l'ancienne section
+  « Écoute » de la policy y reviennent, Q64) ; et pour chaque invocation
+  son niveau, le bloc « Qui est Serge », le maximum de lignes données
+  d'office et le nombre d'appels d'outils.
 
 ---
 

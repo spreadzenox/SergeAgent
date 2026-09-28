@@ -984,3 +984,54 @@ direct.
    MC.
 5. On travaille toujours sur `Clem`. Chaque fusion dans `main` est
    demandée à Clem avant d'être faite.
+
+### Q65 — Lot 7, l'étape 1 (validé par Clem, 28 septembre 2026)
+0. **B voit ce qu'a écrit A.** Clem revient sur « B ne voit jamais A » :
+   Serge ne doit pas faire deux fois la même chose. A et B tournent l'une
+   après l'autre ; B reçoit, comme toute invocation qui écrit des
+   business, la version courte des business déjà en base, dont ceux de A.
+   Le prompt des deux dit de ne jamais reproposer un business qui existe
+   déjà. Ce qui différencie B, pour l'instant, c'est seulement qu'elle
+   voit les business de A ; on verra avec l'expérience.
+1. Marché : la France d'abord, recherches en français, pages en anglais
+   acceptées.
+2. Les flux RSS sont choisis par Serge lui-même, sans accord de Julien.
+   Julien ne propose pas de flux au lot 7 (peut-être plus tard).
+3. Ne pas saturer les invocations : celles qui trient ou retiennent des
+   pages (« Explorer le web », « Trier les pages ») ne lisent qu'un
+   nombre de lignes par page, réglable. Seules celles qui formulent des
+   business lisent une page en entier. Une capacité « lire une page »,
+   réglée par ce nombre de lignes.
+4. Recherche : DuckDuckGo au lot 7, SearXNG au lot 12.
+5. On ne garde que les pages qu'« Explorer » retient (et celles des
+   flux), pas tous les résultats de recherche. Une fois leur idée
+   formulée, A et B reclassent les pages utilisées : une page « besoin
+   nouveau » devient une preuve rattachée à leur business.
+6. Enchaînement : bouton → Ouvrir le cycle → Explorer le web → rattacher
+   au cycle les pages pas encore triées → Trier → Formuler A → Formuler
+   B → Choisir → le cycle est fermé. A et B l'une après l'autre.
+7. Trier par paquets de n pages, n réglable (20 au départ).
+8. Une page qui enrichit un business existant lui est seulement
+   rattachée comme preuve.
+9. Nombre d'idées par invocation : un réglage, 3 au départ.
+10. Une fiche cite au moins une page de preuve, et sa famille (Q32).
+11. Critères de « Choisir » : force des preuves, facilité d'un test
+    rapide, premier revenu rapide, légalité ; au plus autant de business
+    que de places libres.
+12. Une place est occupée par un business `POC_SELECTED`, `SMOKE_READY`,
+    `SMOKE_RUNNING` ou `SMOKE_DONE`.
+13. Le cycle s'arrête après « Choisir » (rien n'est encore prévu après).
+14. Niveaux : Explorer moyen, Trier rapide, Formuler intelligent (beaucoup
+    à lire), Choisir moyen.
+15. Lancement à la main seulement au lot 7.
+16. Valeurs de départ : flux lus toutes les 6 h, 60 pages triées au plus
+    par cycle, page « bruit » oubliée après 30 jours, flux coupé après 5
+    cycles de bruit (plus tard : voir 18).
+17. Oublier une page bruit = supprimer sa ligne (jamais une preuve), avec
+    une note au journal.
+18. Couper un flux qui ne ramène que du bruit : à la main au lot 7, depuis
+    MC, qui montre pour chaque flux les pages ramenées et utiles.
+19. Page Écoute : les flux, le bouton du cycle avec les places libres, le
+    dernier cycle (pages trouvées, par étiquette, fiches, choix).
+20. Les business et cycles laissés par la démo sur le serveur de Julien
+    sont supprimés avec elle.
