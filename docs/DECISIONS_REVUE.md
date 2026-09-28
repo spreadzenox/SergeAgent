@@ -913,3 +913,39 @@ Lots 1 à 5 faits. Ensuite :
 11. Étapes 3, 4, 6, 7, 8.
 12. Web.
 13. L'éditeur sans code dans MC.
+
+### Q60 — Ce que voit une invocation : version courte systématique et « Lire les tables que je vois » (validé par Clem)
+1. Toute invocation reçoit d'office la version courte des tables où elle
+   écrit. C'est systématique mais pas écrit dans le code : la base dit,
+   une fois pour chaque table, quelles colonnes forment sa version courte,
+   et l'interpréteur applique la règle. On peut ajuster, invocation par
+   invocation, les tables à comparer dans MC.
+2. Le détail (ce qu'une ligne contient maintenant) et l'historique (ce qui
+   lui est arrivé, lu dans le journal) sont deux choses différentes.
+3. Un nouvel outil, « Lire les tables que je vois » : ce n'est pas un outil
+   codé, mais une sorte d'outil. Il y en a un par invocation, construit à
+   partir de ses réglages en base, en particulier de l'ensemble des tables
+   qu'elle voit en version courte. Dans ces tables seulement, le modèle
+   peut demander toutes les lignes et toutes les colonnes marquées
+   lisibles. Il ne peut pas lire une table qu'il ne voit pas.
+4. Les autres outils donnés à toutes les invocations : « Lire
+   l'historique » d'une ligne qu'elle voit, « Chercher dans la mémoire »,
+   « Demander une nouvelle capacité ». Ses propres leçons sont données
+   d'office.
+
+### Q61 — Les réglages des invocations, marqués « policy » (validé par Clem)
+Les réglages chiffrés propres à une invocation (par exemple « combien de
+business choisir ») sont rangés avec l'invocation, et non dans la policy
+générale. Mais ils portent une étiquette « policy » : la page Policy de MC
+cherche en base tous les réglages ainsi marqués et les rend modifiables en
+direct. La façon de relier ces réglages au format de la réponse et à
+l'écriture est en discussion.
+
+### Q62 — Suite du lot 6 (validé par Clem)
+1. Les messages reçus de l'extérieur qui ne lancent pas les déclencheurs
+   (SMS, e-mail, paiements) : plus tard, au lot 8.
+2. Le passage à la main d'un lien est construit (bouton « passer à la
+   suite » dans MC). Il existera à côté de la validation par ticket
+   Discord du lot 8 : les deux fonctionnements servent.
+3. Pas de réglage de créativité (« température ») par invocation : le
+   modèle garde le réglage par défaut du fournisseur.

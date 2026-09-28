@@ -167,41 +167,76 @@ tourne qu'après un clic sur « Démarrer Serge » dans Mission Control. Le
 vrai pipeline, étape par étape, est l'objet des lots suivants. Ce qui
 reste dans ce lot :
 
-- [ ] **Passer un lien à la main.** Un lien relie déjà deux invocations
-  et transmet des données, une seule fois par résultat, et la fiche d'une
-  invocation montre ses liens. Mais un lien dont le passage automatique
-  est coupé attend un clic qu'on ne peut pas encore faire. Il faut, dans
-  Mission Control, voir pour chaque lien ce qui est déjà passé et ce qui
+- [ ] **Ce que voit chaque invocation, et l'outil pour lire le reste.**
+  Aujourd'hui, une invocation reçoit ce qu'on lui déclare un par un, au
+  plus 50 lignes par défaut, et la fiche de la tâche dans MC dit combien
+  de lignes elle a reçues. Il faut appliquer les règles validées dans
+  [`docs/MEMOIRE.md`](docs/MEMOIRE.md), sans rien écrire en dur :
+  - **La version courte, systématique.** La base dit, une fois pour
+    chaque table, quelles colonnes forment sa version courte (pour un
+    business, son numéro et son nom) et quelles colonnes sont lisibles
+    (jamais un mot de passe). Toute invocation reçoit d'office la version
+    courte des tables où elle écrit. Sur sa fiche dans MC, on peut ajouter
+    une table à comparer ou en retirer une.
+  - **Les plus récentes d'abord.** Au-delà du maximum, elle reçoit les
+    lignes les plus récentes (aujourd'hui, ce sont les premières lues), et
+    le compte des lignes laissées de côté est juste même au-delà de 200.
+  - **L'outil « Lire les tables que je vois ».** Ce n'est pas un outil
+    codé pour une invocation, mais une sorte d'outil : il y en a un par
+    invocation, construit à chaque appel à partir de ses réglages en base,
+    et en particulier de l'ensemble des tables qu'elle voit en version
+    courte. Dans ces tables seulement, le modèle peut demander toutes les
+    lignes et toutes les colonnes lisibles. Exemple : « Formuler des
+    business » peut lire la fiche complète du business n° 12 vu dans sa
+    liste courte, mais pas les paiements. Il faudra sans doute des tables
+    ou des colonnes de plus (les tables vues par une invocation, les
+    colonnes lisibles et courtes de chaque table).
+  - **L'outil « Lire l'historique »** d'une ligne qu'elle voit : ses
+    derniers événements dans le journal.
+  - **Ses propres leçons**, données d'office, les plus fiables d'abord.
+    Elles dépendent du rattachement d'une leçon à une invocation (étape 7).
+  - **Le bloc « Qui est Serge » complet** : la chaîne des 8 étapes, la
+    place de l'invocation, et ce qui vient juste avant et juste après
+    elle, lu dans les liens. Aujourd'hui, il ne contient que la
+    présentation de Serge et le titre de l'invocation.
+
+- [ ] **Les réglages chiffrés d'une invocation, dans la page Policy.**
+  Depuis le lot 6, les chiffres de la policy propres à une invocation
+  (par exemple « combien de business choisir par cycle ») ne sont plus lus
+  par personne. Ces réglages doivent être rangés avec l'invocation qui
+  s'en sert, et non dans la policy générale. Mais chacun porte une
+  étiquette « policy » : la page Policy de MC cherche en base tous les
+  réglages ainsi marqués et les rend modifiables en direct, avec le
+  journal de chaque changement. Les réglages qui ne concernent aucune
+  invocation (budget du jour, quotas d'envoi, heures d'appel) restent dans
+  la policy générale.
+
+- [ ] **Passer un lien à la main.** Un lien peut être réglé pour attendre
+  un clic avant de lancer l'invocation suivante. Exemple : après
+  « Concevoir le POC », attendre le feu vert avant de construire.
+  Aujourd'hui, l'attente est notée en base, mais rien ne permet de la
+  débloquer : un lien réglé ainsi bloquerait la chaîne pour toujours. Il
+  faut, dans MC, voir pour chaque lien ce qui est déjà passé et ce qui
   attend, un bouton « passer à la suite » et un interrupteur « passage
-  automatique ».
-
-- [ ] **Les outils donnés à chaque invocation.** L'outil « demander une
-  nouvelle capacité » est déjà appelable par toutes les invocations. Il
-  faut aussi que chacune puisse lire l'historique de l'objet qu'elle
-  traite (par exemple, tout ce qui est arrivé à ce business) et ses
-  propres leçons. Ce sont des outils comme les autres, réglés en base, et
-  donnés partout.
-
-- [ ] **Ce que voit chaque invocation.** Une invocation doit avoir tout
-  ce qu'il lui faut pour travailler, sans qu'on noie son prompt sous des
-  informations inutiles. Aujourd'hui, chaque information donnée d'office a
-  déjà un nombre maximum de lignes, 50 par défaut, réglable ; au-delà,
-  l'invocation reçoit une phrase qui dit combien ne sont pas montrées, et
-  la fiche de la tâche dans MC l'affiche. Il reste : lui donner les lignes
-  les plus récentes (aujourd'hui, ce sont les premières lues), une version
-  courte des tables où elle écrit pour pouvoir comparer, et ses propres
-  leçons. Le texte « Qui est Serge » est déjà donné aux invocations qui le
-  demandent. Le détail de ces règles est dans
-  [`docs/MEMOIRE.md`](docs/MEMOIRE.md).
+  automatique ». Ce passage à la main existera à côté de la validation
+  par ticket Discord du lot 8 : les deux servent.
 
 - [ ] **Mission Control affiche le pipeline tel qu'il est en base.** La
   fiche d'une invocation montre déjà tous ses réglages ; la page Cerveau,
   toutes les invocations ; la page En direct, les étapes, les deux files
   et les coupe-circuits. Il manque une vue d'ensemble des capacités, des
-  outils, des liens et des déclencheurs, et des lignes reçues par chaque
-  tâche. Créer ou modifier le reste depuis le site est le travail du
-  lot 13 ; d'ici là, on le fait en base, ou dans `config/pipeline.yaml`
-  pour une nouvelle instance.
+  outils, des liens et des déclencheurs ; le modèle choisi derrière
+  chaque niveau (rapide, moyen, intelligent) et le texte « Qui est
+  Serge », à afficher et à rendre modifiables ; un bouton pour relancer
+  une tâche échouée ; et, sur la page Écoute, tous les boutons de
+  l'étape avec leurs champs, pas seulement le premier. Créer une
+  invocation depuis le site reste le travail du lot 13.
+
+- [ ] **Les jours des déclencheurs horaires.** Un déclencheur « chaque
+  lundi à 8 h 30 » attend aujourd'hui les jours en anglais (`mon`), et
+  rien ne vérifie ce qu'on écrit : réglé sur « lun », il ne partirait
+  jamais. Il faut accepter les jours en français et refuser toute autre
+  valeur au remplissage de la base.
 
 ---
 
@@ -228,10 +263,13 @@ et Serge sait demander de l'aide quand il ne sait pas.
   toutes les adresses d'une personne qui se désinscrit. Des réglages en
   base : une condition simple sur un lien ou une écriture (par exemple
   « seulement si le champ `reaction` vaut `désinscription` »), pour que la
-  suite dépende de la réponse sans code propre ; « une seule tâche en
-  attente par prospect », pour que deux messages coup sur coup ne créent
-  qu'une réponse ; un délai sur un lien, tiré entre le minimum et le
-  maximum du canal ; et « demander à Julien si tel champ vaut oui », qui
+  suite dépende de la réponse sans code propre ; que les programmes qui
+  reçoivent de l'extérieur (SMS, e-mail, paiements) préviennent les
+  déclencheurs « une ligne est écrite », comme le fait l'interpréteur,
+  pour qu'un message reçu lance bien « Traiter une réponse » ; « une
+  seule tâche en attente par prospect », pour que deux messages coup sur
+  coup ne créent qu'une réponse ; un délai sur un lien, tiré entre le
+  minimum et le maximum du canal ; et « demander à Julien si tel champ vaut oui », qui
   ouvre un ticket et fait attendre la tâche.
 
 - [ ] **Un fil de discussion par prospect, et des relances qui ne gênent

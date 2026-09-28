@@ -88,10 +88,11 @@ les tools qu'elle peut appeler, leurs paramètres figés et le nombre
 maximum de lignes sont donc des lignes en base, modifiables dans Mission
 Control, et jamais des valeurs écrites dans le code.
 
-**Une invocation ne voit que ce qu'on lui a donné.** Rien n'est ajouté
-par défaut dans son prompt, et tout ce qu'elle reçoit est affiché sur sa
-fiche dans Mission Control, pour qu'on puisse toujours savoir sur quoi
-elle a travaillé.
+**Une invocation ne voit que ce que la base lui donne.** Rien n'est
+ajouté par le code : ce qu'elle reçoit suit des règles écrites en base,
+les mêmes pour toutes les invocations, et réglables dans Mission Control.
+Tout ce qu'elle reçoit est affiché sur sa fiche, pour qu'on puisse
+toujours savoir sur quoi elle a travaillé.
 
 **Ce qu'elle reçoit se range en trois cercles.** Le premier cercle, c'est
 ce qu'elle doit traiter : elle le reçoit en entier. Par exemple, une
@@ -99,19 +100,28 @@ invocation qui trie des pages web reçoit le texte complet de la page à
 trier. Le deuxième cercle, c'est ce qui lui sert à comparer : elle le
 reçoit en version courte. Par exemple, pour savoir si une idée de
 business est nouvelle, elle reçoit la liste des business déjà connus,
-mais seulement leur numéro et leur titre. Le troisième cercle, c'est tout
-le reste : elle peut le demander si elle en a besoin, avec un tool. Par
-exemple, la fiche complète d'un business, ou les leçons.
+mais seulement leur numéro et leur titre. Le troisième cercle, c'est le
+détail de ce qu'elle voit en version courte, et l'historique : elle peut
+le demander si elle en a besoin, avec un tool. Par exemple, la fiche
+complète du business n° 12, qu'elle a vu dans sa liste courte.
 
 **Le journal n'est jamais donné d'office.** Il est trop gros et
 l'invocation n'en a presque jamais besoin en entier. Elle peut seulement
-demander l'historique de l'objet qu'elle traite, par exemple les vingt
-derniers événements du business sur lequel elle travaille.
+demander l'historique d'une ligne qu'elle voit, par exemple les vingt
+derniers événements du business sur lequel elle travaille, ou d'un
+business de sa liste courte.
+
+**Le détail et l'historique ne sont pas la même chose.** Le détail d'un
+business, c'est ce qu'il contient maintenant : son nom, sa description,
+son offre, son statut. Son historique, c'est ce qui lui est arrivé :
+créé par « Formuler des business » le 27, choisi par « Choisir les
+business à tester » le 28, une écriture refusée le 29.
 
 **Chaque information donnée d'office a un nombre maximum de lignes.**
 Par exemple, on donne au plus 50 business à une invocation. S'il y en a
 140, elle reçoit les 50 plus récents, suivis d'une phrase qui dit « 90
-autres business ne sont pas montrés ». Ce maximum vaut 50 par défaut et
+autres business ne sont pas montrés ». Si elle a besoin des autres, elle
+les demande avec « Lire les tables que je vois ». Ce maximum vaut 50 par défaut et
 se règle invocation par invocation dans Mission Control. À chaque
 passage, Mission Control affiche combien de lignes l'invocation a
 vraiment reçues.
@@ -123,13 +133,38 @@ passe la main à « Formuler des business », elle lui transmet les pages
 qu'elle a marquées comme signalant un besoin. Ce qui sert à comparer,
 c'est la version courte des tables où l'invocation écrit : « Formuler des
 business » écrit des business, donc elle reçoit la liste courte des
-business déjà connus. Le reste est accessible par trois tools donnés
-automatiquement à toutes les invocations : lire l'historique de l'objet
-traité, lire les leçons, et demander une nouvelle capacité. Il ne reste
-donc que trois choses à régler : une fois pour chaque table, les colonnes
-qui forment sa version courte (pour un business, son numéro et son
-titre ; pour une page, son adresse et son titre) ; le maximum de lignes
-par défaut ; et, à la main dans Mission Control, les quelques exceptions.
+business déjà connus. C'est systématique, mais pas écrit dans le code :
+la base dit, une fois pour chaque table, quelles colonnes forment sa
+version courte, et l'interpréteur applique cette règle à toutes les
+invocations. Sur la fiche d'une invocation, dans Mission Control, on peut
+ajouter une table à comparer ou en retirer une.
+
+**Le reste est accessible par des tools donnés à toutes les
+invocations :**
+
+1. **« Lire les tables que je vois »**. Ce n'est pas un outil écrit pour
+   une invocation, mais une sorte d'outil : il en existe un par
+   invocation, construit à chaque appel à partir de la base. Il ne donne
+   accès qu'aux tables que l'invocation voit en version courte (son
+   deuxième cercle). Dans ces tables, le modèle peut demander toutes les
+   lignes, et toutes les colonnes marquées lisibles. Exemple : « Formuler
+   des business » voit la liste courte des business ; elle peut demander
+   la fiche complète du business n° 12, ou tous les business au statut
+   `CANDIDATE`, mais elle ne peut pas lire les paiements, qu'elle ne voit
+   pas. Les colonnes qui ne doivent jamais sortir, comme les mots de passe
+   des comptes web, ne sont pas marquées lisibles.
+2. **« Lire l'historique »** d'une ligne qu'elle voit (premier ou
+   deuxième cercle) : ses derniers événements dans le journal.
+3. **« Chercher dans la mémoire »** : une recherche par mots dans les
+   leçons, les événements et les tickets.
+4. **« Demander une nouvelle capacité »**, pour dire à Julien qu'il lui
+   manque quelque chose.
+
+Il ne reste donc que quelques choses à régler, en base : une fois pour
+chaque table, les colonnes qui forment sa version courte (pour un
+business, son numéro et son titre ; pour une page, son adresse et son
+titre) et les colonnes lisibles ; le maximum de lignes par défaut ; et, à
+la main dans Mission Control, les quelques exceptions.
 
 **Exemple : ce que reçoit « Traiter une réponse ».** Quand un prospect
 répond, l'invocation qui lui répond reçoit en entier, dans ce qu'elle
@@ -189,11 +224,14 @@ toujours gardée.
 
 ## Ce qui reste à faire
 
-- [ ] **Construire les trois cercles, le maximum de lignes, les leçons
-  propres à chaque invocation et le bloc « Qui est Serge ».** Tout ce qui
-  est décrit dans la partie « Ce que verra une invocation demain », avec
-  l'affichage dans Mission Control du nombre de lignes reçues à chaque
-  passage.
+- [ ] **Construire ce que voit chaque invocation.** Le maximum de lignes
+  donné d'office et l'affichage, dans Mission Control, du nombre de
+  lignes reçues à chaque tâche existent déjà. Il reste : la version
+  courte systématique des tables où elle écrit, les lignes les plus
+  récentes d'abord, l'outil « Lire les tables que je vois », l'outil
+  « Lire l'historique », les leçons propres à chaque invocation, et le
+  bloc « Qui est Serge » complet (la chaîne, ce qui vient avant et après
+  elle). C'est dans le lot 6 du [`TODO.md`](../TODO.md).
 - [ ] **Remplir l'index de recherche dans la mémoire.** Chaque nouvelle
   leçon, chaque nouvel événement et chaque nouveau ticket doit y être
   ajouté au moment où il est écrit, pour que la recherche renvoie enfin
