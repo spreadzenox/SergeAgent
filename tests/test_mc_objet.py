@@ -165,13 +165,23 @@ class ProjObjetTests(unittest.TestCase):
             _cadre(fiche, 'Le texte qu’on lui donne (prompt)')['texte'],
             'Propose.',
         )
-        donnes = _cadre(fiche, 'Ce qu’elle reçoit d’office')
+        donnes = _cadre(
+            fiche, 'Ce qu’elle lit d’office (ce qu’elle doit traiter)'
+        )
         self.assertIn('20 lignes au plus', donnes['champs'][0]['v'])
         appelables = [
             lien['id']
             for lien in _cadre(fiche, 'Ce qu’elle peut appeler')['liens']
         ]
-        self.assertEqual(appelables, ['web_search', 'demande_capacite'])
+        self.assertEqual(
+            appelables,
+            [
+                'web_search',
+                'demande_capacite',
+                'lire_historique',
+                'lire_tables_vues',
+            ],
+        )
         self.assertEqual(
             _cadre(fiche, 'Le format de sa réponse')['champs'][1]['k'],
             'fiches.title',
@@ -181,7 +191,7 @@ class ProjObjetTests(unittest.TestCase):
         self.assertIn('name ← le champ « fiches.title »', ecriture['v'])
         self.assertIn('lifecycle ← « CANDIDATE »', ecriture['v'])
         lance_par = _cadre(fiche, 'Ce qui la lance')['liens']
-        self.assertEqual([lien['id'] for lien in lance_par], ['ouvrir'])
+        self.assertEqual([lien['id'] for lien in lance_par], ['l1'])
         self.assertEqual(
             fiche['tableau']['titre'], 'Passages récents de cette invocation'
         )
@@ -198,7 +208,9 @@ class ProjObjetTests(unittest.TestCase):
             {'k': 'Lancer un cycle', 'v': 'un bouton de Mission Control'},
         )
         suite = _cadre(fiche, 'Ce qu’elle lance ensuite')['liens']
-        self.assertEqual([lien['id'] for lien in suite], ['chercheur'])
+        self.assertEqual(
+            [(lien['type'], lien['id']) for lien in suite], [('lien', 'l1')]
+        )
         self.assertIsNone(project_objet(self.conn, 'llm', 'inconnue'))
 
     def test_pages_vides_ne_feignent_pas(self) -> None:

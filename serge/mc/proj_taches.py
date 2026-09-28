@@ -268,13 +268,40 @@ def fiche_tache(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
         champs.append(('Erreur', row['last_error']))
     champs += [(f'Paramètre {p[0]}', p[1]) for p in params]
     champs += [
-        (f'Reçu : {r[0]}', f'{r[1]} lignes, {r[2]} laissées de côté')
+        (f'Lu d’office : {r[0]}', f'{r[1]} lignes, {r[2]} laissées de côté')
         for r in recus
     ]
+    for titre_vue, table, donnees, laissees in conn.execute(
+        "SELECT COALESCE(NULLIF(v.title, ''), s.table_name), s.table_name,"
+        ' s.rows_given, s.rows_left_out FROM task_seen_tables s'
+        ' LEFT JOIN table_views v ON v.table_name=s.table_name'
+        ' WHERE s.task_id=? ORDER BY s.table_name',
+        (ident,),
+    ).fetchall():
+        champs.append(
+            ('Ses leçons', f'{donnees} leçons, {laissees} laissées de côté')
+            if table == 'lessons'
+            else (
+                f'Pour comparer : {titre_vue}',
+                f'{donnees} lignes, {laissees} laissées de côté',
+            )
+        )
+    actions = []
+    if row['status'] == 'failed':
+        actions.append(
+            {
+                'libelle': 'Relancer la tâche',
+                'route': '/owner/api/tache/relancer',
+                'charge': {'task_id': ident},
+                'confirmer': 'La tâche repart de zéro dans sa file, au'
+                ' prochain tour, si Serge est démarré.',
+            }
+        )
     return {
         'type': 'task',
         'id': ident,
         'titre': titre,
+        'actions': actions,
         'pourquoi': (
             'Une tâche lance une invocation avec ses paramètres. Elle est'
             ' enregistrée en base dès qu’elle est finie.'

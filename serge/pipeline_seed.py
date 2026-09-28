@@ -180,6 +180,22 @@ def _seed_rules(conn: sqlite3.Connection, data: Mapping[str, Any]) -> None:
                 from_value=str(rule.get('from', '')),
                 to_value=str(rule['to']),
             )
+    for quota in _list(data, 'table_quotas'):
+        ident = str(quota['id'])
+        if _exists(conn, 'table_quotas', 'id', ident):
+            continue
+        _insert(
+            conn,
+            'table_quotas',
+            id=ident,
+            table_name=str(quota['table']),
+            column_name=str(quota['column']),
+            counted_values=', '.join(str(v) for v in quota['values']),
+            max_value=int(quota['max']),
+            description=str(quota.get('description', '')).strip(),
+            policy=int(bool(quota.get('policy', True))),
+            updated_by='pipeline.yaml',
+        )
     for rule in _list(data, 'dedup_rules'):
         ident = str(rule['id'])
         if _exists(conn, 'dedup_rules', 'id', ident):
@@ -202,16 +218,21 @@ def _seed_rules(conn: sqlite3.Connection, data: Mapping[str, Any]) -> None:
             )
 
 
-def _seed_tool_params(
-    conn: sqlite3.Connection, ident: str, link_id: int, raw: Any
+def _seed_params(
+    conn: sqlite3.Connection,
+    table: str,
+    owner: Mapping[str, Any],
+    raw: Any,
+    where: str,
+    name_column: str = 'param_name',
 ) -> None:
-    for name, source, value in _params(raw, ident):
+    """Range des paramètres ``{nom: {source, value}}`` dans ``table``."""
+    for name, source, value in _params(raw, where):
         _insert(
             conn,
-            'invocation_tool_params',
-            invocation_id=ident,
-            invocation_tool_id=link_id,
-            param_name=name,
+            table,
+            **owner,
+            **{name_column: name},
             source=source,
             value=value,
         )
@@ -244,20 +265,22 @@ def _seed_writes(
             key_column=str(key.get('column', '')),
             key_source=str(key.get('source', '')),
             key_value=str(key.get('value', '')),
+            max_rows=str(write.get('max_rows', '')),
         )
         write_ids.append(write_id)
-        for column, source, value in _params(write.get('values'), ident):
-            _insert(
-                conn,
-                'invocation_write_values',
-                write_id=write_id,
-                column_name=column,
-                source=source,
-                value=value,
-            )
+        _seed_params(
+            conn,
+            'invocation_write_values',
+            {'write_id': write_id},
+            write.get('values'),
+            ident,
+            'column_name',
+        )
 
 
 def _seed_invocation(conn: sqlite3.Connection, inv: Mapping[str, Any]) -> None:
+    from serge.interpreter.settings import seed_settings
+
     ident = str(inv['id'])
     kind = str(inv.get('type', 'llm'))
     _insert(
@@ -280,7 +303,25 @@ def _seed_invocation(conn: sqlite3.Connection, inv: Mapping[str, Any]) -> None:
         origin='code',
         updated_by='pipeline.yaml',
     )
-    _seed_tool_params(conn, ident, 0, inv.get('params'))
+    seed_settings(conn, ident, inv.get('settings'))
+    for table, included in (inv.get('compare') or {}).items():
+        if not _exists(conn, 'table_views', 'table_name', str(table)):
+            raise PipelineSeedError(f'{ident}.compare : pas de vue {table}')
+        _insert(
+            conn,
+            'invocation_compare_tables',
+            invocation_id=ident,
+            table_name=str(table),
+            included=int(bool(included)),
+            updated_by='pipeline.yaml',
+        )
+    _seed_params(
+        conn,
+        'invocation_tool_params',
+        {'invocation_id': ident, 'invocation_tool_id': 0},
+        inv.get('params'),
+        ident,
+    )
     for position, tool in enumerate(_list(inv, 'tools')):
         link_id = _insert(
             conn,
@@ -292,7 +333,13 @@ def _seed_invocation(conn: sqlite3.Connection, inv: Mapping[str, Any]) -> None:
             max_rows=int(tool.get('max_rows', 0)),
             position=position,
         )
-        _seed_tool_params(conn, ident, link_id, tool.get('params'))
+        _seed_params(
+            conn,
+            'invocation_tool_params',
+            {'invocation_id': ident, 'invocation_tool_id': link_id},
+            tool.get('params'),
+            ident,
+        )
     for position, out in enumerate(_list(inv, 'output')):
         _insert(
             conn,
@@ -303,6 +350,8 @@ def _seed_invocation(conn: sqlite3.Connection, inv: Mapping[str, Any]) -> None:
             choices=', '.join(str(c) for c in out.get('choices') or []),
             required=int(bool(out.get('required', True))),
             description=str(out.get('description', '')),
+            min_items=str(out.get('min_items', '')),
+            max_items=str(out.get('max_items', '')),
             position=position,
         )
     _seed_writes(conn, ident, inv)
@@ -348,18 +397,14 @@ def _seed_links(conn: sqlite3.Connection, data: Mapping[str, Any]) -> None:
             origin='code',
             updated_by='pipeline.yaml',
         )
-        for name, source, value in _params(link.get('params'), ident):
-            _insert(
-                conn,
-                'link_params',
-                link_id=ident,
-                param_name=name,
-                source=source,
-                value=value,
-            )
+        _seed_params(
+            conn, 'link_params', {'link_id': ident}, link.get('params'), ident
+        )
 
 
 def _seed_triggers(conn: sqlite3.Connection, data: Mapping[str, Any]) -> None:
+    from serge.interpreter.schedule import schedule_error
+
     for trig in _list(data, 'triggers'):
         ident = str(trig['id'])
         if _exists(conn, 'triggers', 'id', ident):
@@ -368,6 +413,14 @@ def _seed_triggers(conn: sqlite3.Connection, data: Mapping[str, Any]) -> None:
             raise PipelineSeedError(
                 f'déclencheur {ident} : invocation {trig["invocation"]} inconnue'
             )
+        horaire = schedule_error(
+            str(trig['event']),
+            int(trig.get('every_minutes', 0)),
+            str(trig.get('at_time', '')),
+            str(trig.get('at_days', '')),
+        )
+        if horaire:
+            raise PipelineSeedError(f'déclencheur {ident} : {horaire}')
         _insert(
             conn,
             'triggers',
@@ -385,15 +438,13 @@ def _seed_triggers(conn: sqlite3.Connection, data: Mapping[str, Any]) -> None:
             origin='code',
             updated_by='pipeline.yaml',
         )
-        for name, source, value in _params(trig.get('params'), ident):
-            _insert(
-                conn,
-                'trigger_params',
-                trigger_id=ident,
-                param_name=name,
-                source=source,
-                value=value,
-            )
+        _seed_params(
+            conn,
+            'trigger_params',
+            {'trigger_id': ident},
+            trig.get('params'),
+            ident,
+        )
 
 
 def seed_pipeline(conn: sqlite3.Connection, data: Mapping[str, Any]) -> None:
@@ -406,11 +457,14 @@ def seed_pipeline(conn: sqlite3.Connection, data: Mapping[str, Any]) -> None:
     Raises:
         PipelineSeedError: Fichier mal formé.
     """
+    from serge.interpreter.seen import seed_table_views
+
     if data.get('schema_version') != SCHEMA_VERSION:
         raise PipelineSeedError('schema_version doit valoir 1')
     _seed_simple(conn, data)
     _seed_tools(conn, data)
     _seed_rules(conn, data)
+    seed_table_views(conn, _list(data, 'table_views'))
     for inv in _list(data, 'invocations'):
         if not _exists(conn, 'invocations', 'id', str(inv['id'])):
             _seed_invocation(conn, inv)

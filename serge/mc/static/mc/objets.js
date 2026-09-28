@@ -1,4 +1,5 @@
 // Routeur de fiches objet : page parent ou tiroir feuille.
+import {confirmModal, toast} from './components.js';
 import {TYPES_OBJET, allerObjet, depuis} from './libelles.js';
 
 const TIROIRS = new Set([
@@ -10,7 +11,7 @@ const TIROIRS = new Set([
   'llm_usage',
 ]);
 
-function renderCadre(cadre) {
+function renderCadre(cadre, apres) {
   const bloc = el('div', 'cadre-fiche');
   bloc.append(el('h3', '', cadre.titre || ''));
   if (cadre.texte) {
@@ -38,6 +39,9 @@ function renderCadre(cadre) {
   if (cadre.todo) {
     const note = el('p', 'todo-mc', cadre.todo);
     bloc.append(note);
+  }
+  if ((cadre.actions || []).length) {
+    bloc.append(renderActions(cadre.actions, apres));
   }
   return bloc;
 }
@@ -94,12 +98,60 @@ function el(tag, classe, texte) {
   return node;
 }
 
-export function renderFiche(data) {
+async function agir(action) {
+  if (action.confirmer) {
+    const ok = await confirmModal(document.body, {
+      title: `${action.libelle} ?`,
+      message: action.confirmer,
+      confirm: action.libelle,
+    });
+    if (!ok) {
+      return false;
+    }
+  }
+  const res = await fetch(action.route, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(action.charge || {}),
+  });
+  const data = await res.json().catch(() => ({}));
+  toast(
+    document.body,
+    res.ok ? `${action.libelle} : fait.` : data.erreur || 'Action refusée.',
+    res.ok ? 'succes' : 'erreur',
+  );
+  return res.ok;
+}
+
+function renderActions(actions, apres) {
+  const barre = el('div', 'barre-policy');
+  for (const action of actions) {
+    const btn = el('button', 'btn-fort', action.libelle);
+    btn.type = 'button';
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      try {
+        if ((await agir(action)) && apres) {
+          apres();
+        }
+      } finally {
+        btn.disabled = false;
+      }
+    });
+    barre.append(btn);
+  }
+  return barre;
+}
+
+export function renderFiche(data, apres = null) {
   const wrap = el('div', 'fiche-objet');
   const badge = el('p', 'badge-type', TYPES_OBJET[data.type] || data.type || '');
   wrap.append(badge);
   if (data.pourquoi) {
     wrap.append(el('p', 'pourquoi', data.pourquoi));
+  }
+  if ((data.actions || []).length) {
+    wrap.append(renderActions(data.actions, apres));
   }
   if ((data.champs || []).length) {
     const dl = el('dl');
@@ -109,7 +161,7 @@ export function renderFiche(data) {
     wrap.append(dl);
   }
   for (const cadre of data.cadres || []) {
-    wrap.append(renderCadre(cadre));
+    wrap.append(renderCadre(cadre, apres));
   }
   if (data.tableau && (data.tableau.colonnes || []).length) {
     const bloc = el('div', 'cadre-fiche');
@@ -179,7 +231,7 @@ export async function monterObjet(main, type, id) {
     return () => {};
   }
   main.append(el('h2', '', data.titre || id));
-  main.append(renderFiche(data));
+  main.append(renderFiche(data, () => monterObjet(main, type, id)));
   return () => {};
 }
 

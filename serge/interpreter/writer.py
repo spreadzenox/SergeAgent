@@ -21,10 +21,12 @@ from serge.db.store import append_event, utcnow
 from serge.interpreter.rules import (
     check_catalogue,
     find_duplicate,
+    quota_refusal,
     safe_name,
     table_columns,
     transition_refusal,
 )
+from serge.interpreter.settings import load_settings, resolve_count
 
 
 @dataclass
@@ -94,6 +96,7 @@ def _values(
     ctx: Mapping[str, Any],
     task: Mapping[str, str],
     parent_row: Mapping[str, Any] | None,
+    settings: Mapping[str, str],
 ) -> dict[str, Any]:
     out: dict[str, Any] = {}
     for column, source, value in conn.execute(
@@ -109,6 +112,8 @@ def _values(
             out[str(column)] = task.get(str(value), '')
         elif source == 'parent_row':
             out[str(column)] = (parent_row or {}).get(str(value))
+        elif source == 'setting':
+            out[str(column)] = settings.get(str(value))
         else:
             out[str(column)] = utcnow()
     return out
@@ -141,12 +146,14 @@ def _journal(
     kind: str,
     payload: dict[str, Any],
 ) -> None:
+    row_id = payload.get('id')
     append_event(
         conn,
         actor=f'invocation:{invocation_id}',
         type=f'write.{kind}',
         venture_id=str(payload.get('venture_id') or ''),
         payload={'task': task_id, **payload},
+        rows=[(payload['table'], row_id)] if row_id is not None else [],
     )
 
 
@@ -178,9 +185,10 @@ def write_answer(
         WriteConfigError: Une règle vise une table ou colonne interdite.
     """
     results: dict[int, Written] = {}
+    settings = load_settings(conn, invocation_id)
     writes = conn.execute(
         'SELECT id, table_name, operation, for_each, parent_write_id,'
-        ' key_column, key_source, key_value FROM invocation_writes'
+        ' key_column, key_source, key_value, max_rows FROM invocation_writes'
         ' WHERE invocation_id=? ORDER BY position',
         (invocation_id,),
     ).fetchall()
@@ -193,8 +201,10 @@ def write_answer(
         key_col,
         key_src,
         key_val,
+        max_rows,
     ) in writes:
         table = safe_name(str(table))
+        limite = resolve_count(str(max_rows), settings)
         done = Written(table)
         results[int(write_id)] = done
         parent = results.get(int(parent_id)) if parent_id else None
@@ -205,12 +215,26 @@ def write_answer(
                 if parent_row is None:
                     continue
             values = _values(
-                conn, int(write_id), answer, ctx, task, parent_row
+                conn, int(write_id), answer, ctx, task, parent_row, settings
             )
             # Un champ facultatif absent de la réponse n'écrit rien : la
             # colonne garde sa valeur (ou sa valeur par défaut).
             values = {k: v for k, v in values.items() if v is not None}
             check_catalogue(conn, table, str(operation), list(values))
+            if limite is not None and len(done.rows) >= limite:
+                _journal(
+                    conn,
+                    invocation_id,
+                    task_id,
+                    'refused',
+                    {
+                        'table': table,
+                        'reason': f'au plus {limite} ligne(s) par passage',
+                        'values': values,
+                    },
+                )
+                done.by_item[pos] = None
+                continue
             if operation == 'insert':
                 row = _insert(conn, invocation_id, task_id, table, values)
             else:
@@ -243,7 +267,9 @@ def _insert(
     table: str,
     values: dict[str, Any],
 ) -> dict[str, Any] | None:
-    refusal = transition_refusal(conn, table, values, None)
+    refusal = transition_refusal(conn, table, values, None) or quota_refusal(
+        conn, table, values, None
+    )
     if refusal:
         _journal(
             conn,
@@ -311,7 +337,9 @@ def _update(
             },
         )
         return None
-    refusal = transition_refusal(conn, table, values, current)
+    refusal = transition_refusal(
+        conn, table, values, current
+    ) or quota_refusal(conn, table, values, current)
     if refusal:
         _journal(
             conn,

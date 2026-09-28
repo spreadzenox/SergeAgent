@@ -20,6 +20,10 @@ def project_objet(
         from serge.mc.proj_taches import fiche_tache
 
         return fiche_tache(conn, ident)
+    if typ == 'lien':
+        from serge.mc.proj_lien import project_lien
+
+        return project_lien(conn, ident)
     if typ in ('llm', 'llm_usage', 'ecoute', 'outil'):
         from serge.mc.proj_llm import (
             project_ecoute,

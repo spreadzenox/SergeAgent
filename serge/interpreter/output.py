@@ -15,6 +15,8 @@ import sqlite3
 from dataclasses import dataclass
 from typing import Any
 
+from serge.interpreter.settings import load_settings, resolve_count
+
 
 @dataclass(frozen=True)
 class Field:
@@ -23,6 +25,8 @@ class Field:
     choices: tuple[str, ...]
     required: bool
     description: str
+    min_items: int | None = None
+    max_items: int | None = None
 
     @property
     def parent(self) -> str:
@@ -34,7 +38,12 @@ class Field:
 
 
 def load_fields(conn: sqlite3.Connection, invocation_id: str) -> list[Field]:
-    """Les champs attendus, dans l'ordre déclaré."""
+    """Les champs attendus, dans l'ordre déclaré.
+
+    Le nombre d'éléments d'une liste est un nombre, ou le nom d'un réglage
+    de l'invocation, lu à chaque appel.
+    """
+    settings = load_settings(conn, invocation_id)
     return [
         Field(
             str(path),
@@ -42,14 +51,32 @@ def load_fields(conn: sqlite3.Connection, invocation_id: str) -> list[Field]:
             tuple(c.strip() for c in str(choices).split(',') if c.strip()),
             bool(required),
             str(description),
+            resolve_count(str(low), settings),
+            resolve_count(str(high), settings),
         )
-        for path, kind, choices, required, description in conn.execute(
-            'SELECT path, type, choices, required, description'
-            ' FROM invocation_output_fields WHERE invocation_id=?'
-            ' ORDER BY position',
-            (invocation_id,),
-        ).fetchall()
+        for path, kind, choices, required, description, low, high in (
+            conn.execute(
+                'SELECT path, type, choices, required, description,'
+                ' min_items, max_items FROM invocation_output_fields'
+                ' WHERE invocation_id=? ORDER BY position',
+                (invocation_id,),
+            ).fetchall()
+        )
     ]
+
+
+def _count_text(field: Field) -> str:
+    """« exactement 2 éléments », « au plus 3 éléments »…, ou ``''``."""
+    low, high = field.min_items, field.max_items
+    if low is not None and low == high:
+        return f'exactement {low} élément(s)'
+    if low is not None and high is not None:
+        return f'entre {low} et {high} éléments'
+    if low is not None:
+        return f'au moins {low} élément(s)'
+    if high is not None:
+        return f'au plus {high} élément(s)'
+    return ''
 
 
 _EXEMPLES = {'text': '"…"', 'number': '0', 'bool': 'true', 'choice': '"…"'}
@@ -81,6 +108,8 @@ def describe_format(fields: list[Field]) -> str:
         detail = field.description or ''
         if field.choices:
             detail += f' Valeurs permises : {", ".join(field.choices)}.'
+        if _count_text(field):
+            detail += f' Liste de {_count_text(field)}.'
         need = 'obligatoire' if field.required else 'facultatif'
         lines.append(
             f'- {field.path} ({field.type}, {need}) : {detail}'.rstrip()
@@ -128,6 +157,14 @@ def _check_object(
         value = obj[field.name]
         errors.extend(_check_value(field, value, label))
         if field.type == 'list' and isinstance(value, list):
+            low, high = field.min_items, field.max_items
+            if (low is not None and len(value) < low) or (
+                high is not None and len(value) > high
+            ):
+                errors.append(
+                    f'{label} doit contenir {_count_text(field)}'
+                    f' (reçu : {len(value)})'
+                )
             inner = [f for f in fields if f.parent == field.path]
             for index, item in enumerate(value):
                 if inner:

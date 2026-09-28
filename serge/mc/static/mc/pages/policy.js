@@ -1,4 +1,4 @@
-// Page Policy : règles cadrées, taille des essais, confiance.
+// Page Policy : règles cadrées, réglages des invocations, taille des essais, confiance.
 import {
   fillList,
   li,
@@ -162,6 +162,65 @@ function renderTesting(main, payload, sig) {
   main.querySelector('[data-section="testing_froid"]').dataset.sig = sig;
 }
 
+// Une ligne par réglage : son sens, sa valeur, un bouton Enregistrer.
+function ligneReglage(texte, valeur, charge, bornes) {
+  const ligne = el('div', 'ligne-reglage');
+  const label = el('label', 'champ-large', `${texte} `);
+  const input = document.createElement('input');
+  input.value = valeur;
+  if (bornes) {
+    input.type = 'number';
+    if (bornes.min !== '') {
+      input.min = bornes.min;
+    }
+    if (bornes.max !== '') {
+      input.max = bornes.max;
+    }
+  }
+  label.append(input);
+  const btn = el('button', '', 'Enregistrer');
+  btn.type = 'button';
+  btn.dataset.reglage = JSON.stringify(charge);
+  ligne.append(label, btn);
+  return ligne;
+}
+
+function renderReglages(main, payload, sig) {
+  const hote = main.querySelector('[data-reglages="liste"]');
+  const blocs = [];
+  for (const inv of payload.invocations || []) {
+    blocs.push(el('h3', '', `${inv.etape} · ${inv.titre}`));
+    for (const r of inv.reglages) {
+      const bornes = r.type === 'number' ? {min: r.min, max: r.max} : null;
+      const texte = r.description || r.name;
+      const suffixe = bornes && (r.min !== '' || r.max !== '')
+        ? ` (entre ${r.min || '…'} et ${r.max || '…'})`
+        : '';
+      blocs.push(ligneReglage(`${texte}${suffixe}`, r.value, {
+        cible: 'invocation',
+        invocation_id: inv.invocation_id,
+        name: r.name,
+      }, bornes));
+    }
+  }
+  if ((payload.quotas || []).length) {
+    blocs.push(el('h3', '', 'Quotas des tables'));
+    for (const q of payload.quotas) {
+      blocs.push(ligneReglage(
+        q.description || `${q.table} : ${q.column} parmi ${q.values}`,
+        String(q.max),
+        {cible: 'quota', id: q.id},
+        {min: '0', max: ''},
+      ));
+    }
+  }
+  if (!blocs.length) {
+    blocs.push(el('p', '', 'Aucun réglage marqué « policy » en base.'));
+  }
+  hote.replaceChildren(...blocs);
+  main.querySelector('[data-section="reglages"]').dataset.sig = sig;
+}
+
 function renderTrust(main, payload, sig) {
   const ul = main.querySelector('[data-section="trust_candidates"] [data-list="candidates"]');
   fillList(ul, payload.candidates || [], 'Aucun type assez régulier pour l’instant.', (cand) => {
@@ -211,8 +270,34 @@ export function mount(main, store) {
     }
   });
 
+  main.querySelector('[data-reglages="liste"]').addEventListener('click', async (ev) => {
+    const btn = ev.target.closest('[data-reglage]');
+    if (!btn) {
+      return;
+    }
+    const input = btn.parentElement.querySelector('input');
+    btn.disabled = true;
+    try {
+      const charge = {...JSON.parse(btn.dataset.reglage), value: input.value};
+      const {ok, data} = await poster('/owner/api/reglage', charge);
+      toast(
+        document.body,
+        ok ? 'Réglage enregistré.' : (data.erreur || 'Refusé.'),
+        ok ? 'succes' : 'erreur',
+      );
+      if (ok) {
+        await rafraichir(store);
+      }
+    } catch {
+      toast(document.body, 'Action injoignable.', 'erreur');
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
   const unsubs = [
     store.subscribe('politique_active', (p, s) => renderPolitiqueActive(main, p, s, store)),
+    store.subscribe('reglages', (p, s) => renderReglages(main, p, s)),
     store.subscribe('testing_froid', (p, s) => renderTesting(main, p, s)),
     store.subscribe('trust_candidates', (p, s) => renderTrust(main, p, s)),
   ];
@@ -220,6 +305,8 @@ export function mount(main, store) {
   for (const [section, env] of store.all()) {
     if (section === 'politique_active') {
       renderPolitiqueActive(main, env.payload, env.sig, store);
+    } else if (section === 'reglages') {
+      renderReglages(main, env.payload, env.sig);
     } else if (section === 'testing_froid') {
       renderTesting(main, env.payload, env.sig);
     } else if (section === 'trust_candidates') {

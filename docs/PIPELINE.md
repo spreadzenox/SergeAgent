@@ -183,9 +183,12 @@ code lit en base la description de l'invocation à lancer et l'exécute
 exactement comme elle est décrite.
 
 Pour une invocation LLM, la base dit : son rôle, son étape, le modèle
-appelé, son prompt, ce qu'elle reçoit dès le départ, les tools qu'elle peut
+appelé, son prompt, ce qu'elle reçoit dès le départ, les outils qu'elle peut
 appeler et avec quels paramètres figés, le format de sa réponse et où
 cette réponse est écrite, sa priorité et sa file, et si elle est allumée.
+Ce qu'elle voit des autres tables pour comparer suit des règles réglées
+une fois par table, les mêmes pour toutes les invocations (voir
+[`MEMOIRE.md`](MEMOIRE.md)).
 Les **liens** entre invocations sont aussi en base : un lien dit
 « quand cette invocation a produit tel résultat, lance celle-ci, avec ces
 données en paramètre ». Par exemple, chaque business choisi à l'étape 1
@@ -216,6 +219,16 @@ permis, le repérage des doublons, les champs obligatoires, la validation
 par Julien. Exemple : refuser un business déjà en test, c'est déclarer en
 base que le statut d'un business ne peut passer à `POC_SELECTED` que
 depuis `CANDIDATE`.
+
+Les chiffres d'une invocation sont des **réglages** rangés avec elle. Un
+réglage sert partout à la fois : dans le prompt (« Propose
+{nombre_idees} idées »), dans le format de la réponse (une liste
+d'exactement ce nombre d'éléments, vérifiée), dans l'écriture (« au plus
+N lignes ») et dans les paramètres des outils et des liens. Une table
+peut aussi avoir un **quota** : « au plus 3 business choisis pour un
+POC », refusé par le code d'écriture quelle que soit l'invocation. Les
+réglages et les quotas marqués « policy » se changent en direct sur la
+page Policy de Mission Control.
 
 Exemple de ce que ça permet : si Julien change dans Mission Control le
 modèle de « Trier les pages », ou ajoute une invocation entre « Trier les

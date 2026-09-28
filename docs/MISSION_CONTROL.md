@@ -33,12 +33,13 @@ navigateur au fil de l'eau.
 | Page | Adresse | Ce qu'on y voit | Ce qu'on y fait |
 |---|---|---|---|
 | **En direct** | `#/live` | La chaîne des 8 étapes, leurs invocations dans l'ordre des liens, et le nombre de résultats passés d'une étape à l'autre ; les tickets urgents, les deux files de tâches, l'activité récente, les budgets du jour. | Démarrer ou arrêter Serge ; couper une étape, une file ou une invocation. |
-| **Écoute** | `#/ecoute` | Le dernier cycle de l'étape 1, les invocations de l'étape, le bouton de lancement tel qu'il est déclaré en base, les business candidats. | Écrire un texte de guidage et cliquer le bouton : il lance l'invocation de son déclencheur. |
+| **Écoute** | `#/ecoute` | Le dernier cycle de l'étape 1, les invocations de l'étape, les boutons de l'étape tels qu'ils sont déclarés en base (chacun avec ses champs), les business candidats. | Remplir les champs d'un bouton et cliquer : il lance l'invocation de son déclencheur. |
+| **Pipeline** | `#/pipeline` | Tout le pipeline tel qu'il est en base : les liens (avec ce qui attend un clic), les déclencheurs, les outils, les capacités du code, ce que les invocations voient de chaque table, le modèle derrière chaque niveau et le texte « Qui est Serge ». | Choisir le modèle de chaque niveau (vide : celui de l'installation), réécrire le texte « Qui est Serge » ; ouvrir la fiche d'un lien, d'un outil, d'une invocation ou d'une table. |
 | **Système** | `#/system` | Les îlots (sous-systèmes), les files de tâches, les campagnes, la population de prospects, l'e-mail. | Lecture. Accessible par `Ctrl+K`. |
 | **Cerveau** | `#/mind` | Pensées, décisions récentes, tableau de toutes les invocations en base (niveau, file, priorité, usage sur 7 jours), signaux entrants. | Ouvrir la fiche d'une invocation, l'éteindre ou la rallumer. |
 | **Décisions** | `#/tickets` | Les tickets à trancher, ce qui a changé, le rythme des décisions, le résumé quotidien. | Répondre à un ticket (mêmes boutons que sur Discord), discuter. |
 | **Mémoire** | `#/memory` | Épisodes archivés, procédures, pièges, leçons, dernière consolidation, demandes de nouvelles capacités. | Chercher dans la mémoire, garder, modifier ou jeter une leçon. |
-| **Policy** | `#/policy` | Toutes les règles : quotas, heures, budgets, taille des essais, réglages de l'écoute. | Modifier une règle et l'enregistrer. Chaque version est gardée. |
+| **Policy** | `#/policy` | Toutes les règles : quotas, heures, budgets, taille des essais ; et les réglages des invocations et les quotas des tables marqués « policy », rangés par étape et par invocation. | Modifier une règle et l'enregistrer. Chaque version de la policy générale est gardée ; chaque changement de réglage est noté au journal. |
 | **Économie** | `#/economy` | De l'envoi au paiement : touches, réponses, paiements, abonnements, coût des invocations LLM. | Lecture. |
 | **Voix** | `#/voice` | L'état du pont téléphonique, le journal des appels, leur qualité. | Écouter un enregistrement. Pour couper les appels : page En direct. |
 | **Health** | `#/health` | Taille du code, services systemd, versions, piste d'audit. | Lecture. |
@@ -55,11 +56,18 @@ lues).
 Le texte d'une fiche vient des colonnes de la base (exemple : `doc_md`),
 pas du code JavaScript. La fiche d'une invocation montre tout ce que la
 base dit d'elle : son rôle, sa sorte (avec ou sans LLM), son étape, sa
-file, sa priorité, son niveau de modèle, son prompt, ce qu'elle reçoit
-d'office, ce qu'elle peut appeler, le format de sa réponse, où sa réponse
-est écrite, ce qui la lance, ce qu'elle lance ensuite, et ses derniers
-passages. La fiche d'une tâche montre ses paramètres et ce qu'elle a reçu
-(par exemple « 50 lignes, 90 laissées de côté »).
+file, sa priorité, son niveau de modèle, son prompt, ce qu'elle lit
+d'office (ce qu'elle doit traiter), ce qu'elle voit pour comparer (la
+version courte des tables, avec un bouton pour retirer, remettre ou
+ajouter une table), ses leçons, ce qu'elle peut appeler, le format de sa
+réponse, où sa réponse est écrite, ce qui la lance, ce qu'elle lance
+ensuite, et ses derniers passages. La fiche d'une tâche montre ses
+paramètres et ce qu'elle a reçu (par exemple « Pour comparer : Les
+business — 20 lignes, 230 laissées de côté ») ; si elle a échoué, un
+bouton « Relancer la tâche » la remet dans sa file. La fiche d'un lien
+(`#/objet/lien/<id>`, ouverte depuis la fiche d'une invocation) montre ce
+qui est déjà passé et ce qui attend un clic, avec un bouton « Passer à la
+suite » par passage et l'interrupteur « passage automatique ».
 
 ---
 
@@ -98,12 +106,6 @@ sa fiche montre tout ce qui la décrit, et l'API
 file, sa priorité et son interrupteur. Demain, la fiche permettra de
 modifier tout le reste (ce qu'elle reçoit, ses outils, le format de sa
 réponse, où elle écrit) : c'est l'éditeur sans code, plus bas.
-
-**Les liens se passent à la main.** La fiche d'une invocation montre déjà
-ses liens et ses déclencheurs, et l'ordre des invocations d'une étape est
-lu dans les liens. Il manque, pour chaque lien, ce qui est déjà passé et ce
-qui attend, avec un bouton « passer à la suite » et un interrupteur
-« passage automatique ».
 
 **Une tâche arrêtée au milieu d'une action extérieure** (un envoi, un
 remboursement) apparaîtra pour qu'on vérifie avant de la relancer (lot 8).
@@ -151,7 +153,14 @@ Toutes demandent le jeton owner.
 | `POST /owner/api/ticket/acte`, `/ticket/item`, `/ticket/discuter` | Répondre à un ticket. |
 | `POST /owner/api/memory/lesson` | Garder, modifier ou jeter une leçon. |
 | `POST /owner/api/policy/edit`, `/policy/testing`, `/policy/propose` | Modifier la policy. |
+| `POST /owner/api/reglage` | Changer un réglage d'invocation ou un quota marqué « policy » (valeur vérifiée, changement noté au journal). |
 | `POST /owner/api/bouton` | Un déclencheur « bouton » : crée la tâche de son invocation, avec les champs du formulaire. |
+| `POST /owner/api/tache/relancer` | Remettre une tâche échouée dans sa file (bouton « Relancer la tâche » de sa fiche). |
+| `POST /owner/api/lien/passer` | « Passer à la suite » : lance un passage qui attendait un clic, avec ses paramètres gardés (fiche du lien). |
+| `POST /owner/api/lien/auto` | L'interrupteur « passage automatique » d'un lien (pour les passages suivants). |
+| `POST /owner/api/pipeline/modele` | Le modèle derrière un niveau (rapide, moyen, intelligent) ; vide pour celui de l'installation (page Pipeline). |
+| `POST /owner/api/pipeline/texte` | Le texte « Qui est Serge » (page Pipeline). |
+| `POST /owner/api/invocation/comparer` | Retirer, remettre ou ajouter une table que l'invocation voit pour comparer (boutons de sa fiche). Seule une table décrite en base (`table_views`) peut être vue. |
 
 ---
 

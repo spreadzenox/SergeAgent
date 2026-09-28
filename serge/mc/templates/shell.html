@@ -23,6 +23,7 @@
 <a href="#/health" data-page="p8">Health</a>
 <a href="#/identite" data-page="p9">Identité</a>
 <a href="#/ecoute" data-page="p10">Écoute</a>
+<a href="#/pipeline" data-page="p11">Pipeline</a>
 </nav>
 </aside>
 <div class="contenu">
@@ -100,18 +101,34 @@
 <template id="page-ecoute">
 <section class="panneau" data-section="ecoute" data-sig="">
 <h2>Écoute</h2>
-<p class="legende-policy">Le cycle de l’étape 1, tel qu’il est décrit en base : le bouton lance l’invocation de son déclencheur.</p>
-<div class="grille-champs">
-<p data-ecoute="besoins">Besoins par découverte : …</p>
-<p data-ecoute="business">Business pour le prochain POC : …</p>
-<label class="champ-large">Guide de recherche <textarea data-ecoute="guide" maxlength="4000"></textarea></label>
-</div>
-<p>Les deux hyperparamètres se modifient dans <a href="#/policy">Policy &gt; Écoute du web</a>.</p>
-<div class="barre-policy"><button type="button" class="btn-fort" data-ecoute-action="lancer">Lancer le cycle</button></div>
-<p data-ecoute="bouton"></p>
+<p class="legende-policy">L’étape 1, telle qu’elle est décrite en base : chaque bouton lance l’invocation de son déclencheur, avec les champs remplis ici.</p>
+<div data-ecoute="boutons"></div>
 <p data-ecoute="cycle">Aucun cycle.</p>
 <h3>Invocations de l’étape</h3><ul data-ecoute="invocations"></ul>
 <h3>Business candidats</h3><ul data-ecoute="candidates"></ul>
+</section>
+</template>
+<template id="page-pipeline">
+<section class="panneau" data-section="pipeline" data-sig="">
+<h2>Pipeline</h2>
+<p class="legende-policy">Tout le pipeline tel qu’il est en base : le code n’en est que l’interpréteur. Une ligne s’ouvre en fiche ; le modèle de chaque niveau et le texte « Qui est Serge » se modifient ici.</p>
+<h3>Le modèle derrière chaque niveau</h3>
+<p class="legende-policy">Vide : le modèle choisi à l’installation (affiché en gris).</p>
+<div data-pipeline="modeles"></div>
+<h3>Le texte « Qui est Serge »</h3>
+<p class="legende-policy">En tête du prompt des invocations qui le demandent, suivi de la chaîne des 8 étapes et de leur place, lues en base.</p>
+<div data-pipeline="presentation"></div>
+<h3>Les liens</h3>
+<div data-pipeline="liens"></div>
+<h3>Les déclencheurs</h3>
+<div data-pipeline="declencheurs"></div>
+<h3>Les outils</h3>
+<div data-pipeline="outils"></div>
+<h3>Les capacités du code</h3>
+<div data-pipeline="capacites"></div>
+<h3>Ce que les invocations voient des tables</h3>
+<p class="legende-policy">La version courte est donnée d’office, pour comparer, à toute invocation qui écrit dans la table ; les colonnes lisibles se lisent avec « Lire les tables que je vois ».</p>
+<div data-pipeline="tables"></div>
 </section>
 </template>
 <template id="page-system">
@@ -260,6 +277,11 @@
 <button type="button" data-action="proposer-policy">Demander un changement</button>
 </div>
 <div data-policy="atelier"></div>
+</section>
+<section class="panneau" data-section="reglages" data-sig="">
+<h2>Réglages des invocations et quotas</h2>
+<p class="sous-titre-policy">Les chiffres rangés avec chaque invocation, et les quotas des tables. Un changement agit au prochain appel, et il est noté au journal.</p>
+<div data-reglages="liste"></div>
 </section>
 <section class="panneau" data-section="testing_froid" data-sig="">
 <h2>Taille des essais</h2>

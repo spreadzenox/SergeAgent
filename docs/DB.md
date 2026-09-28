@@ -17,9 +17,9 @@ recrée jamais ensuite.
 1. **Les migrations** (`serge/db/migrate.py`). Chaque changement de
    structure est une fonction `apply_v0NN` (fichiers `serge/db/v0NN.py`).
    Serge applique celles qui manquent, dans l'ordre. Version actuelle :
-   **25**.
+   **28**.
    - Une base neuve saute directement à la version 7 (le socle,
-     `serge/db/schema.py`), puis applique 8, 9, … 25.
+     `serge/db/schema.py`), puis applique 8, 9, … 28.
    - Une base **plus récente** que le code refuse de démarrer
      (`MigrateError`). Revenir à un ancien commit ne défait pas une
      migration.
@@ -82,6 +82,7 @@ catalogue et la mécanique.
 | Table | Contenu |
 |---|---|
 | `events` | Le journal général : qui, quoi, quand, avec un contenu JSON. |
+| `event_rows` | Quel événement concerne quelle ligne (une table et un numéro). C'est l'historique d'une ligne, que lit l'outil « Lire l'historique ». Rempli par chaque écriture d'invocation et par chaque événement d'un business. |
 | `touches` | Chaque envoi à un prospect. |
 | `inbound_events` | Chaque réaction reçue, traduite en signal. |
 | `ticket_events` | L'historique de chaque ticket. |
@@ -113,14 +114,18 @@ est déjà en base. Chaque table est expliquée dans
 | `tools` | Les outils : une capacité réglée pour un usage précis (`capability_id`). `montre_partout = 1` : appelable par toutes les invocations LLM. |
 | `tool_db_*` | Pour chaque outil de lecture de la base : tables, colonnes, filtres, jointures (toujours faites) et paramètres autorisés. Le modèle n'écrit jamais de SQL. |
 | `invocations` | Chaque invocation, avec ou sans LLM, et tous ses réglages : rôle, étape, niveau de modèle, prompt, file, priorité, interrupteur. |
-| `invocation_tools`, `invocation_tool_params` | Les outils de chaque invocation (donnés d'office ou appelables) et leurs paramètres figés. |
-| `invocation_output_fields` | Le format de la réponse de chaque invocation. |
+| `invocation_tools`, `invocation_tool_params` | Les outils de chaque invocation (lus d'office ou appelables) et leurs paramètres figés. |
+| `table_views`, `table_view_columns` | Ce qu'une invocation peut voir de chaque table, réglé une fois par table : son titre, la colonne des lignes les plus récentes, ses colonnes lisibles et celles de sa version courte (pour un business : numéro et nom). Une colonne absente n'est jamais lue. |
+| `invocation_compare_tables` | Les tables à comparer ajoutées ou retirées pour une invocation. Par défaut, elle voit la version courte des tables où elle écrit. |
+| `invocation_settings` | Les réglages d'une invocation, une ligne par réglage (exemple : « nombre d'idées = 2 », entre 1 et 5). Ils servent dans le prompt (`{nombre_idees}`), le format de la réponse, l'écriture et les paramètres. `policy` = 1 : modifiable sur la page Policy de MC. |
+| `invocation_output_fields` | Le format de la réponse de chaque invocation. Une liste peut avoir un nombre d'éléments minimum et maximum (un nombre ou le nom d'un réglage). |
 | `writable_tables`, `writable_columns` | Ce qu'une invocation a le droit d'écrire. |
-| `invocation_writes`, `invocation_write_values` | Où chaque invocation écrit sa réponse. |
+| `invocation_writes`, `invocation_write_values` | Où chaque invocation écrit sa réponse, avec au besoin « au plus N lignes par passage ». |
 | `status_transitions`, `dedup_rules`, `dedup_rule_columns` | Les protections : changements de statut permis, doublons. |
-| `links`, `link_params`, `link_passages` | Les liens entre invocations, et ce qui est déjà passé. |
+| `table_quotas` | Une protection de plus : « au plus N lignes dont telle colonne vaut l'une de ces valeurs » (exemple : au plus 3 business choisis pour un POC). Modifiable sur la page Policy. |
+| `links`, `link_params`, `link_passages`, `link_passage_params` | Les liens entre invocations, ce qui est déjà passé, et ce qui attend un clic « Passer à la suite » avec ses paramètres (lien réglé à la main). |
 | `triggers`, `trigger_params` | Ce qui lance une invocation : une ligne écrite, une heure, un bouton. |
-| `queues`, `tasks`, `task_params`, `task_inputs` | Les deux files (conversations, travaux), leurs tâches, et ce que chaque tâche a reçu. |
+| `queues`, `tasks`, `task_params`, `task_inputs`, `task_seen_tables` | Les deux files (conversations, travaux), leurs tâches, et ce que chaque tâche a reçu : ses lectures d'office, les tables à comparer et ses leçons (lignes données, lignes laissées de côté). |
 | `llm_models` | Le modèle derrière chaque niveau (rapide, moyen, intelligent). |
 | `serge_texts` | Les textes de Serge, dont sa présentation. |
 | `canaux` | Les canaux par lesquels Serge écrit à un tiers (e-mail, voix). |
@@ -146,7 +151,9 @@ L'ordre des chantiers est dans le [`TODO.md`](../TODO.md). Voici ce qu'ils
 changent dans la base.
 
 **Le pipeline passe en base (lot 6).** C'est fait pour les tables, le
-runner et l'interpréteur (version 25 de la base). `config/pipeline.yaml`
+runner, l'interpréteur, les réglages des invocations et les quotas
+(version 26), ce que voit chaque invocation (version 27) et le passage
+d'un lien à la main (version 28). `config/pipeline.yaml`
 ne décrit encore qu'un demi-cycle de démonstration de l'étape 1 ; le vrai
 pipeline, étape par étape, est l'objet des lots suivants (à commencer par
 le lot 7).

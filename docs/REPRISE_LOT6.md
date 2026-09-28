@@ -30,7 +30,7 @@ base.
   sans jamais écraser ni recréer ce qui a été supprimé),
   `tests/test_pipeline_seed.py`.
 
-## Ce qui est fait sur `Clem` : l'étape 6.2 (la bascule), tests verts
+## Étape 6.2 (la bascule), fusionnée dans `main`
 
 - **L'interpréteur** (`serge/interpreter/`) : la file des tâches
   (`tasks.py`), une fonction par capacité (`tools.py`), le format de
@@ -92,7 +92,7 @@ base.
 7. Quand Serge est arrêté, les déclencheurs horaires ne créent pas de
    tâche.
 
-## Ce qui est fait sur `Clem` après 6.2, à la demande de Clem
+## Fait après 6.2, à la demande de Clem (fusionné aussi)
 
 - **Serge est arrêté par défaut** (`serge/coupe_circuit.py`). Il ne tourne
   qu'après un clic sur « Démarrer Serge » en haut de la page En direct
@@ -102,7 +102,7 @@ base.
   déploiement ou une instance neuve ne démarre jamais Serge.
 - **Un demi-cycle de démonstration** dans `config/pipeline.yaml` : le
   bouton « Lancer un cycle (démo) », puis « Ouvrir un cycle (démo) » (sans
-  LLM), « Formuler deux idées (démo) » et « Choisir un business (démo) »,
+  LLM), « Formuler des idées (démo) » et « Choisir un business (démo) »,
   avec les protections de la table `ventures` (statuts permis, doublons).
   Testé de bout en bout avec un faux modèle, et dans le navigateur
   (`tests/test_pipeline_demo.py`). Le vrai pipeline est l'objet du lot 7.
@@ -112,22 +112,41 @@ base.
 - **La charte** (partie 4) décrit les invocations en base ; Clem l'a
   autorisé exceptionnellement.
 
-### Reste à faire pour finir 6.2
+### Fusionné dans `main`
 
-Pousser `Clem` et fusionner dans `main` par une pull request (chaque
-fusion redéploie Serge sur le serveur de Julien ; Serge y restera arrêté
-jusqu'au clic sur « Démarrer Serge »).
+La bascule 6.2 et ce qui suit sont fusionnés dans `main`
+([PR #31](https://github.com/spreadzenox/SergeAgent/pull/31), 27 septembre
+2026) et déployés sur le serveur de Julien : l'ancien timer y a été
+remplacé par les deux files, et Serge y reste arrêté jusqu'au clic sur
+« Démarrer Serge ».
 
-## Ensuite : ce qui reste du lot 6
+## Ensuite : ce qui reste du lot 6 (sur `Clem`, pas encore dans `main`)
 
-- Mission Control : une vue d'ensemble des capacités, des outils, des
-  liens (avec ce qui est passé, ce qui attend, et un bouton « passer à la
-  suite ») et des déclencheurs.
-- Les outils donnés partout : lire l'historique de l'objet traité, lire
-  ses leçons (seul « demander une nouvelle capacité » existe).
-- Ce que voit une invocation : les lignes les plus récentes d'abord (le
-  catalogue de lecture n'a pas encore d'ordre), la version courte des
-  tables où elle écrit, ses leçons.
+Fait sur `Clem` depuis la fusion (commits locaux, pas encore poussés) :
+
+- les finitions (jours en français, « Relancer la tâche », boutons de
+  l'Écoute) ;
+- les réglages des invocations et les quotas des tables, sur la page
+  Policy (migration v26) ;
+- **ce que voit une invocation** (migration v27, conception :
+  [`LOT6_CONCEPTION.md`](LOT6_CONCEPTION.md) partie 16, « Ce qui a été
+  construit ») : la version courte des tables où elle écrit, les plus
+  récentes d'abord, avec le compte exact de ce qui est laissé de côté ;
+  les outils « Lire les tables que je vois » et « Lire l'historique »
+  (`serge/interpreter/seen.py`) ; ses leçons et le bloc « Qui est Serge »
+  complet (`serge/interpreter/intro.py`) ; sur la fiche MC d'une
+  invocation, les tables à comparer avec leurs boutons, et ses leçons.
+  Tests : `tests/test_interpreter_seen.py`.
+
+- **passer un lien à la main** (migration v28) : une fiche « lien » dans
+  MC, avec « Passer à la suite » et l'interrupteur « passage automatique »
+  (conception : partie 18) ;
+- **la page « Pipeline »** de MC (conception : partie 19).
+
+Le lot 6 est donc construit, et Clem a validé sa fusion dans `main`
+(28 septembre 2026). Ce qu'il laisse aux lots suivants est reporté dans
+le [`TODO.md`](../TODO.md) : la partie « Ce que la règle demande
+concrètement », et les lots 7, 8, 13 et « Pour tout Serge ».
 
 Puis le lot 7 : le vrai cycle de l'étape 1, qui remplace le demi-cycle de
 démonstration (le marquer supprimé en base).

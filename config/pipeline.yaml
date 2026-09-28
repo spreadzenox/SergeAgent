@@ -34,10 +34,11 @@ serge_texts:
       valider les décisions importantes. Sa seule limite est la légalité :
       il ne trompe personne et assume d'être un agent IA.
 
-# Les outils : une capacité du code, réglée pour un usage précis. On les
-# donne aux invocations, d'office (lus avant l'appel et mis dans le prompt)
-# ou appelables (le modèle décide). Un outil « everywhere » est appelable
-# par toutes les invocations LLM.
+# Les outils : une capacité du code, réglée pour un usage précis. Une
+# invocation s'en sert de deux façons : en lecture donnée d'office (Serge
+# lit avant l'appel et met le résultat dans le prompt) ou en outil
+# appelable (le modèle décide). Un outil « everywhere » est appelable par
+# toutes les invocations LLM, quand il leur sert.
 tools:
   - id: web_search
     title: Chercher sur le web public
@@ -57,6 +58,21 @@ tools:
       d'outil), il ouvre une demande à Julien (« j'ai besoin de X ») plutôt
       que d'inventer. Le même besoin déjà ouvert n'est pas recréé.
     capability: request_capability
+    everywhere: true
+  - id: lire_tables_vues
+    title: Lire les tables que je vois
+    doc: >-
+      Lit toutes les colonnes lisibles d'une table que l'invocation voit
+      déjà en version courte : une ligne par son numéro (colonne id), ou
+      toutes les lignes où une colonne vaut une valeur, page par page.
+    capability: seen_table_read
+    everywhere: true
+  - id: lire_historique
+    title: Lire l'historique
+    doc: >-
+      Ce qui est arrivé à une ligne que l'invocation voit : ses derniers
+      événements dans le journal (créée, modifiée, écriture refusée…).
+    capability: row_history
     everywhere: true
   - id: current_listen_cycle
     title: Lire le cycle d'écoute
@@ -162,6 +178,17 @@ status_transitions:
   - {table: ventures, column: lifecycle, from: '', to: CANDIDATE}
   - {table: ventures, column: lifecycle, from: CANDIDATE, to: POC_SELECTED}
 
+# Au plus 3 business choisis pour un POC en même temps : le code
+# d'écriture refuse le quatrième, quelle que soit l'invocation. Le chiffre
+# se règle sur la page Policy de Mission Control.
+table_quotas:
+  - id: business_choisis
+    table: ventures
+    column: lifecycle
+    values: [POC_SELECTED]
+    max: 3
+    description: Au plus 3 business choisis pour un POC en même temps.
+
 # Une fiche trop proche d'un business existant (72 % de mots en commun sur
 # le nom et la description) est écartée, avec une note au journal.
 dedup_rules:
@@ -171,6 +198,40 @@ dedup_rules:
     threshold: 72
     on_duplicate: skip
     columns: [name, description]
+
+# Ce qu'une invocation peut voir de chaque table, réglé une fois par
+# table. La version courte (short) est donnée d'office, pour comparer, à
+# toute invocation qui écrit dans la table ; les autres colonnes listées se
+# lisent avec l'outil « Lire les tables que je vois ». Une colonne absente
+# de la liste n'est jamais lue par une invocation. `order` : la colonne qui
+# dit quelles lignes sont les plus récentes (données en premier).
+table_views:
+  - table: ventures
+    title: Les business
+    description: Chaque business, de l'idée au client, avec son statut.
+    order: created_at
+    columns:
+      - {name: id, short: true, description: Le numéro du business.}
+      - {name: name, short: true, description: Son nom.}
+      - {name: description, description: Ce qu'il vend et à qui.}
+      - {name: sellable_offer, description: L'offre qu'on peut vendre tout de suite.}
+      - {name: observations, description: Ce qu'on a observé.}
+      - {name: lifecycle, description: Son statut.}
+      - {name: created_at, description: Sa date de création.}
+      - {name: updated_at, description: Sa dernière modification.}
+  - table: listen_cycles
+    title: Les cycles d'écoute
+    description: Chaque cycle d'écoute de l'étape 1, avec son texte de guidage.
+    order: created_at
+    columns:
+      - {name: id, short: true, description: Le numéro du cycle.}
+      - {name: guide, short: true, description: Le texte de guidage.}
+      - {name: status, short: true, description: L'état du cycle.}
+      - {name: needs_target, description: Le nombre de besoins visés.}
+      - {name: business_target, description: Le nombre de business à choisir.}
+      - {name: created_at, description: Sa date de création.}
+      - {name: started_at, description: Son début.}
+      - {name: finished_at, description: Sa fin.}
 
 # --- Demi-cycle de démonstration (lot 6) ---------------------------------
 # Trois invocations volontairement simples, pour vérifier que le pipeline
@@ -204,9 +265,9 @@ invocations:
           status: {source: fixed, value: OPEN}
 
   - id: demo_formuler
-    title: Formuler deux idées (démo)
+    title: Formuler des idées (démo)
     role: >-
-      Imagine deux idées de business à partir du texte de guidage du cycle,
+      Imagine des idées de business à partir du texte de guidage du cycle,
       sans reproposer un business déjà connu. Chaque idée devient un
       business candidat.
     step: pre_prospection
@@ -217,25 +278,28 @@ invocations:
     gets_serge_intro: true
     default_max_rows: 20
     max_tool_turns: 4
+    settings:
+      nombre_idees:
+        value: 2
+        min: 1
+        max: 5
+        policy: true
+        description: Le nombre d'idées à proposer à chaque cycle.
     prompt: |
       Ceci est une démonstration du pipeline décrit en base.
-      Propose exactement deux idées de business simples, inspirées du
-      texte de guidage du cycle. N'en propose aucune qui ressemble à un
-      business déjà connu. Chaque idée doit être légale.
+      Propose exactement {nombre_idees} idées de business simples,
+      inspirées du texte de guidage du cycle. N'en propose aucune qui
+      ressemble à un business déjà connu. Chaque idée doit être légale.
     tools:
       - tool: current_listen_cycle
         mode: given
         label: Le cycle en cours
         params:
           cycle_id: {source: task, value: cycle_id}
-      - tool: known_business_candidates
-        mode: given
-        label: Les business déjà connus
-        max_rows: 20
       - {tool: web_search, mode: callable}
       - {tool: memory_search, mode: callable}
     output:
-      - {path: fiches, type: list, description: Les deux idées.}
+      - {path: fiches, type: list, min_items: nombre_idees, max_items: nombre_idees, description: Les idées.}
       - {path: fiches.title, type: text, description: Le nom court du business.}
       - {path: fiches.description, type: text, description: Ce qu'il vend et à qui.}
       - {path: fiches.offre, type: text, required: false, description: L'offre qu'on pourrait vendre tout de suite.}
@@ -259,23 +323,31 @@ invocations:
     model_tier: fast
     queue: works
     priority: 10
+    settings:
+      nombre_a_choisir:
+        value: 1
+        min: 0
+        max: 3
+        policy: true
+        description: Le nombre maximum de business choisis à chaque cycle.
     prompt: |
       Ceci est une démonstration du pipeline décrit en base.
-      Parmi les business candidats, choisis-en au plus un, le plus simple à
-      tester, et dis pourquoi en une phrase.
+      Parmi les business candidats, choisis-en au plus {nombre_a_choisir},
+      les plus simples à tester, et dis pourquoi en une phrase.
     tools:
       - tool: eligible_poc_candidates
         mode: given
         label: Les business candidats
         max_rows: 10
     output:
-      - {path: choix, type: list, description: Le business choisi (au plus un).}
+      - {path: choix, type: list, max_items: nombre_a_choisir, description: Les business choisis.}
       - {path: choix.venture_id, type: text, description: L'identifiant du business.}
       - {path: choix.raison, type: text, required: false, description: Pourquoi, en une phrase.}
     writes:
       - table: ventures
         operation: update
         for_each: choix
+        max_rows: nombre_a_choisir
         key: {column: id, source: field, value: choix.venture_id}
         values:
           lifecycle: {source: fixed, value: POC_SELECTED}

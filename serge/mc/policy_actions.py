@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""MC API mutations politique (édition, testing, proposition)."""
+"""MC API mutations politique (édition, testing, proposition, réglages)."""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Protocol
 
-from serge.db.store import append_event
+from serge.db.store import append_event, utcnow
+from serge.interpreter.settings import check_setting
 from serge.policy import PolicyError, validate_policy
 from serge.policy_snapshots import policy_en_vigueur, snapshot_policy
 from serge.registry import load_ticket_types
@@ -189,3 +190,79 @@ class PolicyActionsMixin(_Base):
                 },
             )
         self._send_json(200, {'ok': True, 'ticket_id': ticket_id})
+
+    def _api_reglage(self) -> None:
+        """Change un réglage d'invocation ou un quota marqué « policy ».
+
+        Corps : ``{cible: 'invocation', invocation_id, name, value}`` ou
+        ``{cible: 'quota', id, value}``. La valeur est vérifiée (type,
+        bornes), enregistrée, et le changement est noté au journal.
+        """
+        if not self._require_owner():
+            return
+        body = self._json_body() or {}
+        cible = str(body.get('cible') or '')
+        value = str(body.get('value', '')).strip()
+        with self._db() as conn:
+            if cible == 'invocation':
+                ident = str(body.get('invocation_id') or '')
+                name = str(body.get('name') or '')
+                row = conn.execute(
+                    'SELECT type, value, min_value, max_value'
+                    ' FROM invocation_settings WHERE invocation_id=?'
+                    ' AND name=? AND policy=1',
+                    (ident, name),
+                ).fetchone()
+                probleme = (
+                    'réglage inconnu'
+                    if row is None
+                    else check_setting(str(row[0]), value, row[2], row[3])
+                )
+                cle = {'invocation_id': ident, 'name': name}
+                sql = (
+                    'UPDATE invocation_settings SET value=?, updated_at=?,'
+                    " updated_by='mc' WHERE invocation_id=? AND name=?"
+                )
+                args: tuple = (value, utcnow(), ident, name)
+            elif cible == 'quota':
+                ident = str(body.get('id') or '')
+                row = conn.execute(
+                    'SELECT max_value, max_value FROM table_quotas'
+                    ' WHERE id=? AND policy=1',
+                    (ident,),
+                ).fetchone()
+                probleme = (
+                    'quota inconnu'
+                    if row is None
+                    else ''
+                    if value.isdigit()
+                    else 'nombre entier attendu'
+                )
+                cle = {'id': ident}
+                sql = (
+                    'UPDATE table_quotas SET max_value=?, updated_at=?,'
+                    " updated_by='mc' WHERE id=?"
+                )
+                args = (int(value) if value.isdigit() else 0, utcnow(), ident)
+            else:
+                probleme = 'cible : invocation ou quota'
+                row, cle, sql, args = None, {}, '', ()
+            if probleme:
+                self._refus(
+                    400, f'Réglage refusé : {probleme}.', 'reglage', ''
+                )
+                return
+            conn.execute(sql, args)
+            append_event(
+                conn,
+                actor='owner',
+                type='mc_act',
+                payload={
+                    'acte': 'reglage',
+                    'cible': cible,
+                    **cle,
+                    'avant': str(row[1]) if row else '',
+                    'apres': value,
+                },
+            )
+        self._send_json(200, {'ok': True, **cle, 'value': value})

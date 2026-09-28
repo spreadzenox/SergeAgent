@@ -62,6 +62,19 @@ class PolicyEnVigueurTests(unittest.TestCase):
         self.assertEqual(live['standing']['cout_usage'], 0.10)
         self.assertEqual(live['standing']['capital_max'], 1.0)
 
+    def test_une_section_retiree_de_la_semence_disparait(self) -> None:
+        """Un ancien snapshot garde « listen » : elle ne revient pas."""
+        import json
+
+        ancien = dict(load_policy())
+        ancien['listen'] = {'discovery_needs_target': 5}
+        self.conn.execute(
+            'INSERT INTO policy_snapshots(content_hash, content_json,'
+            " applied_by, active_from) VALUES('h2',?,'owner','t')",
+            (json.dumps(ancien),),
+        )
+        self.assertNotIn('listen', latest_policy(self.conn))
+
 
 if __name__ == '__main__':
     unittest.main()

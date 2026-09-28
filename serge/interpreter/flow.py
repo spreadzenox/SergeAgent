@@ -5,7 +5,8 @@ Un **lien** part d'une invocation qui vient de finir. En mode
 ``on_finish``, il crée une tâche ; en mode ``per_row``, une tâche par ligne
 écrite par l'une de ses règles d'écriture. Un même résultat n'est jamais
 transmis deux fois (``link_passages``). Un lien dont ``auto`` vaut 0 note
-le passage et attend un clic dans Mission Control.
+le passage avec ses paramètres (``link_passage_params``) et attend le clic
+« Passer à la suite » dans Mission Control.
 
 Un **déclencheur** crée une tâche quand une ligne est écrite dans une table
 (``row_written``), à intervalle régulier (``every``), à une heure fixe
@@ -16,11 +17,13 @@ from __future__ import annotations
 
 import sqlite3
 from collections.abc import Mapping
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any
 from zoneinfo import ZoneInfo
 
 from serge.db.store import utcnow
+from serge.interpreter.schedule import due_slot
+from serge.interpreter.settings import load_settings
 from serge.interpreter.tasks import enqueue_task, task_params
 from serge.interpreter.writer import Written
 
@@ -31,11 +34,14 @@ def _params(
     row: Mapping[str, Any] | None = None,
     task: Mapping[str, str] | None = None,
     form: Mapping[str, Any] | None = None,
+    settings: Mapping[str, str] | None = None,
 ) -> dict[str, str]:
     out: dict[str, str] = {}
     for name, source, value in rows:
         if source == 'fixed':
             out[name] = value
+        elif source == 'setting':
+            out[name] = str((settings or {}).get(value, ''))
         elif source == 'row':
             out[name] = str((row or {}).get(value, '') or '')
         elif source == 'task':
@@ -68,8 +74,25 @@ def _pass(
         ' VALUES(?,?,?)',
         (link_id, source_ref, utcnow()),
     )
-    if cursor.rowcount != 1 or not auto:
+    if cursor.rowcount != 1:
         return
+    if not auto:
+        conn.executemany(
+            'INSERT OR REPLACE INTO link_passage_params(link_id, source_ref,'
+            ' name, value) VALUES(?,?,?,?)',
+            [(link_id, source_ref, k, v) for k, v in sorted(params.items())],
+        )
+        return
+    _mark_passed(conn, link_id, source_ref, to_invocation, params)
+
+
+def _mark_passed(
+    conn: sqlite3.Connection,
+    link_id: str,
+    source_ref: str,
+    to_invocation: str,
+    params: Mapping[str, str],
+) -> str | None:
     task_id = enqueue_task(
         conn, to_invocation, params, origin='link', origin_ref=link_id
     )
@@ -78,6 +101,58 @@ def _pass(
         ' WHERE link_id=? AND source_ref=?',
         (task_id or '', utcnow(), link_id, source_ref),
     )
+    return task_id
+
+
+def pass_waiting(
+    conn: sqlite3.Connection, link_id: str, source_ref: str
+) -> str | None:
+    """« Passer à la suite » : lance un passage qui attendait un clic.
+
+    L'invocation suivante reçoit les paramètres gardés au moment du
+    passage. Exemple : ``venture_id = 12`` pour le business choisi.
+
+    Returns:
+        L'id de la tâche créée, ou ``None`` si rien n'attend (déjà passé,
+        lien éteint ou supprimé, invocation suivante éteinte).
+    """
+    row = conn.execute(
+        'SELECT l.to_invocation_id FROM link_passages p'
+        ' JOIN links l ON l.id=p.link_id'
+        " WHERE p.link_id=? AND p.source_ref=? AND p.passed_at=''"
+        " AND l.enabled=1 AND l.deleted_at=''",
+        (link_id, source_ref),
+    ).fetchone()
+    if row is None:
+        return None
+    params = {
+        str(name): str(value)
+        for name, value in conn.execute(
+            'SELECT name, value FROM link_passage_params'
+            ' WHERE link_id=? AND source_ref=?',
+            (link_id, source_ref),
+        ).fetchall()
+    }
+    if not conn.execute(
+        "SELECT 1 FROM invocations WHERE id=? AND enabled=1 AND deleted_at=''",
+        (str(row[0]),),
+    ).fetchone():
+        return None
+    return _mark_passed(conn, link_id, source_ref, str(row[0]), params)
+
+
+def set_link_auto(conn: sqlite3.Connection, link_id: str, auto: bool) -> bool:
+    """L'interrupteur « passage automatique » d'un lien.
+
+    Il ne vaut que pour les passages suivants : ce qui attend déjà un clic
+    continue d'attendre.
+    """
+    cursor = conn.execute(
+        "UPDATE links SET auto=?, updated_at=?, updated_by='owner'"
+        " WHERE id=? AND deleted_at=''",
+        (int(auto), utcnow(), link_id),
+    )
+    return cursor.rowcount == 1
 
 
 def pass_links(
@@ -88,6 +163,7 @@ def pass_links(
 ) -> None:
     """Lance les invocations suivantes, selon les liens de celle-ci."""
     task = task_params(conn, task_id)
+    settings = load_settings(conn, invocation_id)
     for link_id, to_inv, mode, write_id, auto in conn.execute(
         'SELECT id, to_invocation_id, mode, write_id, auto FROM links'
         " WHERE from_invocation_id=? AND enabled=1 AND deleted_at=''",
@@ -101,7 +177,7 @@ def pass_links(
                 str(to_inv),
                 bool(auto),
                 f'task:{task_id}',
-                _params(rows, task=task),
+                _params(rows, task=task, settings=settings),
             )
             continue
         done = written.get(int(write_id))
@@ -115,7 +191,7 @@ def pass_links(
                 str(to_inv),
                 bool(auto),
                 ref,
-                _params(rows, row=row, task=task),
+                _params(rows, row=row, task=task, settings=settings),
             )
 
 
@@ -156,44 +232,6 @@ def _trigger_param_rows(conn: sqlite3.Connection, trigger_id: str) -> list:
     ]
 
 
-DAYS = ('mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun')
-
-
-def _due(
-    event: str,
-    every: int,
-    at_time: str,
-    at_days: str,
-    last: str,
-    now: datetime,
-    zone: ZoneInfo,
-) -> str:
-    """Le créneau à déclencher maintenant, ou ``''``."""
-    if event == 'every':
-        if every <= 0:
-            return ''
-        if last and now - datetime.fromisoformat(last) < timedelta(
-            minutes=every
-        ):
-            return ''
-        return now.isoformat(timespec='minutes')
-    local = now.astimezone(zone)
-    days = {d.strip() for d in at_days.split(',') if d.strip()}
-    if days and DAYS[local.weekday()] not in days:
-        return ''
-    try:
-        hour, minute = (int(x) for x in at_time.split(':'))
-    except ValueError:
-        return ''
-    target = local.replace(hour=hour, minute=minute, second=0, microsecond=0)
-    if local < target:
-        return ''
-    slot = target.isoformat(timespec='minutes')
-    if last and datetime.fromisoformat(last) >= target:
-        return ''
-    return slot
-
-
 def fire_due_triggers(
     conn: sqlite3.Connection, now: str, timezone: str = 'Europe/Paris'
 ) -> None:
@@ -205,7 +243,7 @@ def fire_due_triggers(
         " last_fired_at FROM triggers WHERE event IN ('every', 'at')"
         " AND enabled=1 AND deleted_at=''"
     ).fetchall():
-        slot = _due(
+        slot = due_slot(
             str(event),
             int(every),
             str(at_time),

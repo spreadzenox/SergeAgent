@@ -14,11 +14,17 @@ EVENTS = {
     'sms.sent': 'SMS envoyé',
     'task.done': 'Tâche terminée',
     'task.failed': 'Tâche échouée',
+    'task.relaunched': 'Tâche relancée',
     'task.resumed': 'Tâche reprise après un arrêt',
     'write.inserted': 'Ligne ajoutée',
     'write.updated': 'Ligne modifiée',
     'write.refused': 'Écriture refusée',
     'write.skipped': 'Doublon écarté',
+    'invocation.compare': 'Tables à comparer changées',
+    'link.passed': 'Passage à la main',
+    'link.auto': 'Passage automatique changé',
+    'pipeline.model': 'Modèle d’un niveau changé',
+    'pipeline.text': 'Texte « Qui est Serge » changé',
     'mc_act': 'Acte owner',
     'transition.approved': 'Approuvé',
     'transition.rejected': 'Rejeté',
@@ -120,7 +126,6 @@ SECTIONS_POLICY = {
     'memory': 'Mémoire',
     'tickets': 'Tickets',
     'consent': 'Consentement',
-    'listen': 'Écoute',
 }
 
 

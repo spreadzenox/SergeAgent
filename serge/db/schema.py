@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import sqlite3
 
-SCHEMA_VERSION = 25
+SCHEMA_VERSION = 28
 
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS schema_version (
@@ -294,6 +294,13 @@ TABLES = (
     'invocation_tools',
     'invocation_tool_params',
     'invocation_output_fields',
+    'invocation_settings',
+    'table_quotas',
+    'table_views',
+    'table_view_columns',
+    'invocation_compare_tables',
+    'event_rows',
+    'task_seen_tables',
     'writable_tables',
     'writable_columns',
     'invocation_writes',
@@ -304,6 +311,7 @@ TABLES = (
     'links',
     'link_params',
     'link_passages',
+    'link_passage_params',
     'triggers',
     'trigger_params',
     'queues',

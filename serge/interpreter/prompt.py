@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """Préparer ce qu'une invocation LLM reçoit, et appeler le modèle.
 
-Le prompt est assemblé à partir de la base : le texte « Qui est Serge » si
-l'invocation le demande, ses consignes, le format de réponse attendu, puis
-chaque outil donné d'office, lu avant l'appel. Le modèle peut ensuite
-appeler ses outils appelables, dans la limite réglée sur l'invocation.
+Le prompt est assemblé à partir de la base : le bloc « Qui est Serge » si
+l'invocation le demande (la chaîne, sa place, ce qui vient avant et après
+elle), ses consignes et le format de réponse attendu. Le message suivant
+contient ce qu'elle reçoit d'office : ses lectures (ce qu'elle doit
+traiter), la version courte des tables à comparer, et ses leçons. Le
+modèle peut ensuite appeler ses outils, dans la limite réglée sur
+l'invocation.
 """
 
 from __future__ import annotations
@@ -15,7 +18,10 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
+from serge.interpreter.intro import lessons_block, serge_intro
 from serge.interpreter.output import Field, describe_format
+from serge.interpreter.seen import short_blocks
+from serge.interpreter.settings import fill_prompt, load_settings
 from serge.interpreter.tools import fixed_params, run_tool, tool_schema
 from serge.llm.client import ChatResult
 
@@ -31,6 +37,7 @@ class Invocation:
     default_max_rows: int
     max_tool_turns: int
     capability_id: str
+    step_id: str
 
 
 def load_invocation(
@@ -38,7 +45,8 @@ def load_invocation(
 ) -> Invocation:
     row = conn.execute(
         'SELECT id, title, type, model_tier, prompt, gets_serge_intro,'
-        ' default_max_rows, max_tool_turns, capability_id FROM invocations'
+        ' default_max_rows, max_tool_turns, capability_id, step_id'
+        ' FROM invocations'
         ' WHERE id=?',
         (invocation_id,),
     ).fetchone()
@@ -54,6 +62,7 @@ def load_invocation(
         int(row[6]),
         int(row[7]),
         str(row[8]),
+        str(row[9] or ''),
     )
 
 
@@ -63,11 +72,13 @@ def given_blocks(
     task_id: str,
     task: Mapping[str, str],
 ) -> str:
-    """Lit chaque outil donné d'office et en fait un bloc du prompt.
+    """Ce qu'elle reçoit d'office, en blocs du prompt.
 
-    Exemple : « Les business déjà connus (50 montrés, 90 laissés de
-    côté) », suivi des lignes. Le nombre de lignes données et laissées est
-    noté dans ``task_inputs``, pour Mission Control.
+    D'abord chaque lecture donnée d'office (ce qu'elle doit traiter,
+    réglé sur ses liens aux outils), puis la version courte des tables à
+    comparer, puis ses leçons. Exemple : « Le cycle en cours », suivi de
+    ses lignes. Le nombre de lignes données et laissées de côté est noté
+    en base (``task_inputs``, ``task_seen_tables``), pour Mission Control.
     """
     blocks: list[str] = []
     for link_id, tool_id, label, max_rows in conn.execute(
@@ -79,7 +90,8 @@ def given_blocks(
         rows = result.get('rows')
         limit = int(max_rows) or inv.default_max_rows
         if isinstance(rows, list):
-            shown, left = rows[:limit], max(0, len(rows) - limit)
+            total = int(result.get('total') or len(rows))
+            shown, left = rows[:limit], max(0, total - min(len(rows), limit))
             body = json.dumps(shown, ensure_ascii=False, default=str)
             if left:
                 body += f'\n({left} autres lignes ne sont pas montrées.)'
@@ -92,6 +104,12 @@ def given_blocks(
             (task_id, int(link_id), len(shown), left),
         )
         blocks.append(f'## {label or tool_id}\n{body}')
+    blocks += short_blocks(conn, inv.id, task_id, inv.default_max_rows)
+    lessons = lessons_block(
+        conn, inv.id, inv.step_id, task_id, inv.default_max_rows
+    )
+    if lessons:
+        blocks.append(lessons)
     return '\n\n'.join(blocks)
 
 
@@ -100,13 +118,8 @@ def system_prompt(
 ) -> str:
     parts: list[str] = []
     if inv.gets_serge_intro:
-        row = conn.execute(
-            "SELECT body FROM serge_texts WHERE id='presentation'"
-        ).fetchone()
-        if row and str(row[0]).strip():
-            parts.append(f'# Qui est Serge\n{str(row[0]).strip()}')
-        parts.append(f'# Ta place\nTu es « {inv.title} ».')
-    parts.append(inv.prompt.strip())
+        parts.append(serge_intro(conn, inv.id, inv.title, inv.step_id))
+    parts.append(fill_prompt(inv.prompt.strip(), load_settings(conn, inv.id)))
     fmt = describe_format(fields)
     if fmt:
         parts.append(f'# Format de ta réponse\n{fmt}')
@@ -121,7 +134,9 @@ def callable_tools(
     En plus des outils de l'invocation, chaque invocation LLM peut appeler
     les outils marqués « partout » (``tools.montre_partout``), par exemple
     « Demander une nouvelle capacité ». Ceux-là n'ont pas de lien, donc
-    pas de paramètre figé.
+    pas de paramètre figé. Un outil qui ne lui sert à rien n'est pas
+    proposé : « Lire les tables que je vois », pour une invocation qui ne
+    voit aucune table.
     """
     schemas: list[dict[str, Any]] = []
     links: dict[str, int | None] = {}
@@ -131,14 +146,17 @@ def callable_tools(
         (inv.id,),
     ).fetchall():
         fixed = set(fixed_params(conn, inv.id, int(link_id), task))
-        schemas.append(tool_schema(conn, str(tool_id), fixed))
-        links[str(tool_id)] = int(link_id)
+        schema = tool_schema(conn, str(tool_id), fixed, inv.id)
+        if schema is not None:
+            schemas.append(schema)
+            links[str(tool_id)] = int(link_id)
     for (tool_id,) in conn.execute(
         'SELECT t.id FROM tools t JOIN capabilities c ON c.id=t.capability_id'
         ' WHERE t.montre_partout=1 AND c.available=1 ORDER BY t.id'
     ).fetchall():
-        if str(tool_id) not in links:
-            schemas.append(tool_schema(conn, str(tool_id), set()))
+        schema = tool_schema(conn, str(tool_id), set(), inv.id)
+        if str(tool_id) not in links and schema is not None:
+            schemas.append(schema)
             links[str(tool_id)] = None
     return schemas, links
 

@@ -27,9 +27,9 @@ from serge.mc.auth import (
     revoke_session,
 )
 from serge.mc.coupe_actions import CoupeActionsMixin
-from serge.mc.ecoute_actions import EcouteActionsMixin
 from serge.mc.etape_actions import EtapeActionsMixin
 from serge.mc.llm_actions import LlmActionsMixin
+from serge.mc.pipeline_actions import PipelineActionsMixin
 from serge.mc.policy_actions import PolicyActionsMixin
 from serge.mc.projectors import PAGE_SECTIONS, SnapshotCache
 from serge.mc.sse import state_payload, stream_page
@@ -68,7 +68,7 @@ class McHandler(
     PolicyActionsMixin,
     CoupeActionsMixin,
     EtapeActionsMixin,
-    EcouteActionsMixin,
+    PipelineActionsMixin,
     LlmActionsMixin,
     ActionsMixin,
     BaseHTTPRequestHandler,
@@ -359,9 +359,16 @@ class McHandler(
             '/owner/api/policy/edit': self._api_policy_edit,
             '/owner/api/policy/testing': self._api_policy_testing,
             '/owner/api/policy/propose': self._api_policy_propose,
+            '/owner/api/reglage': self._api_reglage,
             '/owner/api/coupe': self._api_coupe,
             '/owner/api/etape': self._api_etape,
             '/owner/api/bouton': self._api_bouton,
+            '/owner/api/tache/relancer': self._api_tache_relancer,
+            '/owner/api/invocation/comparer': self._api_comparer,
+            '/owner/api/lien/passer': self._api_lien_passer,
+            '/owner/api/lien/auto': self._api_lien_auto,
+            '/owner/api/pipeline/modele': self._api_pipeline_modele,
+            '/owner/api/pipeline/texte': self._api_pipeline_texte,
         }
         acte = apis.get(path)
         if acte is None:

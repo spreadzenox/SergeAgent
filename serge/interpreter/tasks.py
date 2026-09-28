@@ -156,3 +156,16 @@ def finish_task(
         'UPDATE tasks SET status=?, last_error=?, finished_at=? WHERE id=?',
         ('failed' if error else 'done', error[:500], utcnow(), task_id),
     )
+
+
+def relaunch_task(conn: sqlite3.Connection, task_id: str) -> bool:
+    """Remet une tâche échouée dans sa file. Faux si elle n'avait pas échoué.
+
+    Elle repart de zéro ; son nombre d'essais est gardé.
+    """
+    cursor = conn.execute(
+        "UPDATE tasks SET status='ready', last_error='', not_before='',"
+        " started_at='', finished_at='' WHERE id=? AND status='failed'",
+        (task_id,),
+    )
+    return cursor.rowcount == 1

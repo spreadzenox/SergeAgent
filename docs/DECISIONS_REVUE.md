@@ -913,3 +913,74 @@ Lots 1 à 5 faits. Ensuite :
 11. Étapes 3, 4, 6, 7, 8.
 12. Web.
 13. L'éditeur sans code dans MC.
+
+### Q60 — Ce que voit une invocation : version courte systématique et « Lire les tables que je vois » (validé par Clem)
+1. Toute invocation reçoit d'office la version courte des tables où elle
+   écrit. C'est systématique mais pas écrit dans le code : la base dit,
+   une fois pour chaque table, quelles colonnes forment sa version courte,
+   et l'interpréteur applique la règle. On peut ajuster, invocation par
+   invocation, les tables à comparer dans MC.
+2. Le détail (ce qu'une ligne contient maintenant) et l'historique (ce qui
+   lui est arrivé, lu dans le journal) sont deux choses différentes.
+3. Un nouvel outil, « Lire les tables que je vois » : ce n'est pas un outil
+   codé, mais une sorte d'outil. Il y en a un par invocation, construit à
+   partir de ses réglages en base, en particulier de l'ensemble des tables
+   qu'elle voit en version courte. Dans ces tables seulement, le modèle
+   peut demander toutes les lignes et toutes les colonnes marquées
+   lisibles. Il ne peut pas lire une table qu'il ne voit pas.
+4. Les autres outils donnés à toutes les invocations : « Lire
+   l'historique » d'une ligne qu'elle voit, « Chercher dans la mémoire »,
+   « Demander une nouvelle capacité ». Ses propres leçons sont données
+   d'office.
+
+### Q61 — Les réglages des invocations, marqués « policy » (validé par Clem)
+Les réglages chiffrés propres à une invocation (par exemple « combien de
+business choisir ») sont rangés avec l'invocation, et non dans la policy
+générale. Mais ils portent une étiquette « policy » : la page Policy de MC
+cherche en base tous les réglages ainsi marqués et les rend modifiables en
+direct.
+
+### Q63 — Relier les réglages au format de la réponse et à l'écriture (validé par Clem, pour l'instant)
+1. Les réglages d'une invocation sont rangés dans une petite table
+   rattachée à l'invocation, une ligne par réglage (nom, type, valeur,
+   bornes, description, étiquette « policy »).
+2. Un réglage sert partout où l'invocation a une valeur : dans le prompt
+   (`{nom}` remplacé à chaque appel), dans le format de la réponse (nombre
+   d'éléments minimum et maximum d'une liste), dans l'écriture (une
+   colonne reçoit un réglage, « au plus N lignes »), et dans les
+   paramètres des outils, de la capacité et des liens.
+3. Une nouvelle protection par table, le quota : « au plus N lignes dans
+   tel état », par exemple 3 business en test léger. Le chiffre est un
+   réglage marqué « policy ».
+4. Les capacités restent générales et reçoivent leurs chiffres par leurs
+   paramètres. Pas de calculs dans les réglages.
+5. Clem : l'organisation sera sans doute retouchée quand on pourra créer
+   une invocation depuis Mission Control. Détail :
+   [`LOT6_CONCEPTION.md`](LOT6_CONCEPTION.md), partie 17.
+
+### Q62 — Suite du lot 6 (validé par Clem)
+1. Les messages reçus de l'extérieur qui ne lancent pas les déclencheurs
+   (SMS, e-mail, paiements) : plus tard, au lot 8.
+2. Le passage à la main d'un lien est construit (bouton « passer à la
+   suite » dans MC). Il existera à côté de la validation par ticket
+   Discord du lot 8 : les deux fonctionnements servent.
+3. Pas de réglage de créativité (« température ») par invocation : le
+   modèle garde le réglage par défaut du fournisseur.
+
+### Q64 — Avant de finir le lot 6 (validé par Clem)
+1. Le premier cercle (ce que l'invocation doit traiter) reste réglé
+   invocation par invocation : c'est le lien qui détermine ce qui est lu
+   d'office. Ce n'est pas un « outil » que le modèle appelle : Serge fait
+   la lecture avant l'appel et la met directement dans le prompt. Dans la
+   doc et MC, on dit « lecture donnée d'office » ; « outil » est réservé à
+   ce que le modèle appelle lui-même.
+2. Le quota est construit au lot 6 avec un premier quota simple (au plus
+   3 business choisis pour un POC). La règle complète des places de test
+   viendra en planifiant étape par étape.
+3. La section « Écoute » de la policy générale est retirée : ses chiffres
+   reviendront comme réglages des invocations du lot 7.
+4. La vue d'ensemble (capacités, outils, liens, déclencheurs, modèle par
+   niveau, texte « Qui est Serge ») est une nouvelle page « Pipeline » de
+   MC.
+5. On travaille toujours sur `Clem`. Chaque fusion dans `main` est
+   demandée à Clem avant d'être faite.

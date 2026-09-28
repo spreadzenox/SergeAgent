@@ -30,6 +30,7 @@ class PolicyRegistryTests(unittest.TestCase):
             [
                 'meta',
                 'politique_active',
+                'reglages',
                 'testing_froid',
                 'trust_candidates',
             ],

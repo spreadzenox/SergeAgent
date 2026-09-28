@@ -41,7 +41,8 @@ passent en `PARKED`.
    sur leur fiche.
 5. **Quand le business principal passe en `MAINTENANCE`**, la place se
    libère. Le choix suivant compare aussi les business `PARKED` testés il
-   y a moins de 60 jours (réglage de la policy). Un business `PARKED` plus
+   y a moins de 60 jours (un réglage de l'invocation qui compare, modifiable
+   sur la page Policy). Un business `PARKED` plus
    ancien repasse en `CANDIDATE`.
 6. Si les tests légers ne sont pas tous finis, la place reste vide jusqu'à
    ce qu'ils le soient.

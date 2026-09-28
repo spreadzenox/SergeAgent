@@ -387,7 +387,9 @@ transmis deux fois.
   table des messages reçus, avec `direction` = `entrant`. Il n'y a donc pas
   d'événement spécial « message reçu » : c'est une ligne écrite comme une
   autre.
-- Pour `every` : `every_minutes`. Pour `at` : `at_time` et `at_days`.
+- Pour `every` : `every_minutes`. Pour `at` : `at_time` (par exemple
+  `08:30`, heure de Paris) et `at_days` (par exemple `lun,jeu` ; vide = tous
+  les jours). Un horaire mal écrit est refusé au remplissage de la base.
 - `enabled`, `origin`, `deleted_at`, `updated_at`, `updated_by`.
 
 ### `trigger_params` — ce que le déclencheur transmet
@@ -660,3 +662,199 @@ l'invocation.
    filet de sécurité : l'invocation reçoit la liste courte de ce qui
    existe, et son prompt lui demande de ne pas le reproposer.
 6. **Le vocabulaire** « capacité » et « outil » est validé.
+
+---
+
+## 16. Ce que voit une invocation, et l'outil pour lire le reste (validé, Q60, construit)
+
+Le principe est dans [`MEMOIRE.md`](MEMOIRE.md). Voici ce qu'il demande en
+base. Rien n'y est propre à une invocation : les règles sont réglées une
+fois par table, et chaque invocation peut seulement ajuster sa liste de
+tables à comparer.
+
+**Pour chaque table, une fois** :
+
+- `table_views` : une ligne par table qu'une invocation peut voir.
+  Colonnes : `table_name`, `description` (ce que contient la table, en
+  français), `order_column` (la colonne qui dit quelles lignes sont les
+  plus récentes, par exemple `created_at`).
+- `table_view_columns` : une ligne par colonne lisible. Colonnes :
+  `table_name`, `column_name`, `short` (1 si la colonne fait partie de la
+  version courte), `description`. Une colonne absente n'est jamais lue par
+  une invocation. Exemple pour les business : numéro et nom dans la
+  version courte ; description, offre, statut et dates lisibles ; rien
+  d'autre.
+
+**Pour chaque invocation** :
+
+- `invocation_compare_tables` : les ajustements de son deuxième cercle.
+  Par défaut, elle voit en version courte les tables où elle écrit. Une
+  ligne `included` = 1 ajoute une table à comparer, une ligne
+  `included` = 0 en retire une. Réglable dans Mission Control.
+
+**Ce que l'interpréteur en fait, à chaque appel** :
+
+1. Il donne d'office la version courte de chaque table du deuxième
+   cercle, les lignes les plus récentes d'abord, au plus le maximum de
+   l'invocation, avec le nombre exact de lignes laissées de côté.
+2. Il construit l'outil **« Lire les tables que je vois »** pour cette
+   invocation. Ce n'est pas un outil écrit à la main : c'est la capacité
+   de lecture, réglée à chaque appel avec l'ensemble des tables du
+   deuxième cercle. Le modèle choisit une de ces tables et peut demander
+   une ligne par son numéro, ou toutes les lignes, avec un filtre simple
+   (une colonne égale à une valeur), page par page. Il reçoit toutes les
+   colonnes lisibles.
+3. Il donne l'outil **« Lire l'historique »** d'une ligne qu'elle voit :
+   les derniers événements du journal qui la concernent.
+4. Il donne d'office ses leçons : celles rattachées à l'invocation, puis
+   à son étape, puis à tout Serge, les plus fiables d'abord.
+5. Il écrit le bloc **« Qui est Serge »** complet, si l'invocation le
+   demande : la présentation, la chaîne des 8 étapes, sa place, et ce qui
+   vient juste avant et juste après elle, lu dans les liens.
+
+**Ce qui a été construit** (version 27 de la base) :
+
+- `table_views` a aussi un `title` (« Les business »), qui sert de titre
+  au bloc donné d'office et sur la fiche de l'invocation.
+- Deux tables de plus. `event_rows` dit quel événement du journal
+  concerne quelle ligne : chaque écriture d'invocation la remplit, ainsi
+  que tout événement d'un business (`venture_id`) ; les anciens
+  événements ont été repris. `task_seen_tables` garde, pour chaque tâche,
+  les lignes données et laissées de côté par table à comparer (et
+  `lessons` pour ses leçons), affichées sur la fiche de la tâche.
+- Les deux outils sont deux capacités du code (`seen_table_read`,
+  `row_history`, dans `serge/interpreter/seen.py`) et deux outils
+  « partout » de `pipeline.yaml`. À chaque appel, leur schéma ne propose
+  que les tables de l'invocation ; une invocation qui ne voit aucune
+  table ne les reçoit pas. Les tables permises sont recalculées quand le
+  modèle appelle l'outil : il ne peut pas en forger une autre.
+- Une page de « Lire les tables que je vois » ou de « Lire l'historique »
+  a la taille du maximum de lignes de l'invocation.
+- « Lire l'historique » vaut pour les tables à comparer et pour celles de
+  ses lectures d'office (ce qu'elle doit traiter).
+- La portée d'une leçon s'écrit `invocation:<id>` ou `etape:<id>`, comme
+  les portées qui existaient déjà (`global`, `venture:<id>`). Une leçon
+  dépassée ou expirée n'est jamais donnée.
+- Le bloc « Ta place » cite aussi les déclencheurs qui la lancent.
+- Les lectures d'office suivent la même règle : les plus récentes
+  d'abord (par la colonne d'ordre de la table lue) et le compte exact des
+  lignes laissées de côté, même au-delà de 200.
+- Sur la fiche d'une invocation, le cadre « Ce qu'elle voit pour
+  comparer » a un bouton par table : retirer, remettre ou ajouter.
+
+---
+
+## 17. Les réglages d'une invocation, et les quotas des tables (validé, Q61, construit)
+
+Le format de la réponse et l'écriture sont déjà décrits en base (parties 4
+et 5). Ce qui manquait, c'est de les relier aux chiffres réglables. Clem a
+validé cette organisation pour l'instant ; elle sera sans doute retouchée
+quand on créera une invocation depuis Mission Control (lot 13).
+
+**`invocation_settings` : les réglages d'une invocation.** Une ligne par
+réglage, rattachée à l'invocation (la charte interdit de ranger une liste
+de valeurs dans une seule case). Colonnes : `invocation_id`, `name`,
+`type` (nombre, texte ou oui/non), `value`, `min_value` et `max_value`
+(les bornes, pour un nombre), `description` (à quoi il sert, en
+français), `policy` (1 pour qu'il apparaisse sur la page Policy de
+Mission Control, modifiable en direct, chaque changement noté au
+journal). Exemple : « Formuler des idées » a le réglage « nombre
+d'idées = 2 », entre 1 et 10.
+
+**Un réglage sert partout où l'invocation a une valeur** :
+
+- **dans le prompt** : `{nombre_idees}` est remplacé par la valeur à
+  chaque appel. Exemple : « Propose {nombre_idees} idées ».
+- **dans le format de la réponse** : une liste peut avoir un nombre
+  d'éléments minimum et maximum (colonnes `min_items` et `max_items` de
+  `invocation_output_fields`), écrits comme un nombre ou comme le nom
+  d'un réglage. L'interpréteur l'annonce au modèle et le vérifie ; sinon,
+  il redemande avec l'erreur.
+- **dans l'écriture** : une colonne peut recevoir un réglage (une source
+  `setting` de plus dans `invocation_write_values`), et une écriture peut
+  être limitée à « au plus N lignes » (colonne `max_rows` de
+  `invocation_writes`, un nombre ou un réglage).
+- **dans les paramètres des outils, de la capacité et des liens** : la
+  même source `setting`. Exemple : « lire au plus N pages ».
+
+**`table_quotas` : les quotas d'une table.** Une protection de plus, réglée
+sur la table comme les changements de statut : « au plus N lignes de
+cette table dont telle colonne vaut l'une de ces valeurs ». Colonnes :
+`id`, `table_name`, `column_name`, `counted_values` (la liste des valeurs
+comptées, séparées par des virgules), `max_value`, `description`,
+`policy`. Exemple : au plus 3 business en test léger en même temps. Le
+code d'écriture refuse une ligne de trop, quelle que soit l'invocation qui
+écrit, et le note au journal.
+
+**Les capacités restent générales.** « Ajouter N lignes dans telle table »
+n'est pas une capacité : c'est l'écriture, réglée comme ci-dessus. Une
+capacité, c'est ce qui n'est ni lire ni écrire (chercher sur le web,
+envoyer un e-mail, appeler une API). Elle reçoit ses chiffres par ses
+paramètres, qui peuvent venir d'un réglage.
+
+**Ce qu'on ne fait pas** : pas de calculs dans les réglages (par exemple
+« places libres = 3 − business en test ») : le quota protège, et le
+modèle compte lui-même ce qu'il voit. Les conditions (« écrire seulement
+si… ») viennent au lot 8. Les très grosses sorties (un plan complet, du
+code) restent un champ texte ou des fichiers du bac à sable (lot 12).
+
+**Ce qui reste dans la policy générale** : ce qui ne concerne aucune
+invocation en particulier (budget du jour, quotas d'envoi, heures
+d'appel). La page Policy montre à la fois la policy générale, les
+réglages des invocations et les quotas des tables marqués « policy ».
+
+---
+
+## 18. Passer un lien à la main (validé, Q62, construit)
+
+Un lien réglé « à la main » (`links.auto` = 0) ne lance pas l'invocation
+suivante : il note le passage et attend un clic. Exemple : après
+« Concevoir le POC », attendre le feu vert de Julien avant de construire.
+Ce passage à la main existe à côté de la validation par ticket Discord du
+lot 8 : les deux fonctionnements servent.
+
+**En base.** Le passage est noté dans `link_passages`, comme pour un lien
+automatique, mais sans tâche ni date de passage. Ses paramètres sont
+gardés dans `link_passage_params` (version 28 de la base), une ligne par
+paramètre : `link_id`, `source_ref`, `name`, `value`. Exemple :
+`venture_id = 12` pour le business choisi. Au clic, l'invocation suivante
+reçoit exactement ces paramètres, même si la ligne d'origine a changé
+depuis.
+
+**Dans Mission Control**, chaque lien a sa fiche (`#/objet/lien/<id>`),
+ouverte depuis la fiche d'une invocation (« Ce qui la lance », « Ce
+qu'elle lance ensuite ») ou depuis la page Pipeline :
+
+- ce qui attend un clic, avec ses paramètres, et un bouton « Passer à la
+  suite » par passage ;
+- les 20 derniers passages, avec la tâche créée ;
+- l'interrupteur « passage automatique ». Il ne vaut que pour les
+  passages suivants : ce qui attend déjà un clic continue d'attendre.
+
+Un passage déjà fait ne peut pas être relancé. Rien ne passe vers une
+invocation éteinte ou par un lien éteint : le passage reste en attente.
+Chaque clic est noté au journal (`link.passed`, `link.auto`).
+
+---
+
+## 19. La page « Pipeline » de Mission Control (validé, Q64, construit)
+
+Une page de plus dans Mission Control (`#/pipeline`) montre tout le
+pipeline tel qu'il est en base, sans rien calculer à part :
+
+- les liens, avec d'où à où, quand ils passent, s'ils passent seuls ou à
+  la main, et combien de passages attendent un clic ou sont déjà passés ;
+- les déclencheurs, avec l'invocation qu'ils lancent et quand ;
+- les outils, avec leur capacité et à qui ils sont donnés ;
+- les capacités du code, présentes ou non ;
+- ce que les invocations voient de chaque table (version courte,
+  colonnes lisibles, colonne des plus récentes) ;
+- le modèle derrière chaque niveau (rapide, moyen, intelligent) et le
+  texte « Qui est Serge ».
+
+Chaque ligne ouvre la fiche de son objet. Deux choses s'y modifient : le
+modèle d'un niveau (`llm_models.model` ; vide, c'est celui choisi à
+l'installation, affiché en gris) et le texte « Qui est Serge »
+(`serge_texts`). Chaque changement est noté au journal
+(`pipeline.model`, `pipeline.text`). Créer ou modifier le reste depuis le
+site (une invocation, un lien, un outil) reste le travail du lot 13.

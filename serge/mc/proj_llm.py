@@ -12,6 +12,8 @@ from __future__ import annotations
 import sqlite3
 from typing import Any
 
+from serge.mc.proj_vues import cadres_vues
+
 NIVEAUX = {
     'fast': 'Rapide — un réflexe (classer, extraire). Le moins cher.',
     'mid': 'Moyen — assez malin pour rédiger ou comparer.',
@@ -84,15 +86,17 @@ def _outils(
 
 def _format(conn: sqlite3.Connection, ident: str) -> list[dict[str, str]]:
     champs = []
-    for path, kind, choices, required, description in conn.execute(
-        'SELECT path, type, choices, required, description'
-        ' FROM invocation_output_fields WHERE invocation_id=?'
+    for path, kind, choices, required, description, low, high in conn.execute(
+        'SELECT path, type, choices, required, description, min_items,'
+        ' max_items FROM invocation_output_fields WHERE invocation_id=?'
         ' ORDER BY position',
         (ident,),
     ).fetchall():
         detail = f'{kind}, {"obligatoire" if required else "facultatif"}'
         if choices:
             detail += f', parmi : {choices}'
+        if low or high:
+            detail += f', de {low or "0"} à {high or "…"} éléments'
         if description:
             detail += f' — {description}'
         champs.append({'k': str(path), 'v': detail})
@@ -109,9 +113,10 @@ def _ecritures(conn: sqlite3.Connection, ident: str) -> list[dict[str, str]]:
         key_col,
         key_src,
         key_val,
+        max_rows,
     ) in conn.execute(
         'SELECT id, table_name, operation, for_each, key_column,'
-        ' key_source, key_value FROM invocation_writes'
+        ' key_source, key_value, max_rows FROM invocation_writes'
         ' WHERE invocation_id=? ORDER BY position',
         (ident,),
     ).fetchall():
@@ -123,6 +128,8 @@ def _ecritures(conn: sqlite3.Connection, ident: str) -> list[dict[str, str]]:
             )
         if for_each:
             quoi += f', une ligne par élément de « {for_each} »'
+        if max_rows:
+            quoi += f', au plus {max_rows} ligne(s)'
         valeurs = _params(
             conn,
             'SELECT column_name, source, value FROM invocation_write_values'
@@ -138,29 +145,24 @@ def _enchainement(
 ) -> tuple[list[dict[str, str]], list[dict[str, str]], list[dict[str, str]]]:
     """Ce qui la lance (liens et déclencheurs), et ce qu'elle lance."""
     entrants, sortants, declencheurs = [], [], []
-    for link_id, de, vers, titre, auto in conn.execute(
-        'SELECT id, from_invocation_id, to_invocation_id, title, auto'
-        " FROM links WHERE deleted_at='' AND enabled=1"
-        ' AND (from_invocation_id=? OR to_invocation_id=?) ORDER BY id',
+    for link_id, de, vers, titre, auto, attente in conn.execute(
+        'SELECT l.id, l.from_invocation_id, l.to_invocation_id, l.title,'
+        ' l.auto, (SELECT COUNT(*) FROM link_passages p'
+        " WHERE p.link_id=l.id AND p.passed_at='') FROM links l"
+        " WHERE l.deleted_at='' AND l.enabled=1"
+        ' AND (l.from_invocation_id=? OR l.to_invocation_id=?) ORDER BY l.id',
         (ident, ident),
     ).fetchall():
-        manuel = '' if auto else ' (passage à la main)'
+        manuel = '' if auto else f' (passage à la main, {attente} en attente)'
+        lien = {
+            'type': 'lien',
+            'id': str(link_id),
+            'titre': f'{titre or link_id}{manuel}',
+        }
         if vers == ident:
-            entrants.append(
-                {
-                    'type': 'llm',
-                    'id': str(de),
-                    'titre': f'{titre or link_id}{manuel}',
-                }
-            )
+            entrants.append(lien)
         if de == ident:
-            sortants.append(
-                {
-                    'type': 'llm',
-                    'id': str(vers),
-                    'titre': f'{titre or link_id}{manuel}',
-                }
-            )
+            sortants.append(lien)
     for trig_id, titre, event, table, every, at, days in conn.execute(
         'SELECT id, title, event, table_name, every_minutes, at_time, at_days'
         " FROM triggers WHERE invocation_id=? AND deleted_at='' AND enabled=1"
@@ -199,6 +201,24 @@ def _passages(conn: sqlite3.Connection, ident: str) -> list[dict[str, Any]]:
             }
         )
     return lignes
+
+
+def _reglages(conn: sqlite3.Connection, ident: str) -> list[dict[str, str]]:
+    champs = []
+    for name, value, low, high, description, policy in conn.execute(
+        'SELECT name, value, min_value, max_value, description, policy'
+        ' FROM invocation_settings WHERE invocation_id=? ORDER BY name',
+        (ident,),
+    ).fetchall():
+        detail = str(value)
+        if low or high:
+            detail += f' (entre {low or "…"} et {high or "…"})'
+        if description:
+            detail += f' — {description}'
+        if policy:
+            detail += ' · modifiable sur la page Policy'
+        champs.append({'k': str(name), 'v': detail})
+    return champs
 
 
 def _champs(conn: sqlite3.Connection, inv: dict) -> list[dict[str, str]]:
@@ -283,6 +303,16 @@ def project_llm(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
     cadres: list[dict[str, Any]] = [
         {'titre': 'À quoi ça sert', 'texte': inv['role'] or '—'}
     ]
+    reglages = _reglages(conn, ident)
+    if reglages:
+        cadres.append(
+            {
+                'titre': 'Ses réglages',
+                'texte': 'Chaque réglage sert dans le prompt ({nom}), le'
+                ' format de la réponse ou l’écriture.',
+                'champs': reglages,
+            }
+        )
     if inv['type'] == 'llm':
         cadres += [
             {
@@ -291,10 +321,16 @@ def project_llm(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
                 'todo': 'Modifiable par l’API /owner/api/invocation.',
             },
             {
-                'titre': 'Ce qu’elle reçoit d’office',
+                'titre': 'Ce qu’elle lit d’office (ce qu’elle doit traiter)',
                 'champs': donnes_champs,
                 'liens': donnes,
             },
+            *cadres_vues(
+                conn,
+                ident,
+                str(inv['step_id'] or ''),
+                int(inv['default_max_rows']),
+            ),
             {
                 'titre': 'Ce qu’elle peut appeler',
                 'champs': appelables_champs,
