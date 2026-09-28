@@ -105,6 +105,13 @@ lu dans les liens. Il manque, pour chaque lien, ce qui est déjà passé et ce
 qui attend, avec un bouton « passer à la suite » et un interrupteur
 « passage automatique ».
 
+**La page Policy montre aussi les réglages des invocations.** Chaque
+réglage d'une invocation (par exemple « nombre d'idées » de « Formuler
+des idées ») et chaque quota d'une table (par exemple « au plus 3
+business en test léger ») marqué « policy » apparaît sur la page Policy,
+rangé par étape et par invocation, modifiable en direct. Détail :
+[`LOT6_CONCEPTION.md`](LOT6_CONCEPTION.md), partie 17.
+
 **Une tâche arrêtée au milieu d'une action extérieure** (un envoi, un
 remboursement) apparaîtra pour qu'on vérifie avant de la relancer (lot 8).
 

@@ -660,3 +660,113 @@ l'invocation.
    filet de sécurité : l'invocation reçoit la liste courte de ce qui
    existe, et son prompt lui demande de ne pas le reproposer.
 6. **Le vocabulaire** « capacité » et « outil » est validé.
+
+---
+
+## 16. Ce que voit une invocation, et l'outil pour lire le reste (validé, Q60)
+
+Le principe est dans [`MEMOIRE.md`](MEMOIRE.md). Voici ce qu'il demande en
+base. Rien n'y est propre à une invocation : les règles sont réglées une
+fois par table, et chaque invocation peut seulement ajuster sa liste de
+tables à comparer.
+
+**Pour chaque table, une fois** :
+
+- `table_views` : une ligne par table qu'une invocation peut voir.
+  Colonnes : `table_name`, `description` (ce que contient la table, en
+  français), `order_column` (la colonne qui dit quelles lignes sont les
+  plus récentes, par exemple `created_at`).
+- `table_view_columns` : une ligne par colonne lisible. Colonnes :
+  `table_name`, `column_name`, `short` (1 si la colonne fait partie de la
+  version courte), `description`. Une colonne absente n'est jamais lue par
+  une invocation. Exemple pour les business : numéro et nom dans la
+  version courte ; description, offre, statut et dates lisibles ; rien
+  d'autre.
+
+**Pour chaque invocation** :
+
+- `invocation_compare_tables` : les ajustements de son deuxième cercle.
+  Par défaut, elle voit en version courte les tables où elle écrit. Une
+  ligne `included` = 1 ajoute une table à comparer, une ligne
+  `included` = 0 en retire une. Réglable dans Mission Control.
+
+**Ce que l'interpréteur en fait, à chaque appel** :
+
+1. Il donne d'office la version courte de chaque table du deuxième
+   cercle, les lignes les plus récentes d'abord, au plus le maximum de
+   l'invocation, avec le nombre exact de lignes laissées de côté.
+2. Il construit l'outil **« Lire les tables que je vois »** pour cette
+   invocation. Ce n'est pas un outil écrit à la main : c'est la capacité
+   de lecture, réglée à chaque appel avec l'ensemble des tables du
+   deuxième cercle. Le modèle choisit une de ces tables et peut demander
+   une ligne par son numéro, ou toutes les lignes, avec un filtre simple
+   (une colonne égale à une valeur), page par page. Il reçoit toutes les
+   colonnes lisibles.
+3. Il donne l'outil **« Lire l'historique »** d'une ligne qu'elle voit :
+   les derniers événements du journal qui la concernent.
+4. Il donne d'office ses leçons : celles rattachées à l'invocation, puis
+   à son étape, puis à tout Serge, les plus fiables d'abord.
+5. Il écrit le bloc **« Qui est Serge »** complet, si l'invocation le
+   demande : la présentation, la chaîne des 8 étapes, sa place, et ce qui
+   vient juste avant et juste après elle, lu dans les liens.
+
+---
+
+## 17. Les réglages d'une invocation, et les quotas des tables (validé, Q61)
+
+Le format de la réponse et l'écriture sont déjà décrits en base (parties 4
+et 5). Ce qui manquait, c'est de les relier aux chiffres réglables. Clem a
+validé cette organisation pour l'instant ; elle sera sans doute retouchée
+quand on créera une invocation depuis Mission Control (lot 13).
+
+**`invocation_settings` : les réglages d'une invocation.** Une ligne par
+réglage, rattachée à l'invocation (la charte interdit de ranger une liste
+de valeurs dans une seule case). Colonnes : `invocation_id`, `name`,
+`type` (nombre, texte ou oui/non), `value`, `min_value` et `max_value`
+(les bornes, pour un nombre), `description` (à quoi il sert, en
+français), `policy` (1 pour qu'il apparaisse sur la page Policy de
+Mission Control, modifiable en direct, chaque changement noté au
+journal). Exemple : « Formuler des idées » a le réglage « nombre
+d'idées = 2 », entre 1 et 10.
+
+**Un réglage sert partout où l'invocation a une valeur** :
+
+- **dans le prompt** : `{nombre_idees}` est remplacé par la valeur à
+  chaque appel. Exemple : « Propose {nombre_idees} idées ».
+- **dans le format de la réponse** : une liste peut avoir un nombre
+  d'éléments minimum et maximum (colonnes `min_items` et `max_items` de
+  `invocation_output_fields`), écrits comme un nombre ou comme le nom
+  d'un réglage. L'interpréteur l'annonce au modèle et le vérifie ; sinon,
+  il redemande avec l'erreur.
+- **dans l'écriture** : une colonne peut recevoir un réglage (une source
+  `setting` de plus dans `invocation_write_values`), et une écriture peut
+  être limitée à « au plus N lignes » (colonne `max_rows` de
+  `invocation_writes`, un nombre ou un réglage).
+- **dans les paramètres des outils, de la capacité et des liens** : la
+  même source `setting`. Exemple : « lire au plus N pages ».
+
+**`table_quotas` : les quotas d'une table.** Une protection de plus, réglée
+sur la table comme les changements de statut : « au plus N lignes de
+cette table dont telle colonne vaut l'une de ces valeurs ». Colonnes :
+`id`, `table_name`, `column_name`, `values` (la liste des valeurs
+comptées, séparées par des virgules), `max_value`, `description`,
+`policy`. Exemple : au plus 3 business en test léger en même temps. Le
+code d'écriture refuse une ligne de trop, quelle que soit l'invocation qui
+écrit, et le note au journal.
+
+**Les capacités restent générales.** « Ajouter N lignes dans telle table »
+n'est pas une capacité : c'est l'écriture, réglée comme ci-dessus. Une
+capacité, c'est ce qui n'est ni lire ni écrire (chercher sur le web,
+envoyer un e-mail, appeler une API). Elle reçoit ses chiffres par ses
+paramètres, qui peuvent venir d'un réglage.
+
+**Ce qu'on ne fait pas** : pas de calculs dans les réglages (par exemple
+« places libres = 3 − business en test ») : le quota protège, et le
+modèle compte lui-même ce qu'il voit. Les conditions (« écrire seulement
+si… ») viennent au lot 8. Les très grosses sorties (un plan complet, du
+code) restent un champ texte ou des fichiers du bac à sable (lot 12).
+
+**Ce qui reste dans la policy générale** : ce qui ne concerne aucune
+invocation en particulier (budget du jour, quotas d'envoi, heures
+d'appel). La page Policy montre à la fois la policy générale, les
+réglages des invocations et les quotas des tables marqués « policy ».

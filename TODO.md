@@ -200,16 +200,28 @@ reste dans ce lot :
     elle, lu dans les liens. Aujourd'hui, il ne contient que la
     présentation de Serge et le titre de l'invocation.
 
+  Détail des tables prévues :
+  [`docs/LOT6_CONCEPTION.md`](docs/LOT6_CONCEPTION.md), partie 16.
+
 - [ ] **Les réglages chiffrés d'une invocation, dans la page Policy.**
   Depuis le lot 6, les chiffres de la policy propres à une invocation
   (par exemple « combien de business choisir par cycle ») ne sont plus lus
-  par personne. Ces réglages doivent être rangés avec l'invocation qui
-  s'en sert, et non dans la policy générale. Mais chacun porte une
-  étiquette « policy » : la page Policy de MC cherche en base tous les
-  réglages ainsi marqués et les rend modifiables en direct, avec le
-  journal de chaque changement. Les réglages qui ne concernent aucune
-  invocation (budget du jour, quotas d'envoi, heures d'appel) restent dans
-  la policy générale.
+  par personne, et la démo écrit « deux idées » en toutes lettres dans son
+  prompt, sans que rien le vérifie. Il faut ranger ces réglages avec
+  l'invocation, une ligne par réglage (nom, valeur, bornes, description),
+  et qu'un réglage serve partout où l'invocation a une valeur : dans le
+  prompt (« Propose {nombre_idees} idées »), dans le format de la réponse
+  (une liste d'exactement ce nombre d'éléments, vérifiée), dans l'écriture
+  (une colonne reçoit un réglage, « au plus N lignes ») et dans les
+  paramètres des outils et des liens. Il faut aussi une protection de
+  plus par table, le quota : « au plus 3 business en test léger en même
+  temps », refusé par le code d'écriture quelle que soit l'invocation.
+  Chaque réglage et chaque quota porte une étiquette « policy » : la page
+  Policy de MC les cherche en base et les rend modifiables en direct, avec
+  le journal de chaque changement. Ce qui ne concerne aucune invocation
+  (budget du jour, quotas d'envoi, heures d'appel) reste dans la policy
+  générale. Détail : [`docs/LOT6_CONCEPTION.md`](docs/LOT6_CONCEPTION.md),
+  partie 17.
 
 - [ ] **Passer un lien à la main.** Un lien peut être réglé pour attendre
   un clic avant de lancer l'invocation suivante. Exemple : après

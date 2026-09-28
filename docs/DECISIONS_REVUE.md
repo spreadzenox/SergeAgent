@@ -938,8 +938,25 @@ Les réglages chiffrés propres à une invocation (par exemple « combien de
 business choisir ») sont rangés avec l'invocation, et non dans la policy
 générale. Mais ils portent une étiquette « policy » : la page Policy de MC
 cherche en base tous les réglages ainsi marqués et les rend modifiables en
-direct. La façon de relier ces réglages au format de la réponse et à
-l'écriture est en discussion.
+direct.
+
+### Q63 — Relier les réglages au format de la réponse et à l'écriture (validé par Clem, pour l'instant)
+1. Les réglages d'une invocation sont rangés dans une petite table
+   rattachée à l'invocation, une ligne par réglage (nom, type, valeur,
+   bornes, description, étiquette « policy »).
+2. Un réglage sert partout où l'invocation a une valeur : dans le prompt
+   (`{nom}` remplacé à chaque appel), dans le format de la réponse (nombre
+   d'éléments minimum et maximum d'une liste), dans l'écriture (une
+   colonne reçoit un réglage, « au plus N lignes »), et dans les
+   paramètres des outils, de la capacité et des liens.
+3. Une nouvelle protection par table, le quota : « au plus N lignes dans
+   tel état », par exemple 3 business en test léger. Le chiffre est un
+   réglage marqué « policy ».
+4. Les capacités restent générales et reçoivent leurs chiffres par leurs
+   paramètres. Pas de calculs dans les réglages.
+5. Clem : l'organisation sera sans doute retouchée quand on pourra créer
+   une invocation depuis Mission Control. Détail :
+   [`LOT6_CONCEPTION.md`](LOT6_CONCEPTION.md), partie 17.
 
 ### Q62 — Suite du lot 6 (validé par Clem)
 1. Les messages reçus de l'extérieur qui ne lancent pas les déclencheurs
