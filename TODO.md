@@ -532,10 +532,11 @@ n'est propre à une de ces invocations.
   2. **« Explorer le web »** (modèle moyen) cherche des pages à partir du
      texte de guidage (sinon, dans les 11 familles de business de Q32) et
      des business déjà connus, en France d'abord (recherches en français,
-     pages en anglais acceptées). Elle ne lit qu'un aperçu de chaque page
-     (un nombre de lignes réglable) et ne garde que les pages qu'elle
-     retient. Elle ajoute aussi les flux RSS qu'elle juge utiles : Serge
-     choisit ses flux lui-même, sans accord de Julien.
+     pages en anglais acceptées), au plus 10 recherches (réglage). Elle
+     ne lit qu'un aperçu de chaque page (5 lignes, réglage) et ne garde
+     que les pages qu'elle retient, au plus 30 (réglage). Elle ajoute
+     aussi les flux RSS qu'elle juge utiles, au plus 2 par cycle
+     (réglage) : Serge choisit ses flux lui-même, sans accord de Julien.
   3. **Rattacher au cycle les pages pas encore triées** (sans LLM) : celles
      des flux et du web, les plus récentes d'abord, au plus 60 (réglage).
   4. **« Trier les pages »** (modèle rapide), par paquets de 20 pages
@@ -543,11 +544,14 @@ n'est propre à une de ces invocations.
      business existant (elle lui est rattachée comme preuve), signale un
      besoin nouveau, ou c'est du bruit.
   5. **« Formuler des business A »** puis **« Formuler des business B »**
-     (modèle intelligent, l'une après l'autre) lisent en entier les pages
-     « besoin nouveau » qu'elles veulent, et écrivent chacune 3 idées
+     (modèle intelligent, l'une après l'autre) reçoivent l'aperçu des pages
+     « besoin nouveau » pas encore utilisées, lisent en entier celles
+     qu'elles veulent, et écrivent chacune 3 idées
      (réglage). Une fiche cite au moins une page de preuve et sa famille
      de business (Q32). Une fois l'idée écrite, les pages utilisées sont
      reclassées : elles deviennent des preuves rattachées à ce business.
+     B ne reçoit donc que les pages que A n'a pas utilisées ; celles qui
+     restent après B repassent au cycle suivant, sans être retriées.
      B voit les business écrits par A (version courte donnée d'office) :
      Serge ne fait pas deux fois la même chose. Leur prompt dit de ne
      jamais reproposer un business qui existe déjà. Les doublons restants
@@ -568,18 +572,24 @@ n'est propre à une de ces invocations.
   (Q14 bis) : le quota `business_choisis` doit compter ces quatre statuts,
   et « Choisir » doit voir les business en test pour compter les places
   libres (une lecture d'office). La page Écoute affiche « places libres :
-  2 sur 3 ».
+  2 sur 3 ». Quand tout est pris, le bouton du cycle est bloqué : une
+  condition générale sur un bouton ou un lien, du type « seulement si
+  moins de N lignes dans tel état » (avancée du lot 8).
 
 - [ ] **Lire une page, à la bonne dose.** Une capacité « lire une page »
-  (une simple requête, sans navigateur), réglée par un nombre de lignes :
-  un aperçu pour les invocations qui trient ou retiennent des pages, la
-  page entière pour celles qui formulent des business. On ne sature pas
+  (une simple requête, sans navigateur, texte extrait avec la
+  bibliothèque standard de Python), réglée par un nombre de lignes (une
+  ligne = un titre, un paragraphe ou un élément de liste) : un aperçu de
+  5 lignes (réglage) pour les invocations qui trient ou retiennent des
+  pages, la page entière pour celles qui formulent des business. On ne sature pas
   les invocations d'informations. La recherche reste DuckDuckGo ;
   SearXNG vient au lot 12.
 
 - [ ] **Garder les pages retenues.** Les pages qu'« Explorer » retient et
-  celles des flux sont enregistrées, avec leur source, le cycle qui les a
-  trouvées, leur aperçu et leur étiquette de tri. Un résultat de
+  celles des flux sont enregistrées, avec leur adresse, leur source, le
+  cycle qui les a trouvées, leur aperçu et leur étiquette de tri ; jamais
+  leur texte entier. Pour une page de flux, l'aperçu est le résumé donné
+  par le flux. Un résultat de
   recherche non retenu n'est pas gardé (la base ne doit pas exploser),
   mais une page déjà triée n'est jamais représentée comme nouvelle.
 
@@ -588,13 +598,15 @@ n'est propre à une de ces invocations.
   seule, toutes les 6 heures (réglage), sans LLM. Mission Control montre,
   pour chaque flux, les pages ramenées et les pages utiles, avec un
   bouton pour le couper ou le rallumer. Julien n'ajoute pas de flux au
-  lot 7.
+  lot 7. Au plus 20 pages lues par flux à chaque passage (réglage) ; le
+  surplus attend le cycle suivant, les plus récentes d'abord.
 
 - [ ] **Empêcher la base de grossir sans fin.** Des réglages (des
   invocations, marqués « policy », ou des quotas de table, pas la policy
   générale) : 60 pages triées au plus par cycle ; une page « bruit » est
   oubliée après 30 jours, c'est-à-dire que sa ligne est supprimée (jamais
-  une page qui sert de preuve), avec une note au journal. Couper un flux
+  une page qui sert de preuve), avec une note au journal ; de même pour
+  une page jamais triée au bout de 30 jours. Couper un flux
   qui ne ramène que du bruit se fait à la main au lot 7 ; plus tard,
   automatiquement après 5 cycles de bruit.
 

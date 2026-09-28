@@ -1035,3 +1035,23 @@ direct.
     dernier cycle (pages trouvées, par étiquette, fiches, choix).
 20. Les business et cycles laissés par la démo sur le serveur de Julien
     sont supprimés avec elle.
+21. Précisions (validé par Clem) :
+    - « Explorer le web » ajoute les flux, au plus 2 nouveaux par cycle
+      (réglage) ; pas d'invocation à part.
+    - L'aperçu d'une page compte des lignes : une ligne = un titre, un
+      paragraphe ou un élément de liste ; 5 au départ (réglage). Pour une
+      page de flux, l'aperçu est le résumé donné par le flux. Le texte est
+      extrait avec la bibliothèque standard de Python.
+    - En base, on garde seulement l'aperçu et l'adresse d'une page ; A et
+      B lisent la page en ligne quand ils en ont besoin.
+    - B ne reçoit que les pages « besoin nouveau » que A n'a pas
+      utilisées. Celles qui restent après B repassent au cycle suivant,
+      sans être retriées.
+    - Quand les places sont toutes prises, le bouton du cycle est bloqué
+      (« 3 places sur 3 occupées ») : une condition générale sur un
+      bouton, du type « seulement si moins de N lignes dans tel état ».
+    - Les pages des flux en surplus attendent le cycle suivant, les plus
+      récentes d'abord ; une page jamais triée au bout de 30 jours est
+      oubliée, comme une page « bruit ».
+    - Valeurs de départ : au plus 10 recherches par « Explorer », 30 pages
+      retenues par cycle, 20 pages lues par flux à chaque passage.
