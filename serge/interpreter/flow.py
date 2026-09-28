@@ -16,11 +16,12 @@ from __future__ import annotations
 
 import sqlite3
 from collections.abc import Mapping
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any
 from zoneinfo import ZoneInfo
 
 from serge.db.store import utcnow
+from serge.interpreter.schedule import due_slot
 from serge.interpreter.tasks import enqueue_task, task_params
 from serge.interpreter.writer import Written
 
@@ -156,44 +157,6 @@ def _trigger_param_rows(conn: sqlite3.Connection, trigger_id: str) -> list:
     ]
 
 
-DAYS = ('mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun')
-
-
-def _due(
-    event: str,
-    every: int,
-    at_time: str,
-    at_days: str,
-    last: str,
-    now: datetime,
-    zone: ZoneInfo,
-) -> str:
-    """Le créneau à déclencher maintenant, ou ``''``."""
-    if event == 'every':
-        if every <= 0:
-            return ''
-        if last and now - datetime.fromisoformat(last) < timedelta(
-            minutes=every
-        ):
-            return ''
-        return now.isoformat(timespec='minutes')
-    local = now.astimezone(zone)
-    days = {d.strip() for d in at_days.split(',') if d.strip()}
-    if days and DAYS[local.weekday()] not in days:
-        return ''
-    try:
-        hour, minute = (int(x) for x in at_time.split(':'))
-    except ValueError:
-        return ''
-    target = local.replace(hour=hour, minute=minute, second=0, microsecond=0)
-    if local < target:
-        return ''
-    slot = target.isoformat(timespec='minutes')
-    if last and datetime.fromisoformat(last) >= target:
-        return ''
-    return slot
-
-
 def fire_due_triggers(
     conn: sqlite3.Connection, now: str, timezone: str = 'Europe/Paris'
 ) -> None:
@@ -205,7 +168,7 @@ def fire_due_triggers(
         " last_fired_at FROM triggers WHERE event IN ('every', 'at')"
         " AND enabled=1 AND deleted_at=''"
     ).fetchall():
-        slot = _due(
+        slot = due_slot(
             str(event),
             int(every),
             str(at_time),

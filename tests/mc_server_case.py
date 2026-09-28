@@ -34,7 +34,11 @@ class McServerCase(unittest.TestCase):
     TOKEN = 'tok-owner-9'
 
     def setUp(self) -> None:
-        self.tmp = tempfile.TemporaryDirectory(prefix='serge-mc-')
+        # Le serveur peut encore écrire un fichier de la base (journal WAL)
+        # pendant sa fermeture : ce n'est pas une erreur du test.
+        self.tmp = tempfile.TemporaryDirectory(
+            prefix='serge-mc-', ignore_cleanup_errors=True
+        )
         self.addCleanup(self.tmp.cleanup)
         self.db_path = Path(self.tmp.name) / 'mc.db'
         conn = open_db(self.db_path)

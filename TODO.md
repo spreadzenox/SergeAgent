@@ -239,16 +239,9 @@ reste dans ce lot :
   et les coupe-circuits. Il manque une vue d'ensemble des capacités, des
   outils, des liens et des déclencheurs ; le modèle choisi derrière
   chaque niveau (rapide, moyen, intelligent) et le texte « Qui est
-  Serge », à afficher et à rendre modifiables ; un bouton pour relancer
-  une tâche échouée ; et, sur la page Écoute, tous les boutons de
-  l'étape avec leurs champs, pas seulement le premier. Créer une
-  invocation depuis le site reste le travail du lot 13.
-
-- [ ] **Les jours des déclencheurs horaires.** Un déclencheur « chaque
-  lundi à 8 h 30 » attend aujourd'hui les jours en anglais (`mon`), et
-  rien ne vérifie ce qu'on écrit : réglé sur « lun », il ne partirait
-  jamais. Il faut accepter les jours en français et refuser toute autre
-  valeur au remplissage de la base.
+  Serge », à afficher et à rendre modifiables. Ce sera une nouvelle page
+  « Pipeline ». Créer une invocation depuis le site reste le travail du
+  lot 13.
 
 ---
 

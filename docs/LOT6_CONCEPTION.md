@@ -387,7 +387,9 @@ transmis deux fois.
   table des messages reçus, avec `direction` = `entrant`. Il n'y a donc pas
   d'événement spécial « message reçu » : c'est une ligne écrite comme une
   autre.
-- Pour `every` : `every_minutes`. Pour `at` : `at_time` et `at_days`.
+- Pour `every` : `every_minutes`. Pour `at` : `at_time` (par exemple
+  `08:30`, heure de Paris) et `at_days` (par exemple `lun,jeu` ; vide = tous
+  les jours). Un horaire mal écrit est refusé au remplissage de la base.
 - `enabled`, `origin`, `deleted_at`, `updated_at`, `updated_by`.
 
 ### `trigger_params` — ce que le déclencheur transmet

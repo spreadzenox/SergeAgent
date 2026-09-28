@@ -333,6 +333,16 @@ class PipelineSeedTests(unittest.TestCase):
                     self.conn, {'schema_version': 1, 'tools': [tool]}
                 )
 
+    def test_un_horaire_invalide_est_refuse(self) -> None:
+        for mauvais in (
+            {'at_time': '8h30', 'at_days': 'lun'},
+            {'at_time': '08:30', 'at_days': 'mon'},
+        ):
+            data = _pipeline()
+            data['triggers'][0].update(mauvais)
+            with self.assertRaises(PipelineSeedError):
+                seed_pipeline(self.conn, data)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -130,12 +130,41 @@ class McEcouteFrontTests(McBrowserCase):
         page.goto(f'{self.base}/owner#/ecoute')
         bouton = page.locator('[data-ecoute-action="lancer"]')
         expect(bouton).to_have_text('Lancer un cycle d’écoute', timeout=10000)
-        page.locator('[data-ecoute="guide"]').fill('devis artisans')
+        page.locator('[data-champ="guide"]').fill('devis artisans')
         bouton.click()
         expect(page.locator('.toast-succes')).to_contain_text(
             'Tâche placée dans la file.'
         )
         self.assertEqual(_guides(self.db_path), ['devis artisans'])
+
+    def test_chaque_bouton_a_ses_champs(self) -> None:
+        from playwright.sync_api import expect
+
+        pipeline = dict(PIPELINE)
+        pipeline['triggers'] = [
+            *PIPELINE['triggers'],
+            {
+                'id': 'bouton_theme',
+                'title': 'Explorer un thème',
+                'invocation': 'ouvrir_cycle',
+                'event': 'button',
+                'params': {'guide': {'source': 'form', 'value': 'theme'}},
+            },
+        ]
+        _seed(self.db_path, pipeline)
+        page = self._auth_context().new_page()
+        self._watch_errors(page)
+        page.goto(f'{self.base}/owner#/ecoute')
+        boutons = page.locator('[data-ecoute-action="lancer"]')
+        expect(boutons).to_have_text(
+            ['Lancer un cycle d’écoute', 'Explorer un thème'], timeout=10000
+        )
+        page.locator('[data-champ="theme"]').fill('boulangeries')
+        boutons.nth(1).click()
+        expect(page.locator('.toast-succes')).to_contain_text(
+            'Tâche placée dans la file.'
+        )
+        self.assertEqual(_guides(self.db_path), ['boulangeries'])
 
     def test_sans_bouton_en_base(self) -> None:
         from playwright.sync_api import expect
@@ -144,7 +173,7 @@ class McEcouteFrontTests(McBrowserCase):
         page = self._auth_context().new_page()
         self._watch_errors(page)
         page.goto(f'{self.base}/owner#/ecoute')
-        expect(page.locator('[data-ecoute="bouton"]')).to_contain_text(
+        expect(page.locator('[data-ecoute="boutons"]')).to_contain_text(
             'Aucun bouton en base', timeout=10000
         )
-        expect(page.locator('[data-ecoute-action="lancer"]')).to_be_disabled()
+        expect(page.locator('[data-ecoute-action="lancer"]')).to_have_count(0)

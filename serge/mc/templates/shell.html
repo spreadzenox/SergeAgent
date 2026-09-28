@@ -100,15 +100,8 @@
 <template id="page-ecoute">
 <section class="panneau" data-section="ecoute" data-sig="">
 <h2>Écoute</h2>
-<p class="legende-policy">Le cycle de l’étape 1, tel qu’il est décrit en base : le bouton lance l’invocation de son déclencheur.</p>
-<div class="grille-champs">
-<p data-ecoute="besoins">Besoins par découverte : …</p>
-<p data-ecoute="business">Business pour le prochain POC : …</p>
-<label class="champ-large">Guide de recherche <textarea data-ecoute="guide" maxlength="4000"></textarea></label>
-</div>
-<p>Les deux hyperparamètres se modifient dans <a href="#/policy">Policy &gt; Écoute du web</a>.</p>
-<div class="barre-policy"><button type="button" class="btn-fort" data-ecoute-action="lancer">Lancer le cycle</button></div>
-<p data-ecoute="bouton"></p>
+<p class="legende-policy">L’étape 1, telle qu’elle est décrite en base : chaque bouton lance l’invocation de son déclencheur, avec les champs remplis ici.</p>
+<div data-ecoute="boutons"></div>
 <p data-ecoute="cycle">Aucun cycle.</p>
 <h3>Invocations de l’étape</h3><ul data-ecoute="invocations"></ul>
 <h3>Business candidats</h3><ul data-ecoute="candidates"></ul>

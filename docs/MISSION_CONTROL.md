@@ -33,7 +33,7 @@ navigateur au fil de l'eau.
 | Page | Adresse | Ce qu'on y voit | Ce qu'on y fait |
 |---|---|---|---|
 | **En direct** | `#/live` | La chaîne des 8 étapes, leurs invocations dans l'ordre des liens, et le nombre de résultats passés d'une étape à l'autre ; les tickets urgents, les deux files de tâches, l'activité récente, les budgets du jour. | Démarrer ou arrêter Serge ; couper une étape, une file ou une invocation. |
-| **Écoute** | `#/ecoute` | Le dernier cycle de l'étape 1, les invocations de l'étape, le bouton de lancement tel qu'il est déclaré en base, les business candidats. | Écrire un texte de guidage et cliquer le bouton : il lance l'invocation de son déclencheur. |
+| **Écoute** | `#/ecoute` | Le dernier cycle de l'étape 1, les invocations de l'étape, les boutons de l'étape tels qu'ils sont déclarés en base (chacun avec ses champs), les business candidats. | Remplir les champs d'un bouton et cliquer : il lance l'invocation de son déclencheur. |
 | **Système** | `#/system` | Les îlots (sous-systèmes), les files de tâches, les campagnes, la population de prospects, l'e-mail. | Lecture. Accessible par `Ctrl+K`. |
 | **Cerveau** | `#/mind` | Pensées, décisions récentes, tableau de toutes les invocations en base (niveau, file, priorité, usage sur 7 jours), signaux entrants. | Ouvrir la fiche d'une invocation, l'éteindre ou la rallumer. |
 | **Décisions** | `#/tickets` | Les tickets à trancher, ce qui a changé, le rythme des décisions, le résumé quotidien. | Répondre à un ticket (mêmes boutons que sur Discord), discuter. |
@@ -59,7 +59,8 @@ file, sa priorité, son niveau de modèle, son prompt, ce qu'elle reçoit
 d'office, ce qu'elle peut appeler, le format de sa réponse, où sa réponse
 est écrite, ce qui la lance, ce qu'elle lance ensuite, et ses derniers
 passages. La fiche d'une tâche montre ses paramètres et ce qu'elle a reçu
-(par exemple « 50 lignes, 90 laissées de côté »).
+(par exemple « 50 lignes, 90 laissées de côté ») ; si elle a échoué, un
+bouton « Relancer la tâche » la remet dans sa file.
 
 ---
 
@@ -159,6 +160,7 @@ Toutes demandent le jeton owner.
 | `POST /owner/api/memory/lesson` | Garder, modifier ou jeter une leçon. |
 | `POST /owner/api/policy/edit`, `/policy/testing`, `/policy/propose` | Modifier la policy. |
 | `POST /owner/api/bouton` | Un déclencheur « bouton » : crée la tâche de son invocation, avec les champs du formulaire. |
+| `POST /owner/api/tache/relancer` | Remettre une tâche échouée dans sa file (bouton « Relancer la tâche » de sa fiche). |
 
 ---
 

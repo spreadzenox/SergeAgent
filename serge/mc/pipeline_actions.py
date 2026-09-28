@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""MC : un bouton de Mission Control lance son invocation (déclencheur en base)."""
+"""MC : les actions sur le pipeline (bouton d'un déclencheur, relancer une tâche)."""
 
 from __future__ import annotations
 
@@ -7,9 +7,10 @@ from typing import TYPE_CHECKING, Any, Protocol
 
 from serge.db.store import append_event
 from serge.interpreter.flow import fire_button
+from serge.interpreter.tasks import relaunch_task
 
 
-class _BoutonHandler(Protocol):
+class _PipelineHandler(Protocol):
     def _require_owner(self) -> bool: ...
     def _json_body(self) -> dict | None: ...
     def _refus(self, http: int, erreur: str, code: str, aide: str) -> None: ...
@@ -18,13 +19,13 @@ class _BoutonHandler(Protocol):
 
 
 if TYPE_CHECKING:
-    _Base = _BoutonHandler
+    _Base = _PipelineHandler
 else:
     _Base = object
 
 
-class EcouteActionsMixin(_Base):
-    """POST /owner/api/bouton : ``{trigger_id, form}``."""
+class PipelineActionsMixin(_Base):
+    """POST /owner/api/bouton et /owner/api/tache/relancer."""
 
     def _api_bouton(self) -> None:
         if not self._require_owner():
@@ -59,5 +60,28 @@ class EcouteActionsMixin(_Base):
                     'trigger_id': trigger_id,
                     'task': task_id,
                 },
+            )
+        self._send_json(200, {'ok': True, 'task_id': task_id})
+
+    def _api_tache_relancer(self) -> None:
+        """Remet une tâche échouée dans sa file : ``{task_id}``."""
+        if not self._require_owner():
+            return
+        body = self._json_body() or {}
+        task_id = str(body.get('task_id') or '').strip()
+        with self._db() as conn:
+            if not task_id or not relaunch_task(conn, task_id):
+                self._refus(
+                    409,
+                    'Cette tâche ne peut pas être relancée.',
+                    'task',
+                    'Seule une tâche échouée peut être relancée.',
+                )
+                return
+            append_event(
+                conn,
+                actor='owner',
+                type='task.relaunched',
+                payload={'task': task_id},
             )
         self._send_json(200, {'ok': True, 'task_id': task_id})

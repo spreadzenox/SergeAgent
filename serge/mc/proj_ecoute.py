@@ -52,9 +52,8 @@ def boutons_de_etape(
 def project_ecoute(
     conn: sqlite3.Connection, policy: Mapping[str, Any], now_iso: str
 ) -> dict[str, Any]:
-    """Réglages, dernier cycle, candidats, boutons et invocations de l'étape."""
-    del now_iso
-    listen = dict(policy.get('listen') or {})
+    """Dernier cycle, candidats, boutons et invocations de l'étape 1."""
+    del policy, now_iso
     cycle = conn.execute(
         'SELECT id, guide, needs_target, business_target, status, created_at, '
         'started_at, finished_at FROM listen_cycles ORDER BY created_at DESC LIMIT 1'
@@ -67,10 +66,6 @@ def project_ecoute(
     ).fetchall()
     cols = ('id', 'guide', 'needs_target', 'business_target', 'status')
     return {
-        'settings': {
-            'discovery_needs_target': listen.get('discovery_needs_target'),
-            'poc_business_target': listen.get('poc_business_target'),
-        },
         'cycle': dict(zip(cols, cycle, strict=False)) if cycle else None,
         'candidates': [
             {'id': str(r[0]), 'title': str(r[1]), 'status': str(r[3])}

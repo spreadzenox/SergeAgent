@@ -271,10 +271,22 @@ def fiche_tache(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
         (f'Reçu : {r[0]}', f'{r[1]} lignes, {r[2]} laissées de côté')
         for r in recus
     ]
+    actions = []
+    if row['status'] == 'failed':
+        actions.append(
+            {
+                'libelle': 'Relancer la tâche',
+                'route': '/owner/api/tache/relancer',
+                'charge': {'task_id': ident},
+                'confirmer': 'La tâche repart de zéro dans sa file, au'
+                ' prochain tour, si Serge est démarré.',
+            }
+        )
     return {
         'type': 'task',
         'id': ident,
         'titre': titre,
+        'actions': actions,
         'pourquoi': (
             'Une tâche lance une invocation avec ses paramètres. Elle est'
             ' enregistrée en base dès qu’elle est finie.'

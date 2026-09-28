@@ -360,6 +360,8 @@ def _seed_links(conn: sqlite3.Connection, data: Mapping[str, Any]) -> None:
 
 
 def _seed_triggers(conn: sqlite3.Connection, data: Mapping[str, Any]) -> None:
+    from serge.interpreter.schedule import schedule_error
+
     for trig in _list(data, 'triggers'):
         ident = str(trig['id'])
         if _exists(conn, 'triggers', 'id', ident):
@@ -368,6 +370,14 @@ def _seed_triggers(conn: sqlite3.Connection, data: Mapping[str, Any]) -> None:
             raise PipelineSeedError(
                 f'déclencheur {ident} : invocation {trig["invocation"]} inconnue'
             )
+        horaire = schedule_error(
+            str(trig['event']),
+            int(trig.get('every_minutes', 0)),
+            str(trig.get('at_time', '')),
+            str(trig.get('at_days', '')),
+        )
+        if horaire:
+            raise PipelineSeedError(f'déclencheur {ident} : {horaire}')
         _insert(
             conn,
             'triggers',

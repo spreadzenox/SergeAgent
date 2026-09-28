@@ -439,6 +439,22 @@ class InterpreterTests(unittest.TestCase):
         )
         self.assertEqual(len(self._events('task.resumed')), 1)
 
+    def test_un_declencheur_a_heure_fixe_part_le_bon_jour(self) -> None:
+        """« lun » à 08:30 (heure de Paris) : le lundi seulement, une fois."""
+        self.conn.execute(
+            'INSERT INTO triggers(id, invocation_id, event, at_time, at_days)'
+            " VALUES('lundi', 'ouvrir', 'at', '08:30', 'lun')"
+        )
+        dimanche = '2026-09-27T07:00:00+00:00'  # 9 h à Paris, dimanche
+        lundi_tot = '2026-09-28T06:00:00+00:00'  # 8 h à Paris
+        lundi = '2026-09-28T06:45:00+00:00'  # 8 h 45 à Paris
+        for moment in (dimanche, lundi_tot, lundi, lundi):
+            fire_due_triggers(self.conn, moment)
+        count = self.conn.execute(
+            "SELECT COUNT(*) FROM tasks WHERE origin='trigger'"
+        ).fetchone()
+        self.assertEqual(count, (1,))
+
 
 if __name__ == '__main__':
     unittest.main()
