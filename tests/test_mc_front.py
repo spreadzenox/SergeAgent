@@ -63,7 +63,7 @@ class McFrontTests(McBrowserCase):
         self._watch_errors(page)
         page.goto(f'{self.base}/owner')
         links = page.locator('.barre-laterale nav a')
-        self.assertEqual(links.count(), 10)
+        self.assertEqual(links.count(), 11)
         self.assertEqual(links.nth(1).text_content().strip(), 'Cerveau')
         links.nth(1).click()
         page.get_by_text('Aucune invocation en base').wait_for(timeout=10000)

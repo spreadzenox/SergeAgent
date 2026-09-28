@@ -367,6 +367,8 @@ class McHandler(
             '/owner/api/invocation/comparer': self._api_comparer,
             '/owner/api/lien/passer': self._api_lien_passer,
             '/owner/api/lien/auto': self._api_lien_auto,
+            '/owner/api/pipeline/modele': self._api_pipeline_modele,
+            '/owner/api/pipeline/texte': self._api_pipeline_texte,
         }
         acte = apis.get(path)
         if acte is None:

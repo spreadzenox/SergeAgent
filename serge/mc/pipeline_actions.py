@@ -2,17 +2,23 @@
 """MC : les actions sur le pipeline.
 
 Le bouton d'un déclencheur, relancer une tâche, les tables qu'une
-invocation voit pour comparer, et le passage d'un lien à la main.
+invocation voit pour comparer, le passage d'un lien à la main, et, sur la
+page Pipeline, le modèle de chaque niveau et le texte « Qui est Serge ».
 """
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING, Any, Protocol
 
-from serge.db.store import append_event
+from serge.db.store import append_event, utcnow
 from serge.interpreter.flow import fire_button, pass_waiting, set_link_auto
 from serge.interpreter.tasks import relaunch_task
 from serge.mc.proj_vues import changer_comparaison
+
+# Un identifiant de modèle : « openai/gpt-5-mini », vide pour celui de
+# l'installation.
+_MODELE = re.compile(r'^[A-Za-z0-9._:/@+-]{0,200}$')
 
 
 class _PipelineHandler(Protocol):
@@ -30,7 +36,8 @@ else:
 
 
 class PipelineActionsMixin(_Base):
-    """POST /owner/api/bouton, /tache/relancer, /invocation/comparer, /lien/*."""
+    """POST /owner/api/bouton, /tache/relancer, /invocation/comparer,
+    /lien/* et /pipeline/*."""
 
     def _api_bouton(self) -> None:
         if not self._require_owner():
@@ -180,5 +187,67 @@ class PipelineActionsMixin(_Base):
                 actor='owner',
                 type='link.auto',
                 payload={'link': link_id, 'auto': auto},
+            )
+        self._send_json(200, {'ok': True})
+
+    def _api_pipeline_modele(self) -> None:
+        """Le modèle derrière un niveau : ``{tier, model}`` (vide = défaut)."""
+        if not self._require_owner():
+            return
+        body = self._json_body() or {}
+        tier = str(body.get('tier') or '')
+        model = str(body.get('model') or '').strip()
+        if not _MODELE.match(model):
+            self._refus(
+                400,
+                'Identifiant de modèle invalide.',
+                'modele',
+                'Exemple : openai/gpt-5-mini, ou vide pour celui de'
+                ' l’installation.',
+            )
+            return
+        with self._db() as conn:
+            cursor = conn.execute(
+                'UPDATE llm_models SET model=? WHERE tier=?', (model, tier)
+            )
+            if cursor.rowcount != 1:
+                self._refus(
+                    409, 'Niveau inconnu.', 'modele', 'fast, mid, smart.'
+                )
+                return
+            append_event(
+                conn,
+                actor='owner',
+                type='pipeline.model',
+                payload={'tier': tier, 'model': model},
+            )
+        self._send_json(200, {'ok': True})
+
+    def _api_pipeline_texte(self) -> None:
+        """Le texte « Qui est Serge » : ``{body}``."""
+        if not self._require_owner():
+            return
+        body = self._json_body() or {}
+        texte = str(body.get('body') or '').strip()
+        if not texte or len(texte) > 4000:
+            self._refus(
+                400,
+                'Texte vide ou trop long.',
+                'texte',
+                'Entre 1 et 4000 caractères.',
+            )
+            return
+        with self._db() as conn:
+            conn.execute(
+                'INSERT INTO serge_texts(id, body, updated_at)'
+                " VALUES('presentation', ?, ?) ON CONFLICT(id) DO UPDATE"
+                ' SET body=excluded.body, updated_at=excluded.updated_at',
+                (texte, utcnow()),
+            )
+            append_event(
+                conn,
+                actor='owner',
+                type='pipeline.text',
+                payload={'id': 'presentation', 'longueur': len(texte)},
             )
         self._send_json(200, {'ok': True})

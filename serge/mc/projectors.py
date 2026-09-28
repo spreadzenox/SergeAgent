@@ -53,6 +53,7 @@ from serge.mc.proj_memory import (
     project_couches,
     project_requested,
 )
+from serge.mc.proj_pipeline import project_pipeline
 from serge.mc.proj_policy import (
     project_politique_active,
     project_reglages,
@@ -227,6 +228,7 @@ PROJECTORS: dict[str, Callable[..., dict[str, Any]]] = {
     'units_systemd': project_units_systemd,
     'identite': project_identite_page,
     'ecoute': project_ecoute,
+    'pipeline': project_pipeline,
 }
 
 PAGE_SECTIONS: dict[str, list[str]] = {
@@ -274,4 +276,5 @@ PAGE_SECTIONS: dict[str, list[str]] = {
     ],
     'p9': ['meta', 'identite'],
     'p10': ['meta', 'ecoute'],
+    'p11': ['meta', 'pipeline'],
 }

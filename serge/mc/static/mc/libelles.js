@@ -19,6 +19,8 @@ export const EVENTS = {
   'invocation.compare': 'Tables à comparer changées',
   'link.passed': 'Passage à la main',
   'link.auto': 'Passage automatique changé',
+  'pipeline.model': 'Modèle d’un niveau changé',
+  'pipeline.text': 'Texte « Qui est Serge » changé',
   mc_act: 'Acte owner',
   'transition.approved': 'Approuvé',
   'transition.rejected': 'Rejeté',

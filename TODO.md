@@ -153,37 +153,33 @@ seulement sur ce qui est construit. Mission Control affiche tout ce qui
 est en base, en direct ; créer une invocation depuis le site viendra au
 lot 13.
 
-Ce qui est fait : les tables du pipeline (version 24 de la base), les
-deux files du runner qui tournent en continu et enregistrent après chaque
-tâche, l'interpréteur qui exécute n'importe quelle invocation décrite en
-base (sans « kinds »), l'écriture générique et ses protections, la
-priorité et l'interrupteur de chaque invocation, le remplissage de départ
-qui n'efface et n'écrase rien, le rangement de l'ancien code dans
-`pas_encore_branche/` (version 25 de la base), Mission Control branché sur
-les nouvelles tables, un demi-cycle de démonstration de l'étape 1 dans
-`config/pipeline.yaml`, et le test qui vérifie la règle
-(`tests/test_regle_interpreteur.py`), les réglages des invocations et les
-quotas des tables, modifiables sur la page Policy (par exemple « nombre
-d'idées » de la démo, ou « au plus 3 business choisis pour un POC »), et
-ce que voit chaque invocation (version 27 de la base) : la version courte
-des tables où elle écrit, les plus récentes d'abord, les outils « Lire
-les tables que je vois » et « Lire l'historique », ses leçons et le bloc
-« Qui est Serge » complet ; et le passage d'un lien à la main (version
-28), depuis la fiche du lien dans MC, à côté de la validation par ticket
-du lot 8. Serge est arrêté par défaut : il ne
-tourne qu'après un clic sur « Démarrer Serge » dans Mission Control. Le
-vrai pipeline, étape par étape, est l'objet des lots suivants. Ce qui
-reste dans ce lot :
+Ce qui est fait (il ne reste rien à construire dans ce lot) :
 
-- [ ] **Mission Control affiche le pipeline tel qu'il est en base.** La
-  fiche d'une invocation montre déjà tous ses réglages ; la page Cerveau,
-  toutes les invocations ; la page En direct, les étapes, les deux files
-  et les coupe-circuits. Il manque une vue d'ensemble des capacités, des
-  outils, des liens et des déclencheurs ; le modèle choisi derrière
-  chaque niveau (rapide, moyen, intelligent) et le texte « Qui est
-  Serge », à afficher et à rendre modifiables. Ce sera une nouvelle page
-  « Pipeline ». Créer une invocation depuis le site reste le travail du
-  lot 13.
+- les tables du pipeline (version 24 de la base), les deux files du
+  runner qui tournent en continu et enregistrent après chaque tâche,
+  l'interpréteur qui exécute n'importe quelle invocation décrite en base
+  (sans « kinds »), l'écriture générique et ses protections, la priorité
+  et l'interrupteur de chaque invocation ;
+- le remplissage de départ, qui n'efface et n'écrase rien, et un
+  demi-cycle de démonstration de l'étape 1 dans `config/pipeline.yaml` ;
+- le rangement de l'ancien code dans `pas_encore_branche/` (version 25)
+  et le test qui vérifie la règle (`tests/test_regle_interpreteur.py`) ;
+- les réglages des invocations et les quotas des tables, modifiables sur
+  la page Policy (version 26), par exemple « nombre d'idées » de la démo,
+  ou « au plus 3 business choisis pour un POC » ;
+- ce que voit chaque invocation (version 27) : la version courte des
+  tables où elle écrit, les plus récentes d'abord, les outils « Lire les
+  tables que je vois » et « Lire l'historique », ses leçons et le bloc
+  « Qui est Serge » complet ;
+- le passage d'un lien à la main (version 28), depuis la fiche du lien
+  dans MC, à côté de la validation par ticket du lot 8 ;
+- Mission Control branché sur les nouvelles tables, dont la page
+  « Pipeline » : la vue d'ensemble du pipeline en base, où l'on choisit
+  le modèle de chaque niveau et réécrit le texte « Qui est Serge » ;
+- Serge arrêté par défaut : il ne tourne qu'après un clic sur « Démarrer
+  Serge » dans Mission Control.
+
+Le vrai pipeline, étape par étape, est l'objet des lots suivants.
 
 ---
 

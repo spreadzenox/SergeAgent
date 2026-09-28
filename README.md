@@ -53,10 +53,12 @@ Tout le reste du projet s'organise autour de cette chaîne.
 
 ## État
 
-Serge est en pleine refonte (lot 6 du [`TODO.md`](TODO.md)) : tout le
-pipeline passe en base, et le code n'en est plus que l'interpréteur. Le
-runner (deux files de tâches) et l'interpréteur sont en place, mais
-`config/pipeline.yaml` ne décrit encore qu'un demi-cycle de démonstration.
+Serge sort d'une refonte (lot 6 du [`TODO.md`](TODO.md)) : tout le
+pipeline est en base, et le code n'en est plus que l'interpréteur. Le
+runner (deux files de tâches), l'interpréteur et la page « Pipeline » de
+Mission Control sont en place, mais `config/pipeline.yaml` ne décrit
+encore qu'un demi-cycle de démonstration ; le vrai pipeline commence au
+lot 7.
 Serge ne peut donc pas encore être allumé pour de vrai. L'ancien code écrit
 en dur pour chaque enchaînement (étape 1, envois, relève de la boîte mail,
 réponses, consolidation) est rangé dans

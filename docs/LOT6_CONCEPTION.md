@@ -834,3 +834,27 @@ qu'elle lance ensuite ») ou depuis la page Pipeline :
 Un passage déjà fait ne peut pas être relancé. Rien ne passe vers une
 invocation éteinte ou par un lien éteint : le passage reste en attente.
 Chaque clic est noté au journal (`link.passed`, `link.auto`).
+
+---
+
+## 19. La page « Pipeline » de Mission Control (validé, Q64, construit)
+
+Une page de plus dans Mission Control (`#/pipeline`) montre tout le
+pipeline tel qu'il est en base, sans rien calculer à part :
+
+- les liens, avec d'où à où, quand ils passent, s'ils passent seuls ou à
+  la main, et combien de passages attendent un clic ou sont déjà passés ;
+- les déclencheurs, avec l'invocation qu'ils lancent et quand ;
+- les outils, avec leur capacité et à qui ils sont donnés ;
+- les capacités du code, présentes ou non ;
+- ce que les invocations voient de chaque table (version courte,
+  colonnes lisibles, colonne des plus récentes) ;
+- le modèle derrière chaque niveau (rapide, moyen, intelligent) et le
+  texte « Qui est Serge ».
+
+Chaque ligne ouvre la fiche de son objet. Deux choses s'y modifient : le
+modèle d'un niveau (`llm_models.model` ; vide, c'est celui choisi à
+l'installation, affiché en gris) et le texte « Qui est Serge »
+(`serge_texts`). Chaque changement est noté au journal
+(`pipeline.model`, `pipeline.text`). Créer ou modifier le reste depuis le
+site (une invocation, un lien, un outil) reste le travail du lot 13.

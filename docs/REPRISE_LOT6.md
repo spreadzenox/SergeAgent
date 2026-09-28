@@ -138,7 +138,15 @@ Fait sur `Clem` depuis la fusion (commits locaux, pas encore poussés) :
   invocation, les tables à comparer avec leurs boutons, et ses leçons.
   Tests : `tests/test_interpreter_seen.py`.
 
-**Étape 4** : passer un lien à la main, et la page « Pipeline » de MC.
+- **passer un lien à la main** (migration v28) : une fiche « lien » dans
+  MC, avec « Passer à la suite » et l'interrupteur « passage automatique »
+  (conception : partie 18) ;
+- **la page « Pipeline »** de MC (conception : partie 19).
+
+Le lot 6 est donc construit. **Prochaine étape : demander à Clem la
+fusion dans `main`** (chaque fusion redéploie Serge sur le serveur de
+Julien ; la migration v28 s'y appliquera au démarrage, et les objets
+nouveaux de `pipeline.yaml` s'y ajouteront sans rien écraser).
 
 Puis le lot 7 : le vrai cycle de l'étape 1, qui remplace le demi-cycle de
 démonstration (le marquer supprimé en base).

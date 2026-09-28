@@ -23,6 +23,7 @@
 <a href="#/health" data-page="p8">Health</a>
 <a href="#/identite" data-page="p9">Identité</a>
 <a href="#/ecoute" data-page="p10">Écoute</a>
+<a href="#/pipeline" data-page="p11">Pipeline</a>
 </nav>
 </aside>
 <div class="contenu">
@@ -105,6 +106,29 @@
 <p data-ecoute="cycle">Aucun cycle.</p>
 <h3>Invocations de l’étape</h3><ul data-ecoute="invocations"></ul>
 <h3>Business candidats</h3><ul data-ecoute="candidates"></ul>
+</section>
+</template>
+<template id="page-pipeline">
+<section class="panneau" data-section="pipeline" data-sig="">
+<h2>Pipeline</h2>
+<p class="legende-policy">Tout le pipeline tel qu’il est en base : le code n’en est que l’interpréteur. Une ligne s’ouvre en fiche ; le modèle de chaque niveau et le texte « Qui est Serge » se modifient ici.</p>
+<h3>Le modèle derrière chaque niveau</h3>
+<p class="legende-policy">Vide : le modèle choisi à l’installation (affiché en gris).</p>
+<div data-pipeline="modeles"></div>
+<h3>Le texte « Qui est Serge »</h3>
+<p class="legende-policy">En tête du prompt des invocations qui le demandent, suivi de la chaîne des 8 étapes et de leur place, lues en base.</p>
+<div data-pipeline="presentation"></div>
+<h3>Les liens</h3>
+<div data-pipeline="liens"></div>
+<h3>Les déclencheurs</h3>
+<div data-pipeline="declencheurs"></div>
+<h3>Les outils</h3>
+<div data-pipeline="outils"></div>
+<h3>Les capacités du code</h3>
+<div data-pipeline="capacites"></div>
+<h3>Ce que les invocations voient des tables</h3>
+<p class="legende-policy">La version courte est donnée d’office, pour comparer, à toute invocation qui écrit dans la table ; les colonnes lisibles se lisent avec « Lire les tables que je vois ».</p>
+<div data-pipeline="tables"></div>
 </section>
 </template>
 <template id="page-system">
