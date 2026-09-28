@@ -162,6 +162,17 @@ status_transitions:
   - {table: ventures, column: lifecycle, from: '', to: CANDIDATE}
   - {table: ventures, column: lifecycle, from: CANDIDATE, to: POC_SELECTED}
 
+# Au plus 3 business choisis pour un POC en même temps : le code
+# d'écriture refuse le quatrième, quelle que soit l'invocation. Le chiffre
+# se règle sur la page Policy de Mission Control.
+table_quotas:
+  - id: business_choisis
+    table: ventures
+    column: lifecycle
+    values: [POC_SELECTED]
+    max: 3
+    description: Au plus 3 business choisis pour un POC en même temps.
+
 # Une fiche trop proche d'un business existant (72 % de mots en commun sur
 # le nom et la description) est écartée, avec une note au journal.
 dedup_rules:
@@ -204,9 +215,9 @@ invocations:
           status: {source: fixed, value: OPEN}
 
   - id: demo_formuler
-    title: Formuler deux idées (démo)
+    title: Formuler des idées (démo)
     role: >-
-      Imagine deux idées de business à partir du texte de guidage du cycle,
+      Imagine des idées de business à partir du texte de guidage du cycle,
       sans reproposer un business déjà connu. Chaque idée devient un
       business candidat.
     step: pre_prospection
@@ -217,11 +228,18 @@ invocations:
     gets_serge_intro: true
     default_max_rows: 20
     max_tool_turns: 4
+    settings:
+      nombre_idees:
+        value: 2
+        min: 1
+        max: 5
+        policy: true
+        description: Le nombre d'idées à proposer à chaque cycle.
     prompt: |
       Ceci est une démonstration du pipeline décrit en base.
-      Propose exactement deux idées de business simples, inspirées du
-      texte de guidage du cycle. N'en propose aucune qui ressemble à un
-      business déjà connu. Chaque idée doit être légale.
+      Propose exactement {nombre_idees} idées de business simples,
+      inspirées du texte de guidage du cycle. N'en propose aucune qui
+      ressemble à un business déjà connu. Chaque idée doit être légale.
     tools:
       - tool: current_listen_cycle
         mode: given
@@ -235,7 +253,7 @@ invocations:
       - {tool: web_search, mode: callable}
       - {tool: memory_search, mode: callable}
     output:
-      - {path: fiches, type: list, description: Les deux idées.}
+      - {path: fiches, type: list, min_items: nombre_idees, max_items: nombre_idees, description: Les idées.}
       - {path: fiches.title, type: text, description: Le nom court du business.}
       - {path: fiches.description, type: text, description: Ce qu'il vend et à qui.}
       - {path: fiches.offre, type: text, required: false, description: L'offre qu'on pourrait vendre tout de suite.}
@@ -259,23 +277,31 @@ invocations:
     model_tier: fast
     queue: works
     priority: 10
+    settings:
+      nombre_a_choisir:
+        value: 1
+        min: 0
+        max: 3
+        policy: true
+        description: Le nombre maximum de business choisis à chaque cycle.
     prompt: |
       Ceci est une démonstration du pipeline décrit en base.
-      Parmi les business candidats, choisis-en au plus un, le plus simple à
-      tester, et dis pourquoi en une phrase.
+      Parmi les business candidats, choisis-en au plus {nombre_a_choisir},
+      les plus simples à tester, et dis pourquoi en une phrase.
     tools:
       - tool: eligible_poc_candidates
         mode: given
         label: Les business candidats
         max_rows: 10
     output:
-      - {path: choix, type: list, description: Le business choisi (au plus un).}
+      - {path: choix, type: list, max_items: nombre_a_choisir, description: Les business choisis.}
       - {path: choix.venture_id, type: text, description: L'identifiant du business.}
       - {path: choix.raison, type: text, required: false, description: Pourquoi, en une phrase.}
     writes:
       - table: ventures
         operation: update
         for_each: choix
+        max_rows: nombre_a_choisir
         key: {column: id, source: field, value: choix.venture_id}
         values:
           lifecycle: {source: fixed, value: POC_SELECTED}

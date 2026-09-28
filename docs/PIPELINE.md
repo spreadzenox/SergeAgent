@@ -217,6 +217,16 @@ par Julien. Exemple : refuser un business déjà en test, c'est déclarer en
 base que le statut d'un business ne peut passer à `POC_SELECTED` que
 depuis `CANDIDATE`.
 
+Les chiffres d'une invocation sont des **réglages** rangés avec elle. Un
+réglage sert partout à la fois : dans le prompt (« Propose
+{nombre_idees} idées »), dans le format de la réponse (une liste
+d'exactement ce nombre d'éléments, vérifiée), dans l'écriture (« au plus
+N lignes ») et dans les paramètres des outils et des liens. Une table
+peut aussi avoir un **quota** : « au plus 3 business choisis pour un
+POC », refusé par le code d'écriture quelle que soit l'invocation. Les
+réglages et les quotas marqués « policy » se changent en direct sur la
+page Policy de Mission Control.
+
 Exemple de ce que ça permet : si Julien change dans Mission Control le
 modèle de « Trier les pages », ou ajoute une invocation entre « Trier les
 pages » et « Formuler des business », le cycle suivant en tient compte,

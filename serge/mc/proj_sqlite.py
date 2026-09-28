@@ -25,6 +25,18 @@ CATALOGUE: dict[str, tuple[str, str, str, str]] = {
         'Le runner, qui lit ces réglages pour chaque tâche.',
         'deleted_at rempli : supprimée, jamais recréée au démarrage.',
     ),
+    'invocation_settings': (
+        'Les réglages d’une invocation : nombre d’idées, nombre à choisir…',
+        'pipeline.yaml au départ, puis la page Policy de MC.',
+        'Le prompt ({nom}), le format de la réponse, l’écriture, les outils.',
+        'policy = 1 : modifiable en direct sur la page Policy.',
+    ),
+    'table_quotas': (
+        'Les quotas d’une table : au plus N lignes dans tel état.',
+        'pipeline.yaml au départ, puis la page Policy de MC.',
+        'Le code d’écriture générique (refus au-delà du quota).',
+        'Exemple : au plus 3 business choisis pour un POC.',
+    ),
     'invocation_tools': (
         'Les outils de chaque invocation : donnés d’office ou appelables.',
         'pipeline.yaml au départ, puis Mission Control.',

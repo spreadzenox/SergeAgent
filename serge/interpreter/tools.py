@@ -13,6 +13,8 @@ import sqlite3
 from collections.abc import Callable, Mapping
 from typing import Any
 
+from serge.interpreter.settings import load_settings
+
 Runner = Callable[
     [sqlite3.Connection, str, dict[str, Any], str], dict[str, Any]
 ]
@@ -109,14 +111,18 @@ def fixed_params(
     out: dict[str, str] = {}
     if invocation_tool_id is None:
         return out
+    settings = load_settings(conn, invocation_id)
     for name, source, value in conn.execute(
         'SELECT param_name, source, value FROM invocation_tool_params'
         ' WHERE invocation_id=? AND invocation_tool_id=?',
         (invocation_id, invocation_tool_id),
     ).fetchall():
-        out[str(name)] = (
-            task.get(str(value), '') if source == 'task' else str(value)
-        )
+        if source == 'task':
+            out[str(name)] = task.get(str(value), '')
+        elif source == 'setting':
+            out[str(name)] = settings.get(str(value), '')
+        else:
+            out[str(name)] = str(value)
     return out
 
 

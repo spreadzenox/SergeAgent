@@ -17,9 +17,9 @@ recrée jamais ensuite.
 1. **Les migrations** (`serge/db/migrate.py`). Chaque changement de
    structure est une fonction `apply_v0NN` (fichiers `serge/db/v0NN.py`).
    Serge applique celles qui manquent, dans l'ordre. Version actuelle :
-   **25**.
+   **26**.
    - Une base neuve saute directement à la version 7 (le socle,
-     `serge/db/schema.py`), puis applique 8, 9, … 25.
+     `serge/db/schema.py`), puis applique 8, 9, … 26.
    - Une base **plus récente** que le code refuse de démarrer
      (`MigrateError`). Revenir à un ancien commit ne défait pas une
      migration.
@@ -114,10 +114,12 @@ est déjà en base. Chaque table est expliquée dans
 | `tool_db_*` | Pour chaque outil de lecture de la base : tables, colonnes, filtres, jointures (toujours faites) et paramètres autorisés. Le modèle n'écrit jamais de SQL. |
 | `invocations` | Chaque invocation, avec ou sans LLM, et tous ses réglages : rôle, étape, niveau de modèle, prompt, file, priorité, interrupteur. |
 | `invocation_tools`, `invocation_tool_params` | Les outils de chaque invocation (donnés d'office ou appelables) et leurs paramètres figés. |
-| `invocation_output_fields` | Le format de la réponse de chaque invocation. |
+| `invocation_settings` | Les réglages d'une invocation, une ligne par réglage (exemple : « nombre d'idées = 2 », entre 1 et 5). Ils servent dans le prompt (`{nombre_idees}`), le format de la réponse, l'écriture et les paramètres. `policy` = 1 : modifiable sur la page Policy de MC. |
+| `invocation_output_fields` | Le format de la réponse de chaque invocation. Une liste peut avoir un nombre d'éléments minimum et maximum (un nombre ou le nom d'un réglage). |
 | `writable_tables`, `writable_columns` | Ce qu'une invocation a le droit d'écrire. |
-| `invocation_writes`, `invocation_write_values` | Où chaque invocation écrit sa réponse. |
+| `invocation_writes`, `invocation_write_values` | Où chaque invocation écrit sa réponse, avec au besoin « au plus N lignes par passage ». |
 | `status_transitions`, `dedup_rules`, `dedup_rule_columns` | Les protections : changements de statut permis, doublons. |
+| `table_quotas` | Une protection de plus : « au plus N lignes dont telle colonne vaut l'une de ces valeurs » (exemple : au plus 3 business choisis pour un POC). Modifiable sur la page Policy. |
 | `links`, `link_params`, `link_passages` | Les liens entre invocations, et ce qui est déjà passé. |
 | `triggers`, `trigger_params` | Ce qui lance une invocation : une ligne écrite, une heure, un bouton. |
 | `queues`, `tasks`, `task_params`, `task_inputs` | Les deux files (conversations, travaux), leurs tâches, et ce que chaque tâche a reçu. |
@@ -146,7 +148,8 @@ L'ordre des chantiers est dans le [`TODO.md`](../TODO.md). Voici ce qu'ils
 changent dans la base.
 
 **Le pipeline passe en base (lot 6).** C'est fait pour les tables, le
-runner et l'interpréteur (version 25 de la base). `config/pipeline.yaml`
+runner, l'interpréteur, les réglages des invocations et les quotas
+(version 26 de la base). `config/pipeline.yaml`
 ne décrit encore qu'un demi-cycle de démonstration de l'étape 1 ; le vrai
 pipeline, étape par étape, est l'objet des lots suivants (à commencer par
 le lot 7).

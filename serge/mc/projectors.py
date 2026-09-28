@@ -55,6 +55,7 @@ from serge.mc.proj_memory import (
 )
 from serge.mc.proj_policy import (
     project_politique_active,
+    project_reglages,
     project_testing_froid,
     project_trust_candidates,
 )
@@ -210,6 +211,7 @@ PROJECTORS: dict[str, Callable[..., dict[str, Any]]] = {
     'consolidation': project_consolidation,
     'requested': project_requested,
     'politique_active': project_politique_active,
+    'reglages': project_reglages,
     'testing_froid': project_testing_froid,
     'trust_candidates': project_trust_candidates,
     'entonnoir': project_entonnoir,
@@ -246,6 +248,7 @@ PAGE_SECTIONS: dict[str, list[str]] = {
     'p5': [
         'meta',
         'politique_active',
+        'reglages',
         'testing_froid',
         'trust_candidates',
     ],

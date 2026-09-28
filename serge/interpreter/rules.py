@@ -11,6 +11,10 @@
 3. Les doublons (``dedup_rules``) : ``exact`` compare les textes sans
    majuscules, accents ni espaces en trop ; ``shared_words`` compare la
    part de mots en commun, par exemple 72 %.
+4. Les quotas (``table_quotas``) : « au plus N lignes dont telle colonne
+   vaut l'une de ces valeurs ». Exemple : au plus 3 business au statut
+   ``POC_SELECTED`` ; le quatrième est refusé, quelle que soit
+   l'invocation qui écrit.
 """
 
 from __future__ import annotations
@@ -169,3 +173,41 @@ def table_columns(conn: sqlite3.Connection, table: str) -> dict[str, dict]:
         }
         for r in conn.execute(f'PRAGMA table_info("{safe_name(table)}")')
     }
+
+
+def quota_refusal(
+    conn: sqlite3.Connection,
+    table: str,
+    values: Mapping[str, Any],
+    current: Mapping[str, Any] | None,
+) -> str:
+    """La raison du refus d'une ligne qui dépasserait un quota, ou ``''``.
+
+    Une ligne ne compte que si elle entre dans le quota : un business déjà
+    ``POC_SELECTED`` qu'on modifie ne prend pas une place de plus.
+    """
+    for quota_id, column, counted, maximum in conn.execute(
+        'SELECT id, column_name, counted_values, max_value FROM table_quotas'
+        ' WHERE table_name=? ORDER BY id',
+        (table,),
+    ).fetchall():
+        column = safe_name(str(column))
+        if column not in values:
+            continue
+        compte = [v.strip() for v in str(counted).split(',') if v.strip()]
+        if str(values[column]) not in compte:
+            continue
+        if current is not None and str(current.get(column) or '') in compte:
+            continue
+        marques = ', '.join('?' for _ in compte)
+        row = conn.execute(
+            f'SELECT COUNT(*) FROM "{safe_name(table)}"'
+            f' WHERE "{column}" IN ({marques})',
+            compte,
+        ).fetchone()
+        if int(row[0]) >= int(maximum):
+            return (
+                f'quota {quota_id} : au plus {maximum} ligne(s) de {table}'
+                f' avec {column} parmi {", ".join(compte)}'
+            )
+    return ''

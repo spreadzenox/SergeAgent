@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from serge.interpreter.output import Field, describe_format
+from serge.interpreter.settings import fill_prompt, load_settings
 from serge.interpreter.tools import fixed_params, run_tool, tool_schema
 from serge.llm.client import ChatResult
 
@@ -106,7 +107,7 @@ def system_prompt(
         if row and str(row[0]).strip():
             parts.append(f'# Qui est Serge\n{str(row[0]).strip()}')
         parts.append(f'# Ta place\nTu es « {inv.title} ».')
-    parts.append(inv.prompt.strip())
+    parts.append(fill_prompt(inv.prompt.strip(), load_settings(conn, inv.id)))
     fmt = describe_format(fields)
     if fmt:
         parts.append(f'# Format de ta réponse\n{fmt}')

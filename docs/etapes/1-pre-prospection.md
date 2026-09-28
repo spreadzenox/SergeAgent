@@ -25,7 +25,7 @@ de guidage ; elle ne tourne que si Serge a été démarré :
 
 1. « Ouvrir un cycle (démo) », sans LLM, enregistre le cycle
    (`listen_cycles`) avec le texte de guidage ;
-2. « Formuler deux idées (démo) » reçoit le cycle et les business déjà
+2. « Formuler des idées (démo) » reçoit le cycle et les business déjà
    connus, peut chercher sur le web et dans la mémoire, et écrit deux
    business `CANDIDATE`. La règle de doublons de la table `ventures`
    (72 % de mots en commun sur le nom et la description) écarte une fiche

@@ -359,7 +359,7 @@ class MigrateTests(unittest.TestCase):
         self.addCleanup(conn.close)
         from serge.db.migrate import MIGRATIONS
 
-        apply_pending(conn, MIGRATIONS[:-1], head=24)
+        apply_pending(conn, MIGRATIONS[:-2], head=24)
         conn.execute(
             'INSERT INTO runtime_flags(name, value, set_at) VALUES'
             " ('kind.email.send', 'kill', 't'), ('llm.fill_slots', 'kill',"
@@ -419,6 +419,46 @@ class MigrateTests(unittest.TestCase):
             " WHERE tool_id='listen_cycle_documents'"
         ).fetchone()
         self.assertEqual(jointure, ('listen_cycle_docs', 'listen_docs'))
+
+    def test_v26_ajoute_les_reglages_et_garde_les_parametres(self) -> None:
+        conn = sqlite3.connect(':memory:')
+        self.addCleanup(conn.close)
+        from serge.db.migrate import MIGRATIONS
+
+        apply_pending(conn, MIGRATIONS[:-1], head=25)
+        conn.execute(
+            'INSERT INTO invocation_tool_params(invocation_id,'
+            ' invocation_tool_id, param_name, source, value)'
+            " VALUES('inv', 1, 'cycle_id', 'task', 'cycle_id')"
+        )
+        conn.execute(
+            'INSERT INTO link_params(link_id, param_name, source, value)'
+            " VALUES('l1', 'venture_id', 'row', 'id')"
+        )
+        self.assertEqual(apply_pending(conn), SCHEMA_VERSION)
+        self.assertEqual(
+            conn.execute(
+                'SELECT param_name, source FROM invocation_tool_params'
+            ).fetchall(),
+            [('cycle_id', 'task')],
+        )
+        conn.execute(
+            'INSERT INTO link_params(link_id, param_name, source, value)'
+            " VALUES('l1', 'n', 'setting', 'nombre_idees')"
+        )
+        colonnes = {
+            str(r[1])
+            for r in conn.execute('PRAGMA table_info(invocation_writes)')
+        }
+        self.assertIn('max_rows', colonnes)
+        for table in ('invocation_settings', 'table_quotas'):
+            self.assertIsNotNone(
+                conn.execute(
+                    "SELECT 1 FROM sqlite_master WHERE type='table'"
+                    ' AND name=?',
+                    (table,),
+                ).fetchone()
+            )
 
 
 if __name__ == '__main__':

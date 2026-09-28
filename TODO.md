@@ -162,7 +162,10 @@ qui n'efface et n'écrase rien, le rangement de l'ancien code dans
 `pas_encore_branche/` (version 25 de la base), Mission Control branché sur
 les nouvelles tables, un demi-cycle de démonstration de l'étape 1 dans
 `config/pipeline.yaml`, et le test qui vérifie la règle
-(`tests/test_regle_interpreteur.py`). Serge est arrêté par défaut : il ne
+(`tests/test_regle_interpreteur.py`), les réglages des invocations et les
+quotas des tables, modifiables sur la page Policy (par exemple « nombre
+d'idées » de la démo, ou « au plus 3 business choisis pour un POC »).
+Serge est arrêté par défaut : il ne
 tourne qu'après un clic sur « Démarrer Serge » dans Mission Control. Le
 vrai pipeline, étape par étape, est l'objet des lots suivants. Ce qui
 reste dans ce lot :
@@ -202,26 +205,6 @@ reste dans ce lot :
 
   Détail des tables prévues :
   [`docs/LOT6_CONCEPTION.md`](docs/LOT6_CONCEPTION.md), partie 16.
-
-- [ ] **Les réglages chiffrés d'une invocation, dans la page Policy.**
-  Depuis le lot 6, les chiffres de la policy propres à une invocation
-  (par exemple « combien de business choisir par cycle ») ne sont plus lus
-  par personne, et la démo écrit « deux idées » en toutes lettres dans son
-  prompt, sans que rien le vérifie. Il faut ranger ces réglages avec
-  l'invocation, une ligne par réglage (nom, valeur, bornes, description),
-  et qu'un réglage serve partout où l'invocation a une valeur : dans le
-  prompt (« Propose {nombre_idees} idées »), dans le format de la réponse
-  (une liste d'exactement ce nombre d'éléments, vérifiée), dans l'écriture
-  (une colonne reçoit un réglage, « au plus N lignes ») et dans les
-  paramètres des outils et des liens. Il faut aussi une protection de
-  plus par table, le quota : « au plus 3 business en test léger en même
-  temps », refusé par le code d'écriture quelle que soit l'invocation.
-  Chaque réglage et chaque quota porte une étiquette « policy » : la page
-  Policy de MC les cherche en base et les rend modifiables en direct, avec
-  le journal de chaque changement. Ce qui ne concerne aucune invocation
-  (budget du jour, quotas d'envoi, heures d'appel) reste dans la policy
-  générale. Détail : [`docs/LOT6_CONCEPTION.md`](docs/LOT6_CONCEPTION.md),
-  partie 17.
 
 - [ ] **Passer un lien à la main.** Un lien peut être réglé pour attendre
   un clic avant de lancer l'invocation suivante. Exemple : après

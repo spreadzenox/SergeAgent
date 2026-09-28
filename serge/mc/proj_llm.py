@@ -84,15 +84,17 @@ def _outils(
 
 def _format(conn: sqlite3.Connection, ident: str) -> list[dict[str, str]]:
     champs = []
-    for path, kind, choices, required, description in conn.execute(
-        'SELECT path, type, choices, required, description'
-        ' FROM invocation_output_fields WHERE invocation_id=?'
+    for path, kind, choices, required, description, low, high in conn.execute(
+        'SELECT path, type, choices, required, description, min_items,'
+        ' max_items FROM invocation_output_fields WHERE invocation_id=?'
         ' ORDER BY position',
         (ident,),
     ).fetchall():
         detail = f'{kind}, {"obligatoire" if required else "facultatif"}'
         if choices:
             detail += f', parmi : {choices}'
+        if low or high:
+            detail += f', de {low or "0"} à {high or "…"} éléments'
         if description:
             detail += f' — {description}'
         champs.append({'k': str(path), 'v': detail})
@@ -109,9 +111,10 @@ def _ecritures(conn: sqlite3.Connection, ident: str) -> list[dict[str, str]]:
         key_col,
         key_src,
         key_val,
+        max_rows,
     ) in conn.execute(
         'SELECT id, table_name, operation, for_each, key_column,'
-        ' key_source, key_value FROM invocation_writes'
+        ' key_source, key_value, max_rows FROM invocation_writes'
         ' WHERE invocation_id=? ORDER BY position',
         (ident,),
     ).fetchall():
@@ -123,6 +126,8 @@ def _ecritures(conn: sqlite3.Connection, ident: str) -> list[dict[str, str]]:
             )
         if for_each:
             quoi += f', une ligne par élément de « {for_each} »'
+        if max_rows:
+            quoi += f', au plus {max_rows} ligne(s)'
         valeurs = _params(
             conn,
             'SELECT column_name, source, value FROM invocation_write_values'
@@ -199,6 +204,24 @@ def _passages(conn: sqlite3.Connection, ident: str) -> list[dict[str, Any]]:
             }
         )
     return lignes
+
+
+def _reglages(conn: sqlite3.Connection, ident: str) -> list[dict[str, str]]:
+    champs = []
+    for name, value, low, high, description, policy in conn.execute(
+        'SELECT name, value, min_value, max_value, description, policy'
+        ' FROM invocation_settings WHERE invocation_id=? ORDER BY name',
+        (ident,),
+    ).fetchall():
+        detail = str(value)
+        if low or high:
+            detail += f' (entre {low or "…"} et {high or "…"})'
+        if description:
+            detail += f' — {description}'
+        if policy:
+            detail += ' · modifiable sur la page Policy'
+        champs.append({'k': str(name), 'v': detail})
+    return champs
 
 
 def _champs(conn: sqlite3.Connection, inv: dict) -> list[dict[str, str]]:
@@ -283,6 +306,16 @@ def project_llm(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
     cadres: list[dict[str, Any]] = [
         {'titre': 'À quoi ça sert', 'texte': inv['role'] or '—'}
     ]
+    reglages = _reglages(conn, ident)
+    if reglages:
+        cadres.append(
+            {
+                'titre': 'Ses réglages',
+                'texte': 'Chaque réglage sert dans le prompt ({nom}), le'
+                ' format de la réponse ou l’écriture.',
+                'champs': reglages,
+            }
+        )
     if inv['type'] == 'llm':
         cadres += [
             {

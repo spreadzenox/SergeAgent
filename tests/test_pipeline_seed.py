@@ -343,6 +343,31 @@ class PipelineSeedTests(unittest.TestCase):
             with self.assertRaises(PipelineSeedError):
                 seed_pipeline(self.conn, data)
 
+    def test_les_reglages_et_les_quotas_de_depart(self) -> None:
+        reglage = self._one(
+            'SELECT value, min_value, max_value, policy FROM'
+            " invocation_settings WHERE invocation_id='demo_formuler'"
+            " AND name='nombre_idees'"
+        )
+        self.assertEqual(reglage, ('2', '1', '5', 1))
+        self.assertEqual(
+            self._one(
+                'SELECT counted_values, max_value FROM table_quotas'
+                " WHERE id='business_choisis'"
+            ),
+            ('POC_SELECTED', 3),
+        )
+
+    def test_un_reglage_hors_bornes_est_refuse(self) -> None:
+        from serge.interpreter.settings import SettingError
+
+        data = _pipeline()
+        data['invocations'][0]['settings'] = {
+            'nombre': {'value': 12, 'min': 1, 'max': 10}
+        }
+        with self.assertRaises(SettingError):
+            seed_pipeline(self.conn, data)
+
 
 if __name__ == '__main__':
     unittest.main()

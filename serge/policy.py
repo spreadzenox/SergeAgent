@@ -183,8 +183,6 @@ def validate_policy(data: Mapping[str, Any]) -> dict[str, Any]:
         'memory.judge_oscillation_days',
         'tickets.digest_hour',
         'tickets.trust_min_approvals',
-        'listen.discovery_needs_target',
-        'listen.poc_business_target',
         'testing.n_smoke_min',
         'testing.n_smoke_max',
         'testing.n_full_min',
@@ -248,10 +246,17 @@ def load_policy(directory: Path | None = None) -> dict[str, Any]:
 def fusionner_semence(data: Mapping[str, Any]) -> dict[str, Any]:
     """Complète un snapshot avec les clés nouvelles de la semence YAML.
 
+    Une section retirée de la semence disparaît aussi de la policy en
+    vigueur. Exemple : la section « listen » a été retirée au lot 6 (ses
+    chiffres sont devenus des réglages d'invocation) ; un ancien snapshot
+    qui la contient encore ne l'affiche plus dans Mission Control.
+
     Args:
         data: Snapshot (les valeurs présentes gagnent).
 
     Returns:
         Policy fusionnée, pas encore revalidée.
     """
-    return _deep_merge(load_policy(), dict(data))
+    semence = load_policy()
+    fusion = _deep_merge(semence, dict(data))
+    return {cle: val for cle, val in fusion.items() if cle in semence}

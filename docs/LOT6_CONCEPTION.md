@@ -714,7 +714,7 @@ tables à comparer.
 
 ---
 
-## 17. Les réglages d'une invocation, et les quotas des tables (validé, Q61)
+## 17. Les réglages d'une invocation, et les quotas des tables (validé, Q61, construit)
 
 Le format de la réponse et l'écriture sont déjà décrits en base (parties 4
 et 5). Ce qui manquait, c'est de les relier aux chiffres réglables. Clem a
@@ -750,7 +750,7 @@ d'idées = 2 », entre 1 et 10.
 **`table_quotas` : les quotas d'une table.** Une protection de plus, réglée
 sur la table comme les changements de statut : « au plus N lignes de
 cette table dont telle colonne vaut l'une de ces valeurs ». Colonnes :
-`id`, `table_name`, `column_name`, `values` (la liste des valeurs
+`id`, `table_name`, `column_name`, `counted_values` (la liste des valeurs
 comptées, séparées par des virgules), `max_value`, `description`,
 `policy`. Exemple : au plus 3 business en test léger en même temps. Le
 code d'écriture refuse une ligne de trop, quelle que soit l'invocation qui

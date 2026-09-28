@@ -22,6 +22,7 @@ from zoneinfo import ZoneInfo
 
 from serge.db.store import utcnow
 from serge.interpreter.schedule import due_slot
+from serge.interpreter.settings import load_settings
 from serge.interpreter.tasks import enqueue_task, task_params
 from serge.interpreter.writer import Written
 
@@ -32,11 +33,14 @@ def _params(
     row: Mapping[str, Any] | None = None,
     task: Mapping[str, str] | None = None,
     form: Mapping[str, Any] | None = None,
+    settings: Mapping[str, str] | None = None,
 ) -> dict[str, str]:
     out: dict[str, str] = {}
     for name, source, value in rows:
         if source == 'fixed':
             out[name] = value
+        elif source == 'setting':
+            out[name] = str((settings or {}).get(value, ''))
         elif source == 'row':
             out[name] = str((row or {}).get(value, '') or '')
         elif source == 'task':
@@ -89,6 +93,7 @@ def pass_links(
 ) -> None:
     """Lance les invocations suivantes, selon les liens de celle-ci."""
     task = task_params(conn, task_id)
+    settings = load_settings(conn, invocation_id)
     for link_id, to_inv, mode, write_id, auto in conn.execute(
         'SELECT id, to_invocation_id, mode, write_id, auto FROM links'
         " WHERE from_invocation_id=? AND enabled=1 AND deleted_at=''",
@@ -102,7 +107,7 @@ def pass_links(
                 str(to_inv),
                 bool(auto),
                 f'task:{task_id}',
-                _params(rows, task=task),
+                _params(rows, task=task, settings=settings),
             )
             continue
         done = written.get(int(write_id))
@@ -116,7 +121,7 @@ def pass_links(
                 str(to_inv),
                 bool(auto),
                 ref,
-                _params(rows, row=row, task=task),
+                _params(rows, row=row, task=task, settings=settings),
             )
 
 

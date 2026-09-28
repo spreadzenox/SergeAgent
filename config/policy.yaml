@@ -114,10 +114,6 @@ tickets:
 consent:
   opt_in_channels: [voice, sms, whatsapp]  # opt-in requis, autres = opt-out
 
-listen:
-  discovery_needs_target: 5           # besoins demandés à chaque découverte
-  poc_business_target: 1              # business retenus pour le prochain POC
-
 testing:                             # taille des essais (semence ; MC à froid)
   n_smoke_min: 30
   n_smoke_max: 50

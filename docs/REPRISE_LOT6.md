@@ -102,7 +102,7 @@ base.
   déploiement ou une instance neuve ne démarre jamais Serge.
 - **Un demi-cycle de démonstration** dans `config/pipeline.yaml` : le
   bouton « Lancer un cycle (démo) », puis « Ouvrir un cycle (démo) » (sans
-  LLM), « Formuler deux idées (démo) » et « Choisir un business (démo) »,
+  LLM), « Formuler des idées (démo) » et « Choisir un business (démo) »,
   avec les protections de la table `ventures` (statuts permis, doublons).
   Testé de bout en bout avec un faux modèle, et dans le navigateur
   (`tests/test_pipeline_demo.py`). Le vrai pipeline est l'objet du lot 7.

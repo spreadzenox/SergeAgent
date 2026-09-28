@@ -38,7 +38,7 @@ navigateur au fil de l'eau.
 | **Cerveau** | `#/mind` | Pensées, décisions récentes, tableau de toutes les invocations en base (niveau, file, priorité, usage sur 7 jours), signaux entrants. | Ouvrir la fiche d'une invocation, l'éteindre ou la rallumer. |
 | **Décisions** | `#/tickets` | Les tickets à trancher, ce qui a changé, le rythme des décisions, le résumé quotidien. | Répondre à un ticket (mêmes boutons que sur Discord), discuter. |
 | **Mémoire** | `#/memory` | Épisodes archivés, procédures, pièges, leçons, dernière consolidation, demandes de nouvelles capacités. | Chercher dans la mémoire, garder, modifier ou jeter une leçon. |
-| **Policy** | `#/policy` | Toutes les règles : quotas, heures, budgets, taille des essais, réglages de l'écoute. | Modifier une règle et l'enregistrer. Chaque version est gardée. |
+| **Policy** | `#/policy` | Toutes les règles : quotas, heures, budgets, taille des essais ; et les réglages des invocations et les quotas des tables marqués « policy », rangés par étape et par invocation. | Modifier une règle et l'enregistrer. Chaque version de la policy générale est gardée ; chaque changement de réglage est noté au journal. |
 | **Économie** | `#/economy` | De l'envoi au paiement : touches, réponses, paiements, abonnements, coût des invocations LLM. | Lecture. |
 | **Voix** | `#/voice` | L'état du pont téléphonique, le journal des appels, leur qualité. | Écouter un enregistrement. Pour couper les appels : page En direct. |
 | **Health** | `#/health` | Taille du code, services systemd, versions, piste d'audit. | Lecture. |
@@ -106,13 +106,6 @@ lu dans les liens. Il manque, pour chaque lien, ce qui est déjà passé et ce
 qui attend, avec un bouton « passer à la suite » et un interrupteur
 « passage automatique ».
 
-**La page Policy montre aussi les réglages des invocations.** Chaque
-réglage d'une invocation (par exemple « nombre d'idées » de « Formuler
-des idées ») et chaque quota d'une table (par exemple « au plus 3
-business en test léger ») marqué « policy » apparaît sur la page Policy,
-rangé par étape et par invocation, modifiable en direct. Détail :
-[`LOT6_CONCEPTION.md`](LOT6_CONCEPTION.md), partie 17.
-
 **Une tâche arrêtée au milieu d'une action extérieure** (un envoi, un
 remboursement) apparaîtra pour qu'on vérifie avant de la relancer (lot 8).
 
@@ -159,6 +152,7 @@ Toutes demandent le jeton owner.
 | `POST /owner/api/ticket/acte`, `/ticket/item`, `/ticket/discuter` | Répondre à un ticket. |
 | `POST /owner/api/memory/lesson` | Garder, modifier ou jeter une leçon. |
 | `POST /owner/api/policy/edit`, `/policy/testing`, `/policy/propose` | Modifier la policy. |
+| `POST /owner/api/reglage` | Changer un réglage d'invocation ou un quota marqué « policy » (valeur vérifiée, changement noté au journal). |
 | `POST /owner/api/bouton` | Un déclencheur « bouton » : crée la tâche de son invocation, avec les champs du formulaire. |
 | `POST /owner/api/tache/relancer` | Remettre une tâche échouée dans sa file (bouton « Relancer la tâche » de sa fiche). |
 

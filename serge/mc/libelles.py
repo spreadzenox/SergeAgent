@@ -121,7 +121,6 @@ SECTIONS_POLICY = {
     'memory': 'Mémoire',
     'tickets': 'Tickets',
     'consent': 'Consentement',
-    'listen': 'Écoute',
 }
 
 
