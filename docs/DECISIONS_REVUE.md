@@ -1084,3 +1084,5 @@ direct.
     - Julien n'est pas averti à la fin d'un cycle.
     - Une douzième famille, « autre », pour une idée qui n'entre dans
       aucune des 11 familles.
+24. Les prompts de l'étape 1 sont validés par Clem (28 septembre 2026),
+    et la fusion du lot 7 dans `main` est accordée.

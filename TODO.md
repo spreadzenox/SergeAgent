@@ -634,8 +634,8 @@ n'est propre à une de ces invocations.
   disant pourquoi ; une idée hors des 11 familles est rangée en
   « autre ».
 
-- [ ] **Avant la fusion.** Montrer tous les prompts à Clem. Une seule
-  fusion dans `main`, à la fin du lot. Le premier vrai cycle est lancé par
+- [x] **Avant la fusion.** Montrer tous les prompts à Clem (validés le
+  28 septembre 2026). Une seule fusion dans `main`, à la fin du lot. Le premier vrai cycle est lancé par
   Julien après la fusion, avec 1 idée par invocation pour un essai peu
   cher, puis 3.
 
