@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""Ce que voit une invocation, sur le demi-cycle de démonstration.
+"""Ce que voit une invocation, sur l'étape 1 décrite en base (lot 7).
 
-Scénario : « Formuler des idées » écrit des business. Elle reçoit donc
-d'office la version courte des business déjà connus (numéro et nom), les
-plus récents d'abord, avec le compte exact de ceux laissés de côté ; ses
-leçons ; et le bloc « Qui est Serge » avec sa place dans la chaîne. Avec
-« Lire les tables que je vois », elle lit la fiche complète d'un business,
-mais pas une table qu'elle ne voit pas ni une colonne non lisible. Avec
-« Lire l'historique », « Choisir un business » voit ce qui est arrivé au
-business choisi.
+Scénario : « Formuler des business A » écrit des business. Elle reçoit
+donc d'office la version courte des business déjà connus (numéro et nom),
+les plus récents d'abord, avec le compte exact de ceux laissés de côté ;
+ses leçons ; et le bloc « Qui est Serge » avec sa place dans la chaîne.
+Avec « Lire les tables que je vois », elle lit la fiche complète d'un
+business, mais pas une table qu'elle ne voit pas ni une colonne non
+lisible. Avec « Lire l'historique », « Choisir les business à tester »
+voit ce qui est arrivé à un business.
 """
 
 from __future__ import annotations
@@ -25,9 +25,9 @@ sys.path.insert(0, str(ROOT))
 
 from serge.coupe_circuit import set_heartbeat  # noqa: E402
 from serge.db.boot import init_schema  # noqa: E402
-from serge.interpreter.flow import fire_button  # noqa: E402
 from serge.interpreter.queue import process_one  # noqa: E402
 from serge.interpreter.seen import read_seen_table, row_history  # noqa: E402
+from serge.interpreter.tasks import enqueue_task  # noqa: E402
 from serge.llm.client import ChatResult, ToolCall  # noqa: E402
 from serge.memory.lessons import add_lesson, set_lesson_status  # noqa: E402
 
@@ -42,8 +42,8 @@ def _bloc(texte: str, titre: str) -> Any:
 
 
 class Modele:
-    """Formule deux idées, après avoir appelé les outils demandés ; ne
-    choisit rien. Garde ce que chaque invocation a reçu."""
+    """Joue A, B et « Choisir » sans rien écrire, après avoir appelé les
+    outils demandés (pour A). Garde ce que chaque invocation a reçu."""
 
     def __init__(self, appels: list[tuple[str, dict]] | None = None) -> None:
         self.appels = list(appels or [])
@@ -52,7 +52,14 @@ class Modele:
 
     def __call__(self, _key, model, messages, tools=None, **_kw) -> ChatResult:
         system = messages[0]['content']
-        nom = 'formuler' if 'Propose exactement' in system else 'choisir'
+        nom = next(
+            (
+                n
+                for n in ('A', 'B')
+                if f'« Formuler des business {n} »' in system
+            ),
+            'choisir',
+        )
         self.recu.setdefault(
             nom,
             {
@@ -65,21 +72,11 @@ class Modele:
         )
         if messages[-1]['role'] == 'tool':
             self.reponses.append(json.loads(messages[-1]['content']))
-        if nom == 'formuler' and self.appels:
+        if nom == 'A' and self.appels:
             outil, args = self.appels.pop(0)
             appel = ToolCall(f'c{len(self.appels)}', outil, json.dumps(args))
             return ChatResult('', 1, 1, model, 1, (appel,))
-        reponse: dict = {'choix': []}
-        if nom == 'formuler':
-            reponse = {
-                'fiches': [
-                    {'title': 'Devis dictés', 'description': 'devis au micro'},
-                    {
-                        'title': 'Relance',
-                        'description': 'relancer les impayés',
-                    },
-                ]
-            }
+        reponse = {'choix': []} if nom == 'choisir' else {'fiches': []}
         return ChatResult(json.dumps(reponse), 10, 10, model, 1)
 
 
@@ -108,9 +105,15 @@ class CeQueVoitUneInvocationTests(unittest.TestCase):
             )
 
     def _lancer(self, modele: Modele) -> None:
-        fire_button(self.conn, 'demo_lancer_cycle', {'guide': 'artisans'})
-        for _ in range(4):
-            process_one(self.conn, 'works', now=NOW, caller=modele)
+        """A, puis B, puis « Choisir », pour le cycle c1."""
+        self.conn.execute(
+            'INSERT INTO listen_cycles(id, guide, status, created_at)'
+            " VALUES('c1', 'artisans', 'OPEN', 't')"
+        )
+        enqueue_task(self.conn, 'formuler_a', {'cycle_id': 'c1'})
+        for _ in range(8):
+            if process_one(self.conn, 'works', now=NOW, caller=modele) is None:
+                break
 
     def _vu(self, invocation: str) -> list[tuple]:
         return self.conn.execute(
@@ -124,39 +127,39 @@ class CeQueVoitUneInvocationTests(unittest.TestCase):
         self._business(250)
         modele = Modele()
         self._lancer(modele)
-        courte = _bloc(modele.recu['formuler']['user'], COURTE)
-        self.assertEqual(len(courte), 20)
+        courte = _bloc(modele.recu['A']['user'], COURTE)
+        self.assertEqual(len(courte), 100)
         self.assertEqual(courte[0], {'id': 'v249', 'name': 'Business 249'})
         self.assertIn(
-            '230 autres lignes ne sont pas montrées',
-            modele.recu['formuler']['user'],
+            '150 autres lignes ne sont pas montrées', modele.recu['A']['user']
         )
-        self.assertEqual(self._vu('demo_formuler'), [('ventures', 20, 230)])
+        self.assertEqual(self._vu('formuler_a'), [('ventures', 100, 150)])
 
     def test_le_compte_des_lectures_est_juste_au_dela_de_200(self) -> None:
         self._business(250)
         self._lancer(Modele())
         recu = self.conn.execute(
-            'SELECT i.rows_given, i.rows_left_out FROM task_inputs i'
+            'SELECT it.label, i.rows_given, i.rows_left_out FROM task_inputs i'
             ' JOIN tasks t ON t.id=i.task_id'
-            " WHERE t.invocation_id='demo_choisir'"
-        ).fetchone()
-        # 250 candidats + les 2 idées formulées ; 10 montrés au plus.
-        self.assertEqual(recu, (10, 242))
+            ' JOIN invocation_tools it ON it.id=i.invocation_tool_id'
+            " WHERE t.invocation_id='choisir_business' ORDER BY it.position"
+        ).fetchall()
+        # 250 candidats ; 50 montrés au plus (le maximum de l'invocation).
+        self.assertIn(('Les business candidats', 50, 200), recu)
 
     def test_qui_est_serge_et_sa_place(self) -> None:
         modele = Modele()
         self._lancer(modele)
-        system = modele.recu['formuler']['system']
+        system = modele.recu['A']['system']
         for texte in (
             'La chaîne : 1. Pré-prospection → 2. Conception d’un PoC',
             '8. Caisse.',
-            'Tu es « Formuler des idées (démo) », dans l’étape 1'
+            'Tu es « Formuler des business A », dans l’étape 1'
             ' « Pré-prospection ».',
-            'Avant toi : « Ouvrir un cycle (démo) » (« Le cycle ouvert part'
-            ' en exploration »).',
-            'Après toi : « Choisir un business (démo) » (« Les idées'
-            ' formulées passent au choix »).',
+            'Avant toi : « Trier les pages » (« Les besoins nouveaux vont à'
+            ' A »).',
+            'Après toi : « Formuler des business B » (« Puis à B, qui voit'
+            ' les idées de A »).',
         ):
             self.assertIn(texte, system)
 
@@ -172,16 +175,14 @@ class CeQueVoitUneInvocationTests(unittest.TestCase):
             self.conn,
             'Pour moi',
             confidence=0.3,
-            scope='invocation:demo_formuler',
+            scope='invocation:formuler_a',
         )
-        add_lesson(
-            self.conn, 'Pour une autre', scope='invocation:demo_choisir'
-        )
+        add_lesson(self.conn, 'Pour une autre', scope='invocation:formuler_b')
         depassee = add_lesson(self.conn, 'Dépassée', confidence=1.0)
         set_lesson_status(self.conn, depassee, 'deprecated')
         modele = Modele()
         self._lancer(modele)
-        user = modele.recu['formuler']['user']
+        user = modele.recu['A']['user']
         lecons = user.split('## Tes leçons (les plus fiables d’abord)\n')[1]
         self.assertEqual(
             lecons.splitlines()[:3],
@@ -193,12 +194,12 @@ class CeQueVoitUneInvocationTests(unittest.TestCase):
         )
         self.assertNotIn('Pour une autre', user)
         self.assertNotIn('Dépassée', user)
-        self.assertIn(('lessons', 3, 0), self._vu('demo_formuler'))
+        self.assertIn(('lessons', 3, 0), self._vu('formuler_a'))
 
     def test_les_outils_construits_pour_elle(self) -> None:
         modele = Modele()
         self._lancer(modele)
-        outils = modele.recu['formuler']['outils']
+        outils = modele.recu['A']['outils']
         lire = outils['lire_tables_vues']['parameters']['properties']
         self.assertEqual(lire['table']['enum'], ['ventures'])
         self.assertIn(
@@ -207,9 +208,13 @@ class CeQueVoitUneInvocationTests(unittest.TestCase):
         )
         historique = outils['lire_historique']['parameters']['properties']
         self.assertEqual(
-            historique['table']['enum'], ['ventures', 'listen_cycles']
+            historique['table']['enum'], ['ventures', 'listen_docs']
         )
         self.assertIn('demande_capacite', outils)
+        # Les paramètres figés (la table des pages, le nombre de lignes)
+        # ne sont pas montrés : le modèle ne donne que le numéro.
+        page = outils['lire_page_entiere']['parameters']['properties']
+        self.assertEqual(sorted(page), ['id'])
 
     def test_lire_la_fiche_complete_d_un_business(self) -> None:
         self._business(1, description='des devis au micro', dedup_key='x')
@@ -228,78 +233,75 @@ class CeQueVoitUneInvocationTests(unittest.TestCase):
         self.assertNotIn('dedup_key', fiche)
 
     def test_ce_qu_elle_ne_voit_pas_est_refuse(self) -> None:
-        self._business(45)
+        self._business(250)
         lire = read_seen_table
-        refus = lire(
-            self.conn, 'x', {'table': 'listen_cycles'}, 'demo_formuler'
-        )
+        refus = lire(self.conn, 'x', {'table': 'listen_cycles'}, 'formuler_a')
         self.assertEqual(refus['code'], 'table_non_vue')
         refus = lire(
             self.conn,
             'x',
             {'table': 'ventures', 'column': 'dedup_key', 'value': ''},
-            'demo_formuler',
+            'formuler_a',
         )
         self.assertEqual(refus['code'], 'colonne_non_lisible')
         page = lire(
-            self.conn, 'x', {'table': 'ventures', 'page': 3}, 'demo_formuler'
+            self.conn, 'x', {'table': 'ventures', 'page': 3}, 'formuler_a'
         )
         self.assertEqual(
-            (len(page['rows']), page['pages'], page['total']), (5, 3, 45)
+            (len(page['rows']), page['pages'], page['total']), (50, 3, 250)
         )
         self.assertEqual(page['rows'][-1]['id'], 'v0')
 
     def test_ajouter_ou_retirer_une_table_a_comparer(self) -> None:
         self.conn.executemany(
             'INSERT INTO invocation_compare_tables(invocation_id, table_name,'
-            " included) VALUES('demo_formuler', ?, ?)",
+            " included) VALUES('formuler_a', ?, ?)",
             [('listen_cycles', 1), ('ventures', 0)],
         )
         modele = Modele()
         self._lancer(modele)
-        user = modele.recu['formuler']['user']
+        user = modele.recu['A']['user']
         self.assertNotIn(COURTE, user)
         cycles = _bloc(
             user, "Les cycles d'écoute (version courte, pour comparer)"
         )
         self.assertEqual(cycles[0]['guide'], 'artisans')
-        lire = modele.recu['formuler']['outils']['lire_tables_vues']
+        lire = modele.recu['A']['outils']['lire_tables_vues']
         self.assertEqual(
             lire['parameters']['properties']['table']['enum'],
             ['listen_cycles'],
         )
 
     def test_l_historique_d_un_business(self) -> None:
-        self._lancer(Modele())
-        ident = self.conn.execute(
-            "SELECT id FROM ventures WHERE name='Relance'"
-        ).fetchone()[0]
-        self.conn.execute(
-            "UPDATE ventures SET lifecycle='POC_SELECTED' WHERE id=?", (ident,)
-        )
         from serge.db.store import append_event
 
+        self._business(1)
         append_event(
             self.conn,
-            actor='owner',
-            type='decision.poc',
-            venture_id=ident,
+            actor='invocation:formuler_a',
+            type='write.inserted',
+            payload={'table': 'ventures', 'id': 'v0'},
+            rows=[('ventures', 'v0')],
+        )
+        append_event(
+            self.conn, actor='owner', type='decision.poc', venture_id='v0'
         )
         historique = row_history(
-            self.conn, 'x', {'table': 'ventures', 'id': ident}, 'demo_choisir'
+            self.conn,
+            'x',
+            {'table': 'ventures', 'id': 'v0'},
+            'choisir_business',
         )
         self.assertEqual(
             [e['quoi'] for e in historique['rows']],
             ['decision.poc', 'write.inserted'],
         )
-        self.assertEqual(
-            historique['rows'][1]['qui'], 'invocation:demo_formuler'
-        )
+        self.assertEqual(historique['rows'][1]['qui'], 'invocation:formuler_a')
         refus = row_history(
             self.conn,
             'x',
-            {'table': 'listen_cycles', 'id': '1'},
-            'demo_choisir',
+            {'table': 'listen_cycles', 'id': 'c1'},
+            'choisir_business',
         )
         self.assertEqual(refus['code'], 'table_non_vue')
 

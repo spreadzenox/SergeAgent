@@ -78,9 +78,10 @@ def _validate_catalogue(
     for item in catalogue['filters']:
         if item['operator'] not in _OPERATORS:
             raise DbReadError(f'opérateur interdit: {item["operator"]}')
-        if (
-            item['table'] not in tables
-            or f'{item["table"]}.{item["column"]}' not in columns
+        # Une colonne filtrée doit exister, sans forcément être rendue :
+        # exemple, les pages « pas encore triées » sans rendre l'étiquette.
+        if item['table'] not in tables or str(item['column']) not in (
+            _real_columns(conn, str(item['table']))
         ):
             raise DbReadError(f'filtre hors catalogue: {item["id"]}')
     param_names = {str(item['name']) for item in catalogue['params']}
@@ -89,7 +90,7 @@ def _validate_catalogue(
             raise DbReadError(f'type de paramètre interdit: {item["type"]}')
     for item in catalogue['filters']:
         if (
-            item['value_kind'] == 'param'
+            item['value_kind'] in {'param', 'days_ago'}
             and item['param_name'] not in param_names
         ):
             raise DbReadError(
@@ -171,10 +172,13 @@ def _normalise_join(
         if qualified not in columns and column.startswith(f'{table}.'):
             column = column[len(table) + 1 :]
             qualified = f'{table}.{column}'
-        if qualified not in columns:
+        # Une jointure du catalogue (réglée en base) peut passer par une
+        # colonne non rendue ; celle que demande le modèle, non.
+        if qualified not in columns and not allow_id:
             raise DbReadError(
                 f'colonne de jointure non autorisée: {qualified}'
             )
+        _quote(column)
         values[f'{side}_table'] = table
         values[f'{side}_column'] = column
     if values['left_table'] == values['right_table']:
@@ -290,6 +294,20 @@ def _columns(
     return result
 
 
+def _days_ago(days: Any) -> str:
+    """La date d'il y a ``days`` jours, au format des dates de la base.
+
+    Exemple : un filtre « plus vieux que 30 jours » compare la colonne à
+    cette date.
+    """
+    from datetime import UTC, datetime, timedelta
+
+    if isinstance(days, bool) or not isinstance(days, int | float):
+        raise DbReadError('un nombre de jours est attendu')
+    moment = datetime.now(UTC) - timedelta(days=float(days))
+    return moment.isoformat(timespec='seconds')
+
+
 def _where(
     catalogue: Mapping[str, Any], values: Mapping[str, Any], included: set[str]
 ) -> tuple[list[str], list[Any]]:
@@ -299,8 +317,12 @@ def _where(
         if item['table'] not in included:
             raise DbReadError(f'filtre sans table: {item["id"]}')
         kind = item['value_kind']
-        if kind == 'fixed':
-            value: Any = item['value_text']
+        if kind == 'fixed' and item['operator'] == 'IN':
+            value: Any = list(catalogue['filter_values'][item['id']])
+        elif kind == 'fixed':
+            value = item['value_text']
+        elif kind == 'days_ago':
+            value = _days_ago(values.get(item['param_name']))
         elif kind == 'param':
             value = values.get(item['param_name'])
         elif kind == 'enum':

@@ -243,11 +243,12 @@ et un seul programme, l'interpréteur (`serge/interpreter/`), exécute
 n'importe quelle invocation décrite en base. Tout le code écrit en dur pour
 un enchaînement (le cycle d'écoute, la relève du mail, le circuit des
 réponses, la consolidation) a été rangé dans `pas_encore_branche/`. Le
-pipeline de départ (`config/pipeline.yaml`) ne contient encore que les
-files, les modèles, la présentation de Serge, les outils, les protections
-des tables et un demi-cycle de démonstration de l'étape 1 (voir
-[`etapes/1-pre-prospection.md`](etapes/1-pre-prospection.md)). Le vrai
-pipeline, étape par étape, est l'objet des lots suivants. Serge ne peut
+pipeline de départ (`config/pipeline.yaml`) contient les files, les
+modèles, la présentation de Serge, les outils, les protections des
+tables, et l'étape 1 entière (voir
+[`etapes/1-pre-prospection.md`](etapes/1-pre-prospection.md) et
+[`LOT7_CONCEPTION.md`](LOT7_CONCEPTION.md)). Les étapes suivantes sont
+l'objet des lots suivants. Serge ne peut
 donc pas encore être allumé pour de vrai, et il est arrêté par défaut.
 
 ### Ce que le code met dans la base

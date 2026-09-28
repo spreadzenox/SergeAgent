@@ -15,6 +15,15 @@ from serge.mc.libelles import (
 from serge.mc.proj_objet_base import _champs, _liens, _row
 from serge.mc.proj_outils import charge_json
 
+# Les étiquettes de tri d'une page (étape 1).
+ETIQUETTES = {
+    '': 'pas encore triée',
+    'besoin_nouveau': 'besoin nouveau',
+    'bruit': 'bruit',
+    'enrichit': 'enrichit un business existant',
+    'preuve': 'preuve d’un business',
+}
+
 
 def _ticket(conn: sqlite3.Connection, ident: str) -> dict | None:
     row = _row(conn, 'SELECT * FROM tickets WHERE id=?', (ident,))
@@ -155,9 +164,10 @@ def _listen(conn: sqlite3.Connection, ident: str) -> dict | None:
                 ('Adresse', row['url'] or '—'),
                 ('Quand', row['fetched_at'] or '—'),
                 (
-                    'Déjà mise dans un paquet ?',
-                    'oui' if row['cluster_id'] else 'pas encore',
+                    'Étiquette de tri',
+                    ETIQUETTES.get(str(row['label']), str(row['label'])),
                 ),
+                ('Cycle', row['cycle_id'] or '—'),
             ]
         ),
         'enfants': _liens(

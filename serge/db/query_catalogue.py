@@ -186,10 +186,14 @@ def seed_read_catalogue(
             position=position,
         )
     for position, rule in enumerate(_rows(read, 'filters')):
-        if ('fixed' in rule) == ('param' in rule):
+        kinds = [k for k in ('fixed', 'param', 'days_ago') if k in rule]
+        if len(kinds) != 1:
             raise DbReadError(
-                f'{tool_id}.filters[{position}] : fixed ou param, un seul'
+                f'{tool_id}.filters[{position}] : fixed, param ou days_ago,'
+                ' un seul'
             )
+        fixed = rule.get('fixed', '')
+        listed = isinstance(fixed, list)
         _add(
             conn,
             'tool_db_filters',
@@ -197,12 +201,20 @@ def seed_read_catalogue(
             filter_id=str(rule['id']),
             table_name=str(rule['table']),
             column_name=str(rule['column']),
-            operator=str(rule.get('operator', '=')),
-            value_kind='fixed' if 'fixed' in rule else 'param',
-            value_text=str(rule.get('fixed', '')),
-            param_name=str(rule.get('param', '')),
+            operator='IN' if listed else str(rule.get('operator', '=')),
+            value_kind=kinds[0],
+            value_text='' if listed else str(fixed),
+            param_name=str(rule.get('param') or rule.get('days_ago') or ''),
             position=position,
         )
+        for value in fixed if listed else []:
+            _add(
+                conn,
+                'tool_db_filter_values',
+                tool_id=tool_id,
+                filter_id=str(rule['id']),
+                value=str(value),
+            )
     for position, join in enumerate(_rows(read, 'joins')):
         left_table, _, left_column = str(join['left']).partition('.')
         right_table, _, right_column = str(join['right']).partition('.')

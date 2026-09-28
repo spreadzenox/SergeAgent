@@ -15,7 +15,11 @@ from serge.capabilities import CAPABILITIES, ensure_capabilities  # noqa: E402
 from serge.db.boot import init_schema  # noqa: E402
 from serge.db.query_builder import execute_db_read  # noqa: E402
 from serge.db.query_errors import DbReadError  # noqa: E402
-from serge.pipeline_seed import PipelineSeedError, seed_pipeline  # noqa: E402
+from serge.pipeline_seed import (  # noqa: E402
+    PipelineSeedError,
+    ensure_pipeline,
+    seed_pipeline,
+)
 
 
 def _pipeline(prompt: str = 'Trouve des besoins.') -> dict:
@@ -250,7 +254,9 @@ class PipelineSeedTests(unittest.TestCase):
             self.conn.execute('SELECT id, capability_id FROM tools').fetchall()
         )
         self.assertEqual(outils['web_search'], 'web_search')
-        self.assertEqual(outils['listen_cycle_documents'], 'db_read')
+        self.assertEqual(outils['pages_a_trier'], 'db_read')
+        self.assertEqual(outils['lire_page_entiere'], 'page_read')
+        self.assertEqual(outils['lire_flux_rss'], 'rss_read')
         self.assertEqual(
             self._one(
                 "SELECT montre_partout FROM tools WHERE id='demande_capacite'"
@@ -258,26 +264,39 @@ class PipelineSeedTests(unittest.TestCase):
             (1,),
         )
 
-    def test_les_pages_d_un_cycle_viennent_avec_leur_texte(self) -> None:
+    def test_les_preuves_des_candidats_viennent_par_jointure(self) -> None:
         """La jointure du catalogue est toujours faite (bug des capsules)."""
-        for ident, titre in (('d1', 'Devis trop longs'), ('d2', 'Autre')):
-            self.conn.execute(
-                'INSERT INTO listen_docs(id, source, title, excerpt,'
-                " fetched_at) VALUES(?, 'rss', ?, 'extrait', 't')",
-                (ident, titre),
-            )
-        self.conn.execute(
-            "INSERT INTO listen_cycle_docs(cycle_id, doc_id) VALUES('c1','d1')"
+        self.conn.executescript(
+            'INSERT INTO ventures(id, name, lifecycle, created_at, updated_at)'
+            " VALUES('v1', 'Devis', 'CANDIDATE', 't', 't'),"
+            " ('v2', 'Autre', 'SMOKE_RUNNING', 't', 't');"
+            'INSERT INTO listen_docs(id, source, title, excerpt, fetched_at)'
+            " VALUES('d1', 'web', 'Devis trop longs', 'extrait', 't'),"
+            " ('d2', 'web', 'Autre page', 'x', 't');"
+            'INSERT INTO venture_sources(venture_id, doc_id, cycle_id)'
+            " VALUES('v1', 'd1', 'c1'), ('v2', 'd2', 'c1');"
         )
-        self.conn.execute(
-            "INSERT INTO listen_cycle_docs(cycle_id, doc_id) VALUES('c2','d2')"
+        rows = execute_db_read(self.conn, 'preuves_des_candidats', {})['data']
+        self.assertEqual(
+            rows,
+            [
+                {
+                    'venture_id': 'v1',
+                    'title': 'Devis trop longs',
+                    'apercu': 'extrait',
+                }
+            ],
         )
-        rows = execute_db_read(
-            self.conn, 'listen_cycle_documents', {'cycle_id': 'c1'}
-        )['data']
-        self.assertEqual(len(rows), 1)
-        self.assertEqual(rows[0]['title'], 'Devis trop longs')
-        self.assertEqual(rows[0]['excerpt'], 'extrait')
+
+    def test_les_pages_a_trier_d_un_cycle(self) -> None:
+        self.conn.executescript(
+            'INSERT INTO listen_docs(id, source, title, cycle_id, label,'
+            " fetched_at) VALUES('d1', 'rss', 'A trier', 'c1', '', 't'),"
+            " ('d2', 'rss', 'Deja triee', 'c1', 'bruit', 't'),"
+            " ('d3', 'rss', 'Autre cycle', 'c2', '', 't');"
+        )
+        rows = execute_db_read(self.conn, 'pages_a_trier', {'cycle_id': 'c1'})
+        self.assertEqual([r['id'] for r in rows['data']], ['d1'])
 
     def test_un_outil_deja_en_base_n_est_pas_ecrase(self) -> None:
         self.conn.execute(
@@ -346,17 +365,82 @@ class PipelineSeedTests(unittest.TestCase):
     def test_les_reglages_et_les_quotas_de_depart(self) -> None:
         reglage = self._one(
             'SELECT value, min_value, max_value, policy FROM'
-            " invocation_settings WHERE invocation_id='demo_formuler'"
+            " invocation_settings WHERE invocation_id='formuler_a'"
             " AND name='nombre_idees'"
         )
-        self.assertEqual(reglage, ('2', '1', '5', 1))
+        self.assertEqual(reglage, ('3', '0', '10', 1))
         self.assertEqual(
             self._one(
                 'SELECT counted_values, max_value FROM table_quotas'
-                " WHERE id='business_choisis'"
+                " WHERE id='places_de_test'"
             ),
-            ('POC_SELECTED', 3),
+            ('POC_SELECTED, SMOKE_READY, SMOKE_RUNNING, SMOKE_DONE', 3),
         )
+
+    def test_ce_qui_est_retire_est_marque_supprime(self) -> None:
+        """La démo du lot 6, encore en base sur une instance existante."""
+        self.conn.executescript(
+            'INSERT INTO invocations(id, title, type) VALUES'
+            " ('demo_formuler', 'Démo', 'llm');"
+            'INSERT INTO table_quotas(id, table_name, column_name,'
+            " counted_values, max_value) VALUES('business_choisis',"
+            " 'ventures', 'lifecycle', 'POC_SELECTED', 3);"
+        )
+        ensure_pipeline(self.conn)
+        self.assertNotEqual(
+            self._one(
+                "SELECT deleted_at FROM invocations WHERE id='demo_formuler'"
+            ),
+            ('',),
+        )
+        self.assertIsNone(
+            self.conn.execute(
+                "SELECT 1 FROM table_quotas WHERE id='business_choisis'"
+            ).fetchone()
+        )
+
+    def test_les_droits_d_ecriture_ne_font_que_grandir(self) -> None:
+        """Une instance du lot 6 reçoit les colonnes et opérations nouvelles."""
+        self.conn.execute(
+            "DELETE FROM writable_columns WHERE table_name='ventures'"
+            " AND column_name='family'"
+        )
+        self.conn.execute(
+            "UPDATE writable_tables SET can_delete=0 WHERE table_name='ventures'"
+        )
+        ensure_pipeline(self.conn)
+        self.assertEqual(
+            self._one(
+                "SELECT can_delete FROM writable_tables WHERE table_name='ventures'"
+            ),
+            (1,),
+        )
+        self.assertIsNotNone(
+            self.conn.execute(
+                "SELECT 1 FROM writable_columns WHERE table_name='ventures'"
+                " AND column_name='family'"
+            ).fetchone()
+        )
+
+    def test_aucune_description_coupee_par_une_virgule(self) -> None:
+        """Dans ``{…}``, une virgule non protégée coupe une description."""
+        from serge.policy import config_dir, read_yaml_file
+
+        data = read_yaml_file(config_dir() / 'pipeline.yaml')
+        vides: list[str] = []
+
+        def parcourir(obj: object, ou: str) -> None:
+            if isinstance(obj, dict):
+                for cle, valeur in obj.items():
+                    if valeur is None:
+                        vides.append(f'{ou}.{cle}')
+                    parcourir(valeur, f'{ou}.{cle}')
+            elif isinstance(obj, list):
+                for n, valeur in enumerate(obj):
+                    parcourir(valeur, f'{ou}[{n}]')
+
+        parcourir(data, '')
+        self.assertEqual(vides, [])
 
     def test_un_reglage_hors_bornes_est_refuse(self) -> None:
         from serge.interpreter.settings import SettingError

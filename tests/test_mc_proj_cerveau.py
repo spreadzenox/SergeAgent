@@ -101,7 +101,7 @@ class ProjCerveauTests(unittest.TestCase):
             ('d4', '', '2026-09-10T11:00:00+00:00', 'Orphelin'),
         ):
             conn.execute(
-                'INSERT INTO listen_docs(id, source, cluster_id, fetched_at,'
+                'INSERT INTO listen_docs(id, source, cycle_id, fetched_at,'
                 " title) VALUES(?,'rss',?,?,?)",
                 (did, cluster, fetched, titre),
             )

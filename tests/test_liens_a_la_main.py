@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Passer un lien à la main, depuis sa fiche dans Mission Control.
 
-Scénario : le lien « Le cycle ouvert part en exploration » de la démo est
-réglé à la main. Le bouton ouvre un cycle ; « Formuler des idées » n'est
+Scénario : le lien « Le cycle ouvert part en exploration » de l'étape 1
+est réglé à la main. Le bouton ouvre un cycle ; « Explorer le web » n'est
 pas lancée : le passage attend, avec son paramètre ``cycle_id``. Julien
 clique sur « Passer à la suite » : la tâche est créée avec ce paramètre,
 et le passage ne peut plus être relancé. Puis il remet le lien en
@@ -31,14 +31,14 @@ from serge.mc.proj_objet import project_objet  # noqa: E402
 from tests.mc_server_case import McBrowserCase  # noqa: E402
 
 NOW = '2026-09-28T10:00:00+00:00'
-LIEN = 'demo_cycle_vers_formuler'
+LIEN = 'cycle_ouvert_vers_exploration'
 
 
 def _ouvrir_un_cycle_a_la_main(conn: sqlite3.Connection) -> str:
     """Règle le lien à la main, ouvre un cycle ; rend la référence."""
     set_heartbeat(conn, True)
     set_link_auto(conn, LIEN, False)
-    fire_button(conn, 'demo_lancer_cycle', {'guide': 'artisans'})
+    fire_button(conn, 'lancer_cycle', {'guide': 'artisans'})
     process_one(conn, 'works', now=NOW)
     conn.commit()
     cycle = conn.execute('SELECT id FROM listen_cycles').fetchone()[0]
@@ -49,7 +49,7 @@ def _taches(conn: sqlite3.Connection) -> list[tuple]:
     return conn.execute(
         'SELECT t.invocation_id, p.value FROM tasks t'
         " JOIN task_params p ON p.task_id=t.id AND p.name='cycle_id'"
-        " WHERE t.invocation_id='demo_formuler'"
+        " WHERE t.invocation_id='explorer_web'"
     ).fetchall()
 
 
@@ -74,7 +74,7 @@ class PasserALaMainTests(unittest.TestCase):
             attente['actions'][0]['charge'],
             {'link_id': LIEN, 'source_ref': self.ref},
         )
-        inv = project_objet(self.conn, 'llm', 'demo_ouvrir_cycle')
+        inv = project_objet(self.conn, 'llm', 'ouvrir_cycle')
         assert inv is not None
         suite = next(
             c
@@ -88,7 +88,7 @@ class PasserALaMainTests(unittest.TestCase):
     def test_passer_a_la_suite(self) -> None:
         task_id = pass_waiting(self.conn, LIEN, self.ref)
         self.assertIsNotNone(task_id)
-        self.assertEqual(_taches(self.conn), [('demo_formuler', self.cycle)])
+        self.assertEqual(_taches(self.conn), [('explorer_web', self.cycle)])
         self.assertIsNone(pass_waiting(self.conn, LIEN, self.ref))
         fiche = project_objet(self.conn, 'lien', LIEN)
         assert fiche is not None
@@ -98,7 +98,7 @@ class PasserALaMainTests(unittest.TestCase):
 
     def test_rien_ne_passe_vers_une_invocation_eteinte(self) -> None:
         self.conn.execute(
-            "UPDATE invocations SET enabled=0 WHERE id='demo_formuler'"
+            "UPDATE invocations SET enabled=0 WHERE id='explorer_web'"
         )
         self.assertIsNone(pass_waiting(self.conn, LIEN, self.ref))
         self.assertEqual(
@@ -147,7 +147,7 @@ class PasserALaMainFrontTests(McBrowserCase):
         expect(fiche).to_contain_text('Rien n’attend.')
         self.assertEqual(
             self._base(
-                "SELECT COUNT(*) FROM tasks WHERE invocation_id='demo_formuler'"
+                "SELECT COUNT(*) FROM tasks WHERE invocation_id='explorer_web'"
             ),
             [(1,)],
         )

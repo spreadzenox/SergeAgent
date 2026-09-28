@@ -33,8 +33,18 @@ def _venture(conn: sqlite3.Connection, ident: str) -> dict | None:
         'SELECT id, amount_eur, status FROM transactions WHERE venture_id=?',
         (ident,),
     ).fetchall()
+    preuves = conn.execute(
+        'SELECT d.id, d.title FROM venture_sources s'
+        ' JOIN listen_docs d ON d.id=s.doc_id WHERE s.venture_id=?'
+        ' ORDER BY d.fetched_at',
+        (ident,),
+    ).fetchall()
     enfants = _liens(
         [
+            ('listen_doc', str(d[0]), f'Preuve : {d[1] or d[0]}')
+            for d in preuves
+        ]
+        + [
             (
                 'campagne',
                 str(c[0]),
@@ -63,7 +73,7 @@ def _venture(conn: sqlite3.Connection, ident: str) -> dict | None:
         'type': 'venture',
         'id': ident,
         'titre': row['name'] or ident,
-        'pourquoi': 'Une idée de business que Serge essaie — une seule à la fois.',
+        'pourquoi': 'Une idée de business, de sa formulation à ses clients.',
         'champs': _champs(
             [
                 (
@@ -74,6 +84,9 @@ def _venture(conn: sqlite3.Connection, ident: str) -> dict | None:
                     'Serge peut avancer tout seul',
                     'oui' if row['schedulable'] else 'non',
                 ),
+                ('Ce qu’il vend et à qui', row['description'] or '—'),
+                ('Famille', row['family'] or '—'),
+                ('Pourquoi il a été choisi', row['choice_reason'] or '—'),
             ]
         ),
         'enfants': enfants,

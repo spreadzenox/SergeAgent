@@ -33,7 +33,7 @@ navigateur au fil de l'eau.
 | Page | Adresse | Ce qu'on y voit | Ce qu'on y fait |
 |---|---|---|---|
 | **En direct** | `#/live` | La chaîne des 8 étapes, leurs invocations dans l'ordre des liens, et le nombre de résultats passés d'une étape à l'autre ; les tickets urgents, les deux files de tâches, l'activité récente, les budgets du jour. | Démarrer ou arrêter Serge ; couper une étape, une file ou une invocation. |
-| **Écoute** | `#/ecoute` | Le dernier cycle de l'étape 1, les invocations de l'étape, les boutons de l'étape tels qu'ils sont déclarés en base (chacun avec ses champs), les business candidats. | Remplir les champs d'un bouton et cliquer : il lance l'invocation de son déclencheur. |
+| **Écoute** | `#/ecoute` | L'étape 1 : ses boutons tels qu'ils sont déclarés en base (chacun avec ses champs et ses conditions, par exemple « Places de test occupées : 2 sur 3 »), le dernier cycle (pages par étiquette, idées écrites, note du choix), les business candidats et choisis avec la raison du choix, les flux RSS suivis (pages ramenées, pages utiles), les invocations de l'étape. | Remplir les champs d'un bouton et cliquer : il lance l'invocation de son déclencheur (grisé si un quota est plein ; une confirmation est demandée pour « Abandonner le cycle » et « Effacer les idées »). Couper ou rallumer un flux. |
 | **Pipeline** | `#/pipeline` | Tout le pipeline tel qu'il est en base : les liens (avec ce qui attend un clic), les déclencheurs, les outils, les capacités du code, ce que les invocations voient de chaque table, le modèle derrière chaque niveau et le texte « Qui est Serge ». | Choisir le modèle de chaque niveau (vide : celui de l'installation), réécrire le texte « Qui est Serge » ; ouvrir la fiche d'un lien, d'un outil, d'une invocation ou d'une table. |
 | **Système** | `#/system` | Les îlots (sous-systèmes), les files de tâches, les campagnes, la population de prospects, l'e-mail. | Lecture. Accessible par `Ctrl+K`. |
 | **Cerveau** | `#/mind` | Pensées, décisions récentes, tableau de toutes les invocations en base (niveau, file, priorité, usage sur 7 jours), signaux entrants. | Ouvrir la fiche d'une invocation, l'éteindre ou la rallumer. |
@@ -154,7 +154,8 @@ Toutes demandent le jeton owner.
 | `POST /owner/api/memory/lesson` | Garder, modifier ou jeter une leçon. |
 | `POST /owner/api/policy/edit`, `/policy/testing`, `/policy/propose` | Modifier la policy. |
 | `POST /owner/api/reglage` | Changer un réglage d'invocation ou un quota marqué « policy » (valeur vérifiée, changement noté au journal). |
-| `POST /owner/api/bouton` | Un déclencheur « bouton » : crée la tâche de son invocation, avec les champs du formulaire. |
+| `POST /owner/api/bouton` | Un déclencheur « bouton » : crée la tâche de son invocation, avec les champs du formulaire. Refusé, avec la raison, si l'un de ses quotas est plein. |
+| `POST /owner/api/flux` | Couper ou rallumer un flux RSS suivi (page Écoute). |
 | `POST /owner/api/tache/relancer` | Remettre une tâche échouée dans sa file (bouton « Relancer la tâche » de sa fiche). |
 | `POST /owner/api/lien/passer` | « Passer à la suite » : lance un passage qui attendait un clic, avec ses paramètres gardés (fiche du lien). |
 | `POST /owner/api/lien/auto` | L'interrupteur « passage automatique » d'un lien (pour les passages suivants). |

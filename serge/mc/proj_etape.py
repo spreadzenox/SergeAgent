@@ -25,15 +25,23 @@ def _court(role: str) -> str:
 def _ordre(
     ids: list[str], aretes: list[tuple[str, str]], entrees: set[str]
 ) -> list[str]:
-    """Ordre des liens (le plus tôt d'abord, à égalité par id)."""
-    lies = {a for arete in aretes for a in arete} | entrees
+    """Ordre des liens (le plus tôt d'abord, à égalité par id).
+
+    Une chaîne de liens passe avant une invocation isolée, lancée seulement
+    par un déclencheur (exemple : le cycle d'écoute avant la veille).
+    """
+    enchainees = {a for arete in aretes for a in arete}
+    lies = enchainees | entrees
     restants = {i for i in ids if i in lies}
     ordre: list[str] = []
     while restants:
         prets = sorted(
-            i
-            for i in restants
-            if not any(b == i and a in restants for a, b in aretes)
+            (
+                i
+                for i in restants
+                if not any(b == i and a in restants for a, b in aretes)
+            ),
+            key=lambda i: (i not in enchainees, i),
         )
         # Une boucle de liens : on la coupe au plus petit id.
         suivant = prets[0] if prets else min(restants)

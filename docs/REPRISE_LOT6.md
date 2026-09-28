@@ -143,13 +143,16 @@ Fait sur `Clem` depuis la fusion (commits locaux, pas encore poussés) :
   (conception : partie 18) ;
 - **la page « Pipeline »** de MC (conception : partie 19).
 
-Le lot 6 est donc construit, et Clem a validé sa fusion dans `main`
-(28 septembre 2026). Ce qu'il laisse aux lots suivants est reporté dans
+Le lot 6 est donc construit. Il est fusionné dans `main`
+([PR #32](https://github.com/spreadzenox/SergeAgent/pull/32), 28 septembre
+2026) et déployé sur le serveur de Julien : la base a été gardée, les
+services redémarrés, et Serge reste arrêté jusqu'au clic sur « Démarrer
+Serge ». Ce qu'il laisse aux lots suivants est reporté dans
 le [`TODO.md`](../TODO.md) : la partie « Ce que la règle demande
 concrètement », et les lots 7, 8, 13 et « Pour tout Serge ».
 
-Puis le lot 7 : le vrai cycle de l'étape 1, qui remplace le demi-cycle de
-démonstration (le marquer supprimé en base).
+Le lot 7 (l'étape 1 en base) a suivi : voir
+[`REPRISE_LOT7.md`](REPRISE_LOT7.md).
 
 ## Lancer les vérifications en local
 

@@ -12,7 +12,12 @@ import re
 from typing import TYPE_CHECKING, Any, Protocol
 
 from serge.db.store import append_event, utcnow
-from serge.interpreter.flow import fire_button, pass_waiting, set_link_auto
+from serge.interpreter.flow import (
+    fire_button,
+    pass_waiting,
+    set_link_auto,
+    trigger_refusal,
+)
 from serge.interpreter.tasks import relaunch_task
 from serge.mc.proj_vues import changer_comparaison
 
@@ -56,9 +61,12 @@ class PipelineActionsMixin(_Base):
         with self._db() as conn:
             task_id = fire_button(conn, trigger_id, form)
             if task_id is None:
+                raison = trigger_refusal(conn, trigger_id)
                 self._refus(
                     409,
-                    'Ce bouton ne peut pas lancer de tâche.',
+                    f'Pas maintenant : {raison}.'
+                    if raison
+                    else 'Ce bouton ne peut pas lancer de tâche.',
                     'trigger',
                     'Le déclencheur ou son invocation est éteint, ou absent.',
                 )
@@ -249,5 +257,37 @@ class PipelineActionsMixin(_Base):
                 actor='owner',
                 type='pipeline.text',
                 payload={'id': 'presentation', 'longueur': len(texte)},
+            )
+        self._send_json(200, {'ok': True})
+
+    def _api_flux(self) -> None:
+        """Couper ou rallumer un flux RSS : ``{feed_id, active}``."""
+        if not self._require_owner():
+            return
+        body = self._json_body() or {}
+        feed_id = str(body.get('feed_id') or '').strip()
+        active = body.get('active')
+        if not feed_id or not isinstance(active, bool):
+            self._refus(
+                400,
+                'Demande incomplète.',
+                'flux',
+                'Envoie {"feed_id": "...", "active": false}.',
+            )
+            return
+        with self._db() as conn:
+            cursor = conn.execute(
+                'UPDATE listen_feeds SET active=?, updated_at=? WHERE id=?',
+                (int(active), utcnow(), feed_id),
+            )
+            if cursor.rowcount != 1:
+                self._refus(409, 'Flux inconnu.', 'flux', '')
+                return
+            append_event(
+                conn,
+                actor='owner',
+                type='feed.toggled',
+                payload={'feed': feed_id, 'active': active},
+                rows=[('listen_feeds', feed_id)],
             )
         self._send_json(200, {'ok': True})

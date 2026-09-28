@@ -3,7 +3,7 @@
 
 Un seul code d'écriture sert toutes les invocations. Pour chacune, les
 lignes de ``invocation_writes`` disent dans quelle table écrire, si l'on
-ajoute ou modifie, une ligne pour quel élément de la réponse, et
+ajoute, modifie ou supprime, une ligne pour quel élément de la réponse, et
 ``invocation_write_values`` dit quelle colonne reçoit quoi. Les
 protections (``rules.py``) sont appliquées à chaque ligne, et chaque
 écriture ou refus est noté au journal.
@@ -34,6 +34,7 @@ class Written:
     """Les lignes écrites par une règle d'écriture, dans l'ordre."""
 
     table: str
+    for_each: str = ''
     rows: list[dict[str, Any]] = field(default_factory=list)
     # position de l'élément dans la réponse → ligne écrite (ou None si
     # écartée), pour rattacher les écritures filles.
@@ -205,13 +206,17 @@ def write_answer(
     ) in writes:
         table = safe_name(str(table))
         limite = resolve_count(str(max_rows), settings)
-        done = Written(table)
+        done = Written(table, for_each=str(for_each))
         results[int(write_id)] = done
         parent = results.get(int(parent_id)) if parent_id else None
         for pos, ctx in _items(answer, str(for_each)):
             parent_row = None
             if parent is not None:
-                parent_row = parent.by_item.get(pos[: len(pos) - 1])
+                # La ligne mère : celle du même élément si les deux règles
+                # parcourent la même liste, sinon celle de l'élément qui
+                # contient celui-ci (une fiche, pour ses pages).
+                same = parent.for_each == str(for_each)
+                parent_row = parent.by_item.get(pos if same else pos[:-1])
                 if parent_row is None:
                     continue
             values = _values(
@@ -235,16 +240,18 @@ def write_answer(
                 )
                 done.by_item[pos] = None
                 continue
+            key = (
+                _field(answer, ctx, str(key_val))
+                if key_src == 'field'
+                else task.get(str(key_val), '')
+                if key_src == 'task'
+                else str(key_val)
+            )
             if operation == 'insert':
                 row = _insert(conn, invocation_id, task_id, table, values)
+            elif operation == 'delete':
+                row = _delete(conn, table, str(key_col), key)
             else:
-                key = (
-                    _field(answer, ctx, str(key_val))
-                    if key_src == 'field'
-                    else task.get(str(key_val), '')
-                    if key_src == 'task'
-                    else str(key_val)
-                )
                 row = _update(
                     conn,
                     invocation_id,
@@ -257,7 +264,36 @@ def write_answer(
             done.by_item[pos] = row
             if row is not None:
                 done.rows.append(row)
+        if operation == 'delete' and done.rows:
+            ids = [str(r.get('id', '')) for r in done.rows]
+            _journal(
+                conn,
+                invocation_id,
+                task_id,
+                'deleted',
+                {'table': table, 'count': len(ids), 'ids': ids[:50]},
+            )
     return results
+
+
+def _delete(
+    conn: sqlite3.Connection, table: str, key_column: str, key: Any
+) -> dict[str, Any] | None:
+    """Supprime les lignes où ``key_column`` vaut ``key``.
+
+    Rend la première ligne supprimée, pour les écritures qui en dépendent
+    (exemple : supprimer un business, puis ses preuves).
+    """
+    column = safe_name(key_column)
+    cursor = conn.execute(
+        f'SELECT * FROM "{table}" WHERE "{column}"=?', (key,)
+    )
+    names = [d[0] for d in cursor.description]
+    rows = [dict(zip(names, r, strict=True)) for r in cursor.fetchall()]
+    if not rows:
+        return None
+    conn.execute(f'DELETE FROM "{table}" WHERE "{column}"=?', (key,))
+    return rows[0]
 
 
 def _insert(

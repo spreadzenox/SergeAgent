@@ -134,14 +134,14 @@ def main() -> None:
         ),
     )
     conn.execute(
-        'INSERT INTO listen_docs(id, source, url, title, excerpt, cluster_id,'
+        'INSERT INTO listen_docs(id, source, url, title, excerpt, label,'
         ' fetched_at) VALUES'
         "('d1','rss','https://www.reddit.com/r/freelance/chrono',"
         "'Freelances cherchent un chrono simple',"
-        "'Trop d’outils, besoin d’un timer facturable.','cA',?),"
+        "'Trop d’outils, besoin d’un timer facturable.','besoin_nouveau',?),"
         "('d2','rss','https://www.reddit.com/r/smallbusiness/prix',"
         "'Prix trop flous sur les ateliers',"
-        "'Les gens veulent un prix affiché.','cA',?)",
+        "'Les gens veulent un prix affiché.','besoin_nouveau',?)",
         (_iso(now - timedelta(hours=10)), _iso(now - timedelta(hours=9))),
     )
     conn.execute(

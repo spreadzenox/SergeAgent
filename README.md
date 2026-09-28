@@ -56,10 +56,11 @@ Tout le reste du projet s'organise autour de cette chaîne.
 Serge sort d'une refonte (lot 6 du [`TODO.md`](TODO.md)) : tout le
 pipeline est en base, et le code n'en est plus que l'interpréteur. Le
 runner (deux files de tâches), l'interpréteur et la page « Pipeline » de
-Mission Control sont en place, mais `config/pipeline.yaml` ne décrit
-encore qu'un demi-cycle de démonstration ; le vrai pipeline commence au
-lot 7.
-Serge ne peut donc pas encore être allumé pour de vrai. L'ancien code écrit
+Mission Control sont en place. `config/pipeline.yaml` décrit l'étape 1
+(lot 7) : la veille des flux RSS et le cycle d'écoute, qui trouve des
+besoins sur le web, en tire des idées de business et choisit celles à
+tester. Les étapes suivantes restent à décrire : Serge ne peut donc pas
+encore être allumé pour de vrai. L'ancien code écrit
 en dur pour chaque enchaînement (étape 1, envois, relève de la boîte mail,
 réponses, consolidation) est rangé dans
 [`pas_encore_branche/`](pas_encore_branche/README.md).
@@ -68,8 +69,8 @@ Ce qui tourne aujourd'hui :
 
 - Mission Control, qui montre et règle tout ce qui est en base ;
 - le bot Discord (tickets et leurs boutons) ;
-- les deux files de tâches et l'interpréteur, avec un demi-cycle de
-  démonstration de l'étape 1 ;
+- les deux files de tâches et l'interpréteur, avec l'étape 1 : la veille
+  des flux RSS et le cycle d'écoute, lancé depuis la page Écoute ;
 - la réception des paiements Stripe et des SMS.
 
 **Serge est arrêté par défaut**, même après un déploiement : les files et

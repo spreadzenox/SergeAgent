@@ -121,6 +121,40 @@ CAPABILITIES: tuple[Capability, ...] = (
         ),
     ),
     Capability(
+        'page_read',
+        'Lire une page',
+        'Lit une page web publique par une simple requête, sans navigateur,'
+        ' et rend ses premières lignes : une ligne est un titre, un'
+        ' paragraphe ou un élément de liste. Réglée par un nombre de lignes'
+        ' (un aperçu pour trier, la page entière pour formuler). Avec une'
+        ' table et un numéro, ne lit qu’une page déjà en base. Refuse les'
+        ' adresses du serveur et des réseaux privés.',
+        'serge/listen/page.py',
+        (
+            Param('url', 'text', False, 'L’adresse de la page.'),
+            Param('table', 'text', False, 'La table des pages en base.'),
+            Param('id', 'text', False, 'Le numéro de la page en base.'),
+            Param(
+                'max_lines',
+                'number',
+                False,
+                'Les lignes rendues (0 : toutes).',
+            ),
+        ),
+    ),
+    Capability(
+        'rss_read',
+        'Lire un flux RSS',
+        'Lit un flux RSS ou Atom et rend ses pages : adresse, titre, date et'
+        ' un aperçu de quelques lignes tiré du résumé du flux.',
+        'serge/listen/collectors.py',
+        (
+            Param('url', 'text', True, 'L’adresse du flux.'),
+            Param('max_items', 'number', False, 'Les pages lues au plus.'),
+            Param('max_lines', 'number', False, 'Les lignes de l’aperçu.'),
+        ),
+    ),
+    Capability(
         'request_capability',
         'Demander une nouvelle capacité',
         'Ouvre une demande à Julien quand il manque à Serge un outil ou un'

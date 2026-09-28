@@ -1,5 +1,6 @@
-// Page Écoute : les boutons de l’étape 1 (déclencheurs en base), cycle, candidats.
-import {toast} from '../components.js';
+// Page Écoute : les boutons de l’étape 1 (déclencheurs en base), le dernier
+// cycle, les business, les flux RSS suivis.
+import {confirmModal, toast} from '../components.js';
 import {fetchState} from '../sse.js';
 
 async function poster(path, body) {
@@ -8,7 +9,7 @@ async function poster(path, body) {
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify(body),
   });
-  return {ok: response.ok, data: await response.json()};
+  return {ok: response.ok, data: await response.json().catch(() => ({}))};
 }
 
 function el(tag, classe, texte) {
@@ -22,9 +23,16 @@ function el(tag, classe, texte) {
   return node;
 }
 
-// Un bloc par déclencheur « bouton » : ses champs, puis son bouton.
+const ETIQUETTES = {
+  besoin_nouveau: 'besoin nouveau',
+  bruit: 'bruit',
+  enrichit: 'enrichit un business',
+  preuve: 'preuve d’un business',
+};
+
+// Un bloc par déclencheur « bouton » : ses champs, ses conditions, son bouton.
 function afficherBoutons(conteneur, boutons) {
-  const cle = JSON.stringify(boutons.map((b) => [b.id, b.titre, b.champs]));
+  const cle = JSON.stringify(boutons);
   if (conteneur.dataset.cle === cle) {
     return;  // ne pas effacer ce qui est en train d’être tapé
   }
@@ -52,57 +60,146 @@ function afficherBoutons(conteneur, boutons) {
     btn.type = 'button';
     btn.dataset.ecouteAction = 'lancer';
     btn.dataset.trigger = bouton.id;
+    btn.dataset.confirmer = bouton.confirmer || '';
+    btn.disabled = Boolean(bouton.refus);
     barre.append(btn);
     bloc.append(barre, el('p', '', `Lance « ${bouton.invocation_titre} ».`));
+    for (const condition of bouton.conditions || []) {
+      bloc.append(el(
+        'p',
+        'legende-policy',
+        `${condition.texte} : ${condition.occupe} sur ${condition.max}.`,
+      ));
+    }
+    if (bouton.refus) {
+      bloc.append(el('p', 'todo-mc', `Pas maintenant : ${bouton.refus}.`));
+    }
     return bloc;
   }));
 }
 
+function afficherCycle(conteneur, cycle) {
+  if (!cycle) {
+    conteneur.replaceChildren(el('p', '', 'Aucun cycle.'));
+    return;
+  }
+  const dl = el('dl');
+  const pages = Object.entries(cycle.pages || {})
+    .map(([label, n]) => `${ETIQUETTES[label] || label} : ${n}`)
+    .join(' ; ');
+  for (const [k, v] of [
+    ['Cycle', `${cycle.id} (${cycle.status})`],
+    ['Texte de guidage', cycle.guide || '—'],
+    ['Pages triées', pages || 'aucune'],
+    ['Idées écrites', (cycle.fiches || []).map((f) => `${f.titre} (${f.statut})`).join(' ; ') || 'aucune'],
+    ['Note du choix', cycle.note || '—'],
+  ]) {
+    dl.append(el('dt', '', k), el('dd', '', v));
+  }
+  conteneur.replaceChildren(dl);
+}
+
+function afficherFlux(conteneur, flux) {
+  if (!flux.length) {
+    conteneur.replaceChildren(el('p', '', 'Aucun flux suivi pour l’instant.'));
+    return;
+  }
+  const table = el('table', 'matrice');
+  const tete = el('tr');
+  for (const titre of ['Flux', 'Pages ramenées', 'Utiles', 'Dernière lecture', '']) {
+    tete.append(el('th', '', titre));
+  }
+  const head = el('thead');
+  head.append(tete);
+  const corps = el('tbody');
+  for (const f of flux) {
+    const tr = el('tr');
+    tr.style.cursor = 'default';
+    const btn = el('button', 'btn-export', f.actif ? 'Couper' : 'Rallumer');
+    btn.type = 'button';
+    btn.dataset.ecouteFlux = f.id;
+    btn.dataset.actif = f.actif ? '1' : '0';
+    const cellule = el('td');
+    cellule.append(btn);
+    tr.append(
+      el('td', '', f.actif ? f.titre : `${f.titre} (coupé)`),
+      el('td', '', String(f.pages)),
+      el('td', '', String(f.utiles)),
+      el('td', '', f.lu || 'jamais'),
+      cellule,
+    );
+    corps.append(tr);
+  }
+  table.append(head, corps);
+  const wrap = el('div', 'table-scroll');
+  wrap.append(table);
+  conteneur.replaceChildren(wrap);
+}
+
 function afficher(main, payload, sig) {
-  const cycle = payload.cycle;
-  afficherBoutons(
-    main.querySelector('[data-ecoute="boutons"]'),
-    payload.boutons || [],
+  const zone = (nom) => main.querySelector(`[data-ecoute="${nom}"]`);
+  afficherBoutons(zone('boutons'), payload.boutons || []);
+  afficherCycle(zone('cycle'), payload.cycle);
+  zone('candidates').replaceChildren(...(payload.candidates || []).map((c) => {
+    const raison = c.raison ? ` — ${c.raison}` : '';
+    return el('li', '', `${c.title} (${c.status})${raison}`);
+  }));
+  afficherFlux(zone('flux'), payload.flux || []);
+  zone('invocations').replaceChildren(
+    ...(payload.invocations || []).map((inv) => el('li', '', inv.titre)),
   );
-  main.querySelector('[data-ecoute="cycle"]').textContent = cycle
-    ? `Cycle ${cycle.id} : ${cycle.status} (${cycle.needs_target} besoins, ${cycle.business_target} POC)`
-    : 'Aucun cycle.';
-  const invocations = main.querySelector('[data-ecoute="invocations"]');
-  invocations.replaceChildren(...(payload.invocations || []).map((inv) => {
-    const item = document.createElement('li');
-    item.textContent = inv.titre;
-    return item;
-  }));
-  const candidates = main.querySelector('[data-ecoute="candidates"]');
-  candidates.replaceChildren(...(payload.candidates || []).map((candidate) => {
-    const item = document.createElement('li');
-    item.textContent = `${candidate.title} — ${candidate.status}`;
-    return item;
-  }));
   main.querySelector('[data-section="ecoute"]').dataset.sig = sig;
+}
+
+async function lancer(btn, store) {
+  const titre = btn.textContent;
+  if (btn.dataset.confirmer) {
+    const ok = await confirmModal(document.body, {
+      title: `${titre} ?`,
+      message: btn.dataset.confirmer,
+      confirm: titre,
+    });
+    if (!ok) {
+      return;
+    }
+  }
+  const form = {};
+  for (const zone of btn.closest('.grille-champs').querySelectorAll('[data-champ]')) {
+    form[zone.dataset.champ] = zone.value;
+  }
+  btn.disabled = true;
+  try {
+    const result = await poster('/owner/api/bouton', {trigger_id: btn.dataset.trigger, form});
+    toast(document.body, result.ok ? 'Tâche placée dans la file.' : (result.data.erreur || 'Refusé.'), result.ok ? 'succes' : 'erreur');
+    if (result.ok) {
+      await rafraichir(store);
+    }
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 export function mount(main, store) {
   const tpl = document.getElementById('page-ecoute');
   main.replaceChildren(tpl.content.cloneNode(true));
-  main.querySelector('[data-ecoute="boutons"]').addEventListener('click', async (ev) => {
+  main.querySelector('[data-ecoute="boutons"]').addEventListener('click', (ev) => {
     const btn = ev.target.closest('[data-ecoute-action="lancer"]');
+    if (btn) {
+      lancer(btn, store);
+    }
+  });
+  main.querySelector('[data-ecoute="flux"]').addEventListener('click', async (ev) => {
+    const btn = ev.target.closest('[data-ecoute-flux]');
     if (!btn) {
       return;
     }
-    const form = {};
-    for (const zone of btn.closest('.grille-champs').querySelectorAll('[data-champ]')) {
-      form[zone.dataset.champ] = zone.value;
-    }
-    btn.disabled = true;
-    try {
-      const result = await poster('/owner/api/bouton', {trigger_id: btn.dataset.trigger, form});
-      toast(document.body, result.ok ? 'Tâche placée dans la file.' : (result.data.erreur || 'Refusé.'), result.ok ? 'succes' : 'erreur');
-      if (result.ok) {
-        await rafraichir(store);
-      }
-    } finally {
-      btn.disabled = false;
+    const result = await poster('/owner/api/flux', {
+      feed_id: btn.dataset.ecouteFlux,
+      active: btn.dataset.actif !== '1',
+    });
+    toast(document.body, result.ok ? 'Fait.' : (result.data.erreur || 'Refusé.'), result.ok ? 'succes' : 'erreur');
+    if (result.ok) {
+      await rafraichir(store);
     }
   });
   const unsubscribe = store.subscribe('ecoute', (payload, sig) => afficher(main, payload, sig));

@@ -32,16 +32,15 @@ class ProjectionPipelineTests(unittest.TestCase):
         data = project_pipeline(conn, {}, '')
         liens = {lien['id']: lien for lien in data['liens']}
         self.assertEqual(
-            liens['demo_formuler_vers_choisir']['chemin'],
-            'Formuler des idées (démo) → Choisir un business (démo)',
+            liens['formuler_b_vers_choix']['chemin'],
+            'Formuler des business B → Choisir les business à tester',
         )
         self.assertEqual(
-            liens['demo_formuler_vers_choisir']['passage'], 'automatique'
+            liens['formuler_b_vers_choix']['passage'], 'automatique'
         )
-        self.assertEqual(
-            [d['quand'] for d in data['declencheurs']],
-            ['un bouton de Mission Control'],
-        )
+        quand = {d['id']: d['quand'] for d in data['declencheurs']}
+        self.assertEqual(quand['lancer_cycle'], 'un bouton de Mission Control')
+        self.assertEqual(quand['veille_flux'], 'toutes les 360 minutes')
         outils = {o['id']: o for o in data['outils']}
         self.assertEqual(
             outils['lire_tables_vues']['utilise_par'],
@@ -76,8 +75,8 @@ class PipelinePageTests(McBrowserCase):
         page.goto(f'{self.base}/owner#/pipeline')
         section = page.locator('[data-section="pipeline"]')
         for texte in (
-            'Les idées formulées passent au choix',
-            'Lancer un cycle (démo)',
+            'Les idées passent au choix',
+            'Lancer un cycle d’écoute'.replace('’', "'"),
             'Lire les tables que je vois',
             'Lire l’historique d’une ligne',
             'id, name',
@@ -109,7 +108,7 @@ class PipelinePageTests(McBrowserCase):
             [('Serge, version de Julien.',)],
         )
         page.locator(
-            '[data-pipeline="liens"] tr', has_text='passent au choix'
+            '[data-pipeline="liens"] tr', has_text='Les idées passent au choix'
         ).click()
         expect(page.locator('#page')).to_contain_text('Ce qui attend un clic')
 

@@ -101,11 +101,15 @@
 <template id="page-ecoute">
 <section class="panneau" data-section="ecoute" data-sig="">
 <h2>Écoute</h2>
-<p class="legende-policy">L’étape 1, telle qu’elle est décrite en base : chaque bouton lance l’invocation de son déclencheur, avec les champs remplis ici.</p>
+<p class="legende-policy">L’étape 1, telle qu’elle est décrite en base : chaque bouton lance l’invocation de son déclencheur, avec les champs remplis ici. Un bouton reste grisé tant qu’un quota dont il dépend est plein.</p>
 <div data-ecoute="boutons"></div>
-<p data-ecoute="cycle">Aucun cycle.</p>
+<h3>Le dernier cycle</h3>
+<div data-ecoute="cycle"><p>Aucun cycle.</p></div>
+<h3>Business candidats et choisis</h3><ul data-ecoute="candidates"></ul>
+<h3>Flux RSS suivis</h3>
+<p class="legende-policy">Serge choisit ses flux lui-même ; on peut en couper un qui ne ramène que du bruit.</p>
+<div data-ecoute="flux"></div>
 <h3>Invocations de l’étape</h3><ul data-ecoute="invocations"></ul>
-<h3>Business candidats</h3><ul data-ecoute="candidates"></ul>
 </section>
 </template>
 <template id="page-pipeline">

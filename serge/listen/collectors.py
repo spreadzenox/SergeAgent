@@ -104,8 +104,14 @@ def fetch_rss(
     Raises:
         ListenError: NETWORK (transport/HTTP), PARSE (contenu).
     """
+    from serge.listen.page import PageError, check_host
+
     if not url.startswith(('http://', 'https://')):
         raise ListenError('NETWORK: URL http(s) requise')
+    try:
+        check_host(url)
+    except PageError as exc:
+        raise ListenError(f'NETWORK: {exc}') from exc
     request = urllib.request.Request(
         url, headers={'User-Agent': USER_AGENT}, method='GET'
     )
