@@ -50,6 +50,41 @@ passer de `CANDIDATE` à `POC_SELECTED`, et jamais d'un autre statut.
 Les parties sur le web, le bac à sable, les connecteurs, les canaux et
 l'agent vocal, plus bas, rappellent comment cette règle s'y applique.
 
+### Ce que la règle demande concrètement (appris au lot 6)
+
+Chaque lot qui ajoute une table, une invocation ou un événement doit aussi
+remplir la base, dans `config/pipeline.yaml` (le détail est dans
+[`docs/LOT6_CONCEPTION.md`](docs/LOT6_CONCEPTION.md)) :
+
+- **Une table qu'une invocation doit voir a sa vue** (`table_views`) : un
+  titre, la colonne qui dit quelles lignes sont les plus récentes, ses
+  colonnes lisibles et celles de sa version courte. Sans vue, aucune
+  invocation ne la voit : ni en version courte, ni avec « Lire les tables
+  que je vois ». Une colonne sensible (mot de passe, secret, cookie,
+  numéro de carte) n'est jamais marquée lisible.
+- **Une table où une invocation écrit** est déclarée inscriptible
+  (`writable_tables`, avec ses colonnes permises) et protégée : statuts
+  permis (`status_transitions`), doublons (`dedup_rules`), quotas
+  (`table_quotas`). Toute invocation qui y écrit en reçoit d'office la
+  version courte, pour comparer ; on peut la lui retirer sur sa fiche.
+- **Chaque chiffre d'une invocation** (nombre d'idées, de pages, de
+  relances…) est un réglage de l'invocation (`invocation_settings`),
+  marqué `policy` s'il doit se régler en direct sur la page Policy. Jamais
+  une valeur dans le code, ni dans la policy générale, qui ne garde que ce
+  qui ne concerne aucune invocation (budget du jour, quotas d'envoi,
+  heures d'appel).
+- **Un événement qui concerne une ligne la nomme** (`append_event(...,
+  rows=[(table, id)])`) : un envoi à un contact, une réponse reçue, un
+  paiement. C'est ce qui remplit l'historique que lit « Lire
+  l'historique ». Les écritures des invocations et les événements d'un
+  business le font déjà.
+- **Une leçon est rattachée** à une invocation (`invocation:<id>`), à une
+  étape (`etape:<id>`) ou à tout Serge (`global`) : elle est donnée
+  d'office à qui la concerne.
+- **Ce qu'on retire de `pipeline.yaml` doit être marqué supprimé en base**
+  (`deleted_at`) : le fichier ajoute les objets nouveaux sur une instance
+  existante, mais n'efface ni ne modifie jamais rien.
+
 ---
 
 ## Dans quel ordre
@@ -61,14 +96,15 @@ sont faits : fusion des branches, correction de deux bugs graves,
 nettoyage du code mort, nouvelle documentation, et remise en ordre des
 données (business, contacts, abonnements).
 
-- [ ] **Lot 6 « Le runner et le pipeline en base ».** C'est la fondation
+- [x] **Lot 6 « Le runner et le pipeline en base ».** Fait (septembre
+  2026) : le détail est dans la partie « Lot 6 » plus bas. C'est la fondation
   de tout le reste, et Clem et Julien veulent l'attaquer ensemble. Il
   commence par le runner, le programme qui exécute les tâches : il doit
   exécuter une tâche après l'autre et enregistrer en base après chacune,
   sur deux files en parallèle, parce qu'aujourd'hui un plantage peut faire
   envoyer deux fois le même e-mail. Ensuite, tout le pipeline passe en
   base : l'ordre des invocations, leur modèle, leur prompt, ce qu'elles
-  reçoivent, leurs tools, où elles écrivent, ce qui les déclenche. Le code
+  reçoivent, leurs outils, où elles écrivent, ce qui les déclenche. Le code
   ne fait plus que lire la base et exécuter ce qu'elle décrit. Tout le
   code écrit en dur pour un enchaînement est supprimé, sans chercher à le
   garder en marche. À la fin du lot, Serge ne peut pas encore être
@@ -213,7 +249,15 @@ et Serge sait demander de l'aide quand il ne sait pas.
   seule tâche en attente par prospect », pour que deux messages coup sur
   coup ne créent qu'une réponse ; un délai sur un lien, tiré entre le
   minimum et le maximum du canal ; et « demander à Julien si tel champ vaut oui », qui
-  ouvre un ticket et fait attendre la tâche.
+  ouvre un ticket et fait attendre la tâche. La validation d'un lien par
+  ticket Discord vient à côté du passage à la main construit au lot 6
+  (bouton « Passer à la suite » sur la fiche du lien, fonction
+  `pass_waiting`) : la réponse de Julien au ticket passe le lien de la
+  même façon, et les deux portes restent ouvertes (Q62). Il faut aussi
+  des vues de tables (`table_views`) pour les contacts, leurs adresses,
+  les envois, les réponses reçues, le fil et la fiche produit, et que les
+  événements de ces tables nomment la ligne concernée, pour que « Lire
+  l'historique » d'un prospect montre tout son fil.
 
 - [ ] **Un fil de discussion par prospect, et des relances qui ne gênent
   personne.** La règle est simple : on ne relance jamais quelqu'un qui a
@@ -326,8 +370,15 @@ et Serge sait demander de l'aide quand il ne sait pas.
   les étapes 2 et 3. Il n'y a pas de file d'attente : quand les trois
   places sont prises, l'étape 1 ne lance plus de cycle et MC affiche
   « 3 places sur 3 occupées ». Les deux nombres (3 et 1) doivent être
-  modifiables dans MC. Aujourd'hui, le code impose seulement « un seul
-  business actif à la fois », ce qui ne correspond plus à ce qu'on veut.
+  modifiables dans MC. Le lot 6 a posé la première pierre : un quota de
+  table, au plus 3 business au statut `POC_SELECTED` en même temps,
+  modifiable sur la page Policy. Il reste à compter aussi les statuts des
+  étapes 2 et 3, la place de prospection lourde, l'affichage « 3 places
+  sur 3 occupées » et l'arrêt du cycle quand tout est pris. Par ailleurs,
+  un ancien module, `serge/funnels/lifecycle.py`, impose encore en dur
+  les statuts d'un business et « un seul business actif à la fois », ce
+  qui ne correspond plus à ce qu'on veut : ses règles doivent passer en
+  base (`status_transitions`, `table_quotas`) et le module disparaître.
 
 - [ ] **Les livraisons et les demandes des clients.** Serge ne sait pas
   aujourd'hui ce qui reste à livrer à un client, ni ce que les clients lui
@@ -359,7 +410,10 @@ et Serge sait demander de l'aide quand il ne sait pas.
   événements, tickets) s'appuie sur un index de recherche. En production,
   rien ne remplit cet index, donc ce tool ne renvoie jamais rien. Il faut
   ajouter chaque nouvelle leçon, chaque nouvel événement et chaque nouveau
-  ticket à l'index au moment où ils sont écrits.
+  ticket à l'index au moment où ils sont écrits. Ensuite, « Chercher dans
+  la mémoire » deviendra un outil donné à toutes les invocations
+  (`everywhere` dans `pipeline.yaml`), comme « Lire les tables que je
+  vois » ; aujourd'hui, il est donné invocation par invocation.
 
 - [ ] **Le web.** Serge doit pouvoir tout faire sur le web avec son
   e-mail, son téléphone et sa carte, sans qu'un humain intervienne à
@@ -388,7 +442,9 @@ et Serge sait demander de l'aide quand il ne sait pas.
   formulaire, une invocation lit le code de confirmation dans la boîte
   mail ou les SMS, un ticket demande à un humain de résoudre un captcha
   (avec un lien vers l'écran en direct dans MC), et le compte est écrit en
-  base par la capacité d'écriture générique. **Un connecteur n'est pas du
+  base par la capacité d'écriture générique ; les colonnes secrètes des
+  comptes (mot de passe, cookies) ne sont jamais marquées lisibles dans
+  leur vue de table. **Un connecteur n'est pas du
   code non plus** : quand un site a une API gratuite, le service est
   décrit en base (son adresse, le secret à utiliser, ses points d'entrée
   et leurs paramètres), et une seule capacité « Appeler une API » sait
@@ -441,7 +497,20 @@ et Serge sait demander de l'aide quand il ne sait pas.
   journal avec la date et l'auteur, pour pouvoir revenir en arrière.
   C'est le dernier lot. Il ne doit demander aucun code nouveau pour une
   invocation : s'il en manque, c'est que le lot 6 a laissé quelque chose
-  en dur.
+  en dur. Ce qui se règle déjà dans MC à la fin du lot 6 : allumer ou
+  éteindre une invocation, une étape, une file ; les réglages marqués
+  « policy » et les quotas (page Policy) ; les tables qu'une invocation
+  voit pour comparer (sa fiche) ; le passage d'un lien, à la main ou
+  automatique (fiche du lien) ; le modèle de chaque niveau et le texte
+  « Qui est Serge » (page Pipeline) ; le prompt, le niveau, la file et la
+  priorité d'une invocation, par l'API seulement. Il restera à régler
+  depuis le site : le prompt dans la page, les lectures d'office d'une
+  invocation (ce qu'elle doit traiter), ses outils, le format de sa
+  réponse, ses règles d'écriture, créer ou supprimer un réglage, les
+  colonnes lisibles et courtes de chaque table, les liens, les
+  déclencheurs et les protections des tables. Clem a prévenu que
+  l'organisation actuelle des réglages pourra changer à ce moment-là
+  (Q63) : la façon de tout régler reste à concevoir.
 
 ---
 
@@ -476,8 +545,39 @@ et Serge sait demander de l'aide quand il ne sait pas.
   invocations, leurs liens et leurs réglages sont décrits en base. Les
   prompts de l'ancien cycle sont dans `pas_encore_branche/`. Le demi-cycle
   de démonstration du lot 6 est alors retiré de `config/pipeline.yaml` et
-  marqué supprimé en base : retirer une ligne du fichier ne l'efface pas
-  d'une instance existante.
+  marqué supprimé en base : ses trois invocations, ses deux liens et son
+  bouton « Lancer un cycle (démo) », et l'outil « Lire les business
+  connus » s'il ne sert plus. Retirer une ligne du fichier ne l'efface
+  pas d'une instance existante.
+
+  Ce que le lot 6 impose ou permet ici, à ne pas oublier :
+  - **Des vues de tables** pour les pages (`listen_docs`), les pages d'un
+    cycle, les flux (`listen_feeds`) et les preuves d'un business
+    (`venture_sources`), pour que les invocations puissent les comparer,
+    les lire en détail et lire leur historique.
+  - **« B ne voit jamais ce qu'a écrit A » entre en conflit avec la
+    version courte systématique** : B écrit des business, donc elle reçoit
+    d'office ceux déjà en base, y compris ceux que A vient d'écrire si A
+    passe avant. Il faut trancher : retirer les business des tables à
+    comparer de B (les doublons sont de toute façon écartés à
+    l'écriture), ou ne lui montrer que les business d'avant le cycle.
+  - **Les places libres** : le quota `business_choisis` (au plus 3
+    business `POC_SELECTED`) existe déjà et refuse le surplus. Pour que
+    « Choisir » choisisse « autant qu'il y a de places libres », elle doit
+    voir le statut des business en test : ajouter `lifecycle` à leur
+    version courte, ou lui donner une lecture d'office des business en
+    test. Le modèle compte lui-même ; on ne met pas de calcul dans les
+    réglages (Q63).
+  - **Le cycle ne se lance que s'il reste une place** : il faut une
+    condition sur un déclencheur, prévue au lot 8 (conditions simples) ;
+    à avancer ici si besoin.
+  - **Les chiffres de l'ancienne section « Écoute » de la policy**
+    (besoins visés, business retenus), retirée au lot 6, reviennent comme
+    réglages des invocations du cycle (Q64), comme `nombre_idees` de la
+    démo.
+  - Pour chaque invocation : le niveau de modèle, le bloc « Qui est
+    Serge » (utile pour les modèles moyen et intelligent), le maximum de
+    lignes données d'office et le nombre d'appels d'outils.
 
 - [ ] **Garder toutes les pages lues.** Aujourd'hui, les pages trouvées
   par la recherche web ne sont pas enregistrées, et comme aucun flux RSS
@@ -495,7 +595,8 @@ et Serge sait demander de l'aide quand il ne sait pas.
   intervalle régulier, sans LLM.
 
 - [ ] **Empêcher la base de grossir sans fin.** Il faut quatre réglages,
-  modifiables dans MC : le nombre maximum de pages triées par cycle, le
+  modifiables dans MC (des réglages des invocations marqués « policy », ou
+  des quotas de table, pas la policy générale) : le nombre maximum de pages triées par cycle, le
   nombre de jours après lequel une page « bruit » est oubliée (une page qui
   sert de preuve est toujours gardée), le nombre de cycles après lequel un
   flux qui ne ramène que du bruit est désactivé, et la fréquence de
@@ -520,7 +621,9 @@ et Serge sait demander de l'aide quand il ne sait pas.
   test. Le détail est dans
   [`docs/etapes/2-conception-poc.md`](docs/etapes/2-conception-poc.md).
   Cette tâche a besoin des liens entre invocations et de la construction
-  de l'étape 5.
+  de l'étape 5. En attendant les tickets du lot 8, le lien entre la
+  conception et la construction peut être réglé à la main : Julien donne
+  son feu vert avec « Passer à la suite », sur la fiche du lien dans MC.
 
 ---
 
@@ -647,6 +750,9 @@ et Serge sait demander de l'aide quand il ne sait pas.
   rattachée à une invocation (portée `invocation:<id>`) ou à une étape
   (`etape:<id>`) est donnée d'office à qui la concerne, avant celles de
   tout Serge. Il reste à ce que la consolidation propose ce rattachement.
+  Une leçon encore candidate (pas encore gardée par Julien) est déjà
+  donnée comme les autres ; seules les leçons dépassées ou expirées ne le
+  sont pas.
   Et chaque business arrêté ou fermé doit obligatoirement produire au
   moins une leçon, pour ne pas refaire les mêmes erreurs.
 

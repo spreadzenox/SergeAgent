@@ -25,9 +25,11 @@ de guidage ; elle ne tourne que si Serge a été démarré :
 
 1. « Ouvrir un cycle (démo) », sans LLM, enregistre le cycle
    (`listen_cycles`) avec le texte de guidage ;
-2. « Formuler des idées (démo) » reçoit le cycle et les business déjà
-   connus, peut chercher sur le web et dans la mémoire, et écrit deux
-   business `CANDIDATE`. La règle de doublons de la table `ventures`
+2. « Formuler des idées (démo) » reçoit le cycle (lecture d'office), la
+   version courte des business déjà connus (numéro et nom, les plus
+   récents d'abord) et ses leçons ; elle peut chercher sur le web et dans
+   la mémoire, lire la fiche complète d'un business et son historique, et
+   écrit deux business `CANDIDATE`. La règle de doublons de la table `ventures`
    (72 % de mots en commun sur le nom et la description) écarte une fiche
    trop proche d'un business existant, avec une note au journal ;
 3. « Choisir un business (démo) » passe au plus un candidat en
@@ -94,7 +96,9 @@ Autres décisions :
   nombre de pages ramenées et de pages utiles.
 - **Recherche web** : SearXNG, un moteur de recherche open source hébergé
   sur le VPS. Gratuit, sans clé.
-- **Garde-fous de volume** (réglages de la policy) :
+- **Garde-fous de volume** (réglages des invocations marqués « policy »,
+  modifiables sur la page Policy ; la section « Écoute » de la policy
+  générale a été retirée au lot 6) :
   - N pages triées au maximum par cycle ;
   - les pages « bruit » sont oubliées après X jours, les preuves sont
     gardées ;
@@ -102,8 +106,16 @@ Autres décisions :
 - **Légalité** : le prompt des invocations qui formulent et choisissent
   dit que le business doit être légal, et les encourage à ne pas s'arrêter
   sur des scrupules moraux qui ne sont pas contraires à la loi.
-- Le réglage `listen.poc_business_target` disparaît : on choisit autant de
-  business qu'il y a de places libres.
+- Le réglage `listen.poc_business_target` a disparu (lot 6) : on choisit
+  autant de business qu'il y a de places libres. Le quota « au plus 3
+  business choisis » existe déjà ; « Choisir » doit voir le statut des
+  business en test pour compter les places (voir le lot 7 du
+  [`TODO.md`](../../TODO.md)).
+- **À trancher au lot 7** : B écrit des business, donc elle reçoit
+  d'office la version courte de ceux déjà en base, y compris ceux de A
+  si A passe avant. Pour que B ne voie jamais A, on peut lui retirer les
+  business de ses tables à comparer (les doublons sont écartés à
+  l'écriture) ou ne lui montrer que ceux d'avant le cycle.
 - Les familles de business possibles sont listées dans
   [`DECISIONS_REVUE.md`](../DECISIONS_REVUE.md) (question 32).
 
