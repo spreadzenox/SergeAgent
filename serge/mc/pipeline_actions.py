@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""MC : les actions sur le pipeline (bouton d'un déclencheur, relancer une tâche)."""
+"""MC : les actions sur le pipeline.
+
+Le bouton d'un déclencheur, relancer une tâche, et les tables qu'une
+invocation voit pour comparer.
+"""
 
 from __future__ import annotations
 
@@ -8,6 +12,7 @@ from typing import TYPE_CHECKING, Any, Protocol
 from serge.db.store import append_event
 from serge.interpreter.flow import fire_button
 from serge.interpreter.tasks import relaunch_task
+from serge.mc.proj_vues import changer_comparaison
 
 
 class _PipelineHandler(Protocol):
@@ -25,7 +30,7 @@ else:
 
 
 class PipelineActionsMixin(_Base):
-    """POST /owner/api/bouton et /owner/api/tache/relancer."""
+    """POST /owner/api/bouton, /tache/relancer et /invocation/comparer."""
 
     def _api_bouton(self) -> None:
         if not self._require_owner():
@@ -85,3 +90,40 @@ class PipelineActionsMixin(_Base):
                 payload={'task': task_id},
             )
         self._send_json(200, {'ok': True, 'task_id': task_id})
+
+    def _api_comparer(self) -> None:
+        """Ajoute, retire ou remet une table à comparer.
+
+        Corps : ``{invocation_id, table, voir}``.
+        """
+        if not self._require_owner():
+            return
+        body = self._json_body() or {}
+        ident = str(body.get('invocation_id') or '').strip()
+        table = str(body.get('table') or '').strip()
+        voir = body.get('voir')
+        if not ident or not table or not isinstance(voir, bool):
+            self._refus(
+                400,
+                'Demande incomplète.',
+                'comparer',
+                'Envoie {"invocation_id": "...", "table": "...", "voir": true}.',
+            )
+            return
+        with self._db() as conn:
+            if not changer_comparaison(conn, ident, table, voir, 'owner'):
+                self._refus(
+                    409,
+                    'Cette table ne peut pas être vue par cette invocation.',
+                    'comparer',
+                    'La table doit être décrite (table_views) et'
+                    ' l’invocation doit exister.',
+                )
+                return
+            append_event(
+                conn,
+                actor='owner',
+                type='invocation.compare',
+                payload={'invocation': ident, 'table': table, 'voir': voir},
+            )
+        self._send_json(200, {'ok': True})

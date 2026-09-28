@@ -665,7 +665,7 @@ l'invocation.
 
 ---
 
-## 16. Ce que voit une invocation, et l'outil pour lire le reste (validé, Q60)
+## 16. Ce que voit une invocation, et l'outil pour lire le reste (validé, Q60, construit)
 
 Le principe est dans [`MEMOIRE.md`](MEMOIRE.md). Voici ce qu'il demande en
 base. Rien n'y est propre à une invocation : les règles sont réglées une
@@ -711,6 +711,36 @@ tables à comparer.
 5. Il écrit le bloc **« Qui est Serge »** complet, si l'invocation le
    demande : la présentation, la chaîne des 8 étapes, sa place, et ce qui
    vient juste avant et juste après elle, lu dans les liens.
+
+**Ce qui a été construit** (version 27 de la base) :
+
+- `table_views` a aussi un `title` (« Les business »), qui sert de titre
+  au bloc donné d'office et sur la fiche de l'invocation.
+- Deux tables de plus. `event_rows` dit quel événement du journal
+  concerne quelle ligne : chaque écriture d'invocation la remplit, ainsi
+  que tout événement d'un business (`venture_id`) ; les anciens
+  événements ont été repris. `task_seen_tables` garde, pour chaque tâche,
+  les lignes données et laissées de côté par table à comparer (et
+  `lessons` pour ses leçons), affichées sur la fiche de la tâche.
+- Les deux outils sont deux capacités du code (`seen_table_read`,
+  `row_history`, dans `serge/interpreter/seen.py`) et deux outils
+  « partout » de `pipeline.yaml`. À chaque appel, leur schéma ne propose
+  que les tables de l'invocation ; une invocation qui ne voit aucune
+  table ne les reçoit pas. Les tables permises sont recalculées quand le
+  modèle appelle l'outil : il ne peut pas en forger une autre.
+- Une page de « Lire les tables que je vois » ou de « Lire l'historique »
+  a la taille du maximum de lignes de l'invocation.
+- « Lire l'historique » vaut pour les tables à comparer et pour celles de
+  ses lectures d'office (ce qu'elle doit traiter).
+- La portée d'une leçon s'écrit `invocation:<id>` ou `etape:<id>`, comme
+  les portées qui existaient déjà (`global`, `venture:<id>`). Une leçon
+  dépassée ou expirée n'est jamais donnée.
+- Le bloc « Ta place » cite aussi les déclencheurs qui la lancent.
+- Les lectures d'office suivent la même règle : les plus récentes
+  d'abord (par la colonne d'ordre de la table lue) et le compte exact des
+  lignes laissées de côté, même au-delà de 200.
+- Sur la fiche d'une invocation, le cadre « Ce qu'elle voit pour
+  comparer » a un bouton par table : retirer, remettre ou ajouter.
 
 ---
 

@@ -3,7 +3,8 @@
 
 Le code n'a qu'une fonction par capacité. Un outil (table ``tools``) dit
 quelle capacité il utilise ; le lien entre une invocation et un outil
-(``invocation_tools``) dit s'il est donné d'office ou appelable, et quels
+(``invocation_tools``) dit s'il est lu d'office (Serge le lit avant
+l'appel et met le résultat dans le prompt) ou appelable, et quels
 paramètres sont figés. Le modèle ne peut jamais changer un paramètre figé.
 """
 
@@ -13,6 +14,7 @@ import sqlite3
 from collections.abc import Callable, Mapping
 from typing import Any
 
+from serge.interpreter.seen import CHOICES, read_seen_table, row_history
 from serge.interpreter.settings import load_settings
 
 Runner = Callable[
@@ -26,7 +28,7 @@ def _db_read(
     from serge.db.query_builder import execute_db_read
 
     result = execute_db_read(conn, tool_id, args)
-    return {'ok': True, 'rows': result['data']}
+    return {'ok': True, 'rows': result['data'], 'total': result['total']}
 
 
 def _web_search(
@@ -81,6 +83,8 @@ RUNNERS: dict[str, Runner] = {
     'web_search': _web_search,
     'memory_search': _memory_search,
     'request_capability': _request_capability,
+    'seen_table_read': read_seen_table,
+    'row_history': row_history,
 }
 
 
@@ -159,14 +163,23 @@ def run_tool(
 
 
 def tool_schema(
-    conn: sqlite3.Connection, tool_id: str, fixed: set[str]
-) -> dict[str, Any]:
+    conn: sqlite3.Connection,
+    tool_id: str,
+    fixed: set[str],
+    invocation_id: str = '',
+) -> dict[str, Any] | None:
     """Le schéma d'un outil appelable, tel qu'on le montre au modèle.
 
     Les paramètres figés n'y figurent pas : le modèle n'a pas à les
-    choisir.
+    choisir. Pour certaines capacités, le schéma dépend de l'invocation :
+    « Lire les tables que je vois » ne propose que ses tables. ``None`` :
+    l'outil ne sert à rien à cette invocation.
     """
     capability = tool_capability(conn, tool_id)
+    choices = CHOICES.get(capability)
+    chosen = choices(conn, invocation_id) if choices else ({}, '')
+    if chosen is None:
+        return None
     if capability == 'db_read':
         from serge.db.query_builder import openai_schema_for_tool
 
@@ -197,11 +210,16 @@ def tool_schema(
             properties[str(name)] = prop
             if needed:
                 required.append(str(name))
+        enums, extra = chosen
+        for name, values in enums.items():
+            if name in properties:
+                properties[name]['enum'] = values
+        description = f'{doc[0]}. {doc[1]}' if doc else tool_id
         schema: dict[str, Any] = {
             'type': 'function',
             'function': {
                 'name': tool_id,
-                'description': f'{doc[0]}. {doc[1]}' if doc else tool_id,
+                'description': f'{description} {extra}'.strip(),
                 'parameters': {
                     'type': 'object',
                     'properties': properties,

@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import threading
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
@@ -72,6 +73,7 @@ def append_event(
     venture_id: str = '',
     payload: dict[str, Any] | None = None,
     links: dict[str, Any] | None = None,
+    rows: Iterable[tuple[str, Any]] = (),
 ) -> int:
     """Append one episode (couche 2). Never modifies history.
 
@@ -82,6 +84,9 @@ def append_event(
         venture_id: Scope, '' when global.
         payload: Event facts (JSON).
         links: Related ids (JSON).
+        rows: Les lignes que l'événement concerne, ``(table, id)`` ; elles
+            forment l'historique de chaque ligne (``event_rows``). Le
+            business de ``venture_id`` en fait toujours partie.
 
     Returns:
         Row id of the appended event.
@@ -98,4 +103,13 @@ def append_event(
             json.dumps(links or {}, ensure_ascii=False),
         ),
     )
-    return int(cursor.lastrowid or 0)
+    event_id = int(cursor.lastrowid or 0)
+    concerned = {(str(table), str(ident)) for table, ident in rows}
+    if venture_id:
+        concerned.add(('ventures', venture_id))
+    connection.executemany(
+        'INSERT OR IGNORE INTO event_rows(event_id, table_name, row_id)'
+        ' VALUES(?,?,?)',
+        [(event_id, table, ident) for table, ident in sorted(concerned)],
+    )
+    return event_id

@@ -55,11 +55,14 @@ lues).
 Le texte d'une fiche vient des colonnes de la base (exemple : `doc_md`),
 pas du code JavaScript. La fiche d'une invocation montre tout ce que la
 base dit d'elle : son rôle, sa sorte (avec ou sans LLM), son étape, sa
-file, sa priorité, son niveau de modèle, son prompt, ce qu'elle reçoit
-d'office, ce qu'elle peut appeler, le format de sa réponse, où sa réponse
-est écrite, ce qui la lance, ce qu'elle lance ensuite, et ses derniers
-passages. La fiche d'une tâche montre ses paramètres et ce qu'elle a reçu
-(par exemple « 50 lignes, 90 laissées de côté ») ; si elle a échoué, un
+file, sa priorité, son niveau de modèle, son prompt, ce qu'elle lit
+d'office (ce qu'elle doit traiter), ce qu'elle voit pour comparer (la
+version courte des tables, avec un bouton pour retirer, remettre ou
+ajouter une table), ses leçons, ce qu'elle peut appeler, le format de sa
+réponse, où sa réponse est écrite, ce qui la lance, ce qu'elle lance
+ensuite, et ses derniers passages. La fiche d'une tâche montre ses
+paramètres et ce qu'elle a reçu (par exemple « Pour comparer : Les
+business — 20 lignes, 230 laissées de côté ») ; si elle a échoué, un
 bouton « Relancer la tâche » la remet dans sa file.
 
 ---
@@ -155,6 +158,7 @@ Toutes demandent le jeton owner.
 | `POST /owner/api/reglage` | Changer un réglage d'invocation ou un quota marqué « policy » (valeur vérifiée, changement noté au journal). |
 | `POST /owner/api/bouton` | Un déclencheur « bouton » : crée la tâche de son invocation, avec les champs du formulaire. |
 | `POST /owner/api/tache/relancer` | Remettre une tâche échouée dans sa file (bouton « Relancer la tâche » de sa fiche). |
+| `POST /owner/api/invocation/comparer` | Retirer, remettre ou ajouter une table que l'invocation voit pour comparer (boutons de sa fiche). Seule une table décrite en base (`table_views`) peut être vue. |
 
 ---
 

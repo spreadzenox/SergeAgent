@@ -165,13 +165,23 @@ class ProjObjetTests(unittest.TestCase):
             _cadre(fiche, 'Le texte qu’on lui donne (prompt)')['texte'],
             'Propose.',
         )
-        donnes = _cadre(fiche, 'Ce qu’elle reçoit d’office')
+        donnes = _cadre(
+            fiche, 'Ce qu’elle lit d’office (ce qu’elle doit traiter)'
+        )
         self.assertIn('20 lignes au plus', donnes['champs'][0]['v'])
         appelables = [
             lien['id']
             for lien in _cadre(fiche, 'Ce qu’elle peut appeler')['liens']
         ]
-        self.assertEqual(appelables, ['web_search', 'demande_capacite'])
+        self.assertEqual(
+            appelables,
+            [
+                'web_search',
+                'demande_capacite',
+                'lire_historique',
+                'lire_tables_vues',
+            ],
+        )
         self.assertEqual(
             _cadre(fiche, 'Le format de sa réponse')['champs'][1]['k'],
             'fiches.title',

@@ -12,6 +12,8 @@ from __future__ import annotations
 import sqlite3
 from typing import Any
 
+from serge.mc.proj_vues import cadres_vues
+
 NIVEAUX = {
     'fast': 'Rapide — un réflexe (classer, extraire). Le moins cher.',
     'mid': 'Moyen — assez malin pour rédiger ou comparer.',
@@ -324,10 +326,16 @@ def project_llm(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
                 'todo': 'Modifiable par l’API /owner/api/invocation.',
             },
             {
-                'titre': 'Ce qu’elle reçoit d’office',
+                'titre': 'Ce qu’elle lit d’office (ce qu’elle doit traiter)',
                 'champs': donnes_champs,
                 'liens': donnes,
             },
+            *cadres_vues(
+                conn,
+                ident,
+                str(inv['step_id'] or ''),
+                int(inv['default_max_rows']),
+            ),
             {
                 'titre': 'Ce qu’elle peut appeler',
                 'champs': appelables_champs,

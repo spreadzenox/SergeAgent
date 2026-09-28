@@ -20,6 +20,7 @@ EVENTS = {
     'write.updated': 'Ligne modifiée',
     'write.refused': 'Écriture refusée',
     'write.skipped': 'Doublon écarté',
+    'invocation.compare': 'Tables à comparer changées',
     'mc_act': 'Acte owner',
     'transition.approved': 'Approuvé',
     'transition.rejected': 'Rejeté',

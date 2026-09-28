@@ -328,14 +328,27 @@ def _where(
     return clauses, bound
 
 
-def build_db_read_query(
-    conn: sqlite3.Connection, tool_id: str, arguments: Mapping[str, Any]
-) -> tuple[str, list[Any], list[str]]:
-    """Construit une requête bornée au catalogue de l'outil, sans l'exécuter.
+def _order(conn: sqlite3.Connection, root: str) -> str:
+    """Les lignes les plus récentes d'abord, si la table le dit.
 
-    Les jointures du catalogue sont toujours appliquées ; le modèle peut en
-    demander d'autres entre les tables autorisées.
+    La colonne d'ordre est réglée une fois par table (``table_views``),
+    par exemple ``created_at`` pour les business. Sans elle, l'ordre reste
+    celui de SQLite.
     """
+    row = conn.execute(
+        'SELECT order_column FROM table_views WHERE table_name=?', (root,)
+    ).fetchone()
+    column = str(row[0]) if row else ''
+    if not column or column not in _real_columns(conn, root):
+        return ''
+    table = _quote(root)
+    return f' ORDER BY {table}.{_quote(column)} DESC, {table}.rowid DESC'
+
+
+def _build(
+    conn: sqlite3.Connection, tool_id: str, arguments: Mapping[str, Any]
+) -> tuple[str, list[Any], str, int, list[str]]:
+    """La requête sans ordre ni limite, son ordre, sa limite, ses colonnes."""
     if not isinstance(arguments, Mapping):
         raise DbReadError('arguments objet attendus')
     catalogue = tool_catalogue(conn, tool_id)
@@ -373,22 +386,42 @@ def build_db_read_query(
         raise DbReadError('limit doit être un entier')
     if limit < 1:
         raise DbReadError('limit doit être positif')
-    bound.append(min(limit, _MAX_ROWS))
-    sql += ' LIMIT ?'
-    return sql, bound, aliases
+    return sql, bound, _order(conn, root), min(limit, _MAX_ROWS), aliases
+
+
+def build_db_read_query(
+    conn: sqlite3.Connection, tool_id: str, arguments: Mapping[str, Any]
+) -> tuple[str, list[Any], list[str]]:
+    """Construit une requête bornée au catalogue de l'outil, sans l'exécuter.
+
+    Les jointures du catalogue sont toujours appliquées ; le modèle peut en
+    demander d'autres entre les tables autorisées.
+    """
+    sql, bound, order, limit, aliases = _build(conn, tool_id, arguments)
+    return f'{sql}{order} LIMIT ?', [*bound, limit], aliases
 
 
 def execute_db_read(
     conn: sqlite3.Connection, tool_id: str, arguments: Mapping[str, Any]
 ) -> dict[str, Any]:
-    """Exécute un outil de lecture et rend des lignes bornées."""
-    sql, bound, aliases = build_db_read_query(conn, tool_id, arguments)
-    rows = conn.execute(sql, bound).fetchall()
+    """Exécute un outil de lecture et rend des lignes bornées.
+
+    ``total`` est le nombre exact de lignes qui répondent, même au-delà de
+    la limite : on sait donc combien sont laissées de côté.
+    """
+    sql, bound, order, limit, aliases = _build(conn, tool_id, arguments)
+    rows = conn.execute(f'{sql}{order} LIMIT ?', [*bound, limit]).fetchall()
+    total = conn.execute(f'SELECT COUNT(*) FROM ({sql})', bound).fetchone()
     data = [
         {alias: row[index] for index, alias in enumerate(aliases)}
         for row in rows
     ]
-    return {'ok': True, 'tool_id': tool_id, 'data': data}
+    return {
+        'ok': True,
+        'tool_id': tool_id,
+        'data': data,
+        'total': int(total[0]),
+    }
 
 
 def openai_schema_for_tool(

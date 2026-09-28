@@ -304,6 +304,17 @@ def _seed_invocation(conn: sqlite3.Connection, inv: Mapping[str, Any]) -> None:
         updated_by='pipeline.yaml',
     )
     seed_settings(conn, ident, inv.get('settings'))
+    for table, included in (inv.get('compare') or {}).items():
+        if not _exists(conn, 'table_views', 'table_name', str(table)):
+            raise PipelineSeedError(f'{ident}.compare : pas de vue {table}')
+        _insert(
+            conn,
+            'invocation_compare_tables',
+            invocation_id=ident,
+            table_name=str(table),
+            included=int(bool(included)),
+            updated_by='pipeline.yaml',
+        )
     _seed_params(
         conn,
         'invocation_tool_params',
@@ -446,11 +457,14 @@ def seed_pipeline(conn: sqlite3.Connection, data: Mapping[str, Any]) -> None:
     Raises:
         PipelineSeedError: Fichier mal formé.
     """
+    from serge.interpreter.seen import seed_table_views
+
     if data.get('schema_version') != SCHEMA_VERSION:
         raise PipelineSeedError('schema_version doit valoir 1')
     _seed_simple(conn, data)
     _seed_tools(conn, data)
     _seed_rules(conn, data)
+    seed_table_views(conn, _list(data, 'table_views'))
     for inv in _list(data, 'invocations'):
         if not _exists(conn, 'invocations', 'id', str(inv['id'])):
             _seed_invocation(conn, inv)

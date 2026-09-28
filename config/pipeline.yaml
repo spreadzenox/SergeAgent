@@ -34,10 +34,11 @@ serge_texts:
       valider les décisions importantes. Sa seule limite est la légalité :
       il ne trompe personne et assume d'être un agent IA.
 
-# Les outils : une capacité du code, réglée pour un usage précis. On les
-# donne aux invocations, d'office (lus avant l'appel et mis dans le prompt)
-# ou appelables (le modèle décide). Un outil « everywhere » est appelable
-# par toutes les invocations LLM.
+# Les outils : une capacité du code, réglée pour un usage précis. Une
+# invocation s'en sert de deux façons : en lecture donnée d'office (Serge
+# lit avant l'appel et met le résultat dans le prompt) ou en outil
+# appelable (le modèle décide). Un outil « everywhere » est appelable par
+# toutes les invocations LLM, quand il leur sert.
 tools:
   - id: web_search
     title: Chercher sur le web public
@@ -57,6 +58,21 @@ tools:
       d'outil), il ouvre une demande à Julien (« j'ai besoin de X ») plutôt
       que d'inventer. Le même besoin déjà ouvert n'est pas recréé.
     capability: request_capability
+    everywhere: true
+  - id: lire_tables_vues
+    title: Lire les tables que je vois
+    doc: >-
+      Lit toutes les colonnes lisibles d'une table que l'invocation voit
+      déjà en version courte : une ligne par son numéro (colonne id), ou
+      toutes les lignes où une colonne vaut une valeur, page par page.
+    capability: seen_table_read
+    everywhere: true
+  - id: lire_historique
+    title: Lire l'historique
+    doc: >-
+      Ce qui est arrivé à une ligne que l'invocation voit : ses derniers
+      événements dans le journal (créée, modifiée, écriture refusée…).
+    capability: row_history
     everywhere: true
   - id: current_listen_cycle
     title: Lire le cycle d'écoute
@@ -183,6 +199,40 @@ dedup_rules:
     on_duplicate: skip
     columns: [name, description]
 
+# Ce qu'une invocation peut voir de chaque table, réglé une fois par
+# table. La version courte (short) est donnée d'office, pour comparer, à
+# toute invocation qui écrit dans la table ; les autres colonnes listées se
+# lisent avec l'outil « Lire les tables que je vois ». Une colonne absente
+# de la liste n'est jamais lue par une invocation. `order` : la colonne qui
+# dit quelles lignes sont les plus récentes (données en premier).
+table_views:
+  - table: ventures
+    title: Les business
+    description: Chaque business, de l'idée au client, avec son statut.
+    order: created_at
+    columns:
+      - {name: id, short: true, description: Le numéro du business.}
+      - {name: name, short: true, description: Son nom.}
+      - {name: description, description: Ce qu'il vend et à qui.}
+      - {name: sellable_offer, description: L'offre qu'on peut vendre tout de suite.}
+      - {name: observations, description: Ce qu'on a observé.}
+      - {name: lifecycle, description: Son statut.}
+      - {name: created_at, description: Sa date de création.}
+      - {name: updated_at, description: Sa dernière modification.}
+  - table: listen_cycles
+    title: Les cycles d'écoute
+    description: Chaque cycle d'écoute de l'étape 1, avec son texte de guidage.
+    order: created_at
+    columns:
+      - {name: id, short: true, description: Le numéro du cycle.}
+      - {name: guide, short: true, description: Le texte de guidage.}
+      - {name: status, short: true, description: L'état du cycle.}
+      - {name: needs_target, description: Le nombre de besoins visés.}
+      - {name: business_target, description: Le nombre de business à choisir.}
+      - {name: created_at, description: Sa date de création.}
+      - {name: started_at, description: Son début.}
+      - {name: finished_at, description: Sa fin.}
+
 # --- Demi-cycle de démonstration (lot 6) ---------------------------------
 # Trois invocations volontairement simples, pour vérifier que le pipeline
 # décrit en base s'enregistre, s'affiche dans Mission Control et tourne
@@ -246,10 +296,6 @@ invocations:
         label: Le cycle en cours
         params:
           cycle_id: {source: task, value: cycle_id}
-      - tool: known_business_candidates
-        mode: given
-        label: Les business déjà connus
-        max_rows: 20
       - {tool: web_search, mode: callable}
       - {tool: memory_search, mode: callable}
     output:

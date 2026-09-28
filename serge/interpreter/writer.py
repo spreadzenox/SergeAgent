@@ -146,12 +146,14 @@ def _journal(
     kind: str,
     payload: dict[str, Any],
 ) -> None:
+    row_id = payload.get('id')
     append_event(
         conn,
         actor=f'invocation:{invocation_id}',
         type=f'write.{kind}',
         venture_id=str(payload.get('venture_id') or ''),
         payload={'task': task_id, **payload},
+        rows=[(payload['table'], row_id)] if row_id is not None else [],
     )
 
 

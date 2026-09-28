@@ -84,6 +84,43 @@ CAPABILITIES: tuple[Capability, ...] = (
         'serge/interpreter/writer.py',
     ),
     Capability(
+        'seen_table_read',
+        'Lire les tables que je vois',
+        'Lit toutes les colonnes lisibles d’une table que l’invocation voit'
+        ' déjà en version courte : une ligne par son numéro, ou toutes les'
+        ' lignes avec un filtre simple, page par page. Les tables permises'
+        ' sont calculées à chaque appel à partir de l’invocation : celles où'
+        ' elle écrit, plus ou moins les ajustements réglés dans Mission'
+        ' Control. Les colonnes lisibles sont réglées une fois par table.',
+        'serge/interpreter/seen.py',
+        (
+            Param('table', 'text', True, 'La table à lire.'),
+            Param(
+                'column',
+                'text',
+                False,
+                'Une colonne lisible pour filtrer (id pour une seule ligne).',
+            ),
+            Param(
+                'value', 'text', False, 'La valeur que doit avoir la colonne.'
+            ),
+            Param('page', 'number', False, 'La page (1 pour commencer).'),
+        ),
+    ),
+    Capability(
+        'row_history',
+        'Lire l’historique d’une ligne',
+        'Rend ce qui est arrivé à une ligne que l’invocation voit (ce qu’elle'
+        ' traite, ou une table à comparer) : ses derniers événements dans le'
+        ' journal, du plus récent au plus ancien, page par page.',
+        'serge/interpreter/seen.py',
+        (
+            Param('table', 'text', True, 'La table de la ligne.'),
+            Param('id', 'text', True, 'Le numéro de la ligne.'),
+            Param('page', 'number', False, 'La page (1 pour commencer).'),
+        ),
+    ),
+    Capability(
         'request_capability',
         'Demander une nouvelle capacité',
         'Ouvre une demande à Julien quand il manque à Serge un outil ou un'

@@ -359,7 +359,7 @@ class MigrateTests(unittest.TestCase):
         self.addCleanup(conn.close)
         from serge.db.migrate import MIGRATIONS
 
-        apply_pending(conn, MIGRATIONS[:-2], head=24)
+        apply_pending(conn, MIGRATIONS[:-3], head=24)
         conn.execute(
             'INSERT INTO runtime_flags(name, value, set_at) VALUES'
             " ('kind.email.send', 'kill', 't'), ('llm.fill_slots', 'kill',"
@@ -425,7 +425,7 @@ class MigrateTests(unittest.TestCase):
         self.addCleanup(conn.close)
         from serge.db.migrate import MIGRATIONS
 
-        apply_pending(conn, MIGRATIONS[:-1], head=25)
+        apply_pending(conn, MIGRATIONS[:-2], head=25)
         conn.execute(
             'INSERT INTO invocation_tool_params(invocation_id,'
             ' invocation_tool_id, param_name, source, value)'
@@ -459,6 +459,36 @@ class MigrateTests(unittest.TestCase):
                     (table,),
                 ).fetchone()
             )
+
+    def test_v27_reprend_l_historique_des_lignes(self) -> None:
+        conn = sqlite3.connect(':memory:')
+        self.addCleanup(conn.close)
+        from serge.db.migrate import MIGRATIONS
+
+        apply_pending(conn, MIGRATIONS[:-1], head=26)
+        conn.executemany(
+            'INSERT INTO events(ts, actor, venture_id, type, payload_json)'
+            ' VALUES(?,?,?,?,?)',
+            [
+                ('t1', 'guard', 'v1', 'transition.x', '{}'),
+                (
+                    't2',
+                    'invocation:a',
+                    '',
+                    'write.inserted',
+                    '{"table": "listen_cycles", "id": 7}',
+                ),
+                ('t3', 'owner', '', 'mc_act', '{"table": "ventures"}'),
+            ],
+        )
+        self.assertEqual(apply_pending(conn), SCHEMA_VERSION)
+        self.assertEqual(
+            conn.execute(
+                'SELECT event_id, table_name, row_id FROM event_rows'
+                ' ORDER BY event_id'
+            ).fetchall(),
+            [(1, 'ventures', 'v1'), (2, 'listen_cycles', '7')],
+        )
 
 
 if __name__ == '__main__':

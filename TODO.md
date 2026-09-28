@@ -164,47 +164,14 @@ les nouvelles tables, un demi-cycle de démonstration de l'étape 1 dans
 `config/pipeline.yaml`, et le test qui vérifie la règle
 (`tests/test_regle_interpreteur.py`), les réglages des invocations et les
 quotas des tables, modifiables sur la page Policy (par exemple « nombre
-d'idées » de la démo, ou « au plus 3 business choisis pour un POC »).
-Serge est arrêté par défaut : il ne
+d'idées » de la démo, ou « au plus 3 business choisis pour un POC »), et
+ce que voit chaque invocation (version 27 de la base) : la version courte
+des tables où elle écrit, les plus récentes d'abord, les outils « Lire
+les tables que je vois » et « Lire l'historique », ses leçons et le bloc
+« Qui est Serge » complet. Serge est arrêté par défaut : il ne
 tourne qu'après un clic sur « Démarrer Serge » dans Mission Control. Le
 vrai pipeline, étape par étape, est l'objet des lots suivants. Ce qui
 reste dans ce lot :
-
-- [ ] **Ce que voit chaque invocation, et l'outil pour lire le reste.**
-  Aujourd'hui, une invocation reçoit ce qu'on lui déclare un par un, au
-  plus 50 lignes par défaut, et la fiche de la tâche dans MC dit combien
-  de lignes elle a reçues. Il faut appliquer les règles validées dans
-  [`docs/MEMOIRE.md`](docs/MEMOIRE.md), sans rien écrire en dur :
-  - **La version courte, systématique.** La base dit, une fois pour
-    chaque table, quelles colonnes forment sa version courte (pour un
-    business, son numéro et son nom) et quelles colonnes sont lisibles
-    (jamais un mot de passe). Toute invocation reçoit d'office la version
-    courte des tables où elle écrit. Sur sa fiche dans MC, on peut ajouter
-    une table à comparer ou en retirer une.
-  - **Les plus récentes d'abord.** Au-delà du maximum, elle reçoit les
-    lignes les plus récentes (aujourd'hui, ce sont les premières lues), et
-    le compte des lignes laissées de côté est juste même au-delà de 200.
-  - **L'outil « Lire les tables que je vois ».** Ce n'est pas un outil
-    codé pour une invocation, mais une sorte d'outil : il y en a un par
-    invocation, construit à chaque appel à partir de ses réglages en base,
-    et en particulier de l'ensemble des tables qu'elle voit en version
-    courte. Dans ces tables seulement, le modèle peut demander toutes les
-    lignes et toutes les colonnes lisibles. Exemple : « Formuler des
-    business » peut lire la fiche complète du business n° 12 vu dans sa
-    liste courte, mais pas les paiements. Il faudra sans doute des tables
-    ou des colonnes de plus (les tables vues par une invocation, les
-    colonnes lisibles et courtes de chaque table).
-  - **L'outil « Lire l'historique »** d'une ligne qu'elle voit : ses
-    derniers événements dans le journal.
-  - **Ses propres leçons**, données d'office, les plus fiables d'abord.
-    Elles dépendent du rattachement d'une leçon à une invocation (étape 7).
-  - **Le bloc « Qui est Serge » complet** : la chaîne des 8 étapes, la
-    place de l'invocation, et ce qui vient juste avant et juste après
-    elle, lu dans les liens. Aujourd'hui, il ne contient que la
-    présentation de Serge et le titre de l'invocation.
-
-  Détail des tables prévues :
-  [`docs/LOT6_CONCEPTION.md`](docs/LOT6_CONCEPTION.md), partie 16.
 
 - [ ] **Passer un lien à la main.** Un lien peut être réglé pour attendre
   un clic avant de lancer l'invocation suivante. Exemple : après
@@ -688,8 +655,10 @@ et Serge sait demander de l'aide quand il ne sait pas.
 ## Étape 7 — Mémoire
 
 - [ ] **Des leçons plus précises.** Chaque invocation doit recevoir ce
-  qu'on a appris sur son propre travail. Il faut donc rattacher chaque
-  leçon à une invocation précise, sinon à une étape, sinon à tout Serge.
+  qu'on a appris sur son propre travail. Depuis le lot 6, une leçon
+  rattachée à une invocation (portée `invocation:<id>`) ou à une étape
+  (`etape:<id>`) est donnée d'office à qui la concerne, avant celles de
+  tout Serge. Il reste à ce que la consolidation propose ce rattachement.
   Et chaque business arrêté ou fermé doit obligatoirement produire au
   moins une leçon, pour ne pas refaire les mêmes erreurs.
 

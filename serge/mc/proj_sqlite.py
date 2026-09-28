@@ -37,8 +37,38 @@ CATALOGUE: dict[str, tuple[str, str, str, str]] = {
         'Le code d’écriture générique (refus au-delà du quota).',
         'Exemple : au plus 3 business choisis pour un POC.',
     ),
+    'table_views': (
+        'Ce qu’une invocation peut voir de chaque table : titre, ordre.',
+        'pipeline.yaml au départ.',
+        'L’interpréteur : version courte donnée d’office, outils de lecture.',
+        'order_column : la colonne des plus récentes (données en premier).',
+    ),
+    'table_view_columns': (
+        'Les colonnes lisibles de chaque table, et sa version courte.',
+        'pipeline.yaml au départ.',
+        '« Lire les tables que je vois » ; la version courte (short = 1).',
+        'Une colonne absente n’est jamais lue par une invocation.',
+    ),
+    'invocation_compare_tables': (
+        'Les tables à comparer ajoutées ou retirées pour une invocation.',
+        'pipeline.yaml au départ, puis la fiche de l’invocation dans MC.',
+        'L’interpréteur (par défaut : les tables où elle écrit).',
+        'included = 1 ajoute la table, 0 la retire.',
+    ),
+    'event_rows': (
+        'Quel événement du journal concerne quelle ligne.',
+        'Chaque écriture d’invocation, et les événements d’un business.',
+        '« Lire l’historique » d’une ligne.',
+        'Les anciens événements ont été repris à la migration v27.',
+    ),
+    'task_seen_tables': (
+        'Ce qu’une tâche a reçu pour comparer : lignes données, laissées.',
+        'L’interpréteur, avant l’appel au modèle.',
+        'Fiche d’une tâche.',
+        'table_name = lessons pour ses leçons.',
+    ),
     'invocation_tools': (
-        'Les outils de chaque invocation : donnés d’office ou appelables.',
+        'Les outils de chaque invocation : lus d’office ou appelables.',
         'pipeline.yaml au départ, puis Mission Control.',
         'Le prompt de l’invocation et ses appels d’outils.',
         'mode = given : lu avant l’appel ; callable : le modèle décide.',
@@ -69,10 +99,10 @@ CATALOGUE: dict[str, tuple[str, str, str, str]] = {
         'Les paramètres de chaque tâche sont dans task_params.',
     ),
     'task_inputs': (
-        'Ce qu’une tâche a reçu d’office : lignes données, lignes laissées.',
+        'Ce qu’une tâche a lu d’office : lignes données, lignes laissées.',
         'L’interpréteur, avant l’appel au modèle.',
         'Fiche d’une tâche.',
-        'Une ligne par outil donné d’office.',
+        'Une ligne par lecture donnée d’office.',
     ),
     'writable_tables': (
         'Les tables qu’une invocation a le droit d’écrire.',

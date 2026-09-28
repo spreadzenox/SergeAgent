@@ -117,11 +117,12 @@ class PipelineDemoTests(unittest.TestCase):
             'SELECT name, sellable_offer, lifecycle FROM ventures'
             ' ORDER BY name'
         ).fetchall()
+        # Le faux modèle choisit le premier candidat reçu : le plus récent.
         self.assertEqual(
             business,
             [
-                ('Devis dictés', 'un devis en 2 minutes', 'POC_SELECTED'),
-                ('Relance des impayés', '', 'CANDIDATE'),
+                ('Devis dictés', 'un devis en 2 minutes', 'CANDIDATE'),
+                ('Relance des impayés', '', 'POC_SELECTED'),
             ],
         )
         statuts = self.conn.execute(
@@ -228,15 +229,26 @@ class PipelineDemoTests(unittest.TestCase):
             'Propose exactement {nombre_idees} idées',
             cadres['Le texte qu’on lui donne (prompt)']['texte'],
         )
-        donnes = cadres['Ce qu’elle reçoit d’office']['champs']
+        donnes = cadres['Ce qu’elle lit d’office (ce qu’elle doit traiter)']
         self.assertEqual(
-            donnes[0],
-            {
-                'k': 'Le cycle en cours',
-                'v': 'cycle_id ← le paramètre « cycle_id » de la tâche',
-            },
+            donnes['champs'],
+            [
+                {
+                    'k': 'Le cycle en cours',
+                    'v': 'cycle_id ← le paramètre « cycle_id » de la tâche',
+                }
+            ],
         )
-        self.assertIn('20 lignes au plus', donnes[1]['v'])
+        comparer = cadres['Ce qu’elle voit pour comparer (version courte)']
+        self.assertEqual(
+            comparer['champs'],
+            [{'k': 'Les business', 'v': 'id, name — elle y écrit'}],
+        )
+        self.assertIn('au plus 20 par table', comparer['texte'])
+        self.assertEqual(
+            [a['libelle'] for a in comparer['actions']],
+            ['Retirer « Les business »', "Ajouter « Les cycles d'écoute »"],
+        )
         self.assertEqual(
             [f['k'] for f in cadres['Le format de sa réponse']['champs']],
             ['fiches', 'fiches.title', 'fiches.description', 'fiches.offre'],
@@ -272,6 +284,10 @@ class PipelineDemoFrontTests(McBrowserCase):
             'cycle_id ← le paramètre « cycle_id » de la tâche',
             'Chercher sur le web public',
             'Demander une nouvelle capacité (partout)',
+            'Lire les tables que je vois (partout)',
+            'Ce qu’elle voit pour comparer',
+            'id, name — elle y écrit',
+            'Aucune leçon pour elle, son étape ou tout Serge.',
             'fiches.description',
             'Ajouter dans ventures',
             'lifecycle ← « CANDIDATE »',

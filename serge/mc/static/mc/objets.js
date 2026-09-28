@@ -11,7 +11,7 @@ const TIROIRS = new Set([
   'llm_usage',
 ]);
 
-function renderCadre(cadre) {
+function renderCadre(cadre, apres) {
   const bloc = el('div', 'cadre-fiche');
   bloc.append(el('h3', '', cadre.titre || ''));
   if (cadre.texte) {
@@ -39,6 +39,9 @@ function renderCadre(cadre) {
   if (cadre.todo) {
     const note = el('p', 'todo-mc', cadre.todo);
     bloc.append(note);
+  }
+  if ((cadre.actions || []).length) {
+    bloc.append(renderActions(cadre.actions, apres));
   }
   return bloc;
 }
@@ -158,7 +161,7 @@ export function renderFiche(data, apres = null) {
     wrap.append(dl);
   }
   for (const cadre of data.cadres || []) {
-    wrap.append(renderCadre(cadre));
+    wrap.append(renderCadre(cadre, apres));
   }
   if (data.tableau && (data.tableau.colonnes || []).length) {
     const bloc = el('div', 'cadre-fiche');
