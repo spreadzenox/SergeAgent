@@ -359,7 +359,7 @@ class MigrateTests(unittest.TestCase):
         self.addCleanup(conn.close)
         from serge.db.migrate import MIGRATIONS
 
-        apply_pending(conn, MIGRATIONS[:-3], head=24)
+        apply_pending(conn, MIGRATIONS[:-4], head=24)
         conn.execute(
             'INSERT INTO runtime_flags(name, value, set_at) VALUES'
             " ('kind.email.send', 'kill', 't'), ('llm.fill_slots', 'kill',"
@@ -425,7 +425,7 @@ class MigrateTests(unittest.TestCase):
         self.addCleanup(conn.close)
         from serge.db.migrate import MIGRATIONS
 
-        apply_pending(conn, MIGRATIONS[:-2], head=25)
+        apply_pending(conn, MIGRATIONS[:-3], head=25)
         conn.execute(
             'INSERT INTO invocation_tool_params(invocation_id,'
             ' invocation_tool_id, param_name, source, value)'
@@ -465,7 +465,7 @@ class MigrateTests(unittest.TestCase):
         self.addCleanup(conn.close)
         from serge.db.migrate import MIGRATIONS
 
-        apply_pending(conn, MIGRATIONS[:-1], head=26)
+        apply_pending(conn, MIGRATIONS[:-2], head=26)
         conn.executemany(
             'INSERT INTO events(ts, actor, venture_id, type, payload_json)'
             ' VALUES(?,?,?,?,?)',

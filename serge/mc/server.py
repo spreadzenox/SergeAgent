@@ -365,6 +365,8 @@ class McHandler(
             '/owner/api/bouton': self._api_bouton,
             '/owner/api/tache/relancer': self._api_tache_relancer,
             '/owner/api/invocation/comparer': self._api_comparer,
+            '/owner/api/lien/passer': self._api_lien_passer,
+            '/owner/api/lien/auto': self._api_lien_auto,
         }
         acte = apis.get(path)
         if acte is None:

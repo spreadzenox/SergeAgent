@@ -63,7 +63,10 @@ réponse, où sa réponse est écrite, ce qui la lance, ce qu'elle lance
 ensuite, et ses derniers passages. La fiche d'une tâche montre ses
 paramètres et ce qu'elle a reçu (par exemple « Pour comparer : Les
 business — 20 lignes, 230 laissées de côté ») ; si elle a échoué, un
-bouton « Relancer la tâche » la remet dans sa file.
+bouton « Relancer la tâche » la remet dans sa file. La fiche d'un lien
+(`#/objet/lien/<id>`, ouverte depuis la fiche d'une invocation) montre ce
+qui est déjà passé et ce qui attend un clic, avec un bouton « Passer à la
+suite » par passage et l'interrupteur « passage automatique ».
 
 ---
 
@@ -102,12 +105,6 @@ sa fiche montre tout ce qui la décrit, et l'API
 file, sa priorité et son interrupteur. Demain, la fiche permettra de
 modifier tout le reste (ce qu'elle reçoit, ses outils, le format de sa
 réponse, où elle écrit) : c'est l'éditeur sans code, plus bas.
-
-**Les liens se passent à la main.** La fiche d'une invocation montre déjà
-ses liens et ses déclencheurs, et l'ordre des invocations d'une étape est
-lu dans les liens. Il manque, pour chaque lien, ce qui est déjà passé et ce
-qui attend, avec un bouton « passer à la suite » et un interrupteur
-« passage automatique ».
 
 **Une tâche arrêtée au milieu d'une action extérieure** (un envoi, un
 remboursement) apparaîtra pour qu'on vérifie avant de la relancer (lot 8).
@@ -158,6 +155,8 @@ Toutes demandent le jeton owner.
 | `POST /owner/api/reglage` | Changer un réglage d'invocation ou un quota marqué « policy » (valeur vérifiée, changement noté au journal). |
 | `POST /owner/api/bouton` | Un déclencheur « bouton » : crée la tâche de son invocation, avec les champs du formulaire. |
 | `POST /owner/api/tache/relancer` | Remettre une tâche échouée dans sa file (bouton « Relancer la tâche » de sa fiche). |
+| `POST /owner/api/lien/passer` | « Passer à la suite » : lance un passage qui attendait un clic, avec ses paramètres gardés (fiche du lien). |
+| `POST /owner/api/lien/auto` | L'interrupteur « passage automatique » d'un lien (pour les passages suivants). |
 | `POST /owner/api/invocation/comparer` | Retirer, remettre ou ajouter une table que l'invocation voit pour comparer (boutons de sa fiche). Seule une table décrite en base (`table_views`) peut être vue. |
 
 ---

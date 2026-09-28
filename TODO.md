@@ -168,20 +168,12 @@ d'idées » de la démo, ou « au plus 3 business choisis pour un POC »), et
 ce que voit chaque invocation (version 27 de la base) : la version courte
 des tables où elle écrit, les plus récentes d'abord, les outils « Lire
 les tables que je vois » et « Lire l'historique », ses leçons et le bloc
-« Qui est Serge » complet. Serge est arrêté par défaut : il ne
+« Qui est Serge » complet ; et le passage d'un lien à la main (version
+28), depuis la fiche du lien dans MC, à côté de la validation par ticket
+du lot 8. Serge est arrêté par défaut : il ne
 tourne qu'après un clic sur « Démarrer Serge » dans Mission Control. Le
 vrai pipeline, étape par étape, est l'objet des lots suivants. Ce qui
 reste dans ce lot :
-
-- [ ] **Passer un lien à la main.** Un lien peut être réglé pour attendre
-  un clic avant de lancer l'invocation suivante. Exemple : après
-  « Concevoir le POC », attendre le feu vert avant de construire.
-  Aujourd'hui, l'attente est notée en base, mais rien ne permet de la
-  débloquer : un lien réglé ainsi bloquerait la chaîne pour toujours. Il
-  faut, dans MC, voir pour chaque lien ce qui est déjà passé et ce qui
-  attend, un bouton « passer à la suite » et un interrupteur « passage
-  automatique ». Ce passage à la main existera à côté de la validation
-  par ticket Discord du lot 8 : les deux servent.
 
 - [ ] **Mission Control affiche le pipeline tel qu'il est en base.** La
   fiche d'une invocation montre déjà tous ses réglages ; la page Cerveau,

@@ -21,6 +21,8 @@ EVENTS = {
     'write.refused': 'Écriture refusée',
     'write.skipped': 'Doublon écarté',
     'invocation.compare': 'Tables à comparer changées',
+    'link.passed': 'Passage à la main',
+    'link.auto': 'Passage automatique changé',
     'mc_act': 'Acte owner',
     'transition.approved': 'Approuvé',
     'transition.rejected': 'Rejeté',

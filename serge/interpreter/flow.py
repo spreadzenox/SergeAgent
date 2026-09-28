@@ -5,7 +5,8 @@ Un **lien** part d'une invocation qui vient de finir. En mode
 ``on_finish``, il crée une tâche ; en mode ``per_row``, une tâche par ligne
 écrite par l'une de ses règles d'écriture. Un même résultat n'est jamais
 transmis deux fois (``link_passages``). Un lien dont ``auto`` vaut 0 note
-le passage et attend un clic dans Mission Control.
+le passage avec ses paramètres (``link_passage_params``) et attend le clic
+« Passer à la suite » dans Mission Control.
 
 Un **déclencheur** crée une tâche quand une ligne est écrite dans une table
 (``row_written``), à intervalle régulier (``every``), à une heure fixe
@@ -73,8 +74,25 @@ def _pass(
         ' VALUES(?,?,?)',
         (link_id, source_ref, utcnow()),
     )
-    if cursor.rowcount != 1 or not auto:
+    if cursor.rowcount != 1:
         return
+    if not auto:
+        conn.executemany(
+            'INSERT OR REPLACE INTO link_passage_params(link_id, source_ref,'
+            ' name, value) VALUES(?,?,?,?)',
+            [(link_id, source_ref, k, v) for k, v in sorted(params.items())],
+        )
+        return
+    _mark_passed(conn, link_id, source_ref, to_invocation, params)
+
+
+def _mark_passed(
+    conn: sqlite3.Connection,
+    link_id: str,
+    source_ref: str,
+    to_invocation: str,
+    params: Mapping[str, str],
+) -> str | None:
     task_id = enqueue_task(
         conn, to_invocation, params, origin='link', origin_ref=link_id
     )
@@ -83,6 +101,58 @@ def _pass(
         ' WHERE link_id=? AND source_ref=?',
         (task_id or '', utcnow(), link_id, source_ref),
     )
+    return task_id
+
+
+def pass_waiting(
+    conn: sqlite3.Connection, link_id: str, source_ref: str
+) -> str | None:
+    """« Passer à la suite » : lance un passage qui attendait un clic.
+
+    L'invocation suivante reçoit les paramètres gardés au moment du
+    passage. Exemple : ``venture_id = 12`` pour le business choisi.
+
+    Returns:
+        L'id de la tâche créée, ou ``None`` si rien n'attend (déjà passé,
+        lien éteint ou supprimé, invocation suivante éteinte).
+    """
+    row = conn.execute(
+        'SELECT l.to_invocation_id FROM link_passages p'
+        ' JOIN links l ON l.id=p.link_id'
+        " WHERE p.link_id=? AND p.source_ref=? AND p.passed_at=''"
+        " AND l.enabled=1 AND l.deleted_at=''",
+        (link_id, source_ref),
+    ).fetchone()
+    if row is None:
+        return None
+    params = {
+        str(name): str(value)
+        for name, value in conn.execute(
+            'SELECT name, value FROM link_passage_params'
+            ' WHERE link_id=? AND source_ref=?',
+            (link_id, source_ref),
+        ).fetchall()
+    }
+    if not conn.execute(
+        "SELECT 1 FROM invocations WHERE id=? AND enabled=1 AND deleted_at=''",
+        (str(row[0]),),
+    ).fetchone():
+        return None
+    return _mark_passed(conn, link_id, source_ref, str(row[0]), params)
+
+
+def set_link_auto(conn: sqlite3.Connection, link_id: str, auto: bool) -> bool:
+    """L'interrupteur « passage automatique » d'un lien.
+
+    Il ne vaut que pour les passages suivants : ce qui attend déjà un clic
+    continue d'attendre.
+    """
+    cursor = conn.execute(
+        "UPDATE links SET auto=?, updated_at=?, updated_by='owner'"
+        " WHERE id=? AND deleted_at=''",
+        (int(auto), utcnow(), link_id),
+    )
+    return cursor.rowcount == 1
 
 
 def pass_links(

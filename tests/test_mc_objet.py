@@ -191,7 +191,7 @@ class ProjObjetTests(unittest.TestCase):
         self.assertIn('name ← le champ « fiches.title »', ecriture['v'])
         self.assertIn('lifecycle ← « CANDIDATE »', ecriture['v'])
         lance_par = _cadre(fiche, 'Ce qui la lance')['liens']
-        self.assertEqual([lien['id'] for lien in lance_par], ['ouvrir'])
+        self.assertEqual([lien['id'] for lien in lance_par], ['l1'])
         self.assertEqual(
             fiche['tableau']['titre'], 'Passages récents de cette invocation'
         )
@@ -208,7 +208,9 @@ class ProjObjetTests(unittest.TestCase):
             {'k': 'Lancer un cycle', 'v': 'un bouton de Mission Control'},
         )
         suite = _cadre(fiche, 'Ce qu’elle lance ensuite')['liens']
-        self.assertEqual([lien['id'] for lien in suite], ['chercheur'])
+        self.assertEqual(
+            [(lien['type'], lien['id']) for lien in suite], [('lien', 'l1')]
+        )
         self.assertIsNone(project_objet(self.conn, 'llm', 'inconnue'))
 
     def test_pages_vides_ne_feignent_pas(self) -> None:

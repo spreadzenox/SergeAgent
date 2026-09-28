@@ -17,9 +17,9 @@ recrée jamais ensuite.
 1. **Les migrations** (`serge/db/migrate.py`). Chaque changement de
    structure est une fonction `apply_v0NN` (fichiers `serge/db/v0NN.py`).
    Serge applique celles qui manquent, dans l'ordre. Version actuelle :
-   **27**.
+   **28**.
    - Une base neuve saute directement à la version 7 (le socle,
-     `serge/db/schema.py`), puis applique 8, 9, … 27.
+     `serge/db/schema.py`), puis applique 8, 9, … 28.
    - Une base **plus récente** que le code refuse de démarrer
      (`MigrateError`). Revenir à un ancien commit ne défait pas une
      migration.
@@ -123,7 +123,7 @@ est déjà en base. Chaque table est expliquée dans
 | `invocation_writes`, `invocation_write_values` | Où chaque invocation écrit sa réponse, avec au besoin « au plus N lignes par passage ». |
 | `status_transitions`, `dedup_rules`, `dedup_rule_columns` | Les protections : changements de statut permis, doublons. |
 | `table_quotas` | Une protection de plus : « au plus N lignes dont telle colonne vaut l'une de ces valeurs » (exemple : au plus 3 business choisis pour un POC). Modifiable sur la page Policy. |
-| `links`, `link_params`, `link_passages` | Les liens entre invocations, et ce qui est déjà passé. |
+| `links`, `link_params`, `link_passages`, `link_passage_params` | Les liens entre invocations, ce qui est déjà passé, et ce qui attend un clic « Passer à la suite » avec ses paramètres (lien réglé à la main). |
 | `triggers`, `trigger_params` | Ce qui lance une invocation : une ligne écrite, une heure, un bouton. |
 | `queues`, `tasks`, `task_params`, `task_inputs`, `task_seen_tables` | Les deux files (conversations, travaux), leurs tâches, et ce que chaque tâche a reçu : ses lectures d'office, les tables à comparer et ses leçons (lignes données, lignes laissées de côté). |
 | `llm_models` | Le modèle derrière chaque niveau (rapide, moyen, intelligent). |
@@ -152,7 +152,8 @@ changent dans la base.
 
 **Le pipeline passe en base (lot 6).** C'est fait pour les tables, le
 runner, l'interpréteur, les réglages des invocations et les quotas
-(version 26), et ce que voit chaque invocation (version 27). `config/pipeline.yaml`
+(version 26), ce que voit chaque invocation (version 27) et le passage
+d'un lien à la main (version 28). `config/pipeline.yaml`
 ne décrit encore qu'un demi-cycle de démonstration de l'étape 1 ; le vrai
 pipeline, étape par étape, est l'objet des lots suivants (à commencer par
 le lot 7).

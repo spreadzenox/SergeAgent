@@ -802,3 +802,35 @@ code) restent un champ texte ou des fichiers du bac à sable (lot 12).
 invocation en particulier (budget du jour, quotas d'envoi, heures
 d'appel). La page Policy montre à la fois la policy générale, les
 réglages des invocations et les quotas des tables marqués « policy ».
+
+---
+
+## 18. Passer un lien à la main (validé, Q62, construit)
+
+Un lien réglé « à la main » (`links.auto` = 0) ne lance pas l'invocation
+suivante : il note le passage et attend un clic. Exemple : après
+« Concevoir le POC », attendre le feu vert de Julien avant de construire.
+Ce passage à la main existe à côté de la validation par ticket Discord du
+lot 8 : les deux fonctionnements servent.
+
+**En base.** Le passage est noté dans `link_passages`, comme pour un lien
+automatique, mais sans tâche ni date de passage. Ses paramètres sont
+gardés dans `link_passage_params` (version 28 de la base), une ligne par
+paramètre : `link_id`, `source_ref`, `name`, `value`. Exemple :
+`venture_id = 12` pour le business choisi. Au clic, l'invocation suivante
+reçoit exactement ces paramètres, même si la ligne d'origine a changé
+depuis.
+
+**Dans Mission Control**, chaque lien a sa fiche (`#/objet/lien/<id>`),
+ouverte depuis la fiche d'une invocation (« Ce qui la lance », « Ce
+qu'elle lance ensuite ») ou depuis la page Pipeline :
+
+- ce qui attend un clic, avec ses paramètres, et un bouton « Passer à la
+  suite » par passage ;
+- les 20 derniers passages, avec la tâche créée ;
+- l'interrupteur « passage automatique ». Il ne vaut que pour les
+  passages suivants : ce qui attend déjà un clic continue d'attendre.
+
+Un passage déjà fait ne peut pas être relancé. Rien ne passe vers une
+invocation éteinte ou par un lien éteint : le passage reste en attente.
+Chaque clic est noté au journal (`link.passed`, `link.auto`).

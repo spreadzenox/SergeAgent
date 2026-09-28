@@ -145,29 +145,24 @@ def _enchainement(
 ) -> tuple[list[dict[str, str]], list[dict[str, str]], list[dict[str, str]]]:
     """Ce qui la lance (liens et déclencheurs), et ce qu'elle lance."""
     entrants, sortants, declencheurs = [], [], []
-    for link_id, de, vers, titre, auto in conn.execute(
-        'SELECT id, from_invocation_id, to_invocation_id, title, auto'
-        " FROM links WHERE deleted_at='' AND enabled=1"
-        ' AND (from_invocation_id=? OR to_invocation_id=?) ORDER BY id',
+    for link_id, de, vers, titre, auto, attente in conn.execute(
+        'SELECT l.id, l.from_invocation_id, l.to_invocation_id, l.title,'
+        ' l.auto, (SELECT COUNT(*) FROM link_passages p'
+        " WHERE p.link_id=l.id AND p.passed_at='') FROM links l"
+        " WHERE l.deleted_at='' AND l.enabled=1"
+        ' AND (l.from_invocation_id=? OR l.to_invocation_id=?) ORDER BY l.id',
         (ident, ident),
     ).fetchall():
-        manuel = '' if auto else ' (passage à la main)'
+        manuel = '' if auto else f' (passage à la main, {attente} en attente)'
+        lien = {
+            'type': 'lien',
+            'id': str(link_id),
+            'titre': f'{titre or link_id}{manuel}',
+        }
         if vers == ident:
-            entrants.append(
-                {
-                    'type': 'llm',
-                    'id': str(de),
-                    'titre': f'{titre or link_id}{manuel}',
-                }
-            )
+            entrants.append(lien)
         if de == ident:
-            sortants.append(
-                {
-                    'type': 'llm',
-                    'id': str(vers),
-                    'titre': f'{titre or link_id}{manuel}',
-                }
-            )
+            sortants.append(lien)
     for trig_id, titre, event, table, every, at, days in conn.execute(
         'SELECT id, title, event, table_name, every_minutes, at_time, at_days'
         " FROM triggers WHERE invocation_id=? AND deleted_at='' AND enabled=1"

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """MC : les actions sur le pipeline.
 
-Le bouton d'un déclencheur, relancer une tâche, et les tables qu'une
-invocation voit pour comparer.
+Le bouton d'un déclencheur, relancer une tâche, les tables qu'une
+invocation voit pour comparer, et le passage d'un lien à la main.
 """
 
 from __future__ import annotations
@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Protocol
 
 from serge.db.store import append_event
-from serge.interpreter.flow import fire_button
+from serge.interpreter.flow import fire_button, pass_waiting, set_link_auto
 from serge.interpreter.tasks import relaunch_task
 from serge.mc.proj_vues import changer_comparaison
 
@@ -30,7 +30,7 @@ else:
 
 
 class PipelineActionsMixin(_Base):
-    """POST /owner/api/bouton, /tache/relancer et /invocation/comparer."""
+    """POST /owner/api/bouton, /tache/relancer, /invocation/comparer, /lien/*."""
 
     def _api_bouton(self) -> None:
         if not self._require_owner():
@@ -125,5 +125,60 @@ class PipelineActionsMixin(_Base):
                 actor='owner',
                 type='invocation.compare',
                 payload={'invocation': ident, 'table': table, 'voir': voir},
+            )
+        self._send_json(200, {'ok': True})
+
+    def _api_lien_passer(self) -> None:
+        """« Passer à la suite » : ``{link_id, source_ref}``."""
+        if not self._require_owner():
+            return
+        body = self._json_body() or {}
+        link_id = str(body.get('link_id') or '').strip()
+        ref = str(body.get('source_ref') or '').strip()
+        with self._db() as conn:
+            task_id = (
+                pass_waiting(conn, link_id, ref) if link_id and ref else None
+            )
+            if task_id is None:
+                self._refus(
+                    409,
+                    'Ce passage ne peut pas être lancé.',
+                    'lien',
+                    'Il est déjà passé, ou le lien ou l’invocation suivante'
+                    ' est éteint.',
+                )
+                return
+            append_event(
+                conn,
+                actor='owner',
+                type='link.passed',
+                payload={'link': link_id, 'source': ref, 'task': task_id},
+            )
+        self._send_json(200, {'ok': True, 'task_id': task_id})
+
+    def _api_lien_auto(self) -> None:
+        """L'interrupteur « passage automatique » : ``{link_id, auto}``."""
+        if not self._require_owner():
+            return
+        body = self._json_body() or {}
+        link_id = str(body.get('link_id') or '').strip()
+        auto = body.get('auto')
+        if not link_id or not isinstance(auto, bool):
+            self._refus(
+                400,
+                'Demande incomplète.',
+                'lien',
+                'Envoie {"link_id": "...", "auto": true}.',
+            )
+            return
+        with self._db() as conn:
+            if not set_link_auto(conn, link_id, auto):
+                self._refus(409, 'Lien inconnu.', 'lien', '')
+                return
+            append_event(
+                conn,
+                actor='owner',
+                type='link.auto',
+                payload={'link': link_id, 'auto': auto},
             )
         self._send_json(200, {'ok': True})
