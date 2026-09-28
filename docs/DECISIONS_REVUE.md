@@ -1055,3 +1055,22 @@ direct.
       oubliée, comme une page « bruit ».
     - Valeurs de départ : au plus 10 recherches par « Explorer », 30 pages
       retenues par cycle, 20 pages lues par flux à chaque passage.
+22. Dernières précisions (validé par Clem) :
+    - Un cycle à la fois : le bouton est refusé tant qu'un cycle est
+      ouvert. Un bouton « Abandonner le cycle » sur la page Écoute ferme un
+      cycle resté ouvert (une invocation qui a échoué, par exemple).
+    - « Choisir » choisit parmi tous les candidats encore en base, y
+      compris ceux des cycles précédents, sans limite d'âge au lot 7.
+    - A et B ne lisent en entier que des pages déjà en base (par leur
+      numéro), au plus 300 lignes par page et 10 pages par passage
+      (réglages).
+    - Une page « besoin nouveau » jamais utilisée est oubliée après 60
+      jours (réglage), jamais si elle sert de preuve.
+    - La raison du choix (une phrase) est gardée sur la fiche du
+      business, visible dans MC. « Trier » ne garde que l'étiquette.
+    - Sans texte de guidage, « Explorer » cherche librement dans les 11
+      familles de Q32.
+    - Les prompts sont montrés à Clem avant la fusion.
+    - Le premier vrai cycle est lancé par Julien après la fusion, avec 1
+      idée par invocation pour un essai peu cher, puis 3.
+    - Une seule fusion dans `main`, à la fin du lot 7.

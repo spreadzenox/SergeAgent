@@ -526,7 +526,10 @@ Tout est décrit en base (`config/pipeline.yaml`) : aucune ligne de code
 n'est propre à une de ces invocations.
 
 - [ ] **Le cycle, une invocation par rôle.** Il se lance à la main depuis
-  la page Écoute (plus tard, automatiquement), et s'enchaîne ainsi :
+  la page Écoute (plus tard, automatiquement), un cycle à la fois : le
+  bouton est refusé tant qu'un cycle est ouvert, et un bouton « Abandonner
+  le cycle » ferme un cycle resté ouvert (une invocation qui a échoué, par
+  exemple). Il s'enchaîne ainsi :
   1. **« Ouvrir un cycle »** (sans LLM) enregistre le cycle et le texte de
      guidage de Julien.
   2. **« Explorer le web »** (modèle moyen) cherche des pages à partir du
@@ -546,7 +549,8 @@ n'est propre à une de ces invocations.
   5. **« Formuler des business A »** puis **« Formuler des business B »**
      (modèle intelligent, l'une après l'autre) reçoivent l'aperçu des pages
      « besoin nouveau » pas encore utilisées, lisent en entier celles
-     qu'elles veulent, et écrivent chacune 3 idées
+     qu'elles veulent (seulement des pages en base, au plus 300 lignes par
+     page et 10 pages par passage, réglages), et écrivent chacune 3 idées
      (réglage). Une fiche cite au moins une page de preuve et sa famille
      de business (Q32). Une fois l'idée écrite, les pages utilisées sont
      reclassées : elles deviennent des preuves rattachées à ce business.
@@ -557,8 +561,11 @@ n'est propre à une de ces invocations.
      jamais reproposer un business qui existe déjà. Les doublons restants
      sont écartés à l'écriture par la règle de doublons des business.
   6. **« Choisir les business à tester »** (modèle moyen) en choisit au
-     plus autant qu'il y a de places libres, sur la force des preuves, la
-     facilité d'un test rapide, un premier revenu rapide et la légalité.
+     plus autant qu'il y a de places libres, parmi tous les candidats en
+     base (y compris ceux des cycles précédents), sur la force des
+     preuves, la facilité d'un test rapide, un premier revenu rapide et la
+     légalité. La raison de chaque choix (une phrase) est gardée sur la
+     fiche du business, visible dans MC.
      Un business déjà en test est refusé par la règle des statuts permis.
      Le cycle est ensuite fermé.
 
@@ -606,13 +613,19 @@ n'est propre à une de ces invocations.
   générale) : 60 pages triées au plus par cycle ; une page « bruit » est
   oubliée après 30 jours, c'est-à-dire que sa ligne est supprimée (jamais
   une page qui sert de preuve), avec une note au journal ; de même pour
-  une page jamais triée au bout de 30 jours. Couper un flux
+  une page jamais triée au bout de 30 jours, et pour une page « besoin
+  nouveau » jamais utilisée au bout de 60 jours (réglage). Couper un flux
   qui ne ramène que du bruit se fait à la main au lot 7 ; plus tard,
   automatiquement après 5 cycles de bruit.
 
 - [ ] **La page Écoute.** Les flux, le bouton du cycle avec les places
   libres, et le dernier cycle : les pages trouvées, leur étiquette, les
   fiches écrites et les business choisis.
+
+- [ ] **Avant la fusion.** Montrer tous les prompts à Clem. Une seule
+  fusion dans `main`, à la fin du lot. Le premier vrai cycle est lancé par
+  Julien après la fusion, avec 1 idée par invocation pour un essai peu
+  cher, puis 3.
 
 - [ ] **Retirer la démo du lot 6.** Retirer le demi-cycle de
   `config/pipeline.yaml` et le marquer supprimé en base : ses trois

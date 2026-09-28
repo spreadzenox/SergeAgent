@@ -73,8 +73,9 @@ Serge choisit ses flux lui-même (« Explorer le web » les ajoute), sans
 accord de Julien.
 
 **Le cycle** se lance à la main depuis la page Écoute (plus tard,
-automatiquement), s'il reste une place libre en prospection légère. Les
-invocations tournent l'une après l'autre :
+automatiquement), s'il reste une place libre en prospection légère et
+qu'aucun cycle n'est ouvert. Un bouton « Abandonner le cycle » ferme un
+cycle resté ouvert. Les invocations tournent l'une après l'autre :
 
 | # | Invocation | Type | Entrée | Sortie |
 |---|---|---|---|---|
@@ -84,7 +85,7 @@ invocations tournent l'une après l'autre :
 | 4 | Trier les pages | LLM rapide, par paquets de 20 | l'aperçu des pages | une étiquette par page : enrichit un business existant (rattachée comme preuve) / besoin nouveau / bruit |
 | 5 | Formuler des business A | LLM intelligent | l'aperçu des pages « besoin nouveau » pas encore utilisées ; les pages qu'elle veut, lues en entier | 3 fiches (réglage), chacune avec ses preuves et sa famille |
 | 6 | Formuler des business B | LLM intelligent | la même chose (sans les pages utilisées par A), et les business écrits par A | 3 fiches |
-| 7 | Choisir les business à tester | LLM moyen | les candidats et les business en test | autant de `POC_SELECTED` que de places libres |
+| 7 | Choisir les business à tester | LLM moyen | tous les candidats en base et les business en test | au plus autant de `POC_SELECTED` que de places libres, avec la raison de chaque choix |
 
 Puis le cycle est fermé : rien n'est encore prévu après.
 
@@ -106,8 +107,9 @@ Autres décisions :
 - **Ne pas saturer les invocations.** « Explorer » et « Trier » ne lisent
   qu'un aperçu de chaque page (5 lignes, réglage ; une ligne = un titre,
   un paragraphe ou un élément de liste) ; seules A et B lisent une page
-  en entier. Une seule capacité « lire une page », réglée par ce nombre
-  de lignes, sans navigateur. En base, on garde l'adresse et l'aperçu,
+  en entier, seulement des pages déjà en base (au plus 300 lignes par
+  page et 10 pages par passage). Une seule capacité « lire une page »,
+  réglée par ce nombre de lignes, sans navigateur. En base, on garde l'adresse et l'aperçu,
   jamais le texte entier ; pour une page de flux, l'aperçu est le résumé
   du flux.
 - **Les pages gardées.** Seules les pages qu'« Explorer » retient et celles
@@ -135,8 +137,9 @@ Autres décisions :
   hébergé sur le serveur) au lot 12.
 - **Garde-fous de volume** (réglages des invocations marqués « policy »,
   modifiables sur la page Policy) : 60 pages triées au plus par cycle ;
-  une page « bruit » ou jamais triée est supprimée après 30 jours (jamais
-  une preuve),
+  une page « bruit » ou jamais triée est supprimée après 30 jours, une
+  page « besoin nouveau » jamais utilisée après 60 jours (jamais une
+  preuve),
   avec une note au journal ; un flux qui ne ramène que du bruit est coupé
   à la main au lot 7, automatiquement après 5 cycles plus tard.
 - **Légalité** : le prompt des invocations qui formulent et choisissent
