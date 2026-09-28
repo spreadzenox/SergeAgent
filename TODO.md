@@ -521,11 +521,15 @@ et Serge sait demander de l'aide quand il ne sait pas.
 C'est le lot 7. Décisions de Clem : Q65 dans
 [`docs/DECISIONS_REVUE.md`](docs/DECISIONS_REVUE.md) ; le détail de
 l'étape est dans
-[`docs/etapes/1-pre-prospection.md`](docs/etapes/1-pre-prospection.md).
+[`docs/etapes/1-pre-prospection.md`](docs/etapes/1-pre-prospection.md),
+et ce qui a été construit dans
+[`docs/LOT7_CONCEPTION.md`](docs/LOT7_CONCEPTION.md). Tout est construit
+sur `Clem` ; il reste à montrer les prompts à Clem, à fusionner, puis
+Julien lance le premier vrai cycle.
 Tout est décrit en base (`config/pipeline.yaml`) : aucune ligne de code
 n'est propre à une de ces invocations.
 
-- [ ] **Le cycle, une invocation par rôle.** Il se lance à la main depuis
+- [x] **Le cycle, une invocation par rôle.** Il se lance à la main depuis
   la page Écoute (plus tard, automatiquement), un cycle à la fois : le
   bouton est refusé tant qu'un cycle est ouvert, et un bouton « Abandonner
   le cycle » ferme un cycle resté ouvert (une invocation qui a échoué, par
@@ -574,7 +578,7 @@ n'est propre à une de ces invocations.
   scrupules moraux qui ne sont pas contraires à la loi (Q33). Les prompts
   de l'ancien cycle sont dans `pas_encore_branche/`.
 
-- [ ] **Les places de test de l'étape 1.** Une place est occupée par un
+- [x] **Les places de test de l'étape 1.** Une place est occupée par un
   business `POC_SELECTED`, `SMOKE_READY`, `SMOKE_RUNNING` ou `SMOKE_DONE`
   (Q14 bis) : le quota `business_choisis` doit compter ces quatre statuts,
   et « Choisir » doit voir les business en test pour compter les places
@@ -583,7 +587,7 @@ n'est propre à une de ces invocations.
   condition générale sur un bouton ou un lien, du type « seulement si
   moins de N lignes dans tel état » (avancée du lot 8).
 
-- [ ] **Lire une page, à la bonne dose.** Une capacité « lire une page »
+- [x] **Lire une page, à la bonne dose.** Une capacité « lire une page »
   (une simple requête, sans navigateur, texte extrait avec la
   bibliothèque standard de Python), réglée par un nombre de lignes (une
   ligne = un titre, un paragraphe ou un élément de liste) : un aperçu de
@@ -592,7 +596,7 @@ n'est propre à une de ces invocations.
   les invocations d'informations. La recherche reste DuckDuckGo ;
   SearXNG vient au lot 12.
 
-- [ ] **Garder les pages retenues.** Les pages qu'« Explorer » retient et
+- [x] **Garder les pages retenues.** Les pages qu'« Explorer » retient et
   celles des flux sont enregistrées, avec leur adresse, leur source, le
   cycle qui les a trouvées, leur aperçu et leur étiquette de tri ; jamais
   leur texte entier. Pour une page de flux, l'aperçu est le résumé donné
@@ -600,7 +604,7 @@ n'est propre à une de ces invocations.
   recherche non retenu n'est pas gardé (la base ne doit pas exploser),
   mais une page déjà triée n'est jamais représentée comme nouvelle.
 
-- [ ] **Les flux RSS en base.** Une table des flux : adresse, ajouté par
+- [x] **Les flux RSS en base.** Une table des flux : adresse, ajouté par
   quelle invocation, actif ou non. La lecture des flux actifs tourne
   seule, toutes les 6 heures (réglage), sans LLM. Mission Control montre,
   pour chaque flux, les pages ramenées et les pages utiles, avec un
@@ -608,7 +612,7 @@ n'est propre à une de ces invocations.
   lot 7. Au plus 20 pages lues par flux à chaque passage (réglage) ; le
   surplus attend le cycle suivant, les plus récentes d'abord.
 
-- [ ] **Empêcher la base de grossir sans fin.** Des réglages (des
+- [x] **Empêcher la base de grossir sans fin.** Des réglages (des
   invocations, marqués « policy », ou des quotas de table, pas la policy
   générale) : 60 pages triées au plus par cycle ; une page « bruit » est
   oubliée après 30 jours, c'est-à-dire que sa ligne est supprimée (jamais
@@ -618,11 +622,11 @@ n'est propre à une de ces invocations.
   qui ne ramène que du bruit se fait à la main au lot 7 ; plus tard,
   automatiquement après 5 cycles de bruit.
 
-- [ ] **La page Écoute.** Les flux, le bouton du cycle avec les places
+- [x] **La page Écoute.** Les flux, le bouton du cycle avec les places
   libres, et le dernier cycle : les pages trouvées, leur étiquette, les
   fiches écrites et les business choisis.
 
-- [ ] **Un bouton temporaire « Effacer les idées ».** Il détruit toutes
+- [x] **Un bouton temporaire « Effacer les idées ».** Il détruit toutes
   les idées (les business encore candidats ou choisis, et leurs
   preuves), pour tester le cycle en production autant de fois qu'on veut
   (Q65). À retirer avant le vrai lancement de Serge. Julien n'est pas
@@ -635,7 +639,7 @@ n'est propre à une de ces invocations.
   Julien après la fusion, avec 1 idée par invocation pour un essai peu
   cher, puis 3.
 
-- [ ] **Retirer la démo du lot 6.** Retirer le demi-cycle de
+- [x] **Retirer la démo du lot 6.** Retirer le demi-cycle de
   `config/pipeline.yaml` et le marquer supprimé en base : ses trois
   invocations, ses deux liens, son bouton « Lancer un cycle (démo) », et
   l'outil « Lire les business connus » s'il ne sert plus. Supprimer aussi
@@ -643,7 +647,7 @@ n'est propre à une de ces invocations.
   (Q65). Retirer une ligne du fichier ne l'efface pas d'une instance
   existante.
 
-- [ ] **Ce que le lot 6 demande ici.** Des vues de tables (`table_views`)
+- [x] **Ce que le lot 6 demande ici.** Des vues de tables (`table_views`)
   pour les pages, les pages d'un cycle, les flux et les preuves d'un
   business ; les tables inscriptibles et leurs protections ; les chiffres
   en réglages des invocations (les chiffres de l'ancienne section
@@ -823,6 +827,13 @@ n'est propre à une de ces invocations.
 ---
 
 ## Plus tard
+
+- [ ] **L'étape 1 en automatique.** Au lot 7, le cycle se lance à la main
+  et un flux qui ne ramène que du bruit se coupe à la main. Plus tard : un
+  déclencheur qui lance le cycle tout seul quand une place se libère, et
+  la coupure automatique d'un flux après 5 cycles de bruit (Q65). Avant
+  le vrai lancement de Serge, retirer le bouton « Effacer les idées
+  (test) » (le lister dans la section `deleted` de `pipeline.yaml`).
 
 - [ ] **La consolidation de la mémoire dans le pipeline.** Aujourd'hui,
   la consolidation (étape 7) relit chaque jour le journal et propose des

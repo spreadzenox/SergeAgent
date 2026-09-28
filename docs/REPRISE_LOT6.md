@@ -151,8 +151,8 @@ Serge ». Ce qu'il laisse aux lots suivants est reporté dans
 le [`TODO.md`](../TODO.md) : la partie « Ce que la règle demande
 concrètement », et les lots 7, 8, 13 et « Pour tout Serge ».
 
-Puis le lot 7 : le vrai cycle de l'étape 1, qui remplace le demi-cycle de
-démonstration (le marquer supprimé en base).
+Le lot 7 (l'étape 1 en base) a suivi : voir
+[`REPRISE_LOT7.md`](REPRISE_LOT7.md).
 
 ## Lancer les vérifications en local
 

@@ -17,45 +17,35 @@ les pages web qui prouvent le besoin.
 
 ### Ce qui marche
 
-**Un demi-cycle de démonstration**, décrit dans `config/pipeline.yaml`,
-pour vérifier que le pipeline en base s'enregistre, s'affiche dans Mission
-Control et tourne. Sur la page Écoute, le bouton « Lancer un cycle
-(démo) » (un déclencheur « bouton » en base) crée une tâche avec le texte
-de guidage ; elle ne tourne que si Serge a été démarré :
+L'étape est entièrement décrite en base (lot 7) ; le détail technique est
+dans [`LOT7_CONCEPTION.md`](../LOT7_CONCEPTION.md). Rien ne tourne tant
+que Serge n'a pas été démarré dans Mission Control.
 
-1. « Ouvrir un cycle (démo) », sans LLM, enregistre le cycle
-   (`listen_cycles`) avec le texte de guidage ;
-2. « Formuler des idées (démo) » reçoit le cycle (lecture d'office), la
-   version courte des business déjà connus (numéro et nom, les plus
-   récents d'abord) et ses leçons ; elle peut chercher sur le web et dans
-   la mémoire, lire la fiche complète d'un business et son historique, et
-   écrit deux business `CANDIDATE`. La règle de doublons de la table `ventures`
-   (72 % de mots en commun sur le nom et la description) écarte une fiche
-   trop proche d'un business existant, avec une note au journal ;
-3. « Choisir un business (démo) » passe au plus un candidat en
-   `POC_SELECTED`. La règle des changements de statut refuse un business
-   qui n'est plus candidat.
-
-Le vrai cycle, en sept invocations, remplacera cette démonstration au
-lot 7.
-
-### Ce qui ne marche plus depuis le lot 6
-
-L'ancien cycle écrit en dur (« Explorer les besoins A » et « B »,
-« Choisir les business à tester ») et la collecte des flux RSS sont rangés
-dans `pas_encore_branche/` (`serge/workers/listen.py`,
-`serge/points/listen_pts.py`, `serge/listen/memory.py`). Leurs prompts
-serviront au lot 7.
+- **La veille** lit chaque flux RSS suivi toutes les 6 heures et garde
+  ses pages nouvelles, avec un aperçu de 5 lignes.
+- **Le cycle** se lance depuis la page Écoute, avec un texte de guidage,
+  s'il reste une place de test et qu'aucun cycle n'est ouvert : Explorer
+  le web, Rattacher les pages, Trier (par paquets), Formuler A puis B,
+  Choisir, comme décrit plus bas.
+- **Chaque jour**, les pages inutiles sont oubliées (supprimées), jamais
+  une preuve.
+- **La page Écoute** montre les boutons et leurs conditions (« Places de
+  test occupées : 2 sur 3 »), le dernier cycle (pages par étiquette,
+  idées écrites, note du choix), les business candidats et choisis avec
+  la raison du choix, et les flux suivis (pages ramenées, pages utiles),
+  avec un bouton pour en couper un.
+- **Deux boutons de plus** : « Abandonner le cycle en cours » et
+  « Effacer les idées (test) », temporaire, pour tester autant de fois
+  qu'on veut.
 
 ### Ce qui manque
 
-- **Aucune page n'est collectée** : pas de liste de flux RSS, pas de
-  collecte. Seul le script de démo `scripts/mc-demo.py` met des pages en
-  base.
-- **Les pages trouvées par la recherche web ne sont pas gardées.** Les
-  preuves d'un besoin ne peuvent citer que des pages de `listen_docs`.
-- **La recherche web lit la page de résultats de DuckDuckGo** (5 résultats,
-  un extrait). Elle ne lit jamais les pages et peut être bloquée.
+- **La recherche web lit la page de résultats de DuckDuckGo** (quelques
+  résultats, un extrait) et peut être bloquée. SearXNG viendra au lot 12.
+- **Une page qui a besoin d'un navigateur** (JavaScript, protection) ne se
+  lit pas : seule une simple requête est faite.
+- **Un flux qui ne ramène que du bruit** se coupe à la main.
+- **Le cycle ne se lance pas tout seul.**
 
 ---
 
