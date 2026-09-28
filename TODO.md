@@ -112,7 +112,7 @@ données (business, contacts, abonnements).
   modifiant la base, on peut déjà construire n'importe quel pipeline avec
   les capacités qui existent. Les tâches détaillées sont dans la partie
   « Lot 6 » plus bas.
-- [ ] **Lot 7 « Étape 1 ».** On refait la pré-prospection avec des
+- [x] **Lot 7 « Étape 1 ».** Fait (septembre 2026). On refait la pré-prospection avec des
   invocations qui ont chacune un seul rôle, on garde les pages retenues
   comme preuves, et Serge choisit et lit lui-même ses flux RSS. Ce lot est
   le premier à être décrit entièrement en base grâce au lot 6. Les
@@ -523,9 +523,9 @@ C'est le lot 7. Décisions de Clem : Q65 dans
 l'étape est dans
 [`docs/etapes/1-pre-prospection.md`](docs/etapes/1-pre-prospection.md),
 et ce qui a été construit dans
-[`docs/LOT7_CONCEPTION.md`](docs/LOT7_CONCEPTION.md). Tout est construit
-sur `Clem` ; il reste à montrer les prompts à Clem, à fusionner, puis
-Julien lance le premier vrai cycle.
+[`docs/LOT7_CONCEPTION.md`](docs/LOT7_CONCEPTION.md). Fusionné dans `main`
+et déployé le 28 septembre 2026 ; il reste à Julien de lancer le premier
+vrai cycle.
 Tout est décrit en base (`config/pipeline.yaml`) : aucune ligne de code
 n'est propre à une de ces invocations.
 

@@ -18,7 +18,10 @@ en local » et « Règles de travail à garder ») : elles valent toujours.
 
 ## Où on en est
 
-Tout est construit sur la branche `Clem`, pas encore dans `main` :
+Tout est fusionné dans `main`
+([PR #33](https://github.com/spreadzenox/SergeAgent/pull/33), 28 septembre
+2026) et déployé sur le serveur de Julien (la base est gardée, Serge reste
+arrêté jusqu'au clic sur « Démarrer Serge ») :
 l'étape 1 est décrite dans `config/pipeline.yaml` (la veille, le cycle,
 l'oubli des pages, deux boutons), l'interpréteur a gagné ce qu'il fallait
 (lire une page ou un flux, lectures par paquets, limite d'appels par
@@ -30,9 +33,8 @@ page Écoute de Mission Control montre tout. Les tests :
 
 ## Ce qu'il reste à faire
 
-1. **Montrer tous les prompts à Clem** avant la fusion (Q65).
-2. **Fusionner dans `main`**, une seule fois pour tout le lot, après
-   l'accord de Clem. Le déploiement met à jour le serveur de Julien.
+1. ~~Montrer les prompts à Clem~~ : validés le 28 septembre.
+2. ~~Fusionner dans `main`~~ : fait, et déployé.
 3. **Sur le serveur de Julien**, après la fusion : si la démo du lot 6 a
    laissé un cycle ouvert, cliquer une fois sur « Abandonner le cycle en
    cours » ; « Effacer les idées (test) » détruit les business de la démo.
