@@ -966,3 +966,21 @@ direct.
    Discord du lot 8 : les deux fonctionnements servent.
 3. Pas de réglage de créativité (« température ») par invocation : le
    modèle garde le réglage par défaut du fournisseur.
+
+### Q64 — Avant de finir le lot 6 (validé par Clem)
+1. Le premier cercle (ce que l'invocation doit traiter) reste réglé
+   invocation par invocation : c'est le lien qui détermine ce qui est lu
+   d'office. Ce n'est pas un « outil » que le modèle appelle : Serge fait
+   la lecture avant l'appel et la met directement dans le prompt. Dans la
+   doc et MC, on dit « lecture donnée d'office » ; « outil » est réservé à
+   ce que le modèle appelle lui-même.
+2. Le quota est construit au lot 6 avec un premier quota simple (au plus
+   3 business choisis pour un POC). La règle complète des places de test
+   viendra en planifiant étape par étape.
+3. La section « Écoute » de la policy générale est retirée : ses chiffres
+   reviendront comme réglages des invocations du lot 7.
+4. La vue d'ensemble (capacités, outils, liens, déclencheurs, modèle par
+   niveau, texte « Qui est Serge ») est une nouvelle page « Pipeline » de
+   MC.
+5. On travaille toujours sur `Clem`. Chaque fusion dans `main` est
+   demandée à Clem avant d'être faite.
