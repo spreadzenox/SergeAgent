@@ -369,6 +369,7 @@ class McHandler(
             '/owner/api/lien/auto': self._api_lien_auto,
             '/owner/api/pipeline/modele': self._api_pipeline_modele,
             '/owner/api/pipeline/texte': self._api_pipeline_texte,
+            '/owner/api/flux': self._api_flux,
         }
         acte = apis.get(path)
         if acte is None:

@@ -21,6 +21,8 @@ export const EVENTS = {
   'link.auto': 'Passage automatique changé',
   'pipeline.model': 'Modèle d’un niveau changé',
   'pipeline.text': 'Texte « Qui est Serge » changé',
+  'feed.toggled': 'Flux RSS coupé ou rallumé',
+  'write.deleted': 'Lignes supprimées',
   mc_act: 'Acte owner',
   'transition.approved': 'Approuvé',
   'transition.rejected': 'Rejeté',
@@ -43,6 +45,7 @@ export const TYPES_TICKET = {
 
 export const LIFECYCLE = {
   CANDIDATE: 'Candidat',
+  POC_SELECTED: 'Choisi pour un test',
   SMOKE_READY: 'Smoke prêt',
   SMOKE_RUNNING: 'Smoke en cours',
   SMOKE_DONE: 'Smoke terminé',

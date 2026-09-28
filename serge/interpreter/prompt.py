@@ -21,7 +21,12 @@ from typing import Any
 from serge.interpreter.intro import lessons_block, serge_intro
 from serge.interpreter.output import Field, describe_format
 from serge.interpreter.seen import short_blocks
-from serge.interpreter.settings import fill_prompt, load_settings
+from serge.interpreter.settings import (
+    fill_prompt,
+    load_settings,
+    prompt_values,
+    resolve_count,
+)
 from serge.interpreter.tools import fixed_params, run_tool, tool_schema
 from serge.llm.client import ChatResult
 
@@ -71,7 +76,7 @@ def given_blocks(
     inv: Invocation,
     task_id: str,
     task: Mapping[str, str],
-) -> str:
+) -> list[str]:
     """Ce qu'elle reçoit d'office, en blocs du prompt.
 
     D'abord chaque lecture donnée d'office (ce qu'elle doit traiter,
@@ -79,16 +84,27 @@ def given_blocks(
     comparer, puis ses leçons. Exemple : « Le cycle en cours », suivi de
     ses lignes. Le nombre de lignes données et laissées de côté est noté
     en base (``task_inputs``, ``task_seen_tables``), pour Mission Control.
+
+    Une lecture réglée « par paquets » (``batch_size``) est découpée : il
+    y a alors un message par paquet, chacun avec les autres blocs, et le
+    modèle est appelé une fois par paquet. Exemple : trier 60 pages par
+    paquets de 20 donne trois appels.
+
+    Returns:
+        Le contenu du message, un par paquet (un seul sans paquets).
     """
+    settings = load_settings(conn, inv.id)
     blocks: list[str] = []
-    for link_id, tool_id, label, max_rows in conn.execute(
-        'SELECT id, tool_id, label, max_rows FROM invocation_tools'
+    batched: tuple[int, str, list] | None = None
+    for link_id, tool_id, label, max_rows, batch in conn.execute(
+        'SELECT id, tool_id, label, max_rows, batch_size FROM invocation_tools'
         " WHERE invocation_id=? AND mode='given' ORDER BY position",
         (inv.id,),
     ).fetchall():
         result = run_tool(conn, inv.id, int(link_id), str(tool_id), {}, task)
         rows = result.get('rows')
         limit = int(max_rows) or inv.default_max_rows
+        size = resolve_count(str(batch), settings)
         if isinstance(rows, list):
             total = int(result.get('total') or len(rows))
             shown, left = rows[:limit], max(0, total - min(len(rows), limit))
@@ -103,14 +119,32 @@ def given_blocks(
             ' rows_given, rows_left_out) VALUES(?,?,?,?)',
             (task_id, int(link_id), len(shown), left),
         )
-        blocks.append(f'## {label or tool_id}\n{body}')
+        title = f'## {label or tool_id}'
+        if size and batched is None and isinstance(rows, list):
+            batched = (
+                len(blocks),
+                title,
+                [shown[i : i + size] for i in range(0, len(shown), size)],
+            )
+            blocks.append('')
+            continue
+        blocks.append(f'{title}\n{body}')
     blocks += short_blocks(conn, inv.id, task_id, inv.default_max_rows)
     lessons = lessons_block(
         conn, inv.id, inv.step_id, task_id, inv.default_max_rows
     )
     if lessons:
         blocks.append(lessons)
-    return '\n\n'.join(blocks)
+    if batched is None:
+        return ['\n\n'.join(blocks)]
+    place, title, chunks = batched
+    contents = []
+    for number, chunk in enumerate(chunks or [[]], 1):
+        body = json.dumps(chunk, ensure_ascii=False, default=str)
+        head = f'{title} (paquet {number} sur {max(1, len(chunks))})'
+        parts = [*blocks[:place], f'{head}\n{body}', *blocks[place + 1 :]]
+        contents.append('\n\n'.join(p for p in parts if p))
+    return contents
 
 
 def system_prompt(
@@ -119,7 +153,7 @@ def system_prompt(
     parts: list[str] = []
     if inv.gets_serge_intro:
         parts.append(serge_intro(conn, inv.id, inv.title, inv.step_id))
-    parts.append(fill_prompt(inv.prompt.strip(), load_settings(conn, inv.id)))
+    parts.append(fill_prompt(inv.prompt.strip(), prompt_values(conn, inv.id)))
     fmt = describe_format(fields)
     if fmt:
         parts.append(f'# Format de ta réponse\n{fmt}')
@@ -177,9 +211,12 @@ def converse(
     """Laisse le modèle appeler ses outils, puis rend sa réponse finale.
 
     Après ``max_tool_turns`` tours d'outils, le modèle doit répondre sans
-    outil.
+    outil. Un outil réglé avec ``max_calls`` (un nombre ou un réglage)
+    répond « limite atteinte » au-delà : exemple, au plus 10 recherches.
     """
     schemas, links = callable_tools(conn, inv, task)
+    limits = _call_limits(conn, inv, links)
+    calls: dict[str, int] = {}
     history = [dict(m) for m in messages]
     tokens_in = tokens_out = latency = 0
     turns = 0
@@ -227,8 +264,8 @@ def converse(
                     'role': 'tool',
                     'tool_call_id': call.id,
                     'content': json.dumps(
-                        _call_tool(
-                            conn, inv, links, call.name, call.arguments, task
+                        _limited_call(
+                            conn, inv, links, limits, calls, call, task
                         ),
                         ensure_ascii=False,
                         default=str,
@@ -240,6 +277,44 @@ def converse(
         # avant de rappeler le modèle, pour ne pas bloquer la base pendant
         # l'appel.
         conn.commit()
+
+
+def _call_limits(
+    conn: sqlite3.Connection, inv: Invocation, links: Mapping[str, int | None]
+) -> dict[str, int]:
+    """Le nombre maximum d'appels de chaque outil qui en a un."""
+    settings = load_settings(conn, inv.id)
+    limits: dict[str, int] = {}
+    for name, link_id in links.items():
+        if link_id is None:
+            continue
+        row = conn.execute(
+            'SELECT max_calls FROM invocation_tools WHERE id=?', (link_id,)
+        ).fetchone()
+        limit = resolve_count(str(row[0]), settings) if row else None
+        if limit is not None:
+            limits[name] = limit
+    return limits
+
+
+def _limited_call(
+    conn: sqlite3.Connection,
+    inv: Invocation,
+    links: Mapping[str, int | None],
+    limits: Mapping[str, int],
+    calls: dict[str, int],
+    call: Any,
+    task: Mapping[str, str],
+) -> dict[str, Any]:
+    done = calls.get(call.name, 0)
+    if call.name in limits and done >= limits[call.name]:
+        return {
+            'ok': False,
+            'code': 'limite_atteinte',
+            'detail': f'au plus {limits[call.name]} appels de cet outil',
+        }
+    calls[call.name] = done + 1
+    return _call_tool(conn, inv, links, call.name, call.arguments, task)
 
 
 def _call_tool(

@@ -17,6 +17,12 @@ def coerce(value: Any, parameter: Mapping[str, Any]) -> Any:
                 f'paramètre {parameter["name"]} doit être une chaîne'
             )
         return value
+    # Un paramètre figé en base est un texte : « 60 » vaut 60.
+    if kind in ('integer', 'number') and isinstance(value, str):
+        try:
+            value = int(value) if kind == 'integer' else float(value)
+        except ValueError:
+            pass
     if kind == 'integer':
         if isinstance(value, bool) or not isinstance(value, int):
             raise DbReadError(

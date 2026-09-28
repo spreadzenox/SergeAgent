@@ -26,7 +26,7 @@ PIPELINE = {
     'schema_version': 1,
     'invocations': [
         {
-            'id': 'ouvrir_cycle',
+            'id': 'ouvrir_cycle_test',
             'title': 'Ouvrir un cycle',
             'type': 'capability',
             'capability': 'echo',
@@ -37,7 +37,7 @@ PIPELINE = {
         {
             'id': 'bouton_cycle',
             'title': 'Lancer un cycle d’écoute',
-            'invocation': 'ouvrir_cycle',
+            'invocation': 'ouvrir_cycle_test',
             'event': 'button',
             'params': {'guide': {'source': 'form', 'value': 'guide'}},
         }
@@ -62,7 +62,7 @@ def _guides(db_path: Path) -> list[str]:
             for r in conn.execute(
                 'SELECT p.value FROM tasks t JOIN task_params p'
                 " ON p.task_id=t.id AND p.name='guide'"
-                " WHERE t.invocation_id='ouvrir_cycle'"
+                " WHERE t.invocation_id='ouvrir_cycle_test'"
             ).fetchall()
         ]
     finally:
@@ -108,15 +108,18 @@ class McBoutonApiTests(McServerCase):
                 {
                     'id': 'bouton_cycle',
                     'titre': 'Lancer un cycle d’écoute',
-                    'invocation': 'ouvrir_cycle',
+                    'invocation': 'ouvrir_cycle_test',
                     'invocation_titre': 'Ouvrir un cycle',
                     'champs': ['guide'],
+                    'confirmer': '',
+                    'conditions': [],
+                    'refus': '',
                 }
             ],
         )
         self.assertEqual(
             data['invocations'],
-            [{'id': 'ouvrir_cycle', 'titre': 'Ouvrir un cycle'}],
+            [{'id': 'ouvrir_cycle_test', 'titre': 'Ouvrir un cycle'}],
         )
 
 
@@ -146,7 +149,7 @@ class McEcouteFrontTests(McBrowserCase):
             {
                 'id': 'bouton_theme',
                 'title': 'Explorer un thème',
-                'invocation': 'ouvrir_cycle',
+                'invocation': 'ouvrir_cycle_test',
                 'event': 'button',
                 'params': {'guide': {'source': 'form', 'value': 'theme'}},
             },

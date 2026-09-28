@@ -5,8 +5,9 @@ Scénario 1 : une tâche a échoué ; sa fiche montre « Relancer la tâche » ;
 un clic la remet dans sa file, prête, sans son erreur. Une tâche qui n'a
 pas échoué ne peut pas être relancée.
 
-Scénario 2 : sur la fiche de « Formuler des idées (démo) », Julien retire
-les business des tables qu'elle voit pour comparer, puis les remet. Une
+Scénario 2 : sur la fiche de « Formuler des business A », Julien retire
+les business des tables qu'elle voit pour comparer, puis les remet (les
+pages gardées lui sont retirées dès le départ). Une
 table qui n'est pas décrite en base ne peut pas être ajoutée.
 """
 
@@ -83,7 +84,7 @@ class ComparerTests(McBrowserCase):
         try:
             return conn.execute(
                 'SELECT table_name, included FROM invocation_compare_tables'
-                " WHERE invocation_id='demo_formuler'"
+                " WHERE invocation_id='formuler_a' ORDER BY table_name"
             ).fetchall()
         finally:
             conn.close()
@@ -93,26 +94,30 @@ class ComparerTests(McBrowserCase):
 
         page = self._auth_context().new_page()
         self._watch_errors(page)
-        page.goto(f'{self.base}/owner#/objet/llm/demo_formuler')
+        page.goto(f'{self.base}/owner#/objet/llm/formuler_a')
         page.get_by_role('button', name='Retirer « Les business »').click(
             timeout=10000
         )
-        expect(page.locator('#page')).to_contain_text('retirée à la main')
-        self.assertEqual(self._ajustements(), [('ventures', 0)])
+        expect(page.locator('#page')).to_contain_text(
+            'id, name — retirée à la main'
+        )
+        self.assertEqual(
+            self._ajustements(), [('listen_docs', 0), ('ventures', 0)]
+        )
         page.get_by_role('button', name='Remettre « Les business »').click(
             timeout=10000
         )
         expect(page.locator('#page')).to_contain_text(
             'id, name — elle y écrit'
         )
-        self.assertEqual(self._ajustements(), [])
+        self.assertEqual(self._ajustements(), [('listen_docs', 0)])
 
     def test_une_table_non_decrite_est_refusee(self) -> None:
         cookie = self._auth_cookie()
         status, _, _ = self._api_post(
             '/owner/api/invocation/comparer',
             {
-                'invocation_id': 'demo_formuler',
+                'invocation_id': 'formuler_a',
                 'table': 'contacts',
                 'voir': True,
             },
@@ -121,8 +126,8 @@ class ComparerTests(McBrowserCase):
         self.assertEqual(status, 409)
         status, _, _ = self._api_post(
             '/owner/api/invocation/comparer',
-            {'invocation_id': 'demo_formuler', 'table': 'ventures'},
+            {'invocation_id': 'formuler_a', 'table': 'ventures'},
             cookie,
         )
         self.assertEqual(status, 400)
-        self.assertEqual(self._ajustements(), [])
+        self.assertEqual(self._ajustements(), [('listen_docs', 0)])

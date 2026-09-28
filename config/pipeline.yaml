@@ -83,114 +83,254 @@ tools:
       columns:
         - {table: listen_cycles, name: id}
         - {table: listen_cycles, name: guide}
-        - {table: listen_cycles, name: needs_target}
-        - {table: listen_cycles, name: business_target}
         - {table: listen_cycles, name: status}
         - {table: listen_cycles, name: created_at}
-        - {table: listen_cycles, name: started_at}
-        - {table: listen_cycles, name: finished_at}
       filters:
         - {id: cycle, table: listen_cycles, column: id, param: cycle_id}
       params:
         - {name: cycle_id, required: true, description: Identifiant du cycle.}
-  - id: listen_cycle_documents
-    title: Lire les pages du cycle
-    doc: Les pages figées pour un cycle d'écoute, avec leur titre et leur texte.
+  - id: apercu_page
+    title: Lire l'aperçu d'une page
+    doc: >-
+      Les premières lignes d'une page web (une ligne = un titre, un
+      paragraphe ou un élément de liste), pour juger si elle vaut la peine
+      d'être gardée, sans la lire en entier.
+    capability: page_read
+  - id: lire_page_entiere
+    title: Lire une page en entier
+    doc: >-
+      Le texte d'une page déjà gardée par Serge, donnée par son numéro,
+      jusqu'au nombre de lignes réglé.
+    capability: page_read
+  - id: lire_flux_rss
+    title: Lire un flux RSS
+    doc: Les pages récentes d'un flux RSS, avec un aperçu de quelques lignes.
+    capability: rss_read
+  - id: pages_a_rattacher
+    title: Les pages pas encore triées
+    doc: Les pages gardées qui n'ont encore été ni triées ni rattachées à un cycle.
     capability: db_read
     read:
-      tables: [listen_cycle_docs, listen_docs]
+      tables: [listen_docs]
       columns:
-        - {table: listen_cycle_docs, name: cycle_id}
-        - {table: listen_cycle_docs, name: doc_id}
         - {table: listen_docs, name: id}
-        - {table: listen_docs, name: source}
-        - {table: listen_docs, name: url}
-        - {table: listen_docs, name: title}
-        - {table: listen_docs, name: excerpt}
-        - {table: listen_docs, name: published}
-      joins:
-        - {id: page, left: listen_cycle_docs.doc_id, right: listen_docs.id}
       filters:
-        - {id: cycle, table: listen_cycle_docs, column: cycle_id, param: cycle_id}
+        - {id: pas_triee, table: listen_docs, column: label, fixed: ''}
+        - {id: sans_cycle, table: listen_docs, column: cycle_id, fixed: ''}
+      params:
+        - {name: limit, type: integer, default: '60', description: Nombre maximal de pages.}
+  - id: pages_a_trier
+    title: Les pages du cycle à trier
+    doc: Les pages rattachées au cycle et pas encore triées, avec leur aperçu.
+    capability: db_read
+    read:
+      tables: [listen_docs]
+      columns:
+        - {table: listen_docs, name: id}
+        - {table: listen_docs, name: title}
+        - {table: listen_docs, name: excerpt, as: apercu}
+        - {table: listen_docs, name: url}
+      filters:
+        - {id: cycle, table: listen_docs, column: cycle_id, param: cycle_id}
+        - {id: pas_triee, table: listen_docs, column: label, fixed: ''}
       params:
         - {name: cycle_id, required: true, description: Identifiant du cycle.}
-        - {name: limit, type: integer, default: '200', description: Nombre maximal de pages.}
-  - id: known_business_candidates
-    title: Lire les business connus
-    doc: Les business déjà en base, pour ne pas reproposer ce qui existe.
+  - id: pages_besoin_nouveau
+    title: Les pages « besoin nouveau »
+    doc: Les pages qui montrent un besoin nouveau et n'ont pas encore servi de preuve.
+    capability: db_read
+    read:
+      tables: [listen_docs]
+      columns:
+        - {table: listen_docs, name: id}
+        - {table: listen_docs, name: title}
+        - {table: listen_docs, name: excerpt, as: apercu}
+        - {table: listen_docs, name: url}
+      filters:
+        - {id: besoin, table: listen_docs, column: label, fixed: besoin_nouveau}
+  - id: business_candidats
+    title: Les business candidats
+    doc: Les business encore candidats, qu'on peut choisir de tester.
     capability: db_read
     read:
       tables: [ventures]
       columns:
         - {table: ventures, name: id}
-        - {table: ventures, name: name, as: title}
-        - {table: ventures, name: description, as: content}
+        - {table: ventures, name: name}
+        - {table: ventures, name: description}
         - {table: ventures, name: observations}
         - {table: ventures, name: sellable_offer}
-        - {table: ventures, name: lifecycle, as: status}
-        - {table: ventures, name: created_at}
-        - {table: ventures, name: updated_at}
-      params:
-        - {name: limit, type: integer, default: '200', description: Nombre maximal de business.}
-  - id: eligible_poc_candidates
-    title: Lire les business candidats
-    doc: Les business encore candidats, ceux qu'on peut choisir de tester.
-    capability: db_read
-    read:
-      tables: [ventures]
-      columns:
-        - {table: ventures, name: id}
-        - {table: ventures, name: name, as: title}
-        - {table: ventures, name: description, as: content}
-        - {table: ventures, name: observations}
-        - {table: ventures, name: sellable_offer}
-        - {table: ventures, name: lifecycle, as: status}
+        - {table: ventures, name: family}
       filters:
         - {id: candidats, table: ventures, column: lifecycle, fixed: CANDIDATE}
+  - id: preuves_des_candidats
+    title: Les preuves des candidats
+    doc: Pour chaque business candidat, les pages qui prouvent son besoin.
+    capability: db_read
+    read:
+      tables: [venture_sources, ventures, listen_docs]
+      columns:
+        - {table: venture_sources, name: venture_id}
+        - {table: listen_docs, name: title}
+        - {table: listen_docs, name: excerpt, as: apercu}
+      joins:
+        - {id: business, left: venture_sources.venture_id, right: ventures.id}
+        - {id: page, left: venture_sources.doc_id, right: listen_docs.id}
+      filters:
+        - {id: candidats, table: ventures, column: lifecycle, fixed: CANDIDATE}
+  - id: business_en_test
+    title: Les business en test
+    doc: Les business qui occupent une place de test.
+    capability: db_read
+    read:
+      tables: [ventures]
+      columns:
+        - {table: ventures, name: id}
+        - {table: ventures, name: name}
+        - {table: ventures, name: lifecycle}
+      filters:
+        - {id: en_test, table: ventures, column: lifecycle, fixed: [POC_SELECTED, SMOKE_READY, SMOKE_RUNNING, SMOKE_DONE]}
+  - id: pages_a_oublier
+    title: Les pages à oublier
+    doc: Les pages « bruit » ou jamais triées, plus vieilles que le nombre de jours donné.
+    capability: db_read
+    read:
+      tables: [listen_docs]
+      columns:
+        - {table: listen_docs, name: id}
+      filters:
+        - {id: inutiles, table: listen_docs, column: label, fixed: ['', bruit]}
+        - {id: vieilles, table: listen_docs, column: fetched_at, operator: '<', days_ago: jours}
       params:
-        - {name: limit, type: integer, default: '200', description: Nombre maximal de business.}
+        - {name: jours, type: integer, required: true, description: Age minimum en jours.}
+        - {name: limit, type: integer, default: '500', description: Nombre maximal de pages.}
+  - id: besoins_a_oublier
+    title: Les besoins jamais utilisés
+    doc: Les pages « besoin nouveau » jamais utilisées, plus vieilles que le nombre de jours donné.
+    capability: db_read
+    read:
+      tables: [listen_docs]
+      columns:
+        - {table: listen_docs, name: id}
+      filters:
+        - {id: besoin, table: listen_docs, column: label, fixed: besoin_nouveau}
+        - {id: vieilles, table: listen_docs, column: fetched_at, operator: '<', days_ago: jours}
+      params:
+        - {name: jours, type: integer, required: true, description: Age minimum en jours.}
+        - {name: limit, type: integer, default: '500', description: Nombre maximal de pages.}
+  - id: idees
+    title: Les idées de business
+    doc: Les business encore candidats ou choisis pour un test (pas plus loin).
+    capability: db_read
+    read:
+      tables: [ventures]
+      columns:
+        - {table: ventures, name: id}
+      filters:
+        - {id: idees, table: ventures, column: lifecycle, fixed: [CANDIDATE, POC_SELECTED]}
+      params:
+        - {name: limit, type: integer, default: '500', description: Nombre maximal de business.}
 
 # Ce qu'une invocation a le droit d'écrire, et les protections des tables.
 # Ces règles valent pour toutes les invocations : elles sont réglées sur la
-# table, pas sur l'invocation.
+# table, pas sur l'invocation. Sur une instance existante, une colonne ou
+# une opération nouvelle s'ajoute ; rien n'est jamais retiré.
 writable_tables:
   - table: listen_cycles
     insert: true
+    update: true
     description: Les cycles d'écoute de l'étape 1.
     columns:
       - {name: guide, description: Le texte de guidage écrit dans Mission Control.}
-      - {name: needs_target, description: Le nombre de besoins visés.}
-      - {name: business_target, description: Le nombre de business à choisir.}
       - {name: status, description: L'état du cycle.}
+      - {name: started_at, description: Son début.}
+      - {name: finished_at, description: Sa fin.}
+      - {name: choice_note, description: Ce que « Choisir » dit du cycle.}
   - table: ventures
     insert: true
     update: true
+    delete: true
     description: Les business.
     columns:
       - {name: name, description: Le nom du business.}
       - {name: description, description: Ce qu'il vend et à qui.}
+      - {name: observations, description: Ce qu'on a observé dans les pages.}
       - {name: sellable_offer, description: L'offre qu'on peut vendre tout de suite.}
       - {name: lifecycle, description: Le statut du business.}
+      - {name: family, description: Sa famille de business.}
+      - {name: choice_reason, description: Pourquoi il a été choisi.}
+  - table: listen_docs
+    insert: true
+    update: true
+    delete: true
+    description: Les pages gardées par Serge (adresse et aperçu).
+    columns:
+      - {name: url, description: L'adresse de la page.}
+      - {name: title, description: Son titre.}
+      - {name: excerpt, description: Son aperçu.}
+      - {name: published, description: Sa date de publication.}
+      - {name: source, description: D'où elle vient (web ou rss).}
+      - {name: feed_id, description: Le flux qui l'a ramenée.}
+      - {name: cycle_id, description: Le cycle où elle a été triée.}
+      - {name: label, description: Son étiquette de tri.}
+      - {name: labelled_at, description: Quand elle a été triée.}
+      - {name: fetched_at, description: Quand elle a été gardée.}
+  - table: listen_feeds
+    insert: true
+    update: true
+    description: Les flux RSS que Serge suit.
+    columns:
+      - {name: url, description: L'adresse du flux.}
+      - {name: title, description: Son titre.}
+      - {name: added_by, description: L'invocation qui l'a ajouté.}
+      - {name: active, description: Suivi ou coupé.}
+      - {name: last_read_at, description: Sa dernière lecture.}
+  - table: venture_sources
+    insert: true
+    delete: true
+    description: Les pages qui prouvent le besoin d'un business.
+    columns:
+      - {name: venture_id, description: Le business.}
+      - {name: doc_id, description: La page.}
+      - {name: cycle_id, description: Le cycle.}
 
-# Un business naît candidat, et seul un candidat peut être choisi pour un
-# POC : un business déjà en test est refusé par le code d'écriture.
+# Les changements d'étiquette et de statut permis. Un business naît
+# candidat, et seul un candidat peut être choisi : un business déjà en test
+# est refusé par le code d'écriture.
 status_transitions:
   - {table: ventures, column: lifecycle, from: '', to: CANDIDATE}
   - {table: ventures, column: lifecycle, from: CANDIDATE, to: POC_SELECTED}
+  - {table: listen_cycles, column: status, from: '', to: OPEN}
+  - {table: listen_cycles, column: status, from: OPEN, to: CLOSED}
+  - {table: listen_cycles, column: status, from: OPEN, to: ABANDONED}
+  - {table: listen_docs, column: label, from: '', to: besoin_nouveau}
+  - {table: listen_docs, column: label, from: '', to: bruit}
+  - {table: listen_docs, column: label, from: '', to: enrichit}
+  - {table: listen_docs, column: label, from: '', to: preuve}
+  - {table: listen_docs, column: label, from: besoin_nouveau, to: preuve}
+  - {table: listen_docs, column: label, from: bruit, to: preuve}
 
-# Au plus 3 business choisis pour un POC en même temps : le code
-# d'écriture refuse le quatrième, quelle que soit l'invocation. Le chiffre
-# se règle sur la page Policy de Mission Control.
+# Les quotas : le code d'écriture refuse une ligne de trop, quelle que soit
+# l'invocation, et un bouton ne lance rien si son quota est plein. Les
+# chiffres se règlent sur la page Policy de Mission Control.
 table_quotas:
-  - id: business_choisis
+  - id: places_de_test
     table: ventures
     column: lifecycle
-    values: [POC_SELECTED]
+    values: [POC_SELECTED, SMOKE_READY, SMOKE_RUNNING, SMOKE_DONE]
     max: 3
-    description: Au plus 3 business choisis pour un POC en même temps.
+    description: Places de test occupées
+  - id: cycles_ouverts
+    table: listen_cycles
+    column: status
+    values: [OPEN]
+    max: 1
+    policy: false
+    description: Cycle d'écoute en cours
 
-# Une fiche trop proche d'un business existant (72 % de mots en commun sur
-# le nom et la description) est écartée, avec une note au journal.
+# Les doublons : une fiche trop proche d'un business existant (72 % de
+# mots en commun sur le nom et la description) est écartée ; une page ou un
+# flux déjà gardé (même adresse) n'est pas regardé une seconde fois.
 dedup_rules:
   - id: business_proches
     table: ventures
@@ -198,6 +338,16 @@ dedup_rules:
     threshold: 72
     on_duplicate: skip
     columns: [name, description]
+  - id: page_deja_gardee
+    table: listen_docs
+    method: exact
+    on_duplicate: skip
+    columns: [url]
+  - id: flux_deja_suivi
+    table: listen_feeds
+    method: exact
+    on_duplicate: skip
+    columns: [url]
 
 # Ce qu'une invocation peut voir de chaque table, réglé une fois par
 # table. La version courte (short) est donnée d'office, pour comparer, à
@@ -217,6 +367,8 @@ table_views:
       - {name: sellable_offer, description: L'offre qu'on peut vendre tout de suite.}
       - {name: observations, description: Ce qu'on a observé.}
       - {name: lifecycle, description: Son statut.}
+      - {name: family, description: Sa famille de business.}
+      - {name: choice_reason, description: Pourquoi il a été choisi.}
       - {name: created_at, description: Sa date de création.}
       - {name: updated_at, description: Sa dernière modification.}
   - table: listen_cycles
@@ -227,25 +379,47 @@ table_views:
       - {name: id, short: true, description: Le numéro du cycle.}
       - {name: guide, short: true, description: Le texte de guidage.}
       - {name: status, short: true, description: L'état du cycle.}
-      - {name: needs_target, description: Le nombre de besoins visés.}
-      - {name: business_target, description: Le nombre de business à choisir.}
+      - {name: choice_note, description: Ce que « Choisir » a dit du cycle.}
       - {name: created_at, description: Sa date de création.}
       - {name: started_at, description: Son début.}
       - {name: finished_at, description: Sa fin.}
+  - table: listen_docs
+    title: Les pages gardées
+    description: Les pages que Serge a gardées, avec leur aperçu et leur étiquette.
+    order: fetched_at
+    columns:
+      - {name: id, short: true, description: Le numéro de la page.}
+      - {name: title, short: true, description: Son titre.}
+      - {name: url, description: Son adresse.}
+      - {name: excerpt, description: Son aperçu.}
+      - {name: source, description: D'où elle vient (web ou rss).}
+      - {name: label, description: Son étiquette de tri.}
+      - {name: published, description: Sa date de publication.}
+      - {name: fetched_at, description: Quand elle a été gardée.}
+      - {name: cycle_id, description: Le cycle où elle a été triée.}
+  - table: listen_feeds
+    title: Les flux RSS suivis
+    description: Les flux RSS que Serge a choisis de suivre.
+    order: created_at
+    columns:
+      - {name: id, short: true, description: Le numéro du flux.}
+      - {name: url, short: true, description: Son adresse.}
+      - {name: title, description: Son titre.}
+      - {name: active, description: Suivi (1) ou coupé (0).}
+      - {name: last_read_at, description: Sa dernière lecture.}
 
-# --- Demi-cycle de démonstration (lot 6) ---------------------------------
-# Trois invocations volontairement simples, pour vérifier que le pipeline
-# décrit en base s'enregistre, s'affiche dans Mission Control et tourne
-# avec l'interpréteur. Le vrai cycle de l'étape 1 les remplacera au lot 7
-# (il faudra alors les marquer supprimées en base : retirer ces lignes du
-# fichier ne les efface pas d'une instance existante).
+# --- Étape 1 : la pré-prospection (lot 7, décision Q65) -------------------
+# La veille lit les flux toutes les 6 heures. Le cycle se lance à la main
+# depuis la page Écoute : ouvrir → explorer → rattacher → trier → formuler
+# A → formuler B → choisir. Détail : docs/etapes/1-pre-prospection.md.
 invocations:
-  - id: demo_ouvrir_cycle
-    title: Ouvrir un cycle (démo)
+  - id: ouvrir_cycle
+    title: Ouvrir un cycle d'écoute
     role: >-
       Enregistre un cycle d'écoute avec le texte de guidage écrit dans
       Mission Control. Sans LLM : elle rend ses paramètres, et sa règle
-      d'écriture les range dans la table des cycles.
+      d'écriture les range dans la table des cycles. Un seul cycle est
+      ouvert à la fois (quota).
     step: pre_prospection
     type: capability
     capability: echo
@@ -260,118 +434,682 @@ invocations:
         operation: insert
         values:
           guide: {source: field, value: guide}
-          needs_target: {source: fixed, value: '3'}
-          business_target: {source: fixed, value: '1'}
           status: {source: fixed, value: OPEN}
+          started_at: {source: now}
 
-  - id: demo_formuler
-    title: Formuler des idées (démo)
+  - id: explorer_web
+    title: Explorer le web
     role: >-
-      Imagine des idées de business à partir du texte de guidage du cycle,
-      sans reproposer un business déjà connu. Chaque idée devient un
-      business candidat.
+      Cherche sur le web des pages qui montrent des besoins réels, à partir
+      du texte de guidage (sinon dans les 11 familles de business) et des
+      business déjà connus. Ne lit qu'un aperçu des pages, garde celles
+      qu'elle retient, et ajoute les flux RSS utiles.
     step: pre_prospection
     type: llm
     model_tier: mid
     queue: works
     priority: 10
     gets_serge_intro: true
-    default_max_rows: 20
-    max_tool_turns: 4
+    default_max_rows: 50
+    max_tool_turns: 25
     settings:
-      nombre_idees:
-        value: 2
-        min: 1
-        max: 5
-        policy: true
-        description: Le nombre d'idées à proposer à chaque cycle.
+      recherches_max: {value: 10, min: 1, max: 30, policy: true, description: Le nombre maximum de recherches par cycle.}
+      lignes_apercu: {value: 5, min: 1, max: 30, policy: true, description: Les lignes lues dans l'aperçu d'une page.}
+      pages_max: {value: 30, min: 1, max: 100, policy: true, description: Le nombre maximum de pages retenues par cycle.}
+      flux_max: {value: 2, min: 0, max: 10, policy: true, description: Le nombre maximum de nouveaux flux RSS par cycle.}
+    compare:
+      ventures: true
     prompt: |
-      Ceci est une démonstration du pipeline décrit en base.
-      Propose exactement {nombre_idees} idées de business simples,
-      inspirées du texte de guidage du cycle. N'en propose aucune qui
-      ressemble à un business déjà connu. Chaque idée doit être légale.
+      Tu cherches sur le web des besoins réels, exprimés par de vraies
+      personnes ou de vraies entreprises, qui pourraient donner des idées
+      de business à Serge.
+
+      Ton point de départ est le texte de guidage du cycle, s'il y en a
+      un. Sans texte de guidage, cherche librement dans ces familles de
+      business : produits numériques, petits logiciels en ligne, services
+      faits par Serge, automatisation sur mesure, téléphone et SMS pour
+      les autres, veille et rapports, médias et audience, mise en
+      relation, formation, commerce sans stock, prospection pour les
+      autres.
+
+      Cherche d'abord en France : fais tes recherches en français. Une
+      page en anglais est acceptée si elle montre un besoin utile.
+
+      Méthode :
+      - Fais au plus {recherches_max} recherches, sous des angles variés :
+        plaintes, questions sur des forums, demandes d'aide, avis
+        négatifs, offres d'emploi, appels d'offres.
+      - Avant de retenir une page, lis son aperçu (ses {lignes_apercu}
+        premières lignes) avec l'outil d'aperçu. Ne lis jamais une page
+        en entier.
+      - Ne retiens que les pages qui montrent un besoin concret :
+        quelqu'un qui cherche une solution, se plaint d'un problème, ou
+        paie déjà pour quelque chose. Écarte les publicités, les pages
+        vides et les pages que Serge a déjà gardées (tu en vois la
+        liste).
+      - Tu vois les business que Serge connaît déjà : cherche d'autres
+        besoins.
+      - Retiens au plus {pages_max} pages. Pour chacune, recopie son
+        adresse, son titre et un aperçu de quelques lignes.
+      - Si tu trouves un flux RSS qui publie régulièrement ce genre de
+        besoins (un forum, une rubrique, un site d'annonces), ajoute-le :
+        au plus {flux_max} nouveaux flux, jamais un flux que Serge suit
+        déjà.
     tools:
       - tool: current_listen_cycle
         mode: given
         label: Le cycle en cours
         params:
           cycle_id: {source: task, value: cycle_id}
-      - {tool: web_search, mode: callable}
-      - {tool: memory_search, mode: callable}
+      - tool: web_search
+        mode: callable
+        max_calls: recherches_max
+      - tool: apercu_page
+        mode: callable
+        params:
+          max_lines: {source: setting, value: lignes_apercu}
+          table: {source: fixed, value: ''}
+          id: {source: fixed, value: ''}
     output:
-      - {path: fiches, type: list, min_items: nombre_idees, max_items: nombre_idees, description: Les idées.}
-      - {path: fiches.title, type: text, description: Le nom court du business.}
-      - {path: fiches.description, type: text, description: Ce qu'il vend et à qui.}
-      - {path: fiches.offre, type: text, required: false, description: L'offre qu'on pourrait vendre tout de suite.}
+      - {path: pages, type: list, max_items: pages_max, description: Les pages retenues.}
+      - {path: pages.url, type: text, description: L'adresse de la page.}
+      - {path: pages.titre, type: text, description: Son titre.}
+      - {path: pages.apercu, type: text, description: Un aperçu de quelques lignes.}
+      - {path: flux, type: list, required: false, max_items: flux_max, description: Les nouveaux flux RSS à suivre.}
+      - {path: flux.url, type: text, description: L'adresse du flux.}
+      - {path: flux.titre, type: text, description: Son titre.}
     writes:
-      - table: ventures
+      - table: listen_docs
         operation: insert
-        for_each: fiches
+        for_each: pages
+        max_rows: pages_max
         values:
-          name: {source: field, value: fiches.title}
-          description: {source: field, value: fiches.description}
-          sellable_offer: {source: field, value: fiches.offre}
-          lifecycle: {source: fixed, value: CANDIDATE}
+          url: {source: field, value: pages.url}
+          title: {source: field, value: pages.titre}
+          excerpt: {source: field, value: pages.apercu}
+          source: {source: fixed, value: web}
+          fetched_at: {source: now}
+      - table: listen_feeds
+        operation: insert
+        for_each: flux
+        max_rows: flux_max
+        values:
+          url: {source: field, value: flux.url}
+          title: {source: field, value: flux.titre}
+          added_by: {source: fixed, value: explorer_web}
+          active: {source: fixed, value: '1'}
 
-  - id: demo_choisir
-    title: Choisir un business (démo)
+  - id: rattacher_pages
+    title: Rattacher les pages au cycle
     role: >-
-      Choisit au plus un business candidat à tester. Un business déjà en
-      test est refusé par la règle des changements de statut.
+      Rattache au cycle les pages gardées qui n'ont pas encore été triées
+      (celles des flux et du web), les plus récentes d'abord. Sans LLM.
+    step: pre_prospection
+    type: capability
+    capability: db_read
+    queue: works
+    priority: 10
+    settings:
+      pages_par_cycle: {value: 60, min: 1, max: 300, policy: true, description: Le nombre maximum de pages triées par cycle.}
+    params:
+      tool_id: {source: fixed, value: pages_a_rattacher}
+      limit: {source: setting, value: pages_par_cycle}
+    writes:
+      - table: listen_docs
+        operation: update
+        for_each: rows
+        key: {column: id, source: field, value: rows.id}
+        values:
+          cycle_id: {source: task, value: cycle_id}
+
+  - id: trier_pages
+    title: Trier les pages
+    role: >-
+      Range chaque page du cycle d'après son aperçu : elle enrichit un
+      business existant (elle lui est rattachée comme preuve), elle montre
+      un besoin nouveau, ou c'est du bruit. Par paquets de pages.
     step: pre_prospection
     type: llm
     model_tier: fast
     queue: works
     priority: 10
+    default_max_rows: 100
+    max_tool_turns: 2
     settings:
-      nombre_a_choisir:
-        value: 1
-        min: 0
-        max: 3
-        policy: true
-        description: Le nombre maximum de business choisis à chaque cycle.
+      taille_paquet: {value: 20, min: 1, max: 100, policy: true, description: Le nombre de pages triées par appel au modèle.}
+    compare:
+      ventures: true
+      listen_docs: false
     prompt: |
-      Ceci est une démonstration du pipeline décrit en base.
-      Parmi les business candidats, choisis-en au plus {nombre_a_choisir},
-      les plus simples à tester, et dis pourquoi en une phrase.
+      Tu tries des pages web gardées par Serge. Pour chaque page du
+      paquet, lis son titre et son aperçu, puis range-la dans une seule
+      catégorie :
+      - « enrichit » : la page parle d'un besoin déjà couvert par un
+        business que Serge connaît (tu en vois la liste). Donne alors le
+        numéro de ce business.
+      - « besoin_nouveau » : la page montre un besoin concret que ne
+        couvre aucun business connu.
+      - « bruit » : la page ne montre aucun besoin utile (publicité,
+        actualité sans besoin, page vide, hors sujet).
+      Range chaque page du paquet une seule fois. N'invente jamais un
+      numéro de page ou de business.
     tools:
-      - tool: eligible_poc_candidates
+      - tool: pages_a_trier
+        mode: given
+        label: Les pages à trier
+        batch_size: taille_paquet
+        params:
+          cycle_id: {source: task, value: cycle_id}
+    output:
+      - {path: enrichit, type: list, required: false, description: Les pages qui enrichissent un business connu.}
+      - {path: enrichit.page, type: text, description: Le numéro de la page.}
+      - {path: enrichit.business, type: text, description: Le numéro du business qu'elle enrichit.}
+      - {path: besoin_nouveau, type: list, required: false, description: Les numéros des pages qui montrent un besoin nouveau.}
+      - {path: bruit, type: list, required: false, description: Les numéros des pages sans besoin utile.}
+    writes:
+      - table: listen_docs
+        operation: update
+        for_each: besoin_nouveau
+        key: {column: id, source: field, value: besoin_nouveau}
+        values:
+          label: {source: fixed, value: besoin_nouveau}
+          labelled_at: {source: now}
+      - table: listen_docs
+        operation: update
+        for_each: bruit
+        key: {column: id, source: field, value: bruit}
+        values:
+          label: {source: fixed, value: bruit}
+          labelled_at: {source: now}
+      - table: listen_docs
+        operation: update
+        for_each: enrichit
+        key: {column: id, source: field, value: enrichit.page}
+        values:
+          label: {source: fixed, value: enrichit}
+          labelled_at: {source: now}
+      - table: venture_sources
+        operation: insert
+        for_each: enrichit
+        parent: 2
+        values:
+          venture_id: {source: field, value: enrichit.business}
+          doc_id: {source: parent_row, value: id}
+          cycle_id: {source: task, value: cycle_id}
+
+  - id: formuler_a
+    title: Formuler des business A
+    role: >-
+      Lit les pages « besoin nouveau » pas encore utilisées, en entier
+      quand il le faut, et écrit des idées de business avec leurs preuves.
+      Tourne juste avant B.
+    step: pre_prospection
+    type: llm
+    model_tier: smart
+    queue: works
+    priority: 10
+    gets_serge_intro: true
+    default_max_rows: 100
+    max_tool_turns: 10
+    settings:
+      nombre_idees: {value: 3, min: 0, max: 10, policy: true, description: Le nombre maximum d'idées par passage.}
+      lignes_page_entiere: {value: 300, min: 10, max: 2000, policy: true, description: Les lignes lues au plus dans une page lue en entier.}
+    compare:
+      listen_docs: false
+    prompt: |
+      Tu formules des idées de business pour Serge, à partir de pages web
+      qui montrent des besoins nouveaux.
+
+      Tu reçois l'aperçu des pages « besoin nouveau » pas encore
+      utilisées. Lis en entier celles qui te semblent les plus
+      prometteuses, avec l'outil de lecture (au plus
+      {lignes_page_entiere} lignes par page).
+
+      Propose au plus {nombre_idees} idées de business. Pour chacune :
+      - un nom court ;
+      - ce qu'il vend et à qui ;
+      - ce que tu as observé dans les pages : le besoin, qui l'exprime, ce
+        qu'on paie déjà ;
+      - l'offre qu'on pourrait vendre tout de suite, si tu la vois ;
+      - sa famille de business ;
+      - les numéros des pages qui prouvent le besoin : au moins une.
+
+      Règles :
+      - Ne propose jamais un business qui ressemble à un business que
+        Serge connaît déjà : tu vois leur liste, y compris ceux qu'une
+        autre invocation vient d'écrire. Serge ne fait jamais deux fois la
+        même chose.
+      - Chaque idée repose sur les pages citées, pas sur ton imagination.
+      - Le business doit être légal. En dehors de la loi, ne t'arrête pas
+        sur des scrupules moraux : un business légal qui dérange est
+        acceptable. Serge assume d'être un agent IA et ne trompe personne.
+      - Si les pages ne montrent aucun besoin assez solide, propose moins
+        d'idées, ou aucune.
+    tools:
+      - tool: pages_besoin_nouveau
+        mode: given
+        label: Les pages « besoin nouveau »
+        max_rows: 60
+      - tool: lire_page_entiere
+        mode: callable
+        params:
+          table: {source: fixed, value: listen_docs}
+          url: {source: fixed, value: ''}
+          max_lines: {source: setting, value: lignes_page_entiere}
+    output:
+      - {path: fiches, type: list, max_items: nombre_idees, description: Les idées de business.}
+      - {path: fiches.titre, type: text, description: Le nom court du business.}
+      - {path: fiches.description, type: text, description: Ce qu'il vend et à qui.}
+      - {path: fiches.observations, type: text, required: false, description: Ce qu'on a observé dans les pages.}
+      - {path: fiches.offre, type: text, required: false, description: L'offre qu'on pourrait vendre tout de suite.}
+      - path: fiches.famille
+        type: choice
+        choices: [produits_numeriques, petits_logiciels, services_faits_par_serge, automatisation_sur_mesure, telephone_sms, veille_rapports, medias_audience, mise_en_relation, formation, commerce_sans_stock, prospection_pour_autres, autre]
+        description: La famille de business (autre si aucune ne convient).
+      - {path: fiches.pages, type: list, min_items: 1, description: Les numéros des pages qui prouvent le besoin.}
+    writes:
+      - table: ventures
+        operation: insert
+        for_each: fiches
+        values:
+          name: {source: field, value: fiches.titre}
+          description: {source: field, value: fiches.description}
+          observations: {source: field, value: fiches.observations}
+          sellable_offer: {source: field, value: fiches.offre}
+          family: {source: field, value: fiches.famille}
+          lifecycle: {source: fixed, value: CANDIDATE}
+      - table: venture_sources
+        operation: insert
+        for_each: fiches.pages
+        parent: 0
+        values:
+          venture_id: {source: parent_row, value: id}
+          doc_id: {source: field, value: fiches.pages}
+          cycle_id: {source: task, value: cycle_id}
+      - table: listen_docs
+        operation: update
+        for_each: fiches.pages
+        parent: 0
+        key: {column: id, source: field, value: fiches.pages}
+        values:
+          label: {source: fixed, value: preuve}
+          labelled_at: {source: now}
+
+  - id: formuler_b
+    title: Formuler des business B
+    role: >-
+      Lit les pages « besoin nouveau » pas encore utilisées, en entier
+      quand il le faut, et écrit des idées de business avec leurs preuves.
+      Tourne juste après A et voit les business qu'elle a écrits.
+    step: pre_prospection
+    type: llm
+    model_tier: smart
+    queue: works
+    priority: 10
+    gets_serge_intro: true
+    default_max_rows: 100
+    max_tool_turns: 10
+    settings:
+      nombre_idees: {value: 3, min: 0, max: 10, policy: true, description: Le nombre maximum d'idées par passage.}
+      lignes_page_entiere: {value: 300, min: 10, max: 2000, policy: true, description: Les lignes lues au plus dans une page lue en entier.}
+    compare:
+      listen_docs: false
+    prompt: |
+      Tu formules des idées de business pour Serge, à partir de pages web
+      qui montrent des besoins nouveaux.
+
+      Tu reçois l'aperçu des pages « besoin nouveau » pas encore
+      utilisées. Lis en entier celles qui te semblent les plus
+      prometteuses, avec l'outil de lecture (au plus
+      {lignes_page_entiere} lignes par page).
+
+      Propose au plus {nombre_idees} idées de business. Pour chacune :
+      - un nom court ;
+      - ce qu'il vend et à qui ;
+      - ce que tu as observé dans les pages : le besoin, qui l'exprime, ce
+        qu'on paie déjà ;
+      - l'offre qu'on pourrait vendre tout de suite, si tu la vois ;
+      - sa famille de business ;
+      - les numéros des pages qui prouvent le besoin : au moins une.
+
+      Règles :
+      - Ne propose jamais un business qui ressemble à un business que
+        Serge connaît déjà : tu vois leur liste, y compris ceux qu'une
+        autre invocation vient d'écrire. Serge ne fait jamais deux fois la
+        même chose.
+      - Chaque idée repose sur les pages citées, pas sur ton imagination.
+      - Le business doit être légal. En dehors de la loi, ne t'arrête pas
+        sur des scrupules moraux : un business légal qui dérange est
+        acceptable. Serge assume d'être un agent IA et ne trompe personne.
+      - Si les pages ne montrent aucun besoin assez solide, propose moins
+        d'idées, ou aucune.
+    tools:
+      - tool: pages_besoin_nouveau
+        mode: given
+        label: Les pages « besoin nouveau »
+        max_rows: 60
+      - tool: lire_page_entiere
+        mode: callable
+        params:
+          table: {source: fixed, value: listen_docs}
+          url: {source: fixed, value: ''}
+          max_lines: {source: setting, value: lignes_page_entiere}
+    output:
+      - {path: fiches, type: list, max_items: nombre_idees, description: Les idées de business.}
+      - {path: fiches.titre, type: text, description: Le nom court du business.}
+      - {path: fiches.description, type: text, description: Ce qu'il vend et à qui.}
+      - {path: fiches.observations, type: text, required: false, description: Ce qu'on a observé dans les pages.}
+      - {path: fiches.offre, type: text, required: false, description: L'offre qu'on pourrait vendre tout de suite.}
+      - path: fiches.famille
+        type: choice
+        choices: [produits_numeriques, petits_logiciels, services_faits_par_serge, automatisation_sur_mesure, telephone_sms, veille_rapports, medias_audience, mise_en_relation, formation, commerce_sans_stock, prospection_pour_autres, autre]
+        description: La famille de business (autre si aucune ne convient).
+      - {path: fiches.pages, type: list, min_items: 1, description: Les numéros des pages qui prouvent le besoin.}
+    writes:
+      - table: ventures
+        operation: insert
+        for_each: fiches
+        values:
+          name: {source: field, value: fiches.titre}
+          description: {source: field, value: fiches.description}
+          observations: {source: field, value: fiches.observations}
+          sellable_offer: {source: field, value: fiches.offre}
+          family: {source: field, value: fiches.famille}
+          lifecycle: {source: fixed, value: CANDIDATE}
+      - table: venture_sources
+        operation: insert
+        for_each: fiches.pages
+        parent: 0
+        values:
+          venture_id: {source: parent_row, value: id}
+          doc_id: {source: field, value: fiches.pages}
+          cycle_id: {source: task, value: cycle_id}
+      - table: listen_docs
+        operation: update
+        for_each: fiches.pages
+        parent: 0
+        key: {column: id, source: field, value: fiches.pages}
+        values:
+          label: {source: fixed, value: preuve}
+          labelled_at: {source: now}
+
+  - id: choisir_business
+    title: Choisir les business à tester
+    role: >-
+      Choisit parmi tous les candidats au plus autant de business qu'il
+      reste de places de test, garde la raison de chaque choix, puis ferme
+      le cycle.
+    step: pre_prospection
+    type: llm
+    model_tier: mid
+    queue: works
+    priority: 10
+    gets_serge_intro: true
+    default_max_rows: 50
+    max_tool_turns: 4
+    compare:
+      ventures: false
+      listen_cycles: false
+    prompt: |
+      Tu choisis les business que Serge va tester. Serge a
+      {quota.places_de_test} places de test en tout ; tu vois les
+      business qui en occupent déjà une. Choisis au plus autant de
+      business qu'il reste de places libres, parmi les candidats.
+
+      Tes critères, dans l'ordre :
+      1. la force des preuves : des pages qui montrent un vrai besoin,
+         exprimé par de vraies personnes ;
+      2. la facilité d'un test rapide : on peut proposer vite quelque chose
+         de concret ;
+      3. un premier revenu rapide ;
+      4. la légalité.
+
+      Pour chaque business choisi, donne son numéro et la raison du choix,
+      en une phrase. Tu peux n'en choisir aucun si aucun candidat n'est
+      assez solide : dis alors pourquoi dans la note. N'invente jamais un
+      numéro.
+    tools:
+      - tool: business_en_test
+        mode: given
+        label: Les business en test
+      - tool: business_candidats
         mode: given
         label: Les business candidats
-        max_rows: 10
+      - tool: preuves_des_candidats
+        mode: given
+        label: Les preuves des candidats
+        max_rows: 150
     output:
-      - {path: choix, type: list, max_items: nombre_a_choisir, description: Les business choisis.}
-      - {path: choix.venture_id, type: text, description: L'identifiant du business.}
-      - {path: choix.raison, type: text, required: false, description: Pourquoi, en une phrase.}
+      - {path: choix, type: list, required: false, description: Les business choisis.}
+      - {path: choix.business, type: text, description: Le numéro du business.}
+      - {path: choix.raison, type: text, description: 'Pourquoi, en une phrase.'}
+      - {path: note, type: text, required: false, description: "Ce que tu dis du cycle, par exemple pourquoi tu n'as rien choisi."}
     writes:
       - table: ventures
         operation: update
         for_each: choix
-        max_rows: nombre_a_choisir
-        key: {column: id, source: field, value: choix.venture_id}
+        key: {column: id, source: field, value: choix.business}
         values:
           lifecycle: {source: fixed, value: POC_SELECTED}
+          choice_reason: {source: field, value: choix.raison}
+      - table: listen_cycles
+        operation: update
+        key: {column: id, source: task, value: cycle_id}
+        values:
+          status: {source: fixed, value: CLOSED}
+          finished_at: {source: now}
+          choice_note: {source: field, value: note}
+
+  - id: abandonner_cycle
+    title: Abandonner le cycle en cours
+    role: >-
+      Ferme le cycle resté ouvert (une invocation qui a échoué, par
+      exemple), pour pouvoir en lancer un autre. Sans LLM.
+    step: pre_prospection
+    type: capability
+    capability: echo
+    queue: works
+    priority: 20
+    writes:
+      - table: listen_cycles
+        operation: update
+        key: {column: status, source: fixed, value: OPEN}
+        values:
+          status: {source: fixed, value: ABANDONED}
+          finished_at: {source: now}
+
+  - id: lire_un_flux
+    title: Lire un flux RSS
+    role: >-
+      La veille : lit un flux RSS suivi et garde ses pages nouvelles, avec
+      un aperçu tiré du résumé du flux. Sans LLM.
+    step: pre_prospection
+    type: capability
+    capability: rss_read
+    queue: works
+    priority: 5
+    settings:
+      pages_par_flux: {value: 20, min: 1, max: 100, policy: true, description: Les pages lues au plus dans un flux à chaque passage.}
+      lignes_apercu: {value: 5, min: 1, max: 30, policy: true, description: Les lignes de l'aperçu d'une page de flux.}
+    params:
+      url: {source: task, value: url}
+      max_items: {source: setting, value: pages_par_flux}
+      max_lines: {source: setting, value: lignes_apercu}
+    writes:
+      - table: listen_docs
+        operation: insert
+        for_each: rows
+        values:
+          url: {source: field, value: rows.url}
+          title: {source: field, value: rows.title}
+          excerpt: {source: field, value: rows.excerpt}
+          published: {source: field, value: rows.published}
+          source: {source: fixed, value: rss}
+          feed_id: {source: task, value: feed_id}
+          fetched_at: {source: now}
+      - table: listen_feeds
+        operation: update
+        key: {column: id, source: task, value: feed_id}
+        values:
+          last_read_at: {source: now}
+
+  - id: oublier_pages
+    title: Oublier les vieilles pages
+    role: >-
+      Supprime les pages « bruit » et les pages jamais triées plus vieilles
+      que le nombre de jours réglé. Une page qui sert de preuve n'est
+      jamais supprimée. Sans LLM.
+    step: pre_prospection
+    type: capability
+    capability: db_read
+    queue: works
+    priority: 1
+    settings:
+      jours: {value: 30, min: 1, max: 365, policy: true, description: Les jours avant d'oublier une page bruit ou jamais triée.}
+    params:
+      tool_id: {source: fixed, value: pages_a_oublier}
+      jours: {source: setting, value: jours}
+    writes:
+      - table: listen_docs
+        operation: delete
+        for_each: rows
+        key: {column: id, source: field, value: rows.id}
+
+  - id: oublier_besoins
+    title: Oublier les besoins jamais utilisés
+    role: >-
+      Supprime les pages « besoin nouveau » jamais utilisées plus vieilles
+      que le nombre de jours réglé. Sans LLM.
+    step: pre_prospection
+    type: capability
+    capability: db_read
+    queue: works
+    priority: 1
+    settings:
+      jours: {value: 60, min: 1, max: 365, policy: true, description: Les jours avant d'oublier une page « besoin nouveau » jamais utilisée.}
+    params:
+      tool_id: {source: fixed, value: besoins_a_oublier}
+      jours: {source: setting, value: jours}
+    writes:
+      - table: listen_docs
+        operation: delete
+        for_each: rows
+        key: {column: id, source: field, value: rows.id}
+
+  - id: effacer_idees
+    title: Effacer les idées (test)
+    role: >-
+      Bouton temporaire, pour tester le cycle en production autant de fois
+      qu'on veut : détruit tous les business encore candidats ou choisis,
+      et leurs preuves. Les pages restent. À retirer avant le vrai
+      lancement de Serge. Sans LLM.
+    step: pre_prospection
+    type: capability
+    capability: db_read
+    queue: works
+    priority: 20
+    params:
+      tool_id: {source: fixed, value: idees}
+    writes:
+      - table: ventures
+        operation: delete
+        for_each: rows
+        key: {column: id, source: field, value: rows.id}
+      - table: venture_sources
+        operation: delete
+        for_each: rows
+        key: {column: venture_id, source: field, value: rows.id}
 
 links:
-  - id: demo_cycle_vers_formuler
+  - id: cycle_ouvert_vers_exploration
     title: Le cycle ouvert part en exploration
-    from: demo_ouvrir_cycle
-    to: demo_formuler
+    from: ouvrir_cycle
+    to: explorer_web
     mode: per_row
     write: 0
     params:
       cycle_id: {source: row, value: id}
-  - id: demo_formuler_vers_choisir
-    title: Les idées formulées passent au choix
-    from: demo_formuler
-    to: demo_choisir
+  - id: exploration_vers_rattachement
+    title: Les pages trouvées rejoignent le cycle
+    from: explorer_web
+    to: rattacher_pages
+    params:
+      cycle_id: {source: task, value: cycle_id}
+  - id: rattachement_vers_tri
+    title: Les pages du cycle sont triées
+    from: rattacher_pages
+    to: trier_pages
+    params:
+      cycle_id: {source: task, value: cycle_id}
+  - id: tri_vers_formuler_a
+    title: Les besoins nouveaux vont à A
+    from: trier_pages
+    to: formuler_a
+    params:
+      cycle_id: {source: task, value: cycle_id}
+  - id: formuler_a_vers_b
+    title: Puis à B, qui voit les idées de A
+    from: formuler_a
+    to: formuler_b
+    params:
+      cycle_id: {source: task, value: cycle_id}
+  - id: formuler_b_vers_choix
+    title: Les idées passent au choix
+    from: formuler_b
+    to: choisir_business
     params:
       cycle_id: {source: task, value: cycle_id}
 
 triggers:
-  - id: demo_lancer_cycle
-    title: Lancer un cycle (démo)
-    invocation: demo_ouvrir_cycle
+  - id: lancer_cycle
+    title: Lancer un cycle d'écoute
+    invocation: ouvrir_cycle
     event: button
+    only_if_room_in: [places_de_test, cycles_ouverts]
     params:
       guide: {source: form, value: guide}
+  - id: bouton_abandonner_cycle
+    title: Abandonner le cycle en cours
+    invocation: abandonner_cycle
+    event: button
+    confirm: >-
+      Le cycle ouvert est fermé, pour pouvoir en lancer un autre. Ses
+      tâches déjà en file continuent, mais ne peuvent plus le fermer.
+  - id: bouton_effacer_idees
+    title: Effacer les idées (test)
+    invocation: effacer_idees
+    event: button
+    confirm: >-
+      Tous les business encore candidats ou choisis, et leurs preuves, sont
+      détruits. Les pages restent. Bouton temporaire, pour tester.
+  - id: veille_flux
+    title: Lire chaque flux RSS suivi
+    invocation: lire_un_flux
+    event: every
+    every_minutes: 360
+    table: listen_feeds
+    filter_column: active
+    filter_value: '1'
+    params:
+      url: {source: row, value: url}
+      feed_id: {source: row, value: id}
+  - id: oubli_quotidien_pages
+    title: Oublier les vieilles pages, chaque jour
+    invocation: oublier_pages
+    event: every
+    every_minutes: 1440
+  - id: oubli_quotidien_besoins
+    title: Oublier les besoins jamais utilisés, chaque jour
+    invocation: oublier_besoins
+    event: every
+    every_minutes: 1440
+
+# Ce qui a été retiré du pipeline de départ : marqué supprimé sur une
+# instance existante (retirer une ligne du fichier ne l'efface jamais).
+# Le demi-cycle de démonstration du lot 6 est remplacé par l'étape 1.
+deleted:
+  invocations: [demo_ouvrir_cycle, demo_formuler, demo_choisir]
+  links: [demo_cycle_vers_formuler, demo_formuler_vers_choisir]
+  triggers: [demo_lancer_cycle]
+  tools: [known_business_candidates, eligible_poc_candidates, listen_cycle_documents]
+  quotas: [business_choisis]

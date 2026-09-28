@@ -359,7 +359,7 @@ class MigrateTests(unittest.TestCase):
         self.addCleanup(conn.close)
         from serge.db.migrate import MIGRATIONS
 
-        apply_pending(conn, MIGRATIONS[:-4], head=24)
+        apply_pending(conn, MIGRATIONS[:-5], head=24)
         conn.execute(
             'INSERT INTO runtime_flags(name, value, set_at) VALUES'
             " ('kind.email.send', 'kill', 't'), ('llm.fill_slots', 'kill',"
@@ -411,21 +411,27 @@ class MigrateTests(unittest.TestCase):
         self.assertTrue(row[2])
         self.assertTrue(row[3])
         outil = conn.execute(
-            "SELECT capability_id FROM tools WHERE id='listen_cycle_documents'"
+            "SELECT capability_id FROM tools WHERE id='preuves_des_candidats'"
         ).fetchone()
         self.assertEqual(outil, ('db_read',))
-        jointure = conn.execute(
+        jointures = conn.execute(
             'SELECT left_table, right_table FROM tool_db_joins'
-            " WHERE tool_id='listen_cycle_documents'"
-        ).fetchone()
-        self.assertEqual(jointure, ('listen_cycle_docs', 'listen_docs'))
+            " WHERE tool_id='preuves_des_candidats' ORDER BY position"
+        ).fetchall()
+        self.assertEqual(
+            jointures,
+            [
+                ('venture_sources', 'ventures'),
+                ('venture_sources', 'listen_docs'),
+            ],
+        )
 
     def test_v26_ajoute_les_reglages_et_garde_les_parametres(self) -> None:
         conn = sqlite3.connect(':memory:')
         self.addCleanup(conn.close)
         from serge.db.migrate import MIGRATIONS
 
-        apply_pending(conn, MIGRATIONS[:-3], head=25)
+        apply_pending(conn, MIGRATIONS[:-4], head=25)
         conn.execute(
             'INSERT INTO invocation_tool_params(invocation_id,'
             ' invocation_tool_id, param_name, source, value)'
@@ -465,7 +471,7 @@ class MigrateTests(unittest.TestCase):
         self.addCleanup(conn.close)
         from serge.db.migrate import MIGRATIONS
 
-        apply_pending(conn, MIGRATIONS[:-2], head=26)
+        apply_pending(conn, MIGRATIONS[:-3], head=26)
         conn.executemany(
             'INSERT INTO events(ts, actor, venture_id, type, payload_json)'
             ' VALUES(?,?,?,?,?)',
@@ -488,6 +494,49 @@ class MigrateTests(unittest.TestCase):
                 ' ORDER BY event_id'
             ).fetchall(),
             [(1, 'ventures', 'v1'), (2, 'listen_cycles', '7')],
+        )
+
+    def test_v29_range_le_cycle_sur_la_page_et_nettoie_le_catalogue(
+        self,
+    ) -> None:
+        conn = sqlite3.connect(':memory:')
+        self.addCleanup(conn.close)
+        from serge.db.migrate import MIGRATIONS
+
+        apply_pending(conn, MIGRATIONS[:-1], head=28)
+        conn.executescript(
+            'INSERT INTO listen_docs(id, source, fetched_at, cluster_id)'
+            " VALUES('d1', 'rss', 't', 'cA');"
+            "INSERT INTO listen_cycle_docs(cycle_id, doc_id) VALUES('c1', 'd1');"
+            'INSERT INTO tools(id, titre, capability_id) VALUES'
+            " ('pages_du_cycle', 'x', 'db_read');"
+            'INSERT INTO tool_db_tables(tool_id, table_name, position) VALUES'
+            " ('pages_du_cycle', 'listen_cycle_docs', 0);"
+            'INSERT INTO tool_db_columns(tool_id, table_name, column_name,'
+            " position) VALUES ('cycle', 'listen_cycles', 'needs_target', 0);"
+            'INSERT INTO writable_tables(table_name, can_update) VALUES'
+            " ('ventures', 1);"
+        )
+        self.assertEqual(apply_pending(conn), SCHEMA_VERSION)
+        self.assertEqual(
+            conn.execute('SELECT cycle_id FROM listen_docs').fetchone(),
+            ('c1',),
+        )
+        for requete in (
+            "SELECT 1 FROM tools WHERE id='pages_du_cycle'",
+            "SELECT 1 FROM tool_db_columns WHERE column_name='needs_target'",
+            "SELECT 1 FROM sqlite_master WHERE name='listen_cycle_docs'",
+        ):
+            self.assertIsNone(conn.execute(requete).fetchone(), requete)
+        colonnes = {
+            str(r[1]) for r in conn.execute('PRAGMA table_info(listen_cycles)')
+        }
+        self.assertNotIn('needs_target', colonnes)
+        self.assertEqual(
+            conn.execute(
+                "SELECT can_delete FROM writable_tables WHERE table_name='ventures'"
+            ).fetchone(),
+            (0,),
         )
 
 

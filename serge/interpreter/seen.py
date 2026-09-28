@@ -332,20 +332,18 @@ CHOICES: dict[str, Choices] = {
 
 
 def seed_table_views(conn: sqlite3.Connection, raw: Any) -> None:
-    """Range les vues des tables de ``pipeline.yaml`` (jamais d'écrasement).
+    """Range les vues des tables de ``pipeline.yaml``, sans rien écraser.
 
     Format : ``[{table, title, description, order, columns: [{name, short,
-    description}]}]``.
+    description}]}]``. Une vue déjà en base garde ses réglages ; seules
+    ses colonnes nouvelles s'ajoutent (exemple : la famille d'un business,
+    ajoutée au lot 7).
 
     Raises:
         ViewSeedError: Table ou colonne absente de la base.
     """
     for view in raw or []:
         table = str(view['table'])
-        if conn.execute(
-            'SELECT 1 FROM table_views WHERE table_name=?', (table,)
-        ).fetchone():
-            continue
         real = table_columns(conn, table)
         if not real:
             raise ViewSeedError(f'table_views : table absente {table}')
@@ -355,7 +353,7 @@ def seed_table_views(conn: sqlite3.Connection, raw: Any) -> None:
                 f'table_views.{table} : colonne absente {order}'
             )
         conn.execute(
-            'INSERT INTO table_views(table_name, title, description,'
+            'INSERT OR IGNORE INTO table_views(table_name, title, description,'
             ' order_column, updated_by) VALUES(?,?,?,?,?)',
             (
                 table,
@@ -372,8 +370,9 @@ def seed_table_views(conn: sqlite3.Connection, raw: Any) -> None:
                     f'table_views.{table} : colonne absente {name}'
                 )
             conn.execute(
-                'INSERT INTO table_view_columns(table_name, column_name,'
-                ' short, description, position) VALUES(?,?,?,?,?)',
+                'INSERT OR IGNORE INTO table_view_columns(table_name,'
+                ' column_name, short, description, position)'
+                ' VALUES(?,?,?,?,?)',
                 (
                     table,
                     name,

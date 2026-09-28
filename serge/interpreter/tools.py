@@ -71,6 +71,57 @@ def _request_capability(
     )
 
 
+def _page_read(
+    conn: sqlite3.Connection, _tool: str, args: dict[str, Any], _inv: str
+) -> dict[str, Any]:
+    """Lire une page : par son adresse, ou par sa ligne dans une table.
+
+    Avec ``table`` et ``id``, seule une page déjà en base peut être lue
+    (son adresse est dans la colonne ``url``).
+    """
+    from serge.interpreter.rules import safe_name
+    from serge.listen.page import read_page
+
+    url = str(args.get('url') or '')
+    table = str(args.get('table') or '')
+    if table:
+        row = conn.execute(
+            f'SELECT url FROM "{safe_name(table)}" WHERE id=?',
+            (str(args.get('id') or ''),),
+        ).fetchone()
+        if row is None:
+            return {'ok': False, 'code': 'page_inconnue', 'rows': []}
+        url = str(row[0])
+    result = read_page(url, int(args.get('max_lines') or 0))
+    return {**result, 'rows': result.get('lines', [])}
+
+
+def _rss_read(
+    _conn: sqlite3.Connection, _tool: str, args: dict[str, Any], _inv: str
+) -> dict[str, Any]:
+    """Lire un flux RSS : ses pages, avec un aperçu de quelques lignes."""
+    from serge.listen.collectors import fetch_rss
+    from serge.listen.page import text_lines
+
+    lines = int(args.get('max_lines') or 5)
+    rows = []
+    for item in fetch_rss(
+        str(args.get('url') or ''),
+        'rss',
+        max_items=int(args.get('max_items') or 20),
+    ):
+        apercu = text_lines(item['excerpt'])[1][:lines]
+        rows.append(
+            {
+                'url': item['url'],
+                'title': item['title'],
+                'excerpt': '\n'.join(apercu),
+                'published': item['published'],
+            }
+        )
+    return {'ok': True, 'rows': rows}
+
+
 def _echo(
     _conn: sqlite3.Connection, _tool: str, args: dict[str, Any], _inv: str
 ) -> dict[str, Any]:
@@ -83,6 +134,8 @@ RUNNERS: dict[str, Runner] = {
     'web_search': _web_search,
     'memory_search': _memory_search,
     'request_capability': _request_capability,
+    'page_read': _page_read,
+    'rss_read': _rss_read,
     'seen_table_read': read_seen_table,
     'row_history': row_history,
 }

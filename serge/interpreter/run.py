@@ -93,16 +93,14 @@ def _llm_answer(
     caller: Caller | None,
     root: Path | None,
 ) -> Any:
+    """La réponse du modèle, un appel par paquet s'il y en a.
+
+    Les réponses des paquets sont réunies : les listes sont mises bout à
+    bout (exemple : les pages triées de chaque paquet).
+    """
     fields = load_fields(conn, inv.id)
-    user = given_blocks(conn, inv, task_id, task)
+    contents = given_blocks(conn, inv, task_id, task)
     conn.commit()
-    if task:
-        params = json.dumps(dict(task), ensure_ascii=False)
-        user = f'## Paramètres de la tâche\n{params}\n\n{user}'.strip()
-    messages: list[dict[str, Any]] = [
-        {'role': 'system', 'content': system_prompt(conn, inv, fields)},
-        {'role': 'user', 'content': user or 'Commence.'},
-    ]
     model, _referer = resolve_model(conn, inv.model_tier, root)
     api_key = ''
     if caller is None:
@@ -110,6 +108,47 @@ def _llm_answer(
         from serge.llm.runtime import read_api_key
 
         caller, api_key = chat, read_api_key(root)
+    system = system_prompt(conn, inv, fields)
+    answers = []
+    for user in contents:
+        if task:
+            params = json.dumps(dict(task), ensure_ascii=False)
+            user = f'## Paramètres de la tâche\n{params}\n\n{user}'.strip()
+        messages: list[dict[str, Any]] = [
+            {'role': 'system', 'content': system},
+            {'role': 'user', 'content': user or 'Commence.'},
+        ]
+        answers.append(
+            _ask(conn, inv, messages, task, fields, caller, api_key, model)
+        )
+    return _merge(answers)
+
+
+def _merge(answers: list[Any]) -> Any:
+    """Réunit les réponses des paquets : les listes bout à bout."""
+    if len(answers) == 1:
+        return answers[0]
+    merged: dict[str, Any] = {}
+    for answer in answers:
+        for key, value in (answer or {}).items():
+            if isinstance(value, list) and isinstance(merged.get(key), list):
+                merged[key] = [*merged[key], *value]
+            else:
+                merged[key] = value
+    return merged
+
+
+def _ask(
+    conn: sqlite3.Connection,
+    inv: Invocation,
+    messages: list[dict[str, Any]],
+    task: Mapping[str, str],
+    fields: list,
+    caller: Caller,
+    api_key: str,
+    model: str,
+) -> Any:
+    """Un appel au modèle, avec ses outils ; redemandé si le format est faux."""
     last_errors: list[str] = []
     for attempt in range(RETRIES + 1):
         result, history = converse(

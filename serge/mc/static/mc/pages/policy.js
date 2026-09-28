@@ -165,6 +165,10 @@ function renderTesting(main, payload, sig) {
 // Une ligne par réglage : son sens, sa valeur, un bouton Enregistrer.
 function ligneReglage(texte, valeur, charge, bornes) {
   const ligne = el('div', 'ligne-reglage');
+  // Repère stable : « <invocation>.<réglage> » ou « quota.<quota> ».
+  ligne.dataset.reglage = charge.cible === 'quota'
+    ? `quota.${charge.id}`
+    : `${charge.invocation_id}.${charge.name}`;
   const label = el('label', 'champ-large', `${texte} `);
   const input = document.createElement('input');
   input.value = valeur;

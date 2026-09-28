@@ -23,7 +23,7 @@ class SettingError(ValueError):
     """Un réglage manque, ou sa valeur ne convient pas."""
 
 
-_REPERE = re.compile(r'\{([a-z][a-z0-9_]*)\}')
+_REPERE = re.compile(r'\{([a-z][a-z0-9_.]*)\}')
 
 
 def load_settings(
@@ -37,6 +37,22 @@ def load_settings(
             (invocation_id,),
         ).fetchall()
     }
+
+
+def prompt_values(
+    conn: sqlite3.Connection, invocation_id: str
+) -> dict[str, str]:
+    """Ce qu'un prompt peut citer : ses réglages, et le maximum des quotas.
+
+    Exemple : ``{nombre_idees}`` et ``{quota.places_de_test}`` (le nombre
+    de places de test, réglé une seule fois, sur le quota).
+    """
+    values = load_settings(conn, invocation_id)
+    for ident, maximum in conn.execute(
+        'SELECT id, max_value FROM table_quotas'
+    ).fetchall():
+        values[f'quota.{ident}'] = str(maximum)
+    return values
 
 
 def fill_prompt(text: str, settings: dict[str, str]) -> str:

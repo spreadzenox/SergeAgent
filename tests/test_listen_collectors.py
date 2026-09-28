@@ -52,6 +52,12 @@ class CollectorsTests(unittest.TestCase):
         with self.assertRaisesRegex(ListenError, '^PARSE'):
             parse_rss(b'pas du xml {{{', 'x')
 
+    def setUp(self) -> None:
+        # Pas de réseau en test : l'adresse est jugée publique.
+        patcher = mock.patch('serge.listen.page.check_host')
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     def test_fetch_ok(self) -> None:
         with mock.patch(
             'urllib.request.urlopen', return_value=_response(RSS.encode())

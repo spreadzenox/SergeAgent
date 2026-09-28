@@ -53,12 +53,15 @@ def check_catalogue(
         WriteConfigError: Table, opération ou colonne non autorisée.
     """
     row = conn.execute(
-        'SELECT can_insert, can_update FROM writable_tables WHERE table_name=?',
+        'SELECT can_insert, can_update, can_delete FROM writable_tables'
+        ' WHERE table_name=?',
         (table,),
     ).fetchone()
     if row is None:
         raise WriteConfigError(f'table non inscriptible : {table}')
-    allowed = row[0] if operation == 'insert' else row[1]
+    allowed = {'insert': row[0], 'update': row[1], 'delete': row[2]}.get(
+        operation
+    )
     if not allowed:
         raise WriteConfigError(f'{operation} interdit sur {table}')
     permitted = {
@@ -211,3 +214,29 @@ def quota_refusal(
                 f' avec {column} parmi {", ".join(compte)}'
             )
     return ''
+
+
+def quota_usage(
+    conn: sqlite3.Connection, quota_id: str
+) -> tuple[int, int, str] | None:
+    """Où en est un quota : ``(lignes comptées, maximum, description)``.
+
+    Exemple : ``(2, 3, 'Au plus 3 business en test')``. ``None`` si le
+    quota n'existe pas.
+    """
+    row = conn.execute(
+        'SELECT table_name, column_name, counted_values, max_value,'
+        ' description FROM table_quotas WHERE id=?',
+        (quota_id,),
+    ).fetchone()
+    if row is None:
+        return None
+    table, column, counted, maximum, description = row
+    compte = [v.strip() for v in str(counted).split(',') if v.strip()]
+    marques = ', '.join('?' for _ in compte) or "''"
+    used = conn.execute(
+        f'SELECT COUNT(*) FROM "{safe_name(str(table))}"'
+        f' WHERE "{safe_name(str(column))}" IN ({marques})',
+        compte,
+    ).fetchone()
+    return int(used[0]), int(maximum), str(description or quota_id)

@@ -32,6 +32,7 @@ from serge.interpreter.queue import (  # noqa: E402
 from serge.interpreter.tasks import enqueue_task, start_task  # noqa: E402
 from serge.llm.client import ChatResult, ToolCall  # noqa: E402
 from serge.pipeline_seed import seed_pipeline  # noqa: E402
+from tests.taches_fixtures import sans_pipeline_de_depart  # noqa: E402
 
 NOW = '2026-09-28T10:00:00+00:00'
 
@@ -42,6 +43,24 @@ def _v(source: str, value: str = '') -> dict[str, str]:
 
 PIPELINE: dict[str, Any] = {
     'schema_version': 1,
+    'tools': [
+        {
+            'id': 'known_business_candidates',
+            'title': 'Lire les business connus',
+            'capability': 'db_read',
+            'read': {
+                'tables': ['ventures'],
+                'columns': [
+                    {'table': 'ventures', 'name': 'id'},
+                    {'table': 'ventures', 'name': 'name', 'as': 'title'},
+                    {'table': 'ventures', 'name': 'lifecycle', 'as': 'status'},
+                ],
+                'params': [
+                    {'name': 'limit', 'type': 'integer', 'default': '200'}
+                ],
+            },
+        }
+    ],
     'writable_tables': [
         {
             'table': 'ventures',
@@ -236,6 +255,7 @@ class InterpreterTests(unittest.TestCase):
         self.conn = sqlite3.connect(':memory:')
         self.addCleanup(self.conn.close)
         init_schema(self.conn)
+        sans_pipeline_de_depart(self.conn)
         self.conn.execute(
             'INSERT INTO ventures(id, name, description, lifecycle,'
             " created_at, updated_at) VALUES('v_old', 'Relance des impayés',"

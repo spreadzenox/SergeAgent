@@ -57,7 +57,7 @@ PIPELINE = {
             'prompt': 'Propose.',
             'tools': [
                 {
-                    'tool': 'known_business_candidates',
+                    'tool': 'business_candidats',
                     'mode': 'given',
                     'label': 'Business connus',
                     'max_rows': 20,
@@ -229,9 +229,7 @@ class ProjObjetTests(unittest.TestCase):
             project_objet(self.conn, 'outil', 'memory_search')['id'],
             'memory_search',
         )
-        lecture = project_objet(
-            self.conn, 'outil', 'known_business_candidates'
-        )
+        lecture = project_objet(self.conn, 'outil', 'business_candidats')
         assert lecture is not None
         champs = {
             c['k']: c['v']
