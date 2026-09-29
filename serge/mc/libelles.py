@@ -197,3 +197,11 @@ def phrase_recit(
         f'{nom} — {cycle}. {u1} personnes touchées, {u2} {repondu},'
         f' {u3} {oui}. {euros} € encaissés.'
     )
+
+
+# Les niveaux de modèle d'une invocation.
+NIVEAUX = {
+    'fast': 'Rapide — un réflexe (classer, extraire). Le moins cher.',
+    'mid': 'Moyen — assez malin pour rédiger ou comparer.',
+    'smart': 'Intelligent — plans, arbitrages. Le plus cher.',
+}

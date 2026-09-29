@@ -79,11 +79,19 @@ export const CHAMPS = {
   ],
   'budget.llm_eur_per_1k_tokens': [
     'Prix estimé de 1 000 jetons',
-    'Sert à convertir les jetons en euros dans les jauges. Ne change pas la facture réelle.',
+    'Seulement quand OpenRouter ne donne pas le coût réel d’un appel : on l’estime alors à partir des jetons.',
     'eur',
     0,
     0.05,
     0.001,
+  ],
+  'budget.eur_per_usd': [
+    'Un dollar en euros',
+    'OpenRouter facture en dollars : ce taux convertit le coût réel des appels pour le plafond du jour.',
+    'eur',
+    0.5,
+    1.5,
+    0.01,
   ],
   'budget.test_provision_monthly_eur': [
     'Réserve pour les micro-essais',

@@ -35,6 +35,8 @@ class ChatResult:
     model: str
     latency_ms: int
     tool_calls: tuple[ToolCall, ...] = ()
+    # Ce qu'OpenRouter a facturé, en dollars ; None s'il ne le dit pas.
+    cost_usd: float | None = None
 
 
 def _usage(payload: dict[str, Any]) -> tuple[int, int]:
@@ -190,4 +192,18 @@ def chat(
         model=used_model,
         latency_ms=latency_ms,
         tool_calls=calls,
+        cost_usd=_cost(payload),
     )
+
+
+def _cost(payload: Mapping[str, Any]) -> float | None:
+    """Le coût d'un appel, tel qu'OpenRouter le donne (``usage.cost``).
+
+    OpenRouter le rend toujours, en crédits (des dollars). ``None`` si la
+    réponse n'en contient pas : la dépense sera estimée par les jetons.
+    """
+    usage = payload.get('usage') or {}
+    cost = usage.get('cost') if isinstance(usage, Mapping) else None
+    if isinstance(cost, bool) or not isinstance(cost, int | float):
+        return None
+    return float(cost)

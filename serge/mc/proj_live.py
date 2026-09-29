@@ -9,7 +9,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from serge.funnels.contacts import address_value
-from serge.llm.runtime import daily_tokens
+from serge.llm.runtime import llm_spend
 from serge.mc.proj_outils import apres_iso
 from serge.tickets.lifecycle import OPENISH
 
@@ -192,12 +192,10 @@ def project_jauges(
         Dict llm / email / voix / linkedin (ratio None si plafond 0).
     """
     day = now[:10]
-    spent_in, spent_out = daily_tokens(conn, day)
-    tokens = spent_in + spent_out
+    depense = llm_spend(conn, policy, day)
     budget = policy.get('budget') or {}
     cap = float(budget.get('llm_daily_eur', 0) or 0)
-    rate = float(budget.get('llm_eur_per_1k_tokens', 0) or 0)
-    eur = tokens / 1000 * rate
+    eur = depense.eur
     quotas = policy.get('quotas') or {}
     email = _barre(
         _touches_jour(conn, 'email', day),
@@ -205,8 +203,11 @@ def project_jauges(
     )
     return {
         'llm': {
-            'tokens_jour': tokens,
-            'eur_estimes': round(eur, 4),
+            'tokens_jour': depense.tokens,
+            # Coût réel donné par OpenRouter, plus l'estimation des appels
+            # dont le coût n'est pas connu (``eur_estimes``).
+            'eur': round(eur, 4),
+            'eur_estimes': round(depense.estimated_eur, 4),
             'plafond_eur': cap,
             'ratio': (eur / cap) if cap > 0 else None,
             'libelle': 'Invocations LLM (plafond € du jour)',

@@ -16,7 +16,9 @@ from collections.abc import Mapping
 from typing import Any
 
 from serge.interpreter.tasks import next_task
+from serge.llm.runtime import budget_spent
 from serge.mc.proj_objet_base import _champs, _liens, _row
+from serge.policy_snapshots import policy_en_vigueur
 
 ETATS_TACHE = {
     'ready': 'Prête',
@@ -28,13 +30,14 @@ ETATS_TACHE = {
 
 # id, titre, business, depuis, file, état, priorité, pas avant, créée,
 # essais, nom du business, invocation allumée, invocation supprimée le,
-# étape allumée
+# étape allumée, sorte d'invocation
 _SELECT = (
     "SELECT t.id, COALESCE(NULLIF(i.title, ''), t.invocation_id),"
     " COALESCE(p.value, ''), t.started_at, t.queue_id, t.status,"
     ' t.priority, t.not_before, t.created_at, t.attempts,'
     " COALESCE(v.name, ''), COALESCE(i.enabled, 0),"
-    " COALESCE(i.deleted_at, 'absente'), COALESCE(s.enabled, 1)"
+    " COALESCE(i.deleted_at, 'absente'), COALESCE(s.enabled, 1),"
+    " COALESCE(i.type, '')"
     ' FROM tasks t LEFT JOIN invocations i ON i.id=t.invocation_id'
     ' LEFT JOIN pipeline_steps s ON s.id=i.step_id'
     " LEFT JOIN task_params p ON p.task_id=t.id AND p.name='venture_id'"
@@ -42,12 +45,15 @@ _SELECT = (
 )
 
 
-def _bloquee(row: Any) -> str:
-    """Pourquoi une tâche prête ne partira pas, ou ``''``.
+PLAFOND = 'En attente : plafond LLM du jour atteint'
 
-    La file saute les tâches d'une invocation supprimée ou éteinte, ou
-    d'une étape coupée : elles ne doivent pas avoir l'air d'attendre leur
-    tour.
+
+def _bloquee(row: Any, plafond: bool = False) -> str:
+    """Pourquoi une tâche prête ne partira pas, ou pas maintenant, ou ``''``.
+
+    La file saute les tâches d'une invocation supprimée ou éteinte, d'une
+    étape coupée, et les tâches LLM quand le plafond de dépense du jour est
+    atteint : elles ne doivent pas avoir l'air d'attendre leur tour.
     """
     if row[5] != 'ready':
         return ''
@@ -57,6 +63,8 @@ def _bloquee(row: Any) -> str:
         return 'En attente : invocation éteinte'
     if not row[13]:
         return 'En attente : étape coupée'
+    if plafond and row[14] == 'llm':
+        return PLAFOND
     return ''
 
 
@@ -76,19 +84,54 @@ def _files(conn: sqlite3.Connection) -> list[str]:
     ]
 
 
-def prochaines(conn: sqlite3.Connection, now: str) -> dict[str, str]:
-    """La prochaine tâche de chaque file : ``{file: id de tâche}``."""
+def plafond_atteint(
+    conn: sqlite3.Connection, policy: Mapping[str, Any], now: str
+) -> bool:
+    """Le plafond de dépense LLM du jour est atteint : la file saute alors
+    les tâches LLM jusqu'au lendemain (comme ``serge/interpreter/queue.py``).
+    """
+    return budget_spent(conn, policy, now[:10])
+
+
+def _attente(conn: sqlite3.Connection, plafond: bool) -> str:
+    """Pourquoi des tâches prêtes attendent, en une phrase, ou ``''``."""
+    if not plafond:
+        return ''
+    row = conn.execute(
+        'SELECT COUNT(*) FROM tasks t JOIN invocations i'
+        " ON i.id=t.invocation_id WHERE t.status='ready'"
+        " AND i.type='llm' AND i.deleted_at=''"
+    ).fetchone()
+    n = int(row[0]) if row else 0
+    if not n:
+        return ''
+    return (
+        f'Plafond LLM du jour atteint : {n} tâche(s) LLM attendent demain,'
+        ' ou un plafond plus haut (page Policy).'
+    )
+
+
+def prochaines(
+    conn: sqlite3.Connection, now: str, *, llm: bool = True
+) -> dict[str, str]:
+    """La prochaine tâche de chaque file : ``{file: id de tâche}``.
+
+    Avec ``llm`` faux (plafond du jour atteint), les tâches LLM sont
+    sautées, comme le fait la file.
+    """
     out: dict[str, str] = {}
     for queue in _files(conn):
-        found = next_task(conn, queue, now)
+        found = next_task(conn, queue, now, llm=llm)
         if found:
             out[queue] = found
     return out
 
 
-def _prochaine(conn: sqlite3.Connection, now: str) -> dict[str, Any] | None:
+def _prochaine(
+    conn: sqlite3.Connection, now: str, *, llm: bool = True
+) -> dict[str, Any] | None:
     """La plus prioritaire des prochaines tâches, toutes files confondues."""
-    ids = list(prochaines(conn, now).values())
+    ids = list(prochaines(conn, now, llm=llm).values())
     if not ids:
         return None
     row = conn.execute(
@@ -133,13 +176,15 @@ def project_hero(
     """Ce qui tourne, combien attendent, et la prochaine tâche.
 
     Returns:
-        ``{running, ready, next}``.
+        ``{running, ready, next, attente}`` ; ``attente`` dit pourquoi des
+        tâches prêtes ne partent pas (le plafond du jour), ou ``''``.
     """
-    _ = policy
+    plafond = plafond_atteint(conn, policy, now)
     return {
         'running': tache_en_cours(conn),
         'ready': _compte(conn, 'ready'),
-        'next': _prochaine(conn, now),
+        'next': _prochaine(conn, now, llm=not plafond),
+        'attente': _attente(conn, plafond),
     }
 
 
@@ -149,13 +194,14 @@ def project_file(
     """Les tâches en cours (10 au plus), le nombre de prêtes, la prochaine.
 
     Returns:
-        ``{running, ready_count, next}``.
+        ``{running, ready_count, next, attente}``.
     """
-    _ = policy
+    plafond = plafond_atteint(conn, policy, now)
     return {
         'running': _en_cours(conn, 10),
         'ready_count': _compte(conn, 'ready'),
-        'next': _prochaine(conn, now),
+        'next': _prochaine(conn, now, llm=not plafond),
+        'attente': _attente(conn, plafond),
     }
 
 
@@ -165,32 +211,35 @@ def project_scheduler(
     """Page Système : la prochaine tâche et les compteurs des files.
 
     Returns:
-        ``{next, ready, running, bloques}`` ; ``bloques`` compte les tâches
-        prêtes dont la date « pas avant » n'est pas encore passée.
+        ``{next, ready, running, bloques, attente}`` ; ``bloques`` compte
+        les tâches prêtes dont la date « pas avant » n'est pas encore
+        passée.
     """
-    _ = policy
+    plafond = plafond_atteint(conn, policy, now)
     row = conn.execute(
         "SELECT COUNT(*) FROM tasks WHERE status='ready' AND not_before>?",
         (now,),
     ).fetchone()
     return {
-        'next': _prochaine(conn, now),
+        'next': _prochaine(conn, now, llm=not plafond),
         'ready': _compte(conn, 'ready'),
         'running': _compte(conn, 'running'),
         'bloques': int(row[0]) if row else 0,
+        'attente': _attente(conn, plafond),
     }
 
 
 def project_file_detail(conn: sqlite3.Connection, now: str) -> dict[str, Any]:
     """Les deux files en entier : en cours, puis prêtes par priorité."""
-    suivantes = set(prochaines(conn, now).values())
+    plafond = plafond_atteint(conn, policy_en_vigueur(conn), now)
+    suivantes = set(prochaines(conn, now, llm=not plafond).values())
     rows = conn.execute(
         _SELECT + " WHERE t.status IN ('ready', 'running')"
         " ORDER BY t.queue_id, CASE t.status WHEN 'running' THEN 0 ELSE 1"
         ' END, t.priority DESC, t.created_at'
     ).fetchall()
     # Les tâches qui ne partiront pas viennent en dernier, sans rang.
-    rows = sorted(rows, key=lambda r: bool(_bloquee(r)))
+    rows = sorted(rows, key=lambda r: bool(_bloquee(r, plafond)))
     lignes = []
     enfants = []
     rang = 0
@@ -198,7 +247,7 @@ def project_file_detail(conn: sqlite3.Connection, now: str) -> dict[str, Any]:
         ident, titre = str(row[0]), str(row[1])
         etat = ETATS_TACHE.get(str(row[5]), str(row[5]))
         pause = str(row[7] or '')
-        bloquee = _bloquee(row)
+        bloquee = _bloquee(row, plafond)
         if not bloquee:
             rang += 1
         if bloquee:

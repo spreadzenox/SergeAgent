@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import sqlite3
 from collections.abc import Mapping
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -67,6 +68,56 @@ def read_api_key(root: Path | None = None) -> str:
     return read_secret_file(base / 'secrets/openrouter-api-key')
 
 
+# Les appels qui ont eu une réponse, donc des jetons (tours d'outils
+# compris) ; un appel raté (« erreur ») n'a rien coûté.
+_COMPTES = "('ok', 'format_invalide', 'outil')"
+
+
+@dataclass(frozen=True)
+class LlmSpend:
+    """Ce que les appels au modèle ont coûté, en euros.
+
+    ``eur`` additionne le coût réel donné par OpenRouter (converti en
+    euros) et, pour les appels sans coût connu, une estimation à partir
+    des jetons ; ``estimated_eur`` est la part estimée.
+    """
+
+    eur: float
+    tokens: int
+    estimated_eur: float
+
+
+def llm_spend(
+    conn: sqlite3.Connection,
+    policy: Mapping[str, Any],
+    day: str | None = None,
+) -> LlmSpend:
+    """La dépense des appels au modèle, un jour ou depuis le début.
+
+    Args:
+        conn: Connexion à la base (lecture).
+        policy: Policy en vigueur (``budget.eur_per_usd`` pour convertir le
+            coût réel, ``budget.llm_eur_per_1k_tokens`` pour estimer).
+        day: Jour UTC AAAA-MM-JJ ; ``''`` pour tout l'historique ;
+            ``None`` pour aujourd'hui.
+    """
+    prefix = datetime.now(UTC).strftime('%Y-%m-%d') if day is None else day
+    budget = policy.get('budget') or {}
+    rate = float(budget.get('llm_eur_per_1k_tokens', 0) or 0)
+    eur_per_usd = float(budget.get('eur_per_usd', 0) or 0)
+    row = conn.execute(
+        'SELECT COALESCE(SUM(cost_usd), 0), COALESCE(SUM(CASE WHEN cost_usd'
+        ' IS NULL THEN tokens_in + tokens_out ELSE 0 END), 0),'
+        ' COALESCE(SUM(tokens_in + tokens_out), 0) FROM llm_usage'
+        f' WHERE verdict IN {_COMPTES} AND created_at LIKE ?',
+        (f'{prefix}%',),
+    ).fetchone()
+    estimated = int(row[1]) / 1000 * rate
+    return LlmSpend(
+        float(row[0]) * eur_per_usd + estimated, int(row[2]), estimated
+    )
+
+
 def daily_tokens(
     conn: sqlite3.Connection, day: str | None = None
 ) -> tuple[int, int]:
@@ -83,8 +134,7 @@ def daily_tokens(
     prefix = day or datetime.now(UTC).strftime('%Y-%m-%d')
     row = conn.execute(
         'SELECT COALESCE(SUM(tokens_in),0), COALESCE(SUM(tokens_out),0)'
-        " FROM llm_usage WHERE verdict IN ('ok', 'format_invalide', 'outil')"
-        ' AND created_at LIKE ?',
+        f' FROM llm_usage WHERE verdict IN {_COMPTES} AND created_at LIKE ?',
         (f'{prefix}%',),
     ).fetchone()
     return int(row[0]), int(row[1])
@@ -97,17 +147,15 @@ def budget_spent(
 ) -> bool:
     """Vrai si le plafond de dépense LLM du jour est atteint.
 
-    Exemple : avec un plafond de 5 € et 0,004 € pour 1 000 tokens, le
-    plafond est atteint à 1 250 000 tokens dans la journée.
+    La dépense est le coût réel donné par OpenRouter, converti en euros ;
+    un appel sans coût connu est estimé à partir de ses jetons.
 
     Args:
         conn: Connexion à la base (lecture).
-        policy: Policy en vigueur (``budget.llm_daily_eur`` et
-            ``budget.llm_eur_per_1k_tokens``).
+        policy: Policy en vigueur (``budget.llm_daily_eur``, et de quoi
+            convertir ou estimer : voir ``llm_spend``).
         day: Jour UTC AAAA-MM-JJ (défaut : aujourd'hui).
     """
     budget = policy.get('budget') or {}
     cap = float(budget.get('llm_daily_eur', 0) or 0)
-    rate = float(budget.get('llm_eur_per_1k_tokens', 0) or 0)
-    spent_in, spent_out = daily_tokens(conn, day)
-    return rate > 0 and (spent_in + spent_out) / 1000 * rate >= cap > 0
+    return cap > 0 and llm_spend(conn, policy, day).eur >= cap

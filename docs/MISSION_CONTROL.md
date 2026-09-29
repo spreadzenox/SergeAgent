@@ -32,7 +32,7 @@ navigateur au fil de l'eau.
 
 | Page | Adresse | Ce qu'on y voit | Ce qu'on y fait |
 |---|---|---|---|
-| **En direct** | `#/live` | La chaîne des 8 étapes, leurs invocations dans l'ordre des liens, et le nombre de résultats passés d'une étape à l'autre ; les tickets urgents, les deux files de tâches, l'activité récente, les budgets du jour. | Démarrer ou arrêter Serge ; couper une étape, une file ou une invocation. |
+| **En direct** | `#/live` | La chaîne des 8 étapes, leurs invocations dans l'ordre des liens, et le nombre de résultats passés d'une étape à l'autre ; les tickets urgents, les deux files de tâches (avec la raison quand des tâches attendent, par exemple le plafond LLM du jour), l'activité récente, les budgets du jour (la dépense LLM au coût réel facturé par OpenRouter, avec la part estimée s'il y en a une). | Démarrer ou arrêter Serge ; couper une étape, une file ou une invocation. |
 | **Écoute** | `#/ecoute` | L'étape 1 : ses boutons tels qu'ils sont déclarés en base (chacun avec ses champs et ses conditions, par exemple « Places de test occupées : 2 sur 3 »), le dernier cycle (pages par étiquette, idées écrites, note du choix), les business candidats et choisis avec la raison du choix, les flux RSS suivis (pages ramenées, pages utiles), les invocations de l'étape. | Remplir les champs d'un bouton et cliquer : il lance l'invocation de son déclencheur (grisé si un quota est plein ; une confirmation est demandée pour « Abandonner le cycle » et « Effacer les idées »). Couper ou rallumer un flux. |
 | **Pipeline** | `#/pipeline` | Tout le pipeline tel qu'il est en base : les liens (avec ce qui attend un clic), les déclencheurs, les outils, les capacités du code, ce que les invocations voient de chaque table, le modèle derrière chaque niveau et le texte « Qui est Serge ». | Choisir le modèle de chaque niveau (vide : celui de l'installation), réécrire le texte « Qui est Serge » ; ouvrir la fiche d'un lien, d'un outil, d'une invocation ou d'une table. |
 | **Système** | `#/system` | Les îlots (sous-systèmes), les files de tâches, les campagnes, la population de prospects, l'e-mail. | Lecture. Accessible par `Ctrl+K`. |
@@ -61,7 +61,7 @@ d'office (ce qu'elle doit traiter), ce qu'elle voit pour comparer (la
 version courte des tables, avec un bouton pour retirer, remettre ou
 ajouter une table), ses leçons, ce qu'elle peut appeler, le format de sa
 réponse, où sa réponse est écrite, ce qui la lance, ce qu'elle lance
-ensuite, et ses derniers passages. La fiche d'une tâche montre ses
+ensuite, et ses derniers appels au modèle (tours d'outils, réponses, appels ratés, avec les jetons et le coût réel). La fiche d'une tâche montre ses
 paramètres et ce qu'elle a reçu (par exemple « Pour comparer : Les
 business — 20 lignes, 230 laissées de côté ») ; si elle a échoué, un
 bouton « Relancer la tâche » la remet dans sa file. La fiche d'un lien

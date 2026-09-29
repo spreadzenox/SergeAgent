@@ -14,8 +14,9 @@ from collections.abc import Mapping
 from typing import Any
 
 from serge.interpreter.run import resolve_model
+from serge.mc.libelles import NIVEAUX
 from serge.mc.proj_lien import MODES
-from serge.mc.proj_llm import EVENEMENTS, NIVEAUX
+from serge.mc.proj_llm import EVENEMENTS
 
 
 def _titres(conn: sqlite3.Connection) -> dict[str, str]:

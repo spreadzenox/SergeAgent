@@ -10,7 +10,13 @@ l'initialisation, la base est la seule source de vérité :
    jamais recréé ;
 3. un objet est ajouté en entier (une invocation avec ses outils, ses
    champs de réponse et ses règles d'écriture ; un outil de lecture avec
-   son catalogue de tables, colonnes et filtres), ou pas du tout.
+   son catalogue de tables, colonnes et filtres), ou pas du tout ; seuls
+   s'ajoutent à un objet existant ses réglages nouveaux, ses droits
+   d'écriture nouveaux et les colonnes nouvelles de ses vues ;
+4. une valeur d'un objet existant ne change que par la section
+   ``changes`` (``serge/pipeline_changes.py``) : une seule fois, et
+   seulement si elle n'a pas été changée dans Mission Control ;
+5. ce qui est retiré du fichier est listé dans ``deleted``.
 
 Exemple : Julien change dans Mission Control le prompt d'une invocation ;
 un développeur change ensuite le prompt dans le fichier ; au démarrage,
@@ -319,6 +325,8 @@ def seed_pipeline(conn: sqlite3.Connection, data: Mapping[str, Any]) -> None:
         PipelineSeedError: Fichier mal formé.
     """
     from serge.interpreter.seen import seed_table_views
+    from serge.interpreter.settings import seed_settings
+    from serge.pipeline_changes import apply_changes
 
     if data.get('schema_version') != SCHEMA_VERSION:
         raise PipelineSeedError('schema_version doit valoir 1')
@@ -329,8 +337,13 @@ def seed_pipeline(conn: sqlite3.Connection, data: Mapping[str, Any]) -> None:
     for inv in list_of(data, 'invocations'):
         if not exists(conn, 'invocations', 'id', str(inv['id'])):
             _seed_invocation(conn, inv)
+        else:
+            # Un réglage nouveau s'ajoute à une invocation existante ; un
+            # réglage déjà en base n'est jamais modifié.
+            seed_settings(conn, str(inv['id']), inv.get('settings'))
     seed_links(conn, data)
     seed_triggers(conn, data)
+    apply_changes(conn, data.get('changes'))
     seed_deleted(conn, data)
 
 

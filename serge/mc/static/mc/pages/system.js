@@ -32,7 +32,10 @@ function detailsScheduler(store) {
   const file = env.payload;
   if (!file.next) {
     const vide = file.ready === 0 && file.running === 0;
-    return vide ? 'File vide.' : 'File coincée (voir En direct).';
+    if (vide) {
+      return 'File vide.';
+    }
+    return file.attente || 'File coincée (voir En direct).';
   }
   return (
     `Prochain : ${file.next.kind}`
@@ -47,7 +50,7 @@ function renderScheduler(main, payload, sig) {
     next.textContent =
       payload.ready === 0
         ? 'File vide, rien en attente.'
-        : 'File coincée : revoir les ventures.';
+        : payload.attente || 'File coincée : revoir les ventures.';
   } else {
     const venture = payload.next.venture_id || 'sans venture';
     next.textContent = `Prochain : ${payload.next.kind} (${venture}).`;

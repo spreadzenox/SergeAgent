@@ -17,9 +17,9 @@ recrée jamais ensuite.
 1. **Les migrations** (`serge/db/migrate.py`). Chaque changement de
    structure est une fonction `apply_v0NN` (fichiers `serge/db/v0NN.py`).
    Serge applique celles qui manquent, dans l'ordre. Version actuelle :
-   **29**.
+   **30**.
    - Une base neuve saute directement à la version 7 (le socle,
-     `serge/db/schema.py`), puis applique 8, 9, … 29.
+     `serge/db/schema.py`), puis applique 8, 9, … 30.
    - Une base **plus récente** que le code refuse de démarrer
      (`MigrateError`). Revenir à un ancien commit ne défait pas une
      migration.
@@ -45,8 +45,20 @@ Un développeur modifie ensuite le prompt de départ dans
 `config/pipeline.yaml`. Au déploiement, l'instance de Julien garde son
 prompt ; une nouvelle instance reçoit celui du fichier.
 
-Rien n'est effacé au démarrage : une invocation supprimée dans Mission
-Control (`deleted_at` rempli) ne revient pas. Seule une capacité retirée du
+Trois exceptions, toutes décrites dans `config/pipeline.yaml` :
+- ce qui est **nouveau dans un objet existant** s'ajoute : un réglage
+  nouveau d'une invocation, un droit d'écriture ou une colonne nouvelle
+  d'une vue de table ; rien de ce qui existe n'est modifié ;
+- une **valeur d'un objet existant** ne change que par la section
+  `changes` : une seule fois par instance, et seulement si la valeur en
+  base est encore celle d'origine (une valeur changée dans Mission Control
+  est gardée). Le résultat est noté dans `pipeline_changes`. Détail :
+  [`LOT7_CONCEPTION.md`](LOT7_CONCEPTION.md), partie 5 ;
+- ce qui est **retiré** du fichier est listé dans la section `deleted` et
+  marqué supprimé en base.
+
+Rien d'autre n'est effacé au démarrage : une invocation supprimée dans
+Mission Control (`deleted_at` rempli) ne revient pas. Seule une capacité retirée du
 code est marquée absente (`capabilities.available` = 0), et la fiche des
 outils qui s'en servaient le signale.
 
@@ -87,7 +99,7 @@ catalogue et la mécanique.
 | `touches` | Chaque envoi à un prospect. |
 | `inbound_events` | Chaque réaction reçue, traduite en signal. |
 | `ticket_events` | L'historique de chaque ticket. |
-| `llm_usage` | Chaque appel au LLM : invocation, modèle, tokens, durée, résultat. |
+| `llm_usage` | Chaque appel au modèle, noté aussitôt : invocation, modèle, jetons, durée, résultat (`ok`, `format_invalide`, `outil` pour un tour d'outils, `erreur` pour un appel raté) et coût réel facturé par OpenRouter (`cost_usd`, en dollars, vide s'il n'est pas donné). Le plafond du jour compte ce coût réel. |
 | `episode_archives` | Les archives d'événements anciens. |
 
 ### La connaissance
@@ -126,6 +138,7 @@ est déjà en base. Chaque table est expliquée dans
 | `table_quotas` | Une protection de plus : « au plus N lignes dont telle colonne vaut l'une de ces valeurs » (exemple : au plus 3 business choisis pour un POC). Modifiable sur la page Policy. |
 | `links`, `link_params`, `link_passages`, `link_passage_params` | Les liens entre invocations, ce qui est déjà passé, et ce qui attend un clic « Passer à la suite » avec ses paramètres (lien réglé à la main). |
 | `triggers`, `trigger_params`, `trigger_conditions` | Ce qui lance une invocation : une ligne écrite, une heure (une tâche par ligne d'une table, si le déclencheur en vise une), un bouton (avec sa question de confirmation). `trigger_conditions` : les quotas qui doivent avoir de la place. |
+| `pipeline_changes` | Les modifications d'objets déjà en base passées par la section `changes` de `pipeline.yaml`, une ligne par modification, avec son résultat. |
 | `queues`, `tasks`, `task_params`, `task_inputs`, `task_seen_tables` | Les deux files (conversations, travaux), leurs tâches, et ce que chaque tâche a reçu : ses lectures d'office, les tables à comparer et ses leçons (lignes données, lignes laissées de côté). |
 | `llm_models` | Le modèle derrière chaque niveau (rapide, moyen, intelligent). |
 | `serge_texts` | Les textes de Serge, dont sa présentation. |
