@@ -70,7 +70,8 @@ def read_api_key(root: Path | None = None) -> str:
 def daily_tokens(
     conn: sqlite3.Connection, day: str | None = None
 ) -> tuple[int, int]:
-    """Tokens consommés dans la journée, par tous les appels réussis.
+    """Tokens consommés dans la journée, par tous les appels qui ont eu
+    une réponse (tours d'outils compris).
 
     Args:
         conn: Connexion à la base (lecture).
@@ -82,7 +83,7 @@ def daily_tokens(
     prefix = day or datetime.now(UTC).strftime('%Y-%m-%d')
     row = conn.execute(
         'SELECT COALESCE(SUM(tokens_in),0), COALESCE(SUM(tokens_out),0)'
-        " FROM llm_usage WHERE verdict IN ('ok', 'format_invalide')"
+        " FROM llm_usage WHERE verdict IN ('ok', 'format_invalide', 'outil')"
         ' AND created_at LIKE ?',
         (f'{prefix}%',),
     ).fetchone()

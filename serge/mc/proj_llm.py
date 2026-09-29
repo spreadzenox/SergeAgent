@@ -190,9 +190,12 @@ def _passages(conn: sqlite3.Connection, ident: str) -> list[dict[str, Any]]:
                 'type': 'llm_usage',
                 'cellules': [
                     when or '—',
-                    {'ok': 'terminé', 'format_invalide': 'format raté'}.get(
-                        str(verd), verd or '—'
-                    ),
+                    {
+                        'ok': 'terminé',
+                        'format_invalide': 'format raté',
+                        'outil': 'tour d’outils',
+                        'erreur': 'appel raté',
+                    }.get(str(verd), verd or '—'),
                     str(tier or '—'),
                     str(int(tin or 0) + int(tout or 0)),
                     f'{int(lat or 0)} ms',

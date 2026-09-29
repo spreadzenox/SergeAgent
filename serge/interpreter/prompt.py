@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
@@ -196,6 +197,51 @@ def callable_tools(
 
 
 Caller = Callable[..., ChatResult]
+# Noter un appel au modèle : sa réponse (``None`` s'il a échoué) et son
+# résultat (``outil``, ``erreur``…).
+Record = Callable[[ChatResult | None, str], None]
+
+# Attente maximale d'une réponse du modèle, en secondes : une réponse
+# longue (30 pages retenues, par exemple) peut dépasser une minute.
+TIMEOUT_S = 180.0
+# Le message ajouté quand les tours d'outils sont épuisés.
+FIN_DES_OUTILS = (
+    'Tu as utilisé tous tes appels d’outils. Rends maintenant ta réponse'
+    ' finale, au format demandé, avec ce que tu as déjà trouvé.'
+)
+# Pauses avant de réessayer un appel raté pour une raison passagère.
+PAUSES_S = (3.0, 10.0)
+_PASSAGERES = ('NETWORK', 'EMPTY', 'API: OpenRouter HTTP 429')
+
+
+def _passagere(exc: Exception) -> bool:
+    """Une erreur qui peut disparaître en réessayant (délai, réponse vide,
+    trop de requêtes, panne du fournisseur)."""
+    text = str(exc)
+    return text.startswith(_PASSAGERES) or text.startswith(
+        'API: OpenRouter HTTP 5'
+    )
+
+
+def _call_model(
+    caller: Caller, record: Record | None, *args: Any, **kwargs: Any
+) -> ChatResult:
+    """Un appel au modèle, réessayé deux fois si l'erreur est passagère.
+
+    Chaque échec est noté (sans jetons, puisqu'il n'y a pas de réponse).
+    """
+    from serge.llm.client import LlmError
+
+    for pause in (*PAUSES_S, None):
+        try:
+            return caller(*args, **kwargs)
+        except LlmError as exc:
+            if record is not None:
+                record(None, 'erreur')
+            if pause is None or not _passagere(exc):
+                raise
+            time.sleep(pause)
+    raise AssertionError('inatteignable')
 
 
 def converse(
@@ -207,40 +253,43 @@ def converse(
     caller: Caller,
     api_key: str,
     model: str,
+    record: Record | None = None,
 ) -> tuple[ChatResult, list[dict[str, Any]]]:
     """Laisse le modèle appeler ses outils, puis rend sa réponse finale.
 
     Après ``max_tool_turns`` tours d'outils, le modèle doit répondre sans
     outil. Un outil réglé avec ``max_calls`` (un nombre ou un réglage)
     répond « limite atteinte » au-delà : exemple, au plus 10 recherches.
+    Le modèle peut appeler plusieurs outils dans le même tour. Chaque tour
+    d'outils est noté (``record``) ; la réponse finale est rendue, à noter
+    par l'appelant une fois son format vérifié.
     """
     schemas, links = callable_tools(conn, inv, task)
     limits = _call_limits(conn, inv, links)
     calls: dict[str, int] = {}
     history = [dict(m) for m in messages]
-    tokens_in = tokens_out = latency = 0
     turns = 0
     while True:
         force_text = not schemas or turns >= inv.max_tool_turns
-        result = caller(
+        if force_text and schemas:
+            # Certains modèles rendent une réponse vide quand on leur
+            # interdit les outils sans rien dire : on le leur dit.
+            history.append({'role': 'user', 'content': FIN_DES_OUTILS})
+        result = _call_model(
+            caller,
+            record,
             api_key,
             model,
             history,
             tools=schemas or None,
             tool_choice='none' if force_text and schemas else None,
+            parallel_tool_calls=True,
+            timeout=TIMEOUT_S,
         )
-        tokens_in += result.tokens_in
-        tokens_out += result.tokens_out
-        latency += result.latency_ms
         if force_text or not result.tool_calls:
-            final = ChatResult(
-                result.text,
-                tokens_in,
-                tokens_out,
-                result.model or model,
-                latency,
-            )
-            return final, history
+            return result, history
+        if record is not None:
+            record(result, 'outil')
         history.append(
             {
                 'role': 'assistant',

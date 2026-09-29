@@ -114,6 +114,18 @@ Chaque ajout est général : il sert à toutes les invocations.
   écrit en texte pour un paramètre numérique (un réglage vaut « 60 »).
 - **Un prompt peut citer un quota** : `{quota.places_de_test}` donne son
   maximum, réglé une seule fois, sur le quota.
+- **Les appels au modèle** (après le premier essai en production, où une
+  réponse vide a fait échouer « Explorer le web » au bout de 22 minutes) :
+  une erreur passagère (réponse vide, délai dépassé, trop de requêtes,
+  panne du fournisseur) est réessayée deux fois, après 3 puis 10
+  secondes ; le modèle a 3 minutes pour répondre ; il peut appeler
+  plusieurs outils dans le même tour ; quand ses tours d'outils sont
+  épuisés, un message lui demande sa réponse finale ; une réponse vide
+  garde ce qu'OpenRouter en dit (raison de la fin, modèle, erreur du
+  fournisseur). Chaque appel est noté dans `llm_usage`, tours d'outils
+  (`outil`) et échecs (`erreur`) compris, même si la tâche échoue
+  ensuite : son coût est visible sur la fiche de l'invocation et compte
+  dans le plafond du jour.
 
 ---
 

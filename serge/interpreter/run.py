@@ -35,6 +35,7 @@ from serge.interpreter.prompt import (
 from serge.interpreter.tasks import finish_task, start_task, task_params
 from serge.interpreter.tools import fixed_params, run_capability
 from serge.interpreter.writer import write_answer
+from serge.llm.client import ChatResult
 
 RETRIES = 2
 TIER_TO_OLD = {'fast': 'T1', 'mid': 'T2', 'smart': 'T3'}
@@ -148,7 +149,25 @@ def _ask(
     api_key: str,
     model: str,
 ) -> Any:
-    """Un appel au modèle, avec ses outils ; redemandé si le format est faux."""
+    """Un appel au modèle, avec ses outils ; redemandé si le format est faux.
+
+    Chaque appel est noté aussitôt (tours d'outils, échecs compris) et
+    enregistré : si la tâche échoue ensuite, ce qu'elle a coûté reste
+    visible, et compte dans le plafond du jour.
+    """
+
+    def record(result: ChatResult | None, verdict: str) -> None:
+        _record_usage(
+            conn,
+            inv,
+            result.model if result else model,
+            result.tokens_in if result else 0,
+            result.tokens_out if result else 0,
+            result.latency_ms if result else 0,
+            verdict,
+        )
+        conn.commit()
+
     last_errors: list[str] = []
     for attempt in range(RETRIES + 1):
         result, history = converse(
@@ -159,17 +178,10 @@ def _ask(
             caller=caller,
             api_key=api_key,
             model=model,
+            record=record,
         )
         if not fields:
-            _record_usage(
-                conn,
-                inv,
-                result.model,
-                result.tokens_in,
-                result.tokens_out,
-                result.latency_ms,
-                'ok',
-            )
+            record(result, 'ok')
             return {'text': result.text}
         try:
             answer = parse_answer(result.text)
@@ -179,16 +191,7 @@ def _ask(
                 None,
                 ['la réponse n’est pas un objet JSON lisible'],
             )
-        verdict = 'ok' if not last_errors else 'format_invalide'
-        _record_usage(
-            conn,
-            inv,
-            result.model,
-            result.tokens_in,
-            result.tokens_out,
-            result.latency_ms,
-            verdict,
-        )
+        record(result, 'ok' if not last_errors else 'format_invalide')
         if not last_errors:
             return answer
         if attempt < RETRIES:
