@@ -27,16 +27,37 @@ ETATS_TACHE = {
 }
 
 # id, titre, business, depuis, file, état, priorité, pas avant, créée,
-# essais, nom du business
+# essais, nom du business, invocation allumée, invocation supprimée le,
+# étape allumée
 _SELECT = (
     "SELECT t.id, COALESCE(NULLIF(i.title, ''), t.invocation_id),"
     " COALESCE(p.value, ''), t.started_at, t.queue_id, t.status,"
     ' t.priority, t.not_before, t.created_at, t.attempts,'
-    " COALESCE(v.name, '')"
+    " COALESCE(v.name, ''), COALESCE(i.enabled, 0),"
+    " COALESCE(i.deleted_at, 'absente'), COALESCE(s.enabled, 1)"
     ' FROM tasks t LEFT JOIN invocations i ON i.id=t.invocation_id'
+    ' LEFT JOIN pipeline_steps s ON s.id=i.step_id'
     " LEFT JOIN task_params p ON p.task_id=t.id AND p.name='venture_id'"
     ' LEFT JOIN ventures v ON v.id=p.value'
 )
+
+
+def _bloquee(row: Any) -> str:
+    """Pourquoi une tâche prête ne partira pas, ou ``''``.
+
+    La file saute les tâches d'une invocation supprimée ou éteinte, ou
+    d'une étape coupée : elles ne doivent pas avoir l'air d'attendre leur
+    tour.
+    """
+    if row[5] != 'ready':
+        return ''
+    if row[12]:
+        return 'Ne partira pas : invocation supprimée'
+    if not row[11]:
+        return 'En attente : invocation éteinte'
+    if not row[13]:
+        return 'En attente : étape coupée'
+    return ''
 
 
 def _resume(row: Any) -> dict[str, Any]:
@@ -79,8 +100,12 @@ def _prochaine(conn: sqlite3.Connection, now: str) -> dict[str, Any] | None:
 
 
 def _compte(conn: sqlite3.Connection, status: str) -> int:
+    """Les tâches dans cet état, sauf celles d'une invocation supprimée,
+    qui ne partiront jamais (une invocation éteinte, elle, attend)."""
     row = conn.execute(
-        'SELECT COUNT(*) FROM tasks WHERE status=?', (status,)
+        'SELECT COUNT(*) FROM tasks t JOIN invocations i'
+        " ON i.id=t.invocation_id WHERE t.status=? AND i.deleted_at=''",
+        (status,),
     ).fetchone()
     return int(row[0]) if row else 0
 
@@ -164,13 +189,21 @@ def project_file_detail(conn: sqlite3.Connection, now: str) -> dict[str, Any]:
         " ORDER BY t.queue_id, CASE t.status WHEN 'running' THEN 0 ELSE 1"
         ' END, t.priority DESC, t.created_at'
     ).fetchall()
+    # Les tâches qui ne partiront pas viennent en dernier, sans rang.
+    rows = sorted(rows, key=lambda r: bool(_bloquee(r)))
     lignes = []
     enfants = []
-    for rang, row in enumerate(rows, start=1):
+    rang = 0
+    for row in rows:
         ident, titre = str(row[0]), str(row[1])
         etat = ETATS_TACHE.get(str(row[5]), str(row[5]))
         pause = str(row[7] or '')
-        if ident in suivantes:
+        bloquee = _bloquee(row)
+        if not bloquee:
+            rang += 1
+        if bloquee:
+            etat = bloquee
+        elif ident in suivantes:
             etat = 'Prochaine'
         elif row[5] == 'ready' and pause > now:
             etat = 'En pause'
@@ -179,7 +212,7 @@ def project_file_detail(conn: sqlite3.Connection, now: str) -> dict[str, Any]:
                 'id': ident,
                 'type': 'task',
                 'cellules': [
-                    str(rang),
+                    '—' if bloquee else str(rang),
                     titre,
                     str(row[4]),
                     etat,
@@ -192,7 +225,13 @@ def project_file_detail(conn: sqlite3.Connection, now: str) -> dict[str, Any]:
             }
         )
         enfants.append(
-            {'type': 'task', 'id': ident, 'titre': f'{rang}. {titre}'}
+            {
+                'type': 'task',
+                'id': ident,
+                'titre': f'{titre} ({bloquee})'
+                if bloquee
+                else f'{rang}. {titre}',
+            }
         )
     return {
         'type': 'file',
@@ -204,7 +243,12 @@ def project_file_detail(conn: sqlite3.Connection, now: str) -> dict[str, Any]:
             ' tâche prête la plus prioritaire, la plus ancienne d’abord.'
         ),
         'champs': [
-            {'k': 'Prêtes', 'v': str(sum(1 for r in rows if r[5] == 'ready'))},
+            {
+                'k': 'Prêtes',
+                'v': str(
+                    sum(1 for r in rows if r[5] == 'ready' and not r[12])
+                ),
+            },
             {
                 'k': 'En cours',
                 'v': str(sum(1 for r in rows if r[5] == 'running')),

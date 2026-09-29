@@ -378,10 +378,14 @@ class PipelineSeedTests(unittest.TestCase):
         )
 
     def test_ce_qui_est_retire_est_marque_supprime(self) -> None:
-        """La démo du lot 6, encore en base sur une instance existante."""
+        """La démo du lot 6, encore en base sur une instance existante,
+        avec une tâche restée en attente : elle est annulée."""
         self.conn.executescript(
             'INSERT INTO invocations(id, title, type) VALUES'
             " ('demo_formuler', 'Démo', 'llm');"
+            'INSERT INTO tasks(id, invocation_id, queue_id,'
+            ' idempotency_key, created_at)'
+            " VALUES('t_demo', 'demo_formuler', 'works', 'k_demo', 't');"
             'INSERT INTO table_quotas(id, table_name, column_name,'
             " counted_values, max_value) VALUES('business_choisis',"
             " 'ventures', 'lifecycle', 'POC_SELECTED', 3);"
@@ -397,6 +401,10 @@ class PipelineSeedTests(unittest.TestCase):
             self.conn.execute(
                 "SELECT 1 FROM table_quotas WHERE id='business_choisis'"
             ).fetchone()
+        )
+        self.assertEqual(
+            self._one("SELECT status FROM tasks WHERE id='t_demo'"),
+            ('cancelled',),
         )
 
     def test_les_droits_d_ecriture_ne_font_que_grandir(self) -> None:

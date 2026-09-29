@@ -154,6 +154,21 @@ class ProjLiveTests(unittest.TestCase):
         self.assertEqual(lignes[1]['id'], self.first)
         self.assertEqual(lignes[2]['cellules'][3], 'Prête')
 
+    def test_une_tache_qui_ne_partira_pas_n_a_pas_de_rang(self) -> None:
+        """Une tâche restée prête d'une invocation supprimée : dernière,
+        sans rang, et pas comptée parmi les prêtes."""
+        avant = project_file_detail(self.conn, NOW)['champs'][0]['v']
+        invocations(self.conn, ('vieille', 'Une ancienne démo', 'caisse'))
+        tache(self.conn, 'vieille', {'n': '1'}, key='k_vieille')
+        self.conn.execute(
+            "UPDATE invocations SET deleted_at='t' WHERE id='vieille'"
+        )
+        fiche = project_file_detail(self.conn, NOW)
+        derniere = fiche['tableau']['lignes'][-1]['cellules']
+        self.assertEqual(derniere[0], '—')
+        self.assertEqual(derniere[3], 'Ne partira pas : invocation supprimée')
+        self.assertEqual(fiche['champs'][0]['v'], avant)
+
     def test_feed_tri_et_sources(self) -> None:
         items = project_feed(self.conn, POLICY, NOW)['items']
         stamps = [item['ts'] for item in items]
