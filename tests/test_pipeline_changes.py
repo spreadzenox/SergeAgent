@@ -131,7 +131,19 @@ class InstanceDuLot7Tests(unittest.TestCase):
             "DELETE FROM invocation_settings WHERE name='pages_entieres_max';"
             'DELETE FROM pipeline_changes;'
         )
+        conn.execute(
+            "UPDATE triggers SET confirm_text=? WHERE id='bouton_abandonner_cycle'",
+            (
+                'Le cycle ouvert est fermé, pour pouvoir en lancer un autre.'
+                ' Ses tâches déjà en file continuent, mais ne peuvent plus le'
+                ' fermer.',
+            ),
+        )
         ensure_pipeline(conn)
+        question = conn.execute(
+            "SELECT confirm_text FROM triggers WHERE id='bouton_abandonner_cycle'"
+        ).fetchone()[0]
+        self.assertIn('tâches en attente sont annulées', question)
         tours = dict(
             conn.execute(
                 'SELECT id, max_tool_turns FROM invocations WHERE id IN'

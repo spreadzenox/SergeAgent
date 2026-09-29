@@ -18,7 +18,7 @@ from serge.interpreter.flow import (
     set_link_auto,
     trigger_refusal,
 )
-from serge.interpreter.tasks import relaunch_task
+from serge.interpreter.tasks import cancel_task, relaunch_task
 from serge.mc.proj_vues import changer_comparaison
 
 # Un identifiant de modèle : « openai/gpt-5-mini », vide pour celui de
@@ -41,7 +41,7 @@ else:
 
 
 class PipelineActionsMixin(_Base):
-    """POST /owner/api/bouton, /tache/relancer, /invocation/comparer,
+    """POST /owner/api/bouton, /tache/relancer, /tache/annuler, /invocation/comparer,
     /lien/* et /pipeline/*."""
 
     def _api_bouton(self) -> None:
@@ -102,6 +102,32 @@ class PipelineActionsMixin(_Base):
                 conn,
                 actor='owner',
                 type='task.relaunched',
+                payload={'task': task_id},
+            )
+        self._send_json(200, {'ok': True, 'task_id': task_id})
+
+    def _api_tache_annuler(self) -> None:
+        """Annule une tâche en attente : ``{task_id}``."""
+        if not self._require_owner():
+            return
+        body = self._json_body() or {}
+        task_id = str(body.get('task_id') or '').strip()
+        with self._db() as conn:
+            if not task_id or not cancel_task(
+                conn, task_id, 'annulée dans Mission Control'
+            ):
+                self._refus(
+                    409,
+                    'Cette tâche ne peut pas être annulée.',
+                    'task',
+                    'Seule une tâche en attente peut être annulée ; une tâche'
+                    ' en cours finit ce qu’elle a commencé.',
+                )
+                return
+            append_event(
+                conn,
+                actor='owner',
+                type='task.cancelled',
                 payload={'task': task_id},
             )
         self._send_json(200, {'ok': True, 'task_id': task_id})

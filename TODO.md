@@ -545,7 +545,7 @@ n'est propre à une de ces invocations.
   la page Écoute (plus tard, automatiquement), un cycle à la fois : le
   bouton est refusé tant qu'un cycle est ouvert, et un bouton « Abandonner
   le cycle » ferme un cycle resté ouvert (une invocation qui a échoué, par
-  exemple). Il s'enchaîne ainsi :
+  exemple) et annule ses tâches en attente. Il s'enchaîne ainsi :
   1. **« Ouvrir un cycle »** (sans LLM) enregistre le cycle et le texte de
      guidage de Julien.
   2. **« Explorer le web »** (modèle moyen) cherche des pages à partir du

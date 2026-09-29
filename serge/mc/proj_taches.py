@@ -380,6 +380,17 @@ def fiche_tache(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
             )
         )
     actions = []
+    if row['status'] == 'ready':
+        actions.append(
+            {
+                'libelle': 'Annuler la tâche',
+                'route': '/owner/api/tache/annuler',
+                'charge': {'task_id': ident},
+                'confirmer': 'La tâche est retirée de sa file et ne partira'
+                ' pas. Ce qu’elle aurait lancé ensuite ne partira pas non'
+                ' plus.',
+            }
+        )
     if row['status'] == 'failed':
         actions.append(
             {

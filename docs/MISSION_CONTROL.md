@@ -64,7 +64,8 @@ réponse, où sa réponse est écrite, ce qui la lance, ce qu'elle lance
 ensuite, et ses derniers appels au modèle (tours d'outils, réponses, appels ratés, avec les jetons et le coût réel). La fiche d'une tâche montre ses
 paramètres et ce qu'elle a reçu (par exemple « Pour comparer : Les
 business — 20 lignes, 230 laissées de côté ») ; si elle a échoué, un
-bouton « Relancer la tâche » la remet dans sa file. La fiche d'un lien
+bouton « Relancer la tâche » la remet dans sa file ; si elle attend, un
+bouton « Annuler la tâche » la retire. La fiche d'un lien
 (`#/objet/lien/<id>`, ouverte depuis la fiche d'une invocation) montre ce
 qui est déjà passé et ce qui attend un clic, avec un bouton « Passer à la
 suite » par passage et l'interrupteur « passage automatique ».
@@ -157,6 +158,7 @@ Toutes demandent le jeton owner.
 | `POST /owner/api/bouton` | Un déclencheur « bouton » : crée la tâche de son invocation, avec les champs du formulaire. Refusé, avec la raison, si l'un de ses quotas est plein. |
 | `POST /owner/api/flux` | Couper ou rallumer un flux RSS suivi (page Écoute). |
 | `POST /owner/api/tache/relancer` | Remettre une tâche échouée dans sa file (bouton « Relancer la tâche » de sa fiche). |
+| `POST /owner/api/tache/annuler` | Annuler une tâche en attente (bouton « Annuler la tâche » de sa fiche) : ce qu'elle aurait lancé ensuite ne part pas non plus. |
 | `POST /owner/api/lien/passer` | « Passer à la suite » : lance un passage qui attendait un clic, avec ses paramètres gardés (fiche du lien). |
 | `POST /owner/api/lien/auto` | L'interrupteur « passage automatique » d'un lien (pour les passages suivants). |
 | `POST /owner/api/pipeline/modele` | Le modèle derrière un niveau (rapide, moyen, intelligent) ; vide pour celui de l'installation (page Pipeline). |

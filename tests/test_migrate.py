@@ -359,7 +359,7 @@ class MigrateTests(unittest.TestCase):
         self.addCleanup(conn.close)
         from serge.db.migrate import MIGRATIONS
 
-        apply_pending(conn, MIGRATIONS[:-6], head=24)
+        apply_pending(conn, MIGRATIONS[:-7], head=24)
         conn.execute(
             'INSERT INTO runtime_flags(name, value, set_at) VALUES'
             " ('kind.email.send', 'kill', 't'), ('llm.fill_slots', 'kill',"
@@ -431,7 +431,7 @@ class MigrateTests(unittest.TestCase):
         self.addCleanup(conn.close)
         from serge.db.migrate import MIGRATIONS
 
-        apply_pending(conn, MIGRATIONS[:-5], head=25)
+        apply_pending(conn, MIGRATIONS[:-6], head=25)
         conn.execute(
             'INSERT INTO invocation_tool_params(invocation_id,'
             ' invocation_tool_id, param_name, source, value)'
@@ -471,7 +471,7 @@ class MigrateTests(unittest.TestCase):
         self.addCleanup(conn.close)
         from serge.db.migrate import MIGRATIONS
 
-        apply_pending(conn, MIGRATIONS[:-4], head=26)
+        apply_pending(conn, MIGRATIONS[:-5], head=26)
         conn.executemany(
             'INSERT INTO events(ts, actor, venture_id, type, payload_json)'
             ' VALUES(?,?,?,?,?)',
@@ -503,7 +503,7 @@ class MigrateTests(unittest.TestCase):
         self.addCleanup(conn.close)
         from serge.db.migrate import MIGRATIONS
 
-        apply_pending(conn, MIGRATIONS[:-2], head=28)
+        apply_pending(conn, MIGRATIONS[:-3], head=28)
         conn.executescript(
             'INSERT INTO listen_docs(id, source, fetched_at, cluster_id)'
             " VALUES('d1', 'rss', 't', 'cA');"
@@ -546,7 +546,7 @@ class MigrateTests(unittest.TestCase):
         self.addCleanup(conn.close)
         from serge.db.migrate import MIGRATIONS
 
-        apply_pending(conn, MIGRATIONS[:-1], head=29)
+        apply_pending(conn, MIGRATIONS[:-2], head=29)
         conn.execute(
             'INSERT INTO llm_usage(point, tier, created_at)'
             " VALUES('a', 'mid', 't')"
@@ -557,6 +557,18 @@ class MigrateTests(unittest.TestCase):
         )
         conn.execute(
             "INSERT INTO pipeline_changes(id, applied_at) VALUES('x', 't')"
+        )
+
+    def test_v31_ajoute_les_regles_d_annulation(self) -> None:
+        conn = sqlite3.connect(':memory:')
+        self.addCleanup(conn.close)
+        from serge.db.migrate import MIGRATIONS
+
+        apply_pending(conn, MIGRATIONS[:-1], head=30)
+        self.assertEqual(apply_pending(conn), SCHEMA_VERSION)
+        conn.execute(
+            'INSERT INTO task_cancel_rules(table_name, column_name, value,'
+            " param_name) VALUES('t', 'c', 'v', 'p')"
         )
 
 

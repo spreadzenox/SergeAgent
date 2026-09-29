@@ -328,6 +328,11 @@ table_quotas:
     policy: false
     description: Cycle d'écoute en cours
 
+# Quand une ligne passe dans tel état, les tâches en attente qui portent
+# son numéro sont annulées : abandonner un cycle arrête sa chaîne.
+task_cancel_rules:
+  - {table: listen_cycles, column: status, value: ABANDONED, param: cycle_id}
+
 # Les doublons : une fiche trop proche d'un business existant (72 % de
 # mots en commun sur le nom et la description) est écartée ; une page ou un
 # flux déjà gardé (même adresse) n'est pas regardé une seconde fois.
@@ -882,7 +887,8 @@ invocations:
     title: Abandonner le cycle en cours
     role: >-
       Ferme le cycle resté ouvert (une invocation qui a échoué, par
-      exemple), pour pouvoir en lancer un autre. Sans LLM.
+      exemple), et annule ses tâches en attente, pour pouvoir en lancer un
+      autre. Sans LLM.
     step: pre_prospection
     type: capability
     capability: echo
@@ -1051,8 +1057,9 @@ triggers:
     invocation: abandonner_cycle
     event: button
     confirm: >-
-      Le cycle ouvert est fermé, pour pouvoir en lancer un autre. Ses
-      tâches déjà en file continuent, mais ne peuvent plus le fermer.
+      Le cycle ouvert est fermé et ses tâches en attente sont annulées ;
+      sa chaîne s'arrête après la tâche en cours. On peut alors en lancer
+      un autre.
   - id: bouton_effacer_idees
     title: Effacer les idées (test)
     invocation: effacer_idees
@@ -1208,6 +1215,22 @@ changes:
     where: {id: formuler_b}
     set:
       prompt: {from: *ancienne_consigne_formuler, to: *consigne_formuler}
+  - id: lot7_abandon_annule_les_taches_question
+    why: Abandonner un cycle annule maintenant ses tâches en attente (Q67).
+    table: triggers
+    where: {id: bouton_abandonner_cycle}
+    set:
+      confirm_text:
+        from: Le cycle ouvert est fermé, pour pouvoir en lancer un autre. Ses tâches déjà en file continuent, mais ne peuvent plus le fermer.
+        to: Le cycle ouvert est fermé et ses tâches en attente sont annulées ; sa chaîne s'arrête après la tâche en cours. On peut alors en lancer un autre.
+  - id: lot7_abandon_annule_les_taches_role
+    why: Abandonner un cycle annule maintenant ses tâches en attente (Q67).
+    table: invocations
+    where: {id: abandonner_cycle}
+    set:
+      role:
+        from: Ferme le cycle resté ouvert (une invocation qui a échoué, par exemple), pour pouvoir en lancer un autre. Sans LLM.
+        to: Ferme le cycle resté ouvert (une invocation qui a échoué, par exemple), et annule ses tâches en attente, pour pouvoir en lancer un autre. Sans LLM.
 
 # Ce qui a été retiré du pipeline de départ : marqué supprimé sur une
 # instance existante (retirer une ligne du fichier ne l'efface jamais).

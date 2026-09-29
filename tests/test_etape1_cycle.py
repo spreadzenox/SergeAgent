@@ -306,6 +306,35 @@ class CycleEtape1Tests(unittest.TestCase):
             'Places de test occupées : 3 sur 3',
         )
 
+    def test_abandonner_arrete_la_chaine(self) -> None:
+        """Le cycle ouvert laisse « Explorer le web » en file ; abandonné,
+        sa tâche est annulée, et rien ne suit. La tâche d'un autre cycle
+        n'est pas touchée."""
+        fire_button(self.conn, 'lancer_cycle', {'guide': 'x'})
+        process_one(self.conn, 'works', now=NOW, caller=self.modele)
+        from serge.interpreter.tasks import enqueue_task
+
+        autre = enqueue_task(self.conn, 'trier_pages', {'cycle_id': 'autre'})
+        fire_button(self.conn, 'bouton_abandonner_cycle', {})
+        process_one(self.conn, 'works', now=NOW, caller=self.modele)
+        etats = dict(
+            self.conn.execute('SELECT invocation_id, status FROM tasks')
+        )
+        self.assertEqual(etats['explorer_web'], 'cancelled')
+        self.assertEqual(etats['abandonner_cycle'], 'done')
+        statut_autre = self.conn.execute(
+            'SELECT status FROM tasks WHERE id=?', (autre,)
+        ).fetchone()
+        self.assertEqual(statut_autre, ('ready',))
+        self.assertEqual(
+            self.conn.execute('SELECT status FROM listen_cycles').fetchone(),
+            ('ABANDONED',),
+        )
+        note = self.conn.execute(
+            "SELECT payload_json FROM events WHERE type='task.cancelled'"
+        ).fetchone()
+        self.assertEqual(json.loads(note[0])['count'], 1)
+
     def test_effacer_les_idees(self) -> None:
         self._cycle()
         fire_button(self.conn, 'bouton_effacer_idees', {})

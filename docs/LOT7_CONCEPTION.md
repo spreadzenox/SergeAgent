@@ -46,7 +46,8 @@ jamais utilisés » les pages « besoin nouveau » de plus de 60 jours. Une
 page qui sert de preuve (« preuve » ou « enrichit ») n'est jamais visée.
 
 **Deux boutons de plus** sur la page Écoute : « Abandonner le cycle en
-cours » (ferme un cycle resté ouvert) et « Effacer les idées (test) »,
+cours » (ferme un cycle resté ouvert et annule ses tâches en attente : sa
+chaîne s'arrête après la tâche en cours) et « Effacer les idées (test) »,
 temporaire, qui détruit les business candidats ou choisis et leurs
 preuves. Les deux demandent une confirmation.
 
@@ -102,6 +103,13 @@ Chaque ajout est général : il sert à toutes les invocations.
 - **Un déclencheur horaire par ligne** : un déclencheur `every` ou `at`
   qui vise une table (et, si besoin, un filtre) crée une tâche par ligne,
   avec les colonnes de la ligne en paramètres.
+- **Annuler les tâches d'une ligne qui change d'état**
+  (`task_cancel_rules`, version 31 de la base) : une protection réglée
+  sur la table. « Quand un cycle passe à `ABANDONED`, ses tâches en
+  attente (paramètre `cycle_id`) sont annulées. » La file ne fait qu'une
+  tâche à la fois : l'abandon passe juste après la tâche en cours, et
+  annule aussi celle qu'elle vient de créer. La fiche d'une tâche en
+  attente a aussi un bouton « Annuler la tâche ».
 - **Supprimer** : une règle d'écriture peut supprimer les lignes où une
   colonne vaut une valeur (`operation` = `delete`, permis table par table
   avec `writable_tables.can_delete`). Une seule note au journal par règle
