@@ -78,8 +78,9 @@ Chaque ajout est général : il sert à toutes les invocations.
 
 - **Lire une page** (capacité `page_read`, `serge/listen/page.py`) : une
   simple requête, sans navigateur. Le texte est découpé en lignes (un
-  titre, un paragraphe ou un élément de liste), sans le menu ni le pied de
-  page. Réglée par un nombre de lignes : l'outil « aperçu » (5 lignes,
+  titre, un paragraphe ou un élément de liste, jamais plus de 300
+  caractères : un paragraphe plus long est coupé à la fin d'un mot), sans
+  le menu ni le pied de page. Réglée par un nombre de lignes : l'outil « aperçu » (5 lignes,
   pour Explorer) et l'outil « page entière » (150 lignes, pour A et B,
   seulement une page déjà en base, par son numéro). Les adresses du
   serveur et des réseaux privés sont refusées, même après une
@@ -135,6 +136,14 @@ Chaque ajout est général : il sert à toutes les invocations.
     sans coût connu est estimé à partir de ses jetons
     (`budget.llm_eur_per_1k_tokens`), et la jauge dit quelle part est
     estimée ;
+  - tout l'historique repart au modèle à chaque tour : un résultat d'outil
+    plus long que la taille réglée dans la policy
+    (`quotas.llm_outil_resultat_max_caracteres`, 20 000 caractères) est
+    coupé, avec une note ; les résultats ne sont jamais envoyés en double ;
+    et une redemande de format se fait sans outil (le modèle corrige sa
+    réponse, il ne recommence pas ses recherches). Au premier cycle en
+    production, un seul aperçu de page (une « ligne » sans longueur
+    maximale) a ajouté 126 000 jetons, renvoyés ensuite à chaque tour ;
   - les réglages qui renvoient moins de jetons : « Explorer le web » a 10
     tours d'outils ; A et B en ont 5, lisent au plus 10 pages en entier
     par passage (`pages_entieres_max`, par la limite d'appels de l'outil)

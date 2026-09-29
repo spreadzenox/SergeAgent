@@ -205,6 +205,14 @@ export const CHAMPS = {
     10,
     1,
   ],
+  'quotas.llm_outil_resultat_max_caracteres': [
+    'Taille maximale d’un résultat d’outil',
+    'En caractères. Au-delà, le résultat est coupé avant d’être renvoyé au modèle : il repart à chaque tour, et coûte à chaque fois.',
+    'curseur',
+    1000,
+    100000,
+    1000,
+  ],
   'quotas.llm_outil_tours_max': [
     'Tours d’outils max, par invocation',
     'Tous les outils confondus. 12 est le plafond dur. Un couple peut être plus serré.',

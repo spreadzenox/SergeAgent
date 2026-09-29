@@ -184,6 +184,15 @@ class LirePageTests(unittest.TestCase):
             lignes, ['Titre', 'Premier paragraphe.', 'Un', 'Deux']
         )
 
+    def test_une_ligne_a_une_longueur_maximale(self) -> None:
+        """Une page dont le texte n'est pas rangé en paragraphes ne tient
+        pas en une seule ligne géante (premier cycle en production)."""
+        texte = ' '.join(f'mot{n}' for n in range(20000))
+        _, lignes = text_lines(f'<div><span>{texte}</span></div>')
+        self.assertGreater(len(lignes), 100)
+        self.assertTrue(all(len(ligne) <= 300 for ligne in lignes))
+        self.assertEqual(' '.join(lignes), texte)
+
     def test_un_apercu_et_la_page_entiere(self) -> None:
         with (
             mock.patch('serge.listen.page.check_host'),
