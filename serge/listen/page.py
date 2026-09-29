@@ -2,10 +2,17 @@
 """Lire une page web, à la bonne dose : un aperçu ou la page entière.
 
 Une simple requête, sans navigateur. Le texte est découpé en lignes : une
-ligne est un titre, un paragraphe ou un élément de liste. Exemple : un
-aperçu de 5 lignes pour trier des pages, 300 lignes au plus pour les
-invocations qui formulent des business. Le menu, les scripts et le pied
-de page ne sont pas gardés.
+ligne est un titre, un paragraphe ou un élément de liste, et jamais plus
+de 300 caractères (un paragraphe plus long est coupé en plusieurs lignes,
+à la fin d'un mot). Exemple : un aperçu de 5 lignes pour trier des pages,
+150 lignes au plus pour les invocations qui formulent des business. Le
+menu, les scripts et le pied de page ne sont pas gardés.
+
+La longueur maximale d'une ligne fait partie de la définition d'une
+ligne : sans elle, une page dont le texte n'est pas rangé en paragraphes
+tiendrait en une seule « ligne » de centaines de milliers de caractères,
+renvoyée au modèle à chaque tour (c'est arrivé au premier cycle en
+production).
 
 Serge ne lit jamais une adresse de son propre serveur ou d'un réseau
 privé : une page lue sur le web ne doit pas pouvoir le faire interroger
@@ -60,6 +67,24 @@ _SKIPPED = frozenset(
 )
 
 
+# Une ligne ne dépasse jamais cette longueur, en caractères.
+LIGNE_MAX = 300
+
+
+def _couper(texte: str) -> list[str]:
+    """Un paragraphe en lignes d'au plus ``LIGNE_MAX`` caractères, coupées
+    à la fin d'un mot (un mot plus long est coupé net)."""
+    lignes: list[str] = []
+    while len(texte) > LIGNE_MAX:
+        coupe = texte.rfind(' ', 0, LIGNE_MAX + 1)
+        coupe = coupe if coupe > 0 else LIGNE_MAX
+        lignes.append(texte[:coupe].strip())
+        texte = texte[coupe:].strip()
+    if texte:
+        lignes.append(texte)
+    return lignes
+
+
 class PageError(ValueError):
     """La page ne peut pas être lue."""
 
@@ -74,9 +99,7 @@ class _Lines(HTMLParser):
         self._current: list[str] = []
 
     def _flush(self) -> None:
-        line = ' '.join(' '.join(self._current).split())
-        if line:
-            self.lines.append(line)
+        self.lines.extend(_couper(' '.join(' '.join(self._current).split())))
         self._current = []
 
     def handle_starttag(self, tag: str, attrs: list) -> None:

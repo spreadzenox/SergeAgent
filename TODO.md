@@ -93,8 +93,9 @@ remplir la base, dans `config/pipeline.yaml` (le détail est dans
 - **Chaque appel au modèle coûte** : tout l'historique d'une invocation
   repart au modèle à chaque tour d'outils. Garder peu de tours, laisser
   le modèle appeler plusieurs outils d'un coup, borner ce qu'un outil
-  rend (lignes lues, pages lues), et regarder le coût réel noté pour
-  chaque appel.
+  rend (lignes lues, pages lues ; un résultat trop long est de toute
+  façon coupé, taille réglée dans la policy), et regarder le coût réel
+  noté pour chaque appel.
 
 ---
 

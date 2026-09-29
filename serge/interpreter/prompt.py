@@ -256,6 +256,8 @@ def converse(
     model: str,
     record: Record | None = None,
     stop: Callable[[], bool] | None = None,
+    tools_allowed: bool = True,
+    max_result_chars: int = 0,
 ) -> tuple[ChatResult, list[dict[str, Any]]]:
     """Laisse le modèle appeler ses outils, puis rend sa réponse finale.
 
@@ -266,7 +268,13 @@ def converse(
     d'outils est noté (``record``) ; la réponse finale est rendue, à noter
     par l'appelant une fois son format vérifié. Si ``stop`` répond vrai
     après un tour (le plafond de dépense du jour est atteint), le modèle
-    doit répondre tout de suite, sans plus d'outil.
+    doit répondre tout de suite, sans plus d'outil ; de même dès le départ
+    si ``tools_allowed`` est faux (une redemande de format : le modèle
+    corrige sa réponse, il ne recommence pas ses recherches).
+
+    Tout l'historique repart au modèle à chaque tour : un résultat d'outil
+    plus long que ``max_result_chars`` (0 : sans limite) est coupé, avec
+    une note, pour qu'un seul résultat ne coûte pas à chaque tour.
     """
     schemas, links = callable_tools(conn, inv, task)
     limits = _call_limits(conn, inv, links)
@@ -276,10 +284,11 @@ def converse(
     while True:
         force_text = (
             not schemas
+            or not tools_allowed
             or turns >= inv.max_tool_turns
             or (turns > 0 and stop is not None and stop())
         )
-        if force_text and schemas:
+        if force_text and schemas and tools_allowed:
             # Certains modèles rendent une réponse vide quand on leur
             # interdit les outils sans rien dire : on le leur dit.
             history.append({'role': 'user', 'content': FIN_DES_OUTILS})
@@ -320,12 +329,15 @@ def converse(
                 {
                     'role': 'tool',
                     'tool_call_id': call.id,
-                    'content': json.dumps(
-                        _limited_call(
-                            conn, inv, links, limits, calls, call, task
+                    'content': _borne(
+                        json.dumps(
+                            _limited_call(
+                                conn, inv, links, limits, calls, call, task
+                            ),
+                            ensure_ascii=False,
+                            default=str,
                         ),
-                        ensure_ascii=False,
-                        default=str,
+                        max_result_chars,
                     ),
                 }
             )
@@ -334,6 +346,16 @@ def converse(
         # avant de rappeler le modèle, pour ne pas bloquer la base pendant
         # l'appel.
         conn.commit()
+
+
+def _borne(texte: str, limite: int) -> str:
+    """Un résultat d'outil coupé à ``limite`` caractères, avec une note."""
+    if limite <= 0 or len(texte) <= limite:
+        return texte
+    return (
+        f'{texte[:limite]}… (résultat tronqué : {len(texte) - limite}'
+        ' caractères de plus ; demande moins à la fois)'
+    )
 
 
 def _call_limits(

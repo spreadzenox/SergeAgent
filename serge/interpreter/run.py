@@ -168,6 +168,8 @@ def _ask(
     def record(result: ChatResult | None, verdict: str) -> None:
         _record_usage(conn, inv, model, result, verdict)
 
+    policy = policy_en_vigueur(conn)
+    quotas = policy.get('quotas') or {}
     last_errors: list[str] = []
     for attempt in range(RETRIES + 1):
         result, history = converse(
@@ -180,6 +182,11 @@ def _ask(
             model=model,
             record=record,
             stop=lambda: budget_spent(conn, policy_en_vigueur(conn)),
+            # Une redemande de format corrige la réponse, sans outil.
+            tools_allowed=attempt == 0,
+            max_result_chars=int(
+                quotas.get('llm_outil_resultat_max_caracteres', 0) or 0
+            ),
         )
         if not fields:
             record(result, 'ok')

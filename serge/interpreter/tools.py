@@ -36,10 +36,15 @@ def _web_search(
 ) -> dict[str, Any]:
     from serge.listen.web import search_public
 
-    result = search_public(
-        str(args.get('query') or ''), int(args.get('limit') or 5)
+    result = dict(
+        search_public(
+            str(args.get('query') or ''), int(args.get('limit') or 5)
+        )
     )
-    return {**result, 'rows': result.get('results', [])}
+    # Les résultats sous un seul nom : ce que rend un outil repart au
+    # modèle à chaque tour, un doublon coûterait deux fois.
+    rows = result.pop('results', [])
+    return {**result, 'rows': rows}
 
 
 def _memory_search(
@@ -48,14 +53,17 @@ def _memory_search(
     from serge.memory.search import memory_search
 
     types = args.get('types')
-    result = memory_search(
-        conn,
-        str(args.get('query') or ''),
-        point=inv,
-        types=list(types) if isinstance(types, list) else None,
-        top_k=int(args.get('top_k') or 5),
+    result = dict(
+        memory_search(
+            conn,
+            str(args.get('query') or ''),
+            point=inv,
+            types=list(types) if isinstance(types, list) else None,
+            top_k=int(args.get('top_k') or 5),
+        )
     )
-    return {**result, 'rows': result.get('results', [])}
+    rows = result.pop('results', [])
+    return {**result, 'rows': rows}
 
 
 def _request_capability(
@@ -92,8 +100,9 @@ def _page_read(
         if row is None:
             return {'ok': False, 'code': 'page_inconnue', 'rows': []}
         url = str(row[0])
-    result = read_page(url, int(args.get('max_lines') or 0))
-    return {**result, 'rows': result.get('lines', [])}
+    result = dict(read_page(url, int(args.get('max_lines') or 0)))
+    rows = result.pop('lines', [])
+    return {**result, 'rows': rows}
 
 
 def _rss_read(

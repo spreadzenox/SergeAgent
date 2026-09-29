@@ -1112,3 +1112,9 @@ Décidé, pour toutes les invocations, sans bricolage :
    seulement si elle n'a pas été changée dans Mission Control. Un réglage
    nouveau s'ajoute tout seul à une invocation existante.
 6. La file dit pourquoi une tâche attend (le plafond du jour).
+7. Les 2,9 millions de jetons venaient d'un seul aperçu de page géant (une
+   « ligne » sans longueur maximale : 126 000 jetons), renvoyé à chacun
+   des ~20 appels suivants. Corrigé pour tout Serge : une ligne fait au
+   plus 300 caractères ; un résultat d'outil est coupé au-delà d'une
+   taille réglée dans la policy (20 000 caractères) ; un résultat n'est
+   jamais envoyé en double ; une redemande de format se fait sans outil.

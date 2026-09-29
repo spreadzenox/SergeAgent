@@ -256,8 +256,8 @@ class CycleEtape1Tests(unittest.TestCase):
         # Une seule recherche permise ; l'aperçu s'arrête à 5 lignes.
         limite, apercu = self.modele.outils_explorer[1:]
         self.assertEqual(limite['code'], 'limite_atteinte')
-        self.assertEqual(len(apercu['lines']), 5)
-        self.assertNotIn('menu', apercu['lines'])
+        self.assertEqual(len(apercu['rows']), 5)
+        self.assertNotIn('menu', apercu['rows'])
         self.assertIn(
             'Tu es « Explorer le web »', recu['explorer'][0]['system']
         )

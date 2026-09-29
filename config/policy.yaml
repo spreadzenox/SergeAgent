@@ -26,6 +26,7 @@ quotas:
   memory_search_per_cycle_per_point: 3
   llm_outil_tours_max: 12
   llm_recalls_json: 2
+  llm_outil_resultat_max_caracteres: 20000  # au-delà, un résultat d'outil est coupé
   linkedin_connect_per_day: 20
   linkedin_inmail_per_month: 30
 

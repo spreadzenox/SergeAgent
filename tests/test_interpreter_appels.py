@@ -37,6 +37,7 @@ from serge.db.boot import init_schema  # noqa: E402
 from serge.interpreter import prompt  # noqa: E402
 from serge.interpreter.queue import process_one  # noqa: E402
 from serge.interpreter.tasks import enqueue_task  # noqa: E402
+from serge.interpreter.tools import run_capability  # noqa: E402
 from serge.llm.client import ChatResult, LlmError, ToolCall, chat  # noqa: E402
 from serge.llm.runtime import (  # noqa: E402
     budget_spent,
@@ -193,6 +194,41 @@ class AppelsTests(unittest.TestCase):
         self.assertEqual(
             script.appels[1]['messages'][-1]['content'], prompt.FIN_DES_OUTILS
         )
+
+    def test_un_resultat_d_outil_geant_est_coupe(self) -> None:
+        geant = ToolCall('c1', 'repeter', json.dumps({'x': 'a' * 50000}))
+        script = Script(ChatResult('', 1, 1, 'faux', 1, (geant,)), REPONSE)
+        self._tourner(script)
+        reponse_outil = next(
+            m for m in script.appels[1]['messages'] if m['role'] == 'tool'
+        )
+        self.assertLess(len(reponse_outil['content']), 20200)
+        self.assertIn('résultat tronqué', reponse_outil['content'])
+
+    def test_une_redemande_de_format_se_fait_sans_outil(self) -> None:
+        mauvaise = ChatResult(json.dumps({'autre': 1}), 1, 1, 'faux', 1)
+        script = Script(mauvaise, REPONSE)
+        statut, _ = self._tourner(script)
+        self.assertEqual(statut, 'done')
+        redemande = script.appels[1]
+        self.assertEqual(redemande['tool_choice'], 'none')
+        self.assertIn(
+            'ne respecte pas le format', redemande['messages'][-1]['content']
+        )
+        self.assertEqual(self._verdicts(), ['format_invalide', 'ok'])
+
+    def test_les_resultats_de_recherche_ne_sont_pas_en_double(self) -> None:
+        trouve = {'ok': True, 'query': 'q', 'results': [{'url': 'https://x'}]}
+        with mock.patch('serge.listen.web.search_public', return_value=trouve):
+            resultat = run_capability(
+                self.conn,
+                'web_search',
+                'web_search',
+                {'query': 'q'},
+                'chercher',
+            )
+        self.assertNotIn('results', resultat)
+        self.assertEqual(resultat['rows'], [{'url': 'https://x'}])
 
 
 class DepenseTests(unittest.TestCase):

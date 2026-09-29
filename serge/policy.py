@@ -139,6 +139,7 @@ def validate_policy(data: Mapping[str, Any]) -> dict[str, Any]:
         'quotas.memory_search_per_cycle_per_point',
         'quotas.llm_outil_tours_max',
         'quotas.llm_recalls_json',
+        'quotas.llm_outil_resultat_max_caracteres',
         'quotas.linkedin_connect_per_day',
         'quotas.linkedin_inmail_per_month',
         'windows.intent_sla_hours',
