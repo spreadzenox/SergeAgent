@@ -357,7 +357,8 @@ class InterpreterTests(unittest.TestCase):
                 "SELECT verdict FROM llm_usage WHERE point='chercheur' ORDER BY id"
             )
         ]
-        self.assertEqual(verdicts, ['format_invalide', 'ok'])
+        # Le tour d'outils (une recherche) est noté, puis les deux réponses.
+        self.assertEqual(verdicts, ['outil', 'format_invalide', 'ok'])
 
     def test_une_tache_en_echec_n_ecrit_rien(self) -> None:
         self.conn.execute(

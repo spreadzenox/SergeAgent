@@ -169,6 +169,15 @@ def seed_deleted(conn: sqlite3.Connection, data: Mapping[str, Any]) -> None:
                 " WHERE id=? AND deleted_at=''",
                 (now, str(ident)),
             )
+    # Les tâches encore en attente d'une invocation retirée ne partiront
+    # jamais : elles sont annulées, pour ne pas encombrer la file.
+    for ident in raw.get('invocations') or []:
+        conn.execute(
+            "UPDATE tasks SET status='cancelled', finished_at=?,"
+            " last_error='invocation retirée du pipeline'"
+            " WHERE invocation_id=? AND status='ready'",
+            (now, str(ident)),
+        )
     for ident in raw.get('tools') or []:
         _delete_tool(conn, str(ident))
     for ident in raw.get('quotas') or []:

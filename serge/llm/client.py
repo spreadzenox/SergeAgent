@@ -47,6 +47,30 @@ def _usage(payload: dict[str, Any]) -> tuple[int, int]:
         return 0, 0
 
 
+def _why_empty(payload: Mapping[str, Any]) -> str:
+    """Ce qu'OpenRouter dit d'une réponse vide : la raison de la fin, le
+    modèle et l'erreur du fournisseur s'il y en a une.
+
+    Exemple : `` (fin : length ; modèle : deepseek/… ; erreur : …)``.
+    """
+    choices = payload.get('choices') or [{}]
+    first = choices[0] if isinstance(choices[0], dict) else {}
+    error = first.get('error') or payload.get('error') or {}
+    parts = [
+        f'fin : {first.get("finish_reason") or "?"}',
+        f'modèle : {payload.get("model") or "?"}',
+    ]
+    native = first.get('native_finish_reason')
+    if native:
+        parts.append(f'fin chez le fournisseur : {native}')
+    if isinstance(error, dict) and error:
+        parts.append(f'erreur : {str(error.get("message") or error)[:200]}')
+    message = first.get('message') if isinstance(first, dict) else None
+    if isinstance(message, dict) and message.get('reasoning'):
+        parts.append('réflexion rendue sans réponse')
+    return ' (' + ' ; '.join(parts) + ')'
+
+
 def _tool_calls(message: Mapping[str, Any]) -> tuple[ToolCall, ...]:
     raw = message.get('tool_calls') or []
     if not isinstance(raw, list):
@@ -152,9 +176,11 @@ def chat(
         text = str(message.get('content') or '').strip()
         calls = _tool_calls(message)
     except (IndexError, KeyError, TypeError, AttributeError) as exc:
-        raise LlmError('EMPTY: OpenRouter empty reply') from exc
+        raise LlmError(
+            f'EMPTY: OpenRouter empty reply{_why_empty(payload)}'
+        ) from exc
     if not text and not calls:
-        raise LlmError('EMPTY: OpenRouter empty reply')
+        raise LlmError(f'EMPTY: OpenRouter empty reply{_why_empty(payload)}')
     tokens_in, tokens_out = _usage(payload)
     used_model = str(payload.get('model') or model)
     return ChatResult(
