@@ -12,13 +12,9 @@ from __future__ import annotations
 import sqlite3
 from typing import Any
 
+from serge.mc.libelles import NIVEAUX
+from serge.mc.proj_passages import passages
 from serge.mc.proj_vues import cadres_vues
-
-NIVEAUX = {
-    'fast': 'Rapide — un réflexe (classer, extraire). Le moins cher.',
-    'mid': 'Moyen — assez malin pour rédiger ou comparer.',
-    'smart': 'Intelligent — plans, arbitrages. Le plus cher.',
-}
 
 SOURCES = {
     'field': 'le champ « {} » de la réponse',
@@ -174,36 +170,6 @@ def _enchainement(
         )
         declencheurs.append({'k': str(titre or trig_id), 'v': quand})
     return entrants, sortants, declencheurs
-
-
-def _passages(conn: sqlite3.Connection, ident: str) -> list[dict[str, Any]]:
-    lignes = []
-    for rid, when, tin, tout, lat, verd, tier, model in conn.execute(
-        'SELECT id, created_at, tokens_in, tokens_out, latency_ms,'
-        ' verdict, tier, model FROM llm_usage WHERE point=?'
-        ' ORDER BY id DESC LIMIT 20',
-        (ident,),
-    ).fetchall():
-        lignes.append(
-            {
-                'id': f'{ident}:{rid}',
-                'type': 'llm_usage',
-                'cellules': [
-                    when or '—',
-                    {
-                        'ok': 'terminé',
-                        'format_invalide': 'format raté',
-                        'outil': 'tour d’outils',
-                        'erreur': 'appel raté',
-                    }.get(str(verd), verd or '—'),
-                    str(tier or '—'),
-                    str(int(tin or 0) + int(tout or 0)),
-                    f'{int(lat or 0)} ms',
-                    model or '—',
-                ],
-            }
-        )
-    return lignes
 
 
 def _reglages(conn: sqlite3.Connection, ident: str) -> list[dict[str, str]]:
@@ -368,57 +334,13 @@ def project_llm(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
                 'Résultat',
                 'Niveau',
                 'Jetons',
+                'Coût',
                 'Durée',
                 'Nom du modèle',
             ],
-            'lignes': _passages(conn, ident),
+            'lignes': passages(conn, ident),
         },
         'enfants': [],
-        'preuve': '',
-    }
-
-
-def _titre(conn: sqlite3.Connection, ident: str) -> str:
-    row = conn.execute(
-        'SELECT title FROM invocations WHERE id=?', (ident,)
-    ).fetchone()
-    return str(row[0] or ident) if row else ident
-
-
-def project_llm_usage(
-    conn: sqlite3.Connection, ident: str
-) -> dict[str, Any] | None:
-    """Un passage : les compteurs d'un appel au modèle."""
-    point, sep, raw = ident.partition(':')
-    if not sep or not raw.isdigit():
-        return None
-    row = conn.execute(
-        'SELECT id, point, tier, model, tokens_in, tokens_out,'
-        ' latency_ms, verdict, created_at FROM llm_usage WHERE id=?',
-        (int(raw),),
-    ).fetchone()
-    if row is None or str(row[1]) != point:
-        return None
-    titre = _titre(conn, point)
-    return {
-        'type': 'llm_usage',
-        'id': ident,
-        'titre': f'{titre} · passage {raw}',
-        'pourquoi': 'Un appel au modèle. Les jetons et la durée sont sûrs.',
-        'champs': [
-            {'k': 'Invocation', 'v': titre},
-            {'k': 'Quand', 'v': str(row[8] or '—')},
-            {'k': 'Résultat', 'v': str(row[7] or '—')},
-            {
-                'k': 'Niveau de modèle',
-                'v': NIVEAUX.get(str(row[2]), str(row[2] or '—')),
-            },
-            {'k': 'Nom du modèle', 'v': str(row[3] or '—')},
-            {'k': 'Jetons lus', 'v': str(row[4] or 0)},
-            {'k': 'Jetons écrits', 'v': str(row[5] or 0)},
-            {'k': 'Durée', 'v': f'{int(row[6] or 0)} ms'},
-        ],
-        'enfants': [{'type': 'llm', 'id': point, 'titre': titre}],
         'preuve': '',
     }
 

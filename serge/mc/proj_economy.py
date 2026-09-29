@@ -8,6 +8,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from serge.funnels.metrics import campaign_metrics
+from serge.llm.runtime import llm_spend
 from serge.text_ids import strip_ids
 
 
@@ -153,21 +154,18 @@ def project_couts_cognitifs(
 
     Args:
         conn: Connexion canon (lecture).
-        policy: Policy (budget.llm_eur_per_1k_tokens).
+        policy: Policy (conversion du coût réel, estimation des jetons).
         now: Horodatage ISO (ignoré).
 
     Returns:
         Dict {total_tokens, total_cost_eur, total_revenue_eur, tokens_par_euro}.
     """
     _ = now
-    budget_cfg = policy.get('budget') or {}
-    rate = float(budget_cfg.get('llm_eur_per_1k_tokens', 0.004) or 0.004)
-
-    row_tok = conn.execute(
-        'SELECT COALESCE(SUM(tokens_in + tokens_out), 0) FROM llm_usage'
-    ).fetchone()
-    total_tokens = int(row_tok[0]) if row_tok else 0
-    total_cost_eur = round((total_tokens / 1000.0) * rate, 2)
+    # Le coût réel donné par OpenRouter, estimé par les jetons quand il
+    # manque (les appels d'avant le coût réel, par exemple).
+    depense = llm_spend(conn, policy, '')
+    total_tokens = depense.tokens
+    total_cost_eur = round(depense.eur, 2)
 
     row_rev = conn.execute(
         "SELECT COALESCE(SUM(amount_eur), 0) FROM transactions WHERE status='paid'"

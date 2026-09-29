@@ -25,12 +25,9 @@ def project_objet(
 
         return project_lien(conn, ident)
     if typ in ('llm', 'llm_usage', 'ecoute', 'outil'):
-        from serge.mc.proj_llm import (
-            project_ecoute,
-            project_llm,
-            project_llm_usage,
-        )
+        from serge.mc.proj_llm import project_ecoute, project_llm
         from serge.mc.proj_outil import project_outil
+        from serge.mc.proj_passages import project_llm_usage
 
         return {
             'llm': project_llm,

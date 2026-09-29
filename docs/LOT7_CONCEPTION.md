@@ -80,7 +80,7 @@ Chaque ajout est général : il sert à toutes les invocations.
   simple requête, sans navigateur. Le texte est découpé en lignes (un
   titre, un paragraphe ou un élément de liste), sans le menu ni le pied de
   page. Réglée par un nombre de lignes : l'outil « aperçu » (5 lignes,
-  pour Explorer) et l'outil « page entière » (300 lignes, pour A et B,
+  pour Explorer) et l'outil « page entière » (150 lignes, pour A et B,
   seulement une page déjà en base, par son numéro). Les adresses du
   serveur et des réseaux privés sont refusées, même après une
   redirection. On ne garde jamais le texte entier en base : seulement
@@ -114,19 +114,35 @@ Chaque ajout est général : il sert à toutes les invocations.
   écrit en texte pour un paramètre numérique (un réglage vaut « 60 »).
 - **Un prompt peut citer un quota** : `{quota.places_de_test}` donne son
   maximum, réglé une seule fois, sur le quota.
-- **Les appels au modèle** (après le premier essai en production, où une
-  réponse vide a fait échouer « Explorer le web » au bout de 22 minutes) :
-  une erreur passagère (réponse vide, délai dépassé, trop de requêtes,
-  panne du fournisseur) est réessayée deux fois, après 3 puis 10
-  secondes ; le modèle a 3 minutes pour répondre ; il peut appeler
-  plusieurs outils dans le même tour ; quand ses tours d'outils sont
-  épuisés, un message lui demande sa réponse finale ; une réponse vide
-  garde ce qu'OpenRouter en dit (raison de la fin, modèle, erreur du
-  fournisseur). Chaque appel est noté dans `llm_usage`, tours d'outils
-  (`outil`) et échecs (`erreur`) compris, même si la tâche échoue
-  ensuite : son coût est visible sur la fiche de l'invocation et compte
-  dans le plafond du jour.
-
+- **Les appels au modèle**, revus après le premier essai en production
+  (une réponse vide a fait échouer « Explorer le web » au bout de 22
+  minutes, puis un cycle a consommé près de 3 millions de jetons) :
+  - une erreur passagère (réponse vide, délai dépassé, trop de requêtes,
+    panne du fournisseur) est réessayée deux fois, après 3 puis 10
+    secondes ; le modèle a 3 minutes pour répondre ; une réponse vide
+    garde ce qu'OpenRouter en dit (raison de la fin, modèle, erreur) ;
+  - le modèle peut appeler plusieurs outils dans le même tour, et les
+    consignes le lui demandent : moins d'allers-retours, donc moins de
+    jetons renvoyés (à chaque tour, tout l'historique repart au modèle) ;
+  - quand ses tours d'outils sont épuisés, ou que le plafond de dépense du
+    jour est atteint en plein travail, un message lui demande sa réponse
+    finale, sans plus d'outil ;
+  - chaque appel est noté dans `llm_usage`, tours d'outils (`outil`) et
+    échecs (`erreur`) compris, même si la tâche échoue ensuite, avec son
+    **coût réel** : celui qu'OpenRouter facture (`cost_usd`, en dollars),
+    converti en euros par le taux de la policy (`budget.eur_per_usd`). Le
+    plafond du jour et la page Économie comptent ce coût réel ; un appel
+    sans coût connu est estimé à partir de ses jetons
+    (`budget.llm_eur_per_1k_tokens`), et la jauge dit quelle part est
+    estimée ;
+  - les réglages qui renvoient moins de jetons : « Explorer le web » a 10
+    tours d'outils ; A et B en ont 5, lisent au plus 10 pages en entier
+    par passage (`pages_entieres_max`, par la limite d'appels de l'outil)
+    et 150 lignes par page.
+- **La file dans Mission Control** dit pourquoi une tâche attend : une
+  tâche LLM n'est pas annoncée comme « prochaine » quand le plafond du
+  jour est atteint, et la raison est donnée (« Plafond LLM du jour
+  atteint : 1 tâche(s) LLM attendent demain… »).
 ---
 
 ## 4. Ce qui est retiré, et la mise à jour d'une instance
@@ -151,7 +167,41 @@ Chaque ajout est général : il sert à toutes les invocations.
 
 ---
 
-## 5. Ce qui reste pour plus tard
+## 5. Modifier un objet déjà en base : la section `changes`
+
+`config/pipeline.yaml` n'écrase jamais un objet déjà en base, pour ne pas
+défaire ce que Julien a réglé dans Mission Control. Quand il faut quand
+même changer une valeur d'un objet qui existe déjà sur les instances, on
+l'écrit dans la section `changes` du fichier
+(`serge/pipeline_changes.py`) :
+
+```yaml
+changes:
+  - id: lot7_explorer_10_tours
+    why: Moins de jetons renvoyés ; avec plusieurs outils par tour, 10 tours suffisent.
+    table: invocations
+    where: {id: explorer_web}
+    set: {max_tool_turns: {from: 25, to: 10}}
+```
+
+- Chaque modification n'est appliquée qu'**une fois** par instance, et
+  seulement si la valeur en base est **encore celle d'origine** (`from`).
+  Une valeur changée dans Mission Control est gardée.
+- Le résultat est noté dans la table `pipeline_changes` (version 30 de la
+  base) : « max_tool_turns : 25 → 10 », « déjà à jour » (instance neuve)
+  ou « gardé (changé dans Mission Control) ».
+- Seules les tables du pipeline peuvent être visées (invocations, leurs
+  outils et réglages, liens, déclencheurs, quotas, vues des tables).
+- Un prompt se change de la même façon : l'ancien texte exact en `from`
+  (une ancre YAML évite de le recopier deux fois).
+- Un **réglage nouveau** d'une invocation existante n'a pas besoin de
+  `changes` : il s'ajoute tout seul, comme une colonne nouvelle d'une vue
+  ou un droit d'écriture nouveau. Un réglage existant n'est jamais
+  modifié autrement.
+
+---
+
+## 6. Ce qui reste pour plus tard
 
 - La recherche passe par DuckDuckGo ; SearXNG viendra au lot 12, avec le
   navigateur pour les pages qui en ont besoin.

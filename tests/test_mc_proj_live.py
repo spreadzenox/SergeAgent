@@ -7,6 +7,7 @@ import sqlite3
 import sys
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -168,6 +169,39 @@ class ProjLiveTests(unittest.TestCase):
         self.assertEqual(derniere[0], '—')
         self.assertEqual(derniere[3], 'Ne partira pas : invocation supprimée')
         self.assertEqual(fiche['champs'][0]['v'], avant)
+
+    def test_le_plafond_du_jour_explique_l_attente(self) -> None:
+        """Plafond atteint : la tâche LLM prête n'est plus « prochaine »,
+        la raison est donnée, comme la file la sautera."""
+        self.conn.execute(
+            "UPDATE invocations SET type='llm' WHERE id='classer'"
+        )
+        self.conn.execute(
+            'INSERT INTO llm_usage(point, tier, verdict, cost_usd, created_at)'
+            " VALUES('classer', 'mid', 'ok', 100.0, ?)",
+            (NOW,),
+        )
+        politique = {
+            **POLICY,
+            'budget': {**POLICY['budget'], 'eur_per_usd': 0.9},
+        }
+        file = project_file(self.conn, politique, NOW)
+        self.assertNotEqual(
+            (file['next'] or {}).get('kind'), 'Classer une réponse'
+        )
+        self.assertIn('Plafond LLM du jour atteint', file['attente'])
+        with mock.patch(
+            'serge.mc.proj_taches.policy_en_vigueur', return_value=politique
+        ):
+            fiche = project_file_detail(self.conn, NOW)
+        etats = {
+            ligne['cellules'][1]: ligne['cellules'][3]
+            for ligne in fiche['tableau']['lignes']
+        }
+        self.assertEqual(
+            etats['Classer une réponse'],
+            'En attente : plafond LLM du jour atteint',
+        )
 
     def test_feed_tri_et_sources(self) -> None:
         items = project_feed(self.conn, POLICY, NOW)['items']

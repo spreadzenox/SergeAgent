@@ -6,7 +6,8 @@ schema_version: 1
 budget:
   monthly_eur: 50.0
   llm_daily_eur: 5.0               # plafond financier global P2
-  llm_eur_per_1k_tokens: 0.004     # taux blendé conservateur (garde budget)
+  llm_eur_per_1k_tokens: 0.004     # estimation, seulement si le coût réel manque
+  eur_per_usd: 0.9                 # 1 $ en € : OpenRouter facture en dollars
   test_provision_monthly_eur: 1.0   # canarys + micro-tests (E)
   browserbase_monthly_cap_eur: 10.0 # B6 arbitrage navigateur
   allocator_reserve_ratio: 0.20

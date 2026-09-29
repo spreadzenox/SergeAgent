@@ -1086,3 +1086,29 @@ direct.
       aucune des 11 familles.
 24. Les prompts de l'étape 1 sont validés par Clem (28 septembre 2026),
     et la fusion du lot 7 dans `main` est accordée.
+
+### Q66 — Après le premier vrai cycle en production (validé par Clem, 29 septembre 2026)
+Constats : « Explorer le web » a échoué sur une réponse vide du modèle au
+bout de 22 minutes, sans nouvel essai ; un cycle a consommé près de 3
+millions de jetons (« ~11,80 € » estimés par le taux fixe de la policy) ;
+le plafond du jour ne s'appliquait qu'entre deux tâches, et la file
+annonçait comme « prochaine » une tâche LLM qui attendait le lendemain.
+Décidé, pour toutes les invocations, sans bricolage :
+1. Les appels au modèle : une erreur passagère est réessayée deux fois ;
+   180 secondes pour répondre ; plusieurs outils par tour ; un message
+   demande la réponse finale quand les outils sont épuisés ; une réponse
+   vide garde l'explication d'OpenRouter.
+2. Chaque appel est noté avec son coût réel (celui qu'OpenRouter facture),
+   converti en euros par la policy (`budget.eur_per_usd`) ; c'est ce coût
+   qui compte dans le plafond du jour. Un appel sans coût connu est
+   estimé par ses jetons.
+3. Le plafond est aussi vérifié pendant une tâche : atteint, le modèle doit
+   répondre sans plus d'outil.
+4. Moins de jetons renvoyés : « Explorer » 10 tours d'outils ; A et B 5
+   tours, 10 pages lues en entier au plus (limite d'appels de l'outil),
+   150 lignes par page (au lieu de 300, Q65).
+5. Une valeur d'un objet déjà en base (tours, prompt, réglage) ne change
+   que par la section `changes` de `pipeline.yaml` : une fois, et
+   seulement si elle n'a pas été changée dans Mission Control. Un réglage
+   nouveau s'ajoute tout seul à une invocation existante.
+6. La file dit pourquoi une tâche attend (le plafond du jour).

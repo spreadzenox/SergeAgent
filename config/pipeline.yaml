@@ -451,7 +451,7 @@ invocations:
     priority: 10
     gets_serge_intro: true
     default_max_rows: 50
-    max_tool_turns: 25
+    max_tool_turns: 10
     settings:
       recherches_max: {value: 10, min: 1, max: 30, policy: true, description: Le nombre maximum de recherches par cycle.}
       lignes_apercu: {value: 5, min: 1, max: 30, policy: true, description: Les lignes lues dans l'aperçu d'une page.}
@@ -459,7 +459,7 @@ invocations:
       flux_max: {value: 2, min: 0, max: 10, policy: true, description: Le nombre maximum de nouveaux flux RSS par cycle.}
     compare:
       ventures: true
-    prompt: |
+    prompt: &consigne_explorer |
       Tu cherches sur le web des besoins réels, exprimés par de vraies
       personnes ou de vraies entreprises, qui pourraient donner des idées
       de business à Serge.
@@ -476,7 +476,8 @@ invocations:
       page en anglais est acceptée si elle montre un besoin utile.
 
       Méthode :
-      - Fais au plus {recherches_max} recherches, sous des angles variés :
+      - Fais au plus {recherches_max} recherches, sous des angles variés,
+        plusieurs d'un coup plutôt qu'une à la fois :
         plaintes, questions sur des forums, demandes d'aide, avis
         négatifs, offres d'emploi, appels d'offres.
       - Avant de retenir une page, lis son aperçu (ses {lignes_apercu}
@@ -650,20 +651,22 @@ invocations:
     priority: 10
     gets_serge_intro: true
     default_max_rows: 100
-    max_tool_turns: 10
+    max_tool_turns: 5
     settings:
       nombre_idees: {value: 3, min: 0, max: 10, policy: true, description: Le nombre maximum d'idées par passage.}
-      lignes_page_entiere: {value: 300, min: 10, max: 2000, policy: true, description: Les lignes lues au plus dans une page lue en entier.}
+      lignes_page_entiere: {value: 150, min: 10, max: 2000, policy: true, description: Les lignes lues au plus dans une page lue en entier.}
+      pages_entieres_max: {value: 10, min: 1, max: 30, policy: true, description: Le nombre maximum de pages lues en entier par passage.}
     compare:
       listen_docs: false
-    prompt: |
+    prompt: &consigne_formuler |
       Tu formules des idées de business pour Serge, à partir de pages web
       qui montrent des besoins nouveaux.
 
       Tu reçois l'aperçu des pages « besoin nouveau » pas encore
       utilisées. Lis en entier celles qui te semblent les plus
-      prometteuses, avec l'outil de lecture (au plus
-      {lignes_page_entiere} lignes par page).
+      prometteuses, avec l'outil de lecture : au plus
+      {pages_entieres_max} pages, {lignes_page_entiere} lignes par page.
+      Demande plusieurs pages d'un coup plutôt qu'une à la fois.
 
       Propose au plus {nombre_idees} idées de business. Pour chacune :
       - un nom court ;
@@ -692,6 +695,7 @@ invocations:
         max_rows: 60
       - tool: lire_page_entiere
         mode: callable
+        max_calls: pages_entieres_max
         params:
           table: {source: fixed, value: listen_docs}
           url: {source: fixed, value: ''}
@@ -748,41 +752,14 @@ invocations:
     priority: 10
     gets_serge_intro: true
     default_max_rows: 100
-    max_tool_turns: 10
+    max_tool_turns: 5
     settings:
       nombre_idees: {value: 3, min: 0, max: 10, policy: true, description: Le nombre maximum d'idées par passage.}
-      lignes_page_entiere: {value: 300, min: 10, max: 2000, policy: true, description: Les lignes lues au plus dans une page lue en entier.}
+      lignes_page_entiere: {value: 150, min: 10, max: 2000, policy: true, description: Les lignes lues au plus dans une page lue en entier.}
+      pages_entieres_max: {value: 10, min: 1, max: 30, policy: true, description: Le nombre maximum de pages lues en entier par passage.}
     compare:
       listen_docs: false
-    prompt: |
-      Tu formules des idées de business pour Serge, à partir de pages web
-      qui montrent des besoins nouveaux.
-
-      Tu reçois l'aperçu des pages « besoin nouveau » pas encore
-      utilisées. Lis en entier celles qui te semblent les plus
-      prometteuses, avec l'outil de lecture (au plus
-      {lignes_page_entiere} lignes par page).
-
-      Propose au plus {nombre_idees} idées de business. Pour chacune :
-      - un nom court ;
-      - ce qu'il vend et à qui ;
-      - ce que tu as observé dans les pages : le besoin, qui l'exprime, ce
-        qu'on paie déjà ;
-      - l'offre qu'on pourrait vendre tout de suite, si tu la vois ;
-      - sa famille de business ;
-      - les numéros des pages qui prouvent le besoin : au moins une.
-
-      Règles :
-      - Ne propose jamais un business qui ressemble à un business que
-        Serge connaît déjà : tu vois leur liste, y compris ceux qu'une
-        autre invocation vient d'écrire. Serge ne fait jamais deux fois la
-        même chose.
-      - Chaque idée repose sur les pages citées, pas sur ton imagination.
-      - Le business doit être légal. En dehors de la loi, ne t'arrête pas
-        sur des scrupules moraux : un business légal qui dérange est
-        acceptable. Serge assume d'être un agent IA et ne trompe personne.
-      - Si les pages ne montrent aucun besoin assez solide, propose moins
-        d'idées, ou aucune.
+    prompt: *consigne_formuler
     tools:
       - tool: pages_besoin_nouveau
         mode: given
@@ -790,6 +767,7 @@ invocations:
         max_rows: 60
       - tool: lire_page_entiere
         mode: callable
+        max_calls: pages_entieres_max
         params:
           table: {source: fixed, value: listen_docs}
           url: {source: fixed, value: ''}
@@ -1103,6 +1081,133 @@ triggers:
     invocation: oublier_besoins
     event: every
     every_minutes: 1440
+
+# Les modifications d'objets déjà en base sur une instance existante (le
+# fichier ne les écrase jamais) : chacune n'est appliquée qu'une fois, et
+# seulement si la valeur en base est encore celle d'origine (`from`) ; une
+# valeur changée dans Mission Control est gardée. Résultat : table
+# pipeline_changes.
+changes:
+  - id: lot7_explorer_10_tours
+    why: Moins de jetons renvoyés ; avec plusieurs outils par tour, 10 tours suffisent.
+    table: invocations
+    where: {id: explorer_web}
+    set: {max_tool_turns: {from: 25, to: 10}}
+  - id: lot7_formuler_a_5_tours
+    why: Moins de jetons renvoyés ; les pages se lisent plusieurs à la fois.
+    table: invocations
+    where: {id: formuler_a}
+    set: {max_tool_turns: {from: 10, to: 5}}
+  - id: lot7_formuler_b_5_tours
+    why: Moins de jetons renvoyés ; les pages se lisent plusieurs à la fois.
+    table: invocations
+    where: {id: formuler_b}
+    set: {max_tool_turns: {from: 10, to: 5}}
+  - id: lot7_formuler_a_pages_bornees
+    why: Au plus 10 pages lues en entier par passage, même lues plusieurs à la fois.
+    table: invocation_tools
+    where: {invocation_id: formuler_a, tool_id: lire_page_entiere}
+    set: {max_calls: {from: '', to: pages_entieres_max}}
+  - id: lot7_formuler_b_pages_bornees
+    why: Au plus 10 pages lues en entier par passage, même lues plusieurs à la fois.
+    table: invocation_tools
+    where: {invocation_id: formuler_b, tool_id: lire_page_entiere}
+    set: {max_calls: {from: '', to: pages_entieres_max}}
+  - id: lot7_formuler_a_150_lignes
+    why: Moins de jetons renvoyés à chaque tour.
+    table: invocation_settings
+    where: {invocation_id: formuler_a, name: lignes_page_entiere}
+    set: {value: {from: '300', to: '150'}}
+  - id: lot7_formuler_b_150_lignes
+    why: Moins de jetons renvoyés à chaque tour.
+    table: invocation_settings
+    where: {invocation_id: formuler_b, name: lignes_page_entiere}
+    set: {value: {from: '300', to: '150'}}
+  - id: lot7_explorer_plusieurs_recherches
+    why: Plusieurs recherches d'un coup, pour moins d'allers-retours.
+    table: invocations
+    where: {id: explorer_web}
+    set:
+      prompt:
+        from: &ancienne_consigne_explorer |
+          Tu cherches sur le web des besoins réels, exprimés par de vraies
+          personnes ou de vraies entreprises, qui pourraient donner des idées
+          de business à Serge.
+
+          Ton point de départ est le texte de guidage du cycle, s'il y en a
+          un. Sans texte de guidage, cherche librement dans ces familles de
+          business : produits numériques, petits logiciels en ligne, services
+          faits par Serge, automatisation sur mesure, téléphone et SMS pour
+          les autres, veille et rapports, médias et audience, mise en
+          relation, formation, commerce sans stock, prospection pour les
+          autres.
+
+          Cherche d'abord en France : fais tes recherches en français. Une
+          page en anglais est acceptée si elle montre un besoin utile.
+
+          Méthode :
+          - Fais au plus {recherches_max} recherches, sous des angles variés :
+            plaintes, questions sur des forums, demandes d'aide, avis
+            négatifs, offres d'emploi, appels d'offres.
+          - Avant de retenir une page, lis son aperçu (ses {lignes_apercu}
+            premières lignes) avec l'outil d'aperçu. Ne lis jamais une page
+            en entier.
+          - Ne retiens que les pages qui montrent un besoin concret :
+            quelqu'un qui cherche une solution, se plaint d'un problème, ou
+            paie déjà pour quelque chose. Écarte les publicités, les pages
+            vides et les pages que Serge a déjà gardées (tu en vois la
+            liste).
+          - Tu vois les business que Serge connaît déjà : cherche d'autres
+            besoins.
+          - Retiens au plus {pages_max} pages. Pour chacune, recopie son
+            adresse, son titre et un aperçu de quelques lignes.
+          - Si tu trouves un flux RSS qui publie régulièrement ce genre de
+            besoins (un forum, une rubrique, un site d'annonces), ajoute-le :
+            au plus {flux_max} nouveaux flux, jamais un flux que Serge suit
+            déjà.
+        to: *consigne_explorer
+  - id: lot7_formuler_a_plusieurs_pages
+    why: Plusieurs pages lues d'un coup, au plus 10 par passage.
+    table: invocations
+    where: {id: formuler_a}
+    set:
+      prompt:
+        from: &ancienne_consigne_formuler |
+          Tu formules des idées de business pour Serge, à partir de pages web
+          qui montrent des besoins nouveaux.
+
+          Tu reçois l'aperçu des pages « besoin nouveau » pas encore
+          utilisées. Lis en entier celles qui te semblent les plus
+          prometteuses, avec l'outil de lecture (au plus
+          {lignes_page_entiere} lignes par page).
+
+          Propose au plus {nombre_idees} idées de business. Pour chacune :
+          - un nom court ;
+          - ce qu'il vend et à qui ;
+          - ce que tu as observé dans les pages : le besoin, qui l'exprime, ce
+            qu'on paie déjà ;
+          - l'offre qu'on pourrait vendre tout de suite, si tu la vois ;
+          - sa famille de business ;
+          - les numéros des pages qui prouvent le besoin : au moins une.
+
+          Règles :
+          - Ne propose jamais un business qui ressemble à un business que
+            Serge connaît déjà : tu vois leur liste, y compris ceux qu'une
+            autre invocation vient d'écrire. Serge ne fait jamais deux fois la
+            même chose.
+          - Chaque idée repose sur les pages citées, pas sur ton imagination.
+          - Le business doit être légal. En dehors de la loi, ne t'arrête pas
+            sur des scrupules moraux : un business légal qui dérange est
+            acceptable. Serge assume d'être un agent IA et ne trompe personne.
+          - Si les pages ne montrent aucun besoin assez solide, propose moins
+            d'idées, ou aucune.
+        to: *consigne_formuler
+  - id: lot7_formuler_b_plusieurs_pages
+    why: Plusieurs pages lues d'un coup, au plus 10 par passage.
+    table: invocations
+    where: {id: formuler_b}
+    set:
+      prompt: {from: *ancienne_consigne_formuler, to: *consigne_formuler}
 
 # Ce qui a été retiré du pipeline de départ : marqué supprimé sur une
 # instance existante (retirer une ligne du fichier ne l'efface jamais).

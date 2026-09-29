@@ -204,10 +204,11 @@ Record = Callable[[ChatResult | None, str], None]
 # Attente maximale d'une réponse du modèle, en secondes : une réponse
 # longue (30 pages retenues, par exemple) peut dépasser une minute.
 TIMEOUT_S = 180.0
-# Le message ajouté quand les tours d'outils sont épuisés.
+# Le message ajouté quand le modèle ne peut plus appeler d'outils : ses
+# tours sont épuisés, ou le plafond de dépense du jour est atteint.
 FIN_DES_OUTILS = (
-    'Tu as utilisé tous tes appels d’outils. Rends maintenant ta réponse'
-    ' finale, au format demandé, avec ce que tu as déjà trouvé.'
+    'Tu ne peux plus appeler d’outils. Rends maintenant ta réponse finale,'
+    ' au format demandé, avec ce que tu as déjà trouvé.'
 )
 # Pauses avant de réessayer un appel raté pour une raison passagère.
 PAUSES_S = (3.0, 10.0)
@@ -254,6 +255,7 @@ def converse(
     api_key: str,
     model: str,
     record: Record | None = None,
+    stop: Callable[[], bool] | None = None,
 ) -> tuple[ChatResult, list[dict[str, Any]]]:
     """Laisse le modèle appeler ses outils, puis rend sa réponse finale.
 
@@ -262,7 +264,9 @@ def converse(
     répond « limite atteinte » au-delà : exemple, au plus 10 recherches.
     Le modèle peut appeler plusieurs outils dans le même tour. Chaque tour
     d'outils est noté (``record``) ; la réponse finale est rendue, à noter
-    par l'appelant une fois son format vérifié.
+    par l'appelant une fois son format vérifié. Si ``stop`` répond vrai
+    après un tour (le plafond de dépense du jour est atteint), le modèle
+    doit répondre tout de suite, sans plus d'outil.
     """
     schemas, links = callable_tools(conn, inv, task)
     limits = _call_limits(conn, inv, links)
@@ -270,7 +274,11 @@ def converse(
     history = [dict(m) for m in messages]
     turns = 0
     while True:
-        force_text = not schemas or turns >= inv.max_tool_turns
+        force_text = (
+            not schemas
+            or turns >= inv.max_tool_turns
+            or (turns > 0 and stop is not None and stop())
+        )
         if force_text and schemas:
             # Certains modèles rendent une réponse vide quand on leur
             # interdit les outils sans rien dire : on le leur dit.

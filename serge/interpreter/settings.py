@@ -114,6 +114,8 @@ def seed_settings(
 
     Format : ``{nom: {type, value, min, max, description, policy}}``.
     Exemple : ``nombre_idees: {value: 2, min: 1, max: 10, policy: true}``.
+    Un réglage déjà en base n'est jamais modifié : seuls les nouveaux
+    s'ajoutent.
 
     Raises:
         SettingError: Format invalide, ou valeur hors de ses bornes.
@@ -133,7 +135,8 @@ def seed_settings(
         if probleme:
             raise SettingError(f'{where} : {probleme}')
         conn.execute(
-            'INSERT INTO invocation_settings(invocation_id, name, type, value,'
+            'INSERT OR IGNORE INTO invocation_settings(invocation_id, name,'
+            ' type, value,'
             ' min_value, max_value, description, policy, updated_by)'
             ' VALUES(?,?,?,?,?,?,?,?,?)',
             (

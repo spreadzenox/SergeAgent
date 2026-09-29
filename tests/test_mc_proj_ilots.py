@@ -313,6 +313,7 @@ class ProjIlotsTests(ProjSystemFixtures):
                 'ready': 2,
                 'running': 1,
                 'bloques': 1,
+                'attente': '',
             },
         )
 

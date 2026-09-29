@@ -10,7 +10,12 @@ Scénarios :
 - quand les tours d'outils sont épuisés, le modèle est prévenu en clair ;
 - le modèle peut appeler plusieurs outils d'un coup, et attend jusqu'à
   3 minutes une réponse ;
-- une réponse vide garde ce qu'OpenRouter en dit.
+- une réponse vide garde ce qu'OpenRouter en dit ;
+- le coût réel donné par OpenRouter est noté, et c'est lui qui compte dans
+  le plafond du jour (converti en euros) ; un appel sans coût connu est
+  estimé à partir de ses jetons ;
+- si le plafond est atteint en plein travail, le modèle doit répondre sans
+  plus d'outil.
 """
 
 from __future__ import annotations
@@ -33,7 +38,11 @@ from serge.interpreter import prompt  # noqa: E402
 from serge.interpreter.queue import process_one  # noqa: E402
 from serge.interpreter.tasks import enqueue_task  # noqa: E402
 from serge.llm.client import ChatResult, LlmError, ToolCall, chat  # noqa: E402
-from serge.llm.runtime import daily_tokens  # noqa: E402
+from serge.llm.runtime import (  # noqa: E402
+    budget_spent,
+    daily_tokens,
+    llm_spend,
+)
 from serge.pipeline_seed import seed_pipeline  # noqa: E402
 from tests.taches_fixtures import sans_pipeline_de_depart  # noqa: E402
 
@@ -165,6 +174,59 @@ class AppelsTests(unittest.TestCase):
         ]
         self.assertEqual(len(reponses_outils), 3)
 
+    def test_le_cout_reel_est_note(self) -> None:
+        reponse = ChatResult(REPONSE.text, 10, 5, 'faux', 1, (), 0.0021)
+        self._tourner(Script(reponse))
+        self.assertEqual(
+            self.conn.execute('SELECT cost_usd FROM llm_usage').fetchall(),
+            [(0.0021,)],
+        )
+
+    def test_le_plafond_atteint_arrete_les_outils(self) -> None:
+        """Un tour d'outils à 10 $ (9 €) dépasse le plafond de 5 € : le
+        tour suivant, le modèle doit répondre, sans outil."""
+        cher = ChatResult('', 7, 3, 'faux', 1, _outil(1).tool_calls, 10.0)
+        script = Script(cher, REPONSE)
+        statut, _ = self._tourner(script)
+        self.assertEqual(statut, 'done')
+        self.assertEqual(script.appels[1]['tool_choice'], 'none')
+        self.assertEqual(
+            script.appels[1]['messages'][-1]['content'], prompt.FIN_DES_OUTILS
+        )
+
+
+class DepenseTests(unittest.TestCase):
+    """La dépense du jour : le coût réel, sinon une estimation."""
+
+    def test_cout_reel_et_estimation(self) -> None:
+        conn = sqlite3.connect(':memory:')
+        self.addCleanup(conn.close)
+        init_schema(conn)
+        conn.executemany(
+            'INSERT INTO llm_usage(point, tier, tokens_in, tokens_out,'
+            ' verdict, cost_usd, created_at) VALUES(?,?,?,?,?,?,?)',
+            [
+                ('a', 'mid', 1000, 0, 'ok', 0.5, '2026-09-29T10:00'),
+                ('a', 'mid', 1500, 500, 'outil', None, '2026-09-29T10:01'),
+                ('a', 'mid', 0, 0, 'erreur', None, '2026-09-29T10:02'),
+                ('a', 'mid', 9999, 0, 'ok', 3.0, '2026-09-28T10:00'),
+            ],
+        )
+        politique = {
+            'budget': {
+                'llm_daily_eur': 1.0,
+                'eur_per_usd': 0.9,
+                'llm_eur_per_1k_tokens': 0.01,
+            }
+        }
+        depense = llm_spend(conn, politique, '2026-09-29')
+        # 0,5 $ × 0,9 = 0,45 € réels, plus 2 000 jetons estimés à 0,02 €.
+        self.assertAlmostEqual(depense.eur, 0.47)
+        self.assertAlmostEqual(depense.estimated_eur, 0.02)
+        self.assertEqual(depense.tokens, 3000)
+        self.assertFalse(budget_spent(conn, politique, '2026-09-29'))
+        self.assertTrue(budget_spent(conn, politique, '2026-09-28'))
+
 
 class ReponseVideTests(unittest.TestCase):
     def test_la_raison_d_openrouter_est_gardee(self) -> None:
@@ -190,6 +252,23 @@ class ReponseVideTests(unittest.TestCase):
         self.assertIn('fin : length', message)
         self.assertIn('modèle : deepseek/deepseek-v4-flash', message)
         self.assertIn('réflexion rendue sans réponse', message)
+
+    def test_le_cout_rendu_par_openrouter(self) -> None:
+        corps = {
+            'model': 'x',
+            'choices': [{'message': {'content': 'ok'}}],
+            'usage': {
+                'prompt_tokens': 3,
+                'completion_tokens': 2,
+                'cost': 0.004,
+            },
+        }
+        reponse = io.BytesIO(json.dumps(corps).encode())
+        reponse.__enter__ = lambda *_: reponse  # type: ignore[method-assign]
+        reponse.__exit__ = lambda *_: None  # type: ignore[method-assign]
+        with mock.patch('urllib.request.urlopen', return_value=reponse):
+            resultat = chat('cle', 'x', [])
+        self.assertEqual(resultat.cost_usd, 0.004)
 
 
 if __name__ == '__main__':

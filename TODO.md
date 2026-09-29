@@ -81,9 +81,20 @@ remplir la base, dans `config/pipeline.yaml` (le détail est dans
 - **Une leçon est rattachée** à une invocation (`invocation:<id>`), à une
   étape (`etape:<id>`) ou à tout Serge (`global`) : elle est donnée
   d'office à qui la concerne.
-- **Ce qu'on retire de `pipeline.yaml` doit être marqué supprimé en base**
-  (`deleted_at`) : le fichier ajoute les objets nouveaux sur une instance
-  existante, mais n'efface ni ne modifie jamais rien.
+- **Ce qu'on retire de `pipeline.yaml` est listé dans sa section
+  `deleted`** : le fichier ajoute les objets nouveaux sur une instance
+  existante, mais n'efface jamais rien de lui-même.
+- **Changer une valeur d'un objet déjà en base passe par la section
+  `changes`** de `pipeline.yaml` (des tours d'outils, un prompt, un
+  réglage) : une seule fois par instance, et seulement si la valeur est
+  encore celle d'origine. Jamais une migration qui nomme une invocation,
+  jamais une retouche à la main sur le serveur. Un réglage nouveau
+  s'ajoute tout seul.
+- **Chaque appel au modèle coûte** : tout l'historique d'une invocation
+  repart au modèle à chaque tour d'outils. Garder peu de tours, laisser
+  le modèle appeler plusieurs outils d'un coup, borner ce qu'un outil
+  rend (lignes lues, pages lues), et regarder le coût réel noté pour
+  chaque appel.
 
 ---
 
@@ -553,7 +564,7 @@ n'est propre à une de ces invocations.
   5. **« Formuler des business A »** puis **« Formuler des business B »**
      (modèle intelligent, l'une après l'autre) reçoivent l'aperçu des pages
      « besoin nouveau » pas encore utilisées, lisent en entier celles
-     qu'elles veulent (seulement des pages en base, au plus 300 lignes par
+     qu'elles veulent (seulement des pages en base, au plus 150 lignes par
      page et 10 pages par passage, réglages), et écrivent chacune 3 idées
      (réglage). Une fiche cite au moins une page de preuve et sa famille
      de business (Q32). Une fois l'idée écrite, les pages utilisées sont

@@ -36,6 +36,8 @@ from serge.interpreter.tasks import finish_task, start_task, task_params
 from serge.interpreter.tools import fixed_params, run_capability
 from serge.interpreter.writer import write_answer
 from serge.llm.client import ChatResult
+from serge.llm.runtime import budget_spent
+from serge.policy_snapshots import policy_en_vigueur
 
 RETRIES = 2
 TIER_TO_OLD = {'fast': 'T1', 'mid': 'T2', 'smart': 'T3'}
@@ -63,22 +65,27 @@ def _record_usage(
     conn: sqlite3.Connection,
     inv: Invocation,
     model: str,
-    tokens_in: int,
-    tokens_out: int,
-    latency: int,
+    result: ChatResult | None,
     verdict: str,
 ) -> None:
+    """Note un appel au modèle, et l'enregistre aussitôt.
+
+    ``result`` vaut ``None`` pour un appel raté : il n'a ni jetons ni coût.
+    Le coût est celui qu'OpenRouter a facturé, quand il le donne.
+    """
     conn.execute(
         'INSERT INTO llm_usage(point, tier, model, tokens_in, tokens_out,'
-        ' latency_ms, verdict, created_at) VALUES(?,?,?,?,?,?,?,?)',
+        ' latency_ms, verdict, cost_usd, created_at)'
+        ' VALUES(?,?,?,?,?,?,?,?,?)',
         (
             inv.id,
             inv.model_tier,
-            model,
-            tokens_in,
-            tokens_out,
-            latency,
+            (result.model or model) if result else model,
+            result.tokens_in if result else 0,
+            result.tokens_out if result else 0,
+            result.latency_ms if result else 0,
             verdict,
+            result.cost_usd if result else None,
             utcnow(),
         ),
     )
@@ -153,20 +160,13 @@ def _ask(
 
     Chaque appel est noté aussitôt (tours d'outils, échecs compris) et
     enregistré : si la tâche échoue ensuite, ce qu'elle a coûté reste
-    visible, et compte dans le plafond du jour.
+    visible, et compte dans le plafond du jour. Quand le plafond est
+    atteint en plein travail, le modèle doit répondre sans plus d'outil ;
+    la tâche finit, et les suivantes attendent le lendemain.
     """
 
     def record(result: ChatResult | None, verdict: str) -> None:
-        _record_usage(
-            conn,
-            inv,
-            result.model if result else model,
-            result.tokens_in if result else 0,
-            result.tokens_out if result else 0,
-            result.latency_ms if result else 0,
-            verdict,
-        )
-        conn.commit()
+        _record_usage(conn, inv, model, result, verdict)
 
     last_errors: list[str] = []
     for attempt in range(RETRIES + 1):
@@ -179,6 +179,7 @@ def _ask(
             api_key=api_key,
             model=model,
             record=record,
+            stop=lambda: budget_spent(conn, policy_en_vigueur(conn)),
         )
         if not fields:
             record(result, 'ok')

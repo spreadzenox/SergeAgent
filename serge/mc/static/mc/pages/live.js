@@ -49,13 +49,12 @@ function renderHero(main, payload, sig, store) {
   }
   const prochain = main.querySelector('.file-hero [data-file="prochain"]');
   if (prochain) {
-    if (payload.next) {
-      prochain.hidden = false;
-      prochain.textContent = `Prochain : ${verbe(payload.next.kind)}`;
-    } else {
-      prochain.hidden = true;
-      prochain.textContent = '';
-    }
+    // Pas de prochaine tâche : la raison, s'il y en a une (le plafond du jour).
+    const texte = payload.next
+      ? `Prochain : ${verbe(payload.next.kind)}`
+      : payload.attente || '';
+    prochain.hidden = !texte;
+    prochain.textContent = texte;
   }
 }
 
@@ -196,13 +195,11 @@ function renderFile(main, payload, sig, store) {
     return node;
   });
   const next = main.querySelector('#file-next');
-  if (payload.next) {
-    next.hidden = false;
-    next.textContent = `Prochain : ${verbe(payload.next.kind)}`;
-  } else {
-    next.hidden = true;
-    next.textContent = '';
-  }
+  const texte = payload.next
+    ? `Prochain : ${verbe(payload.next.kind)}`
+    : payload.attente || '';
+  next.hidden = !texte;
+  next.textContent = texte;
 }
 
 async function ouvrirFeuille(type, id) {
@@ -309,14 +306,19 @@ function renderPensee(main, io) {
 function renderJauges(main, payload, sig, gauges) {
   const llm = payload.llm || {};
   updateGauge(gauges.llm.node, llm.ratio || 0, llm.ratio > 0.8 ? 'alerte' : '');
-  const euros = Number(llm.eur_estimes || 0).toLocaleString('fr-FR', {
+  const format = (n) => Number(n || 0).toLocaleString('fr-FR', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
+  // Le coût réel donné par OpenRouter ; la part estimée (appels sans coût
+  // connu) est signalée à part.
+  const estime = Number(llm.eur_estimes || 0) > 0
+    ? `, dont ~${format(llm.eur_estimes)} € estimés`
+    : '';
   tweenNombre(
     gauges.llm.label,
     llm.tokens_jour || 0,
-    (v) => `${llm.libelle || 'Invocations'} : ${Math.round(v)} jetons (~${euros} € / ${llm.plafond_eur || 0} €)`,
+    (v) => `${llm.libelle || 'Invocations'} : ${Math.round(v)} jetons (${format(llm.eur)} € / ${llm.plafond_eur || 0} €${estime})`,
   );
   for (const nom of ['email', 'voix', 'linkedin']) {
     const barre = payload[nom] || {};

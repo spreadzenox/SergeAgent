@@ -97,7 +97,7 @@ Autres décisions :
 - **Ne pas saturer les invocations.** « Explorer » et « Trier » ne lisent
   qu'un aperçu de chaque page (5 lignes, réglage ; une ligne = un titre,
   un paragraphe ou un élément de liste) ; seules A et B lisent une page
-  en entier, seulement des pages déjà en base (au plus 300 lignes par
+  en entier, seulement des pages déjà en base (au plus 150 lignes par
   page et 10 pages par passage). Une seule capacité « lire une page »,
   réglée par ce nombre de lignes, sans navigateur. En base, on garde l'adresse et l'aperçu,
   jamais le texte entier ; pour une page de flux, l'aperçu est le résumé
