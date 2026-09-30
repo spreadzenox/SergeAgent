@@ -127,7 +127,6 @@ def validate_policy(data: Mapping[str, Any]) -> dict[str, Any]:
     for key in (
         'budget.monthly_eur',
         'budget.llm_daily_eur',
-        'budget.llm_eur_per_1k_tokens',
         'budget.eur_per_usd',
         'budget.allocator_bandit_cost_per_eur',
         'budget.test_provision_monthly_eur',

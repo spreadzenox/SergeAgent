@@ -310,15 +310,15 @@ function renderJauges(main, payload, sig, gauges) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
-  // Le coût réel donné par OpenRouter ; la part estimée (appels sans coût
-  // connu) est signalée à part.
-  const estime = Number(llm.eur_estimes || 0) > 0
-    ? `, dont ~${format(llm.eur_estimes)} € estimés`
+  // Le coût réel donné par OpenRouter ; les appels dont il n'est pas connu
+  // sont signalés à part, jamais estimés.
+  const sansCout = Number(llm.jetons_sans_cout || 0) > 0
+    ? `, ${llm.jetons_sans_cout} jetons sans coût connu non comptés`
     : '';
   tweenNombre(
     gauges.llm.label,
     llm.tokens_jour || 0,
-    (v) => `${llm.libelle || 'Invocations'} : ${Math.round(v)} jetons (${format(llm.eur)} € / ${llm.plafond_eur || 0} €${estime})`,
+    (v) => `${llm.libelle || 'Invocations'} : ${Math.round(v)} jetons (${format(llm.eur)} € / ${llm.plafond_eur || 0} €${sansCout})`,
   );
   for (const nom of ['email', 'voix', 'linkedin']) {
     const barre = payload[nom] || {};

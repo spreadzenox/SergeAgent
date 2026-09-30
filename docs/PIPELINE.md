@@ -158,7 +158,9 @@ Le runner tourne en continu, en deux copies, une par file
   consolidation.
 - Quand le plafond de dépense LLM du jour est atteint (réglé dans la
   policy, par exemple 5 €), les tâches LLM attendent le lendemain ; les
-  autres continuent.
+  autres continuent. La dépense est le coût réel facturé par OpenRouter pour
+  chaque appel (`llm_usage.cost_usd`), jamais une estimation ; les appels
+  dont le coût n'est pas connu sont signalés à part.
 - À chaque tour, les tickets dont le délai est passé sont expirés : leur
   choix par défaut s'applique.
 

@@ -77,14 +77,6 @@ export const CHAMPS = {
     50,
     0.5,
   ],
-  'budget.llm_eur_per_1k_tokens': [
-    'Prix estimé de 1 000 jetons',
-    'Seulement quand OpenRouter ne donne pas le coût réel d’un appel : on l’estime alors à partir des jetons.',
-    'eur',
-    0,
-    0.05,
-    0.001,
-  ],
   'budget.eur_per_usd': [
     'Un dollar en euros',
     'OpenRouter facture en dollars : ce taux convertit le coût réel des appels pour le plafond du jour.',

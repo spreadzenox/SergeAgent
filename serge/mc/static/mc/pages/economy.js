@@ -71,7 +71,10 @@ function renderTransactions(main, payload, sig) {
 
 function renderCouts(main, payload, sig) {
   const pCouts = main.querySelector('#eco-couts-detail');
-  pCouts.textContent = `Consommation : ${payload.total_tokens || 0} jetons (~${payload.total_cost_eur || 0} € dépensés) | Revenu encaissé : ${payload.total_revenue_eur || 0} €`;
+  const sansCout = payload.tokens_sans_cout > 0
+    ? `, dont ${payload.tokens_sans_cout} jetons sans coût connu non comptés`
+    : '';
+  pCouts.textContent = `Consommation : ${payload.total_tokens || 0} jetons (${payload.total_cost_eur || 0} € dépensés${sansCout}) | Revenu encaissé : ${payload.total_revenue_eur || 0} €`;
 
   const pRatio = main.querySelector('#eco-ratio-tokens');
   const ratioTxt = payload.tokens_par_euro !== null ? `${payload.tokens_par_euro} jetons / €` : 'N/A (aucun revenu encaissé)';

@@ -77,14 +77,14 @@ _COMPTES = "('ok', 'format_invalide', 'outil')"
 class LlmSpend:
     """Ce que les appels au modèle ont coûté, en euros.
 
-    ``eur`` additionne le coût réel donné par OpenRouter (converti en
-    euros) et, pour les appels sans coût connu, une estimation à partir
-    des jetons ; ``estimated_eur`` est la part estimée.
+    ``eur`` est le coût réel donné par OpenRouter (``usage.cost``), converti
+    en euros. Il n'est jamais estimé : un appel dont le coût n'est pas connu
+    n'y compte pas, et ses jetons sont comptés à part (``unknown_tokens``).
     """
 
     eur: float
     tokens: int
-    estimated_eur: float
+    unknown_tokens: int
 
 
 def llm_spend(
@@ -97,14 +97,14 @@ def llm_spend(
     Args:
         conn: Connexion à la base (lecture).
         policy: Policy en vigueur (``budget.eur_per_usd`` pour convertir le
-            coût réel, ``budget.llm_eur_per_1k_tokens`` pour estimer).
+            coût réel en euros).
         day: Jour UTC AAAA-MM-JJ ; ``''`` pour tout l'historique ;
             ``None`` pour aujourd'hui.
     """
     prefix = datetime.now(UTC).strftime('%Y-%m-%d') if day is None else day
-    budget = policy.get('budget') or {}
-    rate = float(budget.get('llm_eur_per_1k_tokens', 0) or 0)
-    eur_per_usd = float(budget.get('eur_per_usd', 0) or 0)
+    eur_per_usd = float(
+        (policy.get('budget') or {}).get('eur_per_usd', 0) or 0
+    )
     row = conn.execute(
         'SELECT COALESCE(SUM(cost_usd), 0), COALESCE(SUM(CASE WHEN cost_usd'
         ' IS NULL THEN tokens_in + tokens_out ELSE 0 END), 0),'
@@ -112,10 +112,7 @@ def llm_spend(
         f' WHERE verdict IN {_COMPTES} AND created_at LIKE ?',
         (f'{prefix}%',),
     ).fetchone()
-    estimated = int(row[1]) / 1000 * rate
-    return LlmSpend(
-        float(row[0]) * eur_per_usd + estimated, int(row[2]), estimated
-    )
+    return LlmSpend(float(row[0]) * eur_per_usd, int(row[2]), int(row[1]))
 
 
 def daily_tokens(
@@ -147,13 +144,13 @@ def budget_spent(
 ) -> bool:
     """Vrai si le plafond de dépense LLM du jour est atteint.
 
-    La dépense est le coût réel donné par OpenRouter, converti en euros ;
-    un appel sans coût connu est estimé à partir de ses jetons.
+    La dépense est le coût réel donné par OpenRouter, converti en euros ; un
+    appel dont le coût n'est pas connu n'y compte pas (voir ``llm_spend``).
 
     Args:
         conn: Connexion à la base (lecture).
         policy: Policy en vigueur (``budget.llm_daily_eur``, et de quoi
-            convertir ou estimer : voir ``llm_spend``).
+            convertir : voir ``llm_spend``).
         day: Jour UTC AAAA-MM-JJ (défaut : aujourd'hui).
     """
     budget = policy.get('budget') or {}

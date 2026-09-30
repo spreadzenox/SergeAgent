@@ -150,19 +150,20 @@ def project_transactions_subscriptions(
 def project_couts_cognitifs(
     conn: sqlite3.Connection, policy: Mapping[str, Any], now: str
 ) -> dict[str, Any]:
-    """Coûts LLM : tokens, estimation EUR, ratio tokens/€ de revenu (E6).
+    """Coûts LLM : tokens, coût réel en EUR, ratio tokens/€ de revenu (E6).
 
     Args:
         conn: Connexion canon (lecture).
-        policy: Policy (conversion du coût réel, estimation des jetons).
+        policy: Policy (conversion du coût réel en euros).
         now: Horodatage ISO (ignoré).
 
     Returns:
-        Dict {total_tokens, total_cost_eur, total_revenue_eur, tokens_par_euro}.
+        Dict {total_tokens, total_cost_eur, tokens_sans_cout,
+        total_revenue_eur, tokens_par_euro}.
     """
     _ = now
-    # Le coût réel donné par OpenRouter, estimé par les jetons quand il
-    # manque (les appels d'avant le coût réel, par exemple).
+    # Le coût réel donné par OpenRouter ; les appels d'avant le coût réel
+    # n'en ont pas : leurs jetons sont comptés à part, pas estimés.
     depense = llm_spend(conn, policy, '')
     total_tokens = depense.tokens
     total_cost_eur = round(depense.eur, 2)
@@ -181,6 +182,7 @@ def project_couts_cognitifs(
     return {
         'total_tokens': total_tokens,
         'total_cost_eur': total_cost_eur,
+        'tokens_sans_cout': depense.unknown_tokens,
         'total_revenue_eur': total_revenue_eur,
         'tokens_par_euro': tokens_par_euro,
     }

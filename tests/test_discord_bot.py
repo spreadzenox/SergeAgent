@@ -26,7 +26,7 @@ CFG = {
     'owner_user_id': OWNER,
 }
 POLICY = {
-    'budget': {'llm_daily_eur': 5.0, 'llm_eur_per_1k_tokens': 0.004},
+    'budget': {'llm_daily_eur': 5.0},
     'quotas': {'llm_recalls_json': 1},
     'windows': {'quiet_hours': [[23, 0, 8, 0]]},
     'memory': {
