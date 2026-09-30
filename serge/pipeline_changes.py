@@ -39,6 +39,7 @@ TABLES = frozenset(
         'table_quotas',
         'table_views',
         'table_view_columns',
+        'llm_models',
     }
 )
 

@@ -149,11 +149,11 @@ def _tables(conn: sqlite3.Connection) -> list[dict[str, str]]:
     return out
 
 
-def _modeles(conn: sqlite3.Connection) -> list[dict[str, str]]:
+def _modeles(conn: sqlite3.Connection) -> list[dict[str, Any]]:
     out = []
-    for tier, model in conn.execute(
-        "SELECT tier, model FROM llm_models ORDER BY CASE tier WHEN 'fast'"
-        " THEN 0 WHEN 'mid' THEN 1 ELSE 2 END"
+    for tier, model, max_price, tolerance in conn.execute(
+        'SELECT tier, model, max_price_usd, tolerance_pct FROM llm_models'
+        " ORDER BY CASE tier WHEN 'fast' THEN 0 WHEN 'mid' THEN 1 ELSE 2 END"
     ).fetchall():
         out.append(
             {
@@ -161,6 +161,8 @@ def _modeles(conn: sqlite3.Connection) -> list[dict[str, str]]:
                 'libelle': NIVEAUX.get(str(tier), str(tier)),
                 'model': str(model or ''),
                 'effectif': resolve_model(conn, str(tier))[0],
+                'max_price': float(max_price),
+                'tolerance': int(tolerance),
             }
         )
     return out

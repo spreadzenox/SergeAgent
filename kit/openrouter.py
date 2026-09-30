@@ -66,6 +66,51 @@ def _request(
     return parsed
 
 
+def _per_million(value: Any) -> float | None:
+    """A per-token price string as dollars per million tokens, or None."""
+    try:
+        price = float(value) * 1_000_000
+    except (TypeError, ValueError):
+        return None
+    return round(price, 6) if price >= 0 else None
+
+
+def _intelligence(item: dict[str, Any]) -> float | None:
+    """Artificial Analysis intelligence index, when OpenRouter has one."""
+    benchmarks = item.get('benchmarks')
+    entry = (
+        benchmarks.get('artificial_analysis')
+        if isinstance(benchmarks, dict)
+        else None
+    )
+    value = (
+        entry.get('intelligence_index') if isinstance(entry, dict) else None
+    )
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        return None
+    return float(value) if value > 0 else None
+
+
+def _capabilities(item: dict[str, Any]) -> dict[str, Any]:
+    """What a model can do, as far as OpenRouter says (None = not told)."""
+    params = item.get('supported_parameters')
+    outputs = (item.get('architecture') or {}).get('output_modalities')
+    pricing = item.get('pricing') or {}
+    try:
+        created = int(item.get('created') or 0)
+    except (TypeError, ValueError):
+        created = 0
+    return {
+        'tools': 'tools' in params if isinstance(params, list) else None,
+        'text_out': 'text' in outputs if isinstance(outputs, list) else None,
+        'created': created,
+        'expires': str(item.get('expiration_date') or ''),
+        'intelligence': _intelligence(item),
+        'cache_read_usd': _per_million(pricing.get('input_cache_read')),
+        'cache_write_usd': _per_million(pricing.get('input_cache_write')),
+    }
+
+
 def fetch_models(
     api_key: str = '',
     base_url: str = OPENROUTER_BASE_URL,
@@ -79,7 +124,11 @@ def fetch_models(
         timeout: HTTP timeout in seconds.
 
     Returns:
-        List of {id, name, context_length, prompt_usd, completion_usd}.
+        List of {id, name, context_length, prompt_usd, completion_usd,
+        tools, text_out, created, expires, intelligence, cache_read_usd,
+        cache_write_usd}; tools/text_out are None when OpenRouter does not
+        say, intelligence is None when it has no Artificial Analysis score
+        for the model, cache prices are None when the model has none.
 
     Raises:
         OpenRouterError: On network, HTTP, or parse failure.
@@ -107,6 +156,7 @@ def fetch_models(
                 'context_length': int(item.get('context_length') or 0),
                 'prompt_usd': prompt,
                 'completion_usd': completion,
+                **_capabilities(item),
             }
         )
     recommended = list(RECOMMENDED_TIERS.values())
