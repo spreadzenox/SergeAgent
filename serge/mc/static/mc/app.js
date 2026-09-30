@@ -87,8 +87,9 @@ async function render() {
       return;
     }
     const parts = raw.split('/');
-    unmount = await monterObjet(main, parts[1], decodeURIComponent(parts[2] || ''), () => mine === generation);
+    const cleanup = await monterObjet(main, parts[1], decodeURIComponent(parts[2] || ''), () => mine === generation);
     if (mine !== generation) return;
+    unmount = cleanup;
   } else if (page === 'p0') {
     const {mount} = await import('./pages/live.js');
     if (mine !== generation) {

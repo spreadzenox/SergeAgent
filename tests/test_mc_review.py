@@ -387,6 +387,21 @@ class ReviewBrowserTests(McBrowserCase):
         page.wait_for_timeout(1000)
         expect(page.locator('[data-section="matrice"]')).to_be_visible()
         expect(page.locator('.fiche-objet')).to_have_count(0)
+        # Quitter aussi la page montée pendant la requête lente : son
+        # nettoyage doit rester enregistré une fois l'ancienne fiche finie.
+        page.evaluate("location.hash='#/live'")
+        expect(page.locator('.btn-kill-serge')).to_be_visible()
+        page.evaluate("location.hash='#/objet/llm/formuler_a'")
+        page.wait_for_timeout(100)
+        page.evaluate("location.hash='#/live'")
+        page.wait_for_timeout(1000)
+        page.evaluate("location.hash='#/mind'")
+        expect(page.locator('[data-section="matrice"]')).to_be_visible()
+        page.evaluate("location.hash='#/live'")
+        expect(page.locator('.btn-kill-serge')).to_be_visible()
+        page.locator('.btn-kill-serge').click()
+        expect(page.locator('.modale')).to_have_count(1)
+        page.keyboard.press('Escape')
         page.goto(self.base + '/owner#/pipeline')
         row = page.locator('[data-pipeline="liens"] tbody tr').first
         expect(row).to_be_visible()

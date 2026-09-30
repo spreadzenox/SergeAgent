@@ -139,6 +139,8 @@ function renderActions(actions, apres) {
         if ((await agir(action)) && apres) {
           apres();
         }
+      } catch {
+        toast(document.body, 'Action injoignable.', 'erreur');
       } finally {
         btn.disabled = false;
       }
@@ -246,12 +248,19 @@ export async function monterObjet(main, type, id, active = () => true) {
   if (type === 'ticket') {
     const {renderCarte} = await import('./pages/tickets_actes.js');
     if (!active()) return () => {};
-    const res = await fetch(`/owner/api/ticket/carte?ticket=${encodeURIComponent(id)}`);
-    if (!active()) return () => {};
-    const panel = el('section', 'panneau'); panel.dataset.carte = 'panneau';
-    const heading = el('h3'); heading.dataset.carte = 'titre';
-    const body = el('div'); body.dataset.carte = 'corps'; panel.append(heading, body); main.append(panel);
-    if (res.ok) renderCarte(main, null, await res.json());
+    try {
+      const res = await fetch(`/owner/api/ticket/carte?ticket=${encodeURIComponent(id)}`);
+      const carte = res.ok ? await res.json() : null;
+      if (!active()) return () => {};
+      if (carte) {
+        const panel = el('section', 'panneau'); panel.dataset.carte = 'panneau';
+        const heading = el('h3'); heading.dataset.carte = 'titre';
+        const body = el('div'); body.dataset.carte = 'corps'; panel.append(heading, body); main.append(panel);
+        renderCarte(main, null, carte);
+      }
+    } catch {
+      if (active()) toast(document.body, 'Ticket injoignable.', 'erreur');
+    }
   }
   if (type === 'lesson' && data.statement) {
     const text = el('p', 'texte-cadre', data.statement); main.append(text);

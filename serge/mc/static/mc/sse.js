@@ -99,6 +99,7 @@ export function connectStream({page, onEvent, onStatus}) {
     };
   }
   function onVisibility() {
+    if (state.closed) return;
     if (document.hidden) {
       status('paused');
       if (state.source) {

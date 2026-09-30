@@ -4,6 +4,8 @@ La revue a identifié 32 défauts, dont 8 prioritaires (P1), dans les
 parcours disponibles. Les corrections couvrent les sessions, les décisions,
 les règles, les brouillons, la navigation et la présentation sur mobile.
 La documentation de référence reste [MISSION_CONTROL.md](MISSION_CONTROL.md).
+Un défaut supplémentaire du hook de publication a été reproduit et
+corrigé pendant la validation : 33 corrections recensées au total.
 
 ## Version examinée et changements de main
 
@@ -88,6 +90,7 @@ une information erronée ou une interaction dégradée.
 | 30 | P2 | Lignes de tableaux cliquables sans activation clavier. | Activation par Entrée et Espace dans Pipeline et les fiches. |
 | 31 | P2 | Une panne réseau lors d'une sauvegarde Pipeline n'offrait aucun retour. | Message visible, bouton réactivé, saisie conservée. |
 | 32 | P2 | Catalogue indisponible avec cache ancien : la saisie libre promise était quand même refusée. | Mode non vérifié tant que le catalogue est en erreur, même avec un cache. |
+| 33 | P1 | Depuis un hook Git, les scénarios d'installation héritaient du dépôt courant et modifiaient son index au lieu du dépôt temporaire. | Contexte Git retiré avant les contrôles ; scénario réel vérifiant que l'index et la configuration du dépôt poussé restent intacts. |
 
 Le MRR du scénario de revue passe de 99 € à 118 €, correspondant à
 99 € récents plus 19 € d'un ancien abonnement toujours actif.
