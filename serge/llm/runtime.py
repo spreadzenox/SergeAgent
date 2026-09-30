@@ -137,6 +137,18 @@ def daily_tokens(
     return int(row[0]), int(row[1])
 
 
+def tokens_since(conn: sqlite3.Connection, since: str) -> tuple[int, int]:
+    """Jetons lus et écrits par les appels qui ont eu une réponse, depuis
+    l'instant ISO ``since`` (tours d'outils compris).
+    """
+    row = conn.execute(
+        'SELECT COALESCE(SUM(tokens_in),0), COALESCE(SUM(tokens_out),0)'
+        f' FROM llm_usage WHERE verdict IN {_COMPTES} AND created_at >= ?',
+        (since,),
+    ).fetchone()
+    return int(row[0]), int(row[1])
+
+
 def budget_spent(
     conn: sqlite3.Connection,
     policy: Mapping[str, Any],

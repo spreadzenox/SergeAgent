@@ -140,7 +140,7 @@ est déjà en base. Chaque table est expliquée dans
 | `triggers`, `trigger_params`, `trigger_conditions` | Ce qui lance une invocation : une ligne écrite, une heure (une tâche par ligne d'une table, si le déclencheur en vise une), un bouton (avec sa question de confirmation). `trigger_conditions` : les quotas qui doivent avoir de la place. |
 | `pipeline_changes` | Les modifications d'objets déjà en base passées par la section `changes` de `pipeline.yaml`, une ligne par modification, avec son résultat. |
 | `queues`, `tasks`, `task_params`, `task_inputs`, `task_seen_tables` | Les deux files (conversations, travaux), leurs tâches, et ce que chaque tâche a reçu : ses lectures d'office, les tables à comparer et ses leçons (lignes données, lignes laissées de côté). |
-| `llm_models` | Le modèle derrière chaque niveau (rapide, moyen, intelligent). |
+| `llm_models` | Chaque niveau (rapide, moyen, intelligent) : le modèle derrière lui, et pour la recommandation de la page Pipeline son prix maximum (`max_price_usd`, $ par million de jetons) et sa tolérance (`tolerance_pct`, % de la meilleure note sous ce prix). |
 | `serge_texts` | Les textes de Serge, dont sa présentation. |
 | `canaux` | Les canaux par lesquels Serge écrit à un tiers (e-mail, voix). |
 

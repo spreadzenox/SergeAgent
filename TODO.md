@@ -377,6 +377,22 @@ et Serge sait demander de l'aide quand il ne sait pas.
 
 ## Pour tout Serge
 
+- [ ] **Ajuster la recommandation de modèle avec le temps.** La page
+  Pipeline cherche un modèle parmi ceux d'OpenRouter et recommande, pour
+  chaque niveau, celui qui a le meilleur rapport note / prix (la note est
+  l'indice d'Artificial Analysis que `/models` donne avec chaque modèle).
+  Elle a été essayée sur le vrai catalogue le 30 septembre 2026 : 464
+  modèles, 146 notés (31 %). Les plafonds de prix (0,30, 1,50 et 8 $ le
+  million de jetons) et les tolérances (85 % pour le niveau rapide, 95 %
+  pour les autres) ont été réglés ce jour-là et sont à revoir quand de
+  nouveaux modèles sortent : ils donnaient alors
+  `deepseek/deepseek-v4.1-flash`, `xiaomi/mimo-v2.6-pro` et
+  `anthropic/claude-sonnet-5.5`. Ils se règlent dans Mission Control (page
+  Pipeline), avec le modèle de chaque niveau. Limite connue : un modèle sans
+  note n'est jamais recommandé. La note est l'indice d'intelligence général ;
+  Julien a choisi de le garder plutôt que l'indice « agentique »
+  (`agentic_index`).
+
 - [ ] **Les places de test.** Serge ne doit pas tester plus de business
   qu'il ne peut en suivre. Il faut trois places en prospection légère et
   une seule en prospection lourde. Un business prend une place de

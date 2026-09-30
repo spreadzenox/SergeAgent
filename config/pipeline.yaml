@@ -18,11 +18,21 @@ queues:
     title: 'Travaux (tâches longues : écoute, conception, construction)'
 
 # Le modèle derrière chaque niveau. Un modèle vide veut dire : prendre
-# celui choisi à l'installation de l'instance.
+# celui choisi à l'installation de l'instance. La page Pipeline recommande,
+# pour chaque niveau, le modèle au meilleur rapport note / prix : le prix
+# maximum est en dollars par million de jetons, la tolérance est la part (en
+# %) de la meilleure note sous ce prix qu'un modèle doit avoir pour être
+# retenu (85 : jusqu'à 15 % de note en moins pour un prix plus bas). Seul le
+# niveau rapide cherche la valeur ; les autres visent presque la meilleure
+# note sous leur plafond (95, la valeur par défaut).
 llm_models:
   - tier: fast
+    max_price_usd: 0.30
+    tolerance_pct: 85
   - tier: mid
+    max_price_usd: 1.50
   - tier: smart
+    max_price_usd: 8.00
 
 serge_texts:
   - id: presentation
@@ -1208,6 +1218,21 @@ changes:
     where: {id: formuler_b}
     set:
       prompt: {from: *ancienne_consigne_formuler, to: *consigne_formuler}
+  - id: modele_fast_prix_max
+    why: Les niveaux de modèle reçoivent un prix maximum pour la recommandation.
+    table: llm_models
+    where: {tier: fast}
+    set: {max_price_usd: {from: 0.0, to: 0.3}, tolerance_pct: {from: 95, to: 85}}
+  - id: modele_mid_prix_max
+    why: Les niveaux de modèle reçoivent un prix maximum pour la recommandation.
+    table: llm_models
+    where: {tier: mid}
+    set: {max_price_usd: {from: 0.0, to: 1.5}}
+  - id: modele_smart_prix_max
+    why: Les niveaux de modèle reçoivent un prix maximum pour la recommandation.
+    table: llm_models
+    where: {tier: smart}
+    set: {max_price_usd: {from: 0.0, to: 8.0}}
 
 # Ce qui a été retiré du pipeline de départ : marqué supprimé sur une
 # instance existante (retirer une ligne du fichier ne l'efface jamais).
