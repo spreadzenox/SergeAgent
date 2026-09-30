@@ -75,6 +75,23 @@ class PolicyEnVigueurTests(unittest.TestCase):
         )
         self.assertNotIn('listen', latest_policy(self.conn))
 
+    def test_un_ancien_snapshot_avec_le_taux_estime_reste_valide(self) -> None:
+        """L'estimation des jetons est retirée ; un ancien snapshot qui a
+        encore ``budget.llm_eur_per_1k_tokens`` se charge, et la valeur
+        (ignorée) n'empêche rien."""
+        import json
+
+        ancien = dict(load_policy())
+        ancien['budget'] = {**ancien['budget'], 'llm_eur_per_1k_tokens': 0.004}
+        self.conn.execute(
+            'INSERT INTO policy_snapshots(content_hash, content_json,'
+            " applied_by, active_from) VALUES('h3',?,'owner','t')",
+            (json.dumps(ancien),),
+        )
+        live = latest_policy(self.conn)
+        self.assertEqual(live['budget']['llm_daily_eur'], 5.0)
+        self.assertEqual(live['budget']['eur_per_usd'], 0.9)
+
 
 if __name__ == '__main__':
     unittest.main()

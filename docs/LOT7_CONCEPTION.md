@@ -133,9 +133,8 @@ Chaque ajout est général : il sert à toutes les invocations.
     **coût réel** : celui qu'OpenRouter facture (`cost_usd`, en dollars),
     converti en euros par le taux de la policy (`budget.eur_per_usd`). Le
     plafond du jour et la page Économie comptent ce coût réel ; un appel
-    sans coût connu est estimé à partir de ses jetons
-    (`budget.llm_eur_per_1k_tokens`), et la jauge dit quelle part est
-    estimée ;
+    sans coût connu n'est pas estimé : ses jetons sont comptés à part et la
+    jauge les signale ;
   - tout l'historique repart au modèle à chaque tour : un résultat d'outil
     plus long que la taille réglée dans la policy
     (`quotas.llm_outil_resultat_max_caracteres`, 20 000 caractères) est

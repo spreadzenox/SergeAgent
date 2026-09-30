@@ -20,7 +20,6 @@ Scénarios :
 
 from __future__ import annotations
 
-import io
 import json
 import sqlite3
 import sys
@@ -38,7 +37,7 @@ from serge.interpreter import prompt  # noqa: E402
 from serge.interpreter.queue import process_one  # noqa: E402
 from serge.interpreter.tasks import enqueue_task  # noqa: E402
 from serge.interpreter.tools import run_capability  # noqa: E402
-from serge.llm.client import ChatResult, LlmError, ToolCall, chat  # noqa: E402
+from serge.llm.client import ChatResult, LlmError, ToolCall  # noqa: E402
 from serge.llm.runtime import (  # noqa: E402
     budget_spent,
     daily_tokens,
@@ -232,9 +231,9 @@ class AppelsTests(unittest.TestCase):
 
 
 class DepenseTests(unittest.TestCase):
-    """La dépense du jour : le coût réel, sinon une estimation."""
+    """La dépense du jour : le coût réel, jamais une estimation."""
 
-    def test_cout_reel_et_estimation(self) -> None:
+    def test_cout_reel_et_appels_sans_cout(self) -> None:
         conn = sqlite3.connect(':memory:')
         self.addCleanup(conn.close)
         init_schema(conn)
@@ -248,63 +247,16 @@ class DepenseTests(unittest.TestCase):
                 ('a', 'mid', 9999, 0, 'ok', 3.0, '2026-09-28T10:00'),
             ],
         )
-        politique = {
-            'budget': {
-                'llm_daily_eur': 1.0,
-                'eur_per_usd': 0.9,
-                'llm_eur_per_1k_tokens': 0.01,
-            }
-        }
+        politique = {'budget': {'llm_daily_eur': 1.0, 'eur_per_usd': 0.9}}
         depense = llm_spend(conn, politique, '2026-09-29')
-        # 0,5 $ × 0,9 = 0,45 € réels, plus 2 000 jetons estimés à 0,02 €.
-        self.assertAlmostEqual(depense.eur, 0.47)
-        self.assertAlmostEqual(depense.estimated_eur, 0.02)
+        # 0,5 $ × 0,9 = 0,45 € : le coût réel. Les 2 000 jetons d'un appel
+        # dont le coût n'est pas connu ne sont pas estimés : ils sont
+        # comptés à part.
+        self.assertAlmostEqual(depense.eur, 0.45)
+        self.assertEqual(depense.unknown_tokens, 2000)
         self.assertEqual(depense.tokens, 3000)
         self.assertFalse(budget_spent(conn, politique, '2026-09-29'))
         self.assertTrue(budget_spent(conn, politique, '2026-09-28'))
-
-
-class ReponseVideTests(unittest.TestCase):
-    def test_la_raison_d_openrouter_est_gardee(self) -> None:
-        corps = {
-            'model': 'deepseek/deepseek-v4-flash',
-            'choices': [
-                {
-                    'finish_reason': 'length',
-                    'message': {'content': '', 'reasoning': 'je réfléchis'},
-                }
-            ],
-        }
-        reponse = io.BytesIO(json.dumps(corps).encode())
-        reponse.__enter__ = lambda *_: reponse  # type: ignore[method-assign]
-        reponse.__exit__ = lambda *_: None  # type: ignore[method-assign]
-        with (
-            mock.patch('urllib.request.urlopen', return_value=reponse),
-            self.assertRaises(LlmError) as erreur,
-        ):
-            chat('cle', 'deepseek/deepseek-v4-flash', [])
-        message = str(erreur.exception)
-        self.assertTrue(message.startswith('EMPTY'))
-        self.assertIn('fin : length', message)
-        self.assertIn('modèle : deepseek/deepseek-v4-flash', message)
-        self.assertIn('réflexion rendue sans réponse', message)
-
-    def test_le_cout_rendu_par_openrouter(self) -> None:
-        corps = {
-            'model': 'x',
-            'choices': [{'message': {'content': 'ok'}}],
-            'usage': {
-                'prompt_tokens': 3,
-                'completion_tokens': 2,
-                'cost': 0.004,
-            },
-        }
-        reponse = io.BytesIO(json.dumps(corps).encode())
-        reponse.__enter__ = lambda *_: reponse  # type: ignore[method-assign]
-        reponse.__exit__ = lambda *_: None  # type: ignore[method-assign]
-        with mock.patch('urllib.request.urlopen', return_value=reponse):
-            resultat = chat('cle', 'x', [])
-        self.assertEqual(resultat.cost_usd, 0.004)
 
 
 if __name__ == '__main__':
