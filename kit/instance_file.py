@@ -248,10 +248,10 @@ def _validate_testing(raw: dict[str, Any]) -> dict[str, int]:
     }
     values: dict[str, int] = {}
     for key, default in defaults.items():
-        try:
-            values[key] = int(raw.get(key, default))
-        except (TypeError, ValueError):
-            raise InstanceError(f'testing.{key} must be an integer') from None
+        value = raw.get(key, default)
+        if isinstance(value, bool) or not isinstance(value, int):
+            raise InstanceError(f'testing.{key} must be an integer')
+        values[key] = value
     if not 0 < values['n_smoke_min'] <= values['n_smoke_max']:
         raise InstanceError('testing needs 0 < n_smoke_min <= n_smoke_max')
     if not 0 < values['n_full_min'] <= values['n_full_target']:

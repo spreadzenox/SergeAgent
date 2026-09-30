@@ -1,6 +1,6 @@
 // Page Écoute : les boutons de l’étape 1 (déclencheurs en base), le dernier
 // cycle, les business, les flux RSS suivis.
-import {confirmModal, toast} from '../components.js';
+import {confirmModal, toast, draftField, rememberDrafts} from '../components.js';
 import {fetchState} from '../sse.js';
 
 async function poster(path, body) {
@@ -33,6 +33,7 @@ const ETIQUETTES = {
 // Un bloc par déclencheur « bouton » : ses champs, ses conditions, son bouton.
 function afficherBoutons(conteneur, boutons) {
   const cle = JSON.stringify(boutons);
+  const restore = rememberDrafts(conteneur);
   if (conteneur.dataset.cle === cle) {
     return;  // ne pas effacer ce qui est en train d’être tapé
   }
@@ -46,10 +47,10 @@ function afficherBoutons(conteneur, boutons) {
     return;
   }
   conteneur.replaceChildren(...boutons.map((bouton) => {
-    const bloc = el('div', 'grille-champs');
+    const bloc = el('div', 'grille-champs ecoute-bouton');
     for (const champ of bouton.champs || []) {
-      const label = el('label', 'champ-large', `${champ} `);
-      const zone = el('textarea');
+      const label = el('label', 'champ-large', `${champ === 'guide' ? 'Texte de guidage' : champ} `);
+      const zone = draftField(el('textarea'), `${bouton.id}.${champ}`);
       zone.maxLength = 4000;
       zone.dataset.champ = champ;
       label.append(zone);
@@ -76,6 +77,7 @@ function afficherBoutons(conteneur, boutons) {
     }
     return bloc;
   }));
+  restore();
 }
 
 function afficherCycle(conteneur, cycle) {
@@ -142,7 +144,11 @@ function afficher(main, payload, sig) {
   afficherCycle(zone('cycle'), payload.cycle);
   zone('candidates').replaceChildren(...(payload.candidates || []).map((c) => {
     const raison = c.raison ? ` — ${c.raison}` : '';
-    return el('li', '', `${c.title} (${c.status})${raison}`);
+    const item = el('li');
+    const link = el('a', 'clic-ligne', `${c.title} (${c.status})${raison}`);
+    link.href = `#/objet/venture/${encodeURIComponent(c.id)}`;
+    item.append(link);
+    return item;
   }));
   afficherFlux(zone('flux'), payload.flux || []);
   zone('invocations').replaceChildren(
@@ -152,7 +158,10 @@ function afficher(main, payload, sig) {
 }
 
 async function lancer(btn, store) {
+  if (btn.disabled) return;
+  btn.disabled = true;
   const titre = btn.textContent;
+  try {
   if (btn.dataset.confirmer) {
     const ok = await confirmModal(document.body, {
       title: `${titre} ?`,
@@ -167,13 +176,14 @@ async function lancer(btn, store) {
   for (const zone of btn.closest('.grille-champs').querySelectorAll('[data-champ]')) {
     form[zone.dataset.champ] = zone.value;
   }
-  btn.disabled = true;
-  try {
     const result = await poster('/owner/api/bouton', {trigger_id: btn.dataset.trigger, form});
     toast(document.body, result.ok ? 'Tâche placée dans la file.' : (result.data.erreur || 'Refusé.'), result.ok ? 'succes' : 'erreur');
     if (result.ok) {
+      btn.closest('.grille-champs').querySelectorAll('[data-draft]').forEach((f) => delete f.dataset.dirty);
       await rafraichir(store);
     }
+  } catch {
+    toast(document.body, 'Action injoignable. Réessaie : ta saisie est conservée.', 'erreur');
   } finally {
     btn.disabled = false;
   }
@@ -193,6 +203,9 @@ export function mount(main, store) {
     if (!btn) {
       return;
     }
+    if (btn.disabled) return;
+    btn.disabled = true;
+    try {
     const result = await poster('/owner/api/flux', {
       feed_id: btn.dataset.ecouteFlux,
       active: btn.dataset.actif !== '1',
@@ -201,6 +214,9 @@ export function mount(main, store) {
     if (result.ok) {
       await rafraichir(store);
     }
+    } catch {
+      toast(document.body, 'Action injoignable.', 'erreur');
+    } finally { btn.disabled = false; }
   });
   const unsubscribe = store.subscribe('ecoute', (payload, sig) => afficher(main, payload, sig));
   for (const [section, env] of store.all()) {

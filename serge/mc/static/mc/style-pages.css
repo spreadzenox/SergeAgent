@@ -422,3 +422,25 @@ table.matrice {
 .proposition:focus-visible {
   background: rgb(53 224 255 / 12%);
 }
+
+/* Le clavier doit rester repérable sur les interrupteurs et les lignes. */
+:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
+.switch-policy:focus-within .switch-piste { outline: 2px solid var(--cyan); outline-offset: 3px; }
+.champ-large textarea { width: 100%; min-height: 5rem; resize: vertical; }
+.ligne-reglage { display: flex; flex-wrap: wrap; align-items: end; gap: 0.75rem; margin-bottom: 1rem; }
+.ligne-reglage label { flex: 1 1 16rem; }
+.entete-mc { flex-wrap: wrap; gap: 0.75rem; }
+.entete-mc form { margin-left: auto; }
+.pastille[data-etat='ko'] { width: auto; height: auto; border-radius: 0.4rem; padding: 0.3rem; font-size: 0.75rem; }
+
+.grille-champs.ecoute-bouton {
+  display: block;
+  padding: 1rem;
+  margin: 1rem 0;
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon);
+}
+.ecoute-bouton .champ-large { display: block; }
+.ecoute-bouton .barre-policy { margin: 0.75rem 0; }
+.ecoute-bouton p { margin: 0.5rem 0; }
+.toasts { max-width: min(22rem, calc(100vw - 2rem)); }

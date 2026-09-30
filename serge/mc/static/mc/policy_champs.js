@@ -694,7 +694,7 @@ export const CHAMPS = {
 
 export const JOURS = [
   ['mon', 'lun'],
-  ['mar', 'mar'],
+  ['tue', 'mar'],
   ['wed', 'mer'],
   ['thu', 'jeu'],
   ['fri', 'ven'],

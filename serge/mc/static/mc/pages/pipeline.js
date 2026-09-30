@@ -1,5 +1,5 @@
 // Page Pipeline : la vue d'ensemble du pipeline, lue en base.
-import {toast} from '../components.js';
+import {toast, draftField, rememberDrafts} from '../components.js';
 import {fetchState} from '../sse.js';
 import {allerObjet} from '../libelles.js';
 
@@ -41,7 +41,12 @@ function tableau(colonnes, lignes) {
     }
     if (ligne.type) {
       tr.tabIndex = 0;
-      tr.addEventListener('click', () => allerObjet(ligne.type, ligne.id));
+      const open = () => allerObjet(ligne.type, ligne.id);
+      tr.setAttribute('role', 'link');
+      tr.addEventListener('click', open);
+      tr.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); open(); }
+      });
     } else {
       tr.style.cursor = 'default';
     }
@@ -64,6 +69,12 @@ function changer(conteneur, cle) {
 }
 
 async function enregistrer(btn, path, body, store, after) {
+  const fields = [...btn.closest('.grille-champs').querySelectorAll('input,textarea')];
+  if (fields.some((f) => !f.checkValidity())) {
+    fields.find((f) => !f.checkValidity()).reportValidity();
+    toast(document.body, 'Vérifie les champs requis et leurs bornes.', 'erreur');
+    return;
+  }
   btn.disabled = true;
   try {
     const result = await poster(path, body);
@@ -76,11 +87,14 @@ async function enregistrer(btn, path, body, store, after) {
       toast(document.body, result.data.warning, 'info');
     }
     if (result.ok) {
+      fields.forEach((f) => delete f.dataset.dirty);
       await rafraichir(store);
       if (after) {
         after();
       }
     }
+  } catch {
+    toast(document.body, 'Action injoignable. Réessaie : ta saisie est conservée.', 'erreur');
   } finally {
     btn.disabled = false;
   }
@@ -237,6 +251,8 @@ function numberField(label, name, tier, value, options) {
   field.type = 'number';
   field.value = String(value);
   field.dataset[name] = tier;
+  field.required = true;
+  draftField(field, `${tier}.${name}`);
   Object.assign(field, options);
   wrap.append(field);
   return {wrap, field};
@@ -247,6 +263,7 @@ function afficherModeles(conteneur, modeles, store, after) {
   if (!changer(conteneur, JSON.stringify(modeles))) {
     return false;
   }
+  const restore = rememberDrafts(conteneur);
   conteneur.replaceChildren(...modeles.map((m) => {
     const bloc = el('div', 'grille-champs');
     const label = el('label', 'champ-large', `${m.libelle} `);
@@ -255,6 +272,7 @@ function afficherModeles(conteneur, modeles, store, after) {
     field.placeholder = m.effectif;
     field.maxLength = 200;
     field.dataset.tier = m.tier;
+    draftField(field, `${m.tier}.model`);
     field.autocomplete = 'off';
     label.append(field);
     const maxPrice = numberField('Prix maximum ($ le million de jetons)', 'maxPrice', m.tier, m.max_price, {min: 0, max: 1000, step: 0.05});
@@ -287,6 +305,7 @@ function afficherModeles(conteneur, modeles, store, after) {
     all.append(bloc, info, list, reco);
     return all;
   }));
+  restore();
   return true;
 }
 
@@ -294,7 +313,8 @@ function afficherPresentation(conteneur, texte, store) {
   if (!changer(conteneur, texte)) {
     return;
   }
-  const zone = el('textarea');
+  const restore = rememberDrafts(conteneur);
+  const zone = draftField(el('textarea'), 'presentation');
   zone.maxLength = 4000;
   zone.rows = 6;
   zone.value = texte;
@@ -308,12 +328,13 @@ function afficherPresentation(conteneur, texte, store) {
     store,
   ));
   const label = el('label', 'champ-large');
-  label.append(zone);
+  label.append(el('span', '', 'Présentation de Serge'), zone);
   const barre = el('div', 'barre-policy');
   barre.append(btn);
   const bloc = el('div', 'grille-champs');
   bloc.append(label, barre);
   conteneur.replaceChildren(bloc);
+  restore();
 }
 
 function afficher(main, payload, sig, store) {

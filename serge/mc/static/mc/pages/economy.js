@@ -21,9 +21,9 @@ function renderEntonnoir(main, payload, sig) {
   const chips = main.querySelector('[data-tuiles="entonnoir"]');
   if (chips) {
     chips.replaceChildren(
-      tuile(tot.u1 || 0, 'Touchées (U1)'),
-      tuile(tot.u2 || 0, 'Ont répondu (U2)'),
-      tuile(tot.u3 || 0, 'Ont dit oui (U3)'),
+      tuile(tot.u1 || 0, 'Envois (U1)'),
+      tuile(tot.u2 || 0, 'Réponses (U2)'),
+      tuile(tot.u3 || 0, 'Réponses positives (U3)'),
       tuile(`${tot.paid_eur || 0} €`, 'Encaissé'),
     );
   }
@@ -85,12 +85,12 @@ function renderCouts(main, payload, sig) {
 
 function renderAudit(main, payload, sig) {
   const ulRep = main.querySelector('[data-section="audit_reponses"] [data-list="reponses"]');
-  fillList(ulRep, payload.reponses || [], 'Aucune réponse enregistrée.', (r) =>
+  fillList(ulRep, payload.reponses || [], 'Aucun envoi enregistré.', (r) =>
     li(`${r.channel} → ${r.contact} [${r.status}] coût: ${r.cost_eur} € (${rel(r.created_at)})`)
   );
 
   const ulDette = main.querySelector('[data-section="audit_reponses"] [data-list="dette_builder"]');
-  fillList(ulDette, payload.dette_builder || [], 'Aucun artifact builder en attente.', (d) =>
+  fillList(ulDette, payload.dette_builder || [], 'Aucun livrable enregistré.', (d) =>
     li(`Artifact ${d.kind} v${d.version} (${rel(d.created_at)})`)
   );
   main.querySelector('[data-section="audit_reponses"]').dataset.sig = sig;

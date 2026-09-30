@@ -215,17 +215,17 @@ function initMemory(main) {
       }
       const data = await res.json();
       page = data.page;
-      info.textContent = `Page ${data.page} / ${data.pages} (${data.total} leçons)`;
+      info.textContent = `Page ${data.page} / ${data.pages} (${data.total} propositions)`;
       btnPrev.disabled = page <= 1;
       btnNext.disabled = page >= data.pages;
-      fillList(liste, data.items, 'Aucune leçon enregistrée.', (it) => {
+      fillList(liste, data.items, 'Aucune proposition de leçon.', (it) => {
         const node = li('');
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'clic-ligne';
         btn.textContent = `${it.label} [${it.etat}]`;
         if (it.id) {
-          btn.addEventListener('click', () => allerObjet('lesson', it.id));
+          btn.addEventListener('click', () => allerObjet('ticket', it.ticket_id));
         }
         node.append(btn);
         return node;

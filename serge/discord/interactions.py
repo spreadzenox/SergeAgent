@@ -12,21 +12,11 @@ import sqlite3
 from collections.abc import Mapping
 from typing import Any
 
+from serge.tickets.acts import APPROVE, REJECT
 from serge.tickets.items import set_item, tout_approuver
 from serge.tickets.lifecycle import decide, discuss
 from serge.tickets.shared import TicketError, already_applied, record_event
 
-APPROVE = frozenset(
-    {
-        'approuver',
-        'approuver_version',
-        'cest_fait',
-        'confirmer',
-        'ouvrir',
-        'tout_approuver',
-    }
-)
-REJECT = frozenset({'rejeter', 'abandonner', 'refuser', 'annuler'})
 ITEM_STATES = {'garder': 'keep', 'modifier': 'edit', 'jeter': 'drop'}
 
 

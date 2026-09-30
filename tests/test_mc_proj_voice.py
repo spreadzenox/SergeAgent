@@ -66,7 +66,9 @@ class ProjVoiceTests(unittest.TestCase):
             call = res1['calls'][0]
             self.assertEqual(call['duration_s'], 42)
             self.assertTrue(call['has_recording'])
-            self.assertIn('sig=', call['audio_url'])
+            self.assertTrue(
+                call['audio_url'].startswith('/owner/api/voice/audio?cdr=')
+            )
 
     def test_qualite_voix(self) -> None:
         res0 = project_qualite_voix(self.conn, POLICY, NOW)

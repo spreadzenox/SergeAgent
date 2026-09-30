@@ -117,20 +117,17 @@ class McSystemTests(McBrowserCase):
         self._fixtures()
         page = self._auth_context().new_page()
         self._watch_errors(page)
-        page.goto(f'{self.base}/owner#/system')
-        page.wait_for_url('**/owner#/live', timeout=10000)
+        page.goto(f'{self.base}/owner#/live')
         page.locator('.noeud').first.wait_for(timeout=10000)
         return page
 
-    def test_system_redirige_live(self) -> None:
+    def test_system_accessible(self) -> None:
         from playwright.sync_api import expect
 
         page = self._page_home()
-        expect(page.locator('[data-section="graphe"]')).to_be_visible()
-        expect(
-            page.get_by_text('Comment Serge gagne de l’argent')
-        ).to_be_visible()
-        self.assertGreaterEqual(page.locator('.noeud').count(), 7)
+        page.goto(f'{self.base}/owner#/system')
+        expect(page.locator('[data-section="email"]')).to_be_visible()
+        self.assertTrue(page.url.endswith('#/system'))
 
     def test_pas_de_fuite_boucle_ilots(self) -> None:
         page = self._page_home()
@@ -165,7 +162,7 @@ class McSystemTests(McBrowserCase):
 
         page = self._auth_context().new_page()
         self._watch_errors(page)
-        page.goto(f'{self.base}/owner#/system')
+        page.goto(f'{self.base}/owner#/live')
         page.locator('#live-headline').wait_for(timeout=10000)
         expect(page.locator('#page')).to_contain_text('Serge est arrêté')
         expect(page.locator('#page')).to_contain_text('File vide')

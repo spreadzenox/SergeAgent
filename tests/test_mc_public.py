@@ -82,7 +82,7 @@ class PublicEndpointTests(McServerCase):
         status, _, body_state = self._request('GET', '/api/state')
         self.assertEqual(status, 200)
         data = json.loads(body_state.decode('utf-8'))
-        self.assertEqual(data['statut'], 'operationnel')
+        self.assertEqual(data['statut'], 'arrete')
         self.assertIn('message', data)
 
     def test_projection_publique_fail_closed(self) -> None:
@@ -121,9 +121,7 @@ class McPublicBrowserTests(McBrowserCase):
         self._watch_errors(page)
         page.goto(f'{self.base}/')
         expect(page.locator('h1')).to_have_text('Serge')
-        expect(page.locator('#public-message')).to_contain_text(
-            'opérationnels'
-        )
+        expect(page.locator('#public-message')).to_contain_text('arrêté')
         lien_owner = page.locator('a[href="/owner/login"]')
         expect(lien_owner).to_be_visible()
         lien_owner.click()

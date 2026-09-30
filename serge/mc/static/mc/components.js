@@ -6,7 +6,13 @@ export function toast(container, message, kind = 'info') {
   node.className = `toast toast-${kind}`;
   node.setAttribute('role', 'status');
   node.textContent = message;
-  container.appendChild(node);
+  let host = container.querySelector(':scope > .toasts');
+  if (!host) {
+    host = document.createElement('div');
+    host.className = 'toasts';
+    container.append(host);
+  }
+  host.appendChild(node);
   setTimeout(() => node.remove(), 4000);
   return node;
 }
@@ -39,6 +45,7 @@ export function confirmModal(
     const node = document.createElement('div');
     node.className = 'modale';
     node.setAttribute('role', 'alertdialog');
+    const restoreFocus = focusDialog(node, title);
     const heading = document.createElement('h2');
     heading.textContent = title;
     const text = document.createElement('p');
@@ -57,6 +64,7 @@ export function confirmModal(
     const done = (value) => {
       document.removeEventListener('keydown', onKey);
       fond.remove();
+      restoreFocus();
       resolve(value);
     };
     const onKey = (event) => {
@@ -177,6 +185,7 @@ export function promptModal(
     const node = document.createElement('div');
     node.className = 'modale';
     node.setAttribute('role', 'alertdialog');
+    const restoreFocus = focusDialog(node, title);
     const heading = document.createElement('h2');
     heading.textContent = title;
     const text = document.createElement('p');
@@ -186,7 +195,13 @@ export function promptModal(
     for (const field of fields) {
       const label = document.createElement('label');
       label.textContent = field.label;
-      const input = document.createElement('input');
+      const input = document.createElement(field.options ? 'select' : 'input');
+      if (field.options) {
+        const empty = document.createElement('option'); empty.value = ''; empty.textContent = 'Choisir une réponse'; input.append(empty);
+      }
+      for (const option of field.options || []) {
+        const node = document.createElement('option'); node.value = option; node.textContent = option; input.append(node);
+      }
       input.name = field.nom;
       input.value = field.defaut || '';
       label.append(input);
@@ -205,6 +220,7 @@ export function promptModal(
     const done = (value) => {
       document.removeEventListener('keydown', onKey);
       fond.remove();
+      restoreFocus();
       resolve(value);
     };
     const onKey = (event) => {
@@ -234,6 +250,53 @@ export function promptModal(
     node.append(heading, text, ...etiquettes, actions);
     fond.append(node);
     root.appendChild(fond);
-    node.querySelector('input').focus();
+    node.querySelector('input,select,textarea')?.focus();
   });
+}
+
+// Garde le clavier dans le dialogue et rend le focus à sa fermeture.
+export function focusDialog(node, title) {
+  const previous = document.activeElement;
+  node.setAttribute('aria-modal', 'true');
+  node.setAttribute('aria-label', title);
+  const key = (ev) => {
+    if (ev.key !== 'Tab') return;
+    const fields = [...node.querySelectorAll('button,input,select,textarea,a[href]')]
+      .filter((el) => !el.disabled && !el.hidden);
+    const first = fields[0], last = fields.at(-1);
+    if (ev.shiftKey && (document.activeElement === first || !node.contains(document.activeElement))) {
+      ev.preventDefault(); last?.focus();
+    } else if (!ev.shiftKey && (document.activeElement === last || !node.contains(document.activeElement))) {
+      ev.preventDefault(); first?.focus();
+    }
+  };
+  node.addEventListener('keydown', key);
+  return () => {
+    node.removeEventListener('keydown', key);
+    if (previous?.isConnected) previous.focus();
+  };
+}
+
+// Conserve seulement les champs effectivement modifiés, identifiés par la base.
+export function draftField(field, key) {
+  field.dataset.draft = key;
+  field.addEventListener('input', () => { field.dataset.dirty = '1'; });
+  return field;
+}
+
+export function rememberDrafts(container) {
+  const values = new Map([...container.querySelectorAll('[data-draft][data-dirty="1"]')]
+    .map((f) => [f.dataset.draft, {value: f.value, checked: f.checked, focus: f === document.activeElement}]));
+  return () => {
+    for (const field of container.querySelectorAll('[data-draft]')) {
+      const old = values.get(field.dataset.draft);
+      if (old) {
+        field.value = old.value;
+        if (field.type === 'checkbox') field.checked = old.checked;
+        field.dataset.dirty = '1';
+        field.dispatchEvent(new Event(field.type === 'checkbox' ? 'change' : 'input'));
+        if (old.focus) field.focus();
+      }
+    }
+  };
 }

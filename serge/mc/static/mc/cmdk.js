@@ -1,7 +1,11 @@
 // Palette de commande globale Ctrl+K (cmdk.js, §5).
-import {confirmModal, promptModal, toast} from './components.js';
+import {focusDialog} from './components.js';
+import {allerObjet} from './libelles.js';
 
 const COMMANDES_FIXES = [
+  {id: 'nav-system', titre: 'Aller à Système', hash: '#/system'},
+  {id: 'nav-ecoute', titre: 'Aller à Écoute', hash: '#/ecoute'},
+  {id: 'nav-pipeline', titre: 'Aller à Pipeline', hash: '#/pipeline'},
   {id: 'nav-live', titre: 'Aller à En direct', type: 'page', hash: '#/live'},
   {id: 'nav-mind', titre: 'Aller à Cerveau', type: 'page', hash: '#/mind'},
   {id: 'nav-tickets', titre: 'Aller à Décisions', type: 'page', hash: '#/tickets'},
@@ -16,11 +20,8 @@ const COMMANDES_FIXES = [
     titre: 'Action : Demander un changement Policy',
     type: 'action',
     run: async () => {
-      location.hash = '#/policy';
-      const btn = document.querySelector('[data-action="proposer-policy"]');
-      if (btn) {
-        btn.click();
-      }
+      const {proposerModif} = await import('./pages/policy.js');
+      await proposerModif();
     },
   },
 ];
@@ -30,6 +31,7 @@ export function initCmdk(store) {
   let input = null;
   let liste = null;
   let ouvert = false;
+  let restoreFocus = null;
 
   function construireListe(q) {
     liste.replaceChildren();
@@ -45,13 +47,7 @@ export function initCmdk(store) {
           titre: `Ticket : ${t.type} — ${t.titre}`,
           type: 'ticket',
           run: () => {
-            location.hash = '#/tickets';
-            setTimeout(() => {
-              const el = document.querySelector(`.lien-ticket[data-ticket="${t.id}"]`);
-              if (el) {
-                el.click();
-              }
-            }, 100);
+            allerObjet('ticket', t.id);
           },
         });
       }
@@ -103,6 +99,8 @@ export function initCmdk(store) {
 
     const boite = document.createElement('div');
     boite.className = 'cmdk-boite';
+    boite.setAttribute('role', 'dialog');
+    restoreFocus = focusDialog(boite, 'Palette de commande');
 
     input = document.createElement('input');
     input.type = 'text';
@@ -166,6 +164,7 @@ export function initCmdk(store) {
     if (modale) {
       modale.remove();
       modale = null;
+      restoreFocus?.();
     }
   }
 

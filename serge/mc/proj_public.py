@@ -13,6 +13,7 @@ import sqlite3
 from collections.abc import Mapping
 from typing import Any
 
+from serge.coupe_circuit import heartbeat_marche
 from serge.mc import MC_VERSION
 
 # Regex de détection de fuites potentielles
@@ -87,12 +88,21 @@ def project_public_statut(
             "SELECT COUNT(*) FROM tasks WHERE status='running'"
         ).fetchone()
         actif = int(row[0]) > 0 if row else False
-        statut = 'operationnel' if not actif else 'travail_en_cours'
+        marche = heartbeat_marche(conn, now or None)
+        statut = (
+            'travail_en_cours'
+            if marche and actif
+            else 'au_repos'
+            if marche
+            else 'arrete'
+        )
         payload = {
             'statut': statut,
-            'message': 'Tous les systèmes sont opérationnels.'
-            if not actif
-            else 'Des tâches sont en cours d’exécution.',
+            'message': {
+                'arrete': 'Serge est arrêté.',
+                'au_repos': 'Serge est démarré, aucune tâche en cours.',
+                'travail_en_cours': 'Des tâches sont en cours d’exécution.',
+            }[statut],
             'mc_version': MC_VERSION,
         }
         assert_public_safe(payload)
@@ -100,7 +110,7 @@ def project_public_statut(
     except Exception:
         # Fail-closed absolu
         return {
-            'statut': 'operationnel',
-            'message': 'Systèmes en ligne.',
+            'statut': 'indisponible',
+            'message': 'État momentanément indisponible.',
             'mc_version': MC_VERSION,
         }

@@ -131,13 +131,11 @@ def project_transactions_subscriptions(
         for r in sub_rows
     ]
 
-    mrr = sum(
-        (
-            float(s['amount_eur'])
-            for s in subscriptions
-            if s['status'] == 'active' and s['period'] == 'monthly'
-        ),
-        0.0,
+    mrr = float(
+        conn.execute(
+            'SELECT COALESCE(SUM(amount_eur), 0) FROM subscriptions'
+            " WHERE status='active' AND period='monthly'"
+        ).fetchone()[0]
     )
 
     return {
@@ -191,7 +189,7 @@ def project_couts_cognitifs(
 def project_audit_reponses(
     conn: sqlite3.Connection, policy: Mapping[str, Any], now: str
 ) -> dict[str, Any]:
-    """Traçabilité des réponses full-auto (E10) et dette builder (E9).
+    """Derniers envois et livrables (clés historiques reponses/dette_builder).
 
     Args:
         conn: Connexion canon (lecture).
@@ -202,7 +200,7 @@ def project_audit_reponses(
         Dict {reponses: [...], dette_builder: [...]}.
     """
     _ = (policy, now)
-    # Réponses semi-auto / full-auto : touches envoyées récentes
+    # Historique des envois (les réponses sont dans inbound_events).
     touch_rows = conn.execute(
         'SELECT t.id, t.campaign_id, t.channel, t.status, t.cost_eur, t.created_at, c.display'
         ' FROM touches t LEFT JOIN contacts c ON c.id=t.contact_id'
@@ -221,7 +219,7 @@ def project_audit_reponses(
         for r in touch_rows
     ]
 
-    # Dette builder (E9) : artifacts en attente / synthèses
+    # Tous les derniers livrables, sans interprétation de dette.
     art_rows = conn.execute(
         'SELECT id, venture_id, kind, version, created_at FROM artifacts'
         ' ORDER BY created_at DESC LIMIT 10'

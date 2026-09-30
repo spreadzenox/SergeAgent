@@ -1,5 +1,5 @@
 // Routeur de fiches objet : page parent ou tiroir feuille.
-import {confirmModal, toast} from './components.js';
+import {confirmModal, promptModal, toast} from './components.js';
 import {TYPES_OBJET, allerObjet, depuis} from './libelles.js';
 
 const TIROIRS = new Set([
@@ -76,7 +76,12 @@ function tableau(data) {
       tr.append(el('td', '', cellule(nom, valeur)));
     });
     if (ligne.type && ligne.id) {
-      tr.addEventListener('click', () => allerObjet(ligne.type, ligne.id));
+      const open = () => allerObjet(ligne.type, ligne.id);
+      tr.setAttribute('role', 'link');
+      tr.addEventListener('click', open);
+      tr.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); open(); }
+      });
     } else {
       tr.style.cursor = 'default';
     }
@@ -206,6 +211,7 @@ export function renderFiche(data, apres = null) {
 }
 
 export async function chargerObjet(type, id) {
+  try {
   const res = await fetch(
     `/owner/api/objet?type=${encodeURIComponent(type)}&id=${encodeURIComponent(id)}`,
     {cache: 'no-store'},
@@ -214,11 +220,16 @@ export async function chargerObjet(type, id) {
     return null;
   }
   return res.json();
+  } catch {
+    toast(document.body, 'Fiche injoignable. Réessaie.', 'erreur');
+    return null;
+  }
 }
 
-export async function monterObjet(main, type, id) {
+export async function monterObjet(main, type, id, active = () => true) {
   main.replaceChildren();
   const data = await chargerObjet(type, id);
+  if (!active()) return () => {};
   const fil = el('p', 'fil-ariane');
   const back = el('a', '', '← En direct');
   back.href = '#/live';
@@ -231,7 +242,43 @@ export async function monterObjet(main, type, id) {
     return () => {};
   }
   main.append(el('h2', '', data.titre || id));
-  main.append(renderFiche(data, () => monterObjet(main, type, id)));
+  const refresh = () => { if (active()) monterObjet(main, type, id, active); };
+  if (type === 'ticket') {
+    const {renderCarte} = await import('./pages/tickets_actes.js');
+    if (!active()) return () => {};
+    const res = await fetch(`/owner/api/ticket/carte?ticket=${encodeURIComponent(id)}`);
+    if (!active()) return () => {};
+    const panel = el('section', 'panneau'); panel.dataset.carte = 'panneau';
+    const heading = el('h3'); heading.dataset.carte = 'titre';
+    const body = el('div'); body.dataset.carte = 'corps'; panel.append(heading, body); main.append(panel);
+    if (res.ok) renderCarte(main, null, await res.json());
+  }
+  if (type === 'lesson' && data.statement) {
+    const text = el('p', 'texte-cadre', data.statement); main.append(text);
+    for (const [action, label] of [['modifier', 'Modifier la leçon'], ['supprimer', 'Jeter la leçon']]) {
+      const btn = el('button', action === 'supprimer' ? 'danger' : '', label);
+      btn.type = 'button';
+      btn.addEventListener('click', async () => {
+        if (btn.disabled) return;
+        btn.disabled = true;
+        try {
+          let statement = '';
+          if (action === 'modifier') {
+            const values = await promptModal(document.body, {title: label, message: 'Nouvel énoncé', fields: [{nom: 'statement', label: 'Leçon', defaut: data.statement, requis: true}]});
+            if (!values) return;
+            statement = values.statement;
+          } else if (!await confirmModal(document.body, {title: label, message: data.statement, danger: true})) return;
+          const res = await fetch('/owner/api/memory/lesson', {method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({lesson_id: id, action, statement})});
+          const result = await res.json();
+          toast(document.body, res.ok ? 'Leçon mise à jour.' : result.erreur, res.ok ? 'succes' : 'erreur');
+          if (res.ok) action === 'supprimer' ? location.hash = '#/memory' : refresh();
+        } catch { toast(document.body, 'Action injoignable.', 'erreur'); }
+        finally { btn.disabled = false; }
+      });
+      main.append(btn);
+    }
+  }
+  main.append(renderFiche(data, refresh));
   return () => {};
 }
 

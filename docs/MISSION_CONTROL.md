@@ -37,10 +37,10 @@ navigateur au fil de l'eau.
 | **Pipeline** | `#/pipeline` | Tout le pipeline tel qu'il est en base : les liens (avec ce qui attend un clic), les déclencheurs, les outils, les capacités du code, ce que les invocations voient de chaque table, le modèle derrière chaque niveau et le texte « Qui est Serge ». | Choisir le modèle de chaque niveau parmi ceux d'OpenRouter, avec leurs prix et une recommandation (vide : celui de l'installation), réécrire le texte « Qui est Serge » ; ouvrir la fiche d'un lien, d'un outil, d'une invocation ou d'une table. |
 | **Système** | `#/system` | Les îlots (sous-systèmes), les files de tâches, les campagnes, la population de prospects, l'e-mail. | Lecture. Accessible par `Ctrl+K`. |
 | **Cerveau** | `#/mind` | Pensées, décisions récentes, tableau de toutes les invocations en base (niveau, file, priorité, usage sur 7 jours), signaux entrants. | Ouvrir la fiche d'une invocation, l'éteindre ou la rallumer. |
-| **Décisions** | `#/tickets` | Les tickets à trancher, ce qui a changé, le rythme des décisions, le résumé quotidien. | Répondre à un ticket (mêmes boutons que sur Discord), discuter. |
-| **Mémoire** | `#/memory` | Épisodes archivés, procédures, pièges, leçons, dernière consolidation, demandes de nouvelles capacités. | Chercher dans la mémoire, garder, modifier ou jeter une leçon. |
+| **Décisions** | `#/tickets` | Les tickets à trancher, ce qui a changé, le rythme des décisions, le résumé quotidien. | Répondre à un ticket (boutons du registre, y compris QCM et réponse libre), discuter plusieurs fois et lire les messages. Les tickets actifs sont tous présents ; les 50 derniers clos complètent la liste. |
+| **Mémoire** | `#/memory` | Épisodes archivés, procédures, pièges, leçons, dernière consolidation, demandes de nouvelles capacités. | Chercher dans la mémoire ; ouvrir une leçon pour la modifier ou la jeter. Les propositions de leçons sont dans Décisions et ouvrent leur ticket pour garder, modifier ou jeter chaque proposition. |
 | **Policy** | `#/policy` | Toutes les règles : quotas, heures, budgets, taille des essais ; et les réglages des invocations et les quotas des tables marqués « policy », rangés par étape et par invocation. | Modifier une règle et l'enregistrer. Chaque version de la policy générale est gardée ; chaque changement de réglage est noté au journal. |
-| **Économie** | `#/economy` | De l'envoi au paiement : touches, réponses, paiements, abonnements, coût des invocations LLM (le coût réel facturé par OpenRouter, avec les jetons sans coût connu à part). | Lecture. |
+| **Économie** | `#/economy` | De l'envoi au paiement : touches, réponses, paiements, derniers envois et livrables, abonnements, coût des invocations LLM (le coût réel facturé par OpenRouter, avec les jetons sans coût connu à part). | Lecture. |
 | **Voix** | `#/voice` | L'état du pont téléphonique, le journal des appels, leur qualité. | Écouter un enregistrement. Pour couper les appels : page En direct. |
 | **Health** | `#/health` | Taille du code, services systemd, versions, piste d'audit. | Lecture. |
 | **Identité** | `#/identite` | Qui est Serge sur cette instance : nom, e-mail, SIRET, IBAN… La source est le fichier d'instance, pas la base. | Lecture. La fonction d'écriture existe (`ecrire_identite`) mais aucun bouton ne l'appelle. |
@@ -198,9 +198,35 @@ du modèle ; rien n'est enregistré avant « Enregistrer ».
 
 ---
 
+## Navigation, saisies et sessions
+
+La carte des étapes garde des cases distinctes sur ordinateur et téléphone.
+Les lignes de Pipeline et des fiches s’ouvrent aussi avec Entrée ou Espace.
+La palette propose Écoute, Pipeline et Système ; son action Policy ouvre
+la demande de changement directement.
+
+Les champs modifiés restent en place quand le flux actualise Pipeline,
+Policy ou les conditions d’un bouton d’Écoute. Enregistrer un réglage ne
+supprime pas les brouillons des autres réglages. Une erreur réseau garde
+la saisie et affiche un message visible.
+
+Les tailles des essais sont des entiers cohérents et ne peuvent changer
+pendant une campagne RUNNING, par aucune des deux routes Policy. Les
+réglages numériques des invocations désignent des nombres d’éléments :
+ils refusent les décimales et les valeurs non finies.
+
+« Se déconnecter » révoque la session. Le flux déjà ouvert vérifie sa
+session à chaque tour (toutes les deux secondes) puis se ferme si elle
+est révoquée ou expirée. L’audio exige la même session ; aucun lien public
+signé ne permet de contourner cette vérification. La pastille de connexion
+suit les réponses du flux ou du polling, et signale une interruption.
+
+La page publique dit seulement si Serge est arrêté, démarré au repos ou
+occupé. Elle n’affirme pas que tous les services sont opérationnels.
+
 ## Les routes de l'API
 
-Toutes demandent le jeton owner.
+Toutes demandent le jeton owner ou une session valide. Les corps JSON sont limités à 64 Kio (413 au-delà), assez pour les champs de 4 000 caractères, y compris accentués.
 
 | Route | Rôle |
 |---|---|
@@ -210,7 +236,7 @@ Toutes demandent le jeton owner.
 | `GET /owner/api/trace` | Le fil d'une tâche. |
 | `GET /owner/api/ticket/carte` | La carte d'un ticket. |
 | `GET /owner/api/memory/items`, `/owner/api/memory/search` | Lire et chercher la mémoire. |
-| `GET /owner/api/voice/audio` | Un enregistrement d'appel (lien signé). |
+| `GET /owner/api/voice/audio` | Un enregistrement d’appel, réservé à une session owner valide. |
 | `POST /owner/api/coupe` | Couper ou relancer (Serge, étape, file, invocation). |
 | `POST /owner/api/invocation` | Modifier une invocation : prompt, niveau de modèle, file, priorité, allumée. |
 | `POST /owner/api/etape` | Allumer ou éteindre une étape. |

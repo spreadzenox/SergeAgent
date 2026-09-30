@@ -362,7 +362,7 @@ export function mount(main, store) {
     slot.replaceChildren(label, node);
     gauges[name] = {label, node};
   }
-  main.addEventListener('click', (ev) => {
+  const fileClick = (ev) => {
     const cible = ev.target.closest('[data-file]');
     if (!cible || !main.contains(cible)) {
       return;
@@ -381,12 +381,14 @@ export function mount(main, store) {
         allerObjet('task', nxt.id);
       }
     }
-  });
+  };
+  main.addEventListener('click', fileClick);
   const noyau = startNoyau(main.querySelector('[data-hud="noyau"]'), () =>
     etatDepuisStore(store),
   );
   const stoppers = [];
-  brancherCoupes(main, store);
+  stoppers.push(brancherCoupes(main, store));
+  stoppers.push(() => main.removeEventListener('click', fileClick));
   const rafGraphe = monterGraphe(
     main,
     () => {

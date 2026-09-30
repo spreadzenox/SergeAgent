@@ -407,7 +407,7 @@ class TicketActeTests(McServerCase):
             {'ticket_id': ticket_id, 'message': 'deux'},
             cookie,
         )
-        self.assertEqual(status, 409)
+        self.assertEqual(status, 200)
 
     def test_parite_item_discord(self) -> None:
         conn = open_db(self.db_path)

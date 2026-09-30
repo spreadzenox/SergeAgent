@@ -75,7 +75,7 @@ async function poster(chemin, charge) {
 }
 
 export function brancherCoupes(main, store) {
-  main.addEventListener('click', async (ev) => {
+  const click = async (ev) => {
     const btn = ev.target.closest('[data-coupe-cible]');
     if (!btn || !main.contains(btn)) {
       return;
@@ -86,20 +86,14 @@ export function brancherCoupes(main, store) {
     const cible = btn.dataset.coupeCible;
     const ident = btn.dataset.coupeId || '';
     const marche = btn.dataset.coupe === '1';
-    if (cible === 'serge' && marche) {
-      const ok = await confirmModal(document.body, {
-        title: 'Démarrer Serge ?',
-        message:
-          'Les deux files vont prendre des tâches et appeler les modèles,'
-          + ' et la voix décrochera. Rien ne tourne avant ce clic.',
-        confirm: 'Démarrer',
-      });
-      if (!ok) {
-        return;
-      }
-    }
     btn.disabled = true;
     try {
+      if (cible === 'serge' && marche) {
+        const ok = await confirmModal(document.body, {
+          title: 'Démarrer Serge ?', message: 'Les files vont exécuter les tâches et la voix décrochera.', confirm: 'Démarrer',
+        });
+        if (!ok) return;
+      }
       const {ok, data} = await poster('/owner/api/coupe', {
         cible,
         id: ident,
@@ -122,5 +116,7 @@ export function brancherCoupes(main, store) {
     } finally {
       btn.disabled = false;
     }
-  });
+  };
+  main.addEventListener('click', click);
+  return () => main.removeEventListener('click', click);
 }

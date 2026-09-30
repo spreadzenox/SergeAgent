@@ -27,7 +27,7 @@
 </nav>
 </aside>
 <div class="contenu">
-<header class="entete-mc"><h1>Mission Control</h1><span id="health" class="pastille" data-etat="ok" title="Connexion"></span><kbd class="cmdk-hint">Ctrl+K</kbd></header>
+<header class="entete-mc"><h1>Mission Control</h1><span id="health" class="pastille" data-etat="ok" title="Connexion"></span><kbd class="cmdk-hint">Ctrl+K</kbd><form action="/owner/logout" method="post"><button type="submit">Se déconnecter</button></form></header>
 <main id="page"></main>
 <footer class="pied-mc" data-section="meta" data-sig="">MC v<span data-field="mc_version">…</span></footer>
 </div>
@@ -196,6 +196,7 @@
 <template id="page-tickets">
 <p class="page-intro">Tu tranches ici. Tant qu’un urgent est ouvert, Serge attend.</p>
 <section class="panneau" data-section="tickets" data-sig="">
+<p class="legende-policy">Tous les tickets actifs, puis les 50 derniers tickets clos.</p>
 <h2>À trancher</h2>
 <div class="tickets-filtres">
 <select data-filtre="type" aria-label="Filtrer par type">
@@ -224,7 +225,7 @@
 <div data-diffs="contenu"></div>
 </section>
 <section class="panneau" data-section="memory-browse">
-<h2>Toutes les leçons</h2>
+<h2>Propositions de leçons</h2>
 <div class="memory-nav">
 <button type="button" data-memory="prev">Précédent</button>
 <span data-memory="info">Page 1 / 1</span>
@@ -316,7 +317,7 @@
 <p id="eco-mrr">MRR estimé : … €</p>
 <h3>Transactions récentes</h3>
 <ul data-list="transactions"></ul>
-<h3>Abonnements actifs</h3>
+<h3>Derniers abonnements</h3>
 <ul data-list="subscriptions"></ul>
 </section>
 <section class="panneau" data-section="couts_cognitifs" data-sig="">
@@ -325,10 +326,10 @@
 <p id="eco-ratio-tokens">…</p>
 </section>
 <section class="panneau" data-section="audit_reponses" data-sig="">
-<h2>Réponses et dette builder</h2>
-<h3>Dernières réponses</h3>
+<h2>Envois et livrables</h2>
+<h3>Derniers envois</h3>
 <ul data-list="reponses"></ul>
-<h3>Dette Builder (artifacts)</h3>
+<h3>Derniers livrables</h3>
 <ul data-list="dette_builder"></ul>
 </section>
 </template>
