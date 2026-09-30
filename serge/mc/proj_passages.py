@@ -22,9 +22,15 @@ VERDICTS = {
 
 
 def cout(cost_usd: Any) -> str:
-    """Le coût d'un appel : « 0,0012 $ », ou « — » s'il n'est pas connu."""
+    """Le coût d'un appel : « 0,0012 $ », ou « — » s'il n'est pas connu.
+
+    Un coût non nul sous 0,0001 $ (un petit modèle) s'écrit « < 0,0001 $ »,
+    jamais « 0,0000 $ » qui se lirait comme gratuit.
+    """
     if cost_usd is None:
         return '—'
+    if 0 < float(cost_usd) < 0.0001:
+        return '< 0,0001 $'
     return f'{float(cost_usd):.4f} $'.replace('.', ',')
 
 
