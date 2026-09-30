@@ -156,6 +156,14 @@ Le runner tourne en continu, en deux copies, une par file
   relever les boîtes et les messages entrants, 50 pour les envois et les
   relances, 30 pour la construction, 10 pour l'écoute, la veille et la
   consolidation.
+- Dans une boucle d'outils, tout l'historique repart au modèle à chaque tour.
+  Pour les modèles d'Anthropic, qui n'ont pas de cache automatique, le client
+  demande à OpenRouter de le garder en cache (`cache_control`) dès que
+  l'historique contient des résultats d'outils : lire en cache coûte dix fois
+  moins que lire normalement, écrire 25 % de plus, donc le gain commence au
+  troisième appel d'une conversation. Les autres fournisseurs cachent seuls.
+  À vérifier sur un vrai appel : le coût de chaque appel d'une boucle doit
+  cesser de croître à chaque tour.
 - Quand le plafond de dépense LLM du jour est atteint (réglé dans la
   policy, par exemple 5 €), les tâches LLM attendent le lendemain ; les
   autres continuent.
