@@ -263,7 +263,7 @@ discutable, qui peut un jour changer, se règle depuis Mission Control.**
     silences avant une relance ; seuils de lecture des réponses ;
   - lot 9 (grille de points) : le barème de prospection ;
   - lot 10 (construire) : les bornes de la construction ;
-  - lot 11 (étapes 3 à 8) : la répartition du budget, les invitations
+  - lot 11 (étapes 3, 4, 6, 7 et 8) : la répartition du budget, les invitations
     LinkedIn par mois, les devis et les essais de caisse, la consolidation
     de la mémoire (dont la leçon retirée après plusieurs démentis :
     aucune fonction en marche ne l'appelle aujourd'hui) ;

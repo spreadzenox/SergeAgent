@@ -180,8 +180,8 @@ Aucun test de CI n'agit sur le monde réel.
   ne vaut que pour une vraie question-réponse : un changement décidé sans
   question n'y entre pas. Une décision validée fait foi : le code et la doc
   s'y conforment. On ne retire pas une réponse parce que son travail est
-  fait. Si elle devient fausse, on la corrige dans son entrée d'origine,
-  après que Julien ou Clem a dit laquelle fait foi.
+  fait. Si elle devient fausse, on la corrige dans son entrée d'origine ;
+  la règle ci-dessous dit qui décide.
 - **Pas d'incohérence, et on ne tranche pas seul.** Quand deux textes se
   contredisent (deux documents, une doc et le code, deux décisions) ou
   qu'une décision n'est pas appliquée, on ne choisit pas soi-même : on le
@@ -191,6 +191,14 @@ Aucun test de CI n'agit sur le monde réel.
   la réponse est notée comme une question-réponse. Exemple : le fichier des
   décisions disait « pas de renvois Q13 dans le TODO » alors que le TODO en
   contenait. On a demandé à Julien laquelle des deux faisait foi.
+  **Une exception : deux décisions du fichier des décisions qui se
+  contredisent.** La plus récente (le numéro le plus grand) a raison, mais
+  seulement sur les points où elle contredit l'autre ; sur le reste, elle
+  ajoute de l'information et l'ancienne garde sa valeur, comme un « upsert »
+  de base de données. On corrige alors l'ancienne entrée soi-même, sans
+  demander. Exemple : Q49 donnait l'ordre des lots 6 à 12, et Q55 le
+  remplace par un nouvel ordre avec un lot 13 : on corrige ce point de Q49,
+  et le reste de Q49 ne change pas.
 
 ## 8. Les changements
 

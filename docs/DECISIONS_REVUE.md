@@ -11,7 +11,8 @@ permanent. Il a commencé avec la revue du projet (septembre 2026).
 Seulement après une vraie question-réponse avec Julien ou Clem. Une
 décision prise sans question n'a pas sa place ici. On ajoute l'entrée à la
 fin du fichier, avec le numéro qui suit la dernière (les entrées restent
-dans l'ordre des numéros) :
+dans l'ordre des numéros, qui est l'ordre des questions : plus le numéro
+est grand, plus la réponse est récente) :
 
 ```
 ### Q<numéro> — Titre court (validé par Clem, 2 octobre 2026)
@@ -26,10 +27,15 @@ Arguments : pourquoi cette réponse plutôt qu'une autre (si la personne en a do
   invente pas.
 - On ne retire pas une entrée parce que son travail est fait. Si une
   réponse devient fausse (le code actuel ou une réponse plus récente la
-  contredit), on la corrige dans son entrée d'origine, après qu'un humain a
-  dit laquelle fait foi. Le texte dit ce qui est vrai maintenant, et on
-  ajoute à la fin de l'entrée : « Corrigé le <date> (Q<numéro>) : ce qui a
-  changé, et pourquoi ».
+  contredit), on la corrige dans son entrée d'origine. Le texte dit ce qui
+  est vrai maintenant, et on ajoute à la fin de l'entrée : « Corrigé le
+  <date> (Q<numéro>) : ce qui a changé, et pourquoi ».
+- Qui décide de la correction : si une réponse plus récente contredit
+  l'ancienne, la plus récente a raison, mais seulement sur les points où
+  elle la contredit ; sur le reste, elle ajoute de l'information et
+  l'ancienne garde sa valeur (Q71). On corrige alors l'ancienne sans
+  demander. Si c'est le code ou un autre texte qui la contredit, on
+  demande à un humain laquelle fait foi.
 
 Plan de travail (Q30) : finir les questions sur les étapes 2 à 8, puis
 corriger par petits lots (un sujet = un commit, tests verts), en relisant ce
@@ -709,8 +715,11 @@ Le point hebdomadaire (Q42) lit aussi ces demandes.
 ### Q49 — Ordre des lots (validé, lots 1 à 4 en une passe)
 1. Fusionner main dans Clem. 2. Corriger les deux bugs graves. 3. Supprimer
 code mort et doublons. 4. Nouvelle doc + TODO + charte. Puis 5. Données,
-6. Invocations et liens, 7. Étape 1, 8. Conversations, 9. Grille de points,
-10. Étapes 2 et 5, 11. Étapes 3, 4, 6, 7, 8, 12. Web.
+6. Le runner et le pipeline en base (invocations, liens, déclencheurs),
+7. Étape 1, 8. Conversations, 9. Grille de points, 10. Étapes 2 et 5,
+11. Étapes 3, 4, 6, 7, 8, 12. Web, 13. L'éditeur sans code dans MC.
+Corrigé le 1er octobre 2026 (Q71) : le lot 6 devient « le runner et le
+pipeline en base » et un lot 13 s'ajoute, comme le dit Q55.
 
 ---
 
@@ -1272,3 +1281,25 @@ Décidé :
 Arguments de Julien : l'historique de ce qu'on a demandé garde son intérêt
 même quand le travail est fait ; ce qui ne doit pas rester, c'est une
 réponse devenue fausse.
+
+### Q71 — La réponse la plus récente a raison, seulement là où elle contredit (validé par Julien, 1er octobre 2026)
+Constat : en relisant le plan de travail, Q49 (l'ordre des lots 6 à 12) et
+Q55 (« nouvel ordre des lots ») ne disaient plus la même chose. Il fallait
+savoir laquelle fait foi.
+Décidé :
+1. Les réponses ne s'ajoutent pas simplement les unes aux autres : elles
+   fonctionnent comme un « upsert » de base de données. Une réponse plus
+   récente (le numéro le plus grand) a raison sur toutes les précédentes,
+   mais seulement sur les points où elle les contredit. Si elle ne
+   contredit rien, elle ajoute de l'information et les précédentes gardent
+   leur contenu.
+2. Quand deux réponses se contredisent, on corrige donc soi-même l'ancienne,
+   dans son entrée d'origine (Q70), sans demander. Quand c'est le code ou un
+   autre texte qui contredit une réponse, on demande toujours à un humain.
+3. Appliqué tout de suite : Q49 est corrigée d'après Q55 (le lot 6 devient
+   « le runner et le pipeline en base », un lot 13 s'ajoute). Q68 ne
+   corrige pas Q55 : elle ajoute le chantier « avant le lot 8 » sans
+   contredire l'ordre des lots. Le TODO dit « lot 11 : étapes 3, 4, 6, 7 et
+   8 », comme Q55.
+Arguments de Julien : sémantiquement, la dernière question a raison sur
+celles d'avant, et elle ne retire leur contenu que si elle le contredit.
