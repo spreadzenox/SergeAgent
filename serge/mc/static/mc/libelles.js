@@ -11,6 +11,7 @@ export const EVENTS = {
   'task.done': 'Tâche terminée',
   'task.failed': 'Tâche échouée',
   'task.relaunched': 'Tâche relancée',
+  'task.cancelled': 'Tâche annulée',
   'task.resumed': 'Tâche reprise après un arrêt',
   'write.inserted': 'Ligne ajoutée',
   'write.updated': 'Ligne modifiée',

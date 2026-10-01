@@ -240,3 +240,43 @@ def quota_usage(
         compte,
     ).fetchone()
     return int(used[0]), int(maximum), str(description or quota_id)
+
+
+def cancel_tasks_on_change(
+    conn: sqlite3.Connection,
+    table: str,
+    row_ids: list[Any],
+    values: Mapping[str, Any],
+    now: str,
+) -> int:
+    """Annule les tâches en attente des lignes qui viennent de changer.
+
+    Les règles sont réglées sur la table (``task_cancel_rules``). Exemple :
+    un cycle d'écoute qui passe à ``ABANDONED`` annule ses tâches en
+    attente (celles dont le paramètre ``cycle_id`` vaut son numéro).
+
+    Returns:
+        Le nombre de tâches annulées.
+    """
+    total = 0
+    for column, value, param in conn.execute(
+        'SELECT column_name, value, param_name FROM task_cancel_rules'
+        ' WHERE table_name=? ORDER BY column_name, param_name',
+        (table,),
+    ).fetchall():
+        if column not in values or str(values[column]) != str(value):
+            continue
+        for row_id in row_ids:
+            cursor = conn.execute(
+                "UPDATE tasks SET status='cancelled', finished_at=?,"
+                " last_error=? WHERE status='ready' AND id IN"
+                ' (SELECT task_id FROM task_params WHERE name=? AND value=?)',
+                (
+                    now,
+                    f'{table} {row_id} : {column} = {value}',
+                    param,
+                    str(row_id),
+                ),
+            )
+            total += cursor.rowcount
+    return total

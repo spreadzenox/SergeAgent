@@ -169,3 +169,18 @@ def relaunch_task(conn: sqlite3.Connection, task_id: str) -> bool:
         (task_id,),
     )
     return cursor.rowcount == 1
+
+
+def cancel_task(conn: sqlite3.Connection, task_id: str, reason: str) -> bool:
+    """Annule une tâche en attente. Faux si elle n'était pas en attente.
+
+    Une tâche en cours ne s'annule pas : elle finit ce qu'elle a commencé.
+    """
+    from serge.horloge import iso_utc
+
+    cursor = conn.execute(
+        "UPDATE tasks SET status='cancelled', finished_at=?, last_error=?"
+        " WHERE id=? AND status='ready'",
+        (iso_utc(), reason, task_id),
+    )
+    return cursor.rowcount == 1
