@@ -313,16 +313,23 @@ Notes :
 - Table contacts = une ligne par personne dans un business.
 - Table à part pour les adresses : une ligne par adresse (canal, valeur,
   active ou non). Rien n'est écrasé ; plusieurs emails possibles.
-- Regroupement automatique, dans un même business, seulement sur email
-  identique ou numéro de téléphone identique (pas sur nom, pas sur profil
-  réseau). Adresses génériques (contact@, info@…) ne déclenchent pas de
-  regroupement (proposé, non contesté).
+- Regroupement automatique, dans un même business : une adresse déjà connue
+  sur le même canal désigne la même personne (même e-mail, même numéro de
+  téléphone, même profil sur le même réseau). Pas de regroupement sur le
+  nom, ni sur un même pseudo sur deux réseaux différents. Adresses
+  génériques (contact@, info@…) ne regroupent jamais (proposé, non
+  contesté).
 - Remplace la règle du TODO « deux lieux, deux lignes » et le JSON
   contact_reference_by_canal de la branche Clem.
-- Désabonnement (OPT_OUT) global à la personne.
+- Désabonnement (OPT_OUT) propre à la fiche, donc au business concerné :
+  une personne désabonnée du business A peut encore être contactée par le
+  business B.
 Corrigé le 1er octobre 2026 (Q73) : ce point disait « une ligne par
 personne », ce que le choix plus récent d'une fiche par personne dans un
 business remplace.
+Corrigé le 1er octobre 2026 (Q75) : le regroupement suit le code, plus
+récent (27 septembre, contre le 26 pour cette entrée), et le désabonnement
+n'est plus « global à la personne ».
 
 ### Q18 — Organisation de la doc (validé)
 - README court (Serge, chaîne en 8 étapes, où lire la suite).
@@ -1037,8 +1044,11 @@ direct.
 4. La vue d'ensemble (capacités, outils, liens, déclencheurs, modèle par
    niveau, texte « Qui est Serge ») est une nouvelle page « Pipeline » de
    MC.
-5. On travaille toujours sur `Clem`. Chaque fusion dans `main` est
-   demandée à Clem avant d'être faite.
+5. Une idée = une branche = une pull request (voir `docs/DEV_TOOLING.md`) :
+   `main` ne bouge que par une PR relue par un humain, avec la CI verte.
+   Corrigé le 1er octobre 2026 (Q75) : ce point disait « On travaille
+   toujours sur `Clem`. Chaque fusion dans `main` est demandée à Clem avant
+   d'être faite. »
 
 ### Q65 — Lot 7, l'étape 1 (validé par Clem, 28 septembre 2026)
 0. **B voit ce qu'a écrit A.** Clem revient sur « B ne voit jamais A » :
@@ -1380,3 +1390,26 @@ Décidé :
    (« jonction », « hôte », « contrat ») sont remplacés dans Q4 et Q5.
 Arguments de Julien : un détail comme « étape X à X » ou « lot X à X à
 faire » qui est périmé n'a pas besoin de lui ; il faut le corriger.
+
+### Q75 — Contacts (désabonnement, regroupement), branche de travail et REPRISE_LOT7 (validé par Julien, 1er octobre 2026)
+Constat : en corrigeant Q17 d'après Q73, quatre points restaient à trancher.
+Q17 disait le désabonnement « global à la personne », alors que le code ne
+marque que la fiche du business. Q17 interdisait de regrouper sur un
+profil de réseau, alors que le code regroupe sur une même adresse sur le
+même canal. Q64 disait « on travaille toujours sur `Clem` », alors que
+`docs/DEV_TOOLING.md` dit « une idée = une branche + une PR ».
+`docs/REPRISE_LOT7.md` était dans le même cas que celui du lot 6.
+Décidé :
+1. `docs/REPRISE_LOT7.md` est supprimé.
+2. Une personne désabonnée du business A peut encore être contactée par le
+   business B : le désabonnement est propre à la fiche. Le code est déjà
+   comme cela.
+3. Quand le code est plus récent qu'une réponse, on suit le code. Ici le
+   code (27 septembre) est plus récent que Q17 (26 septembre) : le
+   regroupement de Q17 est corrigé d'après lui.
+4. Q64, point 5, a tort : la bonne règle est celle de `docs/DEV_TOOLING.md`,
+   une idée = une branche = une PR. Q64 est corrigée. Julien en parle à
+   Clem ; si sa réponse change cela, elle sera notée.
+Arguments de Julien : sur le désabonnement, une personne qui quitte un
+business n'a pas quitté les autres. Sur la branche, c'est le
+fonctionnement de l'équipe, et `docs/DEV_TOOLING.md` est la meilleure règle.
