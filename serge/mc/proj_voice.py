@@ -6,9 +6,9 @@ from __future__ import annotations
 import sqlite3
 from collections.abc import Mapping
 from typing import Any
+from urllib.parse import urlencode
 
 from serge.coupe_circuit import heartbeat_marche
-from serge.mc.signedlinks import signer_url
 from serge.voice.ledger import assurer_colonnes_calls
 from serge.voice.policy import default_ledger_path
 from serge.voice.quality import recent_scores
@@ -17,7 +17,7 @@ from serge.voice.quality import recent_scores
 def project_cdr_appels(
     conn: sqlite3.Connection, policy: Mapping[str, Any], now: str
 ) -> dict[str, Any]:
-    """Liste des derniers CDR voix avec URL audio signée le cas échéant (P7).
+    """Liste des derniers CDR voix avec URL audio réservée à l’owner le cas échéant (P7).
 
     Args:
         conn: Connexion canon (ignorée pour CDR, ledger externe).
@@ -48,14 +48,14 @@ def project_cdr_appels(
     except sqlite3.OperationalError:
         return {'calls': [], 'total': 0, 'disponible': False}
 
-    secret = 'serge_mc_voice_signed_audio'
     calls = []
     for r in rows:
         rec_path = str(r['recording_path'] or '')
         audio_url = ''
         if rec_path:
-            url_brute = f'/owner/api/voice/audio?cdr={r["cdr_id"]}'
-            audio_url = signer_url(url_brute, secret, ttl_s=3600)
+            audio_url = '/owner/api/voice/audio?' + urlencode(
+                {'cdr': r['cdr_id']}
+            )
 
         calls.append(
             {

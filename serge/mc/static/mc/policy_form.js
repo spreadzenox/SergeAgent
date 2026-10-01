@@ -302,7 +302,11 @@ const FABRIQUES = {
 export function champPolicy(chemin, val) {
   const spec = specDe(chemin, val);
   const fabrique = FABRIQUES[spec.widget] || champTexte;
-  return fabrique(chemin, spec, val);
+  const node = fabrique(chemin, spec, val);
+  node.querySelectorAll('input,select,textarea').forEach((field, i) => {
+    field.setAttribute('aria-label', `${spec.titre}${i ? ` · ${i + 1}` : ''}`);
+  });
+  return node;
 }
 
 export function feuillesPolicy(pol) {

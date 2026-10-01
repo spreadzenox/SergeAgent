@@ -13,6 +13,7 @@ tout suit au prochain appel.
 
 from __future__ import annotations
 
+import math
 import re
 import sqlite3
 from collections.abc import Mapping
@@ -100,6 +101,11 @@ def check_setting(
         number = float(value)
     except ValueError:
         return f'nombre attendu : {value!r}'
+    if not math.isfinite(number):
+        return 'nombre fini attendu'
+    # Ces réglages alimentent resolve_count (tailles, nombres, quotas).
+    if not value.isdigit():
+        return 'nombre entier positif ou nul attendu'
     if min_value and number < float(min_value):
         return f'au moins {min_value}'
     if max_value and number > float(max_value):

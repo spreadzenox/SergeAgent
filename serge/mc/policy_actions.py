@@ -64,6 +64,18 @@ class PolicyActionsMixin(_Base):
             return
 
         with self._db() as conn:
+            current = policy_en_vigueur(conn)
+            running = conn.execute(
+                "SELECT COUNT(*) FROM campaigns WHERE state='RUNNING'"
+            ).fetchone()[0]
+            if running and validee.get('testing') != current.get('testing'):
+                self._refus(
+                    409,
+                    'Modification testing verrouillée : campagnes en cours.',
+                    'lock',
+                    'Attends la fin des essais.',
+                )
+                return
             snap = snapshot_policy(conn, validee, applied_by='owner')
             append_event(
                 conn,
@@ -235,15 +247,18 @@ class PolicyActionsMixin(_Base):
                     'quota inconnu'
                     if row is None
                     else ''
-                    if value.isdigit()
-                    else 'nombre entier attendu'
+                    if value.isascii()
+                    and value.isdigit()
+                    and len(value) <= 19
+                    and int(value) <= 2**63 - 1
+                    else 'entier entre 0 et 9223372036854775807 attendu'
                 )
                 cle = {'id': ident}
                 sql = (
                     'UPDATE table_quotas SET max_value=?, updated_at=?,'
                     " updated_by='mc' WHERE id=?"
                 )
-                args = (int(value) if value.isdigit() else 0, utcnow(), ident)
+                args = (int(value) if not probleme else 0, utcnow(), ident)
             else:
                 probleme = 'cible : invocation ou quota'
                 row, cle, sql, args = None, {}, '', ()

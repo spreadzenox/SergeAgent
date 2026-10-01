@@ -16,8 +16,6 @@ from serge.tickets import champs_carte, get_ticket
 from serge.tickets.lifecycle import OPENISH
 from serge.tickets.shared import TicketError
 
-BOUTONS_MC = frozenset({'approuver', 'rejeter', 'editer', 'discuter'})
-
 
 def _types() -> dict:
     try:
@@ -44,13 +42,13 @@ def _est_urgent(typ: str, etat: str, expiry: str, now: str) -> bool:
 def _boutons(spec: Any) -> list[str]:
     if not isinstance(spec, dict):
         return []
-    return [b for b in (spec.get('buttons') or []) if b in BOUTONS_MC]
+    return list(spec.get('buttons') or [])
 
 
 def project_tickets(
     conn: sqlite3.Connection, policy: Mapping[str, Any], now: str
 ) -> dict[str, Any]:
-    """Liste tickets : ouverts d'abord, récents d'abord, cap 50 (P3).
+    """Tous les tickets actifs, puis les 50 derniers tickets clos (P3).
 
     Args:
         conn: Connexion canon (lecture).
@@ -65,9 +63,12 @@ def project_tickets(
     types = _types()
     items = []
     for row in conn.execute(
-        'SELECT id, type, title, state, expiry_at FROM tickets ORDER BY'
+        'SELECT id, type, title, state, expiry_at FROM tickets WHERE'
+        " state IN ('DRAFT','OPEN','DISCUSSING') OR id IN"
+        " (SELECT id FROM tickets WHERE state NOT IN ('DRAFT','OPEN','DISCUSSING')"
+        ' ORDER BY updated_at DESC LIMIT 50) ORDER BY'
         " CASE state WHEN 'OPEN' THEN 0 WHEN 'DISCUSSING' THEN 1"
-        " WHEN 'DRAFT' THEN 2 ELSE 3 END, updated_at DESC LIMIT 50"
+        " WHEN 'DRAFT' THEN 2 ELSE 3 END, updated_at DESC"
     ).fetchall():
         typ = str(row[1])
         etat = str(row[3])
@@ -130,12 +131,19 @@ def project_carte(
             'defaut': str(ticket.get('default_action') or ''),
             'defaut_detail': str(spec.get('default_detail') or ''),
         },
+        'options': json.loads(ticket.get('payload_json') or '{}').get(
+            'options_qcm', []
+        ),
         'champs': [
             {'titre': cle, 'texte': strip_ids(texte)}
             for cle, texte in champs_carte(ticket, spec)
         ],
-        'boutons': _boutons(spec),
-        'items_actes': list(spec.get('items_per_lesson') or []),
+        'boutons': _boutons(spec)
+        if ticket.get('state') in {'OPEN', 'DISCUSSING'}
+        else [],
+        'items_actes': list(spec.get('items_per_lesson') or [])
+        if ticket.get('state') in {'OPEN', 'DISCUSSING'}
+        else [],
         'items': [
             {
                 'id': str(item.get('id')),
@@ -150,6 +158,17 @@ def project_carte(
                 'ts': str(event.get('ts')),
                 'acteur': str(event.get('actor')),
                 'kind': str(event.get('kind')),
+                **(
+                    {
+                        'message': json.loads(
+                            event.get('payload_json') or '{}'
+                        )['message']
+                    }
+                    if json.loads(event.get('payload_json') or '{}').get(
+                        'message'
+                    )
+                    else {}
+                ),
             }
             for event in ticket.get('events') or []
         ],

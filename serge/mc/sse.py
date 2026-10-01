@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import time
+from collections.abc import Callable
 from contextlib import closing
 from pathlib import Path
 from typing import Any
@@ -55,6 +56,7 @@ def stream_page(
     cache: SnapshotCache,
     tick_s: float = 2.0,
     max_ticks: int | None = None,
+    authorized: Callable[[], bool] | None = None,
 ) -> int:
     """Boucle SSE (bloquant, 1 thread/connexion, DB rouverte par tick).
 
@@ -76,6 +78,10 @@ def stream_page(
     """
     ticks = 0
     while True:
+        if authorized is not None and not authorized():
+            wfile.write(b'event: auth\ndata: {}\n\n')
+            wfile.flush()
+            return ticks
         with closing(open_db(db_path)) as conn:
             live = policy_en_vigueur(conn)
             for section in sections:

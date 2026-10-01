@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Infrastructure Voix P7 : tests unitaires signedlinks HMAC et purge rétention."""
+"""Infrastructure Voix P7 : purge rétention."""
 
 from __future__ import annotations
 
@@ -14,40 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from serge.db.boot import init_schema  # noqa: E402
-from serge.mc.signedlinks import signer_url, verifier_url  # noqa: E402
 from serge.mc.voice_retention import purger_audio_voix  # noqa: E402
-
-
-class SignedLinksTests(unittest.TestCase):
-    def test_signature_et_verification_ok(self) -> None:
-        secret = 'cle-secrete-owner-42'
-        url_initiale = '/owner/api/voice/audio?cdr=cdr_123'
-        t0 = 1000.0
-
-        url_signee = signer_url(
-            url_initiale, secret, ttl_s=60, now_fn=lambda: t0
-        )
-        self.assertIn('exp=1060', url_signee)
-        self.assertIn('sig=', url_signee)
-
-        # Vérification valide au temps t0 + 30s
-        self.assertTrue(
-            verifier_url(url_signee, secret, now_fn=lambda: t0 + 30)
-        )
-
-        # Rejet si expiré au temps t0 + 61s
-        self.assertFalse(
-            verifier_url(url_signee, secret, now_fn=lambda: t0 + 61)
-        )
-
-        # Rejet si mauvais secret
-        self.assertFalse(
-            verifier_url(url_signee, 'mauvais-secret', now_fn=lambda: t0)
-        )
-
-        # Rejet si altération de paramètre
-        url_alteree = url_signee.replace('cdr_123', 'cdr_999')
-        self.assertFalse(verifier_url(url_alteree, secret, now_fn=lambda: t0))
 
 
 class VoiceRetentionTests(unittest.TestCase):

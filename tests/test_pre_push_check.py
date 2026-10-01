@@ -7,6 +7,7 @@ import importlib.util
 import io
 import os
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -73,6 +74,51 @@ class PrePushCheckTests(unittest.TestCase):
         result = unittest.TestResult()
         result.skipped.append((_SkipLive(), 'OPENROUTER_API_KEY requise'))
         self.assertTrue(self.script.live_llm_skipped(result))
+
+    def test_hook_isole_le_depot_courant_des_installations(self) -> None:
+        from tests.test_serge_update import _git_seed
+
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            pushed = root / 'pushed'
+            _git_seed(pushed)
+            index = (pushed / '.git/index').read_bytes()
+            config = (pushed / '.git/config').read_bytes()
+
+            def gates():
+                self.assertNotIn('GIT_DIR', os.environ)
+                self.assertNotIn('GIT_INDEX_FILE', os.environ)
+                return 0
+
+            def scenario():
+                _git_seed(root / 'temporary-installation')
+                return 0
+
+            with (
+                mock.patch.dict(
+                    os.environ,
+                    {
+                        'GIT_DIR': str(pushed / '.git'),
+                        'GIT_WORK_TREE': str(pushed),
+                        'GIT_INDEX_FILE': str(pushed / '.git/index'),
+                    },
+                ),
+                mock.patch.object(
+                    self.script,
+                    'resolve_openrouter_key',
+                    return_value='factice',
+                ),
+                mock.patch.object(self.script, 'run_gates', side_effect=gates),
+                mock.patch.object(
+                    self.script, 'run_deterministic', side_effect=scenario
+                ),
+                mock.patch.object(
+                    self.script, 'run_live_llm_tests', return_value=0
+                ),
+            ):
+                self.assertEqual(self.script.run_pre_push(), 0)
+            self.assertEqual((pushed / '.git/index').read_bytes(), index)
+            self.assertEqual((pushed / '.git/config').read_bytes(), config)
 
 
 if __name__ == '__main__':

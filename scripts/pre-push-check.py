@@ -92,6 +92,11 @@ def _isolate_instance() -> None:
     os.environ['SERGE_CI'] = '1'
     for name in INSTANCE_VARS:
         os.environ.pop(name, None)
+    # Le hook hérite du dépôt poussé. Les dépôts temporaires des scénarios
+    # d'installation doivent utiliser leur propre index et configuration.
+    for name in list(os.environ):
+        if name.startswith('GIT_'):
+            os.environ.pop(name, None)
 
 
 def run_deterministic() -> int:
@@ -136,6 +141,7 @@ def run_pre_push() -> int:
             file=sys.stderr,
         )
         return 1
+    _isolate_instance()
     if run_gates() != 0:
         return 1
     return run_suite(key)

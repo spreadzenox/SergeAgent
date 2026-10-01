@@ -147,18 +147,8 @@ class ApiViewsMixin(_Base):
         self._send_json(200, resultat)
 
     def _api_voice_audio(self) -> None:
-        from serge.mc.signedlinks import verifier_url
-
-        # Vérification du lien signé HMAC E7 ou auth owner
-        path_query = f'{self.path}'
-        secret = 'serge_mc_voice_signed_audio'
-        if not verifier_url(path_query, secret) and not self._is_owner():
-            self._refus(
-                401,
-                'Lien audio expiré ou signature invalide.',
-                'audio_auth',
-                'Redemande le lien.',
-            )
+        # L'audio reste réservé à une session owner valide, même après logout.
+        if not self._require_owner():
             return
 
         query = self._query()

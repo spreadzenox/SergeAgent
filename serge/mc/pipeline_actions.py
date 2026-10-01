@@ -40,7 +40,7 @@ def _setting(body: dict, key: str, low: float, high: float) -> float | None:
             est le nom du réglage).
     """
     value = body.get(key)
-    if value is None:
+    if key not in body:
         return None
     if (
         isinstance(value, bool)

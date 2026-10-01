@@ -164,6 +164,7 @@ export function mount(main, store) {
   main.replaceChildren(tpl.content.cloneNode(true));
 
   main.querySelectorAll('.memory-tabs button').forEach((b) => {
+    b.classList.toggle('actif', b.dataset.couche === coucheActive);
     b.addEventListener('click', () => {
       main
         .querySelectorAll('.memory-tabs button')

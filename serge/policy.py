@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import math
 import os
 from collections.abc import Mapping
 from pathlib import Path
@@ -85,6 +86,8 @@ def _need_number(
         node = node[part]
     if isinstance(node, bool) or not isinstance(node, (int, float)):
         raise PolicyError(f'policy.{dotted} doit être un nombre')
+    if isinstance(node, float) and not math.isfinite(node):
+        raise PolicyError(f'policy.{dotted} doit être un nombre fini')
     if node < minimum:
         raise PolicyError(f'policy.{dotted} doit être >= {minimum}')
 
@@ -219,6 +222,13 @@ def validate_policy(data: Mapping[str, Any]) -> dict[str, Any]:
     default = zones['default']
     if default not in zones or not isinstance(zones[default], Mapping):
         raise PolicyError(f'policy.calling_zones.{default} manquante')
+    from kit.instance_file import InstanceError, _validate_testing
+
+    testing = data.get('testing') or {}
+    try:
+        _validate_testing(testing)
+    except InstanceError as exc:
+        raise PolicyError(f'policy.testing : {exc}') from exc
     return dict(data)
 
 

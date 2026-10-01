@@ -1,5 +1,7 @@
 // Page Policy : règles cadrées, réglages des invocations, taille des essais, confiance.
 import {
+  draftField,
+  rememberDrafts,
   fillList,
   li,
   promptModal,
@@ -35,7 +37,7 @@ async function rafraichir(store) {
   }
 }
 
-async function proposerModif() {
+export async function proposerModif() {
   const v = await promptModal(document.body, {
     title: 'Demander un changement',
     message: 'Ça crée une question pour toi : rien n’est appliqué tout seul.',
@@ -71,6 +73,7 @@ function renderPolitiqueActive(main, payload, sig, store) {
   if (!host) {
     return;
   }
+  const restore = rememberDrafts(host);
   host.replaceChildren();
   const pol = payload.policy || {};
   const groupes = grouperFeuilles(feuillesPolicy(pol));
@@ -104,7 +107,9 @@ function renderPolitiqueActive(main, payload, sig, store) {
     }
     const grille = el('div', 'grille-champs');
     for (const [chemin, val] of g.champs) {
-      grille.append(champPolicy(chemin, val));
+      const field = champPolicy(chemin, val);
+      field.querySelectorAll('input,select,textarea').forEach((f, i) => draftField(f, `${chemin}.${i}`));
+      grille.append(field);
     }
     art.append(grille);
     corps.append(art);
@@ -125,6 +130,7 @@ function renderPolitiqueActive(main, payload, sig, store) {
         return;
       }
       toast(document.body, 'Règles enregistrées.', 'succes');
+      corps.querySelectorAll('[data-draft]').forEach((f) => delete f.dataset.dirty);
       await rafraichir(store);
     } catch {
       toast(document.body, 'Action injoignable.', 'erreur');
@@ -134,6 +140,7 @@ function renderPolitiqueActive(main, payload, sig, store) {
   corps.append(barre);
   host.append(sommaire, corps);
   montrer(actif);
+  restore();
   main.querySelector('[data-section="politique_active"]').dataset.sig = sig;
 }
 
@@ -181,6 +188,7 @@ function ligneReglage(texte, valeur, charge, bornes) {
       input.max = bornes.max;
     }
   }
+  draftField(input, ligne.dataset.reglage);
   label.append(input);
   const btn = el('button', '', 'Enregistrer');
   btn.type = 'button';
@@ -191,6 +199,7 @@ function ligneReglage(texte, valeur, charge, bornes) {
 
 function renderReglages(main, payload, sig) {
   const hote = main.querySelector('[data-reglages="liste"]');
+  const restore = rememberDrafts(hote);
   const blocs = [];
   for (const inv of payload.invocations || []) {
     blocs.push(el('h3', '', `${inv.etape} · ${inv.titre}`));
@@ -222,6 +231,7 @@ function renderReglages(main, payload, sig) {
     blocs.push(el('p', '', 'Aucun réglage marqué « policy » en base.'));
   }
   hote.replaceChildren(...blocs);
+  restore();
   main.querySelector('[data-section="reglages"]').dataset.sig = sig;
 }
 
@@ -275,7 +285,7 @@ export function mount(main, store) {
   });
 
   main.querySelector('[data-reglages="liste"]').addEventListener('click', async (ev) => {
-    const btn = ev.target.closest('[data-reglage]');
+    const btn = ev.target.closest('button[data-reglage]');
     if (!btn) {
       return;
     }
@@ -290,6 +300,7 @@ export function mount(main, store) {
         ok ? 'succes' : 'erreur',
       );
       if (ok) {
+        delete input.dataset.dirty;
         await rafraichir(store);
       }
     } catch {

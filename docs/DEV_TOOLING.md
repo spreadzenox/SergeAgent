@@ -62,6 +62,9 @@ le ferait dépasser 500 lignes. Le hook formate le diff.
    E2E Mission Control requis (Chromium skippé = échec). Policy prod,
    pas d’overlay test. L’instance locale (`SERGE_INSTANCE_FILE`, etc.)
    est ignorée pour ne pas polluer.
+   Le contexte Git hérité du hook (`GIT_DIR`, `GIT_INDEX_FILE`, etc.) est
+   aussi retiré avant les contrôles : les scénarios qui créent un dépôt
+   temporaire ne doivent jamais modifier le dépôt en cours de push.
 4. Puis `tests/test_live_llm.py` avec `SERGE_ENV=test` + la clé
    (1 appel OpenRouter, cap 3). Skip ou rouge → **push refusé**.
    L’overlay `policy.test.yaml` (plafonds 2 €) ne s’applique qu’ici :

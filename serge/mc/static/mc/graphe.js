@@ -46,24 +46,6 @@ function el(tag, classe, texte) {
   return node;
 }
 
-function xEpine(id, epine) {
-  if (EPINE_X[id] != null) {
-    return EPINE_X[id];
-  }
-  const liste = epine || [];
-  const i = liste.findIndex((item) => item.id === id);
-  const n = liste.length;
-  if (i < 0 || n <= 1) {
-    return 0.5;
-  }
-  return 0.08 + (0.85 * i) / (n - 1);
-}
-
-function place(node, x, y) {
-  node.style.left = `${x * 100}%`;
-  node.style.top = `${y * 100}%`;
-}
-
 function ouvrirCible(item) {
   const objet = item.objet;
   if (objet && TYPES_OBJET[objet.type] && objet.id) {
@@ -71,7 +53,7 @@ function ouvrirCible(item) {
   }
 }
 
-function boutonNoeud(item, classe, x, y) {
+function boutonNoeud(item, classe) {
   const btn = document.createElement('button');
   btn.type = 'button';
   btn.className = `noeud ${classe}`;
@@ -81,7 +63,7 @@ function boutonNoeud(item, classe, x, y) {
   const span = document.createElement('span');
   span.textContent = titre;
   btn.append(ic, span);
-  place(btn, x, y);
+
   btn.addEventListener('click', () => ouvrirCible(item));
   return btn;
 }
@@ -172,14 +154,20 @@ export function dessineAretes(canvas, flux, t) {
   const {width, height} = canvas;
   ctx.clearRect(0, 0, width, height);
   const midY = height * 0.52;
+  const box = canvas.getBoundingClientRect();
+  const positions = new Map([...canvas.parentElement.querySelectorAll('.noeud')].map((node) => {
+    const r = node.getBoundingClientRect();
+    return [node.dataset.id, [(r.left + r.width / 2 - box.left) / box.width * width,
+      (r.top + r.height / 2 - box.top) / box.height * height]];
+  }));
   flux.forEach((f, i) => {
-    const x0 = (EPINE_X[f.de] || 0.1) * width;
-    const x1 = (EPINE_X[f.vers] || 0.9) * width;
-    ligne(ctx, x0, midY, x1, midY, '#35e0ff', 1.6, 0.25 + Math.min(0.55, (f.debit || 0) / 20));
+    const [x0, y0] = positions.get(f.de) || [(EPINE_X[f.de] || 0.1) * width, midY];
+    const [x1, y1] = positions.get(f.vers) || [(EPINE_X[f.vers] || 0.9) * width, midY];
+    ligne(ctx, x0, y0, x1, y1, '#35e0ff', 1.6, 0.25 + Math.min(0.55, (f.debit || 0) / 20));
     const phase = (t / 800 + i * 0.2) % 1;
     const px = x0 + (x1 - x0) * phase;
     ctx.beginPath();
-    ctx.arc(px, midY, 2.5, 0, Math.PI * 2);
+    ctx.arc(px, y0 + (y1 - y0) * phase, 2.5, 0, Math.PI * 2);
     ctx.fillStyle = '#35e0ff';
     ctx.globalAlpha = 0.9;
     ctx.fill();
@@ -187,10 +175,8 @@ export function dessineAretes(canvas, flux, t) {
   });
   Object.entries(ORBITE_POS).forEach(([id, xy], i) => {
     const cible = ORBITE_LIEN[id];
-    const x0 = xy[0] * width;
-    const y0 = xy[1] * height;
-    const x1 = (EPINE_X[cible] || 0.5) * width;
-    const y1 = midY;
+    const [x0, y0] = positions.get(id) || [xy[0] * width, xy[1] * height];
+    const [x1, y1] = positions.get(cible) || [(EPINE_X[cible] || 0.5) * width, midY];
     ligne(ctx, x0, y0, x1, y1, '#58a6ff', 1, 0.12);
     const phase = (t / 1400 + i * 0.13) % 1;
     ctx.beginPath();
@@ -264,7 +250,8 @@ export function monterGraphe(main, getPayload, stoppers) {
       if (lockId === n.id) {
         btn.classList.add('actif');
       }
-      place(btn, xEpine(n.id, p.epine), 0.52);
+
+      btn.addEventListener('focus', () => montrer(n, false));
       btn.addEventListener('mouseenter', () => {
         window.clearTimeout(hideTimer);
         if (!lockId) {
@@ -291,6 +278,9 @@ export function monterGraphe(main, getPayload, stoppers) {
       });
       host.append(btn);
     });
+    if (typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      requestAnimationFrame(() => { syncCanvas(); dessineAretes(canvas, payload().flux || [], 0); });
+    }
     if (lockId) {
       const et = (p.epine || []).find((n) => n.id === lockId);
       if (et) {
@@ -298,10 +288,9 @@ export function monterGraphe(main, getPayload, stoppers) {
       }
     }
     (p.orbites || []).forEach((n) => {
-      const xy = ORBITE_POS[n.id] || [0.5, 0.2];
-      const btn = boutonNoeud(n, 'orbite', xy[0], xy[1]);
+      const btn = boutonNoeud(n, 'orbite');
       const hash = {
-        mail: '#/live',
+        mail: '#/system',
         memoire: '#/memory',
         policy: '#/policy',
         voix: '#/voice',

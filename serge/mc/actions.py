@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Any, Protocol
 
 from serge.db.store import append_event
 from serge.memory.lessons import delete_lesson, update_lesson
+from serge.registry import load_ticket_types
 from serge.tickets import (
     already_applied,
     decide,
@@ -20,14 +21,21 @@ from serge.tickets import (
     set_item,
     tout_approuver,
 )
-from serge.tickets.shared import TicketError, record_event
+from serge.tickets.acts import APPROVE, REJECT
+from serge.tickets.shared import TicketError, fetch_ticket, record_event
 
 MAX_FORM_BYTES = 4096
+MAX_JSON_BYTES = 65536
 
 ACTES_TICKET = {
     'approuver': 'APPROVED',
     'rejeter': 'REJECTED',
     'editer': 'EDITED',
+    **{act: 'APPROVED' for act in APPROVE},
+    **{act: 'REJECTED' for act in REJECT},
+    'choix_qcm': 'APPROVED',
+    'reponse_libre': 'APPROVED',
+    'accuse_reception': 'ACK',
 }
 
 ACTES_ITEM = {'garder': 'keep', 'modifier': 'edit', 'jeter': 'drop'}
@@ -37,6 +45,7 @@ class _Handler(Protocol):
     headers: Any
     rfile: Any
     app_config: Any
+    close_connection: bool
 
     def _require_owner(self) -> bool: ...
     def _db(self) -> AbstractContextManager[Connection]: ...
@@ -53,12 +62,25 @@ else:
 class ActionsMixin(_Base):
     """Handlers API (self = handler HTTP, membres via McHandler)."""
 
+    def _json_size_ok(self) -> bool:
+        try:
+            length = int(self.headers.get('Content-Length') or 0)
+        except ValueError:
+            length = -1
+        if length < 0 or length > MAX_JSON_BYTES:
+            self.close_connection = True
+            self._refus(
+                413, 'Requête trop volumineuse.', 'taille', 'Maximum : 64 Kio.'
+            )
+            return False
+        return True
+
     def _json_body(self) -> dict | None:
         try:
             length = int(self.headers.get('Content-Length') or 0)
         except (TypeError, ValueError):
             return None
-        if length <= 0 or length > MAX_FORM_BYTES:
+        if length <= 0 or length > MAX_JSON_BYTES:
             return None
         try:
             data = json.loads(self.rfile.read(length).decode('utf-8'))
@@ -106,15 +128,18 @@ class ActionsMixin(_Base):
                 400,
                 f'Acte inconnu : {acte}.',
                 'acte',
-                'Actes : approuver, rejeter, editer.',
+                'Utilise un des actes proposés sur la carte du ticket.',
             )
             return
-        if outcome == 'EDITED' and not note.strip():
+        if (
+            acte in {'editer', 'choix_qcm', 'reponse_libre'}
+            and not note.strip()
+        ):
             self._refus(
                 400,
-                'Note requise pour éditer.',
+                'Note ou réponse requise.',
                 'note',
-                'Décris la modification.',
+                'Décris la modification ou donne ta réponse.',
             )
             return
         with self._db() as conn:
@@ -122,7 +147,38 @@ class ActionsMixin(_Base):
                 self._send_json(200, {'ok': True, 'duplicata': 'true'})
                 return
             try:
-                decide(conn, ticket_id, outcome, actor='owner', note=note)
+                ticket = fetch_ticket(conn, ticket_id)
+                spec = load_ticket_types().get(ticket['type'], {})
+                if acte not in spec.get('buttons', []):
+                    self._refus(
+                        400,
+                        'Acte absent de ce ticket.',
+                        'acte',
+                        'Utilise un de ses boutons.',
+                    )
+                    return
+                if ticket['state'] not in {'OPEN', 'DISCUSSING'}:
+                    raise TicketError('État incompatible.')
+                if acte == 'choix_qcm':
+                    options = json.loads(ticket['payload_json'] or '{}').get(
+                        'options_qcm', []
+                    )
+                    if note not in options:
+                        self._refus(
+                            400,
+                            'Choix inconnu.',
+                            'choix',
+                            'Choisis une option proposée.',
+                        )
+                        return
+                if outcome == 'ACK':
+                    record_event(
+                        conn, ticket_id, 'owner', 'mc.accuse_reception'
+                    )
+                else:
+                    if acte == 'tout_approuver':
+                        tout_approuver(conn, ticket_id)
+                    decide(conn, ticket_id, outcome, actor='owner', note=note)
             except TicketError as exc:
                 self._refus_ticket(exc, 'Ticket')
                 return
@@ -315,14 +371,13 @@ class ActionsMixin(_Base):
             except TicketError as exc:
                 self._refus_ticket(exc, 'Ticket')
                 return
-            if decision:
-                record_event(
-                    conn,
-                    ticket_id,
-                    'owner',
-                    'mc.fil',
-                    {'decision_id': decision, 'message': message},
-                )
+            record_event(
+                conn,
+                ticket_id,
+                'owner',
+                'mc.fil',
+                {'decision_id': decision, 'message': message},
+            )
             append_event(
                 conn,
                 actor='owner',

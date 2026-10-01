@@ -172,7 +172,7 @@ def check_model(
         ``('no_tools', message)``.
     """
     cat = catalog(root, fetcher=fetcher)
-    if not cat['models']:
+    if not cat['models'] or cat['error']:
         return (
             'unverified',
             'Catalogue OpenRouter injoignable : identifiant non vérifié.',

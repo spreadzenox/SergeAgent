@@ -54,6 +54,7 @@ def _lesson(conn: sqlite3.Connection, ident: str) -> dict | None:
         'type': 'lesson',
         'id': ident,
         'titre': row['statement'][:80],
+        'statement': row['statement'],
         'pourquoi': 'Quelque chose qu’on a appris et qu’on retient pour la suite.',
         'champs': _champs(
             [

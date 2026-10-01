@@ -9,7 +9,7 @@ import {
 import {allerObjet} from '../libelles.js';
 import {fetchState} from '../sse.js';
 
-const OUTCOME_FR = {APPROVED: 'approuvé', REJECTED: 'rejeté', EDITED: 'édité'};
+const OUTCOME_FR = {APPROVED: 'approuvé', REJECTED: 'rejeté', EDITED: 'édité', ACK: 'accusé réception'};
 const ETAT_ITEM_FR = {keep: 'gardé', edit: 'à modifier', drop: 'jeté'};
 
 async function poster(chemin, charge) {
@@ -25,7 +25,7 @@ async function rafraichir(main, store) {
   try {
     const data = await fetchState('p3');
     for (const [section, env] of Object.entries(data.sections || {})) {
-      store.apply(section, env.sig, env.payload);
+      store?.apply(section, env.sig, env.payload);
     }
   } catch {
     // le stream reprendra au prochain tick
@@ -36,22 +36,27 @@ async function rafraichir(main, store) {
   }
 }
 
-export async function agirTicket(main, store, ticketId, acte) {
+export async function agirTicket(main, store, ticketId, acte, options = []) {
   let charge = {ticket_id: ticketId, acte};
-  if (acte === 'editer' || acte === 'discuter') {
-    const estEdit = acte === 'editer';
+  if (acte === 'discuter_fil') acte = 'discuter';
+  charge.acte = acte;
+  if (['editer','discuter','reponse_libre','choix_qcm'].includes(acte)) {
+    const estEdit = acte !== 'discuter';
     const valeurs = await promptModal(document.body, {
-      title: estEdit ? 'Éditer ?' : 'Discuter ?',
-      message: estEdit ? 'Décris la modification.' : 'Écris ton message.',
+      title: libelleActe(acte),
+      message: acte === 'editer' ? 'Décris la modification.' :
+        (estEdit ? 'Choisis ou saisis ta réponse.' : 'Écris ton message.'),
       fields: [
         {
           nom: estEdit ? 'note' : 'message',
-          label: estEdit ? 'Note : ' : 'Message : ',
+          label: acte === 'editer' ? 'Note : ' :
+            (estEdit ? 'Réponse : ' : 'Message : '),
           defaut: '',
           requis: true,
+          ...(acte === 'choix_qcm' ? {options} : {}),
         },
       ],
-      confirm: estEdit ? 'Éditer' : 'Envoyer',
+      confirm: estEdit ? libelleActe(acte) : 'Envoyer',
     });
     if (!valeurs) {
       return;
@@ -73,10 +78,10 @@ export async function agirTicket(main, store, ticketId, acte) {
     }
   } else {
     const confirmer = await confirmModal(document.body, {
-      title: `${acte === 'approuver' ? 'Approuver' : 'Rejeter'} ?`,
+      title: `${libelleActe(acte)} ?`,
       message: `Ticket ${ticketId} — acte irréversible côté état.`,
-      confirm: acte === 'approuver' ? 'Approuver' : 'Rejeter',
-      danger: acte !== 'approuver',
+      confirm: libelleActe(acte),
+      danger: ['rejeter','abandonner','refuser','annuler'].includes(acte),
     });
     if (!confirmer) {
       return;
@@ -141,39 +146,18 @@ export async function agirItem(main, store, ticketId, item, acte) {
   }
 }
 
-export async function toutApprouver(main, store, ticketId) {
-  const confirmer = await confirmModal(document.body, {
-    title: 'Tout approuver ?',
-    message: 'Tous les items ouverts seront gardés.',
-    confirm: 'Tout approuver',
-  });
-  if (!confirmer) {
-    return;
-  }
-  try {
-    const {ok, data} = await poster('/owner/api/ticket/item', {
-      ticket_id: ticketId,
-      acte: 'tout_approuver',
-      decision_id: `mc-${Date.now()}-${ticketId}`,
-    });
-    if (!ok) {
-      toast(document.body, `Échec : ${data.erreur || 'refusé'}.`, 'erreur');
-      return;
-    }
-    toast(document.body, `${data.bascules} items gardés.`, 'succes');
-    await rafraichir(main, store);
-  } catch {
-    toast(document.body, 'Acte injoignable.', 'erreur');
-  }
-}
-
 function libelleActe(acte) {
   return (
     {
       approuver: 'Approuver',
       rejeter: 'Rejeter',
       editer: 'Éditer',
-      discuter: 'Discuter',
+      discuter: 'Discuter', discuter_fil: 'Discuter',
+      approuver_version: 'Approuver la version', cest_fait: 'C’est fait',
+      confirmer: 'Confirmer', ouvrir: 'Ouvrir',
+      abandonner: 'Abandonner', refuser: 'Refuser', annuler: 'Annuler',
+      accuse_reception: 'Accuser réception', choix_qcm: 'Choisir une réponse',
+      reponse_libre: 'Répondre librement', tout_approuver: 'Tout approuver',
     }[acte] || acte
   );
 }
@@ -202,16 +186,26 @@ export function renderCarte(main, store, carte) {
   const barre = document.createElement('div');
   barre.className = 'carte-actes';
   for (const acte of carte.boutons) {
+    if (acte === 'tout_approuver' && carte.items.length) continue;
     const bouton = document.createElement('button');
     bouton.type = 'button';
     bouton.textContent = libelleActe(acte);
     if (acte === 'rejeter') {
       bouton.classList.add('danger');
     }
-    bouton.addEventListener('click', () =>
-      agirTicket(main, store, carte.ticket.id, acte)
-    );
+    bouton.addEventListener('click', async () => {
+      if (bouton.disabled) return;
+      bouton.disabled = true;
+      try { await agirTicket(main, store, carte.ticket.id, acte, carte.options); }
+      catch { toast(document.body, 'Acte injoignable.', 'erreur'); }
+      finally { bouton.disabled = false; }
+    });
     barre.append(bouton);
+  }
+  if (carte.options?.length) {
+    const options = document.createElement('p');
+    options.textContent = `Réponses proposées : ${carte.options.join(' ; ')}`;
+    corps.append(options);
   }
   const fiche = document.createElement('button');
   fiche.type = 'button';
@@ -240,13 +234,17 @@ export function renderCarte(main, store, carte) {
       liste.append(ligne);
     }
     corps.append(liste);
-    const tous = document.createElement('button');
-    tous.type = 'button';
-    tous.textContent = 'Tout approuver';
-    tous.addEventListener('click', () =>
-      toutApprouver(main, store, carte.ticket.id)
-    );
-    corps.append(tous);
+    if (carte.boutons.includes('tout_approuver')) {
+      const tous = document.createElement('button');
+      tous.type = 'button';
+      tous.textContent = 'Tout approuver';
+      tous.addEventListener('click', async () => {
+        tous.disabled = true;
+        try { await agirTicket(main, store, carte.ticket.id, 'tout_approuver'); }
+        finally { tous.disabled = false; }
+      });
+      corps.append(tous);
+    }
   }
   if (carte.events.length > 0) {
     const titre = document.createElement('h3');
@@ -254,7 +252,7 @@ export function renderCarte(main, store, carte) {
     corps.append(titre);
     const liste = document.createElement('ul');
     for (const event of carte.events) {
-      liste.append(li(`${rel(event.ts)} · ${event.acteur} — ${event.kind}`));
+      liste.append(li(`${rel(event.ts)} · ${event.acteur} — ${event.message || event.kind}`));
     }
     corps.append(liste);
   }

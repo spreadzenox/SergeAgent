@@ -335,9 +335,12 @@ class McHandler(
                 page,
                 sections,
                 SnapshotCache(),
+                authorized=self._is_owner,
             )
         except (BrokenPipeError, ConnectionResetError):
             return
+        finally:
+            self.close_connection = True
 
     def do_POST(self) -> None:  # noqa: N802 (nom imposé http.server)
         """Route POST (login, logout, mutations)."""
@@ -349,6 +352,8 @@ class McHandler(
             return
         if path == '/owner/logout':
             self._logout()
+            return
+        if not self._json_size_ok():
             return
         apis = {
             '/owner/api/invocation': self._api_invocation,
@@ -460,8 +465,8 @@ def create_server(
     for name in REQUIRED_TEMPLATES:
         if not (config.templates_dir / name).is_file():
             raise ValueError(f'template MC manquant : {name}')
-    McHandler.app_config = config
-    server = ThreadingHTTPServer((host, port), McHandler)
+    handler = type('InstanceMcHandler', (McHandler,), {'app_config': config})
+    server = ThreadingHTTPServer((host, port), handler)
     server.daemon_threads = True
     return server
 
