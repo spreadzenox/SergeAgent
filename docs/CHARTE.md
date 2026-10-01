@@ -199,6 +199,12 @@ Aucun test de CI n'agit sur le monde réel.
   demander. Exemple : Q49 donnait l'ordre des lots 6 à 12, et Q55 le
   remplace par un nouvel ordre avec un lot 13 : on corrige ce point de Q49,
   et le reste de Q49 ne change pas.
+  **Deuxième exception : un détail explicitement périmé** (un numéro
+  d'étape ou de lot, un « à faire » déjà fait, un renvoi à ce qui n'existe
+  plus), ou une correction de cohérence qui ne change pas le sens
+  fonctionnel. On corrige soi-même, sans demander, et on le dit dans la
+  description du changement. Dès que le sens fonctionnel change, on
+  demande.
 
 ## 8. Les changements
 

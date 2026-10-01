@@ -34,12 +34,14 @@ Arguments : pourquoi cette réponse plutôt qu'une autre (si la personne en a do
   l'ancienne, la plus récente a raison, mais seulement sur les points où
   elle la contredit ; sur le reste, elle ajoute de l'information et
   l'ancienne garde sa valeur (Q71). On corrige alors l'ancienne sans
-  demander. Si c'est le code ou un autre texte qui la contredit, on
-  demande à un humain laquelle fait foi.
+  demander. Même chose pour un détail explicitement périmé (un numéro
+  d'étape ou de lot, un « à faire » déjà fait) et pour une correction qui
+  ne change pas le sens fonctionnel (Q74). Si c'est le code ou un autre
+  texte qui contredit la réponse et que le sens change, on demande à un
+  humain laquelle fait foi.
 
-Plan de travail (Q30) : finir les questions sur les étapes 2 à 8, puis
-corriger par petits lots (un sujet = un commit, tests verts), en relisant ce
-fichier au début de chaque lot.
+Méthode de travail (Q30) : corriger par petits lots relisibles (un sujet =
+un commit, tests verts), en relisant ce fichier au début de chaque lot.
 
 ## Principes transverses (valent pour tout le chantier)
 - Clarté avant tout : MC + SQLite doivent suffire à comprendre toute la
@@ -102,16 +104,19 @@ tournent en continu.
   INSÉRÉ sur l'instance existante au déploiement, avec ses valeurs seed.
 - Nouveau TYPE d'objet (nouvelle table) : la table est créée par migration
   et ses objets seed sont insérés.
-- Jamais d'UPDATE d'un objet déjà présent depuis les seeds.
+- Jamais d'UPDATE d'un objet déjà présent depuis les seeds, sauf par la
+  section `changes` de `pipeline.yaml` : une seule fois par instance, et
+  seulement si la valeur est encore celle d'origine (Q66, point 5).
 - Exception (tranchée en Q24) : le boot met à jour les informations
   techniques qu'il calcule lui-même (empreinte, chemin du code), jamais les
   réglages owner.
+Corrigé le 1er octobre 2026 (Q74) : Q66 a ajouté la section `changes`.
 
 ### Q4 — Capsules → SUPPRIMÉES (option A)
 - Plus d'objet/table capsule (db_readers, llm_point_readers,
   db_reader_fixed_params, db_reader_fixed_joins à retirer).
-- Tout passe par la jonction invocation ↔ tool (llm_point_tools), qui porte :
-  - le mode : « contexte injecté » (l'hôte lit avant l'appel et met le
+- Tout passe par la liaison invocation ↔ tool (llm_point_tools), qui porte :
+  - le mode : « contexte injecté » (Serge lit avant l'appel et met le
     résultat dans le prompt) ou « appelable » (le modèle décide) ;
   - les paramètres figés pour cette invocation.
 - Un même tool peut être injecté pour une invocation, appelable pour une autre.
@@ -120,15 +125,15 @@ tournent en continu.
   fournit des paramètres au lancement d'une invocation de l'étape suivante
   → pipelines où la donnée circule.
 
-### Q5 — Lien = contrat de passation (validé dans l'esprit)
-Un lien devient un contrat de passation de données :
+### Q5 — Lien = passation de données (validé dans l'esprit)
+Un lien devient une passation de données entre invocations :
 1. ce qui sort de l'amont (table + lignes « prêtes ») ;
 2. ce qui est lancé en aval (invocation LLM ou technique) ;
 3. mapping champs → paramètres des tools de l'invocation aval ;
 4. une ligne transmise = un lancement, une seule fois (idempotent).
-Trois origines de paramètres : figé (jonction) / fourni par le lien /
+Trois origines de paramètres : figé (liaison) / fourni par le lien /
 libre (modèle). Déclenchement : bouton MC « passer à la suite » +
-interrupteur « passage automatique » + tick runner (cf. TODO ponts).
+interrupteur « passage automatique » + tick runner.
 Granularité (étape↔étape ou invocation↔invocation) : voir Q6.
 
 ### Q6 — Liens entre invocations (option B)
@@ -172,11 +177,16 @@ auto plus tard via liens). Graphe :
 5. Dédoublonner (technique) → ventures au statut CANDIDATE (voir Q13)
 6. Choisir les business à tester (LLM)
 7. Refuser les business déjà en POC (technique) → statut POC_SELECTED
+Corrigé le 1er octobre 2026 (Q74) : les points 5 et 7 ne sont plus des
+invocations mais des règles d'écriture de la table des business (doublons
+écartés, statuts permis : Q56). Le cycle compte en plus « Ouvrir un cycle »
+et « Rattacher au cycle les pages pas encore triées », sans LLM (Q65).
 Liste des flux en base (listen_feeds : url, ajouté par owner/invocation,
 actif, compteurs pages ramenées / utiles).
-Garde-fous volume (réglages policy) : N pages max triées par cycle ; pages
-« bruit » oubliées après X jours (preuves conservées) ; flux désactivé après
-K cycles de bruit ; fréquence de la veille.
+Garde-fous volume (réglages des invocations) : N pages max triées par
+cycle ; pages « bruit » oubliées après X jours (preuves conservées) ; flux
+désactivé après K cycles de bruit (à la main au lot 7, automatique plus
+tard : Q65) ; fréquence de la veille.
 L'ancienne chaîne RSS (listen.collect planifié sans flux, listen.cluster
 Jaccard, cluster_demand) est supprimée : remplacée par 1 + 3.
 Inquiétude Julien : dédoublonnage / veto POC impliquent de stocker ces
@@ -260,7 +270,8 @@ Notes :
   pendant les étapes 2 et 3.
 - Le réglage « business à retenir pour le prochain POC » disparaît : le
   choix prend autant de business que de places libres (non contesté par
-  Julien — à reconfirmer à la relecture).
+  Julien ; confirmé en Q65 : « Choisir » en prend au plus autant qu'il y a de
+  places libres).
 - Choix de la prospection lourde (étape 4) : déclenché SEULEMENT quand les
   3 business en prospection légère ont tous fini leur test léger ; on
   choisit alors le meilleur des 3.
@@ -304,9 +315,8 @@ Notes :
   active ou non). Rien n'est écrasé ; plusieurs emails possibles.
 - Regroupement automatique, dans un même business, seulement sur email
   identique ou numéro de téléphone identique (pas sur nom, pas sur profil
-  réseau). Adresses
-  génériques (contact@, info@…) ne déclenchent pas de regroupement
-  (proposé, non contesté).
+  réseau). Adresses génériques (contact@, info@…) ne déclenchent pas de
+  regroupement (proposé, non contesté).
 - Remplace la règle du TODO « deux lieux, deux lignes » et le JSON
   contact_reference_by_canal de la branche Clem.
 - Désabonnement (OPT_OUT) global à la personne.
@@ -390,8 +400,8 @@ Les autres sont supprimés dès qu'un scénario couvre le même comportement.
 - Chaque invocation reçoit automatiquement : historique de l'objet traité,
   leçons de cette étape, demander une nouvelle capacité (ticket REQUESTED,
   pas de doublon si besoin déjà ouvert). Retirable à la main dans MC.
-- À la fusion avec main (PR #27), réintégrer serge/demande_capacite.py dans
-  ce mécanisme (Clem avait supprimé le « offert partout »).
+- Fait à la fusion avec main (PR #27) : `demande_capacite` est réintégré
+  dans ce mécanisme (Clem avait supprimé le « offert partout »).
 
 ### Q26 — Arrêt d'urgence voix : fichier KILL_SWITCH supprimé (validé)
 - Supprimer la route /owner/api/voice/kill et toute lecture de fichiers
@@ -407,9 +417,12 @@ Les autres sont supprimés dès qu'un scénario couvre le même comportement.
 ### Q28 — Forme du TODO (validé)
 - TODO actuel = charabia écrit par Grok ; à réécrire entièrement, TRÈS
   clair et intelligible pour un humain (priorité absolue de Julien).
-- Rangé par étape 1 à 8 + une section « Transverse ».
+- Rangé par lot et par étape 1 à 8, avec une section « Pour tout Serge ».
 - Tout ce qui est fait est retiré (historique = git).
-- Chaque élément : Quoi (avec exemple) / Pourquoi (une phrase) / Dépend de.
+- Chaque élément : une case à cocher, un titre en gras, puis un paragraphe
+  descriptif (demande de Clem, voir « Principes transverses »).
+  Corrigé le 1er octobre 2026 (Q74) : ce point disait
+  « Quoi / Pourquoi / Dépend de ».
 - Ajouter le chantier de refonte issu de ces questions, en tête (même si on
   le fera ensemble ensuite).
 - Section « En attente d'une décision d'architecture » supprimée.
@@ -430,7 +443,7 @@ Les autres sont supprimés dès qu'un scénario couvre le même comportement.
   donnée qui circule. Constat code : etape_liens = arête + libellé + `debit`
   (nom d'une table dont MC compte les lignes pour l'onglet En direct). Aucun
   mécanisme de passage de données (les « ponts » du TODO ne sont pas codés).
-  → question à poser plus tard : que doit devenir le lien.
+  → question posée ensuite, et tranchée en Q5 et Q6 : que doit devenir le lien.
 
 ### Q30 — Méthode (validé)
 - Pas de correction géante d'un seul coup. D'abord toutes les questions
@@ -553,8 +566,11 @@ Le séquenceur fixe (supprimé par Clem, jamais branché) n'est pas recréé.
 - Relève des réponses toutes les 5 min (invocation technique programmée).
 - Délai de réponse « humain » : en heures ouvrées (ex. 8 h–20 h, lundi–
   samedi) entre 5 et 20 min après réception (tirage au hasard) ; hors
-  heures : le lendemain entre 8 h et 9 h. Valeurs dans la policy.
-- Bugs constatés à corriger :
+  heures : le lendemain entre 8 h et 9 h. Valeurs réglées canal par canal sur
+  la fiche du canal (Q52).
+  Corrigé le 1er octobre 2026 (Q74) : ce point disait
+  « valeurs dans la policy ».
+- Bugs constatés (corrigés au lot 2, Q49) :
   1. email.poll n'est programmé par personne → la boîte n'est jamais
      relevée automatiquement.
   2. scheduler.next_ready ne prend que les tâches liées à une venture
@@ -787,8 +803,10 @@ double envoi) ; MC ne peut pas écrire pendant un passage (jusqu'à
 - Une tâche qui agit à l'extérieur (envoyer un e-mail, rembourser)
   enregistre « en cours » avant d'agir, puis « fait » après : même un
   plantage au mauvais moment ne provoque jamais de double action.
-- Priorité : c'est la première chose à faire dans le lot 6, à cause du
-  risque de double envoi.
+- Priorité : le runner a été la première chose faite au lot 6, à cause du
+  risque de double envoi. La protection « en cours / fait » d'une tâche qui
+  agit à l'extérieur vient avec la première capacité qui agit hors de Serge
+  (lot 8).
 
 ### Q52 — Délais de réponse par canal (validé)
 Le délai avant de répondre à un prospect se règle canal par canal dans
@@ -844,8 +862,8 @@ reste. Il n'y a rien à interrompre. Ce qui change :
   pas au démarrage suivant. La base garde la trace de la suppression et
   reste la source de vérité, pour que le code et la base ne se
   désynchronisent pas.
-- Conception des tables en cours : [`LOT6_CONCEPTION.md`](LOT6_CONCEPTION.md).
-- But à terme (lot plus loin) : un éditeur sans code dans MC, pour
+- Conception des tables : [`LOT6_CONCEPTION.md`](LOT6_CONCEPTION.md).
+- But à terme (lot 13) : un éditeur sans code dans MC, pour
   modifier en direct le pipeline : le nombre d'invocations, leur ordre,
   leur rôle, leur modèle, ce qu'elles voient.
 
@@ -1099,8 +1117,10 @@ direct.
     - « Choisir » choisit parmi tous les candidats encore en base, y
       compris ceux des cycles précédents, sans limite d'âge au lot 7.
     - A et B ne lisent en entier que des pages déjà en base (par leur
-      numéro), au plus 300 lignes par page et 10 pages par passage
+      numéro), au plus 150 lignes par page et 10 pages par passage
       (réglages).
+      Corrigé le 1er octobre 2026 (Q74) : 300 lignes au départ, ramenées à
+      150 par Q66.
     - Une page « besoin nouveau » jamais utilisée est oubliée après 60
       jours (réglage), jamais si elle sert de preuve.
     - La raison du choix (une phrase) est gardée sur la fiche du
@@ -1137,8 +1157,11 @@ Décidé, pour toutes les invocations, sans bricolage :
    vide garde l'explication d'OpenRouter.
 2. Chaque appel est noté avec son coût réel (celui qu'OpenRouter facture),
    converti en euros par la policy (`budget.eur_per_usd`) ; c'est ce coût
-   qui compte dans le plafond du jour. Un appel sans coût connu est
-   estimé par ses jetons.
+   qui compte dans le plafond du jour. Un appel sans coût connu ne compte pas
+   dans le plafond : ses jetons sont comptés à part et signalés, jamais
+   estimés.
+   Corrigé le 1er octobre 2026 (Q74) : ce point disait « estimé par ses
+   jetons », ce que la PR #39 (dépense au coût réel) a retiré.
 3. Le plafond est aussi vérifié pendant une tâche : atteint, le modèle doit
    répondre sans plus d'outil.
 4. Moins de jetons renvoyés : « Explorer » 10 tours d'outils ; A et B 5
@@ -1332,3 +1355,28 @@ Décidé : le choix le plus récent fait foi, donc Q17 est obsolète sur ce
 point. Une même personne qui répond à deux business a deux fiches. Q17 est
 corrigée dans son entrée d'origine.
 Arguments de Julien : c'est la décision la plus récente.
+
+### Q74 — Corriger sans demander ce qui est explicitement périmé (validé par Julien, 1er octobre 2026)
+Constat : après Q71, il restait dans les anciennes réponses des détails
+devenus faux : une phase « finir les questions sur les étapes 2 à 8 » déjà
+faite, un « à corriger » déjà corrigé, « valeurs dans la policy » alors que
+Q52 les règle par canal, un « jamais d'UPDATE » que Q66 assouplit.
+Décidé :
+1. Si une réponse contient un détail explicitement périmé (un numéro
+   d'étape ou de lot, un « à faire » déjà fait, un renvoi à ce qui n'existe
+   plus), on le corrige soi-même, sans demander.
+2. On corrige aussi sans demander la cohérence générale, tant que cela ne
+   change pas le sens fonctionnel. Dès que le sens fonctionnel change, on
+   demande à un humain.
+3. Chaque correction est datée dans l'entrée (« Corrigé le … (Qnn) »).
+4. Appliqué tout de suite, à la relecture des 73 entrées. Corrigées : Q3 (la section
+   `changes` de Q66), Q9 (Dédoublonner et Refuser sont des règles d'écriture,
+   Q56 ; Ouvrir et Rattacher s'ajoutent, Q65), Q14 bis (« à reconfirmer »,
+   confirmé par Q65), Q25 (réintégration faite), Q28 (forme du TODO, demande
+   de Clem), Q38 (délais par canal, Q52 ; bugs corrigés au lot 2), Q51 (le
+   runner est fait), Q54 (conception terminée ; éditeur au lot 13), Q65
+   (150 lignes par page, Q66), Q66 (plus d'estimation du coût, PR #39), les
+   notes de discussion de Q4 et l'en-tête du fichier. Les mots que la charte écarte
+   (« jonction », « hôte », « contrat ») sont remplacés dans Q4 et Q5.
+Arguments de Julien : un détail comme « étape X à X » ou « lot X à X à
+faire » qui est périmé n'a pas besoin de lui ; il faut le corriger.
