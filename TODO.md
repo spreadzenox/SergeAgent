@@ -130,6 +130,11 @@ données (business, contacts, abonnements).
   le premier à être décrit entièrement en base grâce au lot 6. Les
   réponses de Clem sont dans la décision Q65 de
   [`docs/DECISIONS_REVUE.md`](docs/DECISIONS_REVUE.md).
+- [ ] **Avant le lot 8 : les réglages en base.** Toute grandeur
+  discutable se règle depuis Mission Control (décision Q68) : on retire
+  les réglages que rien ne lit, on range les réglages généraux dans une
+  table en base, et on réorganise les pages Pipeline et Policy. Le détail
+  est dans la partie « Avant le lot 8 » plus bas.
 - [ ] **Lot 8 « Conversations ».** On crée un fil de discussion par
   prospect, une seule invocation pour lire et traiter une réponse, une
   fiche produit détaillée pour répondre juste, des tickets qu'on comprend
@@ -230,6 +235,44 @@ Ce qui est fait (il ne reste rien à construire dans ce lot) :
   Serge » dans Mission Control.
 
 Le vrai pipeline, étape par étape, est l'objet des lots suivants.
+
+---
+
+## Avant le lot 8 — Les réglages en base
+
+Clem a fixé la règle le 1er octobre 2026 (décision Q68 de
+[`docs/DECISIONS_REVUE.md`](docs/DECISIONS_REVUE.md)) : **toute grandeur
+discutable, qui peut un jour changer, se règle depuis Mission Control.**
+
+- [ ] **Retirer les réglages que rien ne lit.** 52 des 84 réglages de la
+  policy ne sont lus par aucun programme en marche, mais Mission Control
+  les affiche. On les retire de la policy, de sa vérification et de la
+  page. Le lot qui rebranche une capacité remet ses réglages. Un test
+  vérifie ensuite que chaque réglage est lu par au moins un programme.
+- [ ] **Brancher les chiffres en double sur leur réglage** : nouveaux
+  essais d'une réponse invalide, leçon retirée après plusieurs démentis,
+  plafonds de SMS.
+- [ ] **Température du fournisseur.** Le 0,3 écrit dans le client du
+  modèle est retiré (Q62).
+- [ ] **Brancher le plafond du mois** : au-delà, Serge s'arrête, comme
+  pour le plafond du jour.
+- [ ] **Les réglages généraux dans une table en base**, avec pour chacun
+  sa valeur, son titre, son aide et ses bornes. Mission Control les
+  affiche sans catalogue écrit dans le code.
+- [ ] **Les chiffres discutables du code deviennent des réglages** :
+  appels au modèle (attente, nouveaux essais, pauses), lecture du web
+  (longueur d'une ligne, taille et temps de lecture d'une page, résultats
+  d'une recherche, articles d'un flux), valeurs par défaut des outils,
+  filtres de la recommandation de modèle.
+- [ ] **Les textes envoyés au modèle en base**, modifiables sur la page
+  Pipeline, à côté de « Qui est Serge ».
+- [ ] **Réorganiser les pages.** Pipeline : le modèle de chaque niveau et
+  les filtres de la recommandation, les appels, les textes envoyés au
+  modèle. Policy : les limites de Serge face au monde, avec les réglages
+  des invocations et les quotas des tables.
+- La voix n'est pas dans ce chantier : le lot 8 la règle en base comme une
+  invocation (aujourd'hui, 3 minutes d'appel dans le code contre 10 dans
+  la policy).
 
 ---
 

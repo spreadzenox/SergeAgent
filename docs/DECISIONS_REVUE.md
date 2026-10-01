@@ -1129,3 +1129,58 @@ tâches dont le paramètre `cycle_id` est le sien) ; la chaîne s'arrête
 après la tâche en cours. La fiche d'une tâche en attente a un bouton
 « Annuler la tâche ». La question du bouton et le rôle de l'invocation sont
 mis à jour sur l'instance existante par la section `changes`.
+
+### Q68 — Tout réglage discutable se change dans Mission Control (validé par Clem, 1er octobre 2026)
+Règle posée par Clem : **toute grandeur discutable, qui peut un jour
+changer, se règle depuis Mission Control.** Elle ne reste dans le code que
+si elle n'a rien de discutable : un port, la taille d'une trame audio, la
+sécurité de Mission Control (durée d'une session, essais de connexion),
+le format d'un message Discord.
+
+Constats (inventaire du 1er octobre 2026, sur main) :
+- 52 des 84 réglages de la policy ne sont lus par aucun programme en
+  marche : leur code est dans `pas_encore_branche/` ou a disparu. Mission
+  Control les affiche pourtant. Exemples : « plafond du mois, au-delà plus
+  rien ne part » (rien ne le vérifie), « tours d'outils max » (le vrai
+  réglage est sur chaque invocation), la relève de la boîte mail, le
+  barème de prospection.
+- Des chiffres en double : le code garde sa valeur pendant que la policy
+  en affiche une autre (nouveaux essais d'une réponse invalide, leçon
+  retirée après 3 démentis, plafonds de SMS ; pour la voix, 3 minutes
+  d'appel dans le code contre 10 dans la policy).
+- Des chiffres discutables écrits dans le code, sans réglage : attente
+  d'une réponse du modèle (180 s), pauses avant de réessayer (3 s puis
+  10 s), température (0,3, contraire à Q62), lecture du web (300
+  caractères par ligne, 2 Mo et 15 s par page, 8 s et 10 résultats par
+  recherche, 20 s et 50 articles par flux), valeurs par défaut des outils
+  (5 résultats, 20 articles, 50 lignes vues), filtres de la
+  recommandation de modèle (128 000 jetons, un an, 75 % de jetons lus,
+  100 000 jetons mesurés, 30 jours).
+- Des textes envoyés au modèle écrits dans le code : « Tu ne peux plus
+  appeler d'outils… », la consigne de format, le message d'une réponse
+  invalide.
+- Les titres, aides et bornes de la page Policy sont dans un fichier
+  JavaScript de 757 lignes.
+
+Décidé :
+1. Les réglages que rien ne lit sont retirés de la policy, de sa
+   vérification et de Mission Control. Le lot qui rebranche une capacité
+   remet ses réglages.
+2. Température : celle du fournisseur, comme le disait Q62. Le 0,3 est
+   retiré ; le prompt fait le reste.
+3. Le plafond du mois est branché : au-delà, Serge s'arrête, comme pour
+   le plafond du jour.
+4. Les réglages généraux passent dans une vraie table en base, avec pour
+   chacun sa valeur, son titre, son aide et ses bornes. Mission Control
+   les affiche sans catalogue écrit dans le code. C'est un gros chantier,
+   accepté.
+5. Les pages : **Pipeline** réunit tout ce qui touche au modèle (le modèle
+   de chaque niveau et les filtres de la recommandation, les appels, les
+   textes envoyés au modèle) ; **Policy** réunit les limites de Serge face
+   au monde (argent, lecture du web, envois et canaux, horaires et pays,
+   accord des gens, mémoire, encaissement), avec les réglages des
+   invocations et les quotas des tables.
+6. Les chiffres en double sont branchés sur leur réglage. Les chiffres
+   discutables écrits dans le code deviennent des réglages. Les textes
+   envoyés au modèle passent en base, modifiables sur la page Pipeline.
+   La voix attend le lot 8, qui la règle en base comme une invocation.
