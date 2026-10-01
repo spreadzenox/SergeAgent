@@ -20,8 +20,9 @@ Détail : [DEPLOY_VPS.md](installation/DEPLOY_VPS.md).
 
 ## Branches et PR
 
-Plus de commit ni de push direct sur `main`. Une idée = une branche +
-une PR. `main` ne bouge que par merge, CI verte.
+Plus de commit ni de push direct sur `main`. En général, une session de
+travail = une branche + une PR, de préférence sur une seule idée ; on reste
+souple. `main` ne bouge que par merge, CI verte.
 
 ```sh
 git checkout main && git pull

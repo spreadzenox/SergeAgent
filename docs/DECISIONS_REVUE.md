@@ -668,10 +668,13 @@ Le point hebdomadaire (Q42) lit aussi ces demandes.
   60 jours repasse CANDIDATE.
 - Plusieurs business peuvent être en MAINTENANCE en même temps.
 - Technique :
-  1. subscriptions : aujourd'hui toutes rattachées au faux business
-     'serge-collect-stripe' (en dur dans serge/collect/abonnements.py) →
-     rattacher au vrai business via l'identifiant inscrit dans Stripe ;
-     colonnes ajoutées à la volée (assurer_colonnes) → vraie migration.
+  1. subscriptions : chaque abonnement est rattaché à son vrai business,
+     via l'identifiant inscrit dans Stripe (lu sur le prix, Q76), et non à
+     un faux business ; les colonnes ajoutées à la volée sont une vraie
+     migration (v23).
+     Corrigé le 1er octobre 2026 (Q76) : ce point décrivait l'état d'avant le
+     lot 5 (tout rattaché à 'serge-collect-stripe', en dur dans
+     serge/collect/abonnements.py).
   2. Nouvelle table deliveries (business, client, paiement, quoi livrer,
      date promise, état à faire / en cours / livrée / problème, date de
      livraison, fichier livré). Créée automatiquement à chaque paiement d'un
@@ -1044,11 +1047,13 @@ direct.
 4. La vue d'ensemble (capacités, outils, liens, déclencheurs, modèle par
    niveau, texte « Qui est Serge ») est une nouvelle page « Pipeline » de
    MC.
-5. Une idée = une branche = une pull request (voir `docs/DEV_TOOLING.md`) :
-   `main` ne bouge que par une PR relue par un humain, avec la CI verte.
-   Corrigé le 1er octobre 2026 (Q75) : ce point disait « On travaille
-   toujours sur `Clem`. Chaque fusion dans `main` est demandée à Clem avant
-   d'être faite. »
+5. En général, une session de travail = une branche = une pull request,
+   de préférence sur une seule idée ; on reste souple (voir
+   `docs/DEV_TOOLING.md`). `main` ne bouge que par une PR relue par un
+   humain, avec la CI verte.
+   Corrigé le 1er octobre 2026 (Q75, précisé en Q76) : ce point disait « On
+   travaille toujours sur `Clem`. Chaque fusion dans `main` est demandée à
+   Clem avant d'être faite. »
 
 ### Q65 — Lot 7, l'étape 1 (validé par Clem, 28 septembre 2026)
 0. **B voit ce qu'a écrit A.** Clem revient sur « B ne voit jamais A » :
@@ -1407,9 +1412,37 @@ Décidé :
 3. Quand le code est plus récent qu'une réponse, on suit le code. Ici le
    code (27 septembre) est plus récent que Q17 (26 septembre) : le
    regroupement de Q17 est corrigé d'après lui.
-4. Q64, point 5, a tort : la bonne règle est celle de `docs/DEV_TOOLING.md`,
-   une idée = une branche = une PR. Q64 est corrigée. Julien en parle à
+4. Q64, point 5, a tort : la bonne règle est celle de `docs/DEV_TOOLING.md`.
+   Q64 est corrigée.
+   Corrigé le 1er octobre 2026 (Q76) : cette entrée disait « une idée = une
+   branche = une PR ». C'est l'idéal ; en général, c'est une session de
+   travail = une branche = une PR, et on reste souple. Julien en parle à
    Clem ; si sa réponse change cela, elle sera notée.
 Arguments de Julien : sur le désabonnement, une personne qui quitte un
 business n'a pas quitté les autres. Sur la branche, c'est le
 fonctionnement de l'équipe, et `docs/DEV_TOOLING.md` est la meilleure règle.
+
+### Q76 — Abonnements Stripe : l'identifiant du business est lu sur le prix ; une session de travail = une branche = une PR (validé par Julien, 1er octobre 2026)
+Constat : au lot 5, le code rattache chaque abonnement Stripe à son
+business (`serge/collect/abonnements.py`). Il lit l'identifiant du business
+dans `metadata.venture_id`, sur l'abonnement, son prix ou son plan, et pas
+sur le produit. Ce choix n'avait jamais été validé. Il reste à faire côté
+Serge : écrire cet identifiant sur le prix quand il crée le produit (étape
+5, lot 10). Julien a aussi précisé la règle de branche posée en Q75.
+Décidé :
+1. L'identifiant du business est lu sur le prix (ou l'abonnement, ou le
+   plan), pas sur le produit. Sans identifiant, ou avec un business
+   inconnu, l'abonnement est gardé sans business et une note est écrite au
+   journal. Il n'est jamais perdu ni bloqué, et un rattachement déjà fait
+   n'est jamais remplacé. À l'étape 5, Serge inscrit l'identifiant sur le
+   prix qu'il crée.
+2. La règle de branche : en général, une session de travail = une branche =
+   une PR, de préférence sur une seule idée. On reste souple. Q64, Q75 et
+   `docs/DEV_TOOLING.md` sont corrigés en ce sens.
+Arguments : c'était la recommandation de Claude, suivie par Julien. Stripe
+envoie le prix dans ses événements, mais pas le produit : lire le produit
+demanderait un appel de plus à Stripe à chaque événement. Le choix est sans
+risque : le pire cas est un abonnement sans business, visible au journal.
+Julien, sur la règle de branche : l'idéal est une idée par PR, mais en
+pratique c'est une session de travail ; on garde une cohérence et on reste
+souple.
