@@ -1,13 +1,30 @@
-# Revue des specs SergeAgent — décisions validées par Julien
+# Décisions de SergeAgent — les questions et les réponses validées
 
-Ce fichier rassemble les réponses de Julien aux questions posées pendant la
-revue du projet (septembre 2026, branche `Clem`). Chaque réponse, une fois
-discutée, fait foi : le code et la doc doivent être corrigés pour s'y
-conformer.
+Ce fichier est le journal des décisions du projet. Chaque fois qu'un agent
+pose des questions à Julien ou à Clem et qu'ils répondent, la réponse est
+notée ici sous un numéro (Q1, Q2…). Une réponse validée fait foi : le code
+et la doc doivent être corrigés pour s'y conformer. Le fichier est
+permanent. Il a commencé avec la revue du projet (septembre 2026).
 
-C'est un fichier de travail temporaire. Il sert de référence pendant le
-chantier de refonte, puis il sera supprimé quand la vraie documentation
-(`README.md`, `docs/PIPELINE.md`, `docs/etapes/…`) l'aura remplacé.
+## Comment ajouter une entrée
+
+Seulement après une vraie question-réponse avec Julien ou Clem. Une
+décision prise sans question n'a pas sa place ici. On ajoute l'entrée à la
+fin du fichier, avec le numéro qui suit la dernière :
+
+```
+### Q69 — Titre court (validé par Clem, 2 octobre 2026)
+Constat : ce qui a amené la question.
+Décidé : ce qui a été répondu, point par point.
+Arguments : pourquoi cette réponse plutôt qu'une autre (si la personne en a donné).
+```
+
+- **Qui a répondu** est toujours dans le titre : « validé par Julien »,
+  « validé par Clem », ou « validé par Clem et Julien », avec la date.
+- **Les arguments** sont notés quand la personne en donne. Sinon on ne les
+  invente pas.
+- Si une réponse change une décision plus ancienne, on le dit dans la
+  nouvelle entrée (« remplace Q12 ») ; on ne réécrit pas l'ancienne.
 
 Plan de travail (Q30) : finir les questions sur les étapes 2 à 8, puis
 corriger par petits lots (un sujet = un commit, tests verts), en relisant ce

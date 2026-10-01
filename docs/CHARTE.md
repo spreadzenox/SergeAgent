@@ -169,6 +169,15 @@ Aucun test de CI n'agit sur le monde réel.
   [`etapes/`](etapes/) (une page par étape), [`MEMOIRE.md`](MEMOIRE.md),
   [`DB.md`](DB.md), [`MISSION_CONTROL.md`](MISSION_CONTROL.md),
   [`installation/`](installation/).
+- **Les questions-réponses sont notées.** Quand un agent pose des questions
+  à Julien ou à Clem et qu'ils répondent, il note la décision dans
+  [`DECISIONS_REVUE.md`](DECISIONS_REVUE.md), sous un nouveau numéro de
+  question : qui a répondu, quand, ce qui est décidé et, s'ils en ont
+  donné, leurs arguments. Exemple : « Q68 — Tout réglage discutable se
+  change dans Mission Control (validé par Clem, 1er octobre 2026) ». Cela
+  ne vaut que pour une vraie question-réponse : un changement décidé sans
+  question n'y entre pas. Une décision validée fait foi : le code et la doc
+  s'y conforment.
 
 ## 8. Les changements
 
