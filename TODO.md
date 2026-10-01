@@ -103,33 +103,10 @@ remplir la base, dans `config/pipeline.yaml` (le détail est dans
 
 On avance par lots. Un lot est un ensemble de tâches qui vont ensemble ;
 chaque lot se termine par des tests verts et un commit, puis Julien ou
-Clem regarde le résultat avant qu'on attaque le suivant. Les lots 1 à 5
-sont faits : fusion des branches, correction de deux bugs graves,
-nettoyage du code mort, nouvelle documentation, et remise en ordre des
-données (business, contacts, abonnements).
+Clem regarde le résultat avant qu'on attaque le suivant. Les lots 1 à 7
+sont faits (l'historique git en garde la trace) : le runner et le
+pipeline en base, et l'étape 1 y sont en place.
 
-- [x] **Lot 6 « Le runner et le pipeline en base ».** Fait (septembre
-  2026) : le détail est dans la partie « Lot 6 » plus bas. C'est la fondation
-  de tout le reste, et Clem et Julien veulent l'attaquer ensemble. Il
-  commence par le runner, le programme qui exécute les tâches : il doit
-  exécuter une tâche après l'autre et enregistrer en base après chacune,
-  sur deux files en parallèle, parce qu'aujourd'hui un plantage peut faire
-  envoyer deux fois le même e-mail. Ensuite, tout le pipeline passe en
-  base : l'ordre des invocations, leur modèle, leur prompt, ce qu'elles
-  reçoivent, leurs outils, où elles écrivent, ce qui les déclenche. Le code
-  ne fait plus que lire la base et exécuter ce qu'elle décrit. Tout le
-  code écrit en dur pour un enchaînement est supprimé, sans chercher à le
-  garder en marche. À la fin du lot, Serge ne peut pas encore être
-  allumé pour de vrai, parce que certaines capacités manquent ; mais en
-  modifiant la base, on peut déjà construire n'importe quel pipeline avec
-  les capacités qui existent. Les tâches détaillées sont dans la partie
-  « Lot 6 » plus bas.
-- [x] **Lot 7 « Étape 1 ».** Fait (septembre 2026). On refait la pré-prospection avec des
-  invocations qui ont chacune un seul rôle, on garde les pages retenues
-  comme preuves, et Serge choisit et lit lui-même ses flux RSS. Ce lot est
-  le premier à être décrit entièrement en base grâce au lot 6. Les
-  réponses de Clem sur l'étape 1 sont dans la décision Q65 de
-  [`docs/DECISIONS_REVUE.md`](docs/DECISIONS_REVUE.md).
 - [ ] **Avant le lot 8 : les réglages en base.** Toute grandeur
   discutable se règle depuis Mission Control (décision Q68) : on retire
   les réglages que rien ne lit, on range les réglages généraux dans une
@@ -167,94 +144,17 @@ données (business, contacts, abonnements).
 
 ---
 
-## Lot 6 — Le runner et le pipeline en base
-
-La règle, décidée par Clem et Julien : **le code n'est qu'un interpréteur
-de la base de données.** L'ordre des invocations et tous leurs paramètres
-sont en base, et seulement en base. Aucun paramètre n'est écrit en dur
-dans le code. Le runner prend les tâches une par une ; pour chacune, le
-code lit en base la description de l'invocation à lancer, et l'exécute
-exactement comme elle est décrite. Exemple : si Julien change dans MC le
-modèle de « Trier les pages », ou ajoute une invocation entre « Trier les
-pages » et « Formuler des business », le prochain cycle en tient compte,
-sans redéploiement.
-
-Le code garde seulement des capacités générales, comme expliqué dans « La
-règle qui vaut pour tous les lots » : lire la base, écrire dans la base,
-appeler un modèle, chercher sur le web, envoyer un e-mail. La base dit
-lesquelles utiliser, dans quel ordre et avec quels paramètres. C'est déjà
-le cas pour la lecture de la base : la liste des tables et des colonnes
-qu'une invocation a le droit de lire est en base, et un seul bout de code
-sait lire n'importe laquelle. Ce lot fait la même chose pour l'écriture,
-et pour tout le reste.
-
-La conception des tables, validée avec Clem, est dans
-[`docs/LOT6_CONCEPTION.md`](docs/LOT6_CONCEPTION.md).
-Pour reprendre le lot en cours de route, lire d'abord
-[`docs/REPRISE_LOT6.md`](docs/REPRISE_LOT6.md).
-
-Clem a fixé la façon de mener ce lot. On passe directement à la version
-durable : tout ce qui est écrit en dur pour un enchaînement (le cycle
-d'écoute, le circuit des réponses, les envois, la relève, la
-consolidation) est retiré de la production, sans période de transition,
-et rangé avec ses tests et ses prompts dans le dossier
-`pas_encore_branche/`, pour les lots suivants.
-On ne crée que les colonnes et les capacités dont ce lot a besoin : celles
-des fonctions futures (validation par Julien, bac à sable, délais par
-canal, désinscription…) seront ajoutées par leur propre lot, et elles sont
-notées dans ce fichier à l'endroit où elles serviront. On fusionne dans
-`main` après chaque étape du lot, avec des tests verts qui portent
-seulement sur ce qui est construit. Mission Control affiche tout ce qui
-est en base, en direct ; créer une invocation depuis le site viendra au
-lot 13.
-
-Ce qui est fait (il ne reste rien à construire dans ce lot) :
-
-- les tables du pipeline (version 24 de la base), les deux files du
-  runner qui tournent en continu et enregistrent après chaque tâche,
-  l'interpréteur qui exécute n'importe quelle invocation décrite en base
-  (sans « kinds »), l'écriture générique et ses protections, la priorité
-  et l'interrupteur de chaque invocation ;
-- le remplissage de départ, qui n'efface et n'écrase rien, et un
-  demi-cycle de démonstration de l'étape 1 dans `config/pipeline.yaml` ;
-- le rangement de l'ancien code dans `pas_encore_branche/` (version 25)
-  et le test qui vérifie la règle (`tests/test_regle_interpreteur.py`) ;
-- les réglages des invocations et les quotas des tables, modifiables sur
-  la page Policy (version 26), par exemple « nombre d'idées » de la démo,
-  ou « au plus 3 business choisis pour un POC » ;
-- ce que voit chaque invocation (version 27) : la version courte des
-  tables où elle écrit, les plus récentes d'abord, les outils « Lire les
-  tables que je vois » et « Lire l'historique », ses leçons et le bloc
-  « Qui est Serge » complet ;
-- le passage d'un lien à la main (version 28), depuis la fiche du lien
-  dans MC, à côté de la validation par ticket du lot 8 ;
-- Mission Control branché sur les nouvelles tables, dont la page
-  « Pipeline » : la vue d'ensemble du pipeline en base, où l'on choisit
-  le modèle de chaque niveau et réécrit le texte « Qui est Serge » ;
-- Serge arrêté par défaut : il ne tourne qu'après un clic sur « Démarrer
-  Serge » dans Mission Control.
-
-Le vrai pipeline, étape par étape, est l'objet des lots suivants.
-
----
-
 ## Avant le lot 8 — Les réglages en base
 
 Clem a fixé la règle le 1er octobre 2026 (décision Q68 de
 [`docs/DECISIONS_REVUE.md`](docs/DECISIONS_REVUE.md)) : **toute grandeur
 discutable, qui peut un jour changer, se règle depuis Mission Control.**
 
-- [x] **Retirer les réglages que rien ne lit** (PR A, 1er octobre 2026).
-  58 des 91 réglages de la policy n'étaient lus par aucun programme en
-  marche, mais Mission Control les affichait. 4 sont maintenant branchés
-  (voir plus bas) ; les 54 autres sont retirés de la policy, de sa
-  vérification et de la page, avec les 2 réglages de « Ce qui pourrait
-  passer tout seul ». Il en reste 35. Un ancien snapshot qui contient un
-  réglage retiré ne l'affiche plus. Un test vérifie que chaque réglage restant
-  est lu par au moins un programme. Les encarts « Demander un
-  changement » et « Ce qui pourrait passer tout seul » sont retirés de la
-  page Policy (Q68, point 8). **Le lot qui rebranche une capacité remet
-  ses réglages**, lus par son code :
+- [ ] **Remettre les réglages retirés, lot par lot.** La PR A (1er octobre
+  2026) a retiré de la policy 54 réglages que rien ne lisait : leur code
+  est rangé dans `pas_encore_branche/`. Un test vérifie que chaque réglage
+  de la policy est lu par au moins un programme. **Le lot qui rebranche une
+  capacité remet ses réglages**, lus par son code :
   - lot 8 (conversations, voix) : jours et heures d'appel, jours de
     prospection, marge avant un rendez-vous, jours fériés et fuseau du
     pays ; durée et tours de parole d'un appel, longueur du script,
@@ -269,16 +169,6 @@ discutable, qui peut un jour changer, se règle depuis Mission Control.**
     aucune fonction en marche ne l'appelle aujourd'hui) ;
   - lot 12 (web) : le plafond du navigateur, les recherches en mémoire par
     cycle.
-- [x] **Brancher les chiffres en double sur leur réglage** (PR A) : les
-  nouveaux essais d'une réponse mal formée (`quotas.llm_recalls_json`) et
-  les plafonds anti-rafale des SMS reçus (`quotas.sms_*`), lus à chaque
-  SMS.
-- [x] **Température du fournisseur** (PR A). Le client du modèle n'envoie
-  plus de température (Q62).
-- [x] **Brancher le plafond du mois** (PR A) : il borne ce que Serge nous
-  coûte en IA (coût réel des modèles, mois calendaire UTC comme le jour) ;
-  atteint, les tâches LLM attendent le mois suivant, avec la raison dans
-  la file. Une jauge « Ce que Serge coûte ce mois-ci » est sur En direct.
 - [ ] **Les réglages généraux dans une table en base** (PR B), avec pour
   chacun sa valeur, son titre, son aide et ses bornes. Mission Control les
   affiche sans catalogue écrit dans le code. Chaque réglage garde sa
@@ -610,147 +500,6 @@ et Serge sait demander de l'aide quand il ne sait pas.
   déclencheurs et les protections des tables. Clem a prévenu que
   l'organisation actuelle des réglages pourra changer à ce moment-là
   (Q63) : la façon de tout régler reste à concevoir.
-
----
-
-## Étape 1 — Pré-prospection
-
-C'est le lot 7. Décisions de Clem sur cette étape : Q65 dans
-[`docs/DECISIONS_REVUE.md`](docs/DECISIONS_REVUE.md) ; le détail de
-l'étape est dans
-[`docs/etapes/1-pre-prospection.md`](docs/etapes/1-pre-prospection.md),
-et ce qui a été construit dans
-[`docs/LOT7_CONCEPTION.md`](docs/LOT7_CONCEPTION.md). Fusionné dans `main`
-et déployé le 28 septembre 2026 ; il reste à Julien de lancer le premier
-vrai cycle.
-Tout est décrit en base (`config/pipeline.yaml`) : aucune ligne de code
-n'est propre à une de ces invocations.
-
-- [x] **Le cycle, une invocation par rôle.** Il se lance à la main depuis
-  la page Écoute (plus tard, automatiquement), un cycle à la fois : le
-  bouton est refusé tant qu'un cycle est ouvert, et un bouton « Abandonner
-  le cycle » ferme un cycle resté ouvert (une invocation qui a échoué, par
-  exemple) et annule ses tâches en attente. Il s'enchaîne ainsi :
-  1. **« Ouvrir un cycle »** (sans LLM) enregistre le cycle et le texte de
-     guidage de Julien.
-  2. **« Explorer le web »** (modèle moyen) cherche des pages à partir du
-     texte de guidage (sinon, dans les 11 familles de business de Q32) et
-     des business déjà connus, en France d'abord (recherches en français,
-     pages en anglais acceptées), au plus 10 recherches (réglage). Elle
-     ne lit qu'un aperçu de chaque page (5 lignes, réglage) et ne garde
-     que les pages qu'elle retient, au plus 30 (réglage). Elle ajoute
-     aussi les flux RSS qu'elle juge utiles, au plus 2 par cycle
-     (réglage) : Serge choisit ses flux lui-même, sans accord de Julien.
-  3. **Rattacher au cycle les pages pas encore triées** (sans LLM) : celles
-     des flux et du web, les plus récentes d'abord, au plus 60 (réglage).
-  4. **« Trier les pages »** (modèle rapide), par paquets de 20 pages
-     (réglage), sur leur aperçu seulement : chaque page enrichit un
-     business existant (elle lui est rattachée comme preuve), signale un
-     besoin nouveau, ou c'est du bruit.
-  5. **« Formuler des business A »** puis **« Formuler des business B »**
-     (modèle intelligent, l'une après l'autre) reçoivent l'aperçu des pages
-     « besoin nouveau » pas encore utilisées, lisent en entier celles
-     qu'elles veulent (seulement des pages en base, au plus 150 lignes par
-     page et 10 pages par passage, réglages), et écrivent chacune 3 idées
-     (réglage). Une fiche cite au moins une page de preuve et sa famille
-     de business (Q32). Une fois l'idée écrite, les pages utilisées sont
-     reclassées : elles deviennent des preuves rattachées à ce business.
-     B ne reçoit donc que les pages que A n'a pas utilisées ; celles qui
-     restent après B repassent au cycle suivant, sans être retriées.
-     B voit les business écrits par A (version courte donnée d'office) :
-     Serge ne fait pas deux fois la même chose. Leur prompt dit de ne
-     jamais reproposer un business qui existe déjà. Les doublons restants
-     sont écartés à l'écriture par la règle de doublons des business.
-  6. **« Choisir les business à tester »** (modèle moyen) en choisit au
-     plus autant qu'il y a de places libres, parmi tous les candidats en
-     base (y compris ceux des cycles précédents), sur la force des
-     preuves, la facilité d'un test rapide, un premier revenu rapide et la
-     légalité. La raison de chaque choix (une phrase) est gardée sur la
-     fiche du business, visible dans MC.
-     Un business déjà en test est refusé par la règle des statuts permis.
-     Le cycle est ensuite fermé.
-
-  Le prompt des invocations qui formulent et choisissent dit que le
-  business doit être légal, et les encourage à ne pas s'arrêter sur des
-  scrupules moraux qui ne sont pas contraires à la loi (Q33). Les prompts
-  de l'ancien cycle sont dans `pas_encore_branche/`.
-
-- [x] **Les places de test de l'étape 1.** Une place est occupée par un
-  business `POC_SELECTED`, `SMOKE_READY`, `SMOKE_RUNNING` ou `SMOKE_DONE`
-  (Q14 bis) : le quota `business_choisis` doit compter ces quatre statuts,
-  et « Choisir » doit voir les business en test pour compter les places
-  libres (une lecture d'office). La page Écoute affiche « places libres :
-  2 sur 3 ». Quand tout est pris, le bouton du cycle est bloqué : une
-  condition générale sur un bouton ou un lien, du type « seulement si
-  moins de N lignes dans tel état » (avancée du lot 8).
-
-- [x] **Lire une page, à la bonne dose.** Une capacité « lire une page »
-  (une simple requête, sans navigateur, texte extrait avec la
-  bibliothèque standard de Python), réglée par un nombre de lignes (une
-  ligne = un titre, un paragraphe ou un élément de liste) : un aperçu de
-  5 lignes (réglage) pour les invocations qui trient ou retiennent des
-  pages, la page entière pour celles qui formulent des business. On ne sature pas
-  les invocations d'informations. La recherche reste DuckDuckGo ;
-  SearXNG vient au lot 12.
-
-- [x] **Garder les pages retenues.** Les pages qu'« Explorer » retient et
-  celles des flux sont enregistrées, avec leur adresse, leur source, le
-  cycle qui les a trouvées, leur aperçu et leur étiquette de tri ; jamais
-  leur texte entier. Pour une page de flux, l'aperçu est le résumé donné
-  par le flux. Un résultat de
-  recherche non retenu n'est pas gardé (la base ne doit pas exploser),
-  mais une page déjà triée n'est jamais représentée comme nouvelle.
-
-- [x] **Les flux RSS en base.** Une table des flux : adresse, ajouté par
-  quelle invocation, actif ou non. La lecture des flux actifs tourne
-  seule, toutes les 6 heures (réglage), sans LLM. Mission Control montre,
-  pour chaque flux, les pages ramenées et les pages utiles, avec un
-  bouton pour le couper ou le rallumer. Julien n'ajoute pas de flux au
-  lot 7. Au plus 20 pages lues par flux à chaque passage (réglage) ; le
-  surplus attend le cycle suivant, les plus récentes d'abord.
-
-- [x] **Empêcher la base de grossir sans fin.** Des réglages (des
-  invocations, marqués « policy », ou des quotas de table, pas la policy
-  générale) : 60 pages triées au plus par cycle ; une page « bruit » est
-  oubliée après 30 jours, c'est-à-dire que sa ligne est supprimée (jamais
-  une page qui sert de preuve), avec une note au journal ; de même pour
-  une page jamais triée au bout de 30 jours, et pour une page « besoin
-  nouveau » jamais utilisée au bout de 60 jours (réglage). Couper un flux
-  qui ne ramène que du bruit se fait à la main au lot 7 ; plus tard,
-  automatiquement après 5 cycles de bruit.
-
-- [x] **La page Écoute.** Les flux, le bouton du cycle avec les places
-  libres, et le dernier cycle : les pages trouvées, leur étiquette, les
-  fiches écrites et les business choisis.
-
-- [x] **Un bouton temporaire « Effacer les idées ».** Il détruit toutes
-  les idées (les business encore candidats ou choisis, et leurs
-  preuves), pour tester le cycle en production autant de fois qu'on veut
-  (Q65). À retirer avant le vrai lancement de Serge. Julien n'est pas
-  averti à la fin d'un cycle ; « Choisir » peut ne rien choisir, en
-  disant pourquoi ; une idée hors des 11 familles est rangée en
-  « autre ».
-
-- [x] **Avant la fusion.** Montrer tous les prompts à Clem (validés le
-  28 septembre 2026). Une seule fusion dans `main`, à la fin du lot. Le premier vrai cycle est lancé par
-  Julien après la fusion, avec 1 idée par invocation pour un essai peu
-  cher, puis 3.
-
-- [x] **Retirer la démo du lot 6.** Retirer le demi-cycle de
-  `config/pipeline.yaml` et le marquer supprimé en base : ses trois
-  invocations, ses deux liens, son bouton « Lancer un cycle (démo) », et
-  l'outil « Lire les business connus » s'il ne sert plus. Supprimer aussi
-  les business et les cycles qu'elle a laissés sur le serveur de Julien
-  (Q65). Retirer une ligne du fichier ne l'efface pas d'une instance
-  existante.
-
-- [x] **Ce que le lot 6 demande ici.** Des vues de tables (`table_views`)
-  pour les pages, les pages d'un cycle, les flux et les preuves d'un
-  business ; les tables inscriptibles et leurs protections ; les chiffres
-  en réglages des invocations (les chiffres de l'ancienne section
-  « Écoute » de la policy y reviennent, Q64) ; et pour chaque invocation
-  son niveau, le bloc « Qui est Serge », le maximum de lignes données
-  d'office et le nombre d'appels d'outils.
 
 ---
 

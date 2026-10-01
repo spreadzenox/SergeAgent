@@ -298,17 +298,21 @@ Notes :
 - Sans réponse sous 48 h, le choix proposé s'applique (proposé dans B).
 - Les 2 autres passent PARKED (Q15).
 
-### Q17 — Contacts : une fiche par personne (validé)
-- Table contacts = une ligne par personne.
+### Q17 — Contacts : une fiche par personne dans un business (validé)
+- Table contacts = une ligne par personne dans un business.
 - Table à part pour les adresses : une ligne par adresse (canal, valeur,
   active ou non). Rien n'est écrasé ; plusieurs emails possibles.
-- Regroupement automatique seulement sur email identique ou numéro de
-  téléphone identique (pas sur nom, pas sur profil réseau). Adresses
+- Regroupement automatique, dans un même business, seulement sur email
+  identique ou numéro de téléphone identique (pas sur nom, pas sur profil
+  réseau). Adresses
   génériques (contact@, info@…) ne déclenchent pas de regroupement
   (proposé, non contesté).
 - Remplace la règle du TODO « deux lieux, deux lignes » et le JSON
   contact_reference_by_canal de la branche Clem.
 - Désabonnement (OPT_OUT) global à la personne.
+Corrigé le 1er octobre 2026 (Q73) : ce point disait « une ligne par
+personne », ce que le choix plus récent d'une fiche par personne dans un
+business remplace.
 
 ### Q18 — Organisation de la doc (validé)
 - README court (Serge, chaîne en 8 étapes, où lire la suite).
@@ -1303,3 +1307,28 @@ Décidé :
    8 », comme Q55.
 Arguments de Julien : sémantiquement, la dernière question a raison sur
 celles d'avant, et elle ne retire leur contenu que si elle le contredit.
+
+### Q72 — Supprimer les documents de reprise et de contexte une fois finis, et tenir le TODO selon ses règles (validé par Julien, 1er octobre 2026)
+Constat : `docs/REPRISE_LOT6.md` annonçait qu'il serait supprimé à la fin du
+lot 6, qui est fait, et le TODO y renvoyait encore.
+`docs/CONTEXTE_2026-09-27.md` résumait la revue au 27 septembre : il s'arrête
+au lot 6 et répète le README, la charte et le TODO.
+Décidé :
+1. Les deux fichiers sont supprimés. Leurs commandes de vérification et
+   leurs règles de travail sont dans `docs/DEV_TOOLING.md` et la charte ;
+   l'historique git garde le reste.
+2. Le TODO ne renvoie plus à ces documents, et il suit sa propre règle :
+   une tâche finie est retirée. Les lots 6 et 7, et leurs tâches faites, ne
+   sont plus dans le TODO. Ce qui restait à faire dedans y est gardé (les
+   réglages retirés que chaque lot remet).
+Arguments de Julien : si le lot est terminé, le TODO n'a plus besoin de
+renvoyer à son document ; le contexte daté « ne sert plus à rien ».
+
+### Q73 — Contacts : la décision la plus récente est une fiche par personne dans un business (validé par Julien, 1er octobre 2026)
+Constat : Q17 disait « une ligne par personne », alors que le code et
+`docs/DB.md` (choix fait au lot 5) disent « une fiche par personne dans un
+business ».
+Décidé : le choix le plus récent fait foi, donc Q17 est obsolète sur ce
+point. Une même personne qui répond à deux business a deux fiches. Q17 est
+corrigée dans son entrée d'origine.
+Arguments de Julien : c'est la décision la plus récente.

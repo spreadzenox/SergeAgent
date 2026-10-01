@@ -2,13 +2,12 @@
 
 Ce dossier dit où en est le lot 7 et ce qu'il reste à faire. Pour les
 commandes de vérification et les règles de travail, voir
-[`REPRISE_LOT6.md`](REPRISE_LOT6.md) (parties « Lancer les vérifications
-en local » et « Règles de travail à garder ») : elles valent toujours.
+[`DEV_TOOLING.md`](DEV_TOOLING.md) et [`CHARTE.md`](CHARTE.md).
 
 ## À lire d'abord
 
-1. [`TODO.md`](../TODO.md), partie « Étape 1 — Pré-prospection » : la
-   liste des tâches, cochées.
+1. [`TODO.md`](../TODO.md) : ce qui reste à faire (l'étape 1 n'y figure
+   plus, ses tâches sont finies).
 2. [`DECISIONS_REVUE.md`](DECISIONS_REVUE.md), question Q65 : toutes les
    réponses de Clem sur l'étape 1.
 3. [`LOT7_CONCEPTION.md`](LOT7_CONCEPTION.md) : ce qui a été construit
