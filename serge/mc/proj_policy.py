@@ -1,61 +1,77 @@
 #!/usr/bin/env python3
-"""Projecteurs P5 Politique : policy générale, testing à froid, trust, réglages."""
+"""Projecteurs P5 Policy : les réglages généraux, et ceux des invocations."""
 
 from __future__ import annotations
 
+import json
 import sqlite3
 from collections.abc import Mapping
 from typing import Any
 
-from serge.policy_snapshots import policy_en_vigueur
+from serge.policy_store import section_lock, settings
+
+
+def _precedent(at: str, by: str, value: Any) -> dict[str, Any] | None:
+    """La valeur précédente d'un réglage (qui, quand), ou ``None``."""
+    if not at:
+        return None
+    return {'valeur': value, 'par': by, 'le': at}
 
 
 def project_politique_active(
     conn: sqlite3.Connection, policy: Mapping[str, Any], now: str
 ) -> dict[str, Any]:
-    """Politique actuellement chargée et validée (P5).
+    """Les réglages généraux, par famille, tels qu'ils sont en base (P5).
 
-    Args:
-        conn: Connexion canon (dernier snapshot).
-        policy: Ignoré — la vérité est le snapshot.
-        now: Maintenant ISO (ignoré).
-
-    Returns:
-        Dict {policy: {...}}.
-    """
-    _ = (policy, now)
-    return {'policy': policy_en_vigueur(conn)}
-
-
-def project_testing_froid(
-    conn: sqlite3.Connection, policy: Mapping[str, Any], now: str
-) -> dict[str, Any]:
-    """État du testing à froid (E3) et présence de campagnes actives (lock).
-
-    Args:
-        conn: Connexion canon (lecture).
-        policy: Policy (ignorée, uniformité).
-        now: Maintenant ISO (ignoré).
+    Chaque réglage arrive avec sa description (titre, aide, sorte, bornes,
+    choix), sa valeur, et sa valeur précédente : la page n'a aucun
+    catalogue à elle. Une famille verrouillée dit pourquoi (exemple : un
+    essai tourne).
 
     Returns:
-        Dict {running_campaigns, is_locked, config}.
+        ``{sections: [{id, titre, pourquoi, verrou, reglages: [...]}]}``.
     """
     _ = (policy, now)
-    running = conn.execute(
-        "SELECT COUNT(*) FROM campaigns WHERE state='RUNNING'"
-    ).fetchone()[0]
-    locked = int(running) > 0
-    from kit.instance_file import _validate_testing
-
-    live = policy_en_vigueur(conn)
-    testing = live.get('testing')
-    raw: dict[str, Any] = testing if isinstance(testing, dict) else {}
-    testing_cfg = _validate_testing(raw)
-    return {
-        'running_campaigns': int(running),
-        'is_locked': locked,
-        'config': testing_cfg,
+    previous = {
+        str(r[0]): _precedent(str(r[2]), str(r[3]), json.loads(r[1] or 'null'))
+        for r in conn.execute(
+            'SELECT id, previous_json, previous_at, previous_by'
+            ' FROM policy_settings'
+        )
     }
+    sections = []
+    for row in conn.execute(
+        'SELECT id, title, why FROM policy_sections ORDER BY position'
+    ).fetchall():
+        sections.append(
+            {
+                'id': str(row[0]),
+                'titre': str(row[1]),
+                'pourquoi': str(row[2]),
+                'verrou': section_lock(conn, str(row[0])),
+                'reglages': [],
+            }
+        )
+    by_id = {s['id']: s for s in sections}
+    for s in settings(conn):
+        section = by_id.get(s.section_id)
+        if section is None:
+            continue
+        section['reglages'].append(
+            {
+                'id': s.id,
+                'titre': s.title,
+                'aide': s.help,
+                'widget': s.kind,
+                'min': s.min,
+                'max': s.max,
+                'pas': s.step,
+                'choix': list(s.choices),
+                'valeur': s.value,
+                'precedent': previous.get(s.id),
+            }
+        )
+    return {'sections': [s for s in sections if s['reglages']]}
 
 
 def project_reglages(
@@ -65,7 +81,7 @@ def project_reglages(
 
     Ils sont rangés avec l'invocation ou la table qui s'en sert, pas dans
     la policy générale ; la page Policy les montre ici, par étape puis par
-    invocation, modifiables en direct.
+    invocation, modifiables en direct, avec leur valeur précédente.
 
     Returns:
         ``{invocations: [{invocation_id, titre, etape, reglages}],
@@ -75,7 +91,8 @@ def project_reglages(
     groupes: dict[str, dict[str, Any]] = {}
     for row in conn.execute(
         'SELECT s.invocation_id, i.title, COALESCE(st.titre, i.step_id),'
-        ' s.name, s.type, s.value, s.min_value, s.max_value, s.description'
+        ' s.name, s.type, s.value, s.min_value, s.max_value, s.description,'
+        ' s.previous_value, s.previous_at, s.previous_by'
         ' FROM invocation_settings s JOIN invocations i ON i.id=s.invocation_id'
         ' LEFT JOIN pipeline_steps st ON st.id=i.step_id'
         " WHERE s.policy=1 AND i.deleted_at=''"
@@ -98,6 +115,7 @@ def project_reglages(
                 'min': str(row[6]),
                 'max': str(row[7]),
                 'description': str(row[8]),
+                'precedent': _precedent(str(row[10]), str(row[11]), row[9]),
             }
         )
     quotas = [
@@ -108,10 +126,12 @@ def project_reglages(
             'values': str(r[3]),
             'max': int(r[4]),
             'description': str(r[5]),
+            'precedent': _precedent(str(r[7]), str(r[8]), r[6]),
         }
         for r in conn.execute(
             'SELECT id, table_name, column_name, counted_values, max_value,'
-            ' description FROM table_quotas WHERE policy=1 ORDER BY id'
+            ' description, previous_value, previous_at, previous_by'
+            ' FROM table_quotas WHERE policy=1 ORDER BY id'
         ).fetchall()
     ]
     return {'invocations': list(groupes.values()), 'quotas': quotas}

@@ -16,44 +16,21 @@ from serge.mc.projectors import (  # noqa: E402
     PROJECTORS,
     SLOW_SECTIONS,
 )
-from serge.policy import load_policy  # noqa: E402
-from serge.policy_snapshots import snapshot_policy  # noqa: E402
 from tests.mc_server_case import McBrowserCase  # noqa: E402
 
 
 class PolicyRegistryTests(unittest.TestCase):
     def test_registre_p5(self) -> None:
         sections = PAGE_SECTIONS['p5']
-        self.assertEqual(
-            sections,
-            [
-                'meta',
-                'politique_active',
-                'reglages',
-                'testing_froid',
-            ],
-        )
+        self.assertEqual(sections, ['meta', 'politique_active', 'reglages'])
         for section in sections:
             self.assertIn(section, PROJECTORS)
-        self.assertIn('politique_active', SLOW_SECTIONS)
-        self.assertIn('testing_froid', SLOW_SECTIONS)
+        # Un réglage enregistré se voit tout de suite : pas de cache lent.
+        self.assertNotIn('politique_active', SLOW_SECTIONS)
 
 
 class McPolicyTests(McBrowserCase):
-    def _fixtures(self) -> None:
-        conn = open_db(self.db_path)
-        try:
-            pol = load_policy()
-            # Un ancien snapshot garde un réglage retiré (Q68) : la page ne
-            # doit plus l'afficher.
-            pol['quotas']['llm_outil_tours_max'] = 12
-            snapshot_policy(conn, pol, applied_by='owner_init')
-            conn.commit()
-        finally:
-            conn.close()
-
     def _page_policy(self):
-        self._fixtures()
         page = self._auth_context().new_page()
         self._watch_errors(page)
         page.goto(f'{self.base}/owner#/policy')
@@ -66,18 +43,11 @@ class McPolicyTests(McBrowserCase):
         from playwright.sync_api import expect
 
         page = self._page_policy()
-        expect(
-            page.locator('[data-section="politique_active"]')
-        ).to_contain_text('Argent')
-        expect(
-            page.locator('[data-section="politique_active"]')
-        ).to_contain_text('Plafond du mois')
-        expect(
-            page.locator('[data-section="politique_active"]')
-        ).not_to_contain_text('outil_tours')
-        expect(page.locator('#testing-lock-status')).to_contain_text(
-            'Aucun essai en cours'
-        )
+        regles = page.locator('[data-section="politique_active"]')
+        expect(regles).to_contain_text('Argent')
+        expect(regles).to_contain_text('Plafond du mois')
+        # La taille des essais est une famille comme les autres.
+        expect(regles).to_contain_text('Taille des essais')
         # Retirés (Q68) : rien ne s'en servait.
         expect(
             page.locator('[data-section="trust_candidates"]')
@@ -86,27 +56,59 @@ class McPolicyTests(McBrowserCase):
             0
         )
 
-    def test_testing_edit_ui(self) -> None:
+    def test_enregistrer_puis_remettre_la_valeur_precedente(self) -> None:
         from playwright.sync_api import expect
 
         page = self._page_policy()
-        page.locator('[data-section="testing_froid"]').wait_for(timeout=10000)
-        page.locator('#testing-lock-status[data-etat]').wait_for(timeout=10000)
-        champ = page.locator('input[data-testing="n_smoke_min"]')
-        btn = page.locator('button[data-btn="enregistrer-testing"]')
-        expect(btn).to_be_enabled()
-        champ.click()
-        champ.fill('42')
-        expect(champ).to_have_value('42')
-        with page.expect_response(
-            lambda resp: (
-                '/owner/api/policy/testing' in resp.url
-                and resp.request.method == 'POST'
-            ),
-            timeout=10000,
-        ) as pending:
-            btn.click()
-        self.assertEqual(pending.value.status, 200)
-        expect(page.locator('.toast-succes').last).to_contain_text(
-            'Taille des essais mise à jour.', timeout=10000
+        page.locator(
+            'button.onglet-policy', has_text='Taille des essais'
+        ).click()
+        champ = page.locator(
+            '.champ-policy[data-chemin="testing.n_smoke_min"]'
         )
+        nombre = champ.locator('input[type="number"]')
+        nombre.fill('42')
+        with page.expect_response('**/owner/api/reglage') as pending:
+            champ.get_by_role('button', name='Enregistrer').click()
+        self.assertEqual(pending.value.status, 200)
+        remettre = champ.get_by_role('button', name='Remettre 30')
+        expect(remettre).to_be_visible(timeout=10000)
+        expect(nombre).to_have_value('42')
+        with page.expect_response('**/owner/api/reglage/precedent') as pending:
+            remettre.click()
+        self.assertEqual(pending.value.status, 200)
+        expect(champ.get_by_role('button', name='Remettre 42')).to_be_visible(
+            timeout=10000
+        )
+        expect(nombre).to_have_value('30')
+
+    def test_famille_verrouillee_pendant_un_essai(self) -> None:
+        from playwright.sync_api import expect
+
+        conn = open_db(self.db_path)
+        try:
+            conn.execute(
+                'INSERT INTO campaigns(id, venture_id, family, channel, state,'
+                ' n_target, created_at, updated_at)'
+                " VALUES('c1', 'v1', 'named', 'email', 'RUNNING', 10, 't', 't')"
+            )
+            conn.commit()
+        finally:
+            conn.close()
+        page = self._page_policy()
+        page.locator(
+            'button.onglet-policy', has_text='Taille des essais'
+        ).click()
+        expect(page.locator('[data-verrou="testing"]')).to_contain_text(
+            'Un essai tourne'
+        )
+        champ = page.locator(
+            '.champ-policy[data-chemin="testing.n_smoke_min"]'
+        )
+        expect(
+            champ.get_by_role('button', name='Enregistrer')
+        ).to_be_disabled()
+
+
+if __name__ == '__main__':
+    unittest.main()

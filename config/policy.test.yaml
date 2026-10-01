@@ -1,7 +1,9 @@
-# Policy de test live-prudent (B8 acté). Surcharge policy.yaml
-# quand SERGE_ENV=test. Tous les boutons au plancher.
-# Allowlist = variables d'environnement (.env.test, JAMAIS commité).
-schema_version: 1
+# Les valeurs de départ en test (SERGE_ENV=test) : elles remplacent celles
+# de policy.yaml, avec des plafonds au plancher, pour le test réel avec une
+# clé. Seules les valeurs changent ; titres, aides et bornes viennent de
+# policy.yaml. La liste des adresses permises est dans les variables
+# d'environnement (.env.test, jamais commité).
+schema_version: 2
 extends: policy.yaml
 
 budget:

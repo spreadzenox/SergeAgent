@@ -169,12 +169,6 @@ discutable, qui peut un jour changer, se règle depuis Mission Control.**
     aucune fonction en marche ne l'appelle aujourd'hui) ;
   - lot 12 (web) : le plafond du navigateur, les recherches en mémoire par
     cycle.
-- [ ] **Les réglages généraux dans une table en base** (PR B), avec pour
-  chacun sa valeur, son titre, son aide et ses bornes. Mission Control les
-  affiche sans catalogue écrit dans le code. Chaque réglage garde sa
-  valeur précédente (qui, quand) : un bouton « Remettre la valeur
-  précédente » ; pas d'historique complet (Q68, point 7). Les valeurs en
-  vigueur sur le serveur sont reprises, pas celles du fichier.
 - [ ] **Les chiffres discutables du code deviennent des réglages** :
   appels au modèle (attente, nouveaux essais, pauses), lecture du web
   (longueur d'une ligne, taille et temps de lecture d'une page, résultats
@@ -182,10 +176,13 @@ discutable, qui peut un jour changer, se règle depuis Mission Control.**
   filtres de la recommandation de modèle.
 - [ ] **Les textes envoyés au modèle en base**, modifiables sur la page
   Pipeline, à côté de « Qui est Serge ».
-- [ ] **Réorganiser les pages.** Pipeline : le modèle de chaque niveau et
-  les filtres de la recommandation, les appels, les textes envoyés au
-  modèle. Policy : les limites de Serge face au monde, avec les réglages
-  des invocations et les quotas des tables.
+- [ ] **Réorganiser la page Pipeline** (PR C) : le modèle de chaque
+  niveau et les filtres de la recommandation, les appels au modèle (dont
+  la taille maximale d'un résultat d'outil et les nouveaux essais d'une
+  réponse mal formée, aujourd'hui dans la famille « Plafonds par canal »
+  de la page Policy), les textes envoyés au modèle. La page Policy est
+  faite : les réglages généraux sont en base, par famille, et chacun garde
+  sa valeur précédente (la PR B).
 - La voix n'est pas dans ce chantier : le lot 8 la règle en base comme une
   invocation (aujourd'hui, 3 minutes d'appel dans le code contre 10 dans
   la policy).

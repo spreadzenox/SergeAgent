@@ -1,6 +1,6 @@
-// Contrôles Policy : curseur, oui/non, jours, plages, listes.
-
-import {CANAUX, JOURS, SECTIONS, specDe} from './policy_champs.js';
+// Contrôles Policy : curseur, liste, choix multiples, plages, nombres.
+// Chaque réglage arrive décrit par la base (spec) : titre, aide, sorte
+// (widget), bornes (min, max, pas) et choix. Aucun catalogue ici.
 
 export function el(tag, classe, texte) {
   const node = document.createElement(tag);
@@ -11,33 +11,6 @@ export function el(tag, classe, texte) {
     node.textContent = texte;
   }
   return node;
-}
-
-function aplatir(obj, prefix, acc) {
-  if (obj === null || typeof obj !== 'object' || Array.isArray(obj)) {
-    acc.push([prefix, obj]);
-    return;
-  }
-  for (const [k, v] of Object.entries(obj)) {
-    const next = prefix ? `${prefix}.${k}` : k;
-    if (v && typeof v === 'object' && !Array.isArray(v)) {
-      aplatir(v, next, acc);
-    } else {
-      acc.push([next, v]);
-    }
-  }
-}
-
-export function poser(cible, chemin, val) {
-  const parts = chemin.split('.');
-  let cur = cible;
-  for (let i = 0; i < parts.length - 1; i += 1) {
-    if (!(parts[i] in cur) || typeof cur[parts[i]] !== 'object') {
-      cur[parts[i]] = {};
-    }
-    cur = cur[parts[i]];
-  }
-  cur[parts[parts.length - 1]] = val;
 }
 
 function cadre(chemin, spec) {
@@ -117,25 +90,10 @@ function champCurseur(chemin, spec, val, fmt) {
   return wrap;
 }
 
-function champOuiNon(chemin, spec, val) {
-  const wrap = cadre(chemin, spec);
-  const lab = el('label', 'switch-policy');
-  const box = el('input');
-  box.type = 'checkbox';
-  box.checked = Boolean(val);
-  lab.append(box, el('span', 'switch-piste'), el('span', 'switch-texte', val ? 'Oui' : 'Non'));
-  box.addEventListener('change', () => {
-    lab.querySelector('.switch-texte').textContent = box.checked ? 'Oui' : 'Non';
-  });
-  wrap.append(lab);
-  wrap._lire = () => box.checked;
-  return wrap;
-}
-
 function champListe(chemin, spec, val) {
   const wrap = cadre(chemin, spec);
   const sel = el('select', 'select-policy');
-  const choix = spec.choix || [];
+  const choix = [...(spec.choix || [])];
   const cur = String(val ?? '');
   if (cur && !choix.includes(cur)) {
     choix.unshift(cur);
@@ -151,43 +109,25 @@ function champListe(chemin, spec, val) {
   return wrap;
 }
 
-function champJours(chemin, spec, val) {
+// Plusieurs choix parmi ceux du réglage (canaux, jours) : chaque choix est
+// [valeur, libellé] ; on montre le libellé, on lit la valeur.
+function champChoix(chemin, spec, val) {
   const wrap = cadre(chemin, spec);
   const pris = new Set(Array.isArray(val) ? val : []);
   const grille = el('div', 'jours-policy');
   const cases = [];
-  for (const [id, lib] of JOURS) {
+  for (const [id, lib] of spec.choix || []) {
     const lab = el('label', 'puce-choix');
     const box = el('input');
     box.type = 'checkbox';
     box.checked = pris.has(id);
-    box.dataset.jour = id;
+    box.dataset.choix = id;
     lab.append(box, el('span', '', lib));
     grille.append(lab);
     cases.push(box);
   }
   wrap.append(grille);
-  wrap._lire = () => cases.filter((c) => c.checked).map((c) => c.dataset.jour);
-  return wrap;
-}
-
-function champCanaux(chemin, spec, val) {
-  const wrap = cadre(chemin, spec);
-  const pris = new Set(Array.isArray(val) ? val : []);
-  const grille = el('div', 'jours-policy');
-  const cases = [];
-  for (const [id, lib] of CANAUX) {
-    const lab = el('label', 'puce-choix');
-    const box = el('input');
-    box.type = 'checkbox';
-    box.checked = pris.has(id);
-    box.dataset.canal = id;
-    lab.append(box, el('span', '', lib));
-    grille.append(lab);
-    cases.push(box);
-  }
-  wrap.append(grille);
-  wrap._lire = () => cases.filter((c) => c.checked).map((c) => c.dataset.canal);
+  wrap._lire = () => cases.filter((c) => c.checked).map((c) => c.dataset.choix);
   return wrap;
 }
 
@@ -244,16 +184,6 @@ function champNombres(chemin, spec, val) {
   return wrap;
 }
 
-function champPaire(chemin, spec, val) {
-  const wrap = cadre(chemin, spec);
-  const [a, b] = Array.isArray(val) ? val : [spec.min ?? 0, spec.max ?? 100];
-  const bas = curseur(spec, a, fmtBrut);
-  const haut = curseur(spec, b, fmtBrut);
-  wrap.append(el('p', 'mini-lib', 'Bas'), bas.box, el('p', 'mini-lib', 'Haut'), haut.box);
-  wrap._lire = () => [bas.lire(), haut.lire()];
-  return wrap;
-}
-
 function champNombre(chemin, spec, val) {
   const wrap = cadre(chemin, spec);
   const input = el('input', 'texte-policy');
@@ -273,35 +203,22 @@ function champNombre(chemin, spec, val) {
   return wrap;
 }
 
-function champTexte(chemin, spec, val) {
-  const wrap = cadre(chemin, spec);
-  const input = el('input', 'texte-policy');
-  input.type = 'text';
-  input.value = typeof val === 'string' ? val : JSON.stringify(val);
-  wrap.append(input);
-  wrap._lire = () => input.value;
-  return wrap;
-}
-
 const FABRIQUES = {
   eur: (c, s, v) => champCurseur(c, s, v, fmtEur),
   pct: (c, s, v) => champCurseur(c, s, v, fmtPct),
   curseur: (c, s, v) => champCurseur(c, s, v, fmtBrut),
   heure: (c, s, v) => champCurseur(c, s, v, fmtHeure),
   nombre: champNombre,
-  ouinon: champOuiNon,
   liste: champListe,
-  jours: champJours,
-  canaux: champCanaux,
+  jours: champChoix,
+  canaux: champChoix,
   fenetres: champFenetres,
   nombres: champNombres,
-  paire: champPaire,
-  texte: champTexte,
 };
 
-export function champPolicy(chemin, val) {
-  const spec = specDe(chemin, val);
-  const fabrique = FABRIQUES[spec.widget] || champTexte;
+// Le champ d'un réglage ; il lit sa valeur avec node._lire().
+export function champPolicy(chemin, spec, val) {
+  const fabrique = FABRIQUES[spec.widget] || champNombre;
   const node = fabrique(chemin, spec, val);
   node.querySelectorAll('input,select,textarea').forEach((field, i) => {
     field.setAttribute('aria-label', `${spec.titre}${i ? ` · ${i + 1}` : ''}`);
@@ -309,46 +226,24 @@ export function champPolicy(chemin, val) {
   return node;
 }
 
-export function feuillesPolicy(pol) {
-  const plats = [];
-  for (const [secNom, secVal] of Object.entries(pol)) {
-    if (secNom === 'schema_version' || typeof secVal !== 'object') {
-      continue;
-    }
-    aplatir(secVal, secNom, plats);
+// Une valeur en clair, comme dans son champ : « 50 € », « 25 % »,
+// « 23:00 → 08:00 », « Voix, SMS ».
+export function formatValeur(spec, val) {
+  if (spec.widget === 'eur') {
+    return fmtEur(val);
   }
-  return plats;
-}
-
-export function grouperFeuilles(plats) {
-  const groupes = new Map();
-  for (const [chemin, val] of plats) {
-    const sec = chemin.split('.')[0];
-    if (!groupes.has(sec)) {
-      groupes.set(sec, []);
-    }
-    groupes.get(sec).push([chemin, val]);
+  if (spec.widget === 'pct') {
+    return fmtPct(val);
   }
-  const ordre = Object.keys(SECTIONS);
-  const cles = [...groupes.keys()].sort((a, b) => {
-    const ia = ordre.indexOf(a);
-    const ib = ordre.indexOf(b);
-    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
-  });
-  return cles.map((id) => ({
-    id,
-    titre: (SECTIONS[id] && SECTIONS[id].titre) || id,
-    pourquoi: (SECTIONS[id] && SECTIONS[id].pourquoi) || '',
-    champs: groupes.get(id),
-  }));
-}
-
-export function lirePolicy(conteneur, base) {
-  const out = structuredClone(base);
-  conteneur.querySelectorAll('.champ-policy').forEach((node) => {
-    if (typeof node._lire === 'function') {
-      poser(out, node.dataset.chemin, node._lire());
-    }
-  });
-  return out;
+  if (spec.widget === 'heure') {
+    return fmtHeure(val);
+  }
+  if (spec.widget === 'fenetres' && Array.isArray(val)) {
+    return val.map(([h1, m1, h2, m2]) => `${versHeure(h1, m1)} → ${versHeure(h2, m2)}`).join(', ');
+  }
+  if (Array.isArray(val)) {
+    const libelles = new Map((spec.choix || []).filter(Array.isArray));
+    return val.map((v) => libelles.get(v) || String(v)).join(', ') || '(aucun)';
+  }
+  return String(val);
 }

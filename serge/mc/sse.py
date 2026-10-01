@@ -19,7 +19,7 @@ from serge.mc.projectors import (
     SnapshotCache,
     sig,
 )
-from serge.policy_snapshots import policy_en_vigueur
+from serge.policy_store import policy_en_vigueur
 
 
 def format_event(

@@ -32,7 +32,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from serge.db.store import default_canon_path, open_db  # noqa: E402
 from serge.policy import PolicyError  # noqa: E402
-from serge.policy_snapshots import policy_en_vigueur  # noqa: E402
+from serge.policy_store import policy_en_vigueur  # noqa: E402
 from serge.sms.inbox import SmsBrokerDenied, SmsInbox  # noqa: E402
 
 DEFAULT_LISTEN = '127.0.0.1:8787'

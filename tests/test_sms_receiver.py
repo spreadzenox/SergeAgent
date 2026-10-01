@@ -16,10 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from serge.db.store import open_db  # noqa: E402
-from serge.policy_snapshots import (  # noqa: E402
-    policy_en_vigueur,
-    snapshot_policy,
-)
+from serge.policy_store import set_setting  # noqa: E402
 from serge.sms import SmsInbox  # noqa: E402
 from serge.sms.receiver import (  # noqa: E402
     RateLimiter,
@@ -178,12 +175,10 @@ class SmsReceiverTests(unittest.TestCase):
         # Le chiffre changé dans Mission Control vaut pour le SMS suivant.
         canon = Path(self.tmp.name) / 'serge.db'
         with closing(open_db(canon)) as conn:
-            policy = policy_en_vigueur(conn)
             conn.commit()
         self.assertEqual(read_limits(canon), (60, 10))
-        policy['quotas']['sms_per_sender_per_min'] = 1
         with closing(open_db(canon)) as conn:
-            snapshot_policy(conn, policy)
+            set_setting(conn, 'quotas.sms_per_sender_per_min', 1, 'mc')
             conn.commit()
         limits = read_limits(canon)
         self.assertEqual(limits, (60, 1))

@@ -35,7 +35,7 @@ from serge.mc.proj_public import project_public_statut
 from serge.mc.projectors import PAGE_SECTIONS, SnapshotCache
 from serge.mc.sse import state_payload, stream_page
 from serge.policy import PolicyError
-from serge.policy_snapshots import policy_en_vigueur
+from serge.policy_store import policy_en_vigueur
 
 STATIC_TYPES = {
     '.html': 'text/html; charset=utf-8',
@@ -61,7 +61,6 @@ class McConfig:
     static_dir: Path
     templates_dir: Path
     limiter: RateLimiter
-    policy_dir: Path | None = None
 
 
 class McHandler(
@@ -135,7 +134,7 @@ class McHandler(
     def _policy(self) -> dict | None:
         try:
             with self._db() as conn:
-                return policy_en_vigueur(conn, self.app_config.policy_dir)
+                return policy_en_vigueur(conn)
         except PolicyError:
             return None
 
@@ -306,7 +305,7 @@ class McHandler(
                 {
                     'erreur': 'Policy illisible.',
                     'code': 'policy',
-                    'aide': 'Vérifie le dernier snapshot policy du canon.',
+                    'aide': 'Vérifie les réglages généraux en base (policy_settings).',
                 },
             )
             return None
@@ -361,9 +360,8 @@ class McHandler(
             '/owner/api/ticket/item': self._api_ticket_item,
             '/owner/api/ticket/discuter': self._api_ticket_discuter,
             '/owner/api/memory/lesson': self._api_memory_lesson,
-            '/owner/api/policy/edit': self._api_policy_edit,
-            '/owner/api/policy/testing': self._api_policy_testing,
             '/owner/api/reglage': self._api_reglage,
+            '/owner/api/reglage/precedent': self._api_reglage_precedent,
             '/owner/api/coupe': self._api_coupe,
             '/owner/api/etape': self._api_etape,
             '/owner/api/bouton': self._api_bouton,

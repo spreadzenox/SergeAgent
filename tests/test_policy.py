@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
-"""Policy loader: base + overlay test, validée. Fail-closed."""
+"""Le fichier de départ des réglages généraux : lu, vérifié, et chaque
+réglage lu par un programme (décision Q68)."""
 
 from __future__ import annotations
 
 import os
 import re
+import shutil
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -15,18 +18,12 @@ sys.path.insert(0, str(ROOT))
 
 from serge.policy import (  # noqa: E402
     PolicyError,
-    fusionner_semence,
+    Setting,
+    check_value,
     is_test_env,
     load_policy,
-    validate_policy,
+    load_policy_seed,
 )
-
-# Là où un réglage n'est pas « lu » : la vérification et le catalogue de la
-# page Policy (titres et aides).
-NE_LISENT_PAS = {
-    ROOT / 'serge/policy.py',
-    ROOT / 'serge/mc/static/mc/policy_champs.js',
-}
 
 
 def _feuilles(node: dict, chemin: str = ''):
@@ -35,6 +32,10 @@ def _feuilles(node: dict, chemin: str = ''):
             yield from _feuilles(val, f'{chemin}{cle}.')
         else:
             yield f'{chemin}{cle}'
+
+
+def _reglage(kind: str, **autres) -> Setting:
+    return Setting('a.b', 'a', 0, 'B', '', kind, None, **autres)
 
 
 class PolicyTests(unittest.TestCase):
@@ -61,20 +62,44 @@ class PolicyTests(unittest.TestCase):
         # Non surchargé = valeur prod conservée.
         self.assertEqual(policy['budget']['eur_per_usd'], 0.9)
 
-    def test_invalid_policy_refuses(self) -> None:
-        with self.assertRaises(PolicyError):
-            validate_policy({'schema_version': 999})
-        with self.assertRaises(PolicyError):
-            validate_policy({**load_policy(), 'budget': {'monthly_eur': -1}})
-        bad = load_policy()
-        bad['tickets']['digest_hour'] = 'huit'
-        with self.assertRaises(PolicyError):
-            validate_policy(bad)
-        pire = load_policy()
-        pire['standing'] = dict(pire['standing'])
-        pire['standing']['capital_max'] = 0.05
-        with self.assertRaises(PolicyError):
-            validate_policy(pire)
+    def test_chaque_sorte_verifie_sa_valeur(self) -> None:
+        curseur = _reglage('curseur', min=0, max=200)
+        self.assertEqual(check_value(curseur, 40), '')
+        self.assertEqual(check_value(curseur, 2.5), 'un nombre entier attendu')
+        self.assertEqual(check_value(curseur, 250), 'au plus 200')
+        for faux in (float('nan'), float('inf'), True, '40'):
+            self.assertEqual(check_value(curseur, faux), 'un nombre attendu')
+        canaux = _reglage(
+            'canaux', choices=(['voice', 'Voix'], ['sms', 'SMS'])
+        )
+        self.assertEqual(check_value(canaux, ['sms']), '')
+        self.assertIn('choix', check_value(canaux, ['fax']))
+        self.assertEqual(
+            check_value(_reglage('fenetres'), [[23, 0, 8, 0]]), ''
+        )
+        self.assertIn(
+            'minute', check_value(_reglage('fenetres'), [[23, 0, 8, 75]])
+        )
+        nombres = _reglage('nombres', min=1, max=90)
+        self.assertEqual(check_value(nombres, [7, 14]), '')
+        self.assertEqual(check_value(nombres, [0]), 'au moins 1')
+
+    def test_un_fichier_faux_est_refuse(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            dossier = Path(tmp)
+            texte = (ROOT / 'config/policy.yaml').read_text(encoding='utf-8')
+            shutil.copy(ROOT / 'config/policy.test.yaml', dossier)
+            for avant, apres in (
+                ('value: 50.0', 'value: 900.0'),  # au-delà du maximum
+                ('value: 30\n', 'value: 70\n'),  # petit essai > son plafond
+                ('kind: eur', 'kind: inconnue'),
+                ('schema_version: 2', 'schema_version: 1'),
+            ):
+                (dossier / 'policy.yaml').write_text(
+                    texte.replace(avant, apres, 1), encoding='utf-8'
+                )
+                with self.assertRaises(PolicyError, msg=apres):
+                    load_policy_seed(dossier)
 
     def test_chaque_reglage_est_lu_par_un_programme(self) -> None:
         """Un réglage que rien ne lit ment dans Mission Control (Q68)."""
@@ -84,29 +109,17 @@ class PolicyTests(unittest.TestCase):
             p.read_text(encoding='utf-8')
             for dossier in ('serge', 'kit')
             for p in (ROOT / dossier).rglob('*')
-            if p.suffix in {'.py', '.js'} and p not in NE_LISENT_PAS
+            if p.suffix in {'.py', '.js'}
         ]
         orphelins = [
             chemin
             for chemin in _feuilles(load_policy())
-            if chemin != 'schema_version'
-            and not any(
+            if not any(
                 re.search(rf'\b{re.escape(chemin.split(".")[-1])}\b', s)
                 for s in sources
             )
         ]
         self.assertEqual(orphelins, [])
-
-    def test_un_reglage_retire_disparait_d_un_ancien_snapshot(self) -> None:
-        ancien = load_policy()
-        ancien['quotas']['llm_outil_tours_max'] = 12
-        ancien['cooldowns'] = {'inbound_silence_days': 7}
-        ancien['budget']['llm_daily_eur'] = 9.0
-        fusion = fusionner_semence(ancien)
-        self.assertNotIn('llm_outil_tours_max', fusion['quotas'])
-        self.assertNotIn('cooldowns', fusion)
-        # Une valeur changée dans Mission Control est gardée.
-        self.assertEqual(fusion['budget']['llm_daily_eur'], 9.0)
 
 
 if __name__ == '__main__':

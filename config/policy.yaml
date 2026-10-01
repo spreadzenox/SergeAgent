@@ -1,63 +1,388 @@
 # Les réglages généraux de Serge, ceux qui ne concernent aucune invocation.
-# Ce fichier remplit une nouvelle instance ; ensuite, la policy en vigueur
-# est en base, et Mission Control (page Policy) la modifie, jamais ce
-# fichier. Chaque réglage d'ici est lu par au moins un programme (test).
-schema_version: 1
+#
+# Ce fichier remplit une nouvelle instance. Ensuite, les réglages sont en
+# base (tables policy_sections, policy_settings, policy_relations) et se
+# changent dans Mission Control, page Policy : ce fichier n'écrase jamais
+# une valeur déjà en base. Un réglage nouveau s'ajoute tout seul ; changer
+# un réglage qui existe déjà passe par la section « changes » (une fois,
+# et seulement s'il n'a pas été changé dans Mission Control) ; un réglage
+# retiré est listé dans « deleted ».
+#
+# Chaque réglage : sa valeur, son titre et son aide (affichés tels quels),
+# sa sorte (kind), ses bornes et ses choix :
+# - eur, pct, nombre : un nombre entre min et max (pct : 0,25 = 25 %) ;
+# - curseur, heure : un nombre entier entre min et max ;
+# - liste : une valeur parmi « choices » ;
+# - canaux, jours : plusieurs valeurs parmi « choices » ([valeur, libellé]) ;
+# - fenetres : des plages horaires [h, min, h, min] ;
+# - nombres : une liste de nombres entiers entre min et max.
+# Chaque réglage d'ici est lu par au moins un programme (un test le vérifie).
+schema_version: 2
 
-budget:
-  monthly_eur: 50.0                # ce que Serge nous coûte par mois (IA)
-  llm_daily_eur: 5.0               # ce que les modèles coûtent par jour
-  eur_per_usd: 0.9                 # 1 $ en € : OpenRouter facture en dollars
+sections:
+  - id: budget
+    title: Argent
+    why: Combien Serge a le droit de dépenser. Au-delà, il s’arrête.
+    settings:
+      - id: monthly_eur
+        value: 50.0
+        title: Plafond du mois
+        help: >-
+          Ce que Serge nous coûte en IA ce mois-ci (coût réel des modèles).
+          Au-delà, plus aucune tâche n’appelle de modèle jusqu’au mois
+          suivant. Les achats de Serge pour ses business n’y comptent pas.
+        kind: eur
+        min: 0
+        max: 500
+        step: 1
+      - id: llm_daily_eur
+        value: 5.0
+        title: Modèles, par jour
+        help: >-
+          Ce que les appels aux modèles coûtent aujourd’hui (coût réel).
+          Au-delà, plus aucune tâche n’appelle de modèle jusqu’au lendemain.
+        kind: eur
+        min: 0
+        max: 50
+        step: 0.5
+      - id: eur_per_usd
+        value: 0.9
+        title: Un dollar en euros
+        help: >-
+          OpenRouter facture en dollars : ce taux convertit le coût réel des
+          appels pour les plafonds du jour et du mois.
+        kind: eur
+        min: 0.5
+        max: 1.5
+        step: 0.01
 
-quotas:
-  email_per_mailbox_per_day: 40
-  voice_max_calls_per_day: 50       # ex-TOML (B4, fallback transitoire)
-  sms_per_sender_per_min: 10        # SMS reçus : anti-rafale par expéditeur
-  sms_global_per_min: 60            # SMS reçus : toutes lignes confondues
-  llm_recalls_json: 2              # nouveaux essais d'une réponse mal formée
-  llm_outil_resultat_max_caracteres: 20000  # au-delà, un résultat d'outil est coupé
-  linkedin_connect_per_day: 20
+  - id: quotas
+    title: Plafonds par canal
+    why: >-
+      Combien de messages, appels ou invitations, pour ne pas spammer, et
+      combien de fois on redemande une réponse au modèle.
+    settings:
+      - id: email_per_mailbox_per_day
+        value: 40
+        title: E-mails par boîte, par jour
+        help: Le compteur du jour est sur la page En direct.
+        kind: curseur
+        min: 0
+        max: 200
+        step: 1
+      - id: voice_max_calls_per_day
+        value: 50
+        title: Appels par jour
+        help: Plafond d’appels sortants. Le compteur du jour est sur En direct.
+        kind: curseur
+        min: 0
+        max: 200
+        step: 1
+      - id: sms_per_sender_per_min
+        value: 10
+        title: SMS reçus par expéditeur, par minute
+        help: Anti-rafale sur les SMS reçus. Au-delà, le SMS est refusé.
+        kind: curseur
+        min: 1
+        max: 30
+        step: 1
+      - id: sms_global_per_min
+        value: 60
+        title: SMS reçus au total, par minute
+        help: Toutes les lignes confondues. Au-delà, le SMS est refusé.
+        kind: curseur
+        min: 1
+        max: 120
+        step: 1
+      - id: llm_outil_resultat_max_caracteres
+        value: 20000
+        title: Taille maximale d’un résultat d’outil
+        help: >-
+          En caractères. Au-delà, le résultat est coupé avant d’être renvoyé
+          au modèle : il repart à chaque tour, et coûte à chaque fois.
+        kind: curseur
+        min: 1000
+        max: 100000
+        step: 1000
+      - id: llm_recalls_json
+        value: 2
+        title: Nouveaux essais si la réponse est mal formée
+        help: >-
+          Combien de fois on redemande au modèle une réponse au bon format,
+          sans outil.
+        kind: curseur
+        min: 0
+        max: 5
+        step: 1
+      - id: linkedin_connect_per_day
+        value: 20
+        title: Invitations LinkedIn par jour
+        help: Le compteur du jour est sur la page En direct.
+        kind: curseur
+        min: 0
+        max: 80
+        step: 1
 
-windows:
-  timezone: Europe/Paris
-  quiet_hours: [[23, 0, 8, 0]]       # notifs (GUICHET TTL<15min passe)
+  - id: windows
+    title: Horaires
+    why: Quand on a le droit de parler aux gens, et quand on se tait.
+    settings:
+      - id: timezone
+        value: Europe/Paris
+        title: Fuseau
+        help: >-
+          Les heures des déclencheurs et du résumé du jour sont lues dans ce
+          fuseau.
+        kind: liste
+        choices: [Europe/Paris, Europe/Brussels, Europe/London, UTC]
+      - id: quiet_hours
+        value: [[23, 0, 8, 0]]
+        title: Heures silencieuses
+        help: Pas de notification Discord, sauf un guichet qui expire très vite.
+        kind: fenetres
 
-calling_zones:                       # une zone = un pays
-  default: FR
-  FR:
-    contact_per_30d: 4               # contacts max par personne sur 30 jours (légal)
+  - id: calling_zones
+    title: Pays et appels
+    why: Les règles légales changent selon le pays.
+    settings:
+      - id: default
+        value: FR
+        title: Pays par défaut
+        help: Si on ne sait pas où est la personne.
+        kind: liste
+        choices: [FR]
+      - id: FR.contact_per_30d
+        value: 4
+        title: Prises de contact au plus, par personne, sur 30 jours (France)
+        help: Règle légale en France.
+        kind: curseur
+        min: 1
+        max: 8
+        step: 1
 
-standing:
-  cout_usage: 0.10                   # débit à chaque acte
-  gain_par_heure: 0.02               # crédit à l’inutilisation
-  idle_apres_heures: 1.0             # rien ne remonte avant ça
-  capital_min: 0.20                  # en dessous = refus
-  capital_max: 1.0
+  - id: consent
+    title: Accord des gens
+    why: Sur quels canaux il faut un oui explicite avant d’écrire ou d’appeler.
+    settings:
+      - id: opt_in_channels
+        value: [voice, sms, whatsapp]
+        title: Canaux où il faut un oui explicite
+        help: Sur les autres, on peut écrire, et la personne peut se retirer.
+        kind: canaux
+        choices:
+          - [voice, Voix]
+          - [sms, SMS]
+          - [whatsapp, WhatsApp]
+          - [email, E-mail]
 
-voice:
-  quality_window: 10                 # 2 appels ≤2/5 sur 10 → pause (F4c)
-  quality_min_score: 2
-  quality_max_bad: 2
+  - id: testing
+    title: Taille des essais
+    why: >-
+      Combien de personnes un essai touche, et quand on l’arrête ou on
+      l’élargit.
+    locked_while:
+      table: campaigns
+      column: state
+      value: RUNNING
+      reason: Un essai tourne, on ne change pas sa taille en cours de route.
+    settings:
+      - id: n_smoke_min
+        value: 30
+        title: Petit essai, personnes touchées
+        help: Le nombre de personnes d’un petit essai.
+        kind: curseur
+        min: 1
+        max: 500
+        step: 1
+      - id: n_smoke_max
+        value: 50
+        title: Petit essai, personnes au plus
+        help: Le petit essai ne dépasse jamais ce nombre.
+        kind: curseur
+        min: 1
+        max: 500
+        step: 1
+      - id: n_full_min
+        value: 150
+        title: Grand essai, personnes au moins
+        help: Le grand essai ne descend jamais sous ce nombre.
+        kind: curseur
+        min: 10
+        max: 5000
+        step: 10
+      - id: n_full_target
+        value: 200
+        title: Grand essai, personnes touchées
+        help: Le nombre de personnes d’un grand essai.
+        kind: curseur
+        min: 10
+        max: 5000
+        step: 10
+      - id: kill_max_positives
+        value: 1
+        title: Arrêt, réponses positives au plus
+        help: Un grand essai qui n’a pas plus de réponses positives est arrêté.
+        kind: curseur
+        min: 0
+        max: 20
+        step: 1
+      - id: scale_min_positives
+        value: 5
+        title: Élargir, réponses positives au moins
+        help: Il en faut au moins autant pour passer à un essai plus grand.
+        kind: curseur
+        min: 1
+        max: 50
+        step: 1
+      - id: scale_min_meetings
+        value: 2
+        title: Élargir, rendez-vous au moins
+        help: Il en faut au moins autant pour passer à un essai plus grand.
+        kind: curseur
+        min: 1
+        max: 20
+        step: 1
+      - id: extend_max
+        value: 1
+        title: Prolongations au plus
+        help: Combien de fois un essai peut être prolongé.
+        kind: curseur
+        min: 1
+        max: 5
+        step: 1
 
-collect:
-  refund_auto_max_eur: 5.0
-  dunning_days: [7, 14]
+  - id: standing
+    title: Santé des comptes
+    why: >-
+      Un capital qui baisse à l’usage et remonte au repos. En dessous du
+      plancher, l’acte est refusé.
+    settings:
+      - id: cout_usage
+        value: 0.10
+        title: Coût d’un acte
+        help: Retiré du capital après chaque usage.
+        kind: pct
+        min: 0
+        max: 1
+        step: 0.01
+      - id: gain_par_heure
+        value: 0.02
+        title: Gain par heure de repos
+        help: Quand le compte ne sert pas, le capital remonte de ce pas.
+        kind: pct
+        min: 0
+        max: 1
+        step: 0.01
+      - id: idle_apres_heures
+        value: 1
+        title: Heures avant que ça remonte
+        help: Rien ne remonte tant que ce délai n’est pas passé.
+        kind: curseur
+        min: 0
+        max: 48
+        step: 1
+      - id: capital_min
+        value: 0.20
+        title: Plancher pour agir
+        help: En dessous, l’acte est refusé.
+        kind: pct
+        min: 0
+        max: 1
+        step: 0.05
+      - id: capital_max
+        value: 1.0
+        title: Plafond du capital
+        help: Le repos ne le fait jamais dépasser.
+        kind: pct
+        min: 0
+        max: 1
+        step: 0.05
 
-memory:
-  episode_archive_days: 30
+  - id: voice
+    title: Téléphone
+    why: La qualité des appels, et quand on les coupe.
+    settings:
+      - id: quality_window
+        value: 10
+        title: Fenêtre pour juger la qualité
+        help: Le nombre de derniers appels regardés.
+        kind: curseur
+        min: 3
+        max: 30
+        step: 1
+      - id: quality_min_score
+        value: 2
+        title: Note d’un mauvais appel
+        help: Sur 5. Un appel noté autant ou moins est mauvais.
+        kind: curseur
+        min: 1
+        max: 5
+        step: 1
+      - id: quality_max_bad
+        value: 2
+        title: Mauvais appels au plus dans la fenêtre
+        help: Au-delà, les appels sont mis en pause.
+        kind: curseur
+        min: 1
+        max: 8
+        step: 1
 
-tickets:
-  digest_hour: 8                     # digest quotidien (Europe/Paris)
+  - id: collect
+    title: Encaissement
+    why: Les relances de paiement et les petits remboursements.
+    settings:
+      - id: refund_auto_max_eur
+        value: 5.0
+        title: Remboursement sans te demander, au plus
+        help: Au-dessus, c’est toi qui décides.
+        kind: eur
+        min: 0
+        max: 50
+        step: 0.5
+      - id: dunning_days
+        value: [7, 14]
+        title: Jours de relance d’un paiement
+        help: Par exemple 7, 14 pour une relance 7 jours puis 14 jours après.
+        kind: nombres
+        min: 1
+        max: 90
 
-consent:
-  opt_in_channels: [voice, sms, whatsapp]  # opt-in requis, autres = opt-out
+  - id: memory
+    title: Mémoire
+    why: Ce qu’on garde au quotidien, et ce qu’on archive.
+    settings:
+      - id: episode_archive_days
+        value: 30
+        title: Jours avant d’archiver un épisode
+        help: Le détail brut quitte le quotidien.
+        kind: curseur
+        min: 7
+        max: 180
+        step: 1
 
-testing:                             # taille des essais (semence ; MC à froid)
-  n_smoke_min: 30
-  n_smoke_max: 50
-  n_full_min: 150
-  n_full_target: 200
-  kill_max_positives: 1
-  scale_min_positives: 5
-  scale_min_meetings: 2
-  extend_max: 1
+  - id: tickets
+    title: Tes questions
+    why: À quelle heure arrive le résumé du jour.
+    settings:
+      - id: digest_hour
+        value: 8
+        title: Heure du résumé du jour
+        help: Dans le fuseau des horaires.
+        kind: heure
+        min: 0
+        max: 23
+        step: 1
+
+# « tel réglage ≤ tel autre » (« < » : strictement plus petit).
+relations:
+  - [standing.capital_min, '<=', standing.capital_max]
+  - [testing.n_smoke_min, '<=', testing.n_smoke_max]
+  - [testing.n_full_min, '<=', testing.n_full_target]
+  - [testing.kill_max_positives, '<', testing.scale_min_positives]
+
+# Changer un réglage déjà en base : même format que dans pipeline.yaml, sur
+# la table policy_settings (une valeur s'écrit en JSON, par exemple 25.0).
+changes: []
+
+# Les réglages retirés de ce fichier, effacés aussi de la base.
+deleted: []

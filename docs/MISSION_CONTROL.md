@@ -39,7 +39,7 @@ navigateur au fil de l'eau.
 | **Cerveau** | `#/mind` | Pensées, décisions récentes, tableau de toutes les invocations en base (niveau, file, priorité, usage sur 7 jours), signaux entrants. | Ouvrir la fiche d'une invocation, l'éteindre ou la rallumer. |
 | **Décisions** | `#/tickets` | Les tickets à trancher, ce qui a changé, le rythme des décisions, le résumé quotidien. | Répondre à un ticket (boutons du registre, y compris QCM et réponse libre), discuter plusieurs fois et lire les messages. Les tickets actifs sont tous présents ; les 50 derniers clos complètent la liste. |
 | **Mémoire** | `#/memory` | Épisodes archivés, procédures, pièges, leçons, dernière consolidation, demandes de nouvelles capacités. | Chercher dans la mémoire ; ouvrir une leçon pour la modifier ou la jeter. Les propositions de leçons sont dans Décisions et ouvrent leur ticket pour garder, modifier ou jeter chaque proposition. |
-| **Policy** | `#/policy` | Les réglages généraux (argent, plafonds par canal, horaires, pays, santé des comptes, téléphone, encaissement, mémoire, résumé du jour, accord des gens), la taille des essais, et les réglages des invocations et les quotas des tables marqués « policy », rangés par étape et par invocation. Chaque réglage affiché est lu par un programme : un test le vérifie. | Modifier une règle et l'enregistrer. Chaque version de la policy générale est gardée ; chaque changement de réglage est noté au journal. |
+| **Policy** | `#/policy` | Les réglages généraux, par famille (argent, plafonds par canal, horaires, pays, accord des gens, taille des essais, santé des comptes, téléphone, encaissement, mémoire, résumé du jour), tels qu'ils sont en base avec leur titre, leur aide et leurs bornes ; puis les réglages des invocations et les quotas des tables marqués « policy », rangés par étape et par invocation. Chaque réglage affiché est lu par un programme : un test le vérifie. | Changer un réglage et l'enregistrer, seul ; « Remettre » sa valeur précédente (le bouton dit laquelle, et son titre qui l'a remplacée et quand). Une famille verrouillée dit pourquoi (un essai tourne). Chaque changement est noté au journal. |
 | **Économie** | `#/economy` | De l'envoi au paiement : touches, réponses, paiements, derniers envois et livrables, abonnements, coût des invocations LLM (le coût réel facturé par OpenRouter, avec les jetons sans coût connu à part). | Lecture. |
 | **Voix** | `#/voice` | L'état du pont téléphonique, le journal des appels, leur qualité. | Écouter un enregistrement. Pour couper les appels : page En direct. |
 | **Health** | `#/health` | Taille du code, services systemd, versions, piste d'audit. | Lecture. |
@@ -211,10 +211,13 @@ Policy ou les conditions d’un bouton d’Écoute. Enregistrer un réglage ne
 supprime pas les brouillons des autres réglages. Une erreur réseau garde
 la saisie et affiche un message visible.
 
-Les tailles des essais sont des entiers cohérents et ne peuvent changer
-pendant une campagne RUNNING, par aucune des deux routes Policy. Les
-réglages numériques des invocations désignent des nombres d’éléments :
-ils refusent les décimales et les valeurs non finies.
+Un réglage général est vérifié avant d’être enregistré : sa sorte (un
+entier, un montant, un choix…), ses bornes, les relations avec les autres
+réglages (le petit essai ne dépasse pas son plafond) et le verrou de sa
+famille (la taille des essais ne change pas pendant une campagne
+RUNNING : refus 409). Les réglages numériques des invocations désignent
+des nombres d’éléments : ils refusent les décimales et les valeurs non
+finies.
 
 « Se déconnecter » révoque la session. Le flux déjà ouvert vérifie sa
 session à chaque tour (toutes les deux secondes) puis se ferme si elle
@@ -243,8 +246,8 @@ Toutes demandent le jeton owner ou une session valide. Les corps JSON sont limit
 | `POST /owner/api/etape` | Allumer ou éteindre une étape. |
 | `POST /owner/api/ticket/acte`, `/ticket/item`, `/ticket/discuter` | Répondre à un ticket. |
 | `POST /owner/api/memory/lesson` | Garder, modifier ou jeter une leçon. |
-| `POST /owner/api/policy/edit`, `/policy/testing` | Modifier la policy. |
-| `POST /owner/api/reglage` | Changer un réglage d'invocation ou un quota marqué « policy » (valeur vérifiée, changement noté au journal). |
+| `POST /owner/api/reglage` | Changer un réglage : général (`{cible: 'policy', id, value}`), d'invocation ou un quota marqué « policy ». La valeur est vérifiée, l'ancienne devient la valeur précédente, le changement est noté au journal. |
+| `POST /owner/api/reglage/precedent` | Remettre la valeur précédente d'un réglage (même corps, sans `value`) ; l'actuelle devient la précédente. |
 | `POST /owner/api/bouton` | Un déclencheur « bouton » : crée la tâche de son invocation, avec les champs du formulaire. Refusé, avec la raison, si l'un de ses quotas est plein. |
 | `POST /owner/api/flux` | Couper ou rallumer un flux RSS suivi (page Écoute). |
 | `POST /owner/api/tache/relancer` | Remettre une tâche échouée dans sa file (bouton « Relancer la tâche » de sa fiche). |
