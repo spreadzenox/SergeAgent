@@ -179,7 +179,9 @@ Aucun test de CI n'agit sur le monde réel.
   change dans Mission Control (validé par Clem, 1er octobre 2026) ». Cela
   ne vaut que pour une vraie question-réponse : un changement décidé sans
   question n'y entre pas. Une décision validée fait foi : le code et la doc
-  s'y conforment.
+  s'y conforment. On ne retire pas une réponse parce que son travail est
+  fait. Si elle devient fausse, on la corrige dans son entrée d'origine,
+  après que Julien ou Clem a dit laquelle fait foi.
 - **Pas d'incohérence, et on ne tranche pas seul.** Quand deux textes se
   contredisent (deux documents, une doc et le code, deux décisions) ou
   qu'une décision n'est pas appliquée, on ne choisit pas soi-même : on le

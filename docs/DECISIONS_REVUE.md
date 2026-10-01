@@ -10,7 +10,8 @@ permanent. Il a commencé avec la revue du projet (septembre 2026).
 
 Seulement après une vraie question-réponse avec Julien ou Clem. Une
 décision prise sans question n'a pas sa place ici. On ajoute l'entrée à la
-fin du fichier, avec le numéro qui suit la dernière :
+fin du fichier, avec le numéro qui suit la dernière (les entrées restent
+dans l'ordre des numéros) :
 
 ```
 ### Q<numéro> — Titre court (validé par Clem, 2 octobre 2026)
@@ -23,8 +24,12 @@ Arguments : pourquoi cette réponse plutôt qu'une autre (si la personne en a do
   « validé par Clem », ou « validé par Clem et Julien », avec la date.
 - **Les arguments** sont notés quand la personne en donne. Sinon on ne les
   invente pas.
-- Si une réponse change une décision plus ancienne, on le dit dans la
-  nouvelle entrée (« remplace Q12 ») ; on ne réécrit pas l'ancienne.
+- On ne retire pas une entrée parce que son travail est fait. Si une
+  réponse devient fausse (le code actuel ou une réponse plus récente la
+  contredit), on la corrige dans son entrée d'origine, après qu'un humain a
+  dit laquelle fait foi. Le texte dit ce qui est vrai maintenant, et on
+  ajoute à la fin de l'entrée : « Corrigé le <date> (Q<numéro>) : ce qui a
+  changé, et pourquoi ».
 
 Plan de travail (Q30) : finir les questions sur les étapes 2 à 8, puis
 corriger par petits lots (un sujet = un commit, tests verts), en relisant ce
@@ -831,6 +836,21 @@ reste. Il n'y a rien à interrompre. Ce qui change :
   modifier en direct le pipeline : le nombre d'invocations, leur ordre,
   leur rôle, leur modèle, ce qu'elles voient.
 
+### Q55 — Nouvel ordre des lots (validé)
+Lots 1 à 5 faits. Ensuite :
+6. Le runner et le pipeline en base : d'abord le runner (une tâche après
+   l'autre, un enregistrement après chaque tâche, deux files), puis les
+   invocations, les liens et les déclencheurs entièrement en base (Q54).
+   Clem et Julien veulent l'attaquer ensemble.
+7. Étape 1.
+8. Conversations (fil, traiter une réponse, fiche produit, tickets, délais
+   par canal, agent vocal).
+9. Grille de points.
+10. Étapes 2 et 5.
+11. Étapes 3, 4, 6, 7, 8.
+12. Web.
+13. L'éditeur sans code dans MC.
+
 ### Q56 — Jamais de code propre à une invocation, même pour écrire (validé par Clem)
 - On doit pouvoir créer une invocation de toutes pièces depuis MC, à terme,
   donc depuis la base. Le code est un interpréteur très paramétrique, sans
@@ -918,21 +938,6 @@ reste. Il n'y a rien à interrompre. Ce qui change :
    les outils de qualité, et le test « aucun nom d'invocation dans le
    code » l'ignore.
 
-### Q55 — Nouvel ordre des lots (validé)
-Lots 1 à 5 faits. Ensuite :
-6. Le runner et le pipeline en base : d'abord le runner (une tâche après
-   l'autre, un enregistrement après chaque tâche, deux files), puis les
-   invocations, les liens et les déclencheurs entièrement en base (Q54).
-   Clem et Julien veulent l'attaquer ensemble.
-7. Étape 1.
-8. Conversations (fil, traiter une réponse, fiche produit, tickets, délais
-   par canal, agent vocal).
-9. Grille de points.
-10. Étapes 2 et 5.
-11. Étapes 3, 4, 6, 7, 8.
-12. Web.
-13. L'éditeur sans code dans MC.
-
 ### Q60 — Ce que voit une invocation : version courte systématique et « Lire les tables que je vois » (validé par Clem)
 1. Toute invocation reçoit d'office la version courte des tables où elle
    écrit. C'est systématique mais pas écrit dans le code : la base dit,
@@ -959,6 +964,15 @@ générale. Mais ils portent une étiquette « policy » : la page Policy de MC
 cherche en base tous les réglages ainsi marqués et les rend modifiables en
 direct.
 
+### Q62 — Suite du lot 6 (validé par Clem)
+1. Les messages reçus de l'extérieur qui ne lancent pas les déclencheurs
+   (SMS, e-mail, paiements) : plus tard, au lot 8.
+2. Le passage à la main d'un lien est construit (bouton « passer à la
+   suite » dans MC). Il existera à côté de la validation par ticket
+   Discord du lot 8 : les deux fonctionnements servent.
+3. Pas de réglage de créativité (« température ») par invocation : le
+   modèle garde le réglage par défaut du fournisseur.
+
 ### Q63 — Relier les réglages au format de la réponse et à l'écriture (validé par Clem, pour l'instant)
 1. Les réglages d'une invocation sont rangés dans une petite table
    rattachée à l'invocation, une ligne par réglage (nom, type, valeur,
@@ -976,15 +990,6 @@ direct.
 5. Clem : l'organisation sera sans doute retouchée quand on pourra créer
    une invocation depuis Mission Control. Détail :
    [`LOT6_CONCEPTION.md`](LOT6_CONCEPTION.md), partie 17.
-
-### Q62 — Suite du lot 6 (validé par Clem)
-1. Les messages reçus de l'extérieur qui ne lancent pas les déclencheurs
-   (SMS, e-mail, paiements) : plus tard, au lot 8.
-2. Le passage à la main d'un lien est construit (bouton « passer à la
-   suite » dans MC). Il existera à côté de la validation par ticket
-   Discord du lot 8 : les deux fonctionnements servent.
-3. Pas de réglage de créativité (« température ») par invocation : le
-   modèle garde le réglage par défaut du fournisseur.
 
 ### Q64 — Avant de finir le lot 6 (validé par Clem)
 1. Le premier cercle (ce que l'invocation doit traiter) reste réglé
@@ -1247,3 +1252,23 @@ Décidé :
    changement. La règle est dans la charte (section 7).
 Arguments de Julien : il préfère qu'il n'y ait pas d'incohérence nulle
 part ; quand il y en a, c'est à un humain de dire laquelle fait foi.
+
+### Q70 — Les anciennes réponses restent, et se corrigent quand elles deviennent fausses (validé par Julien, 1er octobre 2026)
+Constat : en relisant le fichier, deux entrées étaient restées dans le
+désordre (Q55 après Q59, Q63 avant Q62), et la règle d'ajout écrite en
+début de fichier disait « on ne réécrit pas l'ancienne » réponse. Julien a
+répondu à la question de savoir quoi faire du plan de travail et des
+réponses anciennes.
+Décidé :
+1. Les entrées sont dans l'ordre des numéros. Q55 et Q62 sont remises à
+   leur place.
+2. On ne retire pas une question et sa réponse parce que le travail
+   qu'elles décrivent est déjà fait : elles gardent le « pourquoi ».
+3. Si une réponse n'est plus en accord avec le code actuel, ou si le code
+   ou une réponse plus récente la contredit, l'ancienne réponse est
+   corrigée proprement, dans son entrée d'origine. Elle ne reste pas fausse
+   avec un renvoi vers la nouvelle. Cela remplace la règle d'ajout écrite
+   en début de fichier.
+Arguments de Julien : l'historique de ce qu'on a demandé garde son intérêt
+même quand le travail est fait ; ce qui ne doit pas rester, c'est une
+réponse devenue fausse.
