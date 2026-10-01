@@ -141,6 +141,8 @@ def chat(
         payload['parallel_tool_calls'] = parallel_tool_calls
         if tool_choice is not None:
             payload['tool_choice'] = tool_choice
+    if _keeps_cache(model, messages, tool_choice):
+        payload['cache_control'] = {'type': 'ephemeral'}
     body = json.dumps(payload).encode('utf-8')
     headers = {'Content-Type': 'application/json'}
     headers['Authorization'] = f'Bearer {api_key}'
@@ -193,6 +195,37 @@ def chat(
         latency_ms=latency_ms,
         tool_calls=calls,
         cost_usd=_cost(payload),
+    )
+
+
+def _keeps_cache(
+    model: str,
+    messages: list[dict[str, Any]],
+    tool_choice: str | dict[str, Any] | None,
+) -> bool:
+    """Faut-il demander à OpenRouter de garder l'historique en cache ?
+
+    Les modèles d'Anthropic n'ont pas de cache automatique : il faut le
+    demander, avec ``cache_control`` au niveau de la requête (OpenRouter pose
+    alors lui-même le repère sur le dernier bloc, et le fait avancer à chaque
+    tour). Lire en cache coûte dix fois moins (0,20 $/M au lieu de 2 $/M pour
+    claude-sonnet-5.5), écrire coûte 25 % de plus. On ne le demande donc que
+    dans une boucle d'outils, quand l'historique contient déjà des résultats
+    d'outils et va être renvoyé encore : le gain commence au troisième appel
+    d'une conversation, un ou deux appels coûteraient un peu plus.
+
+    Les autres fournisseurs (OpenAI, DeepSeek, Gemini, Z.ai) cachent seuls.
+    Une réponse finale forcée (``tool_choice`` à ``none``) n'en demande pas :
+    changer ``tool_choice`` peut rendre le cache des messages inutilisable.
+
+    raccourci : décidé sur le préfixe du modèle, non vérifié sur un vrai
+    appel ; le coût de chaque appel noté dans ``llm_usage`` dit si ça marche
+    (il doit cesser de croître à chaque tour).
+    """
+    return (
+        model.lstrip('~').startswith('anthropic/')
+        and tool_choice != 'none'
+        and any(m.get('role') == 'tool' for m in messages)
     )
 
 

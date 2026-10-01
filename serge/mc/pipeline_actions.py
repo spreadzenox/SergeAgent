@@ -19,11 +19,36 @@ from serge.interpreter.flow import (
     trigger_refusal,
 )
 from serge.interpreter.tasks import cancel_task, relaunch_task
+from serge.llm.catalog import (
+    check_model,
+    for_page,
+    tier_settings,
+    usage_mix,
+)
 from serge.mc.proj_vues import changer_comparaison
 
 # Un identifiant de modèle : « openai/gpt-5-mini », vide pour celui de
 # l'installation.
 _MODELE = re.compile(r'^[A-Za-z0-9._:/@+-]{0,200}$')
+
+
+def _setting(body: dict, key: str, low: float, high: float) -> float | None:
+    """Un réglage numérique du corps de la requête, ou ``None`` s'il manque.
+
+    Raises:
+        ValueError: Pas un nombre, ou hors de ``low``..``high`` (le message
+            est le nom du réglage).
+    """
+    value = body.get(key)
+    if value is None:
+        return None
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, int | float)
+        or not low <= value <= high
+    ):
+        raise ValueError(key)
+    return value
 
 
 class _PipelineHandler(Protocol):
@@ -225,7 +250,11 @@ class PipelineActionsMixin(_Base):
         self._send_json(200, {'ok': True})
 
     def _api_pipeline_modele(self) -> None:
-        """Le modèle derrière un niveau : ``{tier, model}`` (vide = défaut)."""
+        """Un niveau de modèle : ``{tier, model, max_price?, tolerance?}``.
+
+        ``model`` vide : celui de l'installation. ``max_price`` est en $/M,
+        ``tolerance`` en % (voir ``serge/llm/recommendation.py``).
+        """
         if not self._require_owner():
             return
         body = self._json_body() or {}
@@ -240,22 +269,71 @@ class PipelineActionsMixin(_Base):
                 ' l’installation.',
             )
             return
-        with self._db() as conn:
-            cursor = conn.execute(
-                'UPDATE llm_models SET model=? WHERE tier=?', (model, tier)
+        try:
+            max_price = _setting(body, 'max_price', 0, 1000)
+            tolerance = _setting(body, 'tolerance', 1, 100)
+            if tolerance is not None and int(tolerance) != tolerance:
+                raise ValueError('tolerance')
+        except ValueError as exc:
+            self._refus(
+                400,
+                'Réglage invalide.',
+                str(exc),
+                'Prix maximum : de 0 à 1000 $/M. Tolérance : un entier de 1'
+                ' à 100 (%).',
             )
-            if cursor.rowcount != 1:
-                self._refus(
-                    409, 'Niveau inconnu.', 'modele', 'fast, mid, smart.'
-                )
-                return
+            return
+        with self._db() as conn:
+            row = conn.execute(
+                'SELECT model, max_price_usd, tolerance_pct FROM llm_models'
+                ' WHERE tier=?',
+                (tier,),
+            ).fetchone()
+        if row is None:
+            self._refus(409, 'Niveau inconnu.', 'modele', 'fast, mid, smart.')
+            return
+        # Hors de la base : la vérification peut appeler OpenRouter.
+        status, message = check_model(model) if model else ('ok', '')
+        if status == 'unknown':
+            self._refus(
+                409,
+                'Modèle inconnu chez OpenRouter.',
+                'modele',
+                f'{message} Choisis-en un dans la liste de la page.',
+            )
+            return
+        with self._db() as conn:
+            conn.execute(
+                'UPDATE llm_models SET model=?,'
+                ' max_price_usd=COALESCE(?, max_price_usd),'
+                ' tolerance_pct=COALESCE(?, tolerance_pct) WHERE tier=?',
+                (model, max_price, tolerance, tier),
+            )
             append_event(
                 conn,
                 actor='owner',
                 type='pipeline.model',
-                payload={'tier': tier, 'model': model},
+                payload={
+                    'tier': tier,
+                    'model': model,
+                    'ancien': str(row[0] or ''),
+                    'max_price': row[1] if max_price is None else max_price,
+                    'ancien_max_price': row[1],
+                    'tolerance': row[2] if tolerance is None else tolerance,
+                    'ancien_tolerance': row[2],
+                    'verification': status,
+                },
             )
-        self._send_json(200, {'ok': True})
+        self._send_json(200, {'ok': True, 'warning': message})
+
+    def _api_pipeline_modeles(self) -> None:
+        """GET : les modèles d'OpenRouter, leurs notes, les recommandations."""
+        if not self._require_owner():
+            return
+        with self._db() as conn:
+            tiers = tier_settings(conn)
+            mix = usage_mix(conn)
+        self._send_json(200, for_page(tiers, mix))
 
     def _api_pipeline_texte(self) -> None:
         """Le texte « Qui est Serge » : ``{body}``."""

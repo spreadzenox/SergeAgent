@@ -204,10 +204,10 @@ def project_jauges(
     return {
         'llm': {
             'tokens_jour': depense.tokens,
-            # Coût réel donné par OpenRouter, plus l'estimation des appels
-            # dont le coût n'est pas connu (``eur_estimes``).
+            # Coût réel donné par OpenRouter ; les jetons des appels dont le
+            # coût n'est pas connu sont comptés à part, jamais estimés.
             'eur': round(eur, 4),
-            'eur_estimes': round(depense.estimated_eur, 4),
+            'jetons_sans_cout': depense.unknown_tokens,
             'plafond_eur': cap,
             'ratio': (eur / cap) if cap > 0 else None,
             'libelle': 'Invocations LLM (plafond € du jour)',

@@ -21,7 +21,7 @@ from serge.mc.proj_economy import (  # noqa: E402
 )
 
 NOW = '2026-09-10T12:00:00+00:00'
-POLICY: dict = {'budget': {'llm_eur_per_1k_tokens': 0.005}}
+POLICY: dict = {'budget': {'eur_per_usd': 0.5}}
 
 
 class ProjEconomyTests(unittest.TestCase):
@@ -63,8 +63,8 @@ class ProjEconomyTests(unittest.TestCase):
             " VALUES('sub1', 'v1', 'stripe', 49.0, 'monthly', 'active', '2026-10-04T10:00:00+00:00', 't', 't')"
         )
         conn.execute(
-            'INSERT INTO llm_usage(point, tier, model, tokens_in, tokens_out, latency_ms, verdict, created_at)'
-            " VALUES('qualify', 'T1', 'nemo', 1000, 1000, 50, 'ok', '2026-09-05T10:00:00+00:00')"
+            'INSERT INTO llm_usage(point, tier, model, tokens_in, tokens_out, latency_ms, verdict, cost_usd, created_at)'
+            " VALUES('qualify', 'T1', 'nemo', 1000, 1000, 50, 'ok', 0.02, '2026-09-05T10:00:00+00:00')"
         )
         conn.execute(
             'INSERT INTO artifacts(id, venture_id, kind, version, path_or_url, created_at)'
@@ -92,11 +92,22 @@ class ProjEconomyTests(unittest.TestCase):
     def test_couts_cognitifs_golden(self) -> None:
         data = project_couts_cognitifs(self.conn, POLICY, NOW)
         self.assertEqual(data['total_tokens'], 2000)
-        self.assertEqual(
-            data['total_cost_eur'], 0.01
-        )  # 2000 / 1000 * 0.005 = 0.01
+        # Le coût réel donné par OpenRouter : 0,02 $ × 0,5 = 0,01 €.
+        self.assertEqual(data['total_cost_eur'], 0.01)
+        self.assertEqual(data['tokens_sans_cout'], 0)
         self.assertEqual(data['total_revenue_eur'], 100.0)
         self.assertEqual(data['tokens_par_euro'], 20.0)  # 2000 / 100 = 20.0
+
+    def test_un_appel_sans_cout_n_est_pas_estime(self) -> None:
+        self.conn.execute(
+            'INSERT INTO llm_usage(point, tier, model, tokens_in, tokens_out,'
+            " latency_ms, verdict, created_at) VALUES('x', 'T1', 'nemo', 300,"
+            " 200, 5, 'ok', '2026-09-06T10:00:00+00:00')"
+        )
+        data = project_couts_cognitifs(self.conn, POLICY, NOW)
+        self.assertEqual(data['total_tokens'], 2500)
+        self.assertEqual(data['total_cost_eur'], 0.01)
+        self.assertEqual(data['tokens_sans_cout'], 500)
 
     def test_audit_reponses_golden(self) -> None:
         data = project_audit_reponses(self.conn, POLICY, NOW)

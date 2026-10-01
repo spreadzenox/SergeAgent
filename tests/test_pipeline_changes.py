@@ -8,6 +8,9 @@ Scénarios :
 - une instance du lot 7 telle qu'elle a été déployée (25 tours d'outils
   pour « Explorer le web », 300 lignes par page, anciens prompts) reçoit
   les réglages qui renvoient moins de jetons, et les réglages nouveaux ;
+- une instance déployée avant les réglages de recommandation (niveaux de
+  modèle sans prix maximum) les reçoit, sans écraser un prix que Julien a
+  déjà changé ;
 - une modification mal écrite est refusée.
 """
 
@@ -178,6 +181,69 @@ class InstanceDuLot7Tests(unittest.TestCase):
             "SELECT prompt FROM invocations WHERE id='formuler_b'"
         ).fetchone()[0]
         self.assertIn("Demande plusieurs pages d'un coup", prompt)
+
+
+class NiveauxDeModeleTests(unittest.TestCase):
+    """Le prix maximum et la tolérance des niveaux, sur une instance existante."""
+
+    def _niveaux(self, conn: sqlite3.Connection) -> dict[str, tuple]:
+        return {
+            tier: (price, pct, model)
+            for tier, price, pct, model in conn.execute(
+                'SELECT tier, max_price_usd, tolerance_pct, model'
+                ' FROM llm_models'
+            )
+        }
+
+    def test_une_instance_neuve_a_les_valeurs_de_depart(self) -> None:
+        conn = sqlite3.connect(':memory:')
+        self.addCleanup(conn.close)
+        init_schema(conn)
+        self.assertEqual(
+            self._niveaux(conn),
+            {
+                'fast': (0.3, 85, ''),
+                'mid': (1.5, 95, ''),
+                'smart': (8.0, 95, ''),
+            },
+        )
+
+    def test_une_instance_existante_les_recoit_sans_ecraser_julien(
+        self,
+    ) -> None:
+        conn = sqlite3.connect(':memory:')
+        self.addCleanup(conn.close)
+        init_schema(conn)
+        # L'instance telle qu'elle était avant : niveaux sans réglage, un
+        # modèle choisi sur le niveau moyen, un prix déjà changé à la main.
+        conn.executescript(
+            'UPDATE llm_models SET max_price_usd=0, tolerance_pct=95;'
+            "UPDATE llm_models SET model='a/choisi' WHERE tier='mid';"
+            "UPDATE llm_models SET max_price_usd=2.5 WHERE tier='smart';"
+            "DELETE FROM pipeline_changes WHERE id LIKE 'modele_%';"
+        )
+        ensure_pipeline(conn)
+        self.assertEqual(
+            self._niveaux(conn),
+            {
+                'fast': (0.3, 85, ''),
+                'mid': (1.5, 95, 'a/choisi'),
+                'smart': (2.5, 95, ''),
+            },
+        )
+        resultats = dict(
+            conn.execute(
+                'SELECT id, result FROM pipeline_changes'
+                " WHERE id LIKE 'modele_%'"
+            )
+        )
+        self.assertIn(
+            'gardé (changé dans Mission Control)',
+            resultats['modele_smart_prix_max'],
+        )
+        # Rejouée, elle ne change plus rien.
+        ensure_pipeline(conn)
+        self.assertEqual(self._niveaux(conn)['smart'][0], 2.5)
 
 
 if __name__ == '__main__':

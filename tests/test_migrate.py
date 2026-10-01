@@ -27,6 +27,13 @@ from serge.db.v022 import apply_v022  # noqa: E402
 from serge.db.v023 import apply_v023  # noqa: E402
 
 
+def _until(version: int) -> list:
+    """Les migrations jusqu'à ``version`` : ne bouge pas quand on en ajoute."""
+    from serge.db.migrate import MIGRATIONS
+
+    return [m for m in MIGRATIONS if m[0] <= version]
+
+
 class MigrateTests(unittest.TestCase):
     def test_v20_ajoute_les_metadonnees_llm_avec_defaults_valides(
         self,
@@ -357,9 +364,8 @@ class MigrateTests(unittest.TestCase):
     def test_v25_retire_l_ancien_fonctionnement(self) -> None:
         conn = sqlite3.connect(':memory:')
         self.addCleanup(conn.close)
-        from serge.db.migrate import MIGRATIONS
 
-        apply_pending(conn, MIGRATIONS[:-7], head=24)
+        apply_pending(conn, _until(24), head=24)
         conn.execute(
             'INSERT INTO runtime_flags(name, value, set_at) VALUES'
             " ('kind.email.send', 'kill', 't'), ('llm.fill_slots', 'kill',"
@@ -429,9 +435,8 @@ class MigrateTests(unittest.TestCase):
     def test_v26_ajoute_les_reglages_et_garde_les_parametres(self) -> None:
         conn = sqlite3.connect(':memory:')
         self.addCleanup(conn.close)
-        from serge.db.migrate import MIGRATIONS
 
-        apply_pending(conn, MIGRATIONS[:-6], head=25)
+        apply_pending(conn, _until(25), head=25)
         conn.execute(
             'INSERT INTO invocation_tool_params(invocation_id,'
             ' invocation_tool_id, param_name, source, value)'
@@ -469,9 +474,8 @@ class MigrateTests(unittest.TestCase):
     def test_v27_reprend_l_historique_des_lignes(self) -> None:
         conn = sqlite3.connect(':memory:')
         self.addCleanup(conn.close)
-        from serge.db.migrate import MIGRATIONS
 
-        apply_pending(conn, MIGRATIONS[:-5], head=26)
+        apply_pending(conn, _until(26), head=26)
         conn.executemany(
             'INSERT INTO events(ts, actor, venture_id, type, payload_json)'
             ' VALUES(?,?,?,?,?)',
@@ -501,9 +505,8 @@ class MigrateTests(unittest.TestCase):
     ) -> None:
         conn = sqlite3.connect(':memory:')
         self.addCleanup(conn.close)
-        from serge.db.migrate import MIGRATIONS
 
-        apply_pending(conn, MIGRATIONS[:-3], head=28)
+        apply_pending(conn, _until(28), head=28)
         conn.executescript(
             'INSERT INTO listen_docs(id, source, fetched_at, cluster_id)'
             " VALUES('d1', 'rss', 't', 'cA');"
@@ -544,9 +547,8 @@ class MigrateTests(unittest.TestCase):
     ) -> None:
         conn = sqlite3.connect(':memory:')
         self.addCleanup(conn.close)
-        from serge.db.migrate import MIGRATIONS
 
-        apply_pending(conn, MIGRATIONS[:-2], head=29)
+        apply_pending(conn, _until(29), head=29)
         conn.execute(
             'INSERT INTO llm_usage(point, tier, created_at)'
             " VALUES('a', 'mid', 't')"
@@ -559,12 +561,55 @@ class MigrateTests(unittest.TestCase):
             "INSERT INTO pipeline_changes(id, applied_at) VALUES('x', 't')"
         )
 
-    def test_v31_ajoute_les_regles_d_annulation(self) -> None:
+    def test_v31_ajoute_le_prix_maximum_et_la_tolerance_des_niveaux(
+        self,
+    ) -> None:
         conn = sqlite3.connect(':memory:')
         self.addCleanup(conn.close)
-        from serge.db.migrate import MIGRATIONS
 
-        apply_pending(conn, MIGRATIONS[:-1], head=30)
+        apply_pending(conn, _until(30), head=30)
+        # Une instance existante : les niveaux et le modèle choisi sont là.
+        for tier, model in (('fast', ''), ('mid', 'a/choisi'), ('smart', '')):
+            conn.execute(
+                'INSERT INTO llm_models(tier, model) VALUES(?, ?)',
+                (tier, model),
+            )
+        self.assertEqual(apply_pending(conn), SCHEMA_VERSION)
+        self.assertEqual(
+            conn.execute(
+                'SELECT tier, model, max_price_usd, tolerance_pct'
+                ' FROM llm_models ORDER BY tier'
+            ).fetchall(),
+            [
+                ('fast', '', 0.0, 95),
+                ('mid', 'a/choisi', 0.0, 95),
+                ('smart', '', 0.0, 95),
+            ],
+        )
+        # La base refuse l'absurde.
+        for bad in (
+            'UPDATE llm_models SET tolerance_pct=0',
+            'UPDATE llm_models SET tolerance_pct=101',
+            'UPDATE llm_models SET tolerance_pct=NULL',
+            'UPDATE llm_models SET max_price_usd=-1',
+        ):
+            with self.assertRaises(sqlite3.IntegrityError, msg=bad):
+                conn.execute(bad)
+        # Rejouée, la migration ne change rien.
+        from serge.db.v031 import apply_v031
+
+        apply_v031(conn)
+        self.assertEqual(
+            conn.execute(
+                "SELECT model FROM llm_models WHERE tier='mid'"
+            ).fetchone(),
+            ('a/choisi',),
+        )
+
+    def test_v32_ajoute_les_regles_d_annulation(self) -> None:
+        conn = sqlite3.connect(':memory:')
+        self.addCleanup(conn.close)
+        apply_pending(conn, _until(31), head=31)
         self.assertEqual(apply_pending(conn), SCHEMA_VERSION)
         conn.execute(
             'INSERT INTO task_cancel_rules(table_name, column_name, value,'

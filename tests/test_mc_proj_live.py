@@ -29,7 +29,7 @@ from tests.taches_fixtures import invocations, tache  # noqa: E402
 
 NOW = '2026-09-10T12:00:00+00:00'
 POLICY = {
-    'budget': {'llm_daily_eur': 5.0, 'llm_eur_per_1k_tokens': 0.004},
+    'budget': {'llm_daily_eur': 5.0},
     'quotas': {
         'email_per_mailbox_per_day': 40,
         'voice_max_calls_per_day': 50,
@@ -216,8 +216,11 @@ class ProjLiveTests(unittest.TestCase):
         jauges = project_jauges(self.conn, POLICY, NOW)
         llm = jauges['llm']
         self.assertEqual(llm['tokens_jour'], 1500)
-        self.assertAlmostEqual(llm['eur_estimes'], 0.006)
-        self.assertAlmostEqual(llm['ratio'], 0.0012)
+        # L'appel du jeu de données n'a pas de coût connu : ses jetons sont
+        # comptés à part, sans estimation, et la jauge reste à zéro.
+        self.assertEqual(llm['jetons_sans_cout'], 1500)
+        self.assertEqual(llm['eur'], 0)
+        self.assertEqual(llm['ratio'], 0)
         email = jauges['email']
         self.assertEqual((email['envoyes'], email['quota']), (1, 40))
         self.assertEqual(email['libelle'], 'E-mails')

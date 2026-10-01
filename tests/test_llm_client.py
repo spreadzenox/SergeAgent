@@ -146,5 +146,51 @@ class LlmClientTests(unittest.TestCase):
         self.assertNotIn('api_key)', source.replace('api_key: str', ''))
 
 
+class CacheTests(unittest.TestCase):
+    """Le cache des modèles d'Anthropic, demandé seulement dans une boucle."""
+
+    OUTIL = {'role': 'tool', 'tool_call_id': 'c1', 'content': '{}'}
+    OK = {
+        'choices': [{'message': {'content': 'ok'}}],
+        'usage': {'prompt_tokens': 1, 'completion_tokens': 1},
+    }
+
+    def _asks_for_cache(self, model: str, messages: list, **kwargs) -> bool:
+        with mock.patch(
+            'urllib.request.urlopen', return_value=_response(self.OK)
+        ) as mocked:
+            chat(
+                'sk-key',
+                model,
+                messages,
+                tools=[{'type': 'function'}],
+                **kwargs,
+            )
+        body = json.loads(mocked.call_args[0][0].data)
+        if 'cache_control' in body:
+            self.assertEqual(body['cache_control'], {'type': 'ephemeral'})
+        return 'cache_control' in body
+
+    def test_le_cache_est_demande_dans_une_boucle_d_outils_d_anthropic(
+        self,
+    ) -> None:
+        start = [{'role': 'user', 'content': 'hi'}]
+        loop = [*start, self.OUTIL]
+        sonnet = 'anthropic/claude-sonnet-5.5'
+        self.assertTrue(self._asks_for_cache(sonnet, loop))
+        self.assertTrue(
+            self._asks_for_cache('~anthropic/claude-sonnet-latest', loop)
+        )
+        # Pas au premier appel, ni sur la réponse finale forcée : un ou deux
+        # appels coûteraient 25 % de plus au lieu d'économiser.
+        self.assertFalse(self._asks_for_cache(sonnet, start))
+        self.assertFalse(
+            self._asks_for_cache(sonnet, loop, tool_choice='none')
+        )
+        # Les autres fournisseurs cachent seuls.
+        for other in ('deepseek/deepseek-v4.1-flash', 'openai/gpt-6.1-sol'):
+            self.assertFalse(self._asks_for_cache(other, loop), other)
+
+
 if __name__ == '__main__':
     unittest.main()

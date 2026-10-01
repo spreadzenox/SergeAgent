@@ -421,13 +421,14 @@ class InterpreterTests(unittest.TestCase):
     def test_plafond_llm_du_jour_atteint(self) -> None:
         """Plafond atteint : la tâche LLM attend, la tâche sans LLM passe.
 
-        Avec la policy de départ (5 € par jour, 0,004 € pour 1 000 tokens),
-        le plafond est atteint à 1 250 000 tokens dans la journée.
+        Avec la policy de départ (5 € par jour, 0,9 € le dollar), le plafond
+        est atteint à 5,56 $ de coût réel dans la journée. Un appel dont le
+        coût n'est pas connu ne compte pas : il n'est pas estimé.
         """
         self.conn.execute(
             'INSERT INTO llm_usage(point, tier, model, tokens_in,'
-            " tokens_out, latency_ms, verdict, created_at) VALUES('x', 'mid',"
-            " 'm', 1000000, 300000, 1, 'ok', ?)",
+            ' tokens_out, latency_ms, verdict, cost_usd, created_at)'
+            " VALUES('x', 'mid', 'm', 1000000, 300000, 1, 'ok', 6.0, ?)",
             (NOW,),
         )
         llm = enqueue_task(self.conn, 'chercheur', {'sujet': 'cy5'})

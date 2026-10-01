@@ -249,6 +249,9 @@ class McHandler(
         if path == '/owner/api/voice/audio':
             self._api_voice_audio()
             return
+        if path == '/owner/api/pipeline/modeles':
+            self._api_pipeline_modeles()
+            return
         if path == '/static/' or path.startswith('/static/'):
             self._serve_static(path[len('/static/') :])
             return
