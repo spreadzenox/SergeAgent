@@ -92,14 +92,14 @@ def llm_spend(
     policy: Mapping[str, Any],
     day: str | None = None,
 ) -> LlmSpend:
-    """La dépense des appels au modèle, un jour ou depuis le début.
+    """La dépense des appels au modèle, un jour, un mois ou depuis le début.
 
     Args:
         conn: Connexion à la base (lecture).
         policy: Policy en vigueur (``budget.eur_per_usd`` pour convertir le
             coût réel en euros).
-        day: Jour UTC AAAA-MM-JJ ; ``''`` pour tout l'historique ;
-            ``None`` pour aujourd'hui.
+        day: Jour UTC AAAA-MM-JJ, ou mois UTC AAAA-MM ; ``''`` pour tout
+            l'historique ; ``None`` pour aujourd'hui.
     """
     prefix = datetime.now(UTC).strftime('%Y-%m-%d') if day is None else day
     eur_per_usd = float(
@@ -149,22 +149,33 @@ def tokens_since(conn: sqlite3.Connection, since: str) -> tuple[int, int]:
     return int(row[0]), int(row[1])
 
 
-def budget_spent(
+def budget_reached(
     conn: sqlite3.Connection,
     policy: Mapping[str, Any],
     day: str | None = None,
-) -> bool:
-    """Vrai si le plafond de dépense LLM du jour est atteint.
+) -> str:
+    """Le plafond de dépense atteint : ``'jour'``, ``'mois'``, ou ``''``.
 
-    La dépense est le coût réel donné par OpenRouter, converti en euros ; un
-    appel dont le coût n'est pas connu n'y compte pas (voir ``llm_spend``).
+    Deux plafonds de la policy (page Policy) : ``budget.llm_daily_eur`` pour
+    le jour, et ``budget.monthly_eur`` pour le mois, c'est-à-dire ce que
+    Serge nous coûte en IA (décision Q68). Les achats de Serge pour ses
+    business n'y comptent pas. La dépense est le coût réel donné par
+    OpenRouter, converti en euros (voir ``llm_spend``). Un plafond à 0 ne
+    bloque rien.
 
     Args:
         conn: Connexion à la base (lecture).
-        policy: Policy en vigueur (``budget.llm_daily_eur``, et de quoi
-            convertir : voir ``llm_spend``).
-        day: Jour UTC AAAA-MM-JJ (défaut : aujourd'hui).
+        policy: Policy en vigueur.
+        day: Jour UTC AAAA-MM-JJ (défaut : aujourd'hui) ; son mois compte
+            pour le plafond du mois.
     """
+    today = day or datetime.now(UTC).strftime('%Y-%m-%d')
     budget = policy.get('budget') or {}
-    cap = float(budget.get('llm_daily_eur', 0) or 0)
-    return cap > 0 and llm_spend(conn, policy, day).eur >= cap
+    for period, key, prefix in (
+        ('jour', 'llm_daily_eur', today),
+        ('mois', 'monthly_eur', today[:7]),
+    ):
+        cap = float(budget.get(key, 0) or 0)
+        if cap > 0 and llm_spend(conn, policy, prefix).eur >= cap:
+            return period
+    return ''

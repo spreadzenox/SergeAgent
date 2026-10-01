@@ -15,15 +15,6 @@ const COMMANDES_FIXES = [
   {id: 'nav-voice', titre: 'Aller à Voix', type: 'page', hash: '#/voice'},
   {id: 'nav-health', titre: 'Aller à Health', type: 'page', hash: '#/health'},
   {id: 'nav-identite', titre: 'Aller à Identité', type: 'page', hash: '#/identite'},
-  {
-    id: 'act-propose-policy',
-    titre: 'Action : Demander un changement Policy',
-    type: 'action',
-    run: async () => {
-      const {proposerModif} = await import('./pages/policy.js');
-      await proposerModif();
-    },
-  },
 ];
 
 export function initCmdk(store) {

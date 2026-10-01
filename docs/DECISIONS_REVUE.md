@@ -1184,3 +1184,26 @@ Décidé :
    discutables écrits dans le code deviennent des réglages. Les textes
    envoyés au modèle passent en base, modifiables sur la page Pipeline.
    La voix attend le lot 8, qui la règle en base comme une invocation.
+
+Précisions de Clem (1er octobre 2026) :
+7. Chaque réglage garde seulement sa valeur précédente (qui l'a changée,
+   quand) : un bouton « Remettre la valeur précédente ». Pas d'historique
+   complet.
+8. « Proposer un changement » et « Candidats à l'auto » sont retirés de
+   la page Policy, avec leurs réglages : rien ne s'en sert.
+9. Le plafond du mois borne **ce que Serge nous coûte** : tous les appels
+   à une IA, quelle qu'elle soit (modèles de texte, modèles vocaux des
+   appels téléphoniques). Il ne compte pas les achats que Serge fait pour
+   mener ses business : ils passent par son propre compte en banque.
+   Aujourd'hui, seul le coût des modèles de texte est mesuré ; le lot 8
+   ajoute celui de la voix au même compte.
+10. Le chantier se livre en trois PR : A (retirer les réglages morts,
+    brancher les doubles, température, plafond du mois), B (la table des
+    réglages et la page Policy), C (les nouveaux réglages, les textes
+    envoyés au modèle et la page Pipeline).
+11. En faisant la PR A, le test « chaque réglage est lu » a trouvé 6
+    réglages de plus que rien ne lisait, dans « Pays et appels » (jours et
+    heures d'appel, jours de prospection, marge avant un rendez-vous, jours
+    fériés, fuseau du pays) : l'inventaire comptait les réglages d'un pays
+    pour un seul. En tout, 58 des 91 réglages n'étaient lus par rien. Ils
+    sont retirés comme les autres ; le lot 8 les remet avec la voix.

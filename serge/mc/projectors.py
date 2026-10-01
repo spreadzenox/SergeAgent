@@ -58,7 +58,6 @@ from serge.mc.proj_policy import (
     project_politique_active,
     project_reglages,
     project_testing_froid,
-    project_trust_candidates,
 )
 from serge.mc.proj_taches import (
     project_file,
@@ -86,7 +85,6 @@ SLOW_SECTIONS = frozenset(
         'requested',
         'politique_active',
         'testing_froid',
-        'trust_candidates',
         'entonnoir',
         'transactions_subscriptions',
         'couts_cognitifs',
@@ -214,7 +212,6 @@ PROJECTORS: dict[str, Callable[..., dict[str, Any]]] = {
     'politique_active': project_politique_active,
     'reglages': project_reglages,
     'testing_froid': project_testing_froid,
-    'trust_candidates': project_trust_candidates,
     'entonnoir': project_entonnoir,
     'transactions_subscriptions': project_transactions_subscriptions,
     'couts_cognitifs': project_couts_cognitifs,
@@ -252,7 +249,6 @@ PAGE_SECTIONS: dict[str, list[str]] = {
         'politique_active',
         'reglages',
         'testing_froid',
-        'trust_candidates',
     ],
     'p6': [
         'meta',

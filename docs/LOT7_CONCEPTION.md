@@ -157,8 +157,8 @@ Chaque ajout est général : il sert à toutes les invocations.
     et 150 lignes par page.
 - **La file dans Mission Control** dit pourquoi une tâche attend : une
   tâche LLM n'est pas annoncée comme « prochaine » quand le plafond du
-  jour est atteint, et la raison est donnée (« Plafond LLM du jour
-  atteint : 1 tâche(s) LLM attendent demain… »).
+  jour (ou, depuis Q68, du mois) est atteint, et la raison est donnée
+  (« Plafond du jour atteint : 1 tâche(s) LLM attendent demain… »).
 ---
 
 ## 4. Ce qui est retiré, et la mise à jour d'une instance

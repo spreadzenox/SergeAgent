@@ -15,7 +15,6 @@ from serge.db.boot import init_schema  # noqa: E402
 from serge.mc.proj_policy import (  # noqa: E402
     project_politique_active,
     project_testing_froid,
-    project_trust_candidates,
 )
 from serge.policy import load_policy  # noqa: E402
 from serge.policy_snapshots import snapshot_policy  # noqa: E402
@@ -53,30 +52,6 @@ class ProjPolicyTests(unittest.TestCase):
         res1 = project_testing_froid(self.conn, self.policy, NOW)
         self.assertTrue(res1['is_locked'])
         self.assertEqual(res1['running_campaigns'], 1)
-
-    def test_trust_candidates_eligibilite(self) -> None:
-        self.conn.execute(
-            'INSERT INTO tickets(id, type, title, state, created_at, updated_at)'
-            " VALUES('t1', 'VETO_AMONT', 'test', 'APPROVED', 't', 't')"
-        )
-        for i in range(25):
-            self.conn.execute(
-                'INSERT INTO ticket_events(ticket_id, ts, actor, kind)'
-                " VALUES('t1', '2026-09-01T10:00:00+00:00', 'owner', 'transition.approved')"
-            )
-        self.conn.execute(
-            'INSERT INTO ticket_events(ticket_id, ts, actor, kind)'
-            " VALUES('t1', '2026-09-01T10:00:00+00:00', 'owner', 'transition.rejected')"
-        )
-
-        res = project_trust_candidates(self.conn, self.policy, NOW)
-        self.assertEqual(len(res['candidates']), 1)
-        cand = res['candidates'][0]
-        self.assertEqual(cand['type'], 'VETO_AMONT')
-        self.assertEqual(cand['total'], 26)
-        self.assertEqual(cand['approved'], 25)
-        self.assertTrue(cand['rate'] >= 0.95)
-        self.assertTrue(cand['eligible'])
 
 
 if __name__ == '__main__':

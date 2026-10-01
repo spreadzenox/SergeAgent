@@ -49,7 +49,7 @@ function renderHero(main, payload, sig, store) {
   }
   const prochain = main.querySelector('.file-hero [data-file="prochain"]');
   if (prochain) {
-    // Pas de prochaine tâche : la raison, s'il y en a une (le plafond du jour).
+    // Pas de prochaine tâche : la raison, s'il y en a une (un plafond atteint).
     const texte = payload.next
       ? `Prochain : ${verbe(payload.next.kind)}`
       : payload.attente || '';
@@ -320,6 +320,10 @@ function renderJauges(main, payload, sig, gauges) {
     llm.tokens_jour || 0,
     (v) => `${llm.libelle || 'Invocations'} : ${Math.round(v)} jetons (${format(llm.eur)} € / ${llm.plafond_eur || 0} €${sansCout})`,
   );
+  const mois = payload.mois || {};
+  updateGauge(gauges.mois.node, mois.ratio || 0, mois.ratio > 0.8 ? 'alerte' : '');
+  gauges.mois.label.textContent =
+    `${mois.libelle || 'Ce mois'} : ${format(mois.eur)} € / ${mois.plafond_eur || 0} €`;
   for (const nom of ['email', 'voix', 'linkedin']) {
     const barre = payload[nom] || {};
     const slot = gauges[nom];
@@ -355,7 +359,7 @@ export function mount(main, store) {
   const tpl = document.getElementById('page-live');
   main.replaceChildren(tpl.content.cloneNode(true));
   const gauges = {};
-  for (const name of ['llm', 'email', 'voix', 'linkedin']) {
+  for (const name of ['llm', 'mois', 'email', 'voix', 'linkedin']) {
     const slot = main.querySelector(`[data-gauge="${name}"]`);
     const label = document.createElement('p');
     const node = createGauge();

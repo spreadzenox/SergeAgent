@@ -115,24 +115,6 @@ ORBITES = {
     },
 }
 
-SECTIONS_POLICY = {
-    'budget': 'Budget',
-    'quotas': 'Quotas',
-    'windows': 'Fenêtres horaires',
-    'calling_zones': 'Zones d’appel',
-    'cooldowns': 'Temps de pause',
-    'standing': 'Santé des comptes',
-    'voice': 'Voix',
-    'observation': 'Observation',
-    'builder': 'Builder',
-    'prospection': 'Prospection',
-    'collect': 'Encaissement',
-    'memory': 'Mémoire',
-    'tickets': 'Tickets',
-    'consent': 'Consentement',
-}
-
-
 ETATS_CAMPAGNE = {
     'RUNNING': 'En cours',
     'PAUSED': 'En pause',

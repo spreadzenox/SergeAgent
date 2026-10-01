@@ -80,9 +80,10 @@
 <ul data-list="items"></ul>
 </section>
 <section class="panneau" data-section="jauges" data-sig="">
-<h2>Budgets du jour</h2>
-<p class="legende-jauges">Plafonds du jour, réglables dans <a href="#/policy">Policy</a> (Budget et Quotas). SMS est à la minute ; pas de quota quotidien Reddit.</p>
+<h2>Budgets</h2>
+<p class="legende-jauges">Plafonds du jour et du mois, réglables dans <a href="#/policy">Policy</a> (Argent et Plafonds par canal). Le mois compte ce que Serge nous coûte en IA, pas ses achats pour ses business.</p>
 <div data-gauge="llm"></div>
+<div data-gauge="mois"></div>
 <div data-gauge="email"></div>
 <div data-gauge="voix"></div>
 <div data-gauge="linkedin"></div>
@@ -273,14 +274,13 @@
 </section>
 </template>
 <template id="page-policy">
-<p class="page-intro">Les règles du jeu. Chaque curseur autorise ou refuse un acte. Tu changes, tu enregistres. Serge propose, il n’applique jamais tout seul.</p>
+<p class="page-intro">Les règles du jeu. Chaque curseur autorise ou refuse un acte. Tu changes, tu enregistres : Serge ne change jamais une règle tout seul.</p>
 <section class="panneau atelier-policy" data-section="politique_active" data-sig="">
 <div class="entete-policy">
 <div>
 <h2>Les règles</h2>
 <p class="sous-titre-policy">Une famille à gauche, les champs à droite. Le bon contrôle pour chaque type de choix.</p>
 </div>
-<button type="button" data-action="proposer-policy">Demander un changement</button>
 </div>
 <div data-policy="atelier"></div>
 </section>
@@ -297,11 +297,6 @@
 <label>Personnes pour l’essai plus large <input type="number" data-testing="n_full_target" min="10" max="5000"></label>
 <button type="button" data-btn="enregistrer-testing">Enregistrer la taille</button>
 </form>
-</section>
-<section class="panneau" data-section="trust_candidates" data-sig="">
-<h2>Ce qui pourrait passer tout seul</h2>
-<p class="sous-titre-policy">Si tu dis toujours oui au même type de question, Serge peut proposer de ne plus te demander. Toi tu valides encore.</p>
-<ul data-list="candidates"></ul>
 </section>
 </template>
 <template id="page-economy">

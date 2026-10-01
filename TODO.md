@@ -244,21 +244,47 @@ Clem a fixé la règle le 1er octobre 2026 (décision Q68 de
 [`docs/DECISIONS_REVUE.md`](docs/DECISIONS_REVUE.md)) : **toute grandeur
 discutable, qui peut un jour changer, se règle depuis Mission Control.**
 
-- [ ] **Retirer les réglages que rien ne lit.** 52 des 84 réglages de la
-  policy ne sont lus par aucun programme en marche, mais Mission Control
-  les affiche. On les retire de la policy, de sa vérification et de la
-  page. Le lot qui rebranche une capacité remet ses réglages. Un test
-  vérifie ensuite que chaque réglage est lu par au moins un programme.
-- [ ] **Brancher les chiffres en double sur leur réglage** : nouveaux
-  essais d'une réponse invalide, leçon retirée après plusieurs démentis,
-  plafonds de SMS.
-- [ ] **Température du fournisseur.** Le 0,3 écrit dans le client du
-  modèle est retiré (Q62).
-- [ ] **Brancher le plafond du mois** : au-delà, Serge s'arrête, comme
-  pour le plafond du jour.
-- [ ] **Les réglages généraux dans une table en base**, avec pour chacun
-  sa valeur, son titre, son aide et ses bornes. Mission Control les
-  affiche sans catalogue écrit dans le code.
+- [x] **Retirer les réglages que rien ne lit** (PR A, 1er octobre 2026).
+  58 des 91 réglages de la policy n'étaient lus par aucun programme en
+  marche, mais Mission Control les affichait. 4 sont maintenant branchés
+  (voir plus bas) ; les 54 autres sont retirés de la policy, de sa
+  vérification et de la page, avec les 2 réglages de « Ce qui pourrait
+  passer tout seul ». Il en reste 35. Un ancien snapshot qui contient un
+  réglage retiré ne l'affiche plus. Un test vérifie que chaque réglage restant
+  est lu par au moins un programme. Les encarts « Demander un
+  changement » et « Ce qui pourrait passer tout seul » sont retirés de la
+  page Policy (Q68, point 8). **Le lot qui rebranche une capacité remet
+  ses réglages**, lus par son code :
+  - lot 8 (conversations, voix) : jours et heures d'appel, jours de
+    prospection, marge avant un rendez-vous, jours fériés et fuseau du
+    pays ; durée et tours de parole d'un appel, longueur du script,
+    conservation des enregistrements, un numéro par business ; délai de
+    réponse et heures ouvrées des réponses, relève de la boîte mail ;
+    silences avant une relance ; seuils de lecture des réponses ;
+  - lot 9 (grille de points) : le barème de prospection ;
+  - lot 10 (construire) : les bornes de la construction ;
+  - lot 11 (étapes 3 à 8) : la répartition du budget, les invitations
+    LinkedIn par mois, les devis et les essais de caisse, la consolidation
+    de la mémoire (dont la leçon retirée après plusieurs démentis :
+    aucune fonction en marche ne l'appelle aujourd'hui) ;
+  - lot 12 (web) : le plafond du navigateur, les recherches en mémoire par
+    cycle.
+- [x] **Brancher les chiffres en double sur leur réglage** (PR A) : les
+  nouveaux essais d'une réponse mal formée (`quotas.llm_recalls_json`) et
+  les plafonds anti-rafale des SMS reçus (`quotas.sms_*`), lus à chaque
+  SMS.
+- [x] **Température du fournisseur** (PR A). Le client du modèle n'envoie
+  plus de température (Q62).
+- [x] **Brancher le plafond du mois** (PR A) : il borne ce que Serge nous
+  coûte en IA (coût réel des modèles, mois calendaire UTC comme le jour) ;
+  atteint, les tâches LLM attendent le mois suivant, avec la raison dans
+  la file. Une jauge « Ce que Serge coûte ce mois-ci » est sur En direct.
+- [ ] **Les réglages généraux dans une table en base** (PR B), avec pour
+  chacun sa valeur, son titre, son aide et ses bornes. Mission Control les
+  affiche sans catalogue écrit dans le code. Chaque réglage garde sa
+  valeur précédente (qui, quand) : un bouton « Remettre la valeur
+  précédente » ; pas d'historique complet (Q68, point 7). Les valeurs en
+  vigueur sur le serveur sont reprises, pas celles du fichier.
 - [ ] **Les chiffres discutables du code deviennent des réglages** :
   appels au modèle (attente, nouveaux essais, pauses), lecture du web
   (longueur d'une ligne, taille et temps de lecture d'une page, résultats

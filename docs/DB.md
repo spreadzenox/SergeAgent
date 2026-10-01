@@ -99,7 +99,7 @@ catalogue et la mécanique.
 | `touches` | Chaque envoi à un prospect. |
 | `inbound_events` | Chaque réaction reçue, traduite en signal. |
 | `ticket_events` | L'historique de chaque ticket. |
-| `llm_usage` | Chaque appel au modèle, noté aussitôt : invocation, modèle, jetons, durée, résultat (`ok`, `format_invalide`, `outil` pour un tour d'outils, `erreur` pour un appel raté) et coût réel facturé par OpenRouter (`cost_usd`, en dollars, vide s'il n'est pas donné). Le plafond du jour compte ce coût réel. |
+| `llm_usage` | Chaque appel au modèle, noté aussitôt : invocation, modèle, jetons, durée, résultat (`ok`, `format_invalide`, `outil` pour un tour d'outils, `erreur` pour un appel raté) et coût réel facturé par OpenRouter (`cost_usd`, en dollars, vide s'il n'est pas donné). Les plafonds du jour et du mois comptent ce coût réel. |
 | `episode_archives` | Les archives d'événements anciens. |
 
 ### La connaissance

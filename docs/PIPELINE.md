@@ -164,11 +164,17 @@ Le runner tourne en continu, en deux copies, une par file
   troisième appel d'une conversation. Les autres fournisseurs cachent seuls.
   À vérifier sur un vrai appel : le coût de chaque appel d'une boucle doit
   cesser de croître à chaque tour.
-- Quand le plafond de dépense LLM du jour est atteint (réglé dans la
-  policy, par exemple 5 €), les tâches LLM attendent le lendemain ; les
-  autres continuent. La dépense est le coût réel facturé par OpenRouter pour
-  chaque appel (`llm_usage.cost_usd`), jamais une estimation ; les appels
-  dont le coût n'est pas connu sont signalés à part.
+- Deux plafonds de dépense, réglés sur la page Policy : celui du jour (par
+  exemple 5 €) et celui du mois (par exemple 50 €), qui borne ce que Serge
+  nous coûte en IA ; les achats de Serge pour ses business n'y comptent pas.
+  Quand l'un est atteint, les tâches LLM attendent le lendemain ou le mois
+  suivant ; les autres continuent. La dépense est le coût réel facturé par
+  OpenRouter pour chaque appel (`llm_usage.cost_usd`), jamais une
+  estimation ; les appels dont le coût n'est pas connu sont signalés à part.
+- Aucune température n'est envoyée au modèle : il garde celle de son
+  fournisseur, et le prompt fait le reste (décisions Q62 et Q68). Une
+  réponse mal formée est redemandée, sans outil, autant de fois que le dit
+  la policy (`quotas.llm_recalls_json`, page Policy).
 - À chaque tour, les tickets dont le délai est passé sont expirés : leur
   choix par défaut s'applique.
 

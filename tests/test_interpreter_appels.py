@@ -39,7 +39,7 @@ from serge.interpreter.tasks import enqueue_task  # noqa: E402
 from serge.interpreter.tools import run_capability  # noqa: E402
 from serge.llm.client import ChatResult, LlmError, ToolCall  # noqa: E402
 from serge.llm.runtime import (  # noqa: E402
-    budget_spent,
+    budget_reached,
     daily_tokens,
     llm_spend,
 )
@@ -255,8 +255,12 @@ class DepenseTests(unittest.TestCase):
         self.assertAlmostEqual(depense.eur, 0.45)
         self.assertEqual(depense.unknown_tokens, 2000)
         self.assertEqual(depense.tokens, 3000)
-        self.assertFalse(budget_spent(conn, politique, '2026-09-29'))
-        self.assertTrue(budget_spent(conn, politique, '2026-09-28'))
+        self.assertEqual(budget_reached(conn, politique, '2026-09-29'), '')
+        self.assertEqual(budget_reached(conn, politique, '2026-09-28'), 'jour')
+        # Le plafond du mois compte tout septembre : 0,45 € + 2,70 €.
+        politique['budget'].update(llm_daily_eur=5.0, monthly_eur=3.0)
+        self.assertEqual(budget_reached(conn, politique, '2026-09-29'), 'mois')
+        self.assertEqual(budget_reached(conn, politique, '2026-10-01'), '')
 
 
 if __name__ == '__main__':

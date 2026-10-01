@@ -9,11 +9,17 @@ import json
 import sys
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from serge.db.store import open_db  # noqa: E402
+from serge.policy_snapshots import (  # noqa: E402
+    policy_en_vigueur,
+    snapshot_policy,
+)
 from serge.sms import SmsInbox  # noqa: E402
 from serge.sms.receiver import (  # noqa: E402
     RateLimiter,
@@ -21,6 +27,7 @@ from serge.sms.receiver import (  # noqa: E402
     check_auth,
     ingest_payload,
     normalize_envelope,
+    read_limits,
 )
 
 SECRET = b'0123456789abcdef0123456789abcdef'
@@ -57,6 +64,7 @@ class SmsReceiverTests(unittest.TestCase):
             secret=SECRET,
             inbox=self.inbox,
             limiter=self.limiter,
+            limits=(60, 10),
         )
 
     def test_canonical_envelope_accepted(self) -> None:
@@ -153,18 +161,35 @@ class SmsReceiverTests(unittest.TestCase):
         self.assertNotIn('987654', json.dumps(result))
 
     def test_rate_limit_per_sender(self) -> None:
-        limiter = RateLimiter(sender_per_minute=2, global_per_minute=100)
-        self.assertTrue(limiter.allow('a', now=1000.0))
-        self.assertTrue(limiter.allow('a', now=1001.0))
-        self.assertFalse(limiter.allow('a', now=1002.0))
-        self.assertTrue(limiter.allow('b', now=1002.0))
-        self.assertTrue(limiter.allow('a', now=1061.0))
+        limiter, limits = RateLimiter(), (100, 2)
+        self.assertTrue(limiter.allow('a', limits, now=1000.0))
+        self.assertTrue(limiter.allow('a', limits, now=1001.0))
+        self.assertFalse(limiter.allow('a', limits, now=1002.0))
+        self.assertTrue(limiter.allow('b', limits, now=1002.0))
+        self.assertTrue(limiter.allow('a', limits, now=1061.0))
 
     def test_global_rate_limit(self) -> None:
-        limiter = RateLimiter(sender_per_minute=100, global_per_minute=2)
-        self.assertTrue(limiter.allow('a', now=1000.0))
-        self.assertTrue(limiter.allow('b', now=1001.0))
-        self.assertFalse(limiter.allow('c', now=1002.0))
+        limiter, limits = RateLimiter(), (2, 100)
+        self.assertTrue(limiter.allow('a', limits, now=1000.0))
+        self.assertTrue(limiter.allow('b', limits, now=1001.0))
+        self.assertFalse(limiter.allow('c', limits, now=1002.0))
+
+    def test_plafonds_lus_dans_la_policy_en_vigueur(self) -> None:
+        # Le chiffre changé dans Mission Control vaut pour le SMS suivant.
+        canon = Path(self.tmp.name) / 'serge.db'
+        with closing(open_db(canon)) as conn:
+            policy = policy_en_vigueur(conn)
+            conn.commit()
+        self.assertEqual(read_limits(canon), (60, 10))
+        policy['quotas']['sms_per_sender_per_min'] = 1
+        with closing(open_db(canon)) as conn:
+            snapshot_policy(conn, policy)
+            conn.commit()
+        limits = read_limits(canon)
+        self.assertEqual(limits, (60, 1))
+        limiter = RateLimiter()
+        self.assertTrue(limiter.allow('a', limits, now=1000.0))
+        self.assertFalse(limiter.allow('a', limits, now=1001.0))
 
 
 if __name__ == '__main__':

@@ -110,41 +110,13 @@ class PolicyActesTests(McServerCase):
         )
         self.assertEqual(status, 409)
 
-    def test_policy_propose_ticket(self) -> None:
+    def test_policy_propose_retire(self) -> None:
+        """« Demander un changement » est retiré (Q68) : rien ne s'en servait."""
         cookie = self._auth_cookie()
-
         status, _, _ = self._api_post(
-            '/owner/api/policy/propose', {'titre': ''}, cookie
+            '/owner/api/policy/propose', {'titre': 'x', 'diff': 'y'}, cookie
         )
-        self.assertEqual(status, 400)
-
-        status, _, corps = self._api_post(
-            '/owner/api/policy/propose',
-            {
-                'titre': 'Ajuster seuil bandit',
-                'diff': 'exploration: 0.1 -> 0.2',
-                'justification': 'Plus de tests',
-                'impact': 'faible',
-                'decision_id': 'dec_prop_1',
-            },
-            cookie,
-        )
-        self.assertEqual(status, 200)
-        data = json.loads(corps.decode('utf-8'))
-        self.assertTrue(data['ok'])
-        ticket_id = data['ticket_id']
-
-        conn = open_db(self.db_path)
-        try:
-            t = conn.execute(
-                'SELECT type, title, state FROM tickets WHERE id=?',
-                (ticket_id,),
-            ).fetchone()
-            self.assertEqual(t[0], 'POLICY')
-            self.assertEqual(t[1], 'Ajuster seuil bandit')
-            self.assertEqual(t[2], 'DRAFT')
-        finally:
-            conn.close()
+        self.assertEqual(status, 404)
 
 
 if __name__ == '__main__':

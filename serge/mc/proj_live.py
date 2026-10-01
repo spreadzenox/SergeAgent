@@ -181,7 +181,8 @@ def _barre(faits: int, quota: int) -> dict[str, Any]:
 def project_jauges(
     conn: sqlite3.Connection, policy: Mapping[str, Any], now: str
 ) -> dict[str, Any]:
-    """Budgets du jour : LLM € + quotas quotidiens de la Policy.
+    """Budgets : le coût des modèles du jour et du mois, et les quotas
+    quotidiens de la Policy.
 
     Args:
         conn: Connexion canon (lecture).
@@ -189,13 +190,16 @@ def project_jauges(
         now: Maintenant ISO UTC.
 
     Returns:
-        Dict llm / email / voix / linkedin (ratio None si plafond 0).
+        Dict llm / mois / email / voix / linkedin (ratio None si plafond 0).
     """
     day = now[:10]
     depense = llm_spend(conn, policy, day)
     budget = policy.get('budget') or {}
     cap = float(budget.get('llm_daily_eur', 0) or 0)
     eur = depense.eur
+    # Ce que Serge nous coûte en IA ce mois-ci (décision Q68).
+    mois = llm_spend(conn, policy, day[:7]).eur
+    cap_mois = float(budget.get('monthly_eur', 0) or 0)
     quotas = policy.get('quotas') or {}
     email = _barre(
         _touches_jour(conn, 'email', day),
@@ -210,7 +214,13 @@ def project_jauges(
             'jetons_sans_cout': depense.unknown_tokens,
             'plafond_eur': cap,
             'ratio': (eur / cap) if cap > 0 else None,
-            'libelle': 'Invocations LLM (plafond € du jour)',
+            'libelle': 'Modèles, aujourd’hui',
+        },
+        'mois': {
+            'eur': round(mois, 4),
+            'plafond_eur': cap_mois,
+            'ratio': (mois / cap_mois) if cap_mois > 0 else None,
+            'libelle': 'Ce que Serge coûte ce mois-ci',
         },
         'email': {
             **email,

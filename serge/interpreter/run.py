@@ -36,10 +36,9 @@ from serge.interpreter.tasks import finish_task, start_task, task_params
 from serge.interpreter.tools import fixed_params, run_capability
 from serge.interpreter.writer import write_answer
 from serge.llm.client import ChatResult
-from serge.llm.runtime import budget_spent
+from serge.llm.runtime import budget_reached
 from serge.policy_snapshots import policy_en_vigueur
 
-RETRIES = 2
 TIER_TO_OLD = {'fast': 'T1', 'mid': 'T2', 'smart': 'T3'}
 
 
@@ -160,9 +159,10 @@ def _ask(
 
     Chaque appel est noté aussitôt (tours d'outils, échecs compris) et
     enregistré : si la tâche échoue ensuite, ce qu'elle a coûté reste
-    visible, et compte dans le plafond du jour. Quand le plafond est
-    atteint en plein travail, le modèle doit répondre sans plus d'outil ;
-    la tâche finit, et les suivantes attendent le lendemain.
+    visible, et compte dans les plafonds du jour et du mois. Quand un
+    plafond est atteint en plein travail, le modèle doit répondre sans plus
+    d'outil ; la tâche finit, et les suivantes attendent le lendemain (ou
+    le mois suivant).
     """
 
     def record(result: ChatResult | None, verdict: str) -> None:
@@ -170,8 +170,10 @@ def _ask(
 
     policy = policy_en_vigueur(conn)
     quotas = policy.get('quotas') or {}
+    # Les nouveaux essais d'une réponse mal formée (policy, page Policy).
+    retries = int(quotas.get('llm_recalls_json', 0) or 0)
     last_errors: list[str] = []
-    for attempt in range(RETRIES + 1):
+    for attempt in range(retries + 1):
         result, history = converse(
             conn,
             inv,
@@ -181,7 +183,7 @@ def _ask(
             api_key=api_key,
             model=model,
             record=record,
-            stop=lambda: budget_spent(conn, policy_en_vigueur(conn)),
+            stop=lambda: bool(budget_reached(conn, policy_en_vigueur(conn))),
             # Une redemande de format corrige la réponse, sans outil.
             tools_allowed=attempt == 0,
             max_result_chars=int(
@@ -202,7 +204,7 @@ def _ask(
         record(result, 'ok' if not last_errors else 'format_invalide')
         if not last_errors:
             return answer
-        if attempt < RETRIES:
+        if attempt < retries:
             messages = [
                 *history,
                 {'role': 'assistant', 'content': result.text},

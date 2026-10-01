@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from serge.llm.client import ChatResult, LlmError, chat
 from serge.llm.runtime import (
-    budget_spent,
+    budget_reached,
     daily_tokens,
     read_api_key,
     resolve_model,
@@ -14,7 +14,7 @@ from serge.llm.runtime import (
 __all__ = [
     'ChatResult',
     'LlmError',
-    'budget_spent',
+    'budget_reached',
     'chat',
     'daily_tokens',
     'read_api_key',

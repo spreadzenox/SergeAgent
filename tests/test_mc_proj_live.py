@@ -189,7 +189,7 @@ class ProjLiveTests(unittest.TestCase):
         self.assertNotEqual(
             (file['next'] or {}).get('kind'), 'Classer une réponse'
         )
-        self.assertIn('Plafond LLM du jour atteint', file['attente'])
+        self.assertIn('Plafond du jour atteint', file['attente'])
         with mock.patch(
             'serge.mc.proj_taches.policy_en_vigueur', return_value=politique
         ):
@@ -200,8 +200,36 @@ class ProjLiveTests(unittest.TestCase):
         }
         self.assertEqual(
             etats['Classer une réponse'],
-            'En attente : plafond LLM du jour atteint',
+            'En attente : plafond du jour atteint',
         )
+
+    def test_le_plafond_du_mois_explique_l_attente(self) -> None:
+        """Ce que Serge a coûté ce mois-ci dépasse le plafond du mois : les
+        tâches LLM attendent le mois suivant, même sous le plafond du jour."""
+        self.conn.execute(
+            "UPDATE invocations SET type='llm' WHERE id='classer'"
+        )
+        self.conn.execute(
+            'INSERT INTO llm_usage(point, tier, verdict, cost_usd, created_at)'
+            " VALUES('classer', 'mid', 'ok', 40.0, '2026-09-02T09:00:00')",
+        )
+        politique = {
+            **POLICY,
+            'budget': {
+                'llm_daily_eur': 5.0,
+                'monthly_eur': 30.0,
+                'eur_per_usd': 0.9,
+            },
+        }
+        file = project_file(self.conn, politique, NOW)
+        self.assertNotEqual(
+            (file['next'] or {}).get('kind'), 'Classer une réponse'
+        )
+        self.assertIn('Plafond du mois atteint', file['attente'])
+        self.assertIn('le mois prochain', file['attente'])
+        jauges = project_jauges(self.conn, politique, NOW)
+        self.assertAlmostEqual(jauges['mois']['eur'], 36.0)
+        self.assertEqual(jauges['mois']['plafond_eur'], 30.0)
 
     def test_feed_tri_et_sources(self) -> None:
         items = project_feed(self.conn, POLICY, NOW)['items']

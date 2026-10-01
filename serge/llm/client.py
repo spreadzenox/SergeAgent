@@ -103,7 +103,6 @@ def chat(
     *,
     referer: str = '',
     timeout: float = 60.0,
-    temperature: float = 0.3,
     base_url: str = OPENROUTER_BASE_URL,
     tools: list[dict[str, Any]] | None = None,
     tool_choice: str | dict[str, Any] | None = None,
@@ -117,7 +116,6 @@ def chat(
         messages: Historique (role/content str ou blocs multimodaux).
         referer: HTTP-Referer de l'instance.
         timeout: Timeout HTTP (secondes).
-        temperature: Température.
         base_url: Base API (override tests).
         tools: Schémas OpenAI (renvoyés à chaque tour).
         tool_choice: ``auto`` / ``none`` / forcer un outil.
@@ -131,11 +129,9 @@ def chat(
     """
     if not api_key or not model:
         raise LlmError('AUTH: chat needs an API key and a model')
-    payload: dict[str, Any] = {
-        'model': model,
-        'messages': messages,
-        'temperature': temperature,
-    }
+    # Pas de température : celle du fournisseur, le prompt fait le reste
+    # (décisions Q62 et Q68).
+    payload: dict[str, Any] = {'model': model, 'messages': messages}
     if tools:
         payload['tools'] = tools
         payload['parallel_tool_calls'] = parallel_tool_calls
