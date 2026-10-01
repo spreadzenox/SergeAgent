@@ -13,7 +13,7 @@ décision prise sans question n'a pas sa place ici. On ajoute l'entrée à la
 fin du fichier, avec le numéro qui suit la dernière :
 
 ```
-### Q69 — Titre court (validé par Clem, 2 octobre 2026)
+### Q<numéro> — Titre court (validé par Clem, 2 octobre 2026)
 Constat : ce qui a amené la question.
 Décidé : ce qui a été répondu, point par point.
 Arguments : pourquoi cette réponse plutôt qu'une autre (si la personne en a donné).
@@ -50,8 +50,10 @@ fichier au début de chaque lot.
   chaque tâche du TODO est une case à cocher, un titre en gras, puis un
   paragraphe descriptif qui dit d'où on part, ce qu'il faut faire,
   pourquoi, et ce qui doit être réglable dans Mission Control. Pas de
-  rubriques du type « Quoi / Pourquoi / Dépend de », pas de renvois
-  « Q13 ». Les autres documents suivent le même esprit : des phrases qui
+  rubriques du type « Quoi / Pourquoi / Dépend de », pas de renvoi à un
+  numéro seul (« voir Q13 ») : on écrit ce que dit la décision, puis son
+  numéro entre parenthèses (Q69). Les autres documents suivent le même
+  esprit : des phrases qui
   décrivent, avec des exemples, plutôt que des listes de mots-clés.
 
 ## Questions / réponses
@@ -1224,3 +1226,24 @@ Précisions de Clem (1er octobre 2026) :
     fériés, fuseau du pays) : l'inventaire comptait les réglages d'un pays
     pour un seul. En tout, 58 des 91 réglages n'étaient lus par rien. Ils
     sont retirés comme les autres ; le lot 8 les remet avec la voix.
+
+### Q69 — Citer une décision, et signaler toute incohérence à un humain (validé par Julien, 1er octobre 2026)
+Constat : les principes de ce fichier disaient « pas de renvois Q13 »
+dans le TODO, alors que le TODO, les docs et les commentaires du code
+citent des numéros (Q62, Q68…). Un lecteur qui arrive à froid ne sait pas
+ce que veut dire « Q68 ». Julien a demandé si le style d'écriture était
+écrit quelque part ; la réponse a fait apparaître cette contradiction.
+Décidé :
+1. On ne cite jamais une décision par son seul numéro : on écrit ce
+   qu'elle dit, puis son numéro entre parenthèses (« Tout réglage
+   discutable se change dans Mission Control (Q68) »). Cela précise la
+   demande de Clem (« pas de renvois Q13 ») : ce sont les numéros nus
+   qu'on évite. La règle est dans la charte (section 7) ; le TODO et les
+   docs de l'étape 1 sont corrigés.
+2. Il ne doit y avoir d'incohérence nulle part. Quand on en trouve une
+   (deux textes qui se contredisent, une doc et le code, deux décisions),
+   on ne tranche pas soi-même : on la signale à un humain, qui tranche.
+   Ensuite tous les textes concernés sont corrigés dans le même
+   changement. La règle est dans la charte (section 7).
+Arguments de Julien : il préfère qu'il n'y ait pas d'incohérence nulle
+part ; quand il y en a, c'est à un humain de dire laquelle fait foi.

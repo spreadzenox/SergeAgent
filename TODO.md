@@ -128,7 +128,7 @@ données (business, contacts, abonnements).
   invocations qui ont chacune un seul rôle, on garde les pages retenues
   comme preuves, et Serge choisit et lit lui-même ses flux RSS. Ce lot est
   le premier à être décrit entièrement en base grâce au lot 6. Les
-  réponses de Clem sont dans la décision Q65 de
+  réponses de Clem sur l'étape 1 sont dans la décision Q65 de
   [`docs/DECISIONS_REVUE.md`](docs/DECISIONS_REVUE.md).
 - [ ] **Avant le lot 8 : les réglages en base.** Toute grandeur
   discutable se règle depuis Mission Control (décision Q68) : on retire
@@ -615,7 +615,7 @@ et Serge sait demander de l'aide quand il ne sait pas.
 
 ## Étape 1 — Pré-prospection
 
-C'est le lot 7. Décisions de Clem : Q65 dans
+C'est le lot 7. Décisions de Clem sur cette étape : Q65 dans
 [`docs/DECISIONS_REVUE.md`](docs/DECISIONS_REVUE.md) ; le détail de
 l'étape est dans
 [`docs/etapes/1-pre-prospection.md`](docs/etapes/1-pre-prospection.md),

@@ -157,7 +157,9 @@ Aucun test de CI n'agit sur le monde réel.
   - un exemple concret, chiffré, plutôt qu'une formule abstraite ;
   - pas de jargon ni de mots-valises (« hôte », « canon », « contrat »,
     « jonction », « de façon prévisible ») ;
-  - décrire ce qui se passe, concrètement.
+  - décrire ce qui se passe, concrètement ;
+  - quand on cite une décision, écrire ce qu'elle dit, puis son numéro
+    entre parenthèses, jamais le numéro seul.
 
   À éviter : « Chaque accès injecté a une taille maximale (nombre de
   lignes) sur sa jonction. Si le contenu dépasse, l'hôte coupe de façon
@@ -178,6 +180,15 @@ Aucun test de CI n'agit sur le monde réel.
   ne vaut que pour une vraie question-réponse : un changement décidé sans
   question n'y entre pas. Une décision validée fait foi : le code et la doc
   s'y conforment.
+- **Pas d'incohérence, et on ne tranche pas seul.** Quand deux textes se
+  contredisent (deux documents, une doc et le code, deux décisions) ou
+  qu'une décision n'est pas appliquée, on ne choisit pas soi-même : on le
+  signale à un humain, Julien ou Clem, en citant les deux passages, et il
+  tranche. Sans conversation, on le dit dans la description de la PR.
+  Ensuite on corrige tous les textes concernés dans le même changement, et
+  la réponse est notée comme une question-réponse. Exemple : le fichier des
+  décisions disait « pas de renvois Q13 dans le TODO » alors que le TODO en
+  contenait. On a demandé à Julien laquelle des deux faisait foi.
 
 ## 8. Les changements
 
