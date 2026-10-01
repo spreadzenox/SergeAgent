@@ -19,6 +19,7 @@ from typing import Any
 
 from serge.db.store import append_event, utcnow
 from serge.interpreter.rules import (
+    cancel_tasks_on_change,
     check_catalogue,
     find_duplicate,
     quota_refusal,
@@ -386,16 +387,41 @@ def _update(
         )
         return None
     changes = dict(values)
-    if (
-        'updated_at' in table_columns(conn, table)
-        and 'updated_at' not in changes
-    ):
+    colonnes = table_columns(conn, table)
+    if 'updated_at' in colonnes and 'updated_at' not in changes:
         changes['updated_at'] = utcnow()
+    # Toutes les lignes visées (une clé comme « status = OPEN » peut en
+    # viser plusieurs), pour les règles d'annulation des tâches.
+    ids = (
+        [
+            r[0]
+            for r in conn.execute(
+                f'SELECT id FROM "{table}" WHERE "{safe_name(key_column)}"=?',
+                (key,),
+            )
+        ]
+        if 'id' in colonnes
+        else []
+    )
     sets = ', '.join(f'"{safe_name(c)}"=?' for c in changes)
     conn.execute(
         f'UPDATE "{table}" SET {sets} WHERE "{safe_name(key_column)}"=?',
         [*changes.values(), key],
     )
+    annulees = cancel_tasks_on_change(conn, table, ids, values, utcnow())
+    if annulees:
+        append_event(
+            conn,
+            actor=f'invocation:{invocation_id}',
+            type='task.cancelled',
+            payload={
+                'task': task_id,
+                'table': table,
+                'ids': [str(i) for i in ids],
+                'count': annulees,
+            },
+            rows=[(table, i) for i in ids],
+        )
     _journal(
         conn,
         invocation_id,

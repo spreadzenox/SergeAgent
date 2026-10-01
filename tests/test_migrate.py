@@ -606,6 +606,16 @@ class MigrateTests(unittest.TestCase):
             ('a/choisi',),
         )
 
+    def test_v32_ajoute_les_regles_d_annulation(self) -> None:
+        conn = sqlite3.connect(':memory:')
+        self.addCleanup(conn.close)
+        apply_pending(conn, _until(31), head=31)
+        self.assertEqual(apply_pending(conn), SCHEMA_VERSION)
+        conn.execute(
+            'INSERT INTO task_cancel_rules(table_name, column_name, value,'
+            " param_name) VALUES('t', 'c', 'v', 'p')"
+        )
+
 
 if __name__ == '__main__':
     unittest.main()

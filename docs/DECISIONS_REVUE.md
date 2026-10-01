@@ -1118,3 +1118,14 @@ Décidé, pour toutes les invocations, sans bricolage :
    plus 300 caractères ; un résultat d'outil est coupé au-delà d'une
    taille réglée dans la policy (20 000 caractères) ; un résultat n'est
    jamais envoyé en double ; une redemande de format se fait sans outil.
+
+### Q67 — Abandonner un cycle arrête sa chaîne (validé par Clem, 29 septembre 2026)
+Constat : après un abandon, la tâche « Trier les pages » de l'ancien cycle
+est partie (elle attendait le plafond du jour) et a lancé « Formuler des
+business A » pour l'ancien cycle, avant l'« Explorer » du nouveau.
+Décidé : abandonner un cycle annule ses tâches en attente, par une règle
+réglée sur la table (`task_cancel_rules` : un cycle `ABANDONED` annule les
+tâches dont le paramètre `cycle_id` est le sien) ; la chaîne s'arrête
+après la tâche en cours. La fiche d'une tâche en attente a un bouton
+« Annuler la tâche ». La question du bouton et le rôle de l'invocation sont
+mis à jour sur l'instance existante par la section `changes`.

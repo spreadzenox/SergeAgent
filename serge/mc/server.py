@@ -31,6 +31,7 @@ from serge.mc.etape_actions import EtapeActionsMixin
 from serge.mc.llm_actions import LlmActionsMixin
 from serge.mc.pipeline_actions import PipelineActionsMixin
 from serge.mc.policy_actions import PolicyActionsMixin
+from serge.mc.proj_public import project_public_statut
 from serge.mc.projectors import PAGE_SECTIONS, SnapshotCache
 from serge.mc.sse import state_payload, stream_page
 from serge.policy import PolicyError
@@ -258,8 +259,6 @@ class McHandler(
         self._error(404)
 
     def _serve_public(self) -> None:
-        from serge.mc.proj_public import project_public_statut
-
         with self._db() as conn:
             data = project_public_statut(conn, {}, '')
         html = self._template('public.html').replace(
@@ -268,8 +267,6 @@ class McHandler(
         self._send_html(200, html)
 
     def _api_public_state(self) -> None:
-        from serge.mc.proj_public import project_public_statut
-
         with self._db() as conn:
             data = project_public_statut(conn, {}, '')
         self._send_json(200, data)
@@ -372,6 +369,7 @@ class McHandler(
             '/owner/api/etape': self._api_etape,
             '/owner/api/bouton': self._api_bouton,
             '/owner/api/tache/relancer': self._api_tache_relancer,
+            '/owner/api/tache/annuler': self._api_tache_annuler,
             '/owner/api/invocation/comparer': self._api_comparer,
             '/owner/api/lien/passer': self._api_lien_passer,
             '/owner/api/lien/auto': self._api_lien_auto,

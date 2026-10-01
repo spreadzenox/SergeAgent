@@ -65,7 +65,7 @@ accord de Julien.
 **Le cycle** se lance à la main depuis la page Écoute (plus tard,
 automatiquement), s'il reste une place libre en prospection légère et
 qu'aucun cycle n'est ouvert. Un bouton « Abandonner le cycle » ferme un
-cycle resté ouvert. Les invocations tournent l'une après l'autre :
+cycle resté ouvert et annule ses tâches en attente. Les invocations tournent l'une après l'autre :
 
 | # | Invocation | Type | Entrée | Sortie |
 |---|---|---|---|---|

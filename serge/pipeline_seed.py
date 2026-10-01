@@ -31,6 +31,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
+from serge.interpreter.rules import table_columns
 from serge.pipeline_seed_flow import seed_deleted, seed_links, seed_triggers
 from serge.seed_base import (
     PipelineSeedError,
@@ -172,6 +173,23 @@ def _seed_rules(conn: sqlite3.Connection, data: Mapping[str, Any]) -> None:
             description=str(quota.get('description', '')).strip(),
             policy=int(bool(quota.get('policy', True))),
             updated_by='pipeline.yaml',
+        )
+    # Quand une ligne passe dans tel état, ses tâches en attente sont
+    # annulées (exemple : un cycle abandonné arrête sa chaîne).
+    for rule in list_of(data, 'task_cancel_rules'):
+        table, column = str(rule['table']), str(rule['column'])
+        if column not in table_columns(conn, table):
+            raise PipelineSeedError(
+                f'task_cancel_rules : colonne absente {table}.{column}'
+            )
+        insert(
+            conn,
+            'task_cancel_rules',
+            ignore=True,
+            table_name=table,
+            column_name=column,
+            value=str(rule['value']),
+            param_name=str(rule['param']),
         )
     for rule in list_of(data, 'dedup_rules'):
         ident = str(rule['id'])
