@@ -17,9 +17,9 @@ recrée jamais ensuite.
 1. **Les migrations** (`serge/db/migrate.py`). Chaque changement de
    structure est une fonction `apply_v0NN` (fichiers `serge/db/v0NN.py`).
    Serge applique celles qui manquent, dans l'ordre. Version actuelle :
-   **31**.
+   **32**.
    - Une base neuve saute directement à la version 7 (le socle,
-     `serge/db/schema.py`), puis applique 8, 9, … 31.
+     `serge/db/schema.py`), puis applique 8, 9, … 32.
    - Une base **plus récente** que le code refuse de démarrer
      (`MigrateError`). Revenir à un ancien commit ne défait pas une
      migration.

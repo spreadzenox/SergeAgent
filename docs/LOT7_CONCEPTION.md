@@ -104,7 +104,7 @@ Chaque ajout est général : il sert à toutes les invocations.
   qui vise une table (et, si besoin, un filtre) crée une tâche par ligne,
   avec les colonnes de la ligne en paramètres.
 - **Annuler les tâches d'une ligne qui change d'état**
-  (`task_cancel_rules`, version 31 de la base) : une protection réglée
+  (`task_cancel_rules`, version 32 de la base) : une protection réglée
   sur la table. « Quand un cycle passe à `ABANDONED`, ses tâches en
   attente (paramètre `cycle_id`) sont annulées. » La file ne fait qu'une
   tâche à la fois : l'abandon passe juste après la tâche en cours, et
