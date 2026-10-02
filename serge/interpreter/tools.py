@@ -16,6 +16,7 @@ from typing import Any
 
 from serge.interpreter.seen import CHOICES, read_seen_table, row_history
 from serge.interpreter.settings import load_settings
+from serge.policy_store import policy_en_vigueur
 
 Runner = Callable[
     [sqlite3.Connection, str, dict[str, Any], str], dict[str, Any]
@@ -32,14 +33,14 @@ def _db_read(
 
 
 def _web_search(
-    _conn: sqlite3.Connection, _tool: str, args: dict[str, Any], _inv: str
+    conn: sqlite3.Connection, _tool: str, args: dict[str, Any], _inv: str
 ) -> dict[str, Any]:
     from serge.listen.web import search_public
 
+    pol = policy_en_vigueur(conn)
+    limit = int(args.get('limit') or pol['tools']['search_results'])
     result = dict(
-        search_public(
-            str(args.get('query') or ''), int(args.get('limit') or 5)
-        )
+        search_public(str(args.get('query') or ''), limit, pol['web'])
     )
     # Les résultats sous un seul nom : ce que rend un outil repart au
     # modèle à chaque tour, un doublon coûterait deux fois.
@@ -59,7 +60,10 @@ def _memory_search(
             str(args.get('query') or ''),
             point=inv,
             types=list(types) if isinstance(types, list) else None,
-            top_k=int(args.get('top_k') or 5),
+            top_k=int(
+                args.get('top_k')
+                or policy_en_vigueur(conn)['tools']['memory_results']
+            ),
         )
     )
     rows = result.pop('results', [])
@@ -100,26 +104,40 @@ def _page_read(
         if row is None:
             return {'ok': False, 'code': 'page_inconnue', 'rows': []}
         url = str(row[0])
-    result = dict(read_page(url, int(args.get('max_lines') or 0)))
+    result = dict(
+        read_page(
+            url,
+            int(args.get('max_lines') or 0),
+            policy_en_vigueur(conn)['web'],
+        )
+    )
     rows = result.pop('lines', [])
     return {**result, 'rows': rows}
 
 
 def _rss_read(
-    _conn: sqlite3.Connection, _tool: str, args: dict[str, Any], _inv: str
+    conn: sqlite3.Connection, _tool: str, args: dict[str, Any], _inv: str
 ) -> dict[str, Any]:
-    """Lire un flux RSS : ses pages, avec un aperçu de quelques lignes."""
+    """Lire un flux RSS : ses pages, avec un aperçu de quelques lignes.
+
+    Sans nombre donné par le modèle, les valeurs par défaut de la page
+    Pipeline (« Outils, valeurs par défaut »).
+    """
     from serge.listen.collectors import fetch_rss
     from serge.listen.page import text_lines
 
-    lines = int(args.get('max_lines') or 5)
+    pol = policy_en_vigueur(conn)
+    lines = int(args.get('max_lines') or pol['tools']['feed_preview_lines'])
     rows = []
     for item in fetch_rss(
         str(args.get('url') or ''),
         'rss',
-        max_items=int(args.get('max_items') or 20),
+        timeout=float(pol['web']['feed_timeout_s']),
+        max_items=int(args.get('max_items') or pol['tools']['feed_items']),
     ):
-        apercu = text_lines(item['excerpt'])[1][:lines]
+        apercu = text_lines(
+            item['excerpt'], int(pol['web']['line_max_chars'])
+        )[1][:lines]
         rows.append(
             {
                 'url': item['url'],

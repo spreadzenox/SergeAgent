@@ -3,7 +3,8 @@
 
 Le bouton d'un déclencheur, relancer une tâche, les tables qu'une
 invocation voit pour comparer, le passage d'un lien à la main, et, sur la
-page Pipeline, le modèle de chaque niveau et le texte « Qui est Serge ».
+page Pipeline, le modèle de chaque niveau. Les réglages et les textes de
+la page Pipeline passent par ``serge/mc/policy_actions.py``.
 """
 
 from __future__ import annotations
@@ -26,6 +27,7 @@ from serge.llm.catalog import (
     usage_mix,
 )
 from serge.mc.proj_vues import changer_comparaison
+from serge.policy_store import policy_en_vigueur
 
 # Un identifiant de modèle : « openai/gpt-5-mini », vide pour celui de
 # l'installation.
@@ -333,36 +335,8 @@ class PipelineActionsMixin(_Base):
         with self._db() as conn:
             tiers = tier_settings(conn)
             mix = usage_mix(conn)
-        self._send_json(200, for_page(tiers, mix))
-
-    def _api_pipeline_texte(self) -> None:
-        """Le texte « Qui est Serge » : ``{body}``."""
-        if not self._require_owner():
-            return
-        body = self._json_body() or {}
-        texte = str(body.get('body') or '').strip()
-        if not texte or len(texte) > 4000:
-            self._refus(
-                400,
-                'Texte vide ou trop long.',
-                'texte',
-                'Entre 1 et 4000 caractères.',
-            )
-            return
-        with self._db() as conn:
-            conn.execute(
-                'INSERT INTO serge_texts(id, body, updated_at)'
-                " VALUES('presentation', ?, ?) ON CONFLICT(id) DO UPDATE"
-                ' SET body=excluded.body, updated_at=excluded.updated_at',
-                (texte, utcnow()),
-            )
-            append_event(
-                conn,
-                actor='owner',
-                type='pipeline.text',
-                payload={'id': 'presentation', 'longueur': len(texte)},
-            )
-        self._send_json(200, {'ok': True})
+            choice = policy_en_vigueur(conn)['model_choice']
+        self._send_json(200, for_page(tiers, mix, choice))
 
     def _api_flux(self) -> None:
         """Couper ou rallumer un flux RSS : ``{feed_id, active}``."""

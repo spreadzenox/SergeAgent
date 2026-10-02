@@ -663,6 +663,32 @@ class MigrateTests(unittest.TestCase):
             ('3', '', ''),
         )
 
+    def test_v34_page_des_familles_et_textes_remis(self) -> None:
+        conn = sqlite3.connect(':memory:')
+        self.addCleanup(conn.close)
+
+        apply_pending(conn, _until(33), head=33)
+        conn.execute("INSERT INTO policy_sections(id) VALUES('budget')")
+        conn.execute(
+            "INSERT INTO serge_texts(id, body) VALUES('presentation', 'Serge')"
+        )
+        self.assertEqual(apply_pending(conn), SCHEMA_VERSION)
+        self.assertEqual(
+            conn.execute('SELECT page FROM policy_sections').fetchone(),
+            ('policy',),
+        )
+        self.assertEqual(
+            conn.execute(
+                'SELECT body, title, previous_body, previous_at'
+                ' FROM serge_texts'
+            ).fetchone(),
+            ('Serge', '', '', ''),
+        )
+        with self.assertRaises(sqlite3.IntegrityError):
+            conn.execute(
+                "INSERT INTO policy_sections(id, page) VALUES('x', 'ailleurs')"
+            )
+
 
 if __name__ == '__main__':
     unittest.main()

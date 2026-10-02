@@ -91,13 +91,17 @@ class ReviewApiTests(McServerCase):
         self.assertEqual(status, 200, body)
         self.assertEqual(
             self._api_post(
-                '/owner/api/pipeline/texte', {'body': guide}, cookie
+                '/owner/api/reglage',
+                {'cible': 'texte', 'id': 'presentation', 'value': guide},
+                cookie,
             )[0],
             200,
         )
         self.assertEqual(
             self._api_post(
-                '/owner/api/pipeline/texte', {'body': 'a' * 66000}, cookie
+                '/owner/api/reglage',
+                {'cible': 'texte', 'id': 'presentation', 'value': 'a' * 66000},
+                cookie,
             )[0],
             413,
         )

@@ -48,6 +48,9 @@ class McPolicyTests(McBrowserCase):
         expect(regles).to_contain_text('Plafond du mois')
         # La taille des essais est une famille comme les autres.
         expect(regles).to_contain_text('Taille des essais')
+        expect(regles).to_contain_text('Lecture du web')
+        # Ce qui touche au modèle est sur la page Pipeline (Q68).
+        expect(regles).not_to_contain_text('Appels au modèle')
         # Retirés (Q68) : rien ne s'en servait.
         expect(
             page.locator('[data-section="trust_candidates"]')

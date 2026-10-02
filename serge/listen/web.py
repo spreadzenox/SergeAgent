@@ -3,7 +3,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from html.parser import HTMLParser
+from typing import Any
 from urllib.parse import quote, urljoin
 from urllib.request import Request, urlopen
 
@@ -44,8 +46,14 @@ class _ResultsParser(HTMLParser):
             self._in_text = False
 
 
-def search_public(query: str, limit: int = 5) -> dict[str, object]:
-    """Interroge DuckDuckGo HTML et retourne des résultats bornés."""
+def search_public(
+    query: str, limit: int, web: Mapping[str, Any]
+) -> dict[str, object]:
+    """Interroge DuckDuckGo HTML et rend au plus ``limit`` résultats.
+
+    ``web`` : les réglages « Lecture du web » (page Policy) : attente
+    maximale d'une recherche, et nombre maximum de résultats.
+    """
     query = query.strip()
     if not query:
         return {'ok': False, 'code': 'query_vide', 'results': []}
@@ -54,7 +62,9 @@ def search_public(query: str, limit: int = 5) -> dict[str, object]:
         headers={'User-Agent': 'Serge/1.0 (public research)'},
     )
     try:
-        with urlopen(request, timeout=8) as response:
+        with urlopen(
+            request, timeout=float(web['search_timeout_s'])
+        ) as response:
             html = response.read(600_000).decode('utf-8', errors='replace')
     except Exception as exc:  # noqa: BLE001 — tool fail-soft
         return {
@@ -66,7 +76,9 @@ def search_public(query: str, limit: int = 5) -> dict[str, object]:
     parser = _ResultsParser()
     parser.feed(html)
     results = []
-    for item in parser.items[: max(1, min(limit, 10))]:
+    for item in parser.items[
+        : max(1, min(limit, int(web['search_max_results'])))
+    ]:
         results.append(
             {
                 'title': item.get('title', '').strip(),

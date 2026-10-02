@@ -116,14 +116,17 @@
 <template id="page-pipeline">
 <section class="panneau" data-section="pipeline" data-sig="">
 <h2>Pipeline</h2>
-<p class="legende-policy">Tout le pipeline tel qu’il est en base : le code n’en est que l’interpréteur. Une ligne s’ouvre en fiche ; le modèle de chaque niveau et le texte « Qui est Serge » se modifient ici.</p>
+<p class="legende-policy">Tout le pipeline tel qu’il est en base : le code n’en est que l’interpréteur. Une ligne s’ouvre en fiche ; tout ce qui touche au modèle se règle ici : le modèle de chaque niveau, les appels, les valeurs par défaut des outils, la recommandation de modèle et les textes envoyés au modèle.</p>
 <h3>Le modèle derrière chaque niveau</h3>
 <p class="legende-policy">Vide : le modèle choisi à l’installation (affiché en gris). Tape quelques lettres (« deepseek », « gpt mini »…) pour chercher parmi les modèles d’OpenRouter ; les prix sont en dollars par million de jetons : entrée, cache (lecture, écriture) et sortie tels qu’OpenRouter les donne, puis entre parenthèses le prix au mélange de jetons lus et écrits de Serge, sans remise de cache. La recommandation d’un niveau est le meilleur rapport note / prix sous son prix maximum : un modèle doit avoir au moins « tolérance » % de la meilleure note sous ce prix (100 : seulement le meilleur).</p>
 <p class="legende-policy" data-pipeline="catalogue">Liste des modèles d’OpenRouter : chargement…</p>
 <div data-pipeline="modeles"></div>
-<h3>Le texte « Qui est Serge »</h3>
-<p class="legende-policy">En tête du prompt des invocations qui le demandent, suivi de la chaîne des 8 étapes et de leur place, lues en base.</p>
-<div data-pipeline="presentation"></div>
+<h3>Les réglages du modèle</h3>
+<p class="legende-policy">Chaque réglage s’enregistre seul et garde sa valeur précédente, qu’on peut remettre.</p>
+<div data-pipeline="reglages"></div>
+<h3>Les textes envoyés au modèle</h3>
+<p class="legende-policy">Un repère entre accolades ({erreurs}, {reste}) est remplacé au moment de l’envoi. Un texte vide n’est pas envoyé.</p>
+<div class="grille-champs" data-pipeline="textes"></div>
 <h3>Les liens</h3>
 <div data-pipeline="liens"></div>
 <h3>Les déclencheurs</h3>

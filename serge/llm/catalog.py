@@ -22,18 +22,14 @@ from typing import Any
 from kit.openrouter import OpenRouterError, fetch_models
 from serge.llm.recommendation import (
     DAY_S,
-    DEFAULT_INPUT_SHARE,
     DEFERRED_VARIANT,
     effective_price,
     recommend,
 )
 from serge.llm.runtime import read_api_key, tokens_since
+from serge.policy_store import policy_en_vigueur
 
 TIMEOUT_S = 10.0
-MIX_DAYS = 30
-# Sous ce nombre de jetons enregistrés, le mélange lus / écrits n'est pas
-# mesuré : on garde celui par défaut.
-MIN_MEASURED_TOKENS = 100_000
 SCORES_SOURCE = (
     'indice d’intelligence d’Artificial Analysis, donné par OpenRouter'
 )
@@ -95,20 +91,24 @@ def tier_settings(conn: sqlite3.Connection) -> dict[str, dict[str, float]]:
 
 
 def usage_mix(conn: sqlite3.Connection, now: float | None = None) -> dict:
-    """Le mélange de jetons lus et écrits de Serge, mesuré sur 30 jours.
+    """Le mélange de jetons lus et écrits de Serge, mesuré sur les derniers
+    jours (réglages « Recommandation de modèle », page Pipeline). Sous le
+    nombre de jetons mesurés réglé, on suppose la part de jetons lus réglée.
 
     Returns:
         ``{input_share, tokens, measured}`` : la part de jetons lus, le
         nombre de jetons mesurés, et si la mesure suffit (sinon la part est
         celle par défaut).
     """
+    choice = policy_en_vigueur(conn)['model_choice']
     moment = time.time() if now is None else now
-    since = datetime.fromtimestamp(moment - MIX_DAYS * DAY_S, UTC).isoformat()
+    days = int(choice['mix_days'])
+    since = datetime.fromtimestamp(moment - days * DAY_S, UTC).isoformat()
     read, written = tokens_since(conn, since)
     total = read + written
-    if total < MIN_MEASURED_TOKENS:
+    if total < int(choice['min_measured_tokens']):
         return {
-            'input_share': DEFAULT_INPUT_SHARE,
+            'input_share': float(choice['default_read_share']),
             'tokens': total,
             'measured': False,
         }
@@ -118,6 +118,7 @@ def usage_mix(conn: sqlite3.Connection, now: float | None = None) -> dict:
 def for_page(
     tiers: dict[str, dict[str, float]],
     mix: dict,
+    choice: dict[str, Any],
     root: Path | None = None,
     *,
     fetcher: Callable[[str], list[dict[str, Any]]] | None = None,
@@ -144,7 +145,9 @@ def for_page(
     at = cat['at']
     return {
         'models': sorted(models, key=lambda m: str(m['id'])),
-        'recommendations': recommend(cat['models'], tiers, share, now),
+        'recommendations': recommend(
+            cat['models'], tiers, share, choice=choice, now=now
+        ),
         'mix': mix,
         'loaded_at': (
             datetime.fromtimestamp(at, UTC).isoformat(timespec='seconds')

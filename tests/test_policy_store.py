@@ -138,6 +138,33 @@ class PolicyStoreTests(unittest.TestCase):
             0,
         )
 
+    def test_un_reglage_renomme_garde_sa_valeur(self) -> None:
+        """Les nouveaux essais d'une réponse mal formée ont quitté « Plafonds
+        par canal » : la valeur changée sur le serveur est gardée."""
+        self.conn.execute(
+            "DELETE FROM policy_settings WHERE id='llm_calls.format_retries'"
+        )
+        self.conn.execute(
+            'INSERT INTO policy_settings(id, section_id, title, kind,'
+            ' value_json, previous_json, previous_at, previous_by)'
+            " VALUES('quotas.llm_recalls_json', 'quotas', 'Ancien titre',"
+            " 'curseur', '4', '2', '2026-10-01', 'mc')"
+        )
+        ensure_policy(self.conn)
+        self.assertIsNone(self._valeur('quotas.llm_recalls_json'))
+        self.assertEqual(self._valeur('llm_calls.format_retries'), 4)
+        self.assertEqual(
+            policy_en_vigueur(self.conn)['llm_calls']['format_retries'], 4
+        )
+        row = self.conn.execute(
+            'SELECT section_id, title, previous_json FROM policy_settings'
+            " WHERE id='llm_calls.format_retries'"
+        ).fetchone()
+        self.assertEqual(
+            tuple(row),
+            ('llm_calls', 'Nouveaux essais si la réponse est mal formée', '2'),
+        )
+
 
 if __name__ == '__main__':
     unittest.main()

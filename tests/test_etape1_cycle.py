@@ -151,7 +151,7 @@ class FauxModele:
         )
 
 
-def _recherche(query: str, limit: int = 5) -> dict:
+def _recherche(query: str, limit: int, _web: object) -> dict:
     return {
         'ok': True,
         'query': query,
@@ -186,7 +186,7 @@ class CycleEtape1Tests(unittest.TestCase):
         self.conn.commit()
         for cible, faux in (
             ('serge.listen.web.search_public', _recherche),
-            ('serge.listen.page.fetch_html', PAGES_HTML.__getitem__),
+            ('serge.listen.page.fetch_html', lambda url, *_: PAGES_HTML[url]),
             ('serge.listen.page.check_host', lambda _url: None),
         ):
             patcher = mock.patch(cible, faux)

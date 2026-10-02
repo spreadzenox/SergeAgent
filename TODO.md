@@ -108,10 +108,11 @@ sont faits (l'historique git en garde la trace) : le runner et le
 pipeline en base, et l'étape 1 y sont en place.
 
 - [ ] **Avant le lot 8 : les réglages en base.** Toute grandeur
-  discutable se règle depuis Mission Control (décision Q68) : on retire
-  les réglages que rien ne lit, on range les réglages généraux dans une
-  table en base, et on réorganise les pages Pipeline et Policy. Le détail
-  est dans la partie « Avant le lot 8 » plus bas.
+  discutable se règle depuis Mission Control, sans réglage en double
+  (décisions Q68 et Q78). Les réglages sont en base, sur les pages Policy
+  et Pipeline ; il reste à remettre, lot par lot, les réglages retirés
+  parce que rien ne les lisait. Le détail est dans la partie « Avant le
+  lot 8 » plus bas.
 - [ ] **Lot 8 « Conversations ».** On crée un fil de discussion par
   prospect, une seule invocation pour lire et traiter une réponse, une
   fiche produit détaillée pour répondre juste, des tickets qu'on comprend
@@ -169,23 +170,11 @@ discutable, qui peut un jour changer, se règle depuis Mission Control.**
     aucune fonction en marche ne l'appelle aujourd'hui) ;
   - lot 12 (web) : le plafond du navigateur, les recherches en mémoire par
     cycle.
-- [ ] **Les chiffres discutables du code deviennent des réglages** :
-  appels au modèle (attente, nouveaux essais, pauses), lecture du web
-  (longueur d'une ligne, taille et temps de lecture d'une page, résultats
-  d'une recherche, articles d'un flux), valeurs par défaut des outils,
-  filtres de la recommandation de modèle.
-- [ ] **Les textes envoyés au modèle en base**, modifiables sur la page
-  Pipeline, à côté de « Qui est Serge ».
-- [ ] **Réorganiser la page Pipeline** (PR C) : le modèle de chaque
-  niveau et les filtres de la recommandation, les appels au modèle (dont
-  la taille maximale d'un résultat d'outil et les nouveaux essais d'une
-  réponse mal formée, aujourd'hui dans la famille « Plafonds par canal »
-  de la page Policy), les textes envoyés au modèle. La page Policy est
-  faite : les réglages généraux sont en base, par famille, et chacun garde
-  sa valeur précédente (la PR B).
 - La voix n'est pas dans ce chantier : le lot 8 la règle en base comme une
-  invocation (aujourd'hui, 3 minutes d'appel dans le code contre 10 dans
-  la policy).
+  invocation. Aujourd'hui, ses heures d'appel, la durée et les tours de
+  parole d'un appel sont encore écrits dans son code ; ses deux plafonds
+  (appels par jour, contacts par personne sur 30 jours) sont déjà lus en
+  base (Q78).
 
 ---
 

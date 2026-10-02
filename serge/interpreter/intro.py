@@ -27,15 +27,29 @@ def _titles(conn: sqlite3.Connection, sql: str, args: tuple) -> list[str]:
     ]
 
 
+def serge_text(conn: sqlite3.Connection, ident: str, **values: object) -> str:
+    """Un texte envoyé au modèle, tel qu'il est en base (page Pipeline).
+
+    Ses repères sont remplacés par ``values``. Exemple :
+    ``serge_text(conn, 'format_retry', erreurs='champ manquant')``
+    remplace ``{erreurs}``. Un texte vide ou absent rend ``''`` : il n'est
+    pas envoyé.
+    """
+    row = conn.execute(
+        'SELECT body FROM serge_texts WHERE id=?', (ident,)
+    ).fetchone()
+    body = str(row[0]).strip() if row else ''
+    for name, value in values.items():
+        body = body.replace('{' + name + '}', str(value))
+    return body
+
+
 def serge_intro(
     conn: sqlite3.Connection, invocation_id: str, title: str, step_id: str
 ) -> str:
     """Le bloc « Qui est Serge » et « Ta place » d'une invocation."""
     parts: list[str] = []
-    row = conn.execute(
-        "SELECT body FROM serge_texts WHERE id='presentation'"
-    ).fetchone()
-    intro = str(row[0]).strip() if row else ''
+    intro = serge_text(conn, 'presentation')
     steps = conn.execute(
         'SELECT id, titre FROM pipeline_steps ORDER BY rang'
     ).fetchall()

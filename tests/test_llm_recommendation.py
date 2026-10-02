@@ -29,17 +29,20 @@ from kit.openrouter import OpenRouterError, fetch_models  # noqa: E402
 from serge.db.boot import init_schema  # noqa: E402
 from serge.llm import catalog  # noqa: E402
 from serge.llm.recommendation import (  # noqa: E402
-    DEFAULT_INPUT_SHARE,
     effective_price,
     recommend,
     usable,
 )
+from serge.policy import load_policy  # noqa: E402
 
 NOW = 1_790_000_000.0
 SEPT_30 = 1_790_760_000.0
 DAY = 86400
 SAMPLE = ROOT / 'tests/openrouter_models_sample.json'
-MIX = {'input_share': DEFAULT_INPUT_SHARE, 'tokens': 0, 'measured': False}
+# Les réglages « Recommandation de modèle » de départ (page Pipeline).
+CHOICE = load_policy()['model_choice']
+SHARE = CHOICE['default_read_share']
+MIX = {'input_share': SHARE, 'tokens': 0, 'measured': False}
 
 
 def model(ident: str, price: float, **others) -> dict:
@@ -141,7 +144,7 @@ class RecommendationTests(unittest.TestCase):
             model('g/huge', 30.0, intelligence=90.0),
         ]
         tiers = seeded_tiers()
-        reco = recommend(models, tiers, now=NOW)
+        reco = recommend(models, tiers, SHARE, choice=CHOICE, now=NOW)
         self.assertEqual(reco['fast']['id'], 'c/cheapish')
         self.assertEqual(reco['mid']['id'], 'd/mid')
         self.assertEqual(reco['smart']['id'], 'f/big')
@@ -154,7 +157,10 @@ class RecommendationTests(unittest.TestCase):
         # coûte moins que d.
         tiers['mid']['tolerance'] = 0.85
         self.assertEqual(
-            recommend(models, tiers, now=NOW)['mid']['id'], 'e/mid2'
+            recommend(models, tiers, SHARE, choice=CHOICE, now=NOW)['mid'][
+                'id'
+            ],
+            'e/mid2',
         )
 
     def test_un_modele_inutilisable_n_est_jamais_recommande(self) -> None:
@@ -171,10 +177,19 @@ class RecommendationTests(unittest.TestCase):
         ]
         excluded = [{**m, 'intelligence': 99.0} for m in excluded]
         for m in excluded:
-            self.assertFalse(usable(m, NOW), m['id'])
+            self.assertFalse(usable(m, NOW, CHOICE), m['id'])
+        # Le contexte minimum se règle sur la page Pipeline : à 300 000
+        # jetons, un modèle de 200 000 n'est plus utilisable.
+        exigeant = {**CHOICE, 'min_context_tokens': 300_000}
+        self.assertTrue(usable(good, NOW, CHOICE))
+        self.assertFalse(usable(good, NOW, exigeant))
         # Un modèle dont on ignore la date reste utilisable.
-        self.assertTrue(usable(model('ok/sans-date', 0.2, created=0), NOW))
-        reco = recommend([good, *excluded], seeded_tiers(), now=NOW)
+        self.assertTrue(
+            usable(model('ok/sans-date', 0.2, created=0), NOW, CHOICE)
+        )
+        reco = recommend(
+            [good, *excluded], seeded_tiers(), SHARE, choice=CHOICE, now=NOW
+        )
         self.assertEqual(reco['fast']['id'], 'ok/bon')
 
     def test_rien_a_recommander_et_pourquoi(self) -> None:
@@ -184,14 +199,16 @@ class RecommendationTests(unittest.TestCase):
         # Aucune note du tout, puis aucune note sous le prix maximum.
         self.assertIn(
             'Aucun modèle noté',
-            recommend([inconnu], tiers, now=NOW)['mid']['reason'],
+            recommend([inconnu], tiers, SHARE, choice=CHOICE, now=NOW)['mid'][
+                'reason'
+            ],
         )
-        reco = recommend([cher, inconnu], tiers, now=NOW)
+        reco = recommend([cher, inconnu], tiers, SHARE, choice=CHOICE, now=NOW)
         self.assertEqual(reco['fast']['id'], '')
         self.assertEqual(reco['smart']['id'], 'a/cher')
         # Un prix maximum à 0 : pas réglé.
         tiers['mid']['max_price'] = 0.0
-        reco = recommend([cher], tiers, now=NOW)['mid']
+        reco = recommend([cher], tiers, SHARE, choice=CHOICE, now=NOW)['mid']
         self.assertEqual(reco['id'], '')
         self.assertIn('non réglé', reco['reason'])
 
@@ -208,8 +225,8 @@ class RecommendationTests(unittest.TestCase):
             model('b/egal', 3.0, intelligence=50.0),
         ]
         tiers = seeded_tiers()
-        lu = recommend(models, tiers, 0.9, now=NOW)['smart']
-        ecrit = recommend(models, tiers, 0.3, now=NOW)['smart']
+        lu = recommend(models, tiers, 0.9, choice=CHOICE, now=NOW)['smart']
+        ecrit = recommend(models, tiers, 0.3, choice=CHOICE, now=NOW)['smart']
         self.assertEqual(lu['id'], 'a/sortie-chere')
         self.assertAlmostEqual(lu['price'], 1.8)
         self.assertEqual(ecrit['id'], 'b/egal')  # 6,60 contre 3,00 $/M
@@ -219,10 +236,16 @@ class RecommendationTests(unittest.TestCase):
             'a/chere', 0, prompt_usd=1.0, completion_usd=5.0, intelligence=50.0
         )
         self.assertEqual(
-            recommend([chere], tiers, 0.75, now=NOW)['mid']['id'], ''
+            recommend([chere], tiers, 0.75, choice=CHOICE, now=NOW)['mid'][
+                'id'
+            ],
+            '',
         )
         self.assertEqual(
-            recommend([chere], tiers, 0.99, now=NOW)['mid']['id'], 'a/chere'
+            recommend([chere], tiers, 0.99, choice=CHOICE, now=NOW)['mid'][
+                'id'
+            ],
+            'a/chere',
         )
 
 
@@ -311,7 +334,11 @@ class CatalogTests(unittest.TestCase):
             model('b/beta', 0.1, name='Beta', intelligence=30.0),
         ]
         page = catalog.for_page(
-            seeded_tiers(), MIX, fetcher=self.fetcher(models), now=NOW
+            seeded_tiers(),
+            MIX,
+            CHOICE,
+            fetcher=self.fetcher(models),
+            now=NOW,
         )
         self.assertEqual(
             [m['id'] for m in page['models']], ['a/alpha', 'b/beta', 'z/zeta']
@@ -461,12 +488,18 @@ class RealCatalogTests(unittest.TestCase):
         )
         # Une variante batch (réponse sous 24 h) et un modèle gratuit ne sont
         # pas utilisables ; un modèle qui sera retiré plus tard l'est.
-        self.assertFalse(usable(models['z-ai/glm-5.3-flash:batch'], SEPT_30))
         self.assertFalse(
-            usable(models['inclusionai/ling-3.0-flash-sante:free'], SEPT_30)
+            usable(models['z-ai/glm-5.3-flash:batch'], SEPT_30, CHOICE)
+        )
+        self.assertFalse(
+            usable(
+                models['inclusionai/ling-3.0-flash-sante:free'],
+                SEPT_30,
+                CHOICE,
+            )
         )
         self.assertTrue(
-            usable(models['bytedance-seed/seed-2.0-code'], SEPT_30)
+            usable(models['bytedance-seed/seed-2.0-code'], SEPT_30, CHOICE)
         )
         # Le niveau rapide cherche la valeur : deepseek (39,5 pour 0,11 $/M)
         # garde 94 % de la meilleure note (41,8, glm-5.3-flash) pour moins de
@@ -476,6 +509,7 @@ class RealCatalogTests(unittest.TestCase):
         page = catalog.for_page(
             seeded_tiers(),
             MIX,
+            CHOICE,
             fetcher=lambda _key: list(models.values()),
             now=SEPT_30,
         )

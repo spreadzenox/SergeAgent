@@ -88,7 +88,7 @@ def parse_rss(
 
 
 def fetch_rss(
-    url: str, source: str, timeout: float = 20.0, max_items: int = 50
+    url: str, source: str, *, timeout: float, max_items: int
 ) -> list[dict[str, str]]:
     """Récupère + parse un flux (timeout, user-agent, cap).
 

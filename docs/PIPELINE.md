@@ -172,9 +172,15 @@ Le runner tourne en continu, en deux copies, une par file
   OpenRouter pour chaque appel (`llm_usage.cost_usd`), jamais une
   estimation ; les appels dont le coût n'est pas connu sont signalés à part.
 - Aucune température n'est envoyée au modèle : il garde celle de son
-  fournisseur, et le prompt fait le reste (décisions Q62 et Q68). Une
-  réponse mal formée est redemandée, sans outil, autant de fois que le dit
-  la policy (`quotas.llm_recalls_json`, page Policy).
+  fournisseur, et le prompt fait le reste (décisions Q62 et Q68).
+- Les appels au modèle se règlent sur la page Pipeline (famille « Appels
+  au modèle ») : l'attente maximale d'une réponse (180 secondes au
+  départ), les pauses avant de réessayer un appel raté pour une raison
+  passagère (3 puis 10 secondes), le nombre de redemandes d'une réponse
+  mal formée (2, sans outil) et la taille maximale d'un résultat d'outil
+  (20 000 caractères). Les textes ajoutés au modèle (outils épuisés,
+  consigne de format, redemande, résultat coupé) sont en base, modifiables
+  sur la même page.
 - À chaque tour, les tickets dont le délai est passé sont expirés : leur
   choix par défaut s'applique.
 

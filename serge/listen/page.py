@@ -3,8 +3,9 @@
 
 Une simple requête, sans navigateur. Le texte est découpé en lignes : une
 ligne est un titre, un paragraphe ou un élément de liste, et jamais plus
-de 300 caractères (un paragraphe plus long est coupé en plusieurs lignes,
-à la fin d'un mot). Exemple : un aperçu de 5 lignes pour trier des pages,
+long que la longueur réglée (300 caractères au départ : page Policy,
+« Lecture du web ») ; un paragraphe plus long est coupé en plusieurs
+lignes, à la fin d'un mot. Exemple : un aperçu de 5 lignes pour trier des pages,
 150 lignes au plus pour les invocations qui formulent des business. Le
 menu, les scripts et le pied de page ne sont pas gardés.
 
@@ -25,11 +26,12 @@ import ipaddress
 import socket
 import urllib.error
 import urllib.request
+from collections.abc import Mapping
 from html.parser import HTMLParser
+from typing import Any
 from urllib.parse import urlsplit
 
 USER_AGENT = 'Serge/1.0 (lecture publique)'
-MAX_BYTES = 2_000_000
 _BLOCKS = frozenset(
     {
         'p',
@@ -67,17 +69,13 @@ _SKIPPED = frozenset(
 )
 
 
-# Une ligne ne dépasse jamais cette longueur, en caractères.
-LIGNE_MAX = 300
-
-
-def _couper(texte: str) -> list[str]:
-    """Un paragraphe en lignes d'au plus ``LIGNE_MAX`` caractères, coupées
+def _couper(texte: str, ligne_max: int) -> list[str]:
+    """Un paragraphe en lignes d'au plus ``ligne_max`` caractères, coupées
     à la fin d'un mot (un mot plus long est coupé net)."""
     lignes: list[str] = []
-    while len(texte) > LIGNE_MAX:
-        coupe = texte.rfind(' ', 0, LIGNE_MAX + 1)
-        coupe = coupe if coupe > 0 else LIGNE_MAX
+    while len(texte) > ligne_max:
+        coupe = texte.rfind(' ', 0, ligne_max + 1)
+        coupe = coupe if coupe > 0 else ligne_max
         lignes.append(texte[:coupe].strip())
         texte = texte[coupe:].strip()
     if texte:
@@ -90,8 +88,9 @@ class PageError(ValueError):
 
 
 class _Lines(HTMLParser):
-    def __init__(self) -> None:
+    def __init__(self, ligne_max: int) -> None:
         super().__init__(convert_charrefs=True)
+        self.ligne_max = ligne_max
         self.lines: list[str] = []
         self.title = ''
         self._skip = 0
@@ -99,7 +98,8 @@ class _Lines(HTMLParser):
         self._current: list[str] = []
 
     def _flush(self) -> None:
-        self.lines.extend(_couper(' '.join(' '.join(self._current).split())))
+        texte = ' '.join(' '.join(self._current).split())
+        self.lines.extend(_couper(texte, self.ligne_max))
         self._current = []
 
     def handle_starttag(self, tag: str, attrs: list) -> None:
@@ -129,9 +129,10 @@ class _Lines(HTMLParser):
         self._flush()
 
 
-def text_lines(html: str) -> tuple[str, list[str]]:
-    """Le titre et les lignes de texte d'une page HTML (ou d'un extrait)."""
-    parser = _Lines()
+def text_lines(html: str, ligne_max: int) -> tuple[str, list[str]]:
+    """Le titre et les lignes de texte d'une page HTML (ou d'un extrait),
+    chaque ligne d'au plus ``ligne_max`` caractères."""
+    parser = _Lines(ligne_max)
     parser.feed(html)
     parser.close()
     return ' '.join(parser.title.split()), parser.lines
@@ -157,8 +158,9 @@ class _SafeRedirect(urllib.request.HTTPRedirectHandler):
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
-def fetch_html(url: str, timeout: float = 15.0) -> str:
-    """Le HTML d'une page publique.
+def fetch_html(url: str, timeout: float, max_bytes: int) -> str:
+    """Le HTML d'une page publique : au plus ``max_bytes`` octets lus, en
+    attendant au plus ``timeout`` secondes.
 
     Raises:
         PageError: Adresse refusée, site injoignable, ou pas une page HTML.
@@ -176,7 +178,7 @@ def fetch_html(url: str, timeout: float = 15.0) -> str:
             ):
                 raise PageError(f'pas une page lisible ({kind})')
             charset = response.headers.get_content_charset() or 'utf-8'
-            raw = response.read(MAX_BYTES)
+            raw = response.read(max_bytes)
     except urllib.error.HTTPError as exc:
         raise PageError(f'la page répond {exc.code}') from exc
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
@@ -184,15 +186,23 @@ def fetch_html(url: str, timeout: float = 15.0) -> str:
     return raw.decode(charset, errors='replace')
 
 
-def read_page(url: str, max_lines: int) -> dict[str, object]:
+def read_page(
+    url: str, max_lines: int, web: Mapping[str, Any]
+) -> dict[str, object]:
     """Le titre et les premières lignes d'une page (toutes si 0).
+
+    ``web`` : les réglages « Lecture du web » (page Policy) : longueur d'une
+    ligne, taille et attente maximales d'une page.
 
     Returns:
         ``{ok, url, title, lines, total_lines}``, ou ``{ok: False, code,
         detail}`` si la page ne peut pas être lue.
     """
     try:
-        title, lines = text_lines(fetch_html(url))
+        html = fetch_html(
+            url, float(web['page_timeout_s']), int(web['page_max_kb']) * 1000
+        )
+        title, lines = text_lines(html, int(web['line_max_chars']))
     except PageError as exc:
         return {'ok': False, 'code': 'page_illisible', 'detail': str(exc)}
     shown = lines[:max_lines] if max_lines > 0 else lines

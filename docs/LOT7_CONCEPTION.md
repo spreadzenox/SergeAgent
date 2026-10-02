@@ -144,8 +144,8 @@ Chaque ajout est général : il sert à toutes les invocations.
     sans coût connu n'est pas estimé : ses jetons sont comptés à part et la
     jauge les signale ;
   - tout l'historique repart au modèle à chaque tour : un résultat d'outil
-    plus long que la taille réglée dans la policy
-    (`quotas.llm_outil_resultat_max_caracteres`, 20 000 caractères) est
+    plus long que la taille réglée (20 000 caractères au départ ; depuis
+    Q68, famille « Appels au modèle » de la page Pipeline) est
     coupé, avec une note ; les résultats ne sont jamais envoyés en double ;
     et une redemande de format se fait sans outil (le modèle corrige sa
     réponse, il ne recommence pas ses recherches). Au premier cycle en
