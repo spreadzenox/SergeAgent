@@ -1,21 +1,72 @@
 #!/usr/bin/env python3
-"""Config loader: policy.yaml (+ overlay test). Fail-closed."""
+"""Les réglages généraux : lire le fichier de départ, vérifier une valeur.
+
+``config/policy.yaml`` décrit chaque réglage (valeur de départ, titre,
+aide, sorte, bornes, choix) et les relations entre réglages. Il ne sert
+qu'à remplir la base (``serge/policy_store.py``) : en marche, les réglages
+sont lus en base, et changés dans Mission Control (décision Q68).
+
+Une valeur est vérifiée selon la sorte du réglage. Exemple : un réglage
+``curseur`` de 0 à 200 refuse 2,5 (pas un entier) et 250 (trop grand).
+"""
 
 from __future__ import annotations
 
 import math
 import os
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
 import yaml
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
+
+# Les sortes de réglage : un nombre (entier ou non), un choix, une liste.
+NUMBER_KINDS = frozenset({'eur', 'pct', 'nombre'})
+INTEGER_KINDS = frozenset({'curseur', 'heure'})
+CHOICE_KINDS = frozenset({'canaux', 'jours'})
+KINDS = (
+    NUMBER_KINDS
+    | INTEGER_KINDS
+    | CHOICE_KINDS
+    | {
+        'liste',
+        'fenetres',
+        'nombres',
+    }
+)
 
 
 class PolicyError(ValueError):
     """Config invalide ou illisible : le boot doit refuser."""
+
+
+@dataclass(frozen=True)
+class Setting:
+    """Un réglage tel que le décrit ``policy.yaml`` ou la base."""
+
+    id: str
+    section_id: str
+    position: int
+    title: str
+    help: str
+    kind: str
+    value: Any
+    min: float | None = None
+    max: float | None = None
+    step: float | None = None
+    choices: tuple = ()
+
+
+@dataclass(frozen=True)
+class Relation:
+    """« ``lower`` ≤ ``upper`` » (« < » si ``strict``)."""
+
+    lower: str
+    upper: str
+    strict: bool
 
 
 def config_dir() -> Path:
@@ -62,161 +113,209 @@ def read_yaml_file(path: Path) -> dict[str, Any]:
     return data
 
 
-def _deep_merge(base: dict[str, Any], over: dict[str, Any]) -> dict[str, Any]:
-    merged = dict(base)
-    for key, value in over.items():
-        if (
-            key in merged
-            and isinstance(merged[key], dict)
-            and isinstance(value, dict)
-        ):
-            merged[key] = _deep_merge(merged[key], value)
-        else:
-            merged[key] = value
-    return merged
+def _number(value: Any) -> float | None:
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        return None
+    return float(value) if math.isfinite(value) else None
 
 
-def _need_number(
-    data: Mapping[str, Any], dotted: str, *, minimum: float = 0.0
-) -> None:
-    node: Any = data
-    for part in dotted.split('.'):
-        if not isinstance(node, Mapping) or part not in node:
-            raise PolicyError(f'policy.{dotted} manquant')
-        node = node[part]
-    if isinstance(node, bool) or not isinstance(node, (int, float)):
-        raise PolicyError(f'policy.{dotted} doit être un nombre')
-    if isinstance(node, float) and not math.isfinite(node):
-        raise PolicyError(f'policy.{dotted} doit être un nombre fini')
-    if node < minimum:
-        raise PolicyError(f'policy.{dotted} doit être >= {minimum}')
+def _bounded(number: float, setting: Setting) -> str:
+    if setting.min is not None and number < setting.min:
+        return f'au moins {setting.min:g}'
+    if setting.max is not None and number > setting.max:
+        return f'au plus {setting.max:g}'
+    return ''
 
 
-def _need_str_list(data: Mapping[str, Any], dotted: str) -> None:
-    node: Any = data
-    for part in dotted.split('.'):
-        if not isinstance(node, Mapping) or part not in node:
-            raise PolicyError(f'policy.{dotted} manquant')
-        node = node[part]
-    if not isinstance(node, list) or not all(
-        isinstance(item, str) and item for item in node
-    ):
-        raise PolicyError(f'policy.{dotted} doit être une liste de chaînes')
+def choice_ids(setting: Setting) -> list[str]:
+    """Les valeurs permises : ``FR``, ou ``voice`` pour ``[voice, Voix]``."""
+    return [
+        str(c[0]) if isinstance(c, list | tuple) else str(c)
+        for c in setting.choices
+    ]
 
 
-def validate_policy(data: Mapping[str, Any]) -> dict[str, Any]:
-    """Valide la policy fusionnée. Refuse l'absurde au boot (R4).
+def _check_windows(value: Any) -> str:
+    if not isinstance(value, list):
+        return 'une liste de plages attendue'
+    for plage in value:
+        numbers = (
+            [_number(x) for x in plage] if isinstance(plage, list) else []
+        )
+        if len(numbers) != 4 or any(n is None or n != int(n) for n in numbers):
+            return 'une plage s’écrit [heure, minute, heure, minute]'
+        h1, m1, h2, m2 = (int(n or 0) for n in numbers)
+        if not (0 <= h1 <= 23 and 0 <= h2 <= 23):
+            return 'une heure va de 0 à 23'
+        if not (0 <= m1 <= 59 and 0 <= m2 <= 59):
+            return 'une minute va de 0 à 59'
+    return ''
 
-    Args:
-        data: Policy (base + overlay test éventuel).
 
-    Returns:
-        La policy validée (copie).
+def _check_numbers(setting: Setting, value: Any) -> str:
+    if not isinstance(value, list) or not value:
+        return 'une liste de nombres attendue'
+    for item in value:
+        number = _number(item)
+        if number is None or number != int(number):
+            return 'des nombres entiers attendus'
+        if problem := _bounded(number, setting):
+            return problem
+    return ''
 
-    Raises:
-        PolicyError: Si schéma, type ou plage invalide.
+
+def check_value(setting: Setting, value: Any) -> str:
+    """Ce qui ne va pas dans ``value`` pour ce réglage, ou ``''``.
+
+    Exemple : ``check_value(<curseur de 0 à 200>, 250)`` rend
+    ``'au plus 200'``.
     """
-    if data.get('schema_version') != SCHEMA_VERSION:
-        raise PolicyError('policy.schema_version doit valoir 1')
-    for key in (
-        'budget.monthly_eur',
-        'budget.llm_daily_eur',
-        'budget.eur_per_usd',
-        'quotas.email_per_mailbox_per_day',
-        'quotas.voice_max_calls_per_day',
-        'quotas.sms_per_sender_per_min',
-        'quotas.sms_global_per_min',
-        'quotas.llm_recalls_json',
-        'quotas.llm_outil_resultat_max_caracteres',
-        'quotas.linkedin_connect_per_day',
-        'standing.cout_usage',
-        'standing.gain_par_heure',
-        'standing.idle_apres_heures',
-        'standing.capital_min',
-        'standing.capital_max',
-        'voice.quality_window',
-        'voice.quality_min_score',
-        'voice.quality_max_bad',
-        'collect.refund_auto_max_eur',
-        'memory.episode_archive_days',
-        'tickets.digest_hour',
-        'testing.n_smoke_min',
-        'testing.n_smoke_max',
-        'testing.n_full_min',
-        'testing.n_full_target',
-        'testing.kill_max_positives',
-        'testing.scale_min_positives',
-        'testing.scale_min_meetings',
-        'testing.extend_max',
-    ):
-        _need_number(data, key)
-    _need_str_list(data, 'consent.opt_in_channels')
-    standing = data.get('standing')
-    if isinstance(standing, Mapping):
-        if standing.get('capital_max', 0) < standing.get('capital_min', 0):
-            raise PolicyError('policy.standing.capital_max < capital_min')
-    zones = data.get('calling_zones')
-    if not isinstance(zones, Mapping) or not zones.get('default'):
-        raise PolicyError('policy.calling_zones.default manquant')
-    default = zones['default']
-    if default not in zones or not isinstance(zones[default], Mapping):
-        raise PolicyError(f'policy.calling_zones.{default} manquante')
-    from kit.instance_file import InstanceError, _validate_testing
-
-    testing = data.get('testing') or {}
-    try:
-        _validate_testing(testing)
-    except InstanceError as exc:
-        raise PolicyError(f'policy.testing : {exc}') from exc
-    return dict(data)
+    kind = setting.kind
+    if kind in NUMBER_KINDS or kind in INTEGER_KINDS:
+        number = _number(value)
+        if number is None:
+            return 'un nombre attendu'
+        if kind in INTEGER_KINDS and number != int(number):
+            return 'un nombre entier attendu'
+        return _bounded(number, setting)
+    permis = choice_ids(setting)
+    if kind == 'liste':
+        ok = isinstance(value, str) and value in permis
+        return '' if ok else f'un choix parmi {", ".join(permis)}'
+    if kind in CHOICE_KINDS:
+        ok = isinstance(value, list) and all(
+            isinstance(v, str) and v in permis for v in value
+        )
+        return '' if ok else f'des choix parmi {", ".join(permis)}'
+    if kind == 'fenetres':
+        return _check_windows(value)
+    if kind == 'nombres':
+        return _check_numbers(setting, value)
+    return f'sorte de réglage inconnue : {kind}'
 
 
-def load_policy(directory: Path | None = None) -> dict[str, Any]:
-    """Semence YAML (graine git). Runtime = dernier snapshot du canon.
+def check_relations(
+    values: Mapping[str, Any], relations: Iterable[Relation]
+) -> str:
+    """La première relation que ``values`` ne respecte pas, en clair, ou ``''``.
 
-    Args:
-        directory: Dossier config (défaut : config du repo).
+    Exemple : « standing.capital_min doit rester ≤ standing.capital_max ».
+    """
+    for rel in relations:
+        low, high = (
+            _number(values.get(rel.lower)),
+            _number(values.get(rel.upper)),
+        )
+        if low is None or high is None:
+            continue
+        if low > high or (rel.strict and low == high):
+            sign = '<' if rel.strict else '≤'
+            return f'{rel.lower} doit rester {sign} {rel.upper}'
+    return ''
+
+
+def nest(flat: Mapping[str, Any]) -> dict[str, Any]:
+    """``{'budget.monthly_eur': 50}`` → ``{'budget': {'monthly_eur': 50}}``."""
+    out: dict[str, Any] = {}
+    for ident, value in flat.items():
+        *parents, last = ident.split('.')
+        node = out
+        for part in parents:
+            node = node.setdefault(part, {})
+        node[last] = value
+    return out
+
+
+def _flat(node: Mapping[str, Any], prefix: str = '') -> dict[str, Any]:
+    out: dict[str, Any] = {}
+    for key, value in node.items():
+        if isinstance(value, Mapping):
+            out.update(_flat(value, f'{prefix}{key}.'))
+        else:
+            out[f'{prefix}{key}'] = value
+    return out
+
+
+def _settings(sections: list) -> list[Setting]:
+    out = []
+    for section in sections:
+        for position, raw in enumerate(section.get('settings') or []):
+            out.append(
+                Setting(
+                    id=f'{section["id"]}.{raw["id"]}',
+                    section_id=str(section['id']),
+                    position=position,
+                    title=str(raw['title']),
+                    help=str(raw.get('help') or ''),
+                    kind=str(raw['kind']),
+                    value=raw['value'],
+                    min=raw.get('min'),
+                    max=raw.get('max'),
+                    step=raw.get('step'),
+                    choices=tuple(raw.get('choices') or ()),
+                )
+            )
+    return out
+
+
+def load_policy_seed(directory: Path | None = None) -> dict[str, Any]:
+    """Lit ``policy.yaml`` (avec ``policy.test.yaml`` en test) et le vérifie.
 
     Returns:
-        Policy fusionnée et validée.
+        ``{sections, settings, relations, changes, deleted}`` :
+        ``settings`` est une liste de ``Setting``, ``relations`` une liste
+        de ``Relation``.
 
     Raises:
-        PolicyError: Si illisible ou invalide.
+        PolicyError: Fichier illisible, réglage mal décrit, valeur de
+            départ hors de ses bornes, relation non respectée.
     """
     root = directory or config_dir()
-    policy = read_yaml_file(root / 'policy.yaml')
+    data = read_yaml_file(root / 'policy.yaml')
+    if data.get('schema_version') != SCHEMA_VERSION:
+        raise PolicyError(
+            f'policy.schema_version doit valoir {SCHEMA_VERSION}'
+        )
+    sections = list(data.get('sections') or [])
+    try:
+        settings = _settings(sections)
+        relations = [
+            Relation(str(low), str(high), op == '<')
+            for low, op, high in data.get('relations') or []
+        ]
+    except (KeyError, TypeError, ValueError) as exc:
+        raise PolicyError(f'policy.yaml mal formé : {exc}') from exc
     if is_test_env():
         overlay = read_yaml_file(root / 'policy.test.yaml')
-        if overlay.pop('extends', 'policy.yaml') != 'policy.yaml':
-            raise PolicyError('policy.test.yaml doit étendre policy.yaml')
-        policy = _deep_merge(policy, overlay)
-    return validate_policy(policy)
-
-
-def _keep_seeded(seed: Mapping[str, Any], data: Mapping[str, Any]) -> dict:
-    """Les clés de ``data`` que la semence connaît, à tous les niveaux."""
+        overlay.pop('extends', None)
+        overlay.pop('schema_version', None)
+        values = _flat(overlay)
+        settings = [
+            replace(s, value=values[s.id]) if s.id in values else s
+            for s in settings
+        ]
+    for setting in settings:
+        if setting.kind not in KINDS:
+            raise PolicyError(f'policy.{setting.id} : sorte {setting.kind}')
+        if problem := check_value(setting, setting.value):
+            raise PolicyError(f'policy.{setting.id} : {problem}')
+    problem = check_relations({s.id: s.value for s in settings}, relations)
+    if problem:
+        raise PolicyError(f'policy : {problem}')
     return {
-        key: _keep_seeded(seed[key], value)
-        if isinstance(seed[key], dict) and isinstance(value, dict)
-        else value
-        for key, value in data.items()
-        if key in seed
+        'sections': sections,
+        'settings': settings,
+        'relations': relations,
+        'changes': data.get('changes') or [],
+        'deleted': [str(i) for i in data.get('deleted') or []],
     }
 
 
-def fusionner_semence(data: Mapping[str, Any]) -> dict[str, Any]:
-    """Complète un snapshot avec les clés nouvelles de la semence YAML.
+def load_policy(directory: Path | None = None) -> dict[str, Any]:
+    """Les valeurs de départ de ``policy.yaml``, rangées par section.
 
-    Un réglage ou une section retirés de la semence disparaissent aussi de
-    la policy en vigueur. Exemple : au 1er octobre 2026, les réglages que
-    rien ne lisait ont été retirés (décision Q68) ; un ancien snapshot qui
-    les contient encore ne les affiche plus dans Mission Control.
-
-    Args:
-        data: Snapshot (les valeurs présentes gagnent).
-
-    Returns:
-        Policy fusionnée, pas encore revalidée.
+    Exemple : ``load_policy()['budget']['monthly_eur']`` vaut 50.0. En
+    marche, la valeur en vigueur est en base : ``policy_en_vigueur``.
     """
-    semence = load_policy()
-    return _keep_seeded(semence, _deep_merge(semence, dict(data)))
+    seed = load_policy_seed(directory)
+    return nest({s.id: s.value for s in seed['settings']})

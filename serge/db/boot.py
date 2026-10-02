@@ -10,8 +10,9 @@ def init_schema(connection: sqlite3.Connection) -> None:
     """Applique les migrations manquantes, puis remplit ce qui manque.
 
     Le remplissage n'écrase jamais un réglage déjà en base : il ajoute les
-    étapes, les canaux, les capacités du code et le pipeline de départ
-    (``config/pipeline.yaml``), puis calcule les empreintes du code.
+    étapes, les canaux, les capacités du code, le pipeline de départ
+    (``config/pipeline.yaml``) et les réglages généraux
+    (``config/policy.yaml``), puis calcule les empreintes du code.
 
     Args:
         connection: Connexion (commit par l'appelant).
@@ -23,6 +24,7 @@ def init_schema(connection: sqlite3.Connection) -> None:
     from serge.etapes import ensure_pipeline_steps
     from serge.objet_sha import poser_shas
     from serge.pipeline_seed import ensure_pipeline
+    from serge.policy_store import ensure_policy
 
     apply_pending(connection)
     ensure_account_columns(connection)
@@ -30,4 +32,5 @@ def init_schema(connection: sqlite3.Connection) -> None:
     ensure_canaux(connection)
     ensure_capabilities(connection)
     ensure_pipeline(connection)
+    ensure_policy(connection)
     poser_shas(connection)

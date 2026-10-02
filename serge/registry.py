@@ -5,12 +5,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from serge.policy import (
-    SCHEMA_VERSION,
-    PolicyError,
-    config_dir,
-    read_yaml_file,
-)
+from serge.policy import PolicyError, config_dir, read_yaml_file
+
+# La version du format de ticket-types.yaml (celle de policy.yaml est à part).
+SCHEMA_VERSION = 1
 
 
 def _load_registry(filename: str, directory: Path | None = None) -> dict:

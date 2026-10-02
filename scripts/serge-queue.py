@@ -21,7 +21,7 @@ sys.path.insert(0, str(ROOT))
 from serge.db.store import default_canon_path, open_db  # noqa: E402
 from serge.interpreter.queue import run_forever  # noqa: E402
 from serge.policy import PolicyError  # noqa: E402
-from serge.policy_snapshots import policy_en_vigueur  # noqa: E402
+from serge.policy_store import policy_en_vigueur  # noqa: E402
 
 QUEUES = ('conversations', 'works')
 

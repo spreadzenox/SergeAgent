@@ -18,7 +18,7 @@ from typing import Any
 from serge.interpreter.tasks import next_task
 from serge.llm.runtime import budget_reached
 from serge.mc.proj_objet_base import _champs, _liens, _row
-from serge.policy_snapshots import policy_en_vigueur
+from serge.policy_store import policy_en_vigueur
 
 ETATS_TACHE = {
     'ready': 'Prête',

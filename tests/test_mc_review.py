@@ -17,7 +17,6 @@ from playwright.sync_api import expect
 from serge.db.store import open_db
 from serge.mc.proj_economy import project_transactions_subscriptions
 from serge.mc.proj_tickets import project_tickets
-from serge.policy_snapshots import policy_en_vigueur
 from serge.registry import load_ticket_types
 from serge.tickets import create_ticket, publish
 from serge.voice.ledger import VoiceLedger
@@ -27,44 +26,32 @@ from tests.test_mc_pipeline_page import CATALOGUE
 
 class ReviewApiTests(McServerCase):
     def test_policy_refuse_les_tailles_incoherentes_et_le_verrou(self):
+        # Un réglage général s'enregistre seul (Q68) : la relation entre
+        # tailles, les nombres non finis et le verrou d'un essai en cours
+        # sont vérifiés à chaque réglage.
         cookie = self._auth_cookie()
-        with open_db(self.db_path) as conn:
-            policy = policy_en_vigueur(conn)
-        policy['testing']['n_smoke_min'] = 77
-        self.assertEqual(
-            self._api_post(
-                '/owner/api/policy/edit', {'policy': policy}, cookie
-            )[0],
-            400,
-        )
+
+        def regler(ident, value):
+            return self._api_post(
+                '/owner/api/reglage',
+                {'cible': 'policy', 'id': ident, 'value': value},
+                cookie,
+            )[0]
+
+        self.assertEqual(regler('testing.n_smoke_min', 77), 400)
         self.assertEqual(
             self._request(
                 'GET', '/owner/api/state?page=p5', headers={'Cookie': cookie}
             )[0],
             200,
         )
-        policy['testing']['n_smoke_min'] = 30
         for value in [float('nan'), float('inf')]:
-            policy['budget']['monthly_eur'] = value
-            self.assertEqual(
-                self._api_post(
-                    '/owner/api/policy/edit', {'policy': policy}, cookie
-                )[0],
-                400,
-            )
-        with open_db(self.db_path) as conn:
-            policy = policy_en_vigueur(conn)
+            self.assertEqual(regler('budget.monthly_eur', value), 400)
         with open_db(self.db_path) as conn:
             conn.execute(
                 "INSERT INTO campaigns(id,venture_id,family,channel,state,n_target,created_at,updated_at) VALUES('running','v','named','email','RUNNING',10,'t','t')"
             )
-        policy['testing']['n_smoke_min'] = 35
-        self.assertEqual(
-            self._api_post(
-                '/owner/api/policy/edit', {'policy': policy}, cookie
-            )[0],
-            409,
-        )
+        self.assertEqual(regler('testing.n_smoke_min', 35), 409)
 
     def test_nombres_refuses_et_formulaire_unicode(self):
         cookie = self._auth_cookie()
@@ -338,11 +325,9 @@ class ReviewBrowserTests(McBrowserCase):
         # lisait ; le lot 8 les remet avec la voix) : le champ des jours est
         # vérifié seul, avec le mardi.
         result = page.evaluate(
-            """async () => { const {champPolicy, lirePolicy} = await import('/static/mc/policy_form.js'); const corps = document.createElement('div'); corps.append(champPolicy('calling_zones.FR.voice_days', ['mon', 'tue'])); document.body.append(corps); return lirePolicy(corps, {calling_zones: {FR: {voice_days: []}}}); }"""
+            """async () => { const {champPolicy} = await import('/static/mc/policy_form.js'); const spec = {titre: 'Jours', widget: 'jours', choix: [['mon', 'lun'], ['tue', 'mar'], ['wed', 'mer']]}; const champ = champPolicy('calling_zones.FR.voice_days', spec, ['mon', 'tue']); document.body.append(champ); return champ._lire(); }"""
         )
-        self.assertEqual(
-            result['calling_zones']['FR']['voice_days'], ['mon', 'tue']
-        )
+        self.assertEqual(result, ['mon', 'tue'])
         # « Demander un changement » est retiré (Q68) : le confinement du
         # focus est vérifié sur la fenêtre commune à toutes les questions.
         page.evaluate(

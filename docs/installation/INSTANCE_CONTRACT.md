@@ -193,7 +193,7 @@ smtp_port = 587                 # 587 STARTTLS | 465 SSL
 imap_host = ""                  # vide = preset (custom : obligatoire)
 imap_port = 993                 # 993 SSL | 143 STARTTLS
 
-[testing]                       # semence N + seuils (runtime = snapshot)
+[testing]                       # vérifié au chargement ; voir plus bas
 n_smoke_min = 30
 n_smoke_max = 50
 n_full_min = 150
@@ -204,10 +204,11 @@ scale_min_meetings = 2
 extend_max = 1
 ```
 
-`[testing]` du TOML n’est plus écrit par Mission Control. Au premier
-snapshot, ces valeurs (ou celles de `config/policy.yaml`) sont copiées
-dans la base. Ensuite : MC à froid seulement ; `ouvrir_essai` et le
-runner lisent `policy_en_vigueur`.
+`[testing]` du TOML n’est pas écrit par Mission Control. La taille des
+essais en marche est un réglage général en base (famille « Taille des
+essais » de la page Policy), rempli au départ par `config/policy.yaml` et
+modifiable seulement quand aucun essai ne tourne ; `ouvrir_essai` la lit
+avec `policy_en_vigueur`.
 
 Contraintes téléphonie (refusées au load, au wizard et au builder) :
 

@@ -1255,10 +1255,16 @@ Décidé :
    au monde (argent, lecture du web, envois et canaux, horaires et pays,
    accord des gens, mémoire, encaissement), avec les réglages des
    invocations et les quotas des tables.
-6. Les chiffres en double sont branchés sur leur réglage. Les chiffres
+6. Pas de réglage en double : toute la policy est en base, avec une seule
+   valeur, celle que lit le code ; seuls les hyperparamètres non
+   discutables restent écrits dans le code. Un réglage qui ne sert à rien
+   est supprimé, et recréé quand on code ce qui s'en sert. Les chiffres
    discutables écrits dans le code deviennent des réglages. Les textes
    envoyés au modèle passent en base, modifiables sur la page Pipeline.
    La voix attend le lot 8, qui la règle en base comme une invocation.
+   Corrigé le 2 octobre 2026 (Q78) : ce point disait « Les chiffres en
+   double sont branchés sur leur réglage », ce qui déformait la réponse de
+   Clem.
 
 Précisions de Clem (1er octobre 2026) :
 7. Chaque réglage garde seulement sa valeur précédente (qui l'a changée,
@@ -1446,3 +1452,33 @@ risque : le pire cas est un abonnement sans business, visible au journal.
 Julien, sur la règle de branche : l'idéal est une idée par PR, mais en
 pratique c'est une session de travail ; on garde une cohérence et on reste
 souple.
+
+### Q77 — La branche de travail : une session = une branche = une PR, et Clem valide chaque fusion (validé par Clem, 2 octobre 2026)
+Constat : Clem avait demandé de toujours travailler sur la branche `Clem`
+et de lui demander avant chaque fusion dans `main`. Julien a corrigé Q64
+(point 5) : en général, une session de travail = une branche = une PR, de
+préférence sur une seule idée, et on reste souple (Q75, Q76). Il a dit
+qu'il en parlerait à Clem.
+Décidé :
+1. Clem suit la règle de Julien : une session de travail = une branche =
+   une PR (`docs/DEV_TOOLING.md`). Exemple : les réglages généraux en base
+   (la PR B de Q68) partent sur leur propre branche, `reglages-en-base`,
+   avec leur propre PR.
+2. Claude demande toujours à Clem avant de fusionner une PR dans `main` :
+   chaque fusion redéploie Serge sur le serveur de Julien. C'était la
+   proposition de Claude, et Clem l'a acceptée.
+
+### Q78 — Pas de réglage en double, et un réglage inutile est supprimé (validé par Clem, 2 octobre 2026)
+Constat : Q68 (point 6) disait « les chiffres en double sont branchés sur
+leur réglage », et l'inventaire y rangeait « une leçon est retirée après
+3 démentis ». La PR A a retiré ce réglage au lieu de le brancher : aucun
+programme en marche ne retire une leçon après des démentis.
+Décidé :
+1. Le retrait est validé. Un réglage qui ne sert à rien est supprimé ; on
+   le recrée quand on code ce qui s'en sert.
+2. Pas de réglage en double : toute la policy est en base, avec une seule
+   valeur, celle que lit le code. Seuls les hyperparamètres non
+   discutables restent écrits dans le code. Q68 (point 6) est corrigée
+   en ce sens.
+Arguments de Clem : c'était déjà le sens de sa réponse à Q68 (« mon propos
+a été déformé », « normalement c'était clair »).

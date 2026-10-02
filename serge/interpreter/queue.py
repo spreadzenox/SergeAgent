@@ -23,7 +23,7 @@ from serge.interpreter.prompt import Caller
 from serge.interpreter.run import fail_task, run_task
 from serge.interpreter.tasks import next_task
 from serge.llm.runtime import budget_reached
-from serge.policy_snapshots import policy_en_vigueur
+from serge.policy_store import policy_en_vigueur
 from serge.tickets import expire_due
 
 

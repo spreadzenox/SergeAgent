@@ -16,7 +16,7 @@ from serge.db.store import default_canon_path, open_db  # noqa: E402
 from serge.discord.bot import Bot  # noqa: E402
 from serge.discord.rest import bot_token, verify_token  # noqa: E402
 from serge.policy import PolicyError  # noqa: E402
-from serge.policy_snapshots import policy_en_vigueur  # noqa: E402
+from serge.policy_store import policy_en_vigueur  # noqa: E402
 
 
 class BotError(ValueError):

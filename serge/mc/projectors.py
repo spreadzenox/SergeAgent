@@ -57,7 +57,6 @@ from serge.mc.proj_pipeline import project_pipeline
 from serge.mc.proj_policy import (
     project_politique_active,
     project_reglages,
-    project_testing_froid,
 )
 from serge.mc.proj_taches import (
     project_file,
@@ -83,8 +82,6 @@ SLOW_SECTIONS = frozenset(
         'couches',
         'consolidation',
         'requested',
-        'politique_active',
-        'testing_froid',
         'entonnoir',
         'transactions_subscriptions',
         'couts_cognitifs',
@@ -211,7 +208,6 @@ PROJECTORS: dict[str, Callable[..., dict[str, Any]]] = {
     'requested': project_requested,
     'politique_active': project_politique_active,
     'reglages': project_reglages,
-    'testing_froid': project_testing_froid,
     'entonnoir': project_entonnoir,
     'transactions_subscriptions': project_transactions_subscriptions,
     'couts_cognitifs': project_couts_cognitifs,
@@ -248,7 +244,6 @@ PAGE_SECTIONS: dict[str, list[str]] = {
         'meta',
         'politique_active',
         'reglages',
-        'testing_froid',
     ],
     'p6': [
         'meta',

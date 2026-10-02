@@ -616,6 +616,53 @@ class MigrateTests(unittest.TestCase):
             " param_name) VALUES('t', 'c', 'v', 'p')"
         )
 
+    def test_v33_passe_la_policy_en_tables_et_garde_les_valeurs(
+        self,
+    ) -> None:
+        conn = sqlite3.connect(':memory:')
+        self.addCleanup(conn.close)
+
+        apply_pending(conn, _until(32), head=32)
+        # Le dernier snapshot de l'ancienne policy, changée dans MC.
+        for contenu in (
+            {'budget': {'llm_daily_eur': 5.0}},
+            {
+                'schema_version': 1,
+                'budget': {'llm_daily_eur': 7.5},
+                'calling_zones': {'FR': {'contact_per_30d': 3}},
+            },
+        ):
+            conn.execute(
+                'INSERT INTO policy_snapshots(content_hash, content_json,'
+                " applied_by, active_from) VALUES('h', ?, 'owner', 't')",
+                (json.dumps(contenu),),
+            )
+        conn.execute(
+            'INSERT INTO invocation_settings(invocation_id, name, value)'
+            " VALUES('inv', 'n', '3')"
+        )
+        self.assertEqual(apply_pending(conn), SCHEMA_VERSION)
+        self.assertEqual(
+            conn.execute(
+                'SELECT id, value_json, updated_by FROM policy_settings'
+                ' ORDER BY id'
+            ).fetchall(),
+            [
+                ('budget.llm_daily_eur', '7.5', 'owner'),
+                ('calling_zones.FR.contact_per_30d', '3', 'owner'),
+            ],
+        )
+        tables = {r[0] for r in conn.execute('SELECT name FROM sqlite_master')}
+        self.assertNotIn('policy_snapshots', tables)
+        # Les réglages d'invocation gardent leur valeur précédente.
+        self.assertEqual(
+            conn.execute(
+                'SELECT value, previous_value, previous_at'
+                ' FROM invocation_settings'
+            ).fetchone(),
+            ('3', '', ''),
+        )
+
 
 if __name__ == '__main__':
     unittest.main()

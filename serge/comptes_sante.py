@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from serge.horloge import iso_utc
-from serge.policy import load_policy
+from serge.policy_store import policy_en_vigueur
 
 CODES_REFUS = frozenset({'inconnu', 'inactif', 'pause', 'capital'})
 
@@ -26,8 +26,11 @@ class SanteError(ValueError):
         super().__init__(code)
 
 
-def _bareme(policy: dict[str, Any] | None) -> dict[str, float]:
-    bloc = (policy or load_policy()).get('standing') or {}
+def _bareme(
+    conn: sqlite3.Connection, policy: dict[str, Any] | None
+) -> dict[str, float]:
+    """Le barème de la santé des comptes (page Policy, en base)."""
+    bloc = (policy or policy_en_vigueur(conn)).get('standing') or {}
     return {
         'cout_usage': float(bloc['cout_usage']),
         'gain_par_heure': float(bloc['gain_par_heure']),
@@ -84,7 +87,7 @@ def recuperer(
         conn: Canon (commit par l’appelant).
         compte_id: Ligne ``accounts_standing``.
         maintenant: Horodatage ISO (défaut : maintenant).
-        policy: Policy (défaut : semence).
+        policy: Policy (défaut : celle en vigueur, en base).
 
     Returns:
         Capital après récupération (inchangé si inconnu ou trop tôt).
@@ -92,7 +95,7 @@ def recuperer(
     row = _lire(conn, compte_id)
     if row is None:
         return 0.0
-    bareme = _bareme(policy)
+    bareme = _bareme(conn, policy)
     instant = maintenant or iso_utc()
     capital = float(row['capital'])
     dernier = str(row['last_used_at'] or '')
@@ -124,7 +127,7 @@ def etat(
         conn: Canon (commit par l’appelant).
         compte_id: Ligne ``accounts_standing``.
         maintenant: Horodatage ISO (défaut : maintenant).
-        policy: Policy (défaut : semence).
+        policy: Policy (défaut : celle en vigueur, en base).
 
     Returns:
         ``code`` ∈ {``ok``} ∪ ``CODES_REFUS``, plus capital et pause.
@@ -143,7 +146,7 @@ def etat(
     assert row is not None
     pause = str(row['cooldown_until'] or '')
     statut = str(row['status'] or '')
-    bareme = _bareme(policy)
+    bareme = _bareme(conn, policy)
     fin_pause = _quand(pause)
     instant_dt = _quand(instant)
     if statut != 'active':
@@ -178,7 +181,7 @@ def autoriser(
         conn: Canon (commit par l’appelant).
         compte_id: Ligne ``accounts_standing``.
         maintenant: Horodatage ISO (défaut : maintenant).
-        policy: Policy (défaut : semence).
+        policy: Policy (défaut : celle en vigueur, en base).
 
     Returns:
         L’état (``code`` = ``ok``).
@@ -205,7 +208,7 @@ def consommer(
         conn: Canon (commit par l’appelant).
         compte_id: Ligne ``accounts_standing``.
         maintenant: Horodatage ISO (défaut : maintenant).
-        policy: Policy (défaut : semence).
+        policy: Policy (défaut : celle en vigueur, en base).
 
     Returns:
         Capital après débit.
@@ -214,7 +217,7 @@ def consommer(
         SanteError: Même refus qu’``autoriser``.
     """
     autoriser(conn, compte_id, maintenant=maintenant, policy=policy)
-    bareme = _bareme(policy)
+    bareme = _bareme(conn, policy)
     instant = maintenant or iso_utc()
     row = _lire(conn, compte_id)
     assert row is not None

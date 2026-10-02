@@ -17,9 +17,9 @@ recrée jamais ensuite.
 1. **Les migrations** (`serge/db/migrate.py`). Chaque changement de
    structure est une fonction `apply_v0NN` (fichiers `serge/db/v0NN.py`).
    Serge applique celles qui manquent, dans l'ordre. Version actuelle :
-   **32**.
+   **33**.
    - Une base neuve saute directement à la version 7 (le socle,
-     `serge/db/schema.py`), puis applique 8, 9, … 32.
+     `serge/db/schema.py`), puis applique 8, 9, … 33.
    - Une base **plus récente** que le code refuse de démarrer
      (`MigrateError`). Revenir à un ancien commit ne défait pas une
      migration.
@@ -87,7 +87,7 @@ catalogue et la mécanique.
 | `listen_feeds` | Les flux RSS que Serge a choisis : adresse, titre, invocation qui l'a ajouté, actif ou coupé, dernière lecture. |
 | `listen_cycles` | Les cycles de l'étape 1 : texte de guidage, état (`OPEN`, `CLOSED`, `ABANDONED`), dates, et ce que « Choisir » a dit du cycle (`choice_note`). |
 | `tickets`, `ticket_items` | Les décisions à prendre par Julien. |
-| `policy_snapshots` | Les versions successives de la policy. La dernière fait foi. |
+| `policy_sections`, `policy_settings`, `policy_relations` | Les réglages généraux (la « policy », page Policy de MC), une ligne par réglage : sa valeur (en JSON), son titre, son aide, sa sorte (`eur`, `curseur`, `liste`…), ses bornes et ses choix, et sa **valeur précédente** (qui l'a remplacée, quand) pour « Remettre la valeur précédente ». Les familles de réglages, avec un verrou éventuel (la taille des essais ne change pas pendant qu'un essai tourne), et les relations entre réglages (le plancher du capital ≤ son plafond). Remplis par `config/policy.yaml`, sans jamais écraser une valeur (version 33, décision Q68 ; avant, la policy était une copie complète en JSON à chaque modification). |
 | `runtime_flags` | Les interrupteurs à chaud. Aujourd'hui : Serge démarré (`scheduler.heartbeat` à `on`). Sans cette ligne, Serge est arrêté. |
 
 ### Le journal (ce qui s'est passé, jamais modifié)
@@ -130,13 +130,13 @@ est déjà en base. Chaque table est expliquée dans
 | `invocation_tools`, `invocation_tool_params` | Les outils de chaque invocation (lus d'office ou appelables) et leurs paramètres figés ; une lecture d'office peut être donnée par paquets (`batch_size`) et un outil limité à N appels (`max_calls`). |
 | `table_views`, `table_view_columns` | Ce qu'une invocation peut voir de chaque table, réglé une fois par table : son titre, la colonne des lignes les plus récentes, ses colonnes lisibles et celles de sa version courte (pour un business : numéro et nom). Une colonne absente n'est jamais lue. |
 | `invocation_compare_tables` | Les tables à comparer ajoutées ou retirées pour une invocation. Par défaut, elle voit la version courte des tables où elle écrit. |
-| `invocation_settings` | Les réglages d'une invocation, une ligne par réglage (exemple : « nombre d'idées = 2 », entre 1 et 5). Ils servent dans le prompt (`{nombre_idees}`), le format de la réponse, l'écriture et les paramètres. `policy` = 1 : modifiable sur la page Policy de MC. |
+| `invocation_settings` | Les réglages d'une invocation, une ligne par réglage (exemple : « nombre d'idées = 2 », entre 1 et 5). Ils servent dans le prompt (`{nombre_idees}`), le format de la réponse, l'écriture et les paramètres. `policy` = 1 : modifiable sur la page Policy de MC, qui garde la valeur précédente (`previous_value`, `previous_at`, `previous_by`). |
 | `invocation_output_fields` | Le format de la réponse de chaque invocation. Une liste peut avoir un nombre d'éléments minimum et maximum (un nombre ou le nom d'un réglage). |
 | `writable_tables`, `writable_columns` | Ce qu'une invocation a le droit d'écrire : ajouter, modifier, supprimer, table par table, et les colonnes permises. |
 | `invocation_writes`, `invocation_write_values` | Où chaque invocation écrit sa réponse, avec au besoin « au plus N lignes par passage ». |
 | `status_transitions`, `dedup_rules`, `dedup_rule_columns` | Les protections : changements de statut permis, doublons. |
 | `task_cancel_rules` | Les tâches à annuler quand une ligne change d'état : « quand un cycle passe à `ABANDONED`, ses tâches en attente (paramètre `cycle_id`) sont annulées ». |
-| `table_quotas` | Une protection de plus : « au plus N lignes dont telle colonne vaut l'une de ces valeurs » (exemple : au plus 3 business choisis pour un POC). Modifiable sur la page Policy. |
+| `table_quotas` | Une protection de plus : « au plus N lignes dont telle colonne vaut l'une de ces valeurs » (exemple : au plus 3 business choisis pour un POC). Modifiable sur la page Policy, qui garde la valeur précédente. |
 | `links`, `link_params`, `link_passages`, `link_passage_params` | Les liens entre invocations, ce qui est déjà passé, et ce qui attend un clic « Passer à la suite » avec ses paramètres (lien réglé à la main). |
 | `triggers`, `trigger_params`, `trigger_conditions` | Ce qui lance une invocation : une ligne écrite, une heure (une tâche par ligne d'une table, si le déclencheur en vise une), un bouton (avec sa question de confirmation). `trigger_conditions` : les quotas qui doivent avoir de la place. |
 | `pipeline_changes` | Les modifications d'objets déjà en base passées par la section `changes` de `pipeline.yaml`, une ligne par modification, avec son résultat. |

@@ -22,10 +22,7 @@ from serge.funnels.essai import (  # noqa: E402
     ouvrir_essai,
     testing_en_vigueur,
 )
-from serge.policy_snapshots import (  # noqa: E402
-    policy_en_vigueur,
-    snapshot_policy,
-)
+from serge.policy_store import set_setting  # noqa: E402
 
 
 class EssaiLiveTests(unittest.TestCase):
@@ -41,16 +38,15 @@ class EssaiLiveTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.conn.close()
 
-    def test_ouvrir_smoke_lit_le_snapshot(self) -> None:
-        pol = policy_en_vigueur(self.conn)
+    def test_ouvrir_smoke_lit_les_reglages_en_vigueur(self) -> None:
         self.assertEqual(testing_en_vigueur(self.conn)['n_smoke_min'], 30)
-        pol = dict(pol)
-        pol['testing'] = {
-            **testing_en_vigueur(self.conn),
-            'n_smoke_min': 42,
-            'scale_min_positives': 7,
-        }
-        snapshot_policy(self.conn, pol, applied_by='owner')
+        self.assertEqual(
+            set_setting(self.conn, 'testing.n_smoke_min', 42, 'owner'), ''
+        )
+        self.assertEqual(
+            set_setting(self.conn, 'testing.scale_min_positives', 7, 'owner'),
+            '',
+        )
         cid = ouvrir_essai(self.conn, 'v1', 'named', 'email', 'smoke')
         self.assertEqual(
             self.conn.execute(
@@ -71,12 +67,9 @@ class EssaiLiveTests(unittest.TestCase):
         )
 
     def test_ouvrir_full_lit_n_cible(self) -> None:
-        pol = dict(policy_en_vigueur(self.conn))
-        pol['testing'] = {
-            **testing_en_vigueur(self.conn),
-            'n_full_target': 180,
-        }
-        snapshot_policy(self.conn, pol, applied_by='owner')
+        self.assertEqual(
+            set_setting(self.conn, 'testing.n_full_target', 180, 'owner'), ''
+        )
         cid = ouvrir_essai(self.conn, 'v1', 'named', 'email', 'full')
         self.assertEqual(
             self.conn.execute(

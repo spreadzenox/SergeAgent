@@ -169,16 +169,11 @@ table.matrice {
   margin: 0 0 0.25rem;
 }
 
-.aide-champ,
-.mini-lib {
+.aide-champ {
   color: var(--texte-doux);
   font-size: 0.78rem;
   line-height: 1.4;
   margin: 0 0 0.55rem;
-}
-
-.mini-lib {
-  margin: 0.35rem 0 0.2rem;
 }
 
 .range-policy {
@@ -195,8 +190,7 @@ table.matrice {
 
 .range-policy input[type='number'],
 .texte-policy,
-.select-policy,
-.grille-essais input {
+.select-policy {
   background: rgb(7 12 24 / 90%);
   border: 1px solid rgb(53 224 255 / 22%);
   border-radius: 6px;
@@ -208,53 +202,6 @@ table.matrice {
   color: var(--or);
   font-family: var(--police-chiffres);
   min-width: 3.2rem;
-}
-
-.switch-policy {
-  align-items: center;
-  cursor: pointer;
-  display: flex;
-  gap: 0.65rem;
-  position: relative;
-}
-
-.switch-policy input {
-  height: 1px;
-  left: 0;
-  margin: 0;
-  opacity: 0;
-  position: absolute;
-  top: 0;
-  width: 1px;
-}
-
-.switch-piste {
-  background: rgb(159 176 195 / 25%);
-  border-radius: 999px;
-  display: inline-block;
-  height: 1.35rem;
-  position: relative;
-  width: 2.4rem;
-}
-
-.switch-piste::after {
-  background: #fff;
-  border-radius: 50%;
-  content: '';
-  height: 1.05rem;
-  left: 0.15rem;
-  position: absolute;
-  top: 0.15rem;
-  transition: transform 150ms ease;
-  width: 1.05rem;
-}
-
-.switch-policy input:checked + .switch-piste {
-  background: var(--cyan);
-}
-
-.switch-policy input:checked + .switch-piste::after {
-  transform: translateX(1rem);
 }
 
 .jours-policy {
@@ -301,8 +248,7 @@ table.matrice {
 
 .btn-doux,
 .btn-fort,
-.entete-policy button,
-.grille-essais button {
+.actes-champ button {
   background: rgb(53 224 255 / 10%);
   border: 1px solid rgb(53 224 255 / 28%);
   border-radius: 8px;
@@ -322,23 +268,16 @@ table.matrice {
   padding-top: 1rem;
 }
 
-.grille-essais {
-  display: grid;
-  gap: 0.75rem;
-  max-width: 28rem;
+.actes-champ {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.6rem;
 }
 
-.grille-essais label {
-  display: grid;
-  gap: 0.3rem;
-}
-
-#testing-lock-status[data-etat='bloque'] {
+.verrou-regle {
   color: var(--orange);
-}
-
-#testing-lock-status[data-etat='libre'] {
-  color: var(--vert);
+  margin: 0 0 1rem;
 }
 
 @media (max-width: 1100px) {
@@ -425,7 +364,6 @@ table.matrice {
 
 /* Le clavier doit rester repérable sur les interrupteurs et les lignes. */
 :focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
-.switch-policy:focus-within .switch-piste { outline: 2px solid var(--cyan); outline-offset: 3px; }
 .champ-large textarea { width: 100%; min-height: 5rem; resize: vertical; }
 .ligne-reglage { display: flex; flex-wrap: wrap; align-items: end; gap: 0.75rem; margin-bottom: 1rem; }
 .ligne-reglage label { flex: 1 1 16rem; }

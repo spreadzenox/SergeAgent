@@ -40,6 +40,8 @@ TABLES = frozenset(
         'table_views',
         'table_view_columns',
         'llm_models',
+        'policy_sections',
+        'policy_settings',
     }
 )
 

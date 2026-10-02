@@ -6,26 +6,22 @@ from __future__ import annotations
 import sqlite3
 from typing import Any
 
-from kit.instance_file import _validate_testing
 from serge.funnels.campaigns import create_campaign
 from serge.funnels.metrics import campaign_metrics
 from serge.funnels.rules import evaluate_full, evaluate_smoke
-from serge.policy_snapshots import policy_en_vigueur
+from serge.policy_store import policy_en_vigueur
 
 
 def testing_en_vigueur(conn: sqlite3.Connection) -> dict[str, int]:
-    """Bloc testing du dernier snapshot (défauts si absent).
+    """La taille des essais en vigueur (page Policy, « Taille des essais »).
 
-    Args:
-        conn: Canon (lecture, éventuellement semence).
+    Les valeurs sont vérifiées quand on les change (bornes et relations,
+    par exemple le petit essai ne dépasse pas son plafond).
 
     Returns:
-        N et seuils validés (`n_smoke_min`, `n_full_target`, …).
+        N et seuils (`n_smoke_min`, `n_full_target`, …).
     """
-    pol = policy_en_vigueur(conn)
-    bloc = pol.get('testing')
-    raw: dict[str, Any] = bloc if isinstance(bloc, dict) else {}
-    return _validate_testing(raw)
+    return dict(policy_en_vigueur(conn)['testing'])
 
 
 def n_et_seuils(
@@ -34,7 +30,7 @@ def n_et_seuils(
     """N cible + seuils kill/scale pour un smoke ou un full.
 
     Args:
-        testing: Bloc validé (MC / snapshot).
+        testing: La taille des essais en vigueur (page Policy).
         phase: ``smoke`` ou ``full``.
 
     Returns:

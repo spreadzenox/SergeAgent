@@ -37,7 +37,7 @@ from serge.interpreter.tools import fixed_params, run_capability
 from serge.interpreter.writer import write_answer
 from serge.llm.client import ChatResult
 from serge.llm.runtime import budget_reached
-from serge.policy_snapshots import policy_en_vigueur
+from serge.policy_store import policy_en_vigueur
 
 TIER_TO_OLD = {'fast': 'T1', 'mid': 'T2', 'smart': 'T3'}
 
