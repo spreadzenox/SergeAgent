@@ -1446,3 +1446,18 @@ risque : le pire cas est un abonnement sans business, visible au journal.
 Julien, sur la règle de branche : l'idéal est une idée par PR, mais en
 pratique c'est une session de travail ; on garde une cohérence et on reste
 souple.
+
+### Q77 — La branche de travail : une session = une branche = une PR, et Clem valide chaque fusion (validé par Clem, 2 octobre 2026)
+Constat : Clem avait demandé de toujours travailler sur la branche `Clem`
+et de lui demander avant chaque fusion dans `main`. Julien a corrigé Q64
+(point 5) : en général, une session de travail = une branche = une PR, de
+préférence sur une seule idée, et on reste souple (Q75, Q76). Il a dit
+qu'il en parlerait à Clem.
+Décidé :
+1. Clem suit la règle de Julien : une session de travail = une branche =
+   une PR (`docs/DEV_TOOLING.md`). Exemple : les réglages généraux en base
+   (la PR B de Q68) partent sur leur propre branche, `reglages-en-base`,
+   avec leur propre PR.
+2. Claude demande toujours à Clem avant de fusionner une PR dans `main` :
+   chaque fusion redéploie Serge sur le serveur de Julien. C'était la
+   proposition de Claude, et Clem l'a acceptée.
