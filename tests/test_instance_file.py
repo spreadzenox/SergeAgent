@@ -8,7 +8,6 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -518,49 +517,22 @@ class InstanceFileTests(unittest.TestCase):
         self.assertFalse(command_requires_instance('status'))
         self.assertFalse(command_requires_instance('kill'))
 
-    def test_testing_defaults_when_absent(self) -> None:
+    def test_reglages_de_la_policy_ignores(self) -> None:
+        """La taille des essais et les appels par jour sont des réglages en
+        base (page Policy) : un ancien fichier qui les contient encore se
+        charge, et ils sont ignorés (pas de réglage en double, Q78)."""
         data = validate_toml(
             {
                 'schema_version': 1,
                 'instance_id': 'x',
                 'mode': 'sandbox',
-                'paths': {
-                    'home': '/h',
-                    'system_root': '/s',
-                    'policy': '/p',
-                },
+                'paths': {'home': '/h', 'system_root': '/s', 'policy': '/p'},
+                'phone_voice': {'max_calls_per_day': 50},
+                'testing': {'n_smoke_min': 50, 'n_smoke_max': 30},
             }
         )
-        self.assertEqual(
-            data['testing'],
-            {
-                'n_smoke_min': 30,
-                'n_smoke_max': 50,
-                'n_full_min': 150,
-                'n_full_target': 200,
-                'kill_max_positives': 1,
-                'scale_min_positives': 5,
-                'scale_min_meetings': 2,
-                'extend_max': 1,
-            },
-        )
-
-    def test_testing_invalid_ranges_refuse(self) -> None:
-        base: dict[str, Any] = {
-            'schema_version': 1,
-            'instance_id': 'x',
-            'mode': 'sandbox',
-            'paths': {'home': '/h', 'system_root': '/s', 'policy': '/p'},
-        }
-        for testing in (
-            {'n_smoke_min': 50, 'n_smoke_max': 30},
-            {'n_full_min': 200, 'n_full_target': 150},
-            {'kill_max_positives': 5, 'scale_min_positives': 5},
-            {'extend_max': 0},
-            {'n_smoke_min': 'beaucoup'},
-        ):
-            with self.assertRaises(InstanceError, msg=testing):
-                validate_toml({**base, 'testing': testing})
+        self.assertNotIn('testing', data)
+        self.assertNotIn('max_calls_per_day', data['phone_voice'])
 
 
 class SidecarMultilineTests(unittest.TestCase):

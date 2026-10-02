@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import os
 import tomllib
+from contextlib import closing
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
@@ -19,7 +20,9 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import yaml
 
+from serge.db.store import open_db
 from serge.paths import system_root
+from serge.policy_store import policy_en_vigueur
 
 PARIS_TZ = 'Europe/Paris'
 # Legal cold-call windows, lunch break excluded, Monday-Friday only.
@@ -97,7 +100,6 @@ class VoicePolicy:
     mandate_inbound_allowed: bool
     external_actions: bool
     cli_expected: str
-    max_calls_per_day: int
 
 
 def _read_toml(path: Path) -> dict[str, Any]:
@@ -125,11 +127,6 @@ def resolve_policy(
     if not features.get('phone_voice'):
         raise VoiceBrokerDenied('features.phone_voice is off')
     identity = data.get('identity') or {}
-    phone = data.get('phone_voice') or {}
-    try:
-        max_calls = int(phone.get('max_calls_per_day', 50))
-    except (TypeError, ValueError):
-        max_calls = 50
     policy_path = mandate_path or Path(
         os.environ.get('SERGE_MANDATE_PATH', '')
     )
@@ -167,10 +164,25 @@ def resolve_policy(
         mandate_inbound_allowed=inbound,
         external_actions=external,
         cli_expected=str(identity.get('phone_voice_number') or ''),
-        max_calls_per_day=max(1, max_calls),
     )
 
 
 def default_ledger_path(root: Path | None = None) -> Path:
     base = root or system_root()
     return base / 'state/voice/voice.db'
+
+
+def call_limits(canon_path: Path) -> tuple[int, int]:
+    """Appels par jour, et appels à une même personne sur 30 jours.
+
+    Lus dans les réglages en vigueur (page Policy) : « Appels par jour » et
+    « Prises de contact au plus, par personne, sur 30 jours » du pays par
+    défaut. Une seule valeur, en base : pas de réglage en double (Q78).
+    """
+    with closing(open_db(canon_path)) as canon:
+        pol = policy_en_vigueur(canon)
+    zones = pol['calling_zones']
+    return (
+        int(pol['quotas']['voice_max_calls_per_day']),
+        int(zones[zones['default']]['contact_per_30d']),
+    )

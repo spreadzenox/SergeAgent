@@ -43,7 +43,6 @@ class VoiceTranscriptTests(unittest.TestCase):
             mandate_inbound_allowed=True,
             external_actions=True,
             cli_expected=CLI,
-            max_calls_per_day=10,
         )
         asked = self.ledger.request_call(
             policy,

@@ -91,7 +91,11 @@ class PolicyTests(unittest.TestCase):
             shutil.copy(ROOT / 'config/policy.test.yaml', dossier)
             for avant, apres in (
                 ('value: 50.0', 'value: 900.0'),  # au-delà du maximum
-                ('value: 30\n', 'value: 70\n'),  # petit essai > son plafond
+                # arrêt à 5 réponses positives = élargir à 5 : refusé
+                (
+                    'value: 1\n        title: Arrêt',
+                    'value: 5\n        title: Arrêt',
+                ),
                 ('kind: eur', 'kind: inconnue'),
                 ('schema_version: 2', 'schema_version: 1'),
             ):

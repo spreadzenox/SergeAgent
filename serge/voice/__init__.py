@@ -5,7 +5,6 @@ from __future__ import annotations
 
 from serge.e164 import E164_RE
 from serge.voice.ledger import (
-    MAX_PER_RECIPIENT_30D,
     PENDING_CLAIM_SECONDS,
     PURPOSES,
     VoiceLedger,
@@ -26,7 +25,6 @@ from serge.voice.policy import (
 __all__ = [
     'CALL_WINDOWS',
     'E164_RE',
-    'MAX_PER_RECIPIENT_30D',
     'PARIS_TZ',
     'PENDING_CLAIM_SECONDS',
     'PURPOSES',

@@ -16,6 +16,7 @@ from zoneinfo import ZoneInfo
 
 from serge.coupe_circuit import set_heartbeat  # noqa: E402
 from serge.db.store import open_db  # noqa: E402
+from serge.policy_store import set_setting  # noqa: E402
 from serge.voice import (  # noqa: E402
     VoiceBrokerDenied,
     VoiceLedger,
@@ -39,7 +40,6 @@ def _policy(**overrides) -> VoicePolicy:
         'mandate_inbound_allowed': True,
         'external_actions': True,
         'cli_expected': CLI,
-        'max_calls_per_day': 50,
     }
     base.update(overrides)
     return VoicePolicy(**base)
@@ -204,7 +204,15 @@ class VoiceBrokerTests(unittest.TestCase):
         )
         self.assertEqual(result['reason'], 'outside_legal_hours')
 
-    def test_recipient_quota_4_per_30d(self) -> None:
+    def _regler(self, ident: str, value: int) -> None:
+        """Change un réglage comme la page Policy de Mission Control."""
+        conn = open_db(self.canon)
+        self.assertEqual(set_setting(conn, ident, value, 'mc'), '')
+        conn.commit()
+        conn.close()
+
+    def test_recipient_quota_30d(self) -> None:
+        # 4 appels au plus à une même personne sur 30 jours (page Policy).
         self.ledger.grant_consent(TO, 'contract')
         for index in range(4):
             result = self.ledger.request_call(
@@ -225,10 +233,22 @@ class VoiceBrokerTests(unittest.TestCase):
             purpose='contract',
             now=TUESDAY_NOON,
         )
-        self.assertEqual(fifth['reason'], 'recipient_quota_4_per_30d')
+        self.assertEqual(fifth['reason'], 'recipient_quota_30d')
+        # Le réglage changé dans Mission Control vaut pour l'appel suivant.
+        self._regler('calling_zones.FR.contact_per_30d', 5)
+        sixth = self.ledger.request_call(
+            _policy(),
+            request_id='req_q5',
+            to_e164=TO,
+            cli=CLI,
+            purpose='contract',
+            now=TUESDAY_NOON,
+        )
+        self.assertEqual(sixth['decision'], 'allowed')
 
     def test_daily_quota(self) -> None:
-        policy = _policy(max_calls_per_day=1)
+        self._regler('quotas.voice_max_calls_per_day', 1)
+        policy = _policy()
         self.ledger.grant_consent(TO, 'contract')
         self.ledger.grant_consent('+33612345679', 'contract')
         first = self.ledger.request_call(

@@ -209,7 +209,8 @@ La voix sortante est une mutation externe, refus par défaut :
   selon les obligations applicables + rétention bornée — **à écrire
   dans le message d'accueil par l'owner**.
 - [ ] Plafond €/jour chez le fournisseur — **à configurer côté trunk**,
-  en plus du `max_calls_per_day` côté Serge.
+  en plus du réglage « Appels par jour » côté Serge (page Policy, famille
+  « Plafonds par canal »).
 
 ### 4. Et la SIM dans tout ça ? (5 min)
 

@@ -116,6 +116,28 @@ class PolicyStoreTests(unittest.TestCase):
         ).fetchone()[0]
         self.assertEqual(titre, 'Modèles, par jour')
 
+    def test_un_reglage_retire_est_efface(self) -> None:
+        """Un réglage listé dans « deleted » disparaît d'une base existante,
+        avec ses relations (ici, ceux que rien ne lisait, Q78)."""
+        self.conn.execute(
+            'INSERT INTO policy_settings(id, section_id, title, kind,'
+            " value_json) VALUES('testing.n_smoke_max', 'testing',"
+            " 'Petit essai, personnes au plus', 'curseur', '50')"
+        )
+        self.conn.execute(
+            'INSERT INTO policy_relations(lower_id, upper_id)'
+            " VALUES('testing.n_smoke_min', 'testing.n_smoke_max')"
+        )
+        ensure_policy(self.conn)
+        self.assertIsNone(self._valeur('testing.n_smoke_max'))
+        self.assertEqual(
+            self.conn.execute(
+                'SELECT COUNT(*) FROM policy_relations WHERE upper_id='
+                "'testing.n_smoke_max'"
+            ).fetchone()[0],
+            0,
+        )
+
 
 if __name__ == '__main__':
     unittest.main()

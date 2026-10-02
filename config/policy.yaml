@@ -73,7 +73,9 @@ sections:
       - id: voice_max_calls_per_day
         value: 50
         title: Appels par jour
-        help: Plafond d’appels sortants. Le compteur du jour est sur En direct.
+        help: >-
+          Au-delà, la voix refuse tout nouvel appel sortant jusqu’au
+          lendemain. Le compteur du jour est sur En direct.
         kind: curseur
         min: 0
         max: 200
@@ -154,7 +156,9 @@ sections:
       - id: FR.contact_per_30d
         value: 4
         title: Prises de contact au plus, par personne, sur 30 jours (France)
-        help: Règle légale en France.
+        help: >-
+          Règle légale en France. Au-delà, les garde-fous et la voix refusent
+          de contacter la personne.
         kind: curseur
         min: 1
         max: 8
@@ -194,22 +198,6 @@ sections:
         min: 1
         max: 500
         step: 1
-      - id: n_smoke_max
-        value: 50
-        title: Petit essai, personnes au plus
-        help: Le petit essai ne dépasse jamais ce nombre.
-        kind: curseur
-        min: 1
-        max: 500
-        step: 1
-      - id: n_full_min
-        value: 150
-        title: Grand essai, personnes au moins
-        help: Le grand essai ne descend jamais sous ce nombre.
-        kind: curseur
-        min: 10
-        max: 5000
-        step: 10
       - id: n_full_target
         value: 200
         title: Grand essai, personnes touchées
@@ -376,13 +364,34 @@ sections:
 # « tel réglage ≤ tel autre » (« < » : strictement plus petit).
 relations:
   - [standing.capital_min, '<=', standing.capital_max]
-  - [testing.n_smoke_min, '<=', testing.n_smoke_max]
-  - [testing.n_full_min, '<=', testing.n_full_target]
   - [testing.kill_max_positives, '<', testing.scale_min_positives]
 
 # Changer un réglage déjà en base : même format que dans pipeline.yaml, sur
 # la table policy_settings (une valeur s'écrit en JSON, par exemple 25.0).
-changes: []
+changes:
+  - id: aide_appels_par_jour
+    why: La voix lit maintenant ce réglage (pas de réglage en double, Q78).
+    table: policy_settings
+    where: {id: quotas.voice_max_calls_per_day}
+    set:
+      help:
+        from: Plafond d’appels sortants. Le compteur du jour est sur En direct.
+        to: >-
+          Au-delà, la voix refuse tout nouvel appel sortant jusqu’au
+          lendemain. Le compteur du jour est sur En direct.
+  - id: aide_contacts_30_jours
+    why: La voix lit maintenant ce réglage (pas de réglage en double, Q78).
+    table: policy_settings
+    where: {id: calling_zones.FR.contact_per_30d}
+    set:
+      help:
+        from: Règle légale en France.
+        to: >-
+          Règle légale en France. Au-delà, les garde-fous et la voix refusent
+          de contacter la personne.
 
 # Les réglages retirés de ce fichier, effacés aussi de la base.
-deleted: []
+deleted:
+  # Rien ne s'en servait : ils ne bornaient que d'autres réglages (Q78).
+  - testing.n_smoke_max
+  - testing.n_full_min

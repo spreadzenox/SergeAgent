@@ -90,8 +90,9 @@ class InstanceWizardTests(unittest.TestCase):
         self.assertIn('phone_sms = true', text)
         self.assertIn('phone_voice = true', text)
         self.assertIn('[phone_voice]', text)
-        self.assertIn('[testing]', text)
-        self.assertIn('n_full_target = 200', text)
+        # Réglages en base (page Policy), pas dans le fichier (Q78).
+        self.assertNotIn('[testing]', text)
+        self.assertNotIn('max_calls_per_day', text)
         self.assertIn('phone_sms_number = "+33600000001"', text)
         self.assertNotIn('sms-secret', text)
         self.assertNotIn('sip-secret', text)

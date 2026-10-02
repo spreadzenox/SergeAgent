@@ -38,7 +38,8 @@ class ReviewApiTests(McServerCase):
                 cookie,
             )[0]
 
-        self.assertEqual(regler('testing.n_smoke_min', 77), 400)
+        # Arrêter à 5 réponses positives quand on élargit à 5 : incohérent.
+        self.assertEqual(regler('testing.kill_max_positives', 5), 400)
         self.assertEqual(
             self._request(
                 'GET', '/owner/api/state?page=p5', headers={'Cookie': cookie}
