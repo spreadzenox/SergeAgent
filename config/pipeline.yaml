@@ -34,9 +34,9 @@ llm_models:
   - tier: smart
     max_price_usd: 8.00
 
-# Les textes envoyés au modèle, modifiables sur la page Pipeline (jamais
-# vides). Un repère entre accolades ({erreurs}, {reste}) est remplacé au
-# moment de l'envoi.
+# Les textes envoyés au modèle, modifiables sur la page Pipeline. Un
+# repère entre accolades ({erreurs}, {reste}) est remplacé au moment de
+# l'envoi ; un texte vide n'est pas envoyé.
 serge_texts:
   - id: presentation
     title: Qui est Serge

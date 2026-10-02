@@ -282,10 +282,17 @@ class PipelinePageTests(McBrowserCase):
             self.assertEqual(status, attendu, corps)
         status, _, _ = self._api_post(
             '/owner/api/reglage',
-            {'cible': 'texte', 'id': 'presentation', 'value': '   '},
+            {'cible': 'texte', 'id': 'presentation', 'value': 'a' * 4001},
             cookie,
         )
         self.assertEqual(status, 400)
+        # Un texte vide est accepté : il n'est simplement pas envoyé.
+        status, _, _ = self._api_post(
+            '/owner/api/reglage',
+            {'cible': 'texte', 'id': 'format_intro', 'value': ''},
+            cookie,
+        )
+        self.assertEqual(status, 200)
         self.assertEqual(
             self._base(
                 'SELECT model, max_price_usd, tolerance_pct FROM llm_models'

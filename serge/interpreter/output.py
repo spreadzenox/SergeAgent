@@ -98,12 +98,13 @@ def describe_format(fields: list[Field], intro: str) -> str:
     """Le texte qui explique au modèle ce qu'il doit rendre.
 
     ``intro`` est la première phrase, réglée sur la page Pipeline
-    (« Ta réponse finale est un seul objet JSON… »).
+    (« Ta réponse finale est un seul objet JSON… ») ; vide, elle n'est pas
+    envoyée.
     """
     if not fields:
         return ''
     lines = [
-        intro,
+        *([intro] if intro else []),
         _example(fields, ''),
         'Les champs :',
     ]

@@ -246,7 +246,7 @@ Toutes demandent le jeton owner ou une session valide. Les corps JSON sont limit
 | `POST /owner/api/etape` | Allumer ou éteindre une étape. |
 | `POST /owner/api/ticket/acte`, `/ticket/item`, `/ticket/discuter` | Répondre à un ticket. |
 | `POST /owner/api/memory/lesson` | Garder, modifier ou jeter une leçon. |
-| `POST /owner/api/reglage` | Changer un réglage : général (`{cible: 'policy', id, value}`), d'invocation, un quota marqué « policy », ou un texte envoyé au modèle (`{cible: 'texte', id, value}`, de 1 à 4000 caractères). La valeur est vérifiée, l'ancienne devient la valeur précédente, le changement est noté au journal. |
+| `POST /owner/api/reglage` | Changer un réglage : général (`{cible: 'policy', id, value}`), d'invocation, un quota marqué « policy », ou un texte envoyé au modèle (`{cible: 'texte', id, value}`, au plus 4000 caractères ; vide, il n'est pas envoyé). La valeur est vérifiée, l'ancienne devient la valeur précédente, le changement est noté au journal. |
 | `POST /owner/api/reglage/precedent` | Remettre la valeur précédente d'un réglage (même corps, sans `value`) ; l'actuelle devient la précédente. |
 | `POST /owner/api/bouton` | Un déclencheur « bouton » : crée la tâche de son invocation, avec les champs du formulaire. Refusé, avec la raison, si l'un de ses quotas est plein. |
 | `POST /owner/api/flux` | Couper ou rallumer un flux RSS suivi (page Écoute). |

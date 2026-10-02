@@ -32,7 +32,8 @@ def serge_text(conn: sqlite3.Connection, ident: str, **values: object) -> str:
 
     Ses repères sont remplacés par ``values``. Exemple :
     ``serge_text(conn, 'format_retry', erreurs='champ manquant')``
-    remplace ``{erreurs}``. Un texte absent rend ``''``.
+    remplace ``{erreurs}``. Un texte vide ou absent rend ``''`` : il n'est
+    pas envoyé.
     """
     row = conn.execute(
         'SELECT body FROM serge_texts WHERE id=?', (ident,)

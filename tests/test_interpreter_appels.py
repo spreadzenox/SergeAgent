@@ -234,6 +234,22 @@ class AppelsTests(unittest.TestCase):
         )
         self.assertEqual(self._verdicts(), ['format_invalide', 'ok'])
 
+    def test_un_texte_vide_n_est_pas_envoye(self) -> None:
+        """Vidés sur la page Pipeline : le message des outils épuisés n'est
+        pas ajouté, et une redemande de format repart de la même demande."""
+        self.conn.execute(
+            "UPDATE serge_texts SET body='' WHERE id IN"
+            " ('tools_exhausted', 'format_retry')"
+        )
+        mauvaise = ChatResult(json.dumps({'autre': 1}), 1, 1, 'faux', 1)
+        script = Script(_outil(1), _outil(1), mauvaise, REPONSE)
+        statut, _ = self._tourner(script)
+        self.assertEqual(statut, 'done')
+        forcee, redemande = script.appels[2], script.appels[3]
+        self.assertEqual(forcee['tool_choice'], 'none')
+        self.assertNotEqual(forcee['messages'][-1]['role'], 'user')
+        self.assertEqual(redemande['messages'], forcee['messages'])
+
     def test_les_resultats_de_recherche_ne_sont_pas_en_double(self) -> None:
         trouve = {'ok': True, 'query': 'q', 'results': [{'url': 'https://x'}]}
         with mock.patch('serge.listen.web.search_public', return_value=trouve):

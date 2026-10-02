@@ -102,7 +102,8 @@ def _change_quota(
     return '', key
 
 
-# Un texte envoyé au modèle (page Pipeline) : de 1 à 4000 caractères.
+# Un texte envoyé au modèle (page Pipeline) : au plus 4000 caractères ; vide,
+# il n'est pas envoyé.
 TEXTE_MAX = 4000
 
 
@@ -116,8 +117,8 @@ def _change_text(
         'SELECT 1 FROM serge_texts WHERE id=?', (ident,)
     ).fetchone():
         return 'texte inconnu', key
-    if not value or len(value) > TEXTE_MAX:
-        return f'entre 1 et {TEXTE_MAX} caractères', key
+    if len(value) > TEXTE_MAX:
+        return f'au plus {TEXTE_MAX} caractères', key
     now = utcnow()
     conn.execute(
         'UPDATE serge_texts SET previous_body=body, previous_at=?,'

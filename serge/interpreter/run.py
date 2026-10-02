@@ -201,16 +201,20 @@ def _ask(
         if not last_errors:
             return answer
         if attempt < retries:
-            messages = [
-                *history,
-                {'role': 'assistant', 'content': result.text},
-                {
-                    'role': 'user',
-                    'content': serge_text(
-                        conn, 'format_retry', erreurs='; '.join(last_errors)
-                    ),
-                },
-            ]
+            redemande = serge_text(
+                conn, 'format_retry', erreurs='; '.join(last_errors)
+            )
+            # Sans texte de redemande (vidé sur la page Pipeline), le modèle
+            # reçoit à nouveau la même demande.
+            messages = (
+                [
+                    *history,
+                    {'role': 'assistant', 'content': result.text},
+                    {'role': 'user', 'content': redemande},
+                ]
+                if redemande
+                else history
+            )
     raise AnswerError('; '.join(last_errors))
 
 
