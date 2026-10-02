@@ -39,25 +39,9 @@ def project_politique_active(
             ' FROM policy_settings'
         )
     }
-    sections = []
-    for row in conn.execute(
-        'SELECT id, title, why FROM policy_sections ORDER BY position'
-    ).fetchall():
-        sections.append(
-            {
-                'id': str(row[0]),
-                'titre': str(row[1]),
-                'pourquoi': str(row[2]),
-                'verrou': section_lock(conn, str(row[0])),
-                'reglages': [],
-            }
-        )
-    by_id = {s['id']: s for s in sections}
+    reglages: dict[str, list[dict[str, Any]]] = {}
     for s in settings(conn):
-        section = by_id.get(s.section_id)
-        if section is None:
-            continue
-        section['reglages'].append(
+        reglages.setdefault(s.section_id, []).append(
             {
                 'id': s.id,
                 'titre': s.title,
@@ -71,7 +55,20 @@ def project_politique_active(
                 'precedent': previous.get(s.id),
             }
         )
-    return {'sections': [s for s in sections if s['reglages']]}
+    sections = [
+        {
+            'id': str(row[0]),
+            'titre': str(row[1]),
+            'pourquoi': str(row[2]),
+            'verrou': section_lock(conn, str(row[0])),
+            'reglages': reglages[str(row[0])],
+        }
+        for row in conn.execute(
+            'SELECT id, title, why FROM policy_sections ORDER BY position'
+        ).fetchall()
+        if str(row[0]) in reglages
+    ]
+    return {'sections': sections}
 
 
 def project_reglages(
