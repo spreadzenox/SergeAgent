@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """MC : changer un réglage, ou remettre sa valeur précédente.
 
-Trois sortes de réglages, sur la page Policy :
+Quatre sortes de réglages, sur les pages Policy et Pipeline :
 
 - un réglage général (``policy_settings``, ``{cible: 'policy', id}``) ;
 - un réglage d'invocation marqué « policy » (``invocation_settings``,
   ``{cible: 'invocation', invocation_id, name}``) ;
 - un quota de table marqué « policy » (``table_quotas``,
-  ``{cible: 'quota', id}``).
+  ``{cible: 'quota', id}``) ;
+- un texte envoyé au modèle (``serge_texts``, ``{cible: 'texte', id}``),
+  sur la page Pipeline.
 
 Chacun garde sa valeur précédente (qui, quand) : « Remettre la valeur
 précédente » la remet, et l'actuelle devient la précédente (Q68).
@@ -100,6 +102,32 @@ def _change_quota(
     return '', key
 
 
+# Un texte envoyé au modèle (page Pipeline) : de 1 à 4000 caractères.
+TEXTE_MAX = 4000
+
+
+def _change_text(
+    conn: sqlite3.Connection, body: dict, value: str
+) -> tuple[str, dict]:
+    """Change un texte envoyé au modèle ; rend ``(problème, clé)``."""
+    ident = str(body.get('id') or '')
+    key = {'id': ident}
+    if not conn.execute(
+        'SELECT 1 FROM serge_texts WHERE id=?', (ident,)
+    ).fetchone():
+        return 'texte inconnu', key
+    if not value or len(value) > TEXTE_MAX:
+        return f'entre 1 et {TEXTE_MAX} caractères', key
+    now = utcnow()
+    conn.execute(
+        'UPDATE serge_texts SET previous_body=body, previous_at=?,'
+        " previous_by='mc', body=?, updated_at=?, updated_by='mc'"
+        ' WHERE id=?',
+        (now, value, now, ident),
+    )
+    return '', key
+
+
 def _previous(conn: sqlite3.Connection, cible: str, body: dict) -> tuple:
     """``(True, valeur)`` si le réglage visé a une valeur précédente."""
     if cible == 'policy':
@@ -116,6 +144,11 @@ def _previous(conn: sqlite3.Connection, cible: str, body: dict) -> tuple:
     elif cible == 'quota':
         row = conn.execute(
             'SELECT previous_value, previous_at FROM table_quotas WHERE id=?',
+            (str(body.get('id') or ''),),
+        ).fetchone()
+    elif cible == 'texte':
+        row = conn.execute(
+            'SELECT previous_body, previous_at FROM serge_texts WHERE id=?',
             (str(body.get('id') or ''),),
         ).fetchone()
     else:
@@ -145,8 +178,10 @@ def change_setting(
         problem, key = _change_invocation(conn, body, str(value).strip())
     elif cible == 'quota':
         problem, key = _change_quota(conn, body, str(value).strip())
+    elif cible == 'texte':
+        problem, key = _change_text(conn, body, str(value).strip())
     else:
-        problem, key = 'cible : policy, invocation ou quota', {}
+        problem, key = 'cible : policy, invocation, quota ou texte', {}
     return (400 if problem else 200), problem, key
 
 

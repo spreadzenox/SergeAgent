@@ -34,8 +34,15 @@ llm_models:
   - tier: smart
     max_price_usd: 8.00
 
+# Les textes envoyés au modèle, modifiables sur la page Pipeline (jamais
+# vides). Un repère entre accolades ({erreurs}, {reste}) est remplacé au
+# moment de l'envoi.
 serge_texts:
   - id: presentation
+    title: Qui est Serge
+    help: >-
+      En tête du prompt des invocations qui le demandent, suivi de la chaîne
+      des 8 étapes et de leur place, lues en base.
     body: |
       Serge est un opérateur économique autonome. Il repère sur le web des
       besoins réels, en tire des idées de business, les teste auprès de
@@ -43,6 +50,36 @@ serge_texts:
       encaisse. Il agit seul la plupart du temps, et demande à Julien de
       valider les décisions importantes. Sa seule limite est la légalité :
       il ne trompe personne et assume d'être un agent IA.
+  - id: tools_exhausted
+    title: Quand le modèle ne peut plus appeler d’outils
+    help: >-
+      Ajouté quand ses tours d’outils sont épuisés, ou qu’un plafond de
+      dépense est atteint en plein travail.
+    body: >-
+      Tu ne peux plus appeler d’outils. Rends maintenant ta réponse finale,
+      au format demandé, avec ce que tu as déjà trouvé.
+  - id: format_intro
+    title: Début de la consigne de format
+    help: En tête du format de réponse, avant l’exemple et la liste des champs.
+    body: >-
+      Ta réponse finale est un seul objet JSON, sans texte autour, de cette
+      forme :
+  - id: format_retry
+    title: Quand la réponse est mal formée
+    help: >-
+      Envoyé pour redemander la réponse, sans outil ; {erreurs} est remplacé
+      par ce qui ne va pas.
+    body: >-
+      Ta réponse ne respecte pas le format : {erreurs}. Rends la réponse
+      corrigée, en JSON seulement.
+  - id: result_truncated
+    title: Quand un résultat d’outil est coupé
+    help: >-
+      Ajouté à la fin d’un résultat plus long que la taille maximale ;
+      {reste} est remplacé par le nombre de caractères coupés.
+    body: >-
+      (résultat tronqué : {reste} caractères de plus ; demande moins à la
+      fois)
 
 # Les outils : une capacité du code, réglée pour un usage précis. Une
 # invocation s'en sert de deux façons : en lecture donnée d'office (Serge
@@ -1105,6 +1142,17 @@ triggers:
 # valeur changée dans Mission Control est gardée. Résultat : table
 # pipeline_changes.
 changes:
+  - id: titre_qui_est_serge
+    why: Les textes envoyés au modèle ont un titre et une aide (page Pipeline).
+    table: serge_texts
+    where: {id: presentation}
+    set:
+      title: {from: '', to: Qui est Serge}
+      help:
+        from: ''
+        to: >-
+          En tête du prompt des invocations qui le demandent, suivi de la
+          chaîne des 8 étapes et de leur place, lues en base.
   - id: lot7_explorer_10_tours
     why: Moins de jetons renvoyés ; avec plusieurs outils par tour, 10 tours suffisent.
     table: invocations

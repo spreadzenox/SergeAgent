@@ -98,7 +98,8 @@ table.matrice {
   max-width: 40rem;
 }
 
-[data-policy='atelier'] {
+[data-policy='atelier'],
+[data-pipeline='reglages'] {
   display: grid;
   gap: 1rem;
   grid-template-columns: 13rem 1fr;
@@ -282,6 +283,7 @@ table.matrice {
 
 @media (max-width: 1100px) {
   [data-policy='atelier'],
+  [data-pipeline='reglages'],
   .grille-champs {
     grid-template-columns: 1fr;
   }
@@ -305,6 +307,7 @@ table.matrice {
 
 @media (max-width: 768px) {
   [data-policy='atelier'],
+  [data-pipeline='reglages'],
   .grille-champs {
     grid-template-columns: 1fr;
   }

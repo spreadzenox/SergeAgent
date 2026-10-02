@@ -17,6 +17,7 @@ from serge.interpreter.run import resolve_model
 from serge.mc.libelles import NIVEAUX
 from serge.mc.proj_lien import MODES
 from serge.mc.proj_llm import EVENEMENTS
+from serge.mc.proj_policy import settings_sections
 
 
 def _titres(conn: sqlite3.Connection) -> dict[str, str]:
@@ -174,9 +175,6 @@ def project_pipeline(
     """Tout le pipeline décrit en base, pour la page Pipeline."""
     del policy, now_iso
     titres = _titres(conn)
-    texte = conn.execute(
-        "SELECT body FROM serge_texts WHERE id='presentation'"
-    ).fetchone()
     return {
         'capacites': _capacites(conn),
         'outils': _outils(conn),
@@ -184,5 +182,31 @@ def project_pipeline(
         'declencheurs': _declencheurs(conn, titres),
         'tables': _tables(conn),
         'modeles': _modeles(conn),
-        'presentation': str(texte[0]) if texte else '',
+        # Les réglages qui touchent au modèle, et les textes qu'il reçoit
+        # (décision Q68, point 5).
+        'reglages': settings_sections(conn, 'pipeline'),
+        'textes': _textes(conn),
     }
+
+
+def _textes(conn: sqlite3.Connection) -> list[dict[str, Any]]:
+    """Les textes envoyés au modèle, avec leur valeur précédente."""
+    return [
+        {
+            'id': str(r[0]),
+            'titre': str(r[1] or r[0]),
+            'aide': str(r[2]),
+            'valeur': str(r[3]),
+            'precedent': {
+                'valeur': str(r[4]),
+                'par': str(r[6]),
+                'le': str(r[5]),
+            }
+            if r[5]
+            else None,
+        }
+        for r in conn.execute(
+            'SELECT id, title, help, body, previous_body, previous_at,'
+            ' previous_by FROM serge_texts ORDER BY rowid'
+        )
+    ]

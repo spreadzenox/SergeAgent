@@ -23,6 +23,7 @@ from typing import Any
 
 from serge.db.store import append_event, utcnow
 from serge.interpreter.flow import fire_row_triggers, pass_links
+from serge.interpreter.intro import serge_text
 from serge.interpreter.output import check_answer, load_fields, parse_answer
 from serge.interpreter.prompt import (
     Caller,
@@ -168,10 +169,8 @@ def _ask(
     def record(result: ChatResult | None, verdict: str) -> None:
         _record_usage(conn, inv, model, result, verdict)
 
-    policy = policy_en_vigueur(conn)
-    quotas = policy.get('quotas') or {}
-    # Les nouveaux essais d'une réponse mal formée (policy, page Policy).
-    retries = int(quotas.get('llm_recalls_json', 0) or 0)
+    # Les nouveaux essais d'une réponse mal formée (page Pipeline).
+    retries = int(policy_en_vigueur(conn)['llm_calls']['format_retries'])
     last_errors: list[str] = []
     for attempt in range(retries + 1):
         result, history = converse(
@@ -186,9 +185,6 @@ def _ask(
             stop=lambda: bool(budget_reached(conn, policy_en_vigueur(conn))),
             # Une redemande de format corrige la réponse, sans outil.
             tools_allowed=attempt == 0,
-            max_result_chars=int(
-                quotas.get('llm_outil_resultat_max_caracteres', 0) or 0
-            ),
         )
         if not fields:
             record(result, 'ok')
@@ -210,9 +206,9 @@ def _ask(
                 {'role': 'assistant', 'content': result.text},
                 {
                     'role': 'user',
-                    'content': 'Ta réponse ne respecte pas le format : '
-                    + '; '.join(last_errors)
-                    + '. Rends la réponse corrigée, en JSON seulement.',
+                    'content': serge_text(
+                        conn, 'format_retry', erreurs='; '.join(last_errors)
+                    ),
                 },
             ]
     raise AnswerError('; '.join(last_errors))

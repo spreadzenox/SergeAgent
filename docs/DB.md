@@ -17,9 +17,9 @@ recrée jamais ensuite.
 1. **Les migrations** (`serge/db/migrate.py`). Chaque changement de
    structure est une fonction `apply_v0NN` (fichiers `serge/db/v0NN.py`).
    Serge applique celles qui manquent, dans l'ordre. Version actuelle :
-   **33**.
+   **34**.
    - Une base neuve saute directement à la version 7 (le socle,
-     `serge/db/schema.py`), puis applique 8, 9, … 33.
+     `serge/db/schema.py`), puis applique 8, 9, … 34.
    - Une base **plus récente** que le code refuse de démarrer
      (`MigrateError`). Revenir à un ancien commit ne défait pas une
      migration.
@@ -87,7 +87,7 @@ catalogue et la mécanique.
 | `listen_feeds` | Les flux RSS que Serge a choisis : adresse, titre, invocation qui l'a ajouté, actif ou coupé, dernière lecture. |
 | `listen_cycles` | Les cycles de l'étape 1 : texte de guidage, état (`OPEN`, `CLOSED`, `ABANDONED`), dates, et ce que « Choisir » a dit du cycle (`choice_note`). |
 | `tickets`, `ticket_items` | Les décisions à prendre par Julien. |
-| `policy_sections`, `policy_settings`, `policy_relations` | Les réglages généraux (la « policy », page Policy de MC), une ligne par réglage : sa valeur (en JSON), son titre, son aide, sa sorte (`eur`, `curseur`, `liste`…), ses bornes et ses choix, et sa **valeur précédente** (qui l'a remplacée, quand) pour « Remettre la valeur précédente ». Les familles de réglages, avec un verrou éventuel (la taille des essais ne change pas pendant qu'un essai tourne), et les relations entre réglages (le plancher du capital ≤ son plafond). Remplis par `config/policy.yaml`, sans jamais écraser une valeur (version 33, décision Q68 ; avant, la policy était une copie complète en JSON à chaque modification). |
+| `policy_sections`, `policy_settings`, `policy_relations` | Les réglages généraux (la « policy », page Policy de MC), une ligne par réglage : sa valeur (en JSON), son titre, son aide, sa sorte (`eur`, `curseur`, `liste`…), ses bornes et ses choix, et sa **valeur précédente** (qui l'a remplacée, quand) pour « Remettre la valeur précédente ». Les familles de réglages, avec leur page (`page` : `policy`, ou `pipeline` pour ce qui touche au modèle, version 34) et un verrou éventuel (la taille des essais ne change pas pendant qu'un essai tourne), et les relations entre réglages (le plancher du capital ≤ son plafond). Remplis par `config/policy.yaml`, sans jamais écraser une valeur ; un réglage renommé (section `renamed`) garde sa valeur (version 33, décision Q68 ; avant, la policy était une copie complète en JSON à chaque modification). |
 | `runtime_flags` | Les interrupteurs à chaud. Aujourd'hui : Serge démarré (`scheduler.heartbeat` à `on`). Sans cette ligne, Serge est arrêté. |
 
 ### Le journal (ce qui s'est passé, jamais modifié)
@@ -142,7 +142,7 @@ est déjà en base. Chaque table est expliquée dans
 | `pipeline_changes` | Les modifications d'objets déjà en base passées par la section `changes` de `pipeline.yaml`, une ligne par modification, avec son résultat. |
 | `queues`, `tasks`, `task_params`, `task_inputs`, `task_seen_tables` | Les deux files (conversations, travaux), leurs tâches, et ce que chaque tâche a reçu : ses lectures d'office, les tables à comparer et ses leçons (lignes données, lignes laissées de côté). |
 | `llm_models` | Chaque niveau (rapide, moyen, intelligent) : le modèle derrière lui, et pour la recommandation de la page Pipeline son prix maximum (`max_price_usd`, $ par million de jetons) et sa tolérance (`tolerance_pct`, % de la meilleure note sous ce prix). |
-| `serge_texts` | Les textes de Serge, dont sa présentation. |
+| `serge_texts` | Les textes envoyés au modèle, modifiables sur la page Pipeline : la présentation de Serge (« Qui est Serge »), le message quand ses outils sont épuisés, le début de la consigne de format, la redemande d'une réponse mal formée, la note d'un résultat d'outil coupé. Chacun a un titre, une aide, et sa valeur précédente (qui l'a remplacée, quand) pour « Remettre » (version 34). |
 | `canaux` | Les canaux par lesquels Serge écrit à un tiers (e-mail, voix). |
 
 ### La mécanique

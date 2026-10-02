@@ -22,16 +22,9 @@ import time
 from collections.abc import Mapping
 from typing import Any
 
-# raccourci : ces deux seuils sont en dur ; en faire des réglages d'un niveau
-# si l'un d'eux doit changer.
-MIN_CONTEXT = 128_000  # jetons : les historiques d'outils sont longs
-MAX_AGE_DAYS = 365
 # Le Batch API d'OpenRouter répond sous 24 h : Serge fait des appels directs.
 DEFERRED_VARIANT = ':batch'
 DAY_S = 86400
-# raccourci : tant que Serge n'a pas assez d'appels enregistrés pour mesurer
-# son mélange, on suppose trois jetons lus pour un écrit.
-DEFAULT_INPUT_SHARE = 0.75
 
 
 def dollars(value: float) -> str:
@@ -50,18 +43,26 @@ def effective_price(model: Mapping[str, Any], input_share: float) -> float:
     ) * float(model.get('completion_usd') or 0)
 
 
-def usable(model: Mapping[str, Any], now: float) -> bool:
-    """Le modèle peut-il servir à Serge (outils, contexte, récent, payant) ?"""
+def usable(
+    model: Mapping[str, Any], now: float, choice: Mapping[str, Any]
+) -> bool:
+    """Le modèle peut-il servir à Serge (outils, contexte, récent, payant) ?
+
+    ``choice`` : les réglages « Recommandation de modèle » (page Pipeline) :
+    contexte minimum et âge maximum.
+    """
     if str(model['id']).endswith(DEFERRED_VARIANT):
         return False
     if model.get('tools') is not True or model.get('text_out') is False:
         return False
-    if int(model.get('context_length') or 0) < MIN_CONTEXT:
+    if int(model.get('context_length') or 0) < int(
+        choice['min_context_tokens']
+    ):
         return False
     if not (model.get('prompt_usd') or model.get('completion_usd')):
         return False
     created = int(model.get('created') or 0)
-    if created and now - created > MAX_AGE_DAYS * DAY_S:
+    if created and now - created > int(choice['max_age_days']) * DAY_S:
         return False
     end = str(model.get('expires') or '')[:10]
     return not end or end > time.strftime('%Y-%m-%d', time.gmtime(now))
@@ -109,7 +110,9 @@ def _pick(
 def recommend(
     models: list[Mapping[str, Any]],
     tiers: Mapping[str, Mapping[str, float]],
-    input_share: float = DEFAULT_INPUT_SHARE,
+    input_share: float,
+    *,
+    choice: Mapping[str, Any],
     now: float | None = None,
 ) -> dict[str, dict[str, Any]]:
     """Le modèle recommandé par niveau : ``{tier: {id, reason, ...}}``.
@@ -118,6 +121,8 @@ def recommend(
         models: Le catalogue OpenRouter (``kit.openrouter.fetch_models``).
         tiers: Les réglages de chaque niveau, ``{tier: {max_price,
             tolerance}}`` (prix maximum en $/M, tolérance entre 0 et 1).
+        input_share: La part de jetons lus (voir ``catalog.usage_mix``).
+        choice: Les réglages « Recommandation de modèle » (voir ``usable``).
         now: Heure en secondes (défaut : maintenant).
 
     Returns:
@@ -125,7 +130,7 @@ def recommend(
         ``max_price`` rappelle le plafond du niveau.
     """
     moment = time.time() if now is None else now
-    pool = [m for m in models if usable(m, moment)]
+    pool = [m for m in models if usable(m, moment, choice)]
     out = {}
     for tier, settings in tiers.items():
         under = [

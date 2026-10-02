@@ -19,7 +19,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from serge.interpreter.intro import lessons_block, serge_intro
+from serge.interpreter.intro import lessons_block, serge_intro, serge_text
 from serge.interpreter.output import Field, describe_format
 from serge.interpreter.seen import short_blocks
 from serge.interpreter.settings import (
@@ -30,6 +30,7 @@ from serge.interpreter.settings import (
 )
 from serge.interpreter.tools import fixed_params, run_tool, tool_schema
 from serge.llm.client import ChatResult
+from serge.policy_store import policy_en_vigueur
 
 
 @dataclass(frozen=True)
@@ -155,7 +156,7 @@ def system_prompt(
     if inv.gets_serge_intro:
         parts.append(serge_intro(conn, inv.id, inv.title, inv.step_id))
     parts.append(fill_prompt(inv.prompt.strip(), prompt_values(conn, inv.id)))
-    fmt = describe_format(fields)
+    fmt = describe_format(fields, serge_text(conn, 'format_intro'))
     if fmt:
         parts.append(f'# Format de ta réponse\n{fmt}')
     return '\n\n'.join(p for p in parts if p)
@@ -201,17 +202,6 @@ Caller = Callable[..., ChatResult]
 # résultat (``outil``, ``erreur``…).
 Record = Callable[[ChatResult | None, str], None]
 
-# Attente maximale d'une réponse du modèle, en secondes : une réponse
-# longue (30 pages retenues, par exemple) peut dépasser une minute.
-TIMEOUT_S = 180.0
-# Le message ajouté quand le modèle ne peut plus appeler d'outils : ses
-# tours sont épuisés, ou le plafond de dépense du jour est atteint.
-FIN_DES_OUTILS = (
-    'Tu ne peux plus appeler d’outils. Rends maintenant ta réponse finale,'
-    ' au format demandé, avec ce que tu as déjà trouvé.'
-)
-# Pauses avant de réessayer un appel raté pour une raison passagère.
-PAUSES_S = (3.0, 10.0)
 _PASSAGERES = ('NETWORK', 'EMPTY', 'API: OpenRouter HTTP 429')
 
 
@@ -225,15 +215,20 @@ def _passagere(exc: Exception) -> bool:
 
 
 def _call_model(
-    caller: Caller, record: Record | None, *args: Any, **kwargs: Any
+    caller: Caller,
+    record: Record | None,
+    pauses: list[float],
+    *args: Any,
+    **kwargs: Any,
 ) -> ChatResult:
-    """Un appel au modèle, réessayé deux fois si l'erreur est passagère.
+    """Un appel au modèle, réessayé après chaque pause si l'erreur est
+    passagère. Exemple : pauses 3 et 10 secondes, trois essais en tout.
 
     Chaque échec est noté (sans jetons, puisqu'il n'y a pas de réponse).
     """
     from serge.llm.client import LlmError
 
-    for pause in (*PAUSES_S, None):
+    for pause in (*pauses, None):
         try:
             return caller(*args, **kwargs)
         except LlmError as exc:
@@ -257,7 +252,6 @@ def converse(
     record: Record | None = None,
     stop: Callable[[], bool] | None = None,
     tools_allowed: bool = True,
-    max_result_chars: int = 0,
 ) -> tuple[ChatResult, list[dict[str, Any]]]:
     """Laisse le modèle appeler ses outils, puis rend sa réponse finale.
 
@@ -273,9 +267,16 @@ def converse(
     corrige sa réponse, il ne recommence pas ses recherches).
 
     Tout l'historique repart au modèle à chaque tour : un résultat d'outil
-    plus long que ``max_result_chars`` (0 : sans limite) est coupé, avec
-    une note, pour qu'un seul résultat ne coûte pas à chaque tour.
+    plus long que la taille réglée est coupé, avec une note, pour qu'un
+    seul résultat ne coûte pas à chaque tour. L'attente, les pauses et
+    cette taille se règlent sur la page Pipeline (« Appels au modèle »),
+    les textes ajoutés au modèle aussi.
     """
+    reglages = policy_en_vigueur(conn)['llm_calls']
+    pauses = [float(p) for p in reglages['retry_pauses_s']]
+    max_result_chars = int(reglages['tool_result_max_chars'])
+    fin_des_outils = serge_text(conn, 'tools_exhausted')
+    note_coupure = serge_text(conn, 'result_truncated')
     schemas, links = callable_tools(conn, inv, task)
     limits = _call_limits(conn, inv, links)
     calls: dict[str, int] = {}
@@ -288,20 +289,21 @@ def converse(
             or turns >= inv.max_tool_turns
             or (turns > 0 and stop is not None and stop())
         )
-        if force_text and schemas and tools_allowed:
+        if force_text and schemas and tools_allowed and fin_des_outils:
             # Certains modèles rendent une réponse vide quand on leur
             # interdit les outils sans rien dire : on le leur dit.
-            history.append({'role': 'user', 'content': FIN_DES_OUTILS})
+            history.append({'role': 'user', 'content': fin_des_outils})
         result = _call_model(
             caller,
             record,
+            pauses,
             api_key,
             model,
             history,
             tools=schemas or None,
             tool_choice='none' if force_text and schemas else None,
             parallel_tool_calls=True,
-            timeout=TIMEOUT_S,
+            timeout=float(reglages['timeout_s']),
         )
         if force_text or not result.tool_calls:
             return result, history
@@ -338,6 +340,7 @@ def converse(
                             default=str,
                         ),
                         max_result_chars,
+                        note_coupure,
                     ),
                 }
             )
@@ -348,14 +351,13 @@ def converse(
         conn.commit()
 
 
-def _borne(texte: str, limite: int) -> str:
-    """Un résultat d'outil coupé à ``limite`` caractères, avec une note."""
+def _borne(texte: str, limite: int, note: str) -> str:
+    """Un résultat d'outil coupé à ``limite`` caractères, avec une note
+    dont le repère ``{reste}`` dit combien de caractères ont été coupés."""
     if limite <= 0 or len(texte) <= limite:
         return texte
-    return (
-        f'{texte[:limite]}… (résultat tronqué : {len(texte) - limite}'
-        ' caractères de plus ; demande moins à la fois)'
-    )
+    reste = str(len(texte) - limite)
+    return f'{texte[:limite]}… {note.replace("{reste}", reste)}'.rstrip()
 
 
 def _call_limits(

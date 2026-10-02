@@ -33,7 +33,7 @@ sys.path.insert(0, str(ROOT))
 
 from serge.coupe_circuit import set_heartbeat  # noqa: E402
 from serge.db.boot import init_schema  # noqa: E402
-from serge.interpreter import prompt  # noqa: E402
+from serge.interpreter.intro import serge_text  # noqa: E402
 from serge.interpreter.queue import process_one  # noqa: E402
 from serge.interpreter.tasks import enqueue_task  # noqa: E402
 from serge.interpreter.tools import run_capability  # noqa: E402
@@ -98,7 +98,9 @@ class AppelsTests(unittest.TestCase):
         seed_pipeline(self.conn, PIPELINE)
         set_heartbeat(self.conn, True)
         self.conn.commit()
-        patcher = mock.patch.object(prompt, 'PAUSES_S', (0.0, 0.0))
+        # Les pauses avant de réessayer (page Pipeline) ne font pas attendre
+        # les tests.
+        patcher = mock.patch('serge.interpreter.prompt.time.sleep')
         patcher.start()
         self.addCleanup(patcher.stop)
 
@@ -155,11 +157,26 @@ class AppelsTests(unittest.TestCase):
         self.assertEqual(dernier['tool_choice'], 'none')
         self.assertEqual(
             dernier['messages'][-1],
-            {'role': 'user', 'content': prompt.FIN_DES_OUTILS},
+            {
+                'role': 'user',
+                'content': serge_text(self.conn, 'tools_exhausted'),
+            },
         )
         self.assertNotIn(
-            prompt.FIN_DES_OUTILS,
+            serge_text(self.conn, 'tools_exhausted'),
             json.dumps(script.appels[0]['messages'], ensure_ascii=False),
+        )
+
+    def test_le_texte_change_sur_la_page_pipeline_est_envoye(self) -> None:
+        self.conn.execute(
+            "UPDATE serge_texts SET body='Réponds maintenant, sans outil.'"
+            " WHERE id='tools_exhausted'"
+        )
+        script = Script(_outil(1), _outil(1), REPONSE)
+        self._tourner(script)
+        self.assertEqual(
+            script.appels[-1]['messages'][-1]['content'],
+            'Réponds maintenant, sans outil.',
         )
 
     def test_plusieurs_outils_par_tour_et_trois_minutes_d_attente(
@@ -191,7 +208,8 @@ class AppelsTests(unittest.TestCase):
         self.assertEqual(statut, 'done')
         self.assertEqual(script.appels[1]['tool_choice'], 'none')
         self.assertEqual(
-            script.appels[1]['messages'][-1]['content'], prompt.FIN_DES_OUTILS
+            script.appels[1]['messages'][-1]['content'],
+            serge_text(self.conn, 'tools_exhausted'),
         )
 
     def test_un_resultat_d_outil_geant_est_coupe(self) -> None:

@@ -1,18 +1,10 @@
-// Page Policy : les réglages généraux (par famille), ceux des invocations et
-// les quotas des tables. Chacun s'enregistre seul, et peut reprendre sa
-// valeur précédente. Tout vient de la base : titres, aides, bornes, choix.
-import {draftField, rememberDrafts, toast} from '../components.js';
-import {champPolicy, el, formatValeur} from '../policy_form.js';
+// Page Policy : les familles de réglages généraux (les limites de Serge face
+// au monde), puis les réglages des invocations et les quotas des tables.
+// Chacun s'enregistre seul, et peut reprendre sa valeur précédente.
+import {draftField, rememberDrafts} from '../components.js';
+import {el} from '../policy_form.js';
+import {afficherFamilles, boutonPrecedent, brancherReglages} from '../reglages.js';
 import {fetchState} from '../sse.js';
-
-async function poster(chemin, charge) {
-  const res = await fetch(chemin, {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify(charge),
-  });
-  return {ok: res.ok, data: await res.json()};
-}
 
 async function rafraichir(store) {
   try {
@@ -25,97 +17,12 @@ async function rafraichir(store) {
   }
 }
 
-function dateCourte(iso) {
-  return iso ? String(iso).slice(0, 16).replace('T', ' ') : '';
-}
-
-// « Remettre 50 € » : la valeur précédente, remplacée par qui, quand.
-function boutonPrecedent(charge, texte, precedent) {
-  const btn = el('button', 'btn-doux', `Remettre ${texte}`);
-  btn.type = 'button';
-  btn.dataset.precedent = JSON.stringify(charge);
-  btn.title = `Valeur précédente, remplacée par ${precedent.par || '?'} le ${dateCourte(precedent.le)}`;
-  return btn;
-}
-
-function champReglage(r, verrou) {
-  const field = champPolicy(r.id, r, r.valeur);
-  field.querySelectorAll('input,select,textarea').forEach((f, i) => draftField(f, `${r.id}.${i}`));
-  const actes = el('div', 'actes-champ');
-  const enregistrer = el('button', '', 'Enregistrer');
-  enregistrer.type = 'button';
-  enregistrer.dataset.enregistrer = r.id;
-  actes.append(enregistrer);
-  if (r.precedent) {
-    actes.append(boutonPrecedent(
-      {cible: 'policy', id: r.id},
-      formatValeur(r, r.precedent.valeur),
-      r.precedent,
-    ));
-  }
-  field.append(actes);
-  if (verrou) {
-    field.querySelectorAll('input,select,textarea,button').forEach((n) => {
-      n.disabled = true;
-    });
-  }
-  return field;
-}
-
 function renderPolitiqueActive(main, payload, sig) {
   const host = main.querySelector('[data-policy="atelier"]');
   if (!host) {
     return;
   }
-  const restore = rememberDrafts(host);
-  host.replaceChildren();
-  const sections = payload.sections || [];
-  const sommaire = el('nav', 'sommaire-policy');
-  sommaire.setAttribute('aria-label', 'Familles de réglages');
-  const corps = el('div', 'corps-policy');
-  let actif = host.dataset.sec || (sections[0] && sections[0].id) || '';
-  if (!sections.some((s) => s.id === actif)) {
-    actif = (sections[0] && sections[0].id) || '';
-  }
-
-  function montrer(id) {
-    actif = id;
-    host.dataset.sec = id;
-    sommaire.querySelectorAll('button').forEach((b) => {
-      b.classList.toggle('actif', b.dataset.sec === id);
-    });
-    corps.querySelectorAll('[data-sec]').forEach((art) => {
-      art.hidden = art.dataset.sec !== id;
-    });
-  }
-
-  for (const sec of sections) {
-    const btn = el('button', 'onglet-policy', sec.titre);
-    btn.type = 'button';
-    btn.dataset.sec = sec.id;
-    btn.addEventListener('click', () => montrer(sec.id));
-    sommaire.append(btn);
-    const art = el('article', 'cadre-regle');
-    art.dataset.sec = sec.id;
-    art.append(el('h3', '', sec.titre));
-    if (sec.pourquoi) {
-      art.append(el('p', 'pourquoi-regle', sec.pourquoi));
-    }
-    if (sec.verrou) {
-      const verrou = el('p', 'verrou-regle', `Verrouillé : ${sec.verrou}`);
-      verrou.dataset.verrou = sec.id;
-      art.append(verrou);
-    }
-    const grille = el('div', 'grille-champs');
-    for (const r of sec.reglages) {
-      grille.append(champReglage(r, sec.verrou));
-    }
-    art.append(grille);
-    corps.append(art);
-  }
-  host.append(sommaire, corps);
-  montrer(actif);
-  restore();
+  afficherFamilles(host, payload.sections || []);
   main.querySelector('[data-section="politique_active"]').dataset.sig = sig;
 }
 
@@ -190,52 +97,11 @@ function renderReglages(main, payload, sig) {
   main.querySelector('[data-section="reglages"]').dataset.sig = sig;
 }
 
-// Enregistrer un réglage, ou remettre sa valeur précédente.
-async function agir(btn, chemin, charge, champs, store) {
-  btn.disabled = true;
-  try {
-    const {ok, data} = await poster(chemin, charge);
-    toast(
-      document.body,
-      ok ? 'Réglage enregistré.' : (data.erreur || 'Refusé.'),
-      ok ? 'succes' : 'erreur',
-    );
-    if (ok) {
-      champs.forEach((f) => delete f.dataset.dirty);
-      await rafraichir(store);
-    }
-  } catch {
-    toast(document.body, 'Action injoignable.', 'erreur');
-  } finally {
-    btn.disabled = false;
-  }
-}
-
-function surClic(ev, store) {
-  const btn = ev.target.closest('button[data-enregistrer], button[data-reglage], button[data-precedent]');
-  if (!btn) {
-    return;
-  }
-  if (btn.dataset.precedent) {
-    agir(btn, '/owner/api/reglage/precedent', JSON.parse(btn.dataset.precedent), [], store);
-    return;
-  }
-  if (btn.dataset.enregistrer) {
-    const champ = btn.closest('.champ-policy');
-    const charge = {cible: 'policy', id: btn.dataset.enregistrer, value: champ._lire()};
-    agir(btn, '/owner/api/reglage', charge, [...champ.querySelectorAll('[data-draft]')], store);
-    return;
-  }
-  const input = btn.parentElement.querySelector('input');
-  const charge = {...JSON.parse(btn.dataset.reglage), value: input.value};
-  agir(btn, '/owner/api/reglage', charge, [input], store);
-}
-
 export function mount(main, store) {
   const tpl = document.getElementById('page-policy');
   main.replaceChildren(tpl.content.cloneNode(true));
   for (const hote of main.querySelectorAll('[data-policy="atelier"], [data-reglages="liste"]')) {
-    hote.addEventListener('click', (ev) => surClic(ev, store));
+    brancherReglages(hote, () => rafraichir(store));
   }
 
   const unsubs = [

@@ -27,6 +27,8 @@ SCHEMA_VERSION = 2
 NUMBER_KINDS = frozenset({'eur', 'pct', 'nombre'})
 INTEGER_KINDS = frozenset({'curseur', 'heure'})
 CHOICE_KINDS = frozenset({'canaux', 'jours'})
+# La page de Mission Control d'une famille de réglages.
+PAGES = frozenset({'policy', 'pipeline'})
 KINDS = (
     NUMBER_KINDS
     | INTEGER_KINDS
@@ -262,9 +264,9 @@ def load_policy_seed(directory: Path | None = None) -> dict[str, Any]:
     """Lit ``policy.yaml`` (avec ``policy.test.yaml`` en test) et le vérifie.
 
     Returns:
-        ``{sections, settings, relations, changes, deleted}`` :
+        ``{sections, settings, relations, renamed, changes, deleted}`` :
         ``settings`` est une liste de ``Setting``, ``relations`` une liste
-        de ``Relation``.
+        de ``Relation``, ``renamed`` une liste de ``(ancien, nouveau)``.
 
     Raises:
         PolicyError: Fichier illisible, réglage mal décrit, valeur de
@@ -283,6 +285,9 @@ def load_policy_seed(directory: Path | None = None) -> dict[str, Any]:
             Relation(str(low), str(high), op == '<')
             for low, op, high in data.get('relations') or []
         ]
+        renamed = [
+            (str(old), str(new)) for old, new in data.get('renamed') or []
+        ]
     except (KeyError, TypeError, ValueError) as exc:
         raise PolicyError(f'policy.yaml mal formé : {exc}') from exc
     if is_test_env():
@@ -294,6 +299,11 @@ def load_policy_seed(directory: Path | None = None) -> dict[str, Any]:
             replace(s, value=values[s.id]) if s.id in values else s
             for s in settings
         ]
+    for section in sections:
+        if section.get('page', 'policy') not in PAGES:
+            raise PolicyError(
+                f'policy.{section["id"]} : page {section["page"]}'
+            )
     for setting in settings:
         if setting.kind not in KINDS:
             raise PolicyError(f'policy.{setting.id} : sorte {setting.kind}')
@@ -306,6 +316,7 @@ def load_policy_seed(directory: Path | None = None) -> dict[str, Any]:
         'sections': sections,
         'settings': settings,
         'relations': relations,
+        'renamed': renamed,
         'changes': data.get('changes') or [],
         'deleted': [str(i) for i in data.get('deleted') or []],
     }

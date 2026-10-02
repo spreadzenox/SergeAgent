@@ -63,7 +63,18 @@ class ProjectionPipelineTests(unittest.TestCase):
         self.assertEqual(
             [m['tier'] for m in data['modeles']], ['fast', 'mid', 'smart']
         )
-        self.assertIn('opérateur économique autonome', data['presentation'])
+        textes = {t['id']: t for t in data['textes']}
+        self.assertIn(
+            'opérateur économique autonome', textes['presentation']['valeur']
+        )
+        self.assertEqual(
+            textes['format_retry']['titre'], 'Quand la réponse est mal formée'
+        )
+        # Les réglages qui touchent au modèle sont sur cette page (Q68).
+        self.assertEqual(
+            [s['id'] for s in data['reglages']],
+            ['llm_calls', 'tools', 'model_choice'],
+        )
 
 
 def _modele(ident: str, prix: float, **autres) -> dict:
@@ -213,15 +224,35 @@ class PipelinePageTests(McBrowserCase):
         )
         # La recommandation se recalcule avec le nouveau prix maximum.
         expect(reco).to_contain_text('Recommandé (plafond 2,00 $/M)')
-        page.locator('[data-pipeline="texte"]').fill(
-            'Serge, version de Julien.'
-        )
-        with page.expect_response('**/owner/api/pipeline/texte') as reponse:
-            page.get_by_role('button', name='Enregistrer le texte').click()
+        texte = page.locator('[data-texte="presentation"]')
+        texte.locator('textarea').fill('Serge, version de Julien.')
+        with page.expect_response('**/owner/api/reglage') as reponse:
+            texte.get_by_role('button', name='Enregistrer').click()
         self.assertTrue(reponse.value.ok)
         self.assertEqual(
             self._base("SELECT body FROM serge_texts WHERE id='presentation'"),
             [('Serge, version de Julien.',)],
+        )
+        expect(
+            texte.get_by_role('button', name='Remettre le texte précédent')
+        ).to_be_visible(timeout=10000)
+        # Un réglage des appels au modèle, sur la même page.
+        page.locator(
+            '[data-pipeline="reglages"] button.onglet-policy',
+            has_text='Appels au modèle',
+        ).click()
+        attente = page.locator(
+            '.champ-policy[data-chemin="llm_calls.timeout_s"]'
+        )
+        attente.locator('input[type="number"]').fill('240')
+        with page.expect_response('**/owner/api/reglage') as reponse:
+            attente.get_by_role('button', name='Enregistrer').click()
+        self.assertTrue(reponse.value.ok)
+        self.assertEqual(
+            self._base(
+                "SELECT value_json FROM policy_settings WHERE id='llm_calls.timeout_s'"
+            ),
+            [('240',)],
         )
         page.locator(
             '[data-pipeline="liens"] tr', has_text='Les idées passent au choix'
@@ -250,7 +281,9 @@ class PipelinePageTests(McBrowserCase):
             )
             self.assertEqual(status, attendu, corps)
         status, _, _ = self._api_post(
-            '/owner/api/pipeline/texte', {'body': '   '}, cookie
+            '/owner/api/reglage',
+            {'cible': 'texte', 'id': 'presentation', 'value': '   '},
+            cookie,
         )
         self.assertEqual(status, 400)
         self.assertEqual(

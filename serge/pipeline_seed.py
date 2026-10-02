@@ -73,8 +73,11 @@ def _seed_simple(conn: sqlite3.Connection, data: Mapping[str, Any]) -> None:
             'serge_texts',
             ignore=True,
             id=str(text['id']),
+            title=str(text.get('title', '')),
+            help=str(text.get('help', '')).strip(),
             body=str(text.get('body', '')).strip(),
             updated_at='',
+            updated_by='pipeline.yaml',
         )
 
 

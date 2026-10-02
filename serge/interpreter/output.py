@@ -94,13 +94,16 @@ def _example(fields: list[Field], parent: str) -> str:
     return '{' + ', '.join(parts) + '}'
 
 
-def describe_format(fields: list[Field]) -> str:
-    """Le texte qui explique au modèle ce qu'il doit rendre."""
+def describe_format(fields: list[Field], intro: str) -> str:
+    """Le texte qui explique au modèle ce qu'il doit rendre.
+
+    ``intro`` est la première phrase, réglée sur la page Pipeline
+    (« Ta réponse finale est un seul objet JSON… »).
+    """
     if not fields:
         return ''
     lines = [
-        'Ta réponse finale est un seul objet JSON, sans texte autour, de'
-        ' cette forme :',
+        intro,
         _example(fields, ''),
         'Les champs :',
     ]

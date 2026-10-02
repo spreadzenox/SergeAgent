@@ -34,11 +34,18 @@ from serge.listen.page import (  # noqa: E402
     read_page,
     text_lines,
 )
+from serge.policy import load_policy  # noqa: E402
 
 NOW = '2026-09-28T10:00:00+00:00'
 
 
-def _flux(url: str, source: str, max_items: int = 50) -> list[dict]:
+# Les réglages « Lecture du web » de départ (page Policy).
+WEB = load_policy()['web']
+
+
+def _flux(
+    url: str, source: str, *, timeout: float, max_items: int
+) -> list[dict]:
     return [
         {
             'url': f'{url}/page{n}',
@@ -178,7 +185,7 @@ HTML = (
 
 class LirePageTests(unittest.TestCase):
     def test_les_lignes_d_une_page(self) -> None:
-        titre, lignes = text_lines(HTML)
+        titre, lignes = text_lines(HTML, 300)
         self.assertEqual(titre, 'Mon devis')
         self.assertEqual(
             lignes, ['Titre', 'Premier paragraphe.', 'Un', 'Deux']
@@ -188,7 +195,7 @@ class LirePageTests(unittest.TestCase):
         """Une page dont le texte n'est pas rangé en paragraphes ne tient
         pas en une seule ligne géante (premier cycle en production)."""
         texte = ' '.join(f'mot{n}' for n in range(20000))
-        _, lignes = text_lines(f'<div><span>{texte}</span></div>')
+        _, lignes = text_lines(f'<div><span>{texte}</span></div>', 300)
         self.assertGreater(len(lignes), 100)
         self.assertTrue(all(len(ligne) <= 300 for ligne in lignes))
         self.assertEqual(' '.join(lignes), texte)
@@ -198,8 +205,8 @@ class LirePageTests(unittest.TestCase):
             mock.patch('serge.listen.page.check_host'),
             mock.patch('serge.listen.page.fetch_html', return_value=HTML),
         ):
-            apercu = read_page('https://x.test/devis', 2)
-            entiere = read_page('https://x.test/devis', 0)
+            apercu = read_page('https://x.test/devis', 2, WEB)
+            entiere = read_page('https://x.test/devis', 0, WEB)
         self.assertEqual(apercu['lines'], ['Titre', 'Premier paragraphe.'])
         self.assertEqual(apercu['total_lines'], 4)
         self.assertEqual(len(entiere['lines']), 4)
@@ -213,7 +220,7 @@ class LirePageTests(unittest.TestCase):
         ):
             with self.assertRaises(PageError, msg=url):
                 check_host(url)
-        self.assertEqual(read_page('http://127.0.0.1/', 5)['ok'], False)
+        self.assertEqual(read_page('http://127.0.0.1/', 5, WEB)['ok'], False)
 
 
 if __name__ == '__main__':

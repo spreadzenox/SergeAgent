@@ -2,6 +2,7 @@
 import {toast, draftField, rememberDrafts} from '../components.js';
 import {fetchState} from '../sse.js';
 import {allerObjet} from '../libelles.js';
+import {afficherFamilles, afficherTextes, brancherReglages} from '../reglages.js';
 
 async function poster(path, body) {
   const response = await fetch(path, {
@@ -309,41 +310,20 @@ function afficherModeles(conteneur, modeles, store, after) {
   return true;
 }
 
-function afficherPresentation(conteneur, texte, store) {
-  if (!changer(conteneur, texte)) {
-    return;
-  }
-  const restore = rememberDrafts(conteneur);
-  const zone = draftField(el('textarea'), 'presentation');
-  zone.maxLength = 4000;
-  zone.rows = 6;
-  zone.value = texte;
-  zone.dataset.pipeline = 'texte';
-  const btn = el('button', 'btn-fort', 'Enregistrer le texte');
-  btn.type = 'button';
-  btn.addEventListener('click', () => enregistrer(
-    btn,
-    '/owner/api/pipeline/texte',
-    {body: zone.value},
-    store,
-  ));
-  const label = el('label', 'champ-large');
-  label.append(el('span', '', 'Présentation de Serge'), zone);
-  const barre = el('div', 'barre-policy');
-  barre.append(btn);
-  const bloc = el('div', 'grille-champs');
-  bloc.append(label, barre);
-  conteneur.replaceChildren(bloc);
-  restore();
-}
-
 function afficher(main, payload, sig, store) {
   const zone = (nom) => main.querySelector(`[data-pipeline="${nom}"]`);
   const after = () => loadCatalog(main);
   if (afficherModeles(zone('modeles'), payload.modeles || [], store, after)) {
     renderCatalog(main);
   }
-  afficherPresentation(zone('presentation'), payload.presentation || '', store);
+  const reglages = payload.reglages || [];
+  if (changer(zone('reglages'), JSON.stringify(reglages))) {
+    afficherFamilles(zone('reglages'), reglages);
+  }
+  const textes = payload.textes || [];
+  if (changer(zone('textes'), JSON.stringify(textes))) {
+    afficherTextes(zone('textes'), textes);
+  }
   zone('liens').replaceChildren(tableau(
     ['Lien', 'De → vers', 'Quand', 'Passage', 'En attente', 'Passés', 'Allumé'],
     (payload.liens || []).map((l) => ({
@@ -388,6 +368,9 @@ function afficher(main, payload, sig, store) {
 export function mount(main, store) {
   const tpl = document.getElementById('page-pipeline');
   main.replaceChildren(tpl.content.cloneNode(true));
+  for (const nom of ['reglages', 'textes']) {
+    brancherReglages(main.querySelector(`[data-pipeline="${nom}"]`), () => rafraichir(store));
+  }
   loadCatalog(main);
   const unsubscribe = store.subscribe(
     'pipeline',

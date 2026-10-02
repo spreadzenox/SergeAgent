@@ -62,14 +62,16 @@ class CollectorsTests(unittest.TestCase):
         with mock.patch(
             'urllib.request.urlopen', return_value=_response(RSS.encode())
         ) as mocked:
-            docs = fetch_rss('https://f.test/rss', 'forum-test')
+            docs = fetch_rss(
+                'https://f.test/rss', 'forum-test', timeout=20, max_items=50
+            )
         self.assertEqual(len(docs), 1)
         request = mocked.call_args[0][0]
         self.assertIn('SergeListen', request.get_header('User-agent'))
 
     def test_fetch_erreurs(self) -> None:
         with self.assertRaisesRegex(ListenError, '^NETWORK'):
-            fetch_rss('ftp://x.test/rss', 'x')
+            fetch_rss('ftp://x.test/rss', 'x', timeout=20, max_items=50)
         error = urllib.error.HTTPError(
             'https://x',
             404,
@@ -79,13 +81,13 @@ class CollectorsTests(unittest.TestCase):
         )
         with mock.patch('urllib.request.urlopen', side_effect=error):
             with self.assertRaisesRegex(ListenError, '^NETWORK'):
-                fetch_rss('https://x.test/rss', 'x')
+                fetch_rss('https://x.test/rss', 'x', timeout=20, max_items=50)
         with mock.patch(
             'urllib.request.urlopen',
             side_effect=urllib.error.URLError('dns'),
         ):
             with self.assertRaisesRegex(ListenError, '^NETWORK'):
-                fetch_rss('https://x.test/rss', 'x')
+                fetch_rss('https://x.test/rss', 'x', timeout=20, max_items=50)
 
 
 if __name__ == '__main__':

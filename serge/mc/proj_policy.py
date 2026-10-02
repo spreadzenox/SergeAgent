@@ -18,20 +18,15 @@ def _precedent(at: str, by: str, value: Any) -> dict[str, Any] | None:
     return {'valeur': value, 'par': by, 'le': at}
 
 
-def project_politique_active(
-    conn: sqlite3.Connection, policy: Mapping[str, Any], now: str
-) -> dict[str, Any]:
-    """Les réglages généraux, par famille, tels qu'ils sont en base (P5).
+def settings_sections(conn: sqlite3.Connection, page: str) -> list[dict]:
+    """Les familles de réglages généraux d'une page (``policy`` ou
+    ``pipeline``), telles qu'elles sont en base.
 
     Chaque réglage arrive avec sa description (titre, aide, sorte, bornes,
     choix), sa valeur, et sa valeur précédente : la page n'a aucun
     catalogue à elle. Une famille verrouillée dit pourquoi (exemple : un
     essai tourne).
-
-    Returns:
-        ``{sections: [{id, titre, pourquoi, verrou, reglages: [...]}]}``.
     """
-    _ = (policy, now)
     previous = {
         str(r[0]): _precedent(str(r[2]), str(r[3]), json.loads(r[1] or 'null'))
         for r in conn.execute(
@@ -64,11 +59,25 @@ def project_politique_active(
             'reglages': reglages[str(row[0])],
         }
         for row in conn.execute(
-            'SELECT id, title, why FROM policy_sections ORDER BY position'
+            'SELECT id, title, why FROM policy_sections WHERE page=?'
+            ' ORDER BY position',
+            (page,),
         ).fetchall()
         if str(row[0]) in reglages
     ]
-    return {'sections': sections}
+    return sections
+
+
+def project_politique_active(
+    conn: sqlite3.Connection, policy: Mapping[str, Any], now: str
+) -> dict[str, Any]:
+    """Les familles de réglages de la page Policy (P5).
+
+    Returns:
+        ``{sections: [{id, titre, pourquoi, verrou, reglages: [...]}]}``.
+    """
+    _ = (policy, now)
+    return {'sections': settings_sections(conn, 'policy')}
 
 
 def project_reglages(

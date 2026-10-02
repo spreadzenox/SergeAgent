@@ -42,6 +42,7 @@ TABLES = frozenset(
         'llm_models',
         'policy_sections',
         'policy_settings',
+        'serge_texts',
     }
 )
 

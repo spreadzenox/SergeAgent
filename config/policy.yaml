@@ -8,6 +8,9 @@
 # et seulement s'il n'a pas été changé dans Mission Control) ; un réglage
 # retiré est listé dans « deleted ».
 #
+# Chaque famille dit sur quelle page de Mission Control elle s'affiche :
+# « page: pipeline » (ce qui touche au modèle), sinon la page Policy.
+#
 # Chaque réglage : sa valeur, son titre et son aide (affichés tels quels),
 # sa sorte (kind), ses bornes et ses choix :
 # - eur, pct, nombre : un nombre entre min et max (pct : 0,25 = 25 %) ;
@@ -58,9 +61,7 @@ sections:
 
   - id: quotas
     title: Plafonds par canal
-    why: >-
-      Combien de messages, appels ou invitations, pour ne pas spammer, et
-      combien de fois on redemande une réponse au modèle.
+    why: Combien de messages, appels ou invitations, pour ne pas spammer.
     settings:
       - id: email_per_mailbox_per_day
         value: 40
@@ -95,26 +96,6 @@ sections:
         kind: curseur
         min: 1
         max: 120
-        step: 1
-      - id: llm_outil_resultat_max_caracteres
-        value: 20000
-        title: Taille maximale d’un résultat d’outil
-        help: >-
-          En caractères. Au-delà, le résultat est coupé avant d’être renvoyé
-          au modèle : il repart à chaque tour, et coûte à chaque fois.
-        kind: curseur
-        min: 1000
-        max: 100000
-        step: 1000
-      - id: llm_recalls_json
-        value: 2
-        title: Nouveaux essais si la réponse est mal formée
-        help: >-
-          Combien de fois on redemande au modèle une réponse au bon format,
-          sans outil.
-        kind: curseur
-        min: 0
-        max: 5
         step: 1
       - id: linkedin_connect_per_day
         value: 20
@@ -361,14 +342,232 @@ sections:
         max: 23
         step: 1
 
+  - id: llm_calls
+    page: pipeline
+    title: Appels au modèle
+    why: >-
+      Combien de temps on attend une réponse, combien de fois on réessaie,
+      et ce qu'un résultat d'outil peut peser.
+    settings:
+      - id: timeout_s
+        value: 180
+        title: Attente maximale d’une réponse, en secondes
+        help: >-
+          Au-delà, l’appel est raté (et réessayé). Une réponse longue, par
+          exemple 30 pages retenues, peut dépasser une minute.
+        kind: curseur
+        min: 30
+        max: 600
+        step: 10
+      - id: retry_pauses_s
+        value: [3, 10]
+        title: Pauses avant de réessayer un appel raté, en secondes
+        help: >-
+          Une pause par nouvel essai, pour une erreur passagère (réseau,
+          réponse vide, trop de requêtes). Exemple : 3, 10 réessaie après
+          3 secondes, puis après 10.
+        kind: nombres
+        min: 1
+        max: 120
+      - id: format_retries
+        value: 2
+        title: Nouveaux essais si la réponse est mal formée
+        help: >-
+          Combien de fois on redemande au modèle une réponse au bon format,
+          sans outil.
+        kind: curseur
+        min: 0
+        max: 5
+        step: 1
+      - id: tool_result_max_chars
+        value: 20000
+        title: Taille maximale d’un résultat d’outil
+        help: >-
+          En caractères. Au-delà, le résultat est coupé avant d’être renvoyé
+          au modèle : il repart à chaque tour, et coûte à chaque fois.
+        kind: curseur
+        min: 1000
+        max: 100000
+        step: 1000
+
+  - id: tools
+    page: pipeline
+    title: Outils, valeurs par défaut
+    why: >-
+      Ce que reçoit le modèle quand il appelle un outil sans dire combien il
+      en veut.
+    settings:
+      - id: search_results
+        value: 5
+        title: Chercher sur le web, résultats
+        help: Au plus le maximum de la famille « Lecture du web ».
+        kind: curseur
+        min: 1
+        max: 20
+        step: 1
+      - id: memory_results
+        value: 5
+        title: Chercher dans la mémoire, extraits
+        help: Les extraits les plus proches de la recherche.
+        kind: curseur
+        min: 1
+        max: 50
+        step: 1
+      - id: feed_items
+        value: 20
+        title: Lire un flux RSS, pages
+        help: Les pages les plus récentes du flux.
+        kind: curseur
+        min: 1
+        max: 100
+        step: 1
+      - id: feed_preview_lines
+        value: 5
+        title: Lire un flux RSS, lignes d’aperçu par page
+        help: Tirées du résumé que donne le flux.
+        kind: curseur
+        min: 1
+        max: 50
+        step: 1
+
+  - id: model_choice
+    page: pipeline
+    title: Recommandation de modèle
+    why: >-
+      Quels modèles d’OpenRouter la page peut recommander, et comment leur
+      prix est compté.
+    settings:
+      - id: min_context_tokens
+        value: 128000
+        title: Contexte minimum, en jetons
+        help: >-
+          Un modèle qui lit moins que ça n’est jamais recommandé : les
+          historiques d’outils sont longs.
+        kind: curseur
+        min: 8000
+        max: 1000000
+        step: 1000
+      - id: max_age_days
+        value: 365
+        title: Âge maximum d’un modèle, en jours
+        help: Un modèle sorti avant n’est plus recommandé.
+        kind: curseur
+        min: 30
+        max: 1000
+        step: 5
+      - id: mix_days
+        value: 30
+        title: Jours de mesure du mélange de jetons
+        help: >-
+          Le prix d’un modèle est compté au mélange de jetons lus et écrits
+          de Serge sur ces derniers jours.
+        kind: curseur
+        min: 1
+        max: 180
+        step: 1
+      - id: min_measured_tokens
+        value: 100000
+        title: Jetons mesurés avant de se fier au mélange réel
+        help: >-
+          En dessous, on suppose la part de jetons lus ci-dessous, et la
+          page le dit.
+        kind: curseur
+        min: 0
+        max: 10000000
+        step: 10000
+      - id: default_read_share
+        value: 0.75
+        title: Part de jetons lus supposée
+        help: >-
+          Tant que Serge n’a pas assez d’appels mesurés : 75 % veut dire
+          trois jetons lus pour un écrit.
+        kind: pct
+        min: 0.05
+        max: 0.99
+        step: 0.01
+
+  - id: web
+    title: Lecture du web
+    why: >-
+      Ce que Serge lit d’une page, d’une recherche ou d’un flux, et combien
+      de temps il attend.
+    settings:
+      - id: line_max_chars
+        value: 300
+        title: Longueur maximale d’une ligne de page, en caractères
+        help: >-
+          Un paragraphe plus long est coupé en plusieurs lignes : une seule
+          ligne géante coûterait à chaque tour d’outils.
+        kind: curseur
+        min: 50
+        max: 2000
+        step: 10
+      - id: page_max_kb
+        value: 2000
+        title: Taille maximale d’une page lue, en Ko
+        help: Au-delà, la fin de la page n’est pas lue.
+        kind: curseur
+        min: 100
+        max: 10000
+        step: 100
+      - id: page_timeout_s
+        value: 15
+        title: Attente maximale d’une page, en secondes
+        help: Au-delà, la page est notée illisible.
+        kind: curseur
+        min: 1
+        max: 60
+        step: 1
+      - id: search_timeout_s
+        value: 8
+        title: Attente maximale d’une recherche, en secondes
+        help: Au-delà, la recherche rend une erreur au modèle.
+        kind: curseur
+        min: 1
+        max: 60
+        step: 1
+      - id: search_max_results
+        value: 10
+        title: Résultats d’une recherche, au plus
+        help: Même si le modèle en demande plus.
+        kind: curseur
+        min: 1
+        max: 20
+        step: 1
+      - id: feed_timeout_s
+        value: 20
+        title: Attente maximale d’un flux RSS, en secondes
+        help: Au-delà, le flux est noté illisible.
+        kind: curseur
+        min: 1
+        max: 60
+        step: 1
+
 # « tel réglage ≤ tel autre » (« < » : strictement plus petit).
 relations:
   - [standing.capital_min, '<=', standing.capital_max]
+  - [tools.search_results, '<=', web.search_max_results]
   - [testing.kill_max_positives, '<', testing.scale_min_positives]
+
+# Un réglage qui change de nom garde sa valeur (celle du serveur, peut-être
+# changée dans Mission Control) : [ancien nom, nouveau nom].
+renamed:
+  - [quotas.llm_recalls_json, llm_calls.format_retries]
+  - [quotas.llm_outil_resultat_max_caracteres, llm_calls.tool_result_max_chars]
 
 # Changer un réglage déjà en base : même format que dans pipeline.yaml, sur
 # la table policy_settings (une valeur s'écrit en JSON, par exemple 25.0).
 changes:
+  - id: plafonds_par_canal_sans_le_modele
+    why: Les réglages des appels au modèle ont leur propre famille.
+    table: policy_sections
+    where: {id: quotas}
+    set:
+      why:
+        from: >-
+          Combien de messages, appels ou invitations, pour ne pas spammer, et
+          combien de fois on redemande une réponse au modèle.
+        to: Combien de messages, appels ou invitations, pour ne pas spammer.
   - id: aide_appels_par_jour
     why: La voix lit maintenant ce réglage (pas de réglage en double, Q78).
     table: policy_settings

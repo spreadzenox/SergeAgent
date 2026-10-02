@@ -78,12 +78,13 @@ def _seed_sections(conn: sqlite3.Connection, sections: list) -> None:
     for position, section in enumerate(sections):
         lock = section.get('locked_while') or {}
         conn.execute(
-            'INSERT OR IGNORE INTO policy_sections(id, position, title, why,'
-            ' lock_table, lock_column, lock_value, lock_reason)'
-            ' VALUES(?,?,?,?,?,?,?,?)',
+            'INSERT OR IGNORE INTO policy_sections(id, position, page, title,'
+            ' why, lock_table, lock_column, lock_value, lock_reason)'
+            ' VALUES(?,?,?,?,?,?,?,?,?)',
             (
                 str(section['id']),
                 position,
+                str(section.get('page') or 'policy'),
                 str(section.get('title') or ''),
                 str(section.get('why') or ''),
                 str(lock.get('table') or ''),
@@ -129,6 +130,32 @@ def _seed_settings(conn: sqlite3.Connection, settings: list[Setting]) -> None:
         _describe(conn, setting)
 
 
+def _rename(
+    conn: sqlite3.Connection,
+    renamed: list[tuple[str, str]],
+    known: dict[str, Setting],
+) -> None:
+    """Un réglage renommé garde sa valeur et sa valeur précédente, et reçoit
+    la description de son nouveau nom."""
+    for old, new in renamed:
+        if (
+            new not in known
+            or conn.execute(
+                'SELECT 1 FROM policy_settings WHERE id=?', (new,)
+            ).fetchone()
+        ):
+            continue
+        if conn.execute(
+            'UPDATE policy_settings SET id=? WHERE id=?', (new, old)
+        ).rowcount:
+            _describe(conn, known[new])
+            for column in ('lower_id', 'upper_id'):
+                conn.execute(
+                    f'UPDATE policy_relations SET {column}=? WHERE {column}=?',
+                    (new, old),
+                )
+
+
 def ensure_policy(conn: sqlite3.Connection) -> None:
     """Remplit les réglages généraux depuis ``policy.yaml`` (au démarrage).
 
@@ -144,6 +171,7 @@ def ensure_policy(conn: sqlite3.Connection) -> None:
         return
     seed = load_policy_seed()
     _seed_sections(conn, seed['sections'])
+    _rename(conn, seed['renamed'], {s.id: s for s in seed['settings']})
     _seed_settings(conn, seed['settings'])
     for rel in seed['relations']:
         conn.execute(
