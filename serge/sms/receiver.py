@@ -18,22 +18,25 @@ import hashlib
 import hmac
 import json
 import os
+import sqlite3
 import sys
 import time
 import tomllib
 import urllib.parse
+from contextlib import closing
 from datetime import UTC, datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from serge.db.store import default_canon_path, open_db  # noqa: E402
+from serge.policy import PolicyError  # noqa: E402
+from serge.policy_snapshots import policy_en_vigueur  # noqa: E402
 from serge.sms.inbox import SmsBrokerDenied, SmsInbox  # noqa: E402
 
 DEFAULT_LISTEN = '127.0.0.1:8787'
 MAX_BODY = 65536
-GLOBAL_PER_MINUTE = 60
-SENDER_PER_MINUTE = 10
 
 
 class SmsReceiverError(ValueError):
@@ -123,15 +126,22 @@ def check_auth(
     raise SmsReceiverError('missing or invalid auth')
 
 
+def read_limits(canon: Path) -> tuple[int, int]:
+    """Les plafonds anti-rafale des SMS reçus, lus dans la policy en vigueur.
+
+    Ils se règlent sur la page Policy de Mission Control et s'appliquent au
+    SMS suivant : ``(au total, par expéditeur)``, par minute.
+    """
+    with closing(open_db(canon)) as conn:
+        quotas = policy_en_vigueur(conn).get('quotas') or {}
+    return (
+        int(quotas['sms_global_per_min']),
+        int(quotas['sms_per_sender_per_min']),
+    )
+
+
 class RateLimiter:
-    def __init__(
-        self,
-        *,
-        global_per_minute: int = GLOBAL_PER_MINUTE,
-        sender_per_minute: int = SENDER_PER_MINUTE,
-    ):
-        self.global_per_minute = global_per_minute
-        self.sender_per_minute = sender_per_minute
+    def __init__(self) -> None:
         self._global: list[float] = []
         self._senders: dict[str, list[float]] = {}
 
@@ -142,13 +152,20 @@ class RateLimiter:
         stamps.extend(kept)
         return stamps
 
-    def allow(self, sender_hash: str, now: float | None = None) -> bool:
+    def allow(
+        self,
+        sender_hash: str,
+        limits: tuple[int, int],
+        now: float | None = None,
+    ) -> bool:
+        """Vrai si le SMS passe : ``limits`` vient de ``read_limits``."""
+        global_max, sender_max = limits
         moment = time.time() if now is None else now
         self._prune(self._global, moment)
-        if len(self._global) >= self.global_per_minute:
+        if len(self._global) >= global_max:
             return False
         bucket = self._prune(self._senders.setdefault(sender_hash, []), moment)
-        if len(bucket) >= self.sender_per_minute:
+        if len(bucket) >= sender_max:
             return False
         self._global.append(moment)
         bucket.append(moment)
@@ -196,6 +213,7 @@ def ingest_payload(
     secret: bytes,
     inbox: SmsInbox,
     limiter: RateLimiter,
+    limits: tuple[int, int],
 ) -> dict[str, Any]:
     method = check_auth(raw_body, headers, query, secret)
     try:
@@ -204,7 +222,7 @@ def ingest_payload(
         raise SmsReceiverError('invalid JSON') from exc
     envelope = normalize_envelope(payload)
     sender_hash = hashlib.sha256(envelope['from'].encode('utf-8')).hexdigest()
-    if not limiter.allow(sender_hash):
+    if not limiter.allow(sender_hash, limits):
         raise SmsReceiverError('rate_limited')
     canonical = json.dumps(envelope, sort_keys=True).encode('utf-8')
     signature = hmac.new(secret, canonical, hashlib.sha256).hexdigest()
@@ -226,6 +244,7 @@ class Handler(BaseHTTPRequestHandler):
     secret: bytes = b''
     inbox: SmsInbox | None = None
     limiter: RateLimiter = RateLimiter()
+    canon: Path = Path()
 
     # Param name `format` matches BaseHTTPRequestHandler (Liskov).
     def log_message(self, format: str, *args: Any) -> None:  # noqa: N802, A002
@@ -262,6 +281,12 @@ class Handler(BaseHTTPRequestHandler):
         raw_body = self.rfile.read(length)
         assert self.inbox is not None
         try:
+            limits = read_limits(self.canon)
+        except (OSError, sqlite3.Error, PolicyError, KeyError, ValueError):
+            # Sans plafonds lisibles, rien n'entre ; la passerelle réessaie.
+            self._send(503, {'error': 'policy_unreadable'})
+            return
+        try:
             result = ingest_payload(
                 raw_body,
                 self.headers,
@@ -269,6 +294,7 @@ class Handler(BaseHTTPRequestHandler):
                 secret=self.secret,
                 inbox=self.inbox,
                 limiter=self.limiter,
+                limits=limits,
             )
         except SmsReceiverError as exc:
             message = str(exc)
@@ -298,6 +324,7 @@ def serve(listen: str = DEFAULT_LISTEN) -> int:
     Handler.secret = secret
     Handler.inbox = inbox
     Handler.limiter = RateLimiter()
+    Handler.canon = default_canon_path()
     server = ThreadingHTTPServer(
         (host or '127.0.0.1', int(port_raw or '8787')), Handler
     )

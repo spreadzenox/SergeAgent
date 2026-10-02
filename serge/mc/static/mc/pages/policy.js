@@ -1,13 +1,5 @@
-// Page Policy : règles cadrées, réglages des invocations, taille des essais, confiance.
-import {
-  draftField,
-  rememberDrafts,
-  fillList,
-  li,
-  promptModal,
-  toast,
-} from '../components.js';
-import {TYPES_TICKET} from '../libelles.js';
+// Page Policy : règles cadrées, réglages des invocations, taille des essais.
+import {draftField, rememberDrafts, toast} from '../components.js';
 import {
   champPolicy,
   el,
@@ -34,37 +26,6 @@ async function rafraichir(store) {
     }
   } catch {
     // reprise au tick suivant
-  }
-}
-
-export async function proposerModif() {
-  const v = await promptModal(document.body, {
-    title: 'Demander un changement',
-    message: 'Ça crée une question pour toi : rien n’est appliqué tout seul.',
-    fields: [
-      {nom: 'titre', label: 'Titre : ', defaut: 'Ajuster un plafond', requis: true},
-      {nom: 'diff', label: 'Quoi changer : ', defaut: 'invocations / jour : 5 → 10', requis: true},
-      {nom: 'justif', label: 'Pourquoi : ', defaut: 'On touche plus de monde'},
-    ],
-    confirm: 'Créer la question',
-  });
-  if (!v) {
-    return;
-  }
-  try {
-    const {ok, data} = await poster('/owner/api/policy/propose', {
-      titre: v.titre,
-      diff: v.diff,
-      justification: v.justif,
-      decision_id: `mc-${Date.now()}-prop`,
-    });
-    if (!ok) {
-      toast(document.body, `Refusé : ${data.erreur || 'pas passé'}.`, 'erreur');
-      return;
-    }
-    toast(document.body, `Question Policy ${data.ticket_id} créée.`, 'succes');
-  } catch {
-    toast(document.body, 'Action injoignable.', 'erreur');
   }
 }
 
@@ -235,30 +196,9 @@ function renderReglages(main, payload, sig) {
   main.querySelector('[data-section="reglages"]').dataset.sig = sig;
 }
 
-function renderTrust(main, payload, sig) {
-  const ul = main.querySelector('[data-section="trust_candidates"] [data-list="candidates"]');
-  fillList(ul, payload.candidates || [], 'Aucun type assez régulier pour l’instant.', (cand) => {
-    const nom = TYPES_TICKET[cand.type] || cand.type;
-    const statut = cand.eligible
-      ? 'assez régulier pour proposer l’auto'
-      : 'pas encore assez régulier';
-    const ratePct = Math.round(cand.rate * 100);
-    const thPct = Math.round(cand.threshold_rate * 100);
-    return li(
-      `${nom} — ${statut} (${cand.approved}/${cand.total} oui, `
-      + `${ratePct} % vs ${thPct} %, min ${cand.threshold_min})`
-    );
-  });
-  main.querySelector('[data-section="trust_candidates"]').dataset.sig = sig;
-}
-
 export function mount(main, store) {
   const tpl = document.getElementById('page-policy');
   main.replaceChildren(tpl.content.cloneNode(true));
-
-  main.querySelector('[data-action="proposer-policy"]').addEventListener('click', () => {
-    proposerModif();
-  });
 
   main.querySelector('[data-btn="enregistrer-testing"]').addEventListener('click', async (ev) => {
     ev.preventDefault();
@@ -314,7 +254,6 @@ export function mount(main, store) {
     store.subscribe('politique_active', (p, s) => renderPolitiqueActive(main, p, s, store)),
     store.subscribe('reglages', (p, s) => renderReglages(main, p, s)),
     store.subscribe('testing_froid', (p, s) => renderTesting(main, p, s)),
-    store.subscribe('trust_candidates', (p, s) => renderTrust(main, p, s)),
   ];
 
   for (const [section, env] of store.all()) {
@@ -324,8 +263,6 @@ export function mount(main, store) {
       renderReglages(main, env.payload, env.sig);
     } else if (section === 'testing_froid') {
       renderTesting(main, env.payload, env.sig);
-    } else if (section === 'trust_candidates') {
-      renderTrust(main, env.payload, env.sig);
     }
   }
 

@@ -51,9 +51,10 @@ que Serge n'a pas été démarré dans Mission Control.
 
 ## Décidé
 
-Décisions : Q9, Q14, Q32, Q33 et Q65 de
-[`DECISIONS_REVUE.md`](../DECISIONS_REVUE.md). C'est le lot 7 du
-[`TODO.md`](../../TODO.md).
+Décisions de
+[`DECISIONS_REVUE.md`](../DECISIONS_REVUE.md) : les 7 invocations à rôle
+unique (Q9), les places de test limitées (Q14), les familles de business
+(Q32), la légalité (Q33) et le détail de l'étape (Q65). C'est le lot 7.
 
 L'étape devient **deux processus**, entièrement décrits en base.
 

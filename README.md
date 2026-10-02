@@ -49,11 +49,11 @@ Tout le reste du projet s'organise autour de cette chaîne.
 | Installer une instance | [`docs/installation/INSTALL.md`](docs/installation/INSTALL.md) |
 | Écrire du code | [`docs/CHARTE.md`](docs/CHARTE.md) et [`docs/DEV_TOOLING.md`](docs/DEV_TOOLING.md) |
 | Savoir ce qui reste à faire | [`TODO.md`](TODO.md) |
-| Connaître les décisions de la revue de septembre 2026 | [`docs/DECISIONS_REVUE.md`](docs/DECISIONS_REVUE.md) |
+| Connaître les décisions prises (questions et réponses de Julien et Clem) | [`docs/DECISIONS_REVUE.md`](docs/DECISIONS_REVUE.md) |
 
 ## État
 
-Serge sort d'une refonte (lot 6 du [`TODO.md`](TODO.md)) : tout le
+Serge sort d'une refonte (le lot 6) : tout le
 pipeline est en base, et le code n'en est plus que l'interpréteur. Le
 runner (deux files de tâches), l'interpréteur et la page « Pipeline » de
 Mission Control sont en place. `config/pipeline.yaml` décrit l'étape 1

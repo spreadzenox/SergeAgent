@@ -92,6 +92,8 @@ class LlmClientTests(unittest.TestCase):
         self.assertEqual(sent['tools'], tools)
         self.assertEqual(sent['tool_choice'], 'auto')
         self.assertFalse(sent['parallel_tool_calls'])
+        # La température reste celle du fournisseur (Q62, Q68).
+        self.assertNotIn('temperature', sent)
 
     def test_usage_absent_vaut_zero(self) -> None:
         payload = {'choices': [{'message': {'content': 'ok'}}]}

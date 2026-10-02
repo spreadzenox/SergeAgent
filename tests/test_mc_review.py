@@ -334,11 +334,20 @@ class ReviewBrowserTests(McBrowserCase):
         self._watch_errors(page)
         page.goto(self.base + '/owner?snapshot=1#/policy')
         expect(page.locator('.corps-policy')).to_be_visible()
+        # Les jours d'appel ne sont plus dans la policy (Q68 : rien ne les
+        # lisait ; le lot 8 les remet avec la voix) : le champ des jours est
+        # vérifié seul, avec le mardi.
         result = page.evaluate(
-            """async () => { const {lirePolicy} = await import('/static/mc/policy_form.js'); const s = await (await fetch('/owner/api/state?page=p5')).json(); const base = s.sections.politique_active.payload.policy; return lirePolicy(document.querySelector('.corps-policy'), base); }"""
+            """async () => { const {champPolicy, lirePolicy} = await import('/static/mc/policy_form.js'); const corps = document.createElement('div'); corps.append(champPolicy('calling_zones.FR.voice_days', ['mon', 'tue'])); document.body.append(corps); return lirePolicy(corps, {calling_zones: {FR: {voice_days: []}}}); }"""
         )
-        self.assertIn('tue', result['calling_zones']['FR']['voice_days'])
-        page.get_by_role('button', name='Demander un changement').click()
+        self.assertEqual(
+            result['calling_zones']['FR']['voice_days'], ['mon', 'tue']
+        )
+        # « Demander un changement » est retiré (Q68) : le confinement du
+        # focus est vérifié sur la fenêtre commune à toutes les questions.
+        page.evaluate(
+            """async () => { const {promptModal} = await import('/static/mc/components.js'); promptModal(document.body, {title: 'Essai', message: 'Focus', fields: [{nom: 'a', label: 'A'}, {nom: 'b', label: 'B'}], confirm: 'OK'}); }"""
+        )
         expect(page.get_by_role('alertdialog')).to_have_attribute(
             'aria-modal', 'true'
         )
@@ -349,11 +358,6 @@ class ReviewBrowserTests(McBrowserCase):
             )
         page.keyboard.press('Escape')
         page.goto(self.base + '/owner#/live')
-        page.keyboard.press('Control+k')
-        page.locator('.cmdk-input').fill('changement')
-        page.keyboard.press('Enter')
-        expect(page.locator('.modale')).to_be_visible()
-        page.keyboard.press('Escape')
         page.keyboard.press('Control+k')
         page.locator('.cmdk-input').fill('Système')
         page.keyboard.press('Enter')

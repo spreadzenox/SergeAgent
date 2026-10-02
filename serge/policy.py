@@ -104,15 +104,6 @@ def _need_str_list(data: Mapping[str, Any], dotted: str) -> None:
         raise PolicyError(f'policy.{dotted} doit être une liste de chaînes')
 
 
-def _need_ratio(data: Mapping[str, Any], dotted: str) -> None:
-    _need_number(data, dotted, minimum=0.0)
-    node: Any = data
-    for part in dotted.split('.'):
-        node = node[part]
-    if node > 1.0:
-        raise PolicyError(f'policy.{dotted} doit être <= 1.0')
-
-
 def validate_policy(data: Mapping[str, Any]) -> dict[str, Any]:
     """Valide la policy fusionnée. Refuse l'absurde au boot (R4).
 
@@ -131,62 +122,24 @@ def validate_policy(data: Mapping[str, Any]) -> dict[str, Any]:
         'budget.monthly_eur',
         'budget.llm_daily_eur',
         'budget.eur_per_usd',
-        'budget.allocator_bandit_cost_per_eur',
-        'budget.test_provision_monthly_eur',
-        'budget.browserbase_monthly_cap_eur',
         'quotas.email_per_mailbox_per_day',
         'quotas.voice_max_calls_per_day',
         'quotas.sms_per_sender_per_min',
         'quotas.sms_global_per_min',
-        'quotas.memory_search_per_cycle_per_point',
-        'quotas.llm_outil_tours_max',
         'quotas.llm_recalls_json',
         'quotas.llm_outil_resultat_max_caracteres',
         'quotas.linkedin_connect_per_day',
-        'quotas.linkedin_inmail_per_month',
-        'windows.intent_sla_hours',
-        'windows.email_poll_minutes',
-        'cooldowns.inbound_silence_days',
-        'cooldowns.thread_days_per_venue',
-        'cooldowns.guichet_repropose_max',
         'standing.cout_usage',
         'standing.gain_par_heure',
         'standing.idle_apres_heures',
         'standing.capital_min',
         'standing.capital_max',
-        'voice.record_retention_hot_days',
-        'voice.record_retention_archive_years',
         'voice.quality_window',
         'voice.quality_min_score',
         'voice.quality_max_bad',
-        'voice.max_turns',
-        'voice.max_duration_min',
-        'voice.script_max_seconds',
-        'observation.classify_confidence_min',
-        'observation.meeting_confidence_min',
-        'observation.other_batch_max_items',
-        'observation.other_alert_pending',
-        'observation.tech_fail_pattern_per_week',
-        'builder.fix_max_items',
-        'builder.passes_max',
-        'builder.gate3_spotcheck_n',
-        'builder.artifact_max_files',
-        'builder.artifact_max_chars',
-        'prospection.score_w_intent',
-        'prospection.score_w_reply',
-        'prospection.score_w_engaged',
-        'prospection.score_w_meeting',
         'collect.refund_auto_max_eur',
-        'collect.quote_required_above_eur',
-        'collect.recanary_months',
-        'memory.consolidation_days',
-        'memory.consolidate_max_items',
-        'memory.lesson_infirm_deprecate',
         'memory.episode_archive_days',
-        'memory.other_promote_per_week',
-        'memory.judge_oscillation_days',
         'tickets.digest_hour',
-        'tickets.trust_min_approvals',
         'testing.n_smoke_min',
         'testing.n_smoke_max',
         'testing.n_full_min',
@@ -197,21 +150,7 @@ def validate_policy(data: Mapping[str, Any]) -> dict[str, Any]:
         'testing.extend_max',
     ):
         _need_number(data, key)
-    for key in (
-        'budget.allocator_reserve_ratio',
-        'budget.allocator_max_unproven_ratio',
-        'budget.allocator_max_single_channel_ratio',
-        'budget.allocator_trigger_spent_ratio',
-        'tickets.trust_min_rate',
-    ):
-        _need_ratio(data, key)
-    _need_number(data, 'prospection.score_w_negative', minimum=-100.0)
     _need_str_list(data, 'consent.opt_in_channels')
-    tours = (data.get('quotas') or {}).get('llm_outil_tours_max')
-    if isinstance(tours, bool) or not isinstance(tours, int) or tours > 12:
-        raise PolicyError(
-            'policy.quotas.llm_outil_tours_max doit être un entier <= 12'
-        )
     standing = data.get('standing')
     if isinstance(standing, Mapping):
         if standing.get('capital_max', 0) < standing.get('capital_min', 0):
@@ -254,13 +193,24 @@ def load_policy(directory: Path | None = None) -> dict[str, Any]:
     return validate_policy(policy)
 
 
+def _keep_seeded(seed: Mapping[str, Any], data: Mapping[str, Any]) -> dict:
+    """Les clés de ``data`` que la semence connaît, à tous les niveaux."""
+    return {
+        key: _keep_seeded(seed[key], value)
+        if isinstance(seed[key], dict) and isinstance(value, dict)
+        else value
+        for key, value in data.items()
+        if key in seed
+    }
+
+
 def fusionner_semence(data: Mapping[str, Any]) -> dict[str, Any]:
     """Complète un snapshot avec les clés nouvelles de la semence YAML.
 
-    Une section retirée de la semence disparaît aussi de la policy en
-    vigueur. Exemple : la section « listen » a été retirée au lot 6 (ses
-    chiffres sont devenus des réglages d'invocation) ; un ancien snapshot
-    qui la contient encore ne l'affiche plus dans Mission Control.
+    Un réglage ou une section retirés de la semence disparaissent aussi de
+    la policy en vigueur. Exemple : au 1er octobre 2026, les réglages que
+    rien ne lisait ont été retirés (décision Q68) ; un ancien snapshot qui
+    les contient encore ne les affiche plus dans Mission Control.
 
     Args:
         data: Snapshot (les valeurs présentes gagnent).
@@ -269,5 +219,4 @@ def fusionner_semence(data: Mapping[str, Any]) -> dict[str, Any]:
         Policy fusionnée, pas encore revalidée.
     """
     semence = load_policy()
-    fusion = _deep_merge(semence, dict(data))
-    return {cle: val for cle, val in fusion.items() if cle in semence}
+    return _keep_seeded(semence, _deep_merge(semence, dict(data)))

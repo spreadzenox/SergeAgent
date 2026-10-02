@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import sys
 import unittest
-from datetime import UTC, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -32,35 +31,23 @@ class PolicyRegistryTests(unittest.TestCase):
                 'politique_active',
                 'reglages',
                 'testing_froid',
-                'trust_candidates',
             ],
         )
         for section in sections:
             self.assertIn(section, PROJECTORS)
         self.assertIn('politique_active', SLOW_SECTIONS)
         self.assertIn('testing_froid', SLOW_SECTIONS)
-        self.assertIn('trust_candidates', SLOW_SECTIONS)
 
 
 class McPolicyTests(McBrowserCase):
     def _fixtures(self) -> None:
         conn = open_db(self.db_path)
         try:
-            iso = datetime.now(UTC).isoformat()
             pol = load_policy()
+            # Un ancien snapshot garde un réglage retiré (Q68) : la page ne
+            # doit plus l'afficher.
+            pol['quotas']['llm_outil_tours_max'] = 12
             snapshot_policy(conn, pol, applied_by='owner_init')
-
-            conn.execute(
-                'INSERT INTO tickets(id, type, title, state, created_at, updated_at)'
-                " VALUES('t_veto', 'VETO_AMONT', 'Prix', 'APPROVED', ?, ?)",
-                (iso, iso),
-            )
-            for _ in range(22):
-                conn.execute(
-                    'INSERT INTO ticket_events(ticket_id, ts, actor, kind)'
-                    ' VALUES("t_veto", ?, "owner", "transition.approved")',
-                    (iso,),
-                )
             conn.commit()
         finally:
             conn.close()
@@ -84,13 +71,20 @@ class McPolicyTests(McBrowserCase):
         ).to_contain_text('Argent')
         expect(
             page.locator('[data-section="politique_active"]')
-        ).to_contain_text('Tours d’outils max')
+        ).to_contain_text('Plafond du mois')
+        expect(
+            page.locator('[data-section="politique_active"]')
+        ).not_to_contain_text('outil_tours')
         expect(page.locator('#testing-lock-status')).to_contain_text(
             'Aucun essai en cours'
         )
+        # Retirés (Q68) : rien ne s'en servait.
         expect(
             page.locator('[data-section="trust_candidates"]')
-        ).to_contain_text('Veto amont')
+        ).to_have_count(0)
+        expect(page.locator('[data-action="proposer-policy"]')).to_have_count(
+            0
+        )
 
     def test_testing_edit_ui(self) -> None:
         from playwright.sync_api import expect
@@ -115,17 +109,4 @@ class McPolicyTests(McBrowserCase):
         self.assertEqual(pending.value.status, 200)
         expect(page.locator('.toast-succes').last).to_contain_text(
             'Taille des essais mise à jour.', timeout=10000
-        )
-
-    def test_proposer_policy_ui(self) -> None:
-        from playwright.sync_api import expect
-
-        page = self._page_policy()
-        page.locator('button[data-action="proposer-policy"]').click()
-        modale = page.locator('.modale')
-        modale.locator('input[name="titre"]').fill('Hausse budget LLM')
-        modale.locator('input[name="diff"]').fill('llm_daily_eur: 5 -> 15')
-        modale.get_by_role('button', name='Créer la question').click()
-        expect(page.locator('.toast-succes')).to_contain_text(
-            'Question Policy'
         )

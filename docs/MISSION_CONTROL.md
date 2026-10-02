@@ -32,14 +32,14 @@ navigateur au fil de l'eau.
 
 | Page | Adresse | Ce qu'on y voit | Ce qu'on y fait |
 |---|---|---|---|
-| **En direct** | `#/live` | La chaîne des 8 étapes, leurs invocations dans l'ordre des liens, et le nombre de résultats passés d'une étape à l'autre ; les tickets urgents, les deux files de tâches (avec la raison quand des tâches attendent, par exemple le plafond LLM du jour), l'activité récente, les budgets du jour (la dépense LLM au coût réel facturé par OpenRouter ; les jetons des appels dont le coût n'est pas connu sont signalés à part, jamais estimés). | Démarrer ou arrêter Serge ; couper une étape, une file ou une invocation. |
+| **En direct** | `#/live` | La chaîne des 8 étapes, leurs invocations dans l'ordre des liens, et le nombre de résultats passés d'une étape à l'autre ; les tickets urgents, les deux files de tâches (avec la raison quand des tâches attendent, par exemple le plafond du jour ou du mois atteint), l'activité récente, les budgets : le coût des modèles du jour et ce que Serge coûte ce mois-ci, face à leurs plafonds (le coût réel facturé par OpenRouter ; les jetons des appels dont le coût n'est pas connu sont signalés à part, jamais estimés), et les envois du jour face à leurs quotas. | Démarrer ou arrêter Serge ; couper une étape, une file ou une invocation. |
 | **Écoute** | `#/ecoute` | L'étape 1 : ses boutons tels qu'ils sont déclarés en base (chacun avec ses champs et ses conditions, par exemple « Places de test occupées : 2 sur 3 »), le dernier cycle (pages par étiquette, idées écrites, note du choix), les business candidats et choisis avec la raison du choix, les flux RSS suivis (pages ramenées, pages utiles), les invocations de l'étape. | Remplir les champs d'un bouton et cliquer : il lance l'invocation de son déclencheur (grisé si un quota est plein ; une confirmation est demandée pour « Abandonner le cycle » et « Effacer les idées »). Couper ou rallumer un flux. |
 | **Pipeline** | `#/pipeline` | Tout le pipeline tel qu'il est en base : les liens (avec ce qui attend un clic), les déclencheurs, les outils, les capacités du code, ce que les invocations voient de chaque table, le modèle derrière chaque niveau et le texte « Qui est Serge ». | Choisir le modèle de chaque niveau parmi ceux d'OpenRouter, avec leurs prix et une recommandation (vide : celui de l'installation), réécrire le texte « Qui est Serge » ; ouvrir la fiche d'un lien, d'un outil, d'une invocation ou d'une table. |
 | **Système** | `#/system` | Les îlots (sous-systèmes), les files de tâches, les campagnes, la population de prospects, l'e-mail. | Lecture. Accessible par `Ctrl+K`. |
 | **Cerveau** | `#/mind` | Pensées, décisions récentes, tableau de toutes les invocations en base (niveau, file, priorité, usage sur 7 jours), signaux entrants. | Ouvrir la fiche d'une invocation, l'éteindre ou la rallumer. |
 | **Décisions** | `#/tickets` | Les tickets à trancher, ce qui a changé, le rythme des décisions, le résumé quotidien. | Répondre à un ticket (boutons du registre, y compris QCM et réponse libre), discuter plusieurs fois et lire les messages. Les tickets actifs sont tous présents ; les 50 derniers clos complètent la liste. |
 | **Mémoire** | `#/memory` | Épisodes archivés, procédures, pièges, leçons, dernière consolidation, demandes de nouvelles capacités. | Chercher dans la mémoire ; ouvrir une leçon pour la modifier ou la jeter. Les propositions de leçons sont dans Décisions et ouvrent leur ticket pour garder, modifier ou jeter chaque proposition. |
-| **Policy** | `#/policy` | Toutes les règles : quotas, heures, budgets, taille des essais ; et les réglages des invocations et les quotas des tables marqués « policy », rangés par étape et par invocation. | Modifier une règle et l'enregistrer. Chaque version de la policy générale est gardée ; chaque changement de réglage est noté au journal. |
+| **Policy** | `#/policy` | Les réglages généraux (argent, plafonds par canal, horaires, pays, santé des comptes, téléphone, encaissement, mémoire, résumé du jour, accord des gens), la taille des essais, et les réglages des invocations et les quotas des tables marqués « policy », rangés par étape et par invocation. Chaque réglage affiché est lu par un programme : un test le vérifie. | Modifier une règle et l'enregistrer. Chaque version de la policy générale est gardée ; chaque changement de réglage est noté au journal. |
 | **Économie** | `#/economy` | De l'envoi au paiement : touches, réponses, paiements, derniers envois et livrables, abonnements, coût des invocations LLM (le coût réel facturé par OpenRouter, avec les jetons sans coût connu à part). | Lecture. |
 | **Voix** | `#/voice` | L'état du pont téléphonique, le journal des appels, leur qualité. | Écouter un enregistrement. Pour couper les appels : page En direct. |
 | **Health** | `#/health` | Taille du code, services systemd, versions, piste d'audit. | Lecture. |
@@ -203,8 +203,8 @@ du modèle ; rien n'est enregistré avant « Enregistrer ».
 
 La carte des étapes garde des cases distinctes sur ordinateur et téléphone.
 Les lignes de Pipeline et des fiches s’ouvrent aussi avec Entrée ou Espace.
-La palette propose Écoute, Pipeline et Système ; son action Policy ouvre
-la demande de changement directement.
+La palette propose toutes les pages, dont Écoute, Pipeline et Système, et
+les tickets ouverts.
 
 Les champs modifiés restent en place quand le flux actualise Pipeline,
 Policy ou les conditions d’un bouton d’Écoute. Enregistrer un réglage ne
@@ -243,7 +243,7 @@ Toutes demandent le jeton owner ou une session valide. Les corps JSON sont limit
 | `POST /owner/api/etape` | Allumer ou éteindre une étape. |
 | `POST /owner/api/ticket/acte`, `/ticket/item`, `/ticket/discuter` | Répondre à un ticket. |
 | `POST /owner/api/memory/lesson` | Garder, modifier ou jeter une leçon. |
-| `POST /owner/api/policy/edit`, `/policy/testing`, `/policy/propose` | Modifier la policy. |
+| `POST /owner/api/policy/edit`, `/policy/testing` | Modifier la policy. |
 | `POST /owner/api/reglage` | Changer un réglage d'invocation ou un quota marqué « policy » (valeur vérifiée, changement noté au journal). |
 | `POST /owner/api/bouton` | Un déclencheur « bouton » : crée la tâche de son invocation, avec les champs du formulaire. Refusé, avec la raison, si l'un de ses quotas est plein. |
 | `POST /owner/api/flux` | Couper ou rallumer un flux RSS suivi (page Écoute). |

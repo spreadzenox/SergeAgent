@@ -22,7 +22,7 @@ from serge.interpreter.flow import fire_due_triggers
 from serge.interpreter.prompt import Caller
 from serge.interpreter.run import fail_task, run_task
 from serge.interpreter.tasks import next_task
-from serge.llm.runtime import budget_spent
+from serge.llm.runtime import budget_reached
 from serge.policy_snapshots import policy_en_vigueur
 from serge.tickets import expire_due
 
@@ -56,7 +56,7 @@ def process_one(
     conn.commit()
     if not _queue_enabled(conn, queue_id):
         return None
-    spent = budget_spent(conn, policy_en_vigueur(conn), moment[:10])
+    spent = budget_reached(conn, policy_en_vigueur(conn), moment[:10])
     conn.commit()
     task_id = next_task(conn, queue_id, moment, llm=not spent)
     if task_id is None:

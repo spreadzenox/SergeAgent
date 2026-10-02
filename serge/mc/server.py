@@ -363,7 +363,6 @@ class McHandler(
             '/owner/api/memory/lesson': self._api_memory_lesson,
             '/owner/api/policy/edit': self._api_policy_edit,
             '/owner/api/policy/testing': self._api_policy_testing,
-            '/owner/api/policy/propose': self._api_policy_propose,
             '/owner/api/reglage': self._api_reglage,
             '/owner/api/coupe': self._api_coupe,
             '/owner/api/etape': self._api_etape,

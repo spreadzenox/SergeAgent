@@ -32,7 +32,7 @@ class McFrontTests(McBrowserCase):
             'Aucun urgent',
             'File vide',
             'Aucune activité',
-            'Budgets du jour',
+            'Ce que Serge coûte ce mois-ci',
         ):
             expect(page.locator('#page')).to_contain_text(text)
 

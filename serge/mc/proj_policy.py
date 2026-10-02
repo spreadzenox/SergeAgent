@@ -58,60 +58,6 @@ def project_testing_froid(
     }
 
 
-def project_trust_candidates(
-    conn: sqlite3.Connection, policy: Mapping[str, Any], now: str
-) -> dict[str, Any]:
-    """Types de tickets éligibles à l'auto-approbation (>95% sur >=20 tickets).
-
-    Args:
-        conn: Connexion canon (lecture).
-        policy: Policy (seuils tickets.trust_min_approvals / trust_min_rate).
-        now: Maintenant ISO (ignoré).
-
-    Returns:
-        Dict {candidates: [{type, total, approved, rate, threshold_rate, eligible}]}.
-    """
-    _ = now
-    t_cfg = policy.get('tickets') or {}
-    min_appr = int(t_cfg.get('trust_min_approvals', 20))
-    min_rate = float(t_cfg.get('trust_min_rate', 0.95))
-
-    rows = conn.execute(
-        'SELECT t.type, te.kind, COUNT(*) FROM ticket_events te'
-        ' JOIN tickets t ON t.id=te.ticket_id WHERE te.kind IN'
-        " ('transition.approved','transition.rejected')"
-        ' GROUP BY t.type, te.kind'
-    ).fetchall()
-
-    comptes: dict[str, dict[str, int]] = {}
-    for r in rows:
-        typ = str(r[0])
-        kind = str(r[1])
-        c = int(r[2])
-        comptes.setdefault(typ, {})[kind] = c
-
-    candidats = []
-    for typ in sorted(comptes.keys()):
-        appr = comptes[typ].get('transition.approved', 0)
-        rej = comptes[typ].get('transition.rejected', 0)
-        tot = appr + rej
-        rate = appr / tot if tot > 0 else 0.0
-        eligible = tot >= min_appr and rate >= min_rate
-        candidats.append(
-            {
-                'type': typ,
-                'total': tot,
-                'approved': appr,
-                'rate': round(rate, 4),
-                'threshold_rate': min_rate,
-                'threshold_min': min_appr,
-                'eligible': eligible,
-            }
-        )
-
-    return {'candidates': candidats}
-
-
 def project_reglages(
     conn: sqlite3.Connection, policy: Mapping[str, Any], now: str
 ) -> dict[str, Any]:

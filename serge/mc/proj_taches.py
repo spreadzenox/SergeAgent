@@ -16,7 +16,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from serge.interpreter.tasks import next_task
-from serge.llm.runtime import budget_spent
+from serge.llm.runtime import budget_reached
 from serge.mc.proj_objet_base import _champs, _liens, _row
 from serge.policy_snapshots import policy_en_vigueur
 
@@ -45,15 +45,13 @@ _SELECT = (
 )
 
 
-PLAFOND = 'En attente : plafond LLM du jour atteint'
-
-
-def _bloquee(row: Any, plafond: bool = False) -> str:
+def _bloquee(row: Any, plafond: str = '') -> str:
     """Pourquoi une tâche prête ne partira pas, ou pas maintenant, ou ``''``.
 
     La file saute les tâches d'une invocation supprimée ou éteinte, d'une
-    étape coupée, et les tâches LLM quand le plafond de dépense du jour est
-    atteint : elles ne doivent pas avoir l'air d'attendre leur tour.
+    étape coupée, et les tâches LLM quand le plafond de dépense du jour ou
+    du mois est atteint (``plafond``) : elles ne doivent pas avoir l'air
+    d'attendre leur tour.
     """
     if row[5] != 'ready':
         return ''
@@ -64,7 +62,7 @@ def _bloquee(row: Any, plafond: bool = False) -> str:
     if not row[13]:
         return 'En attente : étape coupée'
     if plafond and row[14] == 'llm':
-        return PLAFOND
+        return f'En attente : plafond du {plafond} atteint'
     return ''
 
 
@@ -86,14 +84,15 @@ def _files(conn: sqlite3.Connection) -> list[str]:
 
 def plafond_atteint(
     conn: sqlite3.Connection, policy: Mapping[str, Any], now: str
-) -> bool:
-    """Le plafond de dépense LLM du jour est atteint : la file saute alors
-    les tâches LLM jusqu'au lendemain (comme ``serge/interpreter/queue.py``).
+) -> str:
+    """Le plafond de dépense atteint (``'jour'``, ``'mois'``) ou ``''`` :
+    la file saute alors les tâches LLM jusqu'au lendemain ou jusqu'au mois
+    suivant (comme ``serge/interpreter/queue.py``).
     """
-    return budget_spent(conn, policy, now[:10])
+    return budget_reached(conn, policy, now[:10])
 
 
-def _attente(conn: sqlite3.Connection, plafond: bool) -> str:
+def _attente(conn: sqlite3.Connection, plafond: str) -> str:
     """Pourquoi des tâches prêtes attendent, en une phrase, ou ``''``."""
     if not plafond:
         return ''
@@ -105,8 +104,9 @@ def _attente(conn: sqlite3.Connection, plafond: bool) -> str:
     n = int(row[0]) if row else 0
     if not n:
         return ''
+    quand = 'demain' if plafond == 'jour' else 'le mois prochain'
     return (
-        f'Plafond LLM du jour atteint : {n} tâche(s) LLM attendent demain,'
+        f'Plafond du {plafond} atteint : {n} tâche(s) LLM attendent {quand},'
         ' ou un plafond plus haut (page Policy).'
     )
 
@@ -116,7 +116,7 @@ def prochaines(
 ) -> dict[str, str]:
     """La prochaine tâche de chaque file : ``{file: id de tâche}``.
 
-    Avec ``llm`` faux (plafond du jour atteint), les tâches LLM sont
+    Avec ``llm`` faux (plafond du jour ou du mois atteint), les tâches LLM sont
     sautées, comme le fait la file.
     """
     out: dict[str, str] = {}
@@ -177,7 +177,8 @@ def project_hero(
 
     Returns:
         ``{running, ready, next, attente}`` ; ``attente`` dit pourquoi des
-        tâches prêtes ne partent pas (le plafond du jour), ou ``''``.
+        tâches prêtes ne partent pas (le plafond du jour ou du mois), ou
+        ``''``.
     """
     plafond = plafond_atteint(conn, policy, now)
     return {

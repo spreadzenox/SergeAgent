@@ -3,7 +3,7 @@
 Ce document décrit ce que le lot 7 a construit : l'étape 1 (la
 pré-prospection) entièrement décrite dans la base, et ce qu'il a fallu
 ajouter à l'interpréteur pour y arriver, sans jamais écrire de code propre
-à une invocation. Les décisions de Clem sont dans la question Q65 de
+à une invocation. Les décisions de Clem sur l'étape 1 sont dans la question Q65 de
 [`DECISIONS_REVUE.md`](DECISIONS_REVUE.md). Ce que fait l'étape, vu de
 l'extérieur, est dans [`etapes/1-pre-prospection.md`](etapes/1-pre-prospection.md).
 Le fonctionnement général de l'interpréteur est dans
@@ -157,8 +157,8 @@ Chaque ajout est général : il sert à toutes les invocations.
     et 150 lignes par page.
 - **La file dans Mission Control** dit pourquoi une tâche attend : une
   tâche LLM n'est pas annoncée comme « prochaine » quand le plafond du
-  jour est atteint, et la raison est donnée (« Plafond LLM du jour
-  atteint : 1 tâche(s) LLM attendent demain… »).
+  jour (ou, depuis Q68, du mois) est atteint, et la raison est donnée
+  (« Plafond du jour atteint : 1 tâche(s) LLM attendent demain… »).
 ---
 
 ## 4. Ce qui est retiré, et la mise à jour d'une instance

@@ -157,7 +157,9 @@ Aucun test de CI n'agit sur le monde réel.
   - un exemple concret, chiffré, plutôt qu'une formule abstraite ;
   - pas de jargon ni de mots-valises (« hôte », « canon », « contrat »,
     « jonction », « de façon prévisible ») ;
-  - décrire ce qui se passe, concrètement.
+  - décrire ce qui se passe, concrètement ;
+  - quand on cite une décision, écrire ce qu'elle dit, puis son numéro
+    entre parenthèses, jamais le numéro seul.
 
   À éviter : « Chaque accès injecté a une taille maximale (nombre de
   lignes) sur sa jonction. Si le contenu dépasse, l'hôte coupe de façon
@@ -169,6 +171,40 @@ Aucun test de CI n'agit sur le monde réel.
   [`etapes/`](etapes/) (une page par étape), [`MEMOIRE.md`](MEMOIRE.md),
   [`DB.md`](DB.md), [`MISSION_CONTROL.md`](MISSION_CONTROL.md),
   [`installation/`](installation/).
+- **Les questions-réponses sont notées.** Quand un agent pose des questions
+  à Julien ou à Clem et qu'ils répondent, il note la décision dans
+  [`DECISIONS_REVUE.md`](DECISIONS_REVUE.md), sous un nouveau numéro de
+  question : qui a répondu, quand, ce qui est décidé et, s'ils en ont
+  donné, leurs arguments. Exemple : « Q68 — Tout réglage discutable se
+  change dans Mission Control (validé par Clem, 1er octobre 2026) ». Cela
+  ne vaut que pour une vraie question-réponse : un changement décidé sans
+  question n'y entre pas. Une décision validée fait foi : le code et la doc
+  s'y conforment. On ne retire pas une réponse parce que son travail est
+  fait. Si elle devient fausse, on la corrige dans son entrée d'origine ;
+  la règle ci-dessous dit qui décide.
+- **Pas d'incohérence, et on ne tranche pas seul.** Quand deux textes se
+  contredisent (deux documents, une doc et le code, deux décisions) ou
+  qu'une décision n'est pas appliquée, on ne choisit pas soi-même : on le
+  signale à un humain, Julien ou Clem, en citant les deux passages, et il
+  tranche. Sans conversation, on le dit dans la description de la PR.
+  Ensuite on corrige tous les textes concernés dans le même changement, et
+  la réponse est notée comme une question-réponse. Exemple : le fichier des
+  décisions disait « pas de renvois Q13 dans le TODO » alors que le TODO en
+  contenait. On a demandé à Julien laquelle des deux faisait foi.
+  **Une exception : deux décisions du fichier des décisions qui se
+  contredisent.** La plus récente (le numéro le plus grand) a raison, mais
+  seulement sur les points où elle contredit l'autre ; sur le reste, elle
+  ajoute de l'information et l'ancienne garde sa valeur, comme un « upsert »
+  de base de données. On corrige alors l'ancienne entrée soi-même, sans
+  demander. Exemple : Q49 donnait l'ordre des lots 6 à 12, et Q55 le
+  remplace par un nouvel ordre avec un lot 13 : on corrige ce point de Q49,
+  et le reste de Q49 ne change pas.
+  **Deuxième exception : un détail explicitement périmé** (un numéro
+  d'étape ou de lot, un « à faire » déjà fait, un renvoi à ce qui n'existe
+  plus), ou une correction de cohérence qui ne change pas le sens
+  fonctionnel. On corrige soi-même, sans demander, et on le dit dans la
+  description du changement. Dès que le sens fonctionnel change, on
+  demande.
 
 ## 8. Les changements
 

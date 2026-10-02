@@ -9,8 +9,6 @@ from serge.db.store import append_event, utcnow
 from serge.interpreter.settings import check_setting
 from serge.policy import PolicyError, validate_policy
 from serge.policy_snapshots import policy_en_vigueur, snapshot_policy
-from serge.registry import load_ticket_types
-from serge.tickets.lifecycle import create_ticket
 
 
 class _PolicyHandler(Protocol):
@@ -150,58 +148,6 @@ class PolicyActionsMixin(_Base):
                 },
             )
         self._send_json(200, {'ok': True, 'testing': clean_testing})
-
-    def _api_policy_propose(self) -> None:
-        if not self._require_owner():
-            return
-        body = self._json_body()
-        if body is None:
-            self._refus(
-                400,
-                'Corps JSON requis.',
-                'json',
-                'Envoie {"titre": "...", "diff": "..."}.',
-            )
-            return
-        titre = str(body.get('titre') or '').strip()
-        diff = str(body.get('diff') or '').strip()
-        justification = str(body.get('justification') or '').strip()
-        impact = str(body.get('impact') or '').strip()
-        decision_id = str(body.get('decision_id') or '')
-
-        if not titre or not diff:
-            self._refus(
-                400,
-                'Titre et diff requis.',
-                'champs',
-                'Renseigne titre et diff.',
-            )
-            return
-
-        with self._db() as conn:
-            ticket_id = create_ticket(
-                conn,
-                load_ticket_types(),
-                'POLICY',
-                titre,
-                {
-                    'diff_avant_apres': diff,
-                    'justification': justification,
-                    'impact': impact,
-                },
-                creator='owner',
-            )
-            append_event(
-                conn,
-                actor='owner',
-                type='mc_act',
-                payload={
-                    'acte': 'propose_policy',
-                    'ticket_id': ticket_id,
-                    'decision_id': decision_id,
-                },
-            )
-        self._send_json(200, {'ok': True, 'ticket_id': ticket_id})
 
     def _api_reglage(self) -> None:
         """Change un réglage d'invocation ou un quota marqué « policy ».
