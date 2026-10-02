@@ -97,7 +97,6 @@ def default_answers() -> dict[str, Any]:
             'sip_server': 'sip.example.com',
             'sip_username': 'example-trunk',
             'sip_transport': 'tls',
-            'max_calls_per_day': 50,
         },
         'discord': {
             'guild_id': '',
@@ -107,16 +106,6 @@ def default_answers() -> dict[str, Any]:
             'owner_user_id': '',
         },
         'mailbox': dict(MAILBOX_DEFAULTS),
-        'testing': {
-            'n_smoke_min': 30,
-            'n_smoke_max': 50,
-            'n_full_min': 150,
-            'n_full_target': 200,
-            'kill_max_positives': 1,
-            'scale_min_positives': 5,
-            'scale_min_meetings': 2,
-            'extend_max': 1,
-        },
         'secrets': {},
         'age_recipients': [],
         'mandate': {},
@@ -140,10 +129,6 @@ def normalize_answers(raw: Mapping[str, Any] | None) -> dict[str, Any]:
         **dict(incoming.get('discord') or {}),
     }
     mailbox = merge_mailbox(base['mailbox'], incoming.get('mailbox'))
-    testing = {
-        **base['testing'],
-        **dict(incoming.get('testing') or {}),
-    }
     instance_id = str(
         incoming.get('instance_id') or base['instance_id']
     ).strip()
@@ -163,12 +148,6 @@ def normalize_answers(raw: Mapping[str, Any] | None) -> dict[str, Any]:
     )
     if sip_transport not in {'udp', 'tcp', 'tls'}:
         raise WizardError('phone_voice.sip_transport must be udp|tcp|tls')
-    try:
-        max_calls = int(phone_voice.get('max_calls_per_day', 50))
-    except (TypeError, ValueError):
-        raise WizardError('phone_voice.max_calls_per_day must be an integer')
-    if max_calls < 1:
-        raise WizardError('phone_voice.max_calls_per_day must be >= 1')
     secrets = {
         str(key): str(value).strip()
         for key, value in dict(incoming.get('secrets') or {}).items()
@@ -239,16 +218,11 @@ def normalize_answers(raw: Mapping[str, Any] | None) -> dict[str, Any]:
             'sip_server': str(phone_voice.get('sip_server') or '').strip(),
             'sip_username': str(phone_voice.get('sip_username') or '').strip(),
             'sip_transport': sip_transport,
-            'max_calls_per_day': max_calls,
         },
         'discord': {
             key: str(discord.get(key) or '').strip() for key in base['discord']
         },
         'mailbox': mailbox,
-        'testing': {
-            key: testing.get(key, base['testing'][key])
-            for key in base['testing']
-        },
         'secrets': secrets,
         'age_recipients': recipients,
         'mandate': dict(incoming.get('mandate') or {}),
@@ -269,7 +243,6 @@ def toml_payload(answers: Mapping[str, Any]) -> dict[str, Any]:
         'phone_voice': normalized['phone_voice'],
         'discord': normalized['discord'],
         'mailbox': normalized['mailbox'],
-        'testing': normalized['testing'],
     }
 
 
@@ -329,7 +302,6 @@ def render_toml(answers: Mapping[str, Any]) -> str:
             f'sip_server = {_toml_str(str(data["phone_voice"].get("sip_server") or ""))}',
             f'sip_username = {_toml_str(str(data["phone_voice"].get("sip_username") or ""))}',
             f'sip_transport = {_toml_str(str(data["phone_voice"].get("sip_transport") or "tls"))}',
-            f'max_calls_per_day = {int(data["phone_voice"].get("max_calls_per_day") or 50)}',
             '',
             '[discord]',
             f'guild_id = {_toml_str(str(data["discord"].get("guild_id") or ""))}',
@@ -339,16 +311,6 @@ def render_toml(answers: Mapping[str, Any]) -> str:
             f'owner_user_id = {_toml_str(str(data["discord"].get("owner_user_id") or ""))}',
             '',
             *mailbox_toml_lines(data['mailbox'], _toml_str),
-            '[testing]',
-            f'n_smoke_min = {int(data["testing"].get("n_smoke_min") or 30)}',
-            f'n_smoke_max = {int(data["testing"].get("n_smoke_max") or 50)}',
-            f'n_full_min = {int(data["testing"].get("n_full_min") or 150)}',
-            f'n_full_target = {int(data["testing"].get("n_full_target") or 200)}',
-            f'kill_max_positives = {int(data["testing"].get("kill_max_positives") or 1)}',
-            f'scale_min_positives = {int(data["testing"].get("scale_min_positives") or 5)}',
-            f'scale_min_meetings = {int(data["testing"].get("scale_min_meetings") or 2)}',
-            f'extend_max = {int(data["testing"].get("extend_max") or 1)}',
-            '',
         ]
     )
     return '\n'.join(lines)

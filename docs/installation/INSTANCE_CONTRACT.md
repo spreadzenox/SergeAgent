@@ -183,7 +183,6 @@ aliases = []
 sip_server = ""
 sip_username = ""
 sip_transport = "tls"           # udp | tcp | tls
-max_calls_per_day = 50
 
 [mailbox]                       # requis si mailbox on (login + preset)
 preset = "infomaniak"           # infomaniak | gmail | fastmail | custom
@@ -192,23 +191,14 @@ smtp_host = ""                  # vide = preset (custom : obligatoire)
 smtp_port = 587                 # 587 STARTTLS | 465 SSL
 imap_host = ""                  # vide = preset (custom : obligatoire)
 imap_port = 993                 # 993 SSL | 143 STARTTLS
-
-[testing]                       # vérifié au chargement ; voir plus bas
-n_smoke_min = 30
-n_smoke_max = 50
-n_full_min = 150
-n_full_target = 200
-kill_max_positives = 1
-scale_min_positives = 5
-scale_min_meetings = 2
-extend_max = 1
 ```
 
-`[testing]` du TOML n’est pas écrit par Mission Control. La taille des
-essais en marche est un réglage général en base (famille « Taille des
-essais » de la page Policy), rempli au départ par `config/policy.yaml` et
-modifiable seulement quand aucun essai ne tourne ; `ouvrir_essai` la lit
-avec `policy_en_vigueur`.
+La taille des essais et le nombre d’appels par jour ne sont pas dans ce
+fichier : ce sont des réglages en base, modifiables sur la page Policy
+(familles « Taille des essais » et « Plafonds par canal »), remplis au
+départ par `config/policy.yaml`. Un ancien fichier qui contient encore
+`[testing]` ou `max_calls_per_day` se charge : ces clés sont ignorées
+(pas de réglage en double, Q78).
 
 Contraintes téléphonie (refusées au load, au wizard et au builder) :
 

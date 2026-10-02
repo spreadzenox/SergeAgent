@@ -36,11 +36,11 @@ from serge.voice.consents import (
 from serge.voice.policy import (
     VoiceBrokerDenied,
     VoicePolicy,
+    call_limits,
     paris_now,
     within_legal_hours,
 )
 
-MAX_PER_RECIPIENT_30D = 4
 PURPOSES = frozenset({'prospection', 'contract', 'callback', 'test'})
 PENDING_CLAIM_SECONDS = 600
 
@@ -290,13 +290,14 @@ class VoiceLedger:
             return 'outside_legal_hours'
         day_start = paris.replace(hour=0, minute=0, second=0, microsecond=0)
         month_start = paris - timedelta(days=30)
+        per_day, per_recipient = call_limits(self.canon_path)
         if (
             self._count_allowed(
                 connection,
                 None,
                 day_start.astimezone(UTC).isoformat(),
             )
-            >= policy.max_calls_per_day
+            >= per_day
         ):
             return 'daily_quota_exceeded'
         if (
@@ -305,9 +306,9 @@ class VoiceLedger:
                 _hash(to_e164),
                 month_start.astimezone(UTC).isoformat(),
             )
-            >= MAX_PER_RECIPIENT_30D
+            >= per_recipient
         ):
-            return 'recipient_quota_4_per_30d'
+            return 'recipient_quota_30d'
         if self.in_progress(to_e164):
             return 'already_in_progress'
         return 'allowed'

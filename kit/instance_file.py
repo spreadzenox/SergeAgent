@@ -36,7 +36,6 @@ HOST_ONLY_FEATURES = frozenset({'metagrok'})
 # A commercial voice-only Serge is not a valid instance.
 PHONE_VOICE_TRANSPORTS = frozenset({'udp', 'tcp', 'tls'})
 PHONE_VOICE_DEFAULT_TRANSPORT = 'tls'
-PHONE_VOICE_DEFAULT_MAX_CALLS_PER_DAY = 50
 DISCORD_SNOWFLAKE_RE = re.compile(r'^[0-9]{5,25}$')
 DISCORD_ID_KEYS = (
     'guild_id',
@@ -128,15 +127,6 @@ def validate_toml(data: Mapping[str, Any]) -> dict[str, Any]:
         .strip()
         .lower()
     )
-    try:
-        max_calls = int(
-            raw_phone.get(
-                'max_calls_per_day',
-                PHONE_VOICE_DEFAULT_MAX_CALLS_PER_DAY,
-            )
-        )
-    except (TypeError, ValueError):
-        raise InstanceError('phone_voice.max_calls_per_day must be an integer')
     if normalized.get('phone_voice') and not normalized.get('phone_sms'):
         raise InstanceError(
             'features.phone_voice requires features.phone_sms '
@@ -169,8 +159,6 @@ def validate_toml(data: Mapping[str, Any]) -> dict[str, Any]:
         )
     if sip_transport not in PHONE_VOICE_TRANSPORTS:
         raise InstanceError('phone_voice.sip_transport must be udp|tcp|tls')
-    if max_calls < 1:
-        raise InstanceError('phone_voice.max_calls_per_day must be >= 1')
     if normalized.get('phone_voice') and (not sip_server or not sip_username):
         raise InstanceError(
             'phone_voice.sip_server and phone_voice.sip_username are required '
@@ -193,7 +181,6 @@ def validate_toml(data: Mapping[str, Any]) -> dict[str, Any]:
             resolve_mailbox(mailbox)
         except MailboxError as exc:
             raise InstanceError(f'mailbox invalide : {exc}') from exc
-    testing = _validate_testing(as_table(data.get('testing')))
     return {
         'schema_version': 1,
         'instance_id': instance_id,
@@ -221,48 +208,10 @@ def validate_toml(data: Mapping[str, Any]) -> dict[str, Any]:
             'sip_server': sip_server,
             'sip_username': sip_username,
             'sip_transport': sip_transport,
-            'max_calls_per_day': max_calls,
         },
         'discord': discord,
         'mailbox': mailbox,
-        'testing': testing,
     }
-
-
-def _validate_testing(raw: dict[str, Any]) -> dict[str, int]:
-    """Valide le bloc testing (N + seuils kill/scale).
-
-    Absente = défauts. Le TOML d’instance n’est qu’une semence : la
-    vérité runtime est le snapshot policy. MC n’écrit qu’à froid
-    (0 campagne RUNNING).
-    """
-    defaults = {
-        'n_smoke_min': 30,
-        'n_smoke_max': 50,
-        'n_full_min': 150,
-        'n_full_target': 200,
-        'kill_max_positives': 1,
-        'scale_min_positives': 5,
-        'scale_min_meetings': 2,
-        'extend_max': 1,
-    }
-    values: dict[str, int] = {}
-    for key, default in defaults.items():
-        value = raw.get(key, default)
-        if isinstance(value, bool) or not isinstance(value, int):
-            raise InstanceError(f'testing.{key} must be an integer')
-        values[key] = value
-    if not 0 < values['n_smoke_min'] <= values['n_smoke_max']:
-        raise InstanceError('testing needs 0 < n_smoke_min <= n_smoke_max')
-    if not 0 < values['n_full_min'] <= values['n_full_target']:
-        raise InstanceError('testing needs 0 < n_full_min <= n_full_target')
-    if not values['kill_max_positives'] < values['scale_min_positives']:
-        raise InstanceError(
-            'testing needs kill_max_positives < scale_min_positives'
-        )
-    if values['scale_min_meetings'] < 1 or values['extend_max'] < 1:
-        raise InstanceError('testing scale/extend bounds must be >= 1')
-    return values
 
 
 def sidecar_path(toml_path: Path, data: Mapping[str, Any]) -> Path:
