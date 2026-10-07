@@ -30,8 +30,8 @@ from tests.taches_fixtures import invocations, tache  # noqa: E402
 NOW = '2026-09-10T12:00:00+00:00'
 POLICY = {
     'budget': {'llm_daily_eur': 5.0},
+    'channels': {'email': {'max_per_day': 40}},
     'quotas': {
-        'email_per_mailbox_per_day': 40,
         'voice_max_calls_per_day': 50,
         'linkedin_connect_per_day': 20,
     },
@@ -99,14 +99,15 @@ class ProjLiveTests(unittest.TestCase):
         )
         self.conn.execute(
             'INSERT INTO touches(id, campaign_id, contact_id, channel,'
-            " status, idempotency_key, created_at, updated_at) VALUES('t1',"
-            "'c1','p1','email','sent','k-t1',?,?)",
-            (NOW, NOW),
+            ' status, idempotency_key, sent_at, created_at, updated_at)'
+            " VALUES('t1', 'c1','p1','email','sent','k-t1',?,?,?)",
+            (NOW, NOW, NOW),
         )
         self.conn.execute(
             'INSERT INTO touches(id, campaign_id, contact_id, channel,'
-            " status, idempotency_key, created_at, updated_at) VALUES('t0',"
-            "'c1','p1','email','sent','k-t0','2026-09-09T10:00:00+00:00',"
+            ' status, idempotency_key, sent_at, created_at, updated_at)'
+            " VALUES('t0', 'c1','p1','email','sent','k-t0',"
+            "'2026-09-09T10:00:00+00:00', '2026-09-09T10:00:00+00:00',"
             "'2026-09-09T10:00:00+00:00')"
         )
         self.conn.execute(

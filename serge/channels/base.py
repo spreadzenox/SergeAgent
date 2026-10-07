@@ -12,15 +12,20 @@ d'un business. Il a trois fonctions :
 - ``poll``, pour un canal qui se relève (l'e-mail), rend les messages reçus
   depuis une date. Un canal qui reçoit en direct (le téléphone) n'en a pas.
 
-Ajouter un canal, c'est écrire son adaptateur et l'ajouter à ``ADAPTERS``,
-avec ses réglages dans ``config/policy.yaml`` : le pipeline ne change pas.
-Conception : ``docs/LOT8_CONCEPTION.md``, partie 1.
+Ajouter un canal, c'est écrire son adaptateur et l'ajouter à ``ADAPTERS``
+(``serge/channels/adapters.py``), avec ses réglages dans
+``config/policy.yaml`` : le pipeline ne change pas. Conception :
+``docs/LOT8_CONCEPTION.md``, partie 1.
 """
 
 from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+
+
+def _always() -> bool:
+    return True
 
 
 @dataclass(frozen=True)
@@ -65,24 +70,10 @@ class Adapter:
     send: Callable[[Outgoing], str]
     confirm: Callable[[Outgoing], str]
     poll: Callable[[str], list[Incoming]] | None = None
-
-
-# Les canaux branchés dans le code. Le lot 8 ajoute l'e-mail (PR 2) et
-# l'appel (PR 3).
-ADAPTERS: dict[str, Adapter] = {}
+    # Le canal est configuré sur ce serveur (pour l'e-mail : une boîte
+    # Gmail ou SMTP/IMAP dans le fichier d'instance).
+    ready: Callable[[], bool] = _always
 
 
 class ChannelError(ValueError):
-    """Un canal n'est pas branché, ou un envoi a échoué."""
-
-
-def adapter(channel: str) -> Adapter:
-    """L'adaptateur d'un canal branché.
-
-    Raises:
-        ChannelError: Canal absent du code.
-    """
-    found = ADAPTERS.get(channel)
-    if found is None:
-        raise ChannelError(f'canal non branché : {channel}')
-    return found
+    """Un canal n'est pas branché, ou le canal a refusé le message."""

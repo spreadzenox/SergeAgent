@@ -56,7 +56,7 @@ class PolicyTests(unittest.TestCase):
             self.assertTrue(is_test_env())
             policy = load_policy()
         self.assertEqual(policy['budget']['monthly_eur'], 2.0)
-        self.assertEqual(policy['quotas']['email_per_mailbox_per_day'], 2)
+        self.assertEqual(policy['channels']['email']['max_per_day'], 2)
         self.assertEqual(policy['quotas']['voice_max_calls_per_day'], 0)
         self.assertEqual(policy['quotas']['linkedin_connect_per_day'], 0)
         # Non surchargé = valeur prod conservée.

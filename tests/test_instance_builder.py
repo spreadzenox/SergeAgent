@@ -482,11 +482,6 @@ class InstanceBuilderTests(unittest.TestCase):
             self.assertEqual(secret.read_text(encoding='utf-8'), 'pw-fake-2\n')
             mode = oct(secret.stat().st_mode & 0o777)
             self.assertEqual(mode, '0o600')
-            unit = tmp / 'home/.config/systemd/user/serge-queue@.service'
-            self.assertIn(
-                'Environment=SERGE_EMAIL_BACKEND=smtp',
-                unit.read_text(encoding='utf-8'),
-            )
             self.assertIn('mailbox_password', receipt['secret_names_written'])
 
 

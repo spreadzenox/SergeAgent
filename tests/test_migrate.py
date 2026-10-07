@@ -738,6 +738,51 @@ class MigrateTests(unittest.TestCase):
                 " VALUES('r1', 'autre', 'x', 't')"
             )
 
+    def test_v36_efface_les_contacts_une_seule_fois(self) -> None:
+        conn = sqlite3.connect(':memory:')
+        self.addCleanup(conn.close)
+
+        apply_pending(conn, _until(35), head=35)
+        conn.execute(
+            'INSERT INTO contacts(id, venture_id, created_at, updated_at)'
+            " VALUES('p1', 'v1', 't', 't')"
+        )
+        conn.execute(
+            'INSERT INTO contact_addresses(contact_id, channel, value,'
+            " value_norm, created_at) VALUES('p1', 'email', 'a@x.fr',"
+            " 'a@x.fr', 't')"
+        )
+        conn.execute(
+            'INSERT INTO blocklist(id, channel, subject_hash, reason,'
+            " added_at) VALUES('b1', '*', 'h', 'désinscription', 't')"
+        )
+        self.assertEqual(apply_pending(conn), SCHEMA_VERSION)
+        for table, attendu in (
+            ('contacts', 0),
+            ('contact_addresses', 0),
+            ('blocklist', 1),
+        ):
+            self.assertEqual(
+                conn.execute(f'SELECT COUNT(*) FROM {table}').fetchone(),
+                (attendu,),
+                table,
+            )
+        self.assertEqual(
+            conn.execute(
+                "SELECT payload_json FROM events WHERE type='contacts.cleared'"
+            ).fetchone(),
+            ('{"contacts": 1, "decision": "Q81"}',),
+        )
+        # Une fois passée, la migration ne revient jamais.
+        conn.execute(
+            'INSERT INTO contacts(id, venture_id, created_at, updated_at)'
+            " VALUES('p2', 'v1', 't', 't')"
+        )
+        apply_pending(conn)
+        self.assertEqual(
+            conn.execute('SELECT COUNT(*) FROM contacts').fetchone(), (1,)
+        )
+
 
 if __name__ == '__main__':
     unittest.main()

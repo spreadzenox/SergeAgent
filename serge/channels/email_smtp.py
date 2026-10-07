@@ -1,32 +1,41 @@
 #!/usr/bin/env python3
-"""Transport email SMTP/IMAP (boîte de confiance) : send + search + get.
+"""L'e-mail par une boîte SMTP/IMAP (Infomaniak, Fastmail…), sans OAuth.
 
-Même contrat que email_gog (entries id, messages payload/snippet) : adaptateur
-IMAP vers la shape normalisée. Config injectable (tests) ou lue de l'instance
-(TOML [mailbox] + secret). Erreurs MailError partagées (AUTH/NETWORK/API).
+Trois fonctions, celles de tout canal (``serge/channels/base.py``) :
+
+- ``send`` envoie par SMTP, avec un ``Message-ID`` tiré du numéro de
+  l'envoi (``<serge.tou_3f2a@exemple.fr>``), puis en range une copie dans
+  le dossier des messages envoyés : le serveur SMTP ne le fait pas ;
+- ``confirm`` cherche ce ``Message-ID`` dans les messages envoyés ;
+- ``poll`` lit la boîte de réception depuis la dernière relève.
+
+La boîte est celle du fichier d'instance (``[mailbox]``) et son mot de
+passe le secret ``mailbox-password``. TLS est toujours vérifié. Les
+erreurs sont des ``MailError`` (AUTH, NETWORK, API).
 """
 
 from __future__ import annotations
 
-import email
 import email.policy
 import imaplib
 import os
 import re
 import smtplib
+import time
 from collections.abc import Mapping
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from email.message import EmailMessage
-from email.utils import make_msgid
+from email.parser import BytesParser
+from email.utils import formatdate, parseaddr
 from pathlib import Path
 from typing import Any
 
 from kit.mailbox_config import MailboxError, resolve_mailbox
-from serge.channels.email_gog import MailError
+from serge.channels.base import Incoming, Outgoing
+from serge.channels.email_gog import POLL_MAX, MailError
 from serge.paths import config_root
 from serge.secrets import read_secret_file
 
-_UID_RE = re.compile(rb'UID (\d+)')
 _IMAP_MONTHS = (
     'Jan',
     'Feb',
@@ -41,10 +50,13 @@ _IMAP_MONTHS = (
     'Nov',
     'Dec',
 )
+_REF = re.compile(r'<[^<>\s]+>')
+# Le dossier des envois quand le serveur ne le signale pas (\Sent).
+SENT_FALLBACK = 'Sent'
 
 
-def _instance_config() -> dict[str, Any]:
-    """Config mailbox de l'instance (TOML + secret).
+def instance_config() -> dict[str, Any]:
+    """La boîte de l'instance (fichier d'instance + secret).
 
     Raises:
         MailError: Instance absente, section invalide, secret manquant.
@@ -80,71 +92,50 @@ def _imap_error(exc: Exception) -> str:
     return f'NETWORK: imap ({exc})'
 
 
-def _open_imap(cfg: Mapping[str, Any], timeout: float) -> imaplib.IMAP4:
-    if cfg['imap_ssl']:
-        box: imaplib.IMAP4 = imaplib.IMAP4_SSL(
-            str(cfg['imap_host']), int(cfg['imap_port']), timeout=timeout
-        )
-    else:
-        box = imaplib.IMAP4(
-            str(cfg['imap_host']), int(cfg['imap_port']), timeout=timeout
-        )
-        box.starttls()
+def _open_imap(cfg: Mapping[str, Any], timeout: float = 60.0) -> imaplib.IMAP4:
     try:
+        if cfg['imap_ssl']:
+            box: imaplib.IMAP4 = imaplib.IMAP4_SSL(
+                str(cfg['imap_host']), int(cfg['imap_port']), timeout=timeout
+            )
+        else:
+            box = imaplib.IMAP4(
+                str(cfg['imap_host']), int(cfg['imap_port']), timeout=timeout
+            )
+            box.starttls()
         box.login(str(cfg['login']), str(cfg['password']))
     except imaplib.IMAP4.error as exc:
         raise MailError(_imap_error(exc)) from exc
+    except OSError as exc:
+        raise MailError(f'NETWORK: imap ({exc})') from exc
     return box
 
 
-def send_email(
-    to: str,
-    subject: str,
-    body: str,
-    *,
-    account: str = 'auto',
-    thread_id: str = '',
-    timeout: float = 60.0,
-    config: dict[str, Any] | None = None,
-) -> dict[str, str]:
-    """Envoie un email via SMTP (idempotence gérée par l'appelant/touch).
+def _sent_folder(box: imaplib.IMAP4) -> str:
+    """Le dossier des messages envoyés, tel que le serveur le signale."""
+    _status, folders = box.list()
+    for line in folders or []:
+        text = line.decode(errors='replace') if isinstance(line, bytes) else ''
+        if '\\Sent' in text:
+            return text.rsplit(' ', 1)[-1].strip('"')
+    return SENT_FALLBACK
 
-    Args:
-        to: Destinataire.
-        subject: Sujet (requis).
-        body: Corps texte.
-        account: Ignoré (compat gog).
-        thread_id: Parent (mis en In-Reply-To/References si fourni).
-        timeout: Timeout secondes.
-        config: Config résolue + password (défaut : instance).
 
-    Returns:
-        Dict message_id/thread_id.
+def message_id(cfg: Mapping[str, Any], touch_id: str) -> str:
+    """Le ``Message-ID`` d'un envoi, tiré de son numéro."""
+    domain = str(cfg['login']).rpartition('@')[2] or 'serge.local'
+    return f'<serge.{touch_id}@{domain}>'
 
-    Raises:
-        MailError: AUTH/NETWORK/API, sujet/destinataire vide.
-    """
-    _ = account
-    if not to.strip() or not subject.strip() or not body.strip():
-        raise MailError('API: destinataire/sujet/corps requis')
-    cfg = config if config is not None else _instance_config()
-    msg = EmailMessage()
-    msg['From'] = str(cfg['login'])
-    msg['To'] = to
-    msg['Subject'] = subject
-    if thread_id.strip():
-        msg['In-Reply-To'] = thread_id.strip()
-        msg['References'] = thread_id.strip()
-    msg['Message-ID'] = make_msgid()
-    msg.set_content(body)
+
+def _smtp_send(cfg: Mapping[str, Any], msg: EmailMessage) -> None:
     try:
         if cfg['smtp_ssl']:
             server = smtplib.SMTP_SSL(
-                str(cfg['smtp_host']), int(cfg['smtp_port']), timeout=timeout
+                str(cfg['smtp_host']), int(cfg['smtp_port']), timeout=60
             )
         else:
             server = smtplib.SMTP(
-                str(cfg['smtp_host']), int(cfg['smtp_port']), timeout=timeout
+                str(cfg['smtp_host']), int(cfg['smtp_port']), timeout=60
             )
             server.starttls()
         with server:
@@ -152,212 +143,132 @@ def send_email(
             server.send_message(msg)
     except smtplib.SMTPAuthenticationError as exc:
         raise MailError(f'AUTH: smtp refusé ({exc.smtp_code})') from exc
+    except smtplib.SMTPRecipientsRefused as exc:
+        raise MailError(f'API: destinataire refusé ({exc})') from exc
     except (smtplib.SMTPException, OSError) as exc:
         raise MailError(f'NETWORK: smtp ({exc})') from exc
-    return {'message_id': str(msg['Message-ID'] or ''), 'thread_id': thread_id}
 
 
-def _imap_criteria(query: str) -> list[str]:
-    """Traduit le sous-ensemble Gmail supporté (newer_than/from/-in:sent).
-
-    Raises:
-        MailError: Token de requête non supporté (ou non-ASCII).
-    """
-    criteria = ['UNSEEN']
-    for token in query.split():
-        if not token.isascii():
-            raise MailError(f'API: requete_non_supportee ({token})')
-        if token == '-in:sent':
-            continue  # INBOX seule par construction
-        if token.startswith('newer_than:'):
-            span = token[len('newer_than:') :]
-            if span.endswith('d') and span[:-1].isdigit():
-                when = datetime.now(UTC) - timedelta(days=int(span[:-1]))
-                stamp = f'{when.day:02d}-{_IMAP_MONTHS[when.month - 1]}-{when.year}'
-                criteria += ['SINCE', stamp]
-                continue
-            raise MailError(f'API: requete_non_supportee ({token})')
-        if token.startswith('from:') and len(token) > 5:
-            criteria += ['FROM', f'"{token[5:]}"']
-            continue
-        raise MailError(f'API: requete_non_supportee ({token})')
-    return criteria
-
-
-def _header_mid(raw: bytes) -> str:
+def send(message: Outgoing, config: dict[str, Any] | None = None) -> str:
+    """Envoie un e-mail ; rend son ``Message-ID``."""
+    cfg = config if config is not None else instance_config()
+    msg = EmailMessage()
+    msg['From'] = str(cfg['login'])
+    msg['To'] = message.address
+    msg['Subject'] = message.subject
+    msg['Date'] = formatdate(localtime=True)
+    msg['Message-ID'] = message_id(cfg, message.touch_id)
+    if message.in_reply_to:
+        msg['In-Reply-To'] = message.in_reply_to
+        msg['References'] = message.in_reply_to
+    msg.set_content(message.body)
+    _smtp_send(cfg, msg)
+    # Le message est parti : ranger sa copie ne doit jamais faire croire le
+    # contraire. Sans copie, un envoi interrompu juste ici serait refait.
     try:
-        parsed = email.message_from_bytes(raw, policy=email.policy.default)
-    except Exception:
-        return ''
-    return str(parsed.get('Message-ID') or '').strip()
-
-
-def _entry_ids(fetched: list[Any]) -> list[str]:
-    entries = []
-    for item in fetched:
-        if not isinstance(item, tuple) or len(item) != 2:
-            continue
-        meta, payload = item
-        raw = payload if isinstance(payload, bytes) else b''
-        match = _UID_RE.search(bytes(meta))
-        if match:
-            fallback = f'uid:{match.group(1).decode()}'
-        else:
-            fallback = f'uid:{bytes(meta).split(b" ")[0].decode()}'
-        entries.append(_header_mid(raw) or fallback)
-    return entries
-
-
-def search_emails(
-    query: str,
-    *,
-    account: str = 'auto',
-    max_results: int = 20,
-    timeout: float = 60.0,
-    config: dict[str, Any] | None = None,
-) -> list[dict[str, str]]:
-    """Recherche IMAP (UNSEEN récents, sous-ensemble Gmail traduit).
-
-    Args:
-        query: Requête (newer_than:Nd, from:X, -in:sent supportés).
-        account: Ignoré (compat gog).
-        max_results: Cap (les plus récents).
-        timeout: Timeout secondes.
-        config: Config résolue + password (défaut : instance).
-
-    Returns:
-        Entries [{'id': Message-ID (ou uid:N)}].
-
-    Raises:
-        MailError: AUTH/NETWORK/API (requête non supportée).
-    """
-    _ = account
-    cfg = config if config is not None else _instance_config()
-    criteria = _imap_criteria(query)
-    try:
-        box = _open_imap(cfg, timeout)
+        box = _open_imap(cfg)
         with box:
-            status, _ = box.select('INBOX', readonly=True)
-            if status != 'OK':
-                raise MailError('API: imap select refusé')
-            status, data = box.uid('search', 'CHARSET', 'US-ASCII', *criteria)
-            if status != 'OK':
-                raise MailError('API: imap search refusé')
-            uids = [
-                item for item in (data[0] or b'').split() if item.isdigit()
-            ]
-            wanted = (
-                sorted(uids, key=int)[-max_results:] if max_results > 0 else []
+            box.append(
+                _sent_folder(box),
+                '\\Seen',
+                imaplib.Time2Internaldate(time.time()),
+                msg.as_bytes(),
             )
-            if not wanted:
-                return []
-            status, fetched = box.uid(
-                'fetch',
-                ','.join(item.decode() for item in wanted),
-                '(UID BODY.PEEK[HEADER.FIELDS (MESSAGE-ID)])',
-            )
+    except (MailError, imaplib.IMAP4.error, OSError):
+        pass
+    return str(msg['Message-ID'])
+
+
+def confirm(message: Outgoing, config: dict[str, Any] | None = None) -> str:
+    """Le ``Message-ID`` de l'envoi s'il est parti, sinon ``''``."""
+    cfg = config if config is not None else instance_config()
+    wanted = message_id(cfg, message.touch_id)
+    box = _open_imap(cfg)
+    try:
+        with box:
+            status, _ = box.select(_sent_folder(box), readonly=True)
             if status != 'OK':
-                raise MailError('API: imap fetch refusé')
-            return [{'id': mid} for mid in _entry_ids(list(fetched or []))]
+                return ''
+            _status, found = box.uid(
+                'search', 'CHARSET', 'US-ASCII', 'HEADER', 'Message-ID', wanted
+            )
     except imaplib.IMAP4.error as exc:
         raise MailError(_imap_error(exc)) from exc
-    except OSError as exc:
-        raise MailError(f'NETWORK: imap ({exc})') from exc
+    return wanted if found and (found[0] or b'').split() else ''
 
 
-def _message_text(parsed: EmailMessage) -> str:
-    if parsed.is_multipart():
-        for part in parsed.walk():
-            if part.is_multipart() or part.get_content_disposition():
-                continue
-            if part.get_content_type() != 'text/plain':
-                continue
-            try:
-                return str(part.get_content()).strip()
-            except (ValueError, LookupError):
-                return ''
-        return ''
-    if parsed.get_content_type() != 'text/plain':
+def _text(parsed: EmailMessage) -> str:
+    part = parsed.get_body(preferencelist=('plain',))
+    if part is None:
         return ''
     try:
-        return str(parsed.get_content()).strip()
+        return str(part.get_content()).strip()
     except (ValueError, LookupError):
         return ''
 
 
-def get_message(
-    message_id: str,
-    *,
-    account: str = 'auto',
-    timeout: float = 60.0,
-    config: dict[str, Any] | None = None,
-) -> dict[str, Any]:
-    """Lit un message IMAP (shape normalisée payload/snippet).
+def _since(since: str) -> str:
+    """La date IMAP (jour) de la relève : la veille de ``since``, pour ne
+    rien perdre d'un fuseau à l'autre."""
+    start = (
+        datetime.fromisoformat(since) if since else datetime.now()
+    ) - timedelta(days=1)
+    return f'{start.day:02d}-{_IMAP_MONTHS[start.month - 1]}-{start.year}'
 
-    Args:
-        message_id: Message-ID (ou uid:N).
-        account: Ignoré (compat gog).
-        timeout: Timeout secondes.
-        config: Config résolue + password (défaut : instance).
 
-    Returns:
-        Dict {id, payload: {headers: [{name, value}]}, snippet}.
+def poll(since: str, config: dict[str, Any] | None = None) -> list[Incoming]:
+    """Les messages reçus depuis ``since`` (ISO), ou depuis un jour.
 
-    Raises:
-        MailError: AUTH/NETWORK/API (introuvable, illisible).
+    IMAP ne cherche qu'au jour près : les messages déjà relevés sont
+    écartés par la relève (même ``Message-ID``).
     """
-    _ = account
-    cfg = config if config is not None else _instance_config()
+    cfg = config if config is not None else instance_config()
+    box = _open_imap(cfg)
+    received = []
     try:
-        box = _open_imap(cfg, timeout)
         with box:
             status, _ = box.select('INBOX', readonly=True)
             if status != 'OK':
                 raise MailError('API: imap select refusé')
-            if message_id.startswith('uid:') and message_id[4:].isdigit():
-                target = message_id[4:]
-            elif not message_id.isascii():
-                raise MailError('API: message introuvable')
-            else:
-                _status, found = box.uid(
-                    'search',
-                    'CHARSET',
-                    'US-ASCII',
-                    'HEADER',
-                    'Message-ID',
-                    message_id,
+            _status, data = box.uid('search', 'SINCE', _since(since))
+            uids = sorted(
+                (u.decode() for u in (data[0] or b'').split() if u.isdigit()),
+                key=int,
+            )[-POLL_MAX:]
+            for uid in uids:
+                _status, fetched = box.uid('fetch', uid, '(RFC822)')
+                raw = next(
+                    (
+                        item[1]
+                        for item in fetched or []
+                        if isinstance(item, tuple)
+                        and isinstance(item[1], bytes)
+                    ),
+                    b'',
                 )
-                uids = (found[0] if found else b'').split()
-                if not uids:
-                    raise MailError('API: message introuvable')
-                target = uids[-1].decode()
-            status, fetched = box.uid('fetch', target, '(RFC822)')
-            if status != 'OK':
-                raise MailError('API: imap fetch refusé')
-            raw = b''
-            for item in fetched or []:
-                if isinstance(item, tuple) and isinstance(item[1], bytes):
-                    raw = item[1]
-                    break
-            if not raw:
-                raise MailError('API: message illisible')
-            try:
-                parsed: EmailMessage = email.message_from_bytes(
-                    raw, policy=email.policy.default
+                if not raw:
+                    continue
+                parsed = BytesParser(policy=email.policy.default).parsebytes(
+                    raw
                 )
-            except Exception as exc:
-                raise MailError('API: message illisible') from exc
-            text = _message_text(parsed)
-            headers = [
-                {'name': name, 'value': str(parsed.get(name) or '')}
-                for name in ('From', 'Subject', 'Date', 'Message-ID')
-            ]
-            return {
-                'id': message_id,
-                'payload': {'headers': headers},
-                'snippet': text[:500],
-            }
+                own = str(parsed.get('Message-ID') or '').strip()
+                refs = _REF.findall(
+                    f'{parsed.get("In-Reply-To") or ""}'
+                    f' {parsed.get("References") or ""}'
+                )
+                received.append(
+                    Incoming(
+                        external_ref=own or f'uid:{uid}',
+                        address=parseaddr(str(parsed.get('From') or ''))[1],
+                        subject=str(parsed.get('Subject') or ''),
+                        body=_text(parsed),
+                        message_ref=own,
+                        refs=tuple(refs),
+                        native_type='email',
+                    )
+                )
     except imaplib.IMAP4.error as exc:
         raise MailError(_imap_error(exc)) from exc
     except OSError as exc:
         raise MailError(f'NETWORK: imap ({exc})') from exc
+    return received

@@ -13,7 +13,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from serge.canaux import ensure_canaux, fiche_canal  # noqa: E402
-from serge.channels.base import ADAPTERS, Adapter  # noqa: E402
+from serge.channels.adapters import ADAPTERS  # noqa: E402
+from serge.channels.base import Adapter  # noqa: E402
 from serge.db.boot import init_schema  # noqa: E402
 from serge.mc.proj_objet import project_objet  # noqa: E402
 
@@ -35,7 +36,7 @@ class CanauxTests(unittest.TestCase):
         self.assertEqual(fiche['titre'], 'E-mail')
         champs = {c['k']: c['v'] for c in fiche['champs']}
         self.assertEqual(champs['État'], 'prevu')
-        self.assertEqual(champs['Fichier'], 'serge/channels/email_smtp.py')
+        self.assertEqual(champs['Fichier'], 'serge/channels/mail.py')
         self.assertIn('serge/channels/', fiche['cadres'][0]['todo'])
 
     def test_un_adaptateur_branche_le_canal(self) -> None:

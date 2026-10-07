@@ -24,28 +24,29 @@ dédiée chez un fournisseur IMAP simple.
 
 - `features.mailbox = true` → preset (défaut `infomaniak`) + login (+ 4
   hosts/ports si `custom`) → mot de passe à l'étape secrets.
-- Sidecar → `secrets/mailbox-password` (`0600`) ; l'unit pipeline exporte
-  `SERGE_EMAIL_BACKEND=smtp`.
+- Sidecar → `secrets/mailbox-password` (`0600`).
 - Cohabitation : `mailbox` on → SMTP prioritaire ; `gmail` seul → gog ;
-  aucun → gog par défaut (échoue proprement sans binaire).
+  aucun → pas de canal e-mail (sa fiche dit « prévu », rien n'est relevé
+  ni envoyé).
 
 ## 3. Tester
 
-Envoi + lecture passent par les workers `email.send` / `email.poll` du
-pipeline (`run-once`). Requêtes supportées : `newer_than:Nd`, `from:X`,
-`-in:sent` (ignoré, INBOX seule) ; le reste est refusé explicitement
-(`requete_non_supportee`), jamais ignoré silencieusement.
+Dans Mission Control, la fiche du canal E-mail doit dire « branché » :
+Serge relève alors la boîte de réception toutes les 2 minutes, et range
+une copie de chaque message envoyé dans le dossier des envoyés (c'est elle
+qui confirme un envoi interrompu).
 
 ## 4. Dépannage
 
 - `AUTH: smtp/imap refusé` → login ou mot de passe faux (app password ?).
 - `NETWORK: smtp/imap (...)` → hôte/port injoignable, TLS (certificat du
   serveur vérifié, pas désactivable).
-- `API: requete_non_supportee (...)` → syntaxe hors sous-ensemble traduit.
-- `API: message introuvable/illisible` → UID périmé ou RFC822 corrompu.
+- `API: destinataire refusé (...)` → l'adresse n'existe pas : l'envoi passe
+  en échec.
 
 ## 5. Sécurité
 
 - Mot de passe : `0600`, sidecar chiffré, jamais dans git, le TOML ou un chat.
 - TLS toujours vérifié (STARTTLS/SSL selon port) ; aucun mode non chiffré.
-- Envois bornés par les guards + quota `email_per_mailbox_per_day` (défaut 40).
+- Envois bornés par les garde-fous et par « E-mails envoyés au plus, par jour »
+  (`channels.email.max_per_day`, 40 au départ, page Policy).

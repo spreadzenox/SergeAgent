@@ -353,8 +353,10 @@ Le circuit est décrit en base (lot 8, décision Q79) :
 - une désinscription bloque la personne partout, sur tous les canaux et
   pour tous les business, et un ticket prévient Julien et Clem.
 
-Le canal e-mail et le canal appel se branchent ensuite (lot 8, PR 2 et 3).
-Le détail est dans [`LOT8_CONCEPTION.md`](LOT8_CONCEPTION.md).
+Le canal e-mail est branché : Gmail par l'outil `gog`, ou une boîte
+SMTP/IMAP, selon le fichier d'instance ; au plus 40 e-mails par jour (page
+Policy). Le canal appel se branche ensuite (lot 8, PR 3). Le détail est
+dans [`LOT8_CONCEPTION.md`](LOT8_CONCEPTION.md).
 
 ---
 
