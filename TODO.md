@@ -113,12 +113,17 @@ pipeline en base, et l'étape 1 y sont en place.
   et Pipeline ; il reste à remettre, lot par lot, les réglages retirés
   parce que rien ne les lisait. Le détail est dans la partie « Avant le
   lot 8 » plus bas.
-- [ ] **Lot 8 « Conversations ».** On crée un fil de discussion par
-  prospect, une seule invocation pour lire et traiter une réponse, une
-  fiche produit détaillée pour répondre juste, des tickets qu'on comprend
-  sans suivre Serge, des délais de réponse réglables par canal, et un agent
-  vocal qui sait à qui il parle. C'est ce qui permet de parler à de vrais
-  prospects sans faire d'erreur gênante.
+- [ ] **Lot 8 « Conversations ».** Une architecture qui accueille
+  facilement un nouveau canal, puis l'e-mail et la voix (Q79) : un fil par
+  contact, un message reçu qui réveille le pipeline, une seule invocation
+  pour traiter une réponse, des relances quel que soit le canal, une
+  désinscription qui vaut partout, une fiche produit, et un agent vocal
+  qui sait à qui il parle. Quatre PR, la dernière pour que Clem teste tout
+  depuis Mission Control.
+- [ ] **Lot 8 bis « Julien dans la conversation ».** Les tickets qui font
+  attendre une réponse : « besoin de Julien », valider un brouillon, la
+  réponse de Julien qui repart dans la conversation, des tickets qu'on
+  comprend sans suivre Serge.
 - [ ] **Lot 9 « Grille de points ».** On donne des points à chaque
   réaction d'un prospect, avec un barème par canal, pour pouvoir comparer
   deux tests faits sur des canaux différents.
@@ -135,7 +140,10 @@ pipeline en base, et l'étape 1 y sont en place.
   écrire. On le met tard parce que c'est un gros chantier, mais plusieurs
   tâches des étapes 3 et 6 en dépendent. Le bac à sable, l'agent web et
   les connecteurs y sont des capacités générales réglées en base, jamais
-  du code écrit pour une invocation.
+  du code écrit pour une invocation. C'est aussi ce qui ouvre les canaux de
+  conversation par machine virtuelle : un LLM qui se connecte à LinkedIn,
+  Instagram, Facebook ou n'importe quel site, avec une invocation
+  temporaire « Envoyer le premier LinkedIn » pour le tester (Q79).
 - [ ] **Lot 13 « L'éditeur sans code ».** Une page de Mission Control
   pour modifier le pipeline en direct et créer une invocation de toutes
   pièces : ajouter ou retirer des invocations, changer leur ordre, leur
@@ -178,145 +186,145 @@ discutable, qui peut un jour changer, se règle depuis Mission Control.**
 
 ---
 
-## Lot 8 — Conversations avec les prospects et les clients
+## Lot 8 — Conversations : les canaux, l'e-mail et la voix
 
 Les messages des prospects et des clients sont imprévisibles : questions
 sur le produit, demandes de changement, questions de délais, sujets sans
-rapport. On ne peut pas tout prévoir, mais on calibre les cas classiques,
-et Serge sait demander de l'aide quand il ne sait pas.
+rapport. On ne peut pas tout prévoir, mais on calibre les cas classiques.
+Clem a fixé le périmètre le 7 octobre 2026 (décision Q79) : une
+architecture qui accueille facilement un nouveau canal, puis l'e-mail et
+la voix, dont le code existe déjà en partie. LinkedIn et les autres sites
+demanderont une machine virtuelle pilotée par un LLM (lot 12). Les réponses
+partent toutes seules : les tickets qui font attendre une réponse viennent
+au lot 8 bis. La conception détaillée est dans
+[`docs/LOT8_CONCEPTION.md`](docs/LOT8_CONCEPTION.md).
 
-- [ ] **Ne jamais agir deux fois à l'extérieur.** À faire quand on crée la
-  première capacité qui agit hors de Serge (envoyer un e-mail). Une tâche
-  qui agit hors de Serge (envoyer un e-mail, passer un appel, rembourser
-  un client) doit enregistrer « en cours » en base avant d'agir, puis
-  « fait » juste après. Si le programme plante entre les deux, la tâche
-  reste marquée « en cours » et n'est pas relancée toute seule : elle
-  apparaît dans MC pour qu'on vérifie. Chaque envoi porte déjà une clé
-  unique, qu'il faut garder. Il faudra pour cela une colonne sur les
-  capacités (« agit hors de Serge ») et un état de plus sur les tâches.
+- [ ] **PR 1 — L'architecture des canaux, sans canal réel.** Testée avec
+  un faux canal. Elle contient tout ce qui ne dépend d'aucun canal :
+  - **un canal est une ligne en base**, qui dit quelles capacités savent
+    envoyer, relever et confirmer un envoi pour lui. Ajouter un canal,
+    c'est écrire ces fonctions et ajouter des lignes, jamais retoucher le
+    pipeline ;
+  - **ne jamais agir deux fois** : un envoi est noté « en cours » avant
+    d'agir, puis « fait ». Si le programme s'arrête entre les deux, la
+    fonction de confirmation du canal dit si l'envoi est parti (l'e-mail
+    est cherché dans les messages envoyés, l'appel dans son journal), et
+    on lui fait confiance : pas de bouton dans Mission Control ;
+  - **le fil par contact**, tous canaux confondus : les envois (`touches`,
+    avec leur texte) et les messages reçus (`inbound_events`), par date
+    (Q37). Chaque message reçu est rattaché au bon contact, par son
+    adresse ou par le fil d'e-mail auquel il répond ; un message d'un
+    inconnu n'est pas traité et apparaît dans Mission Control, dans les
+    messages non rattachés ;
+  - **un message reçu réveille le pipeline** : les programmes qui reçoivent
+    de l'extérieur préviennent les déclencheurs « une ligne est écrite »,
+    comme le fait l'interpréteur ; « une seule tâche en attente par
+    contact », pour que deux messages coup sur coup ne créent qu'une
+    réponse ;
+  - **« Traiter une réponse »**, une seule invocation : elle reçoit le fil
+    du contact, sa fiche, la fiche du business et la fiche produit, et rend
+    la réaction (intéressé, question, objection, rendez-vous, refus,
+    désinscription, absence, hors sujet), la réponse à envoyer ou « pas de
+    réponse », et les demandes sur le produit (bug, insatisfaction, idée),
+    rangées dans une table. Son prompt contient les consignes de prudence :
+    ne jamais promettre une date ou une fonctionnalité absente de la fiche
+    produit ; en cas de doute, répondre sans s'engager (« je vérifie et je
+    reviens vers vous ») ;
+  - **une condition simple sur un lien ou une écriture** (« seulement si
+    `reaction` vaut `désinscription` »), pour que la suite dépende de la
+    réponse sans code propre ;
+  - **un délai sur un lien**, tiré entre le minimum et le maximum du canal,
+    réglables dans Mission Control (e-mail : entre 5 et 20 minutes, à toute
+    heure ; 0 répond tout de suite) ;
+  - **les relances**, quel que soit le canal, sur le canal du premier
+    message : la première 3 jours après, la seconde 7 jours après la
+    première, deux au plus, délais réglés en minutes en base. Toute réponse
+    reçue annule les relances en attente. Une relance ne part pas si les
+    messages de son canal n'ont pas été relevés depuis plus d'une heure ;
+  - **la désinscription vaut partout** : toutes les adresses de la personne
+    sont bloquées, sur tous les canaux et pour tous les business, ses
+    tâches en attente sont annulées, Serge ne lui répond rien, et un ticket
+    d'information prévient Julien et Clem (capacité « Prévenir Julien et
+    Clem »). Chaque e-mail finit par une phrase réglable du type
+    « Répondez STOP pour ne plus être contacté » ;
+  - **la fiche produit**, une table : ce que fait le produit et pour qui,
+    ce qu'il ne fait pas, le prix, les délais habituels, comment on
+    l'utilise, des questions fréquentes. Elle est écrite par l'invocation
+    qui conçoit le produit (lot 10) ; d'ici là, la PR 4 en met une
+    demi-fiche pour les tests ;
+  - **des vues de tables** (`table_views`) pour les contacts, leurs
+    adresses, les envois, les messages reçus et la fiche produit, et des
+    événements qui nomment la ligne concernée, pour que « Lire
+    l'historique » d'un contact montre tout son fil.
 
-- [ ] **Les capacités et réglages des conversations.** Ce lot ajoute ce
-  que le lot 6 a volontairement laissé de côté. Des capacités : relever
-  une boîte mail, envoyer un e-mail, ouvrir un ticket complet, et bloquer
-  toutes les adresses d'une personne qui se désinscrit. Des réglages en
-  base : une condition simple sur un lien ou une écriture (par exemple
-  « seulement si le champ `reaction` vaut `désinscription` »), pour que la
-  suite dépende de la réponse sans code propre ; que les programmes qui
-  reçoivent de l'extérieur (SMS, e-mail, paiements) préviennent les
-  déclencheurs « une ligne est écrite », comme le fait l'interpréteur,
-  pour qu'un message reçu lance bien « Traiter une réponse » ; « une
-  seule tâche en attente par prospect », pour que deux messages coup sur
-  coup ne créent qu'une réponse ; un délai sur un lien, tiré entre le
-  minimum et le maximum du canal ; et « demander à Julien si tel champ vaut oui », qui
-  ouvre un ticket et fait attendre la tâche. La validation d'un lien par
-  ticket Discord vient à côté du passage à la main construit au lot 6
-  (bouton « Passer à la suite » sur la fiche du lien, fonction
-  `pass_waiting`) : la réponse de Julien au ticket passe le lien de la
-  même façon, et les deux portes restent ouvertes (Q62). Il faut aussi
-  des vues de tables (`table_views`) pour les contacts, leurs adresses,
-  les envois, les réponses reçues, le fil et la fiche produit, et que les
-  événements de ces tables nomment la ligne concernée, pour que « Lire
-  l'historique » d'un prospect montre tout son fil.
+- [ ] **PR 2 — Le canal e-mail.** Il marche de bout en bout : envoyer,
+  relever la boîte, rattacher une réponse à son fil, confirmer un envoi.
+  Serge utilise Gmail par l'outil `gog` sur le serveur de Julien ; le code
+  sait aussi passer par une boîte SMTP/IMAP. L'ancienne relève de la boîte
+  est dans `pas_encore_branche/` pour s'en inspirer.
 
-- [ ] **Un fil de discussion par prospect, et des relances qui ne gênent
-  personne.** La règle est simple : on ne relance jamais quelqu'un qui a
-  déjà répondu. Pour la tenir, il faut un fil par prospect, tous canaux
-  confondus, qui garde aussi le texte de ce que Serge a envoyé. Chaque
-  réponse reçue doit être rattachée au bon prospect, y compris quand elle
-  arrive dans le fil d'un e-mail. Une relance ne part que si le dernier
-  événement du fil est un envoi de Serge resté sans réponse, et ce
-  contrôle est refait au moment exact de l'envoi. Si les réponses d'un
-  canal n'ont pas été relevées depuis plus d'une heure, aucune relance ne
-  part sur ce canal.
+- [ ] **PR 3 — Le canal appel, et un agent vocal qui sait à qui il
+  parle.** Le code de la voix existe (`serge/voice/`) : le pont qui
+  compose un appel, la conversation en direct avec un modèle vocal, le
+  journal des appels, les accords. Il reste à le brancher sur le
+  pipeline : passer un appel, recevoir son résultat (joint ou non, durée,
+  résumé) dans le fil, et régler l'agent en base comme une invocation (son
+  prompt, son modèle, ce qu'il reçoit au décrochage, ses outils ; seul le
+  transport de la voix reste du code). Au décrochage, le numéro est
+  cherché en base ; s'il est connu, l'agent reçoit la fiche du contact,
+  son fil, la fiche du business et la fiche produit. S'il est inconnu,
+  l'agent dit « Bonjour, je suis Serge, en quoi puis-je vous aider ? »,
+  demande à qui il parle et cherche la fiche avec un outil (nom,
+  entreprise, e-mail ou numéro). S'il propose quelque chose à Serge (un
+  partenariat), l'agent répond poliment qu'il ne peut pas traiter ce genre
+  de demande pour l'instant, et le résumé est quand même noté. Reconnue
+  seulement par son nom, la personne ne se voit répéter aucune
+  information sensible (montants, adresses, propos d'un collègue). Après
+  l'appel, le résumé entre dans le fil et « Traiter une réponse » est
+  lancée s'il y a une suite à donner. Un appel de prospection reste dans
+  les heures légales ; un appel de test vers un numéro qui a donné son
+  accord peut partir à toute heure.
 
-- [ ] **Une seule invocation pour traiter une réponse.** Aujourd'hui,
-  trois ou quatre invocations lisent le même message de prospect chacune
-  de leur côté : l'une le classe, l'autre cherche l'intention, une autre
-  cherche un rendez-vous. Il faut les remplacer par une seule invocation,
-  « Traiter une réponse ». Elle reçoit en entier le fil du prospect, sa
-  fiche, la fiche du business et la fiche produit, et rend trois choses :
-  la réaction du prospect, la réponse à envoyer (ou « pas de réponse »),
-  et si Julien doit intervenir. Elle repère aussi les demandes sur le
-  produit (bug, insatisfaction, idée) et les range dans la table des
-  demandes clients. La réponse part après le délai réglé pour le canal
-  (voir plus bas). Si Julien doit intervenir, ou si un garde-fou bloque
-  l'envoi, il reçoit un ticket avec le brouillon. Cette invocation a son
-  propre interrupteur, car elle sert aussi pendant la prospection légère.
-  Elle a besoin du fil de discussion.
+- [ ] **PR 4 — Le kit de test.** Une demi-fiche produit et un business
+  bidon en base, des invocations temporaires « Écrire le premier message »
+  et « Faire le premier appel », et un bouton dans Mission Control pour
+  lancer l'essai : Clem y tape ses coordonnées (jamais dans le dépôt, qui
+  est public), le bouton enregistre son accord pour l'appel de test, et
+  Serge lui pitche un projet bidon par e-mail et par téléphone. Clem
+  répond, appelle et écrit lui-même ; Serge doit répondre seul et savoir
+  qui il est.
 
-- [ ] **Une fiche produit détaillée pour chaque business.** Pour
-  répondre juste à une question sur le produit, l'invocation qui répond
-  doit tout savoir du produit. Aujourd'hui, la fiche d'un business n'a que
-  trois textes courts (description, observations, offre vendable), et
-  aucune fiche produit n'existe. Il faut une fiche produit par business, en
-  base : ce que fait le produit et pour qui, ce qu'il ne fait pas, le prix,
-  les délais habituels de livraison, comment on l'utilise, et une liste de
-  questions fréquentes avec leurs réponses. Elle est écrite par
-  l'invocation qui conçoit le produit (à l'étape 2 pour le POC, à l'étape 5
-  pour le vrai produit) et validée par Julien avec le plan ; il y en aura
-  peu. Elle est mise à jour à chaque nouvelle version du produit. On ne
-  fait jamais appel à l'invocation qui a construit le produit pour
-  répondre : elle ne garde aucun souvenir d'un appel à l'autre, tout doit
-  être dans la fiche. Quand Julien répond à un ticket sur une question
-  produit, sa réponse est ajoutée aux questions fréquentes : la fois
-  suivante, Serge répond seul.
+---
 
-- [ ] **Répondre prudemment aux questions de délais.** Les questions de
-  délais sont les plus difficiles à prévoir. On laisse le LLM répondre
-  seul, avec la fiche produit, mais son prompt contient trois consignes de
-  prudence : ne jamais promettre une date ou un délai qui n'est pas dans la
-  fiche ; ne jamais promettre une fonctionnalité qui n'existe pas (la
-  demande devient une demande client, étudiée pour une prochaine
-  version) ; en cas de doute, répondre sans s'engager, par exemple « je
-  vérifie et je reviens vers vous », et ouvrir un ticket.
+## Lot 8 bis — Julien dans la conversation
 
-- [ ] **Des tickets qu'on comprend sans suivre Serge.** Julien et Clem
-  ne regardent pas ce que fait Serge au quotidien : c'est tout l'intérêt.
-  Quand un ticket leur arrive, ils ne connaissent ni le business ni le
-  prospect. Aujourd'hui, un ticket de réponse ne contient que le brouillon
-  et une phrase de motif. Il faut que chaque ticket de conversation
-  contienne toujours, dans cet ordre : le business en trois lignes (nom, ce
-  qu'il vend, prix, où il en est) ; le prospect (nom, entreprise, où il en
-  est) ; le fil de la conversation, avec les derniers messages en entier ;
-  le brouillon de réponse proposé par Serge ; pourquoi Serge a besoin
-  d'aide et la question précise posée ; un lien vers la fiche du prospect
-  dans MC. La réponse donnée dans Discord repart dans la conversation.
-  Ouvrir un ticket est une capacité générale : le ticket reprend ce que
-  l'invocation a reçu et ce qu'elle a répondu, dans l'ordre réglé en base.
-  On n'écrit pas un modèle de ticket par invocation.
+Au lot 8, les réponses partent toutes seules (Q79). Ce lot ajoute ce qui
+fait attendre une réponse jusqu'à ce que Julien ou Clem ait répondu :
 
-- [ ] **Des délais de réponse réglables canal par canal.** Serge ne
-  répond pas à la seconde, pour paraître humain. Aujourd'hui, le délai est
-  un seul réglage pour tous les canaux. Il faut le mettre sur la fiche de
-  chaque canal, modifiable dans MC : délai minimum, délai maximum, heures
-  et jours ouvrés. Exemple : par e-mail entre 5 et 20 minutes, sur
-  LinkedIn entre 1 et 4 heures, par SMS tout de suite. On pourra ainsi
-  essayer différents réglages et voir ce qui marche le mieux.
-
-- [ ] **Un agent vocal qui sait à qui il parle.** Un appel ne passe pas
-  par la file des tâches : le standard téléphonique installé sur le
-  serveur décroche et confie l'appel à un programme vocal séparé, qui
-  parle en direct avec un modèle vocal et tourne en parallèle du reste. Il
-  n'y a donc rien à interrompre quand un appel arrive. Mais aujourd'hui,
-  l'agent vocal a le même prompt fixe pour tous les appels et ne sait rien
-  de celui qui appelle. Il faut qu'au décrochage, le numéro soit cherché en
-  base ; s'il est connu, l'agent reçoit la fiche du prospect, son fil, la
-  fiche du business et la fiche produit. S'il est inconnu, l'agent dit
-  « Bonjour, je suis Serge, en quoi puis-je vous aider ? », demande à qui
-  il parle, et cherche la fiche avec un tool (par nom, entreprise, e-mail
-  ou numéro). Si l'appelant propose quelque chose à Serge, comme un
-  partenariat, l'agent répond poliment qu'il ne peut pas traiter ce genre
-  de demande pour l'instant, et le résumé est quand même écrit au journal.
-  Quand la personne est reconnue seulement parce qu'elle a dit son nom, et
-  pas par son numéro, l'agent se sert de sa fiche pour comprendre, mais ne
-  répète aucune information sensible (montants, adresses, propos d'un
-  collègue) : n'importe qui peut prétendre être quelqu'un au téléphone.
-  Après l'appel, le résumé entre dans le fil du prospect, et « Traiter une
-  réponse » est lancée s'il y a une suite à donner, par exemple envoyer le
-  devis promis par e-mail. L'agent vocal suit la même règle que le reste :
-  son prompt, son modèle, ce qu'il reçoit au décrochage et ses tools sont
-  réglés en base, comme une invocation ; seul le programme qui transporte
-  la voix en direct est du code, et il ne sait rien de ce qu'on dit.
+- [ ] **« Besoin de Julien »** : « Traiter une réponse » dit aussi si
+  Julien doit intervenir, et pourquoi. Un oui ouvre un ticket et fait
+  attendre la tâche (`ask_julien_field`, et un statut « attend Julien »
+  sur les tâches). Un garde-fou qui bloque un envoi fait de même.
+- [ ] **Valider un brouillon avant l'envoi**, au début ou pour un business
+  sensible : un interrupteur par business, et la validation d'un lien par
+  ticket, à côté du passage à la main construit au lot 6 (bouton « Passer
+  à la suite » sur la fiche du lien, fonction `pass_waiting`) ; les deux
+  portes restent ouvertes (Q62).
+- [ ] **La réponse de Julien repart dans la conversation** : trois
+  boutons, « Envoyer le brouillon », « Envoyer ma réponse telle quelle »,
+  « Réécrire avec mes consignes ». Quand la question portait sur le
+  produit, sa réponse s'ajoute aux questions fréquentes de la fiche
+  produit : la fois suivante, Serge répond seul (Q50).
+- [ ] **Des tickets qu'on comprend sans suivre Serge.** Quand un ticket
+  arrive, Julien et Clem ne connaissent ni le business ni le prospect.
+  Chaque ticket de conversation contient, dans cet ordre : le business en
+  trois lignes (nom, ce qu'il vend, prix, où il en est) ; le prospect (nom,
+  entreprise, où il en est) ; le fil, avec les derniers messages en
+  entier ; le brouillon de Serge ; pourquoi il a besoin d'aide et la
+  question précise ; un lien vers la fiche du prospect dans Mission
+  Control (Q50). Ouvrir un ticket est une capacité générale : le ticket
+  reprend ce que l'invocation a reçu et ce qu'elle a répondu, dans l'ordre
+  réglé en base, jamais un modèle de ticket par invocation.
 
 ---
 
@@ -685,10 +693,13 @@ et Serge sait demander de l'aide quand il ne sait pas.
   le même mécanisme que la réponse à un prospect : on le fera en même
   temps que les conversations, ou juste après.
 
-- [ ] **Garder l'historique des réglages.** Pour l'instant, chaque
-  changement de réglage fait dans Mission Control (un prompt, une règle
-  d'écriture, un lien) est seulement noté au journal. Clem a décidé que
-  ça suffit pour commencer : on veut d'abord une petite version qui
-  marche. Plus tard, il faudra garder chaque ancienne version d'un
-  réglage, avec sa date et son auteur, et un bouton dans Mission Control
-  pour revenir à une version précédente.
+---
+
+## Boîte à idées
+
+Des fonctions marginales, à faire une fois tout le reste fini : Serge
+marche très bien sans elles (Q79).
+
+- **Une relance qui change de canal**, par exemple un e-mail, puis un
+  appel si le contact a un numéro. Au lot 8, une relance garde le canal du
+  premier message.

@@ -321,15 +321,18 @@ Notes :
   contesté).
 - Remplace la règle du TODO « deux lieux, deux lignes » et le JSON
   contact_reference_by_canal de la branche Clem.
-- Désabonnement (OPT_OUT) propre à la fiche, donc au business concerné :
-  une personne désabonnée du business A peut encore être contactée par le
-  business B.
+- Désabonnement : une personne qui se désabonne, par n'importe quel
+  business, n'est plus contactée sur aucun canal ni pour aucun business, et
+  un ticket prévient Julien et Clem (Q79).
 Corrigé le 1er octobre 2026 (Q73) : ce point disait « une ligne par
 personne », ce que le choix plus récent d'une fiche par personne dans un
 business remplace.
 Corrigé le 1er octobre 2026 (Q75) : le regroupement suit le code, plus
 récent (27 septembre, contre le 26 pour cette entrée), et le désabonnement
 n'est plus « global à la personne ».
+Corrigé le 7 octobre 2026 (Q79) : le désabonnement est de nouveau valable
+pour tous les business et tous les canaux, avec un ticket ; ce point disait
+« propre à la fiche, donc au business concerné ».
 
 ### Q18 — Organisation de la doc (validé)
 - README court (Serge, chaîne en 8 étapes, où lire la suite).
@@ -561,22 +564,30 @@ Le séquenceur fixe (supprimé par Clem, jamais branché) n'est pas recréé.
 ### Q38 — Circuit des réponses, priorités, délais (validé)
 - Une seule invocation « Traiter une réponse » : lit le fil complet du
   prospect, rend (1) le signal dans une liste fermée (intéressé, question,
-  objection, refus, désinscription, hors sujet), (2) la réponse à envoyer ou
+  objection, rendez-vous, refus, désinscription, absence, hors sujet ; Q79),
+  (2) la réponse à envoyer ou
   « pas de réponse », (3) « besoin de Julien : oui/non » + raison.
   Remplace classify_reply, reply_intent, review_other, extract_meeting.
-- Envoi automatique sauf « besoin de Julien » ou refus d'un garde-fou →
-  ticket Discord avec le brouillon (discussion possible).
+- Envoi automatique. Les tickets qui font attendre une réponse (« besoin de
+  Julien », brouillon à valider, réponse de Julien dans le ticket) viennent
+  au lot « Julien dans la conversation », après le lot 8 (Q79).
+  Corrigé le 7 octobre 2026 (Q79) : ce point disait « Envoi automatique
+  sauf « besoin de Julien » ou refus d'un garde-fou → ticket Discord avec
+  le brouillon (discussion possible). »
 - Circuit transverse (étapes 3 et 6), avec son propre coupe-circuit.
 - Priorité par invocation, réglable dans MC. Départ : 100 traiter une
   réponse / désinscription ; 80 relever boîtes et canaux entrants ; 50
   envois et relances ; 30 construction ; 10 écoute, veille, consolidation.
 - Relève des réponses toutes les 5 min (invocation technique programmée).
-- Délai de réponse « humain » : en heures ouvrées (ex. 8 h–20 h, lundi–
-  samedi) entre 5 et 20 min après réception (tirage au hasard) ; hors
-  heures : le lendemain entre 8 h et 9 h. Valeurs réglées canal par canal sur
-  la fiche du canal (Q52).
+- Délai de réponse : entre 5 et 20 minutes après réception (tirage au
+  hasard), à toute heure et tous les jours : Serge est une IA qui travaille
+  24 heures sur 24. Les valeurs se règlent canal par canal dans Mission
+  Control, et peuvent valoir 0 (réponse immédiate, pour les tests) (Q79).
   Corrigé le 1er octobre 2026 (Q74) : ce point disait
   « valeurs dans la policy ».
+  Corrigé le 7 octobre 2026 (Q79) : ce point disait « en heures ouvrées
+  (ex. 8 h–20 h, lundi–samedi) [...] ; hors heures : le lendemain entre
+  8 h et 9 h ».
 - Bugs constatés (corrigés au lot 2, Q49) :
   1. email.poll n'est programmé par personne → la boîte n'est jamais
      relevée automatiquement.
@@ -820,9 +831,11 @@ double envoi) ; MC ne peut pas écrire pendant un passage (jusqu'à
 
 ### Q52 — Délais de réponse par canal (validé)
 Le délai avant de répondre à un prospect se règle canal par canal dans
-MC, sur la fiche du canal : délai minimum, délai maximum, heures et jours
-ouvrés. Exemple : e-mail entre 5 et 20 minutes, LinkedIn entre 1 et
-4 heures, SMS tout de suite. Aujourd'hui c'est un seul réglage pour tous.
+MC : délai minimum et délai maximum, à toute heure (pas d'heures ni de
+jours ouvrés, Q79). Exemple : e-mail entre 5 et 20 minutes, LinkedIn entre
+1 et 4 heures, SMS tout de suite. Un délai à 0 répond tout de suite.
+Corrigé le 7 octobre 2026 (Q79) : ce point disait « délai minimum, délai
+maximum, heures et jours ouvrés », sur la fiche du canal.
 
 ### Q53 — L'agent vocal (validé)
 Un appel ne passe pas par la file : le standard téléphonique décroche et
@@ -1412,9 +1425,11 @@ même canal. Q64 disait « on travaille toujours sur `Clem` », alors que
 `docs/REPRISE_LOT7.md` était dans le même cas que celui du lot 6.
 Décidé :
 1. `docs/REPRISE_LOT7.md` est supprimé.
-2. Une personne désabonnée du business A peut encore être contactée par le
-   business B : le désabonnement est propre à la fiche. Le code est déjà
-   comme cela.
+2. Une personne désabonnée n'est plus contactée par aucun business, sur
+   aucun canal, et un ticket prévient Julien et Clem (Q79).
+   Corrigé le 7 octobre 2026 (Q79) : ce point disait « Une personne
+   désabonnée du business A peut encore être contactée par le business B :
+   le désabonnement est propre à la fiche. »
 3. Quand le code est plus récent qu'une réponse, on suit le code. Ici le
    code (27 septembre) est plus récent que Q17 (26 septembre) : le
    regroupement de Q17 est corrigé d'après lui.
@@ -1482,3 +1497,72 @@ Décidé :
    en ce sens.
 Arguments de Clem : c'était déjà le sens de sa réponse à Q68 (« mon propos
 a été déformé », « normalement c'était clair »).
+
+### Q79 — Lot 8 : les canaux de conversation, l'e-mail et la voix d'abord (validé par Clem, 7 octobre 2026)
+Constat : avant de commencer le lot 8, Claude a posé des questions sur son
+périmètre, l'e-mail, « Traiter une réponse », les délais, les relances, la
+voix et le test.
+Décidé :
+1. **Une architecture des canaux qui accueille facilement un nouveau
+   canal.** Les plus évidents sont la voix, l'e-mail et LinkedIn. LinkedIn
+   et les autres sites (Instagram, Facebook…) demanderont une machine
+   virtuelle pilotée par un LLM : ce sera plus tard (lot 12, « Web »).
+   Le lot 8 se concentre sur l'e-mail et la voix, dont le code existe
+   déjà en partie, et prépare le terrain pour les canaux à venir.
+2. **Un message reçu réveille le pipeline** pour répondre au contact.
+3. **Le découpage en PR** : (1) l'architecture des canaux, sans canal
+   réel (tables, code, réveil du pipeline à la réception) ; (2) le canal
+   e-mail, qui marche de bout en bout ; (3) le canal appel ; (4) une
+   demi-fiche produit et des invocations temporaires (« Écrire le premier
+   message », « Faire le premier appel ») pour que Clem teste tout depuis
+   Mission Control.
+4. **Le test** : Clem se fait pitcher un projet bidon par e-mail et par
+   appel, répond, et appelle ou écrit lui-même ; Serge doit répondre tout
+   seul et savoir qui il est. Ses coordonnées sont saisies dans Mission
+   Control, jamais dans le dépôt (public).
+5. **Les fiches produit** : pour les tests, des demi-fiches produit en
+   base, sans les relier encore à la conception des produits (lot 10).
+6. **Les canaux** : l'e-mail, puis l'agent vocal ; le SMS plus tard.
+7. **Envoi automatique** : les réponses partent sans ticket. Les tickets
+   qui font attendre (valider un brouillon, répondre à la place de Serge)
+   viennent dans un lot à part, après le lot 8.
+8. **La désinscription vaut partout** : une personne qui se désinscrit, par
+   n'importe quel business, n'est plus contactée sur aucun canal ni pour
+   aucun business. Un ticket prévient Julien et Clem, pour qu'ils voient ce
+   qui se passe et débloquent un cas rare. Serge ne lui répond rien.
+   Q17 et Q75 sont corrigées.
+9. **Les réactions d'un message reçu** : intéressé, question, objection,
+   rendez-vous, refus, désinscription, absence, hors sujet. Rendez-vous :
+   Serge confirme et prévoit un appel. Refus : il remercie, puis plus rien
+   pour ce business. Désinscription : silence. Absence (réponse
+   automatique) et hors sujet : pas de réponse ; après une absence, la
+   relance continue.
+10. **Délai de réponse** : entre 5 et 20 minutes, à toute heure et tous les
+    jours, réglable dans Mission Control, et 0 possible pour les tests.
+    Q38 et Q52 sont corrigées.
+11. **Les relances, quel que soit le canal**, réglées en base : la
+    première 3 jours après le premier message, la seconde 7 jours après la
+    première, deux au plus ; une réponse les arrête ; les délais se règlent
+    en minutes pour les tests. Une relance garde le canal du premier
+    message (changer de canal va dans la boîte à idées du TODO).
+12. **Ne jamais agir deux fois** : chaque canal a sa fonction qui confirme
+    un envoi (l'e-mail est cherché dans les messages envoyés ; l'appel a
+    son journal : joint ou non, durée). On fait confiance à ces
+    vérifications : pas de bouton dans Mission Control.
+13. **L'appel de test** : le bouton d'essai enregistre l'accord de Clem
+    pour son numéro ; un appel de test vers un numéro qui a donné son
+    accord peut partir à toute heure ; un appel de prospection reste dans
+    les heures légales.
+14. **Se désinscrire par e-mail** : chaque e-mail finit par une phrase du
+    type « Répondez STOP pour ne plus être contacté », réglable dans les
+    textes de la page Pipeline ; cette réponse est une désinscription.
+15. **Un message d'un inconnu** (aucun contact connu, aucun de nos fils)
+    n'est pas traité : il apparaît dans Mission Control, dans les messages
+    non rattachés (Q37, gardée).
+16. **Une boîte à idées** dans le TODO, pour les fonctions marginales à
+    faire une fois tout le reste fini.
+Arguments de Clem : Serge est une IA qui travaille 24 heures sur 24, il ne
+faut pas l'imiter avec des heures ouvrées ; une personne qui ne veut plus
+être contactée par Serge ne le veut plus pour aucun business ; un canal par
+machine virtuelle ouvrira n'importe quel site, mais plus tard ; l'e-mail et
+la voix existent déjà en partie dans le code.
