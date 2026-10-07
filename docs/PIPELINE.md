@@ -184,10 +184,10 @@ Le runner tourne en continu, en deux copies, une par file
 - À chaque tour, les tickets dont le délai est passé sont expirés : leur
   choix par défaut s'applique.
 
-**Pas encore fait** (lot 8) : une tâche qui agit à l'extérieur (envoyer un
-e-mail, rembourser) enregistrera « en cours » avant d'agir et « fait »
-après, pour ne jamais agir deux fois. Aujourd'hui, aucune capacité n'agit
-encore à l'extérieur.
+Une capacité qui agit à l'extérieur (aujourd'hui : envoyer un message)
+enregistre « en cours » avant d'agir et « fait » après, pendant la tâche,
+pour ne jamais agir deux fois : reprise après un arrêt, elle demande
+d'abord au canal si son message est parti (décision Q79).
 
 Les appels téléphoniques sont à part : le standard téléphonique décroche et
 confie l'appel à un programme vocal séparé, qui parle en direct et tourne
@@ -214,7 +214,10 @@ une fois par table, les mêmes pour toutes les invocations (voir
 Les **liens** entre invocations sont aussi en base : un lien dit
 « quand cette invocation a produit tel résultat, lance celle-ci, avec ces
 données en paramètre ». Par exemple, chaque business choisi à l'étape 1
-lance la conception de son POC, avec l'identifiant du business. Les
+lance la conception de son POC, avec l'identifiant du business. Un lien
+peut avoir une condition (« seulement si la réaction est
+`désinscription` ») et un délai tiré entre deux réglages (la réponse à un
+e-mail part entre 5 et 20 minutes plus tard). Les
 **déclencheurs** sont en base eux aussi : « quand un message arrive d'un
 prospect, lance "Traiter une réponse" pour ce prospect ». Plus tard, le bac
 à sable (pour tester du code, naviguer sur le web, créer des comptes), les
@@ -311,7 +314,9 @@ peut discuter, les décisions suivantes :
 - les leçons proposées par la consolidation, à l'étape 7 ; sans réponse
   sous 48 heures, elles sont acceptées.
 
-Serge ouvre aussi un ticket quand il ne sait pas répondre à un prospect.
+Après le lot 8, Serge ouvrira aussi un ticket quand il ne saura pas
+répondre à un prospect (lot « Julien dans la conversation » ; d'ici là,
+les réponses partent seules, décision Q79).
 Ce ticket doit être compréhensible par quelqu'un qui ne suit pas Serge : il
 contient le business en trois lignes, le prospect, le fil de la
 conversation, le brouillon de Serge et la question précise posée.
@@ -327,18 +332,29 @@ Chaque prospect a un fil de discussion unique, tous canaux confondus, qui
 garde les messages envoyés par Serge et les réponses reçues. Une seule
 invocation, « Traiter une réponse », lit ce fil avec la fiche du prospect,
 la fiche du business et la fiche produit, puis rend la réaction du
-prospect, la réponse à envoyer (ou « pas de réponse »), et s'il faut
-Julien. La règle la plus importante : Serge ne relance jamais quelqu'un qui
-a déjà répondu, et il le vérifie au moment même de l'envoi.
+prospect (question, refus, désinscription…), la réponse à envoyer (ou
+rien) et les demandes sur le produit. La règle la plus importante : Serge
+ne relance jamais quelqu'un qui a déjà répondu, et il le vérifie au moment
+même de l'envoi.
 
-Serge ne répond pas à la seconde, pour paraître humain. Le délai se règle
-canal par canal dans Mission Control : par exemple entre 5 et 20 minutes
-par e-mail pendant les heures de bureau, et le lendemain matin en dehors.
-La relève de la boîte mail toutes les 5 minutes est débranchée depuis le
-lot 6 : elle reviendra au lot 8 comme un déclencheur « toutes les
-5 minutes » en base, avec la capacité « relever une boîte ».
+Le circuit est décrit en base (lot 8, décision Q79) :
 
-Le détail de ce chantier est dans le [`TODO.md`](../TODO.md), lot 8.
+- toutes les 2 minutes, chaque canal qui se relève (l'e-mail) est relevé ;
+  un message reçu est rattaché à son contact par le fil, sinon par son
+  adresse. Le message d'un inconnu n'est pas traité : il apparaît dans
+  Mission Control (page Système) ;
+- un message rattaché lance « Traiter une réponse », une seule tâche en
+  attente par contact ;
+- la réponse part entre 5 et 20 minutes plus tard, à toute heure et tous
+  les jours (réglé par canal sur la page Policy, 0 pour les tests) ;
+- toutes les 15 minutes, « Préparer les relances » cherche qui n'a pas
+  répondu : une relance 3 jours après le premier message, une autre
+  7 jours après, sur le même canal ;
+- une désinscription bloque la personne partout, sur tous les canaux et
+  pour tous les business, et un ticket prévient Julien et Clem.
+
+Le canal e-mail et le canal appel se branchent ensuite (lot 8, PR 2 et 3).
+Le détail est dans [`LOT8_CONCEPTION.md`](LOT8_CONCEPTION.md).
 
 ---
 

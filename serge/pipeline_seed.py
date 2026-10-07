@@ -35,6 +35,7 @@ from serge.interpreter.rules import table_columns
 from serge.pipeline_seed_flow import seed_deleted, seed_links, seed_triggers
 from serge.seed_base import (
     PipelineSeedError,
+    condition_columns,
     exists,
     insert,
     list_of,
@@ -231,6 +232,9 @@ def _seed_writes(
                 )
             parent_id = write_ids[parent]
         key = write.get('key') or {}
+        cond = condition_columns(
+            write.get('condition'), f'{ident}.writes[{position}]'
+        )
         write_id = insert(
             conn,
             'invocation_writes',
@@ -244,6 +248,9 @@ def _seed_writes(
             key_source=str(key.get('source', '')),
             key_value=str(key.get('value', '')),
             max_rows=str(write.get('max_rows', '')),
+            condition_field=cond[0],
+            condition_op=cond[1],
+            condition_value=cond[2],
         )
         write_ids.append(write_id)
         seed_params(
@@ -277,6 +284,7 @@ def _seed_invocation(conn: sqlite3.Connection, inv: Mapping[str, Any]) -> None:
         gets_serge_intro=int(bool(inv.get('gets_serge_intro', False))),
         default_max_rows=int(inv.get('default_max_rows', 50)),
         max_tool_turns=int(inv.get('max_tool_turns', 12)),
+        single_pending_param=str(inv.get('single_pending', '')),
         capability_id=str(inv.get('capability', '')),
         origin='code',
         updated_by='pipeline.yaml',

@@ -349,9 +349,9 @@ function afficher(main, payload, sig, store) {
     })),
   ));
   zone('capacites').replaceChildren(tableau(
-    ['Capacité', 'Id', 'Présente dans le code', 'Outils', 'Code'],
+    ['Capacité', 'Id', 'Présente dans le code', 'Agit hors de Serge', 'Outils', 'Code'],
     (payload.capacites || []).map((c) => ({
-      cellules: [c.titre, c.id, oui(c.disponible), c.outils, c.code],
+      cellules: [c.titre, c.id, oui(c.disponible), oui(c.agit_dehors), c.outils, c.code],
     })),
   ));
   zone('tables').replaceChildren(tableau(

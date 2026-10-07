@@ -280,3 +280,25 @@ def cancel_tasks_on_change(
             )
             total += cursor.rowcount
     return total
+
+
+def condition_met(value: Any, op: str, expected: str) -> bool:
+    """Une condition d'un lien ou d'une écriture est-elle remplie ?
+
+    ``op`` : ``=`` (égal à ``expected``), ``!=`` (différent), ``non_vide``,
+    ou vide (pas de condition). Exemple : ``condition_met('refus', '=',
+    'refus')`` est vrai ; ``condition_met('', 'non_vide', '')`` est faux.
+
+    Raises:
+        ValueError: Opérateur inconnu.
+    """
+    if not op:
+        return True
+    text = '' if value is None else str(value)
+    if op == '=':
+        return text == expected
+    if op == '!=':
+        return text != expected
+    if op == 'non_vide':
+        return bool(text.strip())
+    raise ValueError(f'condition inconnue : {op}')

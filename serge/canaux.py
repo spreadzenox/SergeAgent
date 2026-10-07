@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
-"""Les canaux par lesquels Serge écrit à un tiers (pas à Julien).
+"""Le catalogue des canaux : une ligne de ``canaux`` par canal connu.
 
-Un canal a sa fiche dans Mission Control. Le code d'envoi existe, mais il
-n'est pas encore une capacité du pipeline : il le deviendra au lot 8
-(conversations), avec les outils d'envoi et de relève de chaque canal.
+Un canal est **branché** quand son adaptateur existe dans le code
+(``serge/channels/base.py``, ``ADAPTERS``) : la ligne le dit
+(``connected``), avec la sorte d'adresse qu'il utilise et s'il se relève.
+Un canal décrit ici sans adaptateur est seulement **prévu** : sa fiche
+dans Mission Control dit ce qui manque. Le catalogue est rempli au
+démarrage ; la dernière relève (``polled_at``) est gardée.
 """
 
 from __future__ import annotations
@@ -11,62 +14,71 @@ from __future__ import annotations
 import sqlite3
 from typing import Any
 
-ETATS = frozenset({'branche', 'prevu'})
+from serge.channels.base import ADAPTERS
 
-# id, titre, doc, chemin du code, état (l'empreinte est calculée au boot)
+# Les canaux prévus, pas encore branchés : id, titre, texte, sorte
+# d'adresse, chemin du code. Un canal branché est décrit par son
+# adaptateur.
 SEED: tuple[tuple[str, str, str, str, str], ...] = (
     (
         'email',
         'E-mail',
-        'Sortie texte vers une boîte, par Gog ou SMTP, après les'
-        ' garde-fous et le quota. Pas encore une capacité du pipeline.',
+        'Écrire et lire des e-mails, par Gmail (outil gog) ou une boîte'
+        ' SMTP/IMAP. Branché au lot 8 (PR 2).',
+        'email',
         'serge/channels/email_smtp.py',
-        'prevu',
     ),
     (
         'voice',
         'Voix',
-        'Appel sortant : le broker décide, le pont compose. Jamais d’appel'
-        ' hors broker. Pas encore une capacité du pipeline.',
+        'Appel sortant et entrant : le pont compose après les garde-fous,'
+        ' un agent vocal parle en direct. Branché au lot 8 (PR 3).',
+        'phone',
         'serge/voice/bridge.py',
-        'prevu',
     ),
 )
 
 
-class CanalError(ValueError):
-    """Canal invalide."""
-
-
 def ensure_canaux(conn: sqlite3.Connection) -> None:
-    """Pose les canaux. Titre et texte seulement à la création.
+    """Remplit le catalogue : les canaux branchés, puis les canaux prévus.
+
+    Le titre et le texte ne sont posés qu'à la création ; l'état, la sorte
+    d'adresse et le fait de se relever suivent le code.
 
     Args:
         conn: Connexion à la base (commit par l'appelant).
     """
-    ids = {row[0] for row in SEED}
-    for ident, titre, doc, path, etat in SEED:
-        if etat not in ETATS:
-            raise CanalError(f'état canal inconnu : {etat}')
-        row = conn.execute(
+    known = {
+        a.id: (a.title, a.doc, a.address_channel, a.code_path, a.poll)
+        for a in ADAPTERS.values()
+    }
+    for ident, titre, doc, address, path in SEED:
+        known.setdefault(ident, (titre, doc, address, path, None))
+    for ident, (titre, doc, address, path, poll) in known.items():
+        branche = ident in ADAPTERS
+        values = (
+            path,
+            'branche' if branche else 'prevu',
+            address,
+            int(branche),
+            int(poll is not None),
+        )
+        if conn.execute(
             'SELECT 1 FROM canaux WHERE id=?', (ident,)
-        ).fetchone()
-        if row:
+        ).fetchone():
             conn.execute(
-                'UPDATE canaux SET code_path=?, etat=? WHERE id=?',
-                (path, etat, ident),
+                'UPDATE canaux SET code_path=?, etat=?, address_channel=?,'
+                ' connected=?, polls=? WHERE id=?',
+                (*values, ident),
             )
             continue
         conn.execute(
-            'INSERT INTO canaux(id, titre, doc_md, code_path,'
-            ' etat) VALUES(?,?,?,?,?)',
-            (ident, titre, doc, path, etat),
+            'INSERT INTO canaux(id, titre, doc_md, code_path, etat,'
+            ' address_channel, connected, polls) VALUES(?,?,?,?,?,?,?,?)',
+            (ident, titre, doc, *values),
         )
-    holes = ','.join('?' * len(ids))
-    conn.execute(
-        f'DELETE FROM canaux WHERE id NOT IN ({holes})',
-        tuple(ids),
-    )
+    holes = ','.join('?' * len(known))
+    conn.execute(f'DELETE FROM canaux WHERE id NOT IN ({holes})', tuple(known))
 
 
 def canal_par_id(
@@ -117,7 +129,8 @@ def fiche_canal(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
         cadres.append(
             {
                 'titre': 'État',
-                'todo': 'Pas encore une capacité du pipeline (lot 8).',
+                'todo': 'Pas encore branché : son adaptateur n’existe pas'
+                ' dans le code (serge/channels/).',
             }
         )
     return {

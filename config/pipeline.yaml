@@ -278,6 +278,73 @@ tools:
       params:
         - {name: limit, type: integer, default: '500', description: Nombre maximal de business.}
 
+  # --- Les conversations (lot 8, décision Q79) ---
+  - id: fil_du_contact
+    title: Le fil du contact
+    doc: >-
+      Tout ce qui s'est dit avec le contact, tous canaux confondus, du plus
+      ancien au plus récent : les messages partis et les messages reçus.
+    capability: contact_thread
+  - id: fiche_contact
+    title: La fiche du contact
+    doc: Le nom du contact et son étape (engagé, intention d'achat…).
+    capability: db_read
+    read:
+      tables: [contacts]
+      columns:
+        - {table: contacts, name: id}
+        - {table: contacts, name: display}
+        - {table: contacts, name: funnel_state}
+      filters:
+        - {id: contact, table: contacts, column: id, param: contact_id}
+      params:
+        - {name: contact_id, required: true, description: Le numéro du contact.}
+  - id: fiche_business
+    title: La fiche du business
+    doc: Ce que vend le business, à qui, et l'offre qu'on peut vendre tout de suite.
+    capability: db_read
+    read:
+      tables: [ventures]
+      columns:
+        - {table: ventures, name: name}
+        - {table: ventures, name: description}
+        - {table: ventures, name: sellable_offer}
+      filters:
+        - {id: business, table: ventures, column: id, param: venture_id}
+      params:
+        - {name: venture_id, required: true, description: Le numéro du business.}
+  - id: fiche_produit
+    title: La fiche produit
+    doc: >-
+      Ce que fait le produit et pour qui, ce qu'il ne fait pas, son prix, ses
+      délais habituels et comment on l'utilise.
+    capability: db_read
+    read:
+      tables: [product_sheets]
+      columns:
+        - {table: product_sheets, name: summary}
+        - {table: product_sheets, name: limits}
+        - {table: product_sheets, name: price}
+        - {table: product_sheets, name: delays}
+        - {table: product_sheets, name: usage}
+      filters:
+        - {id: business, table: product_sheets, column: venture_id, param: venture_id}
+      params:
+        - {name: venture_id, required: true, description: Le numéro du business.}
+  - id: questions_produit
+    title: Les questions fréquentes sur le produit
+    doc: Les questions qu'on pose souvent sur le produit, et leurs réponses.
+    capability: db_read
+    read:
+      tables: [product_faq]
+      columns:
+        - {table: product_faq, name: question}
+        - {table: product_faq, name: answer}
+      filters:
+        - {id: business, table: product_faq, column: venture_id, param: venture_id}
+      params:
+        - {name: venture_id, required: true, description: Le numéro du business.}
+
 # Ce qu'une invocation a le droit d'écrire, et les protections des tables.
 # Ces règles valent pour toutes les invocations : elles sont réglées sur la
 # table, pas sur l'invocation. Sur une instance existante, une colonne ou
@@ -340,6 +407,58 @@ writable_tables:
       - {name: venture_id, description: Le business.}
       - {name: doc_id, description: La page.}
       - {name: cycle_id, description: Le cycle.}
+  # --- Les conversations (lot 8) ---
+  - table: inbound_events
+    insert: true
+    update: true
+    description: Les messages reçus des contacts.
+    columns:
+      - {name: channel, description: Le canal.}
+      - {name: contact_id, description: 'Le contact, s''il est rattaché.'}
+      - {name: venture_id, description: Le business du contact.}
+      - {name: native_type, description: La sorte de message chez le canal.}
+      - {name: address, description: L'adresse de l'expéditeur.}
+      - {name: subject, description: L'objet.}
+      - {name: body, description: Le texte.}
+      - {name: message_ref, description: 'Sa référence, pour lui répondre dans le même fil.'}
+      - {name: external_ref, description: Sa référence chez le canal (jamais écrit deux fois).}
+      - {name: status, description: 'Rattaché, non rattaché, ou ignoré (une absence).'}
+      - {name: reaction, description: 'Ce que fait le message (question, refus…).'}
+      - {name: received_at, description: Quand Serge l'a reçu.}
+  - table: touches
+    insert: true
+    update: true
+    description: Les messages que Serge envoie.
+    columns:
+      - {name: contact_id, description: Le contact.}
+      - {name: venture_id, description: Le business.}
+      - {name: channel, description: Le canal.}
+      - {name: address, description: L'adresse du destinataire.}
+      - {name: kind, description: 'Premier message, réponse ou relance.'}
+      - {name: status, description: 'À rédiger, à envoyer, envoyé, annulé…'}
+      - {name: subject, description: L'objet.}
+      - {name: body, description: Le texte.}
+      - {name: reply_to, description: Le message reçu auquel il répond.}
+      - {name: followup_of, description: L'envoi qu'il relance.}
+  - table: canaux
+    update: true
+    description: Les canaux de Serge.
+    columns:
+      - {name: polled_at, description: La dernière relève réussie.}
+  - table: contacts
+    update: true
+    description: Les contacts des business.
+    columns:
+      - {name: funnel_state, description: L'étape du contact.}
+  - table: customer_requests
+    insert: true
+    description: Les demandes des contacts sur le produit.
+    columns:
+      - {name: venture_id, description: Le business.}
+      - {name: contact_id, description: Le contact.}
+      - {name: inbound_id, description: Le message d'où elle vient.}
+      - {name: kind, description: 'Bug, insatisfaction ou idée.'}
+      - {name: text, description: La demande.}
 
 # Les changements d'étiquette et de statut permis. Un business naît
 # candidat, et seul un candidat peut être choisi : un business déjà en test
@@ -356,6 +475,28 @@ status_transitions:
   - {table: listen_docs, column: label, from: '', to: preuve}
   - {table: listen_docs, column: label, from: besoin_nouveau, to: preuve}
   - {table: listen_docs, column: label, from: bruit, to: preuve}
+  # Un message reçu est rattaché ou non ; une absence (réponse
+  # automatique) est ignorée : elle n'arrête pas les relances.
+  - {table: inbound_events, column: status, from: '', to: attached}
+  - {table: inbound_events, column: status, from: '', to: unattached}
+  - {table: inbound_events, column: status, from: attached, to: ignored}
+  # Un envoi naît à rédiger (une relance) ou à envoyer ; seul un envoi à
+  # rédiger passe à envoyer : une relance annulée entre-temps ne repart pas.
+  # Ensuite, seule « Envoyer un message » change son statut.
+  - {table: touches, column: status, from: '', to: pending}
+  - {table: touches, column: status, from: '', to: to_write}
+  - {table: touches, column: status, from: to_write, to: pending}
+  # L'étape d'un contact n'avance que dans un sens, d'après sa réponse.
+  - {table: contacts, column: funnel_state, from: CONTACTING, to: ENGAGED}
+  - {table: contacts, column: funnel_state, from: CONTACTING, to: INTENT}
+  - {table: contacts, column: funnel_state, from: CONTACTING, to: MEETING}
+  - {table: contacts, column: funnel_state, from: CONTACTING, to: REJECTED}
+  - {table: contacts, column: funnel_state, from: ENGAGED, to: INTENT}
+  - {table: contacts, column: funnel_state, from: ENGAGED, to: MEETING}
+  - {table: contacts, column: funnel_state, from: ENGAGED, to: REJECTED}
+  - {table: contacts, column: funnel_state, from: INTENT, to: MEETING}
+  - {table: contacts, column: funnel_state, from: INTENT, to: REJECTED}
+  - {table: contacts, column: funnel_state, from: MEETING, to: REJECTED}
 
 # Les quotas : le code d'écriture refuse une ligne de trop, quelle que soit
 # l'invocation, et un bouton ne lance rien si son quota est plein. Les
@@ -459,6 +600,75 @@ table_views:
       - {name: title, description: Son titre.}
       - {name: active, description: Suivi (1) ou coupé (0).}
       - {name: last_read_at, description: Sa dernière lecture.}
+  - table: contacts
+    title: Les contacts
+    description: Les personnes que Serge contacte pour un business, avec leur étape.
+    order: created_at
+    columns:
+      - {name: id, short: true, description: Le numéro du contact.}
+      - {name: display, short: true, description: Son nom.}
+      - {name: funnel_state, short: true, description: 'Son étape (engagé, intention d''achat…).'}
+      - {name: venture_id, description: Son business.}
+      - {name: created_at, description: Sa date de création.}
+  - table: touches
+    title: Les envois
+    description: Les messages que Serge envoie ou va envoyer, avec leur statut.
+    order: created_at
+    columns:
+      - {name: id, short: true, description: Le numéro de l'envoi.}
+      - {name: contact_id, short: true, description: Le contact.}
+      - {name: kind, short: true, description: 'Premier message, réponse ou relance.'}
+      - {name: status, short: true, description: Son statut.}
+      - {name: channel, description: Le canal.}
+      - {name: subject, description: L'objet.}
+      - {name: body, description: Le texte.}
+      - {name: sent_at, description: Quand il est parti.}
+      - {name: created_at, description: Quand il a été écrit.}
+  - table: inbound_events
+    title: Les messages reçus
+    description: Les messages des contacts, rattachés ou non, avec leur réaction.
+    order: received_at
+    columns:
+      - {name: id, short: true, description: Le numéro du message.}
+      - {name: contact_id, short: true, description: Le contact.}
+      - {name: reaction, short: true, description: Ce que fait le message.}
+      - {name: channel, description: Le canal.}
+      - {name: subject, description: L'objet.}
+      - {name: body, description: Le texte.}
+      - {name: status, description: 'Rattaché, non rattaché ou ignoré.'}
+      - {name: received_at, description: Quand Serge l'a reçu.}
+  - table: product_sheets
+    title: Les fiches produit
+    description: Pour chaque business, ce que fait le produit, ses limites, son prix.
+    order: updated_at
+    columns:
+      - {name: id, description: Le numéro de la fiche.}
+      - {name: venture_id, short: true, description: Le business.}
+      - {name: summary, short: true, description: Ce que fait le produit et pour qui.}
+      - {name: limits, description: Ce qu'il ne fait pas.}
+      - {name: price, description: Son prix.}
+      - {name: delays, description: Ses délais habituels.}
+      - {name: usage, description: Comment on l'utilise.}
+  - table: product_faq
+    title: Les questions fréquentes
+    description: Les questions qu'on pose souvent sur un produit, et leurs réponses.
+    order: created_at
+    columns:
+      - {name: id, description: Le numéro de la question.}
+      - {name: venture_id, short: true, description: Le business.}
+      - {name: question, short: true, description: La question.}
+      - {name: answer, description: La réponse.}
+  - table: customer_requests
+    title: Les demandes sur le produit
+    description: Les bugs, insatisfactions et idées que les contacts ont exprimés.
+    order: created_at
+    columns:
+      - {name: id, description: Le numéro de la demande.}
+      - {name: kind, short: true, description: 'Bug, insatisfaction ou idée.'}
+      - {name: text, short: true, description: La demande.}
+      - {name: contact_id, description: Le contact.}
+      - {name: venture_id, description: Le business.}
+      - {name: created_at, description: Sa date.}
 
 # --- Étape 1 : la pré-prospection (lot 7, décision Q65) -------------------
 # La veille lit les flux toutes les 6 heures. Le cycle se lance à la main
@@ -1051,6 +1261,319 @@ invocations:
         for_each: rows
         key: {column: venture_id, source: field, value: rows.id}
 
+# --- Les conversations (lot 8, décision Q79) -------------------------------
+# Un message reçu réveille « Traiter une réponse », qui écrit la réponse ;
+# « Envoyer un message » la fait partir après le délai du canal. Les
+# relances sont cherchées toutes les 15 minutes. Une désinscription bloque
+# partout et prévient Julien et Clem. Détail : docs/LOT8_CONCEPTION.md.
+  - id: relever_messages
+    title: Relever les messages
+    role: >-
+      Lit les messages reçus sur un canal depuis sa dernière relève, les
+      rattache à leur contact (par le fil, sinon par l'adresse) et les
+      écrit dans les messages reçus. Sans LLM.
+    type: capability
+    capability: receive_messages
+    queue: conversations
+    priority: 80
+    params:
+      channel: {source: task, value: channel}
+    writes:
+      - table: inbound_events
+        operation: insert
+        for_each: rows
+        values:
+          channel: {source: task, value: channel}
+          contact_id: {source: field, value: rows.contact_id}
+          venture_id: {source: field, value: rows.venture_id}
+          native_type: {source: field, value: rows.native_type}
+          address: {source: field, value: rows.address}
+          subject: {source: field, value: rows.subject}
+          body: {source: field, value: rows.body}
+          message_ref: {source: field, value: rows.message_ref}
+          external_ref: {source: field, value: rows.external_ref}
+          status: {source: field, value: rows.status}
+          received_at: {source: now}
+      - table: canaux
+        operation: update
+        key: {column: id, source: task, value: channel}
+        values:
+          polled_at: {source: now}
+
+  - id: traiter_reponse
+    title: Traiter une réponse
+    role: >-
+      Lit le message d'un contact avec tout son fil, dit ce qu'il fait
+      (question, refus, désinscription…), écrit la réponse de Serge et note
+      les demandes sur le produit. Une seule tâche attend par contact :
+      deux messages coup sur coup n'ont qu'une réponse.
+    type: llm
+    model_tier: mid
+    queue: conversations
+    priority: 100
+    gets_serge_intro: true
+    max_tool_turns: 3
+    single_pending: contact_id
+    compare:
+      inbound_events: false
+      touches: false
+      contacts: false
+      customer_requests: false
+    prompt: |
+      Tu réponds, au nom de Serge, à un contact qui vient d'écrire à propos
+      d'un business que Serge teste.
+
+      Tu reçois le fil du contact (tout ce qui s'est dit, tous canaux
+      confondus, du plus ancien au plus récent), sa fiche, la fiche du
+      business, la fiche produit et ses questions fréquentes. Tu réponds au
+      dernier message du fil ; si le contact a écrit plusieurs fois depuis
+      la dernière réponse de Serge, réponds à tout d'un coup.
+
+      Rends :
+      - reaction : ce que fait le message, l'une de : intéressé, question,
+        objection, rendez-vous, refus, désinscription, absence, hors sujet.
+        « désinscription » : la personne demande à ne plus être contactée
+        (« STOP », « ne m'écrivez plus »). « absence » : une réponse
+        automatique (congés, absence).
+      - reply : le texte de ta réponse, prêt à partir, sans objet ni
+        signature d'humain. Laisse-le vide pour une désinscription, une
+        absence ou un message hors sujet : Serge ne répond rien.
+      - requests : les demandes sur le produit que contient le message, s'il
+        y en a : un bug, une insatisfaction, une idée (une fonctionnalité
+        qui manque).
+
+      Règles :
+      - Un refus : remercie poliment, sans insister.
+      - Un rendez-vous : confirme-le.
+      - Ne promets jamais une date, un prix ou une fonctionnalité absents de
+        la fiche produit. Une fonctionnalité qui manque devient une demande
+        « idée ». En cas de doute, réponds sans t'engager.
+      - Écris dans la langue du contact, simplement et brièvement.
+      - Serge assume d'être un agent IA : ne prétends jamais être un humain.
+    tools:
+      - tool: fil_du_contact
+        mode: given
+        label: Le fil du contact
+        params:
+          contact_id: {source: task, value: contact_id}
+      - tool: fiche_contact
+        mode: given
+        label: La fiche du contact
+        params:
+          contact_id: {source: task, value: contact_id}
+      - tool: fiche_business
+        mode: given
+        label: La fiche du business
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: fiche_produit
+        mode: given
+        label: La fiche produit
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: questions_produit
+        mode: given
+        label: Les questions fréquentes
+        params:
+          venture_id: {source: task, value: venture_id}
+    output:
+      - {path: reaction, type: choice, choices: [intéressé, question, objection, rendez-vous, refus, désinscription, absence, hors sujet], description: Ce que fait le message.}
+      - {path: reply, type: text, description: 'Le texte de la réponse, ou vide pour ne rien répondre.'}
+      - {path: requests, type: list, required: false, description: Les demandes sur le produit.}
+      - {path: requests.kind, type: choice, choices: [bug, insatisfaction, idée], description: La sorte de demande.}
+      - {path: requests.text, type: text, description: 'La demande, en une phrase.'}
+    writes:
+      - table: inbound_events
+        operation: update
+        key: {column: id, source: task, value: inbound_id}
+        values:
+          reaction: {source: field, value: reaction}
+      - table: inbound_events
+        operation: update
+        key: {column: id, source: task, value: inbound_id}
+        condition: {field: reaction, op: '=', value: absence}
+        values:
+          status: {source: fixed, value: ignored}
+      - table: touches
+        operation: insert
+        condition: {field: reply, op: non_vide}
+        values:
+          contact_id: {source: task, value: contact_id}
+          venture_id: {source: task, value: venture_id}
+          channel: {source: task, value: channel}
+          address: {source: task, value: address}
+          subject: {source: task, value: subject}
+          body: {source: field, value: reply}
+          kind: {source: fixed, value: reply}
+          status: {source: fixed, value: pending}
+          reply_to: {source: task, value: inbound_id}
+      - table: contacts
+        operation: update
+        key: {column: id, source: task, value: contact_id}
+        condition: {field: reaction, op: '=', value: question}
+        values:
+          funnel_state: {source: fixed, value: ENGAGED}
+      - table: contacts
+        operation: update
+        key: {column: id, source: task, value: contact_id}
+        condition: {field: reaction, op: '=', value: objection}
+        values:
+          funnel_state: {source: fixed, value: ENGAGED}
+      - table: contacts
+        operation: update
+        key: {column: id, source: task, value: contact_id}
+        condition: {field: reaction, op: '=', value: intéressé}
+        values:
+          funnel_state: {source: fixed, value: INTENT}
+      - table: contacts
+        operation: update
+        key: {column: id, source: task, value: contact_id}
+        condition: {field: reaction, op: '=', value: rendez-vous}
+        values:
+          funnel_state: {source: fixed, value: MEETING}
+      - table: contacts
+        operation: update
+        key: {column: id, source: task, value: contact_id}
+        condition: {field: reaction, op: '=', value: refus}
+        values:
+          funnel_state: {source: fixed, value: REJECTED}
+      - table: customer_requests
+        operation: insert
+        for_each: requests
+        values:
+          venture_id: {source: task, value: venture_id}
+          contact_id: {source: task, value: contact_id}
+          inbound_id: {source: task, value: inbound_id}
+          kind: {source: field, value: requests.kind}
+          text: {source: field, value: requests.text}
+
+  - id: envoyer_message
+    title: Envoyer un message
+    role: >-
+      Fait partir un envoi par son canal, après les garde-fous, sans jamais
+      l'envoyer deux fois. Annule un envoi devenu inutile (le contact a
+      écrit depuis, ou s'est désinscrit). Sans LLM.
+    type: capability
+    capability: send_message
+    queue: conversations
+    priority: 50
+    params:
+      touch_id: {source: task, value: touch_id}
+
+  - id: preparer_relances
+    title: Préparer les relances
+    role: >-
+      Cherche les contacts qui n'ont pas répondu au dernier message de Serge
+      depuis le délai réglé, et écrit pour chacun une relance à rédiger, sur
+      le canal du premier message. Sans LLM.
+    type: capability
+    capability: due_followups
+    queue: conversations
+    priority: 50
+    settings:
+      premiere_relance_minutes: {value: 4320, min: 0, max: 43200, policy: true, description: Les minutes entre le premier message et la première relance (4320 = 3 jours).}
+      relance_suivante_minutes: {value: 10080, min: 0, max: 43200, policy: true, description: Les minutes entre deux relances (10080 = 7 jours).}
+      relances_max: {value: 2, min: 0, max: 5, policy: true, description: Le nombre maximum de relances par contact.}
+    params:
+      first_delay_minutes: {source: setting, value: premiere_relance_minutes}
+      next_delay_minutes: {source: setting, value: relance_suivante_minutes}
+      max_followups: {source: setting, value: relances_max}
+    writes:
+      - table: touches
+        operation: insert
+        for_each: rows
+        values:
+          contact_id: {source: field, value: rows.contact_id}
+          venture_id: {source: field, value: rows.venture_id}
+          channel: {source: field, value: rows.channel}
+          address: {source: field, value: rows.address}
+          subject: {source: field, value: rows.subject}
+          followup_of: {source: field, value: rows.followup_of}
+          kind: {source: fixed, value: followup}
+          status: {source: fixed, value: to_write}
+
+  - id: ecrire_relance
+    title: Écrire une relance
+    role: >-
+      Rédige une relance courte pour un contact qui n'a pas répondu, à
+      partir de son fil et de la fiche produit.
+    type: llm
+    model_tier: mid
+    queue: conversations
+    priority: 50
+    gets_serge_intro: true
+    max_tool_turns: 3
+    compare:
+      touches: false
+    prompt: |
+      Tu écris une relance, au nom de Serge, à un contact qui n'a pas
+      répondu au dernier message de Serge.
+
+      Tu reçois le fil du contact, sa fiche, la fiche du business et la
+      fiche produit. Écris un message court et poli, qui rappelle l'offre en
+      une phrase et apporte quelque chose de neuf (un détail de la fiche
+      produit, une question simple). Ne répète pas le message précédent.
+      Ne promets rien qui ne soit pas dans la fiche produit. Écris dans la
+      langue du fil, sans objet ni signature d'humain : Serge assume d'être
+      un agent IA.
+    tools:
+      - tool: fil_du_contact
+        mode: given
+        label: Le fil du contact
+        params:
+          contact_id: {source: task, value: contact_id}
+      - tool: fiche_contact
+        mode: given
+        label: La fiche du contact
+        params:
+          contact_id: {source: task, value: contact_id}
+      - tool: fiche_business
+        mode: given
+        label: La fiche du business
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: fiche_produit
+        mode: given
+        label: La fiche produit
+        params:
+          venture_id: {source: task, value: venture_id}
+    output:
+      - {path: body, type: text, description: Le texte de la relance.}
+    writes:
+      - table: touches
+        operation: update
+        key: {column: id, source: task, value: touch_id}
+        values:
+          body: {source: field, value: body}
+          status: {source: fixed, value: pending}
+
+  - id: desinscrire
+    title: Désinscrire
+    role: >-
+      Une personne demande à ne plus être contactée : bloque toutes ses
+      adresses sur tous les canaux, passe toutes ses fiches, dans tous les
+      business, à « Désinscrit », et annule ses envois en attente. Sans LLM.
+    type: capability
+    capability: unsubscribe_contact
+    queue: conversations
+    priority: 100
+    params:
+      contact_id: {source: task, value: contact_id}
+
+  - id: prevenir_julien_et_clem
+    title: Prévenir Julien et Clem
+    role: >-
+      Ouvre un ticket d'information quand un contact s'est désinscrit, pour
+      que Julien et Clem voient ce qui se passe. Sans LLM.
+    type: capability
+    capability: inform_owners
+    queue: conversations
+    priority: 100
+    params:
+      title: {source: fixed, value: Un contact s'est désinscrit}
+      text: {source: fixed, value: 'Serge ne le contactera plus, sur aucun canal ni pour aucun business.'}
+      contact_id: {source: task, value: contact_id}
+
 links:
   - id: cycle_ouvert_vers_exploration
     title: Le cycle ouvert part en exploration
@@ -1090,6 +1613,46 @@ links:
     to: choisir_business
     params:
       cycle_id: {source: task, value: cycle_id}
+  - id: reponse_vers_envoi
+    title: La réponse part après le délai du canal
+    from: traiter_reponse
+    to: envoyer_message
+    mode: per_row
+    write: 2
+    delay:
+      min: 'channels.{channel}.reply_delay_min_minutes'
+      max: 'channels.{channel}.reply_delay_max_minutes'
+    params:
+      touch_id: {source: row, value: id}
+  - id: reponse_vers_desinscription
+    title: Une désinscription bloque partout
+    from: traiter_reponse
+    to: desinscrire
+    condition: {field: reaction, op: '=', value: désinscription}
+    params:
+      contact_id: {source: task, value: contact_id}
+  - id: desinscription_vers_ticket
+    title: Julien et Clem sont prévenus
+    from: desinscrire
+    to: prevenir_julien_et_clem
+    params:
+      contact_id: {source: task, value: contact_id}
+  - id: relance_a_rediger
+    title: Chaque relance à faire est rédigée
+    from: preparer_relances
+    to: ecrire_relance
+    mode: per_row
+    write: 0
+    params:
+      touch_id: {source: row, value: id}
+      contact_id: {source: row, value: contact_id}
+      venture_id: {source: row, value: venture_id}
+  - id: relance_vers_envoi
+    title: La relance rédigée part
+    from: ecrire_relance
+    to: envoyer_message
+    params:
+      touch_id: {source: task, value: touch_id}
 
 triggers:
   - id: lancer_cycle
@@ -1135,6 +1698,35 @@ triggers:
     invocation: oublier_besoins
     event: every
     every_minutes: 1440
+  - id: releve_des_canaux
+    title: Relever chaque canal qui se relève
+    invocation: relever_messages
+    event: every
+    every_minutes: 2
+    table: canaux
+    filter_column: polls
+    filter_value: '1'
+    params:
+      channel: {source: row, value: id}
+  - id: message_recu
+    title: Un contact a écrit
+    invocation: traiter_reponse
+    event: row_written
+    table: inbound_events
+    filter_column: status
+    filter_value: attached
+    params:
+      inbound_id: {source: row, value: id}
+      contact_id: {source: row, value: contact_id}
+      venture_id: {source: row, value: venture_id}
+      channel: {source: row, value: channel}
+      address: {source: row, value: address}
+      subject: {source: row, value: subject}
+  - id: relances_regulieres
+    title: Chercher les relances à faire
+    invocation: preparer_relances
+    event: every
+    every_minutes: 15
 
 # Les modifications d'objets déjà en base sur une instance existante (le
 # fichier ne les écrase jamais) : chacune n'est appliquée qu'une fois, et

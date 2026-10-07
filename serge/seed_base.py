@@ -83,3 +83,22 @@ def seed_params(
             source=source,
             value=value,
         )
+
+
+# Les opérateurs d'une condition sur un lien ou une écriture.
+CONDITION_OPS = frozenset({'=', '!=', 'non_vide'})
+
+
+def condition_columns(raw: Any, where: str) -> tuple[str, str, str]:
+    """Le champ, l'opérateur et la valeur d'une condition (YAML ``condition``).
+
+    Exemple : ``condition: {field: reaction, op: '=', value: refus}``.
+
+    Raises:
+        PipelineSeedError: Opérateur inconnu.
+    """
+    cond = raw or {}
+    op = str(cond.get('op', '=' if cond else ''))
+    if cond and op not in CONDITION_OPS:
+        raise PipelineSeedError(f'{where} : condition {op} inconnue')
+    return str(cond.get('field', '')), op, str(cond.get('value', ''))

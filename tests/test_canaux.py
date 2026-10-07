@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Canaux : semence, fiche MC, retrait d'un canal inconnu."""
+"""Canaux : semence, adaptateur branché, fiche MC, retrait d'un canal inconnu."""
 
 from __future__ import annotations
 
@@ -7,11 +7,13 @@ import sqlite3
 import sys
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from serge.canaux import CanalError, ensure_canaux, fiche_canal  # noqa: E402
+from serge.canaux import ensure_canaux, fiche_canal  # noqa: E402
+from serge.channels.base import ADAPTERS, Adapter  # noqa: E402
 from serge.db.boot import init_schema  # noqa: E402
 from serge.mc.proj_objet import project_objet  # noqa: E402
 
@@ -34,16 +36,33 @@ class CanauxTests(unittest.TestCase):
         champs = {c['k']: c['v'] for c in fiche['champs']}
         self.assertEqual(champs['État'], 'prevu')
         self.assertEqual(champs['Fichier'], 'serge/channels/email_smtp.py')
-        self.assertIn('lot 8', fiche['cadres'][0]['todo'])
+        self.assertIn('serge/channels/', fiche['cadres'][0]['todo'])
 
-    def test_etat_inconnu_refuse(self) -> None:
-        from serge import canaux as mod
-
-        ancien = mod.SEED
-        mod.SEED = (('email', 'E-mail', '', '', 'cassé'),)
-        self.addCleanup(setattr, mod, 'SEED', ancien)
-        with self.assertRaises(CanalError):
+    def test_un_adaptateur_branche_le_canal(self) -> None:
+        """Un canal dont l'adaptateur existe est branché, avec sa sorte
+        d'adresse et sa relève ; sa dernière relève est gardée."""
+        self.conn.execute(
+            "UPDATE canaux SET polled_at='2026-10-07' WHERE id='email'"
+        )
+        faux = Adapter(
+            'email', 'E-mail', '', 'email', 'x.py', str, str, lambda _: []
+        )
+        with mock.patch.dict(ADAPTERS, {'email': faux}):
             ensure_canaux(self.conn)
+        self.assertEqual(
+            self.conn.execute(
+                'SELECT etat, connected, polls, address_channel, polled_at'
+                " FROM canaux WHERE id='email'"
+            ).fetchone(),
+            ('branche', 1, 1, 'email', '2026-10-07'),
+        )
+        ensure_canaux(self.conn)
+        self.assertEqual(
+            self.conn.execute(
+                "SELECT etat, connected, polls FROM canaux WHERE id='email'"
+            ).fetchone(),
+            ('prevu', 0, 0),
+        )
 
     def test_fiche_absente(self) -> None:
         self.assertIsNone(fiche_canal(self.conn, 'linkedin'))

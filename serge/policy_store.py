@@ -209,6 +209,17 @@ def relations(conn: sqlite3.Connection) -> list[Relation]:
     ]
 
 
+def setting_value(conn: sqlite3.Connection, ident: str) -> Any:
+    """La valeur en vigueur d'un réglage, par son nom complet, ou ``None``.
+
+    Exemple : ``setting_value(conn, 'channels.email.reply_delay_min_minutes')``.
+    """
+    row = conn.execute(
+        'SELECT value_json FROM policy_settings WHERE id=?', (ident,)
+    ).fetchone()
+    return json.loads(row[0]) if row else None
+
+
 def policy_en_vigueur(conn: sqlite3.Connection) -> dict[str, Any]:
     """Les réglages en vigueur, rangés par section.
 

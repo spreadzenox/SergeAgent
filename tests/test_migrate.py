@@ -689,6 +689,55 @@ class MigrateTests(unittest.TestCase):
                 "INSERT INTO policy_sections(id, page) VALUES('x', 'ailleurs')"
             )
 
+    def test_v35_garde_les_envois_et_ajoute_le_fil(self) -> None:
+        conn = sqlite3.connect(':memory:')
+        self.addCleanup(conn.close)
+
+        apply_pending(conn, _until(34), head=34)
+        conn.execute(
+            'INSERT INTO touches(id, campaign_id, contact_id, channel, status,'
+            " idempotency_key, created_at, updated_at) VALUES('t1', 'c1',"
+            " 'p1', 'email', 'sent', 'k1', 't', 't')"
+        )
+        conn.execute(
+            'INSERT INTO inbound_events(id, channel, native_type, signal,'
+            " received_at) VALUES('i1', 'email', 'reply', 'REPLIED', 't')"
+        )
+        self.assertEqual(apply_pending(conn), SCHEMA_VERSION)
+        self.assertEqual(
+            conn.execute(
+                'SELECT campaign_id, status, idempotency_key, body, sent_at'
+                ' FROM touches'
+            ).fetchone(),
+            ('c1', 'sent', 'k1', '', ''),
+        )
+        self.assertEqual(
+            conn.execute(
+                'SELECT signal, status, message_ref FROM inbound_events'
+            ).fetchone(),
+            ('REPLIED', '', ''),
+        )
+        # Une réponse n'appartient à aucune campagne ; un message n'est
+        # jamais écrit deux fois.
+        conn.execute(
+            'INSERT INTO touches(id, channel, idempotency_key, created_at,'
+            " updated_at) VALUES('t2', 'email', 'k2', 't', 't')"
+        )
+        conn.execute(
+            'INSERT INTO inbound_events(id, channel, external_ref,'
+            " received_at) VALUES('i2', 'email', 'm1', 't')"
+        )
+        with self.assertRaises(sqlite3.IntegrityError):
+            conn.execute(
+                'INSERT INTO inbound_events(id, channel, external_ref,'
+                " received_at) VALUES('i3', 'email', 'm1', 't')"
+            )
+        with self.assertRaises(sqlite3.IntegrityError):
+            conn.execute(
+                'INSERT INTO customer_requests(id, kind, text, created_at)'
+                " VALUES('r1', 'autre', 'x', 't')"
+            )
+
 
 if __name__ == '__main__':
     unittest.main()

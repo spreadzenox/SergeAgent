@@ -35,11 +35,12 @@ def _capacites(conn: sqlite3.Connection) -> list[dict[str, Any]]:
             'id': str(ident),
             'titre': str(titre),
             'disponible': bool(dispo),
+            'agit_dehors': bool(dehors),
             'code': str(code or ''),
             'outils': int(outils),
         }
-        for ident, titre, dispo, code, outils in conn.execute(
-            'SELECT c.id, c.title, c.available, c.code_path,'
+        for ident, titre, dispo, dehors, code, outils in conn.execute(
+            'SELECT c.id, c.title, c.available, c.acts_outside, c.code_path,'
             ' (SELECT COUNT(*) FROM tools t WHERE t.capability_id=c.id)'
             ' FROM capabilities c ORDER BY c.id'
         ).fetchall()

@@ -21,6 +21,7 @@ from serge.db.store import append_event, utcnow
 from serge.interpreter.rules import (
     cancel_tasks_on_change,
     check_catalogue,
+    condition_met,
     find_duplicate,
     quota_refusal,
     safe_name,
@@ -138,6 +139,10 @@ def _fill_defaults(
     for stamp in ('created_at', 'updated_at'):
         if stamp in cols and stamp not in filled:
             filled[stamp] = utcnow()
+    # Une table qui exige une clé d'idempotence (les envois) reçoit
+    # l'identifiant de la ligne : la même ligne n'est jamais envoyée deux fois.
+    if 'idempotency_key' in cols and not filled.get('idempotency_key'):
+        filled['idempotency_key'] = filled.get('id', '')
     return filled
 
 
@@ -190,7 +195,8 @@ def write_answer(
     settings = load_settings(conn, invocation_id)
     writes = conn.execute(
         'SELECT id, table_name, operation, for_each, parent_write_id,'
-        ' key_column, key_source, key_value, max_rows FROM invocation_writes'
+        ' key_column, key_source, key_value, max_rows, condition_field,'
+        ' condition_op, condition_value FROM invocation_writes'
         ' WHERE invocation_id=? ORDER BY position',
         (invocation_id,),
     ).fetchall()
@@ -204,6 +210,9 @@ def write_answer(
         key_src,
         key_val,
         max_rows,
+        cond_field,
+        cond_op,
+        cond_value,
     ) in writes:
         table = safe_name(str(table))
         limite = resolve_count(str(max_rows), settings)
@@ -211,6 +220,15 @@ def write_answer(
         results[int(write_id)] = done
         parent = results.get(int(parent_id)) if parent_id else None
         for pos, ctx in _items(answer, str(for_each)):
+            # Une écriture peut être conditionnelle : « seulement si la
+            # réponse à envoyer n'est pas vide ».
+            if not condition_met(
+                _field(answer, ctx, str(cond_field)) if cond_field else None,
+                str(cond_op),
+                str(cond_value),
+            ):
+                done.by_item[pos] = None
+                continue
             parent_row = None
             if parent is not None:
                 # La ligne mère : celle du même élément si les deux règles
