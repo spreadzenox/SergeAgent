@@ -1566,3 +1566,21 @@ faut pas l'imiter avec des heures ouvrées ; une personne qui ne veut plus
 être contactée par Serge ne le veut plus pour aucun business ; un canal par
 machine virtuelle ouvrira n'importe quel site, mais plus tard ; l'e-mail et
 la voix existent déjà en partie dans le code.
+
+### Q80 — Le délai de réponse est une policy par canal, pas un réglage d'invocation (validé par Clem, 7 octobre 2026)
+Constat : en relisant la PR 1 du lot 8, Clem a demandé si les réglages des
+relances et le délai de réponse étaient bien des réglages d'invocation
+affichés sur la page Policy.
+Décidé :
+1. **Un réglage d'invocation marqué « policy » en base s'affiche tout seul
+   sur la page Policy.** C'est le cas des relances : 3 jours avant la
+   première, 7 jours entre deux, deux au plus, réglages de l'invocation
+   « Préparer les relances ».
+2. **Le délai de réponse n'est qu'une policy, et elle dépend du canal**
+   (famille « Canaux » de la page Policy). Exemple : l'e-mail répond entre
+   5 et 20 minutes ; l'appel aura ses propres valeurs. Ce n'est pas un
+   réglage d'invocation : c'est le temps qu'on attend avant de lancer
+   l'envoi d'une réponse. Chaque canal branché reçoit ses deux réglages de
+   délai dans la PR qui le branche.
+Argument de Clem : le délai dépend du canal, et il ne règle pas ce que fait
+une invocation mais le moment où on la lance.
