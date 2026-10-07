@@ -55,8 +55,8 @@ Si `doctor` échoue (drift de format entre versions), passe en (b).
 gog gmail search 'newer_than:1d' --max 3 --json
 ```
 
-Puis le worker `email.poll` via le pipeline (`run-once`) : ingest + dédup
-`gmail_id`, erreurs par message ignorées + comptées.
+Puis, dans Mission Control, la fiche du canal E-mail doit dire « branché »
+(page Pipeline) : Serge relève alors la boîte toutes les 2 minutes.
 
 ## 5. Dépannage
 

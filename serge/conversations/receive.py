@@ -18,7 +18,8 @@ from __future__ import annotations
 import sqlite3
 from typing import Any
 
-from serge.channels.base import Incoming, adapter
+from serge.channels.adapters import adapter
+from serge.channels.base import Incoming
 from serge.funnels.contacts import normalise_value
 
 

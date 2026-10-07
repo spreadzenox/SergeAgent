@@ -100,7 +100,6 @@ def substitutions(
     paths = loaded['paths']
     features = loaded.get('features') or {}
     gmail = bool(features.get('gmail'))
-    mailbox = bool(features.get('mailbox'))
     listen = 'unprivileged'
     ingress = as_table(loaded.get('ingress'))
     if str(ingress.get('listen') or '') == 'privileged':
@@ -127,9 +126,6 @@ def substitutions(
             f'EnvironmentFile=-{paths["config_root"]}/secrets/gog.env\n'
             if gmail
             else ''
-        ),
-        'EMAIL_BACKEND_LINES': (
-            'Environment=SERGE_EMAIL_BACKEND=smtp\n' if mailbox else ''
         ),
     }
 

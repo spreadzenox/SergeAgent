@@ -28,9 +28,8 @@ plus tard LinkedIn. Il y a deux parties.
 **Dans le code, un adaptateur par canal**, avec trois fonctions, toujours
 les mêmes :
 
-- `send(message)` envoie un message à une adresse et rend sa référence.
-  L'adaptateur la tire du numéro de l'envoi : pour l'e-mail, c'est son
-  `Message-ID`, qu'une réponse cite ;
+- `send(message)` envoie un message à une adresse et rend sa référence :
+  pour l'e-mail, son `Message-ID`, qu'une réponse cite ;
 - `poll(depuis)` rend les messages reçus depuis une date, chacun avec son
   expéditeur, son texte, et à quel message il répond (pour l'e-mail, les
   en-têtes `In-Reply-To` et `References`). Un canal qui reçoit en direct
@@ -41,7 +40,7 @@ les mêmes :
   journal.
 
 Les adaptateurs sont rangés dans `serge/channels/`, un fichier par canal,
-et déclarés dans une seule liste (`ADAPTERS`, `serge/channels/base.py`).
+et déclarés dans une seule liste (`ADAPTERS`, `serge/channels/adapters.py`).
 Ils ne savent rien d'une invocation ni d'un business : ils transportent un
 message.
 
@@ -50,8 +49,10 @@ et en plus, au lot 8 :
 
 - `address_channel` : la sorte d'adresse qu'il utilise dans
   `contact_addresses` (`email` pour l'e-mail, `phone` pour l'appel) ;
-- `connected` : 1 si son adaptateur existe dans le code (rempli au
-  démarrage, comme les capacités) ;
+- `connected` : 1 si son adaptateur existe dans le code et que le canal
+  est configuré sur ce serveur (rempli au démarrage, comme les
+  capacités). Exemple : sans boîte Gmail ni SMTP/IMAP dans le fichier
+  d'instance, l'e-mail n'est pas branché ;
 - `polls` : 1 s'il se relève (son adaptateur a une fonction `poll`) ;
 - `polled_at` : la dernière relève réussie (vide pour un canal qui reçoit
   en direct).
@@ -59,7 +60,8 @@ et en plus, au lot 8 :
 **Ses réglages sont dans la policy** (famille « Canaux » de la page
 Policy), un groupe par canal. Exemple pour l'e-mail :
 `channels.email.reply_delay_min_minutes` (5), `reply_delay_max_minutes`
-(20) et `max_poll_age_minutes` (60).
+(20), `max_poll_age_minutes` (60) et `max_per_day` (40 e-mails au plus par
+jour ; au-delà, ils attendent le lendemain).
 
 **Ajouter un canal**, c'est donc écrire son adaptateur, ajouter sa ligne et
 ses réglages : le pipeline ne change pas. Un canal par machine virtuelle
@@ -85,7 +87,7 @@ l'envoi :
 | `status` | `to_write`, `pending`, `sending`, `sent`, `failed`, `cancelled` | voir partie 6 |
 | `reply_to` | `ie_45` | le message reçu auquel il répond |
 | `followup_of` | `t_7` | l'envoi qu'il relance |
-| `external_ref` | `<tou_3f2a@serge>` | la référence rendue par l'adaptateur (pour l'e-mail, son Message-ID) |
+| `external_ref` | `<s1@mail.gmail.com>` | la référence rendue par l'adaptateur (pour l'e-mail, son Message-ID) |
 | `sent_at` | | quand il est parti |
 | `last_error` | `BLOCKLISTED` | pourquoi il a été annulé, ou n'est pas parti |
 
@@ -213,7 +215,9 @@ fait ensuite, pour cet envoi :
    l'envoie ;
 3. un envoi devenu inutile est annulé (`cancelled`, avec sa raison) : le
    contact s'est désinscrit ; un premier message ou une relance à un
-   contact dans un état final (refus, client…) ; une réponse ou une
+   contact à une étape où Serge n'écrit plus de lui-même (une liste
+   réglable sur la page Policy, famille « Contacts » : refus, client,
+   injoignable… ; décision Q82) ; une réponse ou une
    relance alors que le contact a écrit depuis qu'elle a été écrite
    (« Traiter une réponse » répond alors à tout le fil ; une absence ne
    compte pas) ; une réponse alors qu'une réponse plus récente est écrite
@@ -245,7 +249,8 @@ plus.
 - aucun message n'est arrivé depuis (une absence ne compte pas) ;
 - le délai de la prochaine relance est passé ;
 - le nombre de relances déjà faites est sous le maximum ;
-- le contact n'a ni refusé, ni demandé à ne plus être contacté ;
+- le contact n'est pas à une étape où Serge n'écrit plus de lui-même
+  (la même liste, page Policy) ;
 - les messages de ce canal ont été relevés depuis moins de
   `max_poll_age_minutes` (60) : on ne relance jamais à l'aveugle (Q37).
 
@@ -295,14 +300,31 @@ donnée d'office à « Traiter une réponse » et « Écrire une relance ».
 
 ## 10. PR 2 — Le canal e-mail
 
-L'adaptateur e-mail utilise Gmail par l'outil `gog`, comme sur le serveur
-de Julien, ou une boîte SMTP/IMAP (`serge/channels/email_gog.py`,
-`email_smtp.py`). Il ajoute à chaque envoi un `Message-ID` tiré du
-numéro de l'envoi, qui sert à rattacher les réponses et à confirmer un
-envoi. La réponse garde l'objet (« Re: … ») et les en-têtes du fil. La
-relève (`poll`) lit les messages reçus depuis la dernière relève. Chaque
-e-mail finit par la phrase « Répondez STOP… », un texte de la page
-Pipeline.
+L'adaptateur e-mail (`serge/channels/mail.py`) passe par Gmail avec
+l'outil `gog`, comme sur le serveur de Julien (`email_gog.py`), ou par une
+boîte SMTP/IMAP (`email_smtp.py`). Le fichier d'instance dit laquelle :
+`features.mailbox` (choisie d'abord) ou `features.gmail` ; sans l'une ni
+l'autre, le canal n'est pas branché.
+
+- **Envoyer.** Une réponse ou une relance reste dans le fil : Gmail par
+  `--reply-to-message-id`, SMTP par les en-têtes `In-Reply-To` et
+  `References`. L'adaptateur rend le `Message-ID` du message parti :
+  Gmail le choisit lui-même, il est relu après l'envoi ; en SMTP, Serge le
+  tire du numéro de l'envoi (`<serge.tou_3f2a@exemple.fr>`).
+- **Confirmer un envoi interrompu.** Gmail : un message envoyé au même
+  destinataire depuis moins de 2 jours, qui commence par le même texte.
+  SMTP : le `Message-ID` cherché dans le dossier des envoyés, où Serge
+  range une copie de chaque message (le serveur SMTP ne le fait pas).
+- **Relever.** Les messages reçus depuis la dernière relève (Gmail relit
+  les 10 dernières minutes, IMAP la veille : un message déjà relevé est
+  écarté). Un message est rendu sans la citation du message auquel il
+  répond.
+- **Refus et pannes.** Un destinataire refusé : l'envoi passe en échec.
+  Une panne (réseau, accès) : l'envoi reste « en cours », et la tâche
+  relancée demandera à la boîte s'il est parti.
+- **La phrase de fin.** Chaque e-mail finit par un texte de la page
+  Pipeline (« Pour ne plus recevoir de message de Serge, répondez
+  STOP. »), qui n'entre pas dans le fil.
 
 ## 11. PR 3 — Le canal appel
 

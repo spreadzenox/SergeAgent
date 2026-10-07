@@ -17,7 +17,7 @@ Environment=SERGE_MANDATE_PATH=__POLICY__
 Environment=SERGE_POLICY_PATH=__POLICY__
 Environment=XDG_RUNTIME_DIR=/run/user/__UID__
 Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/__UID__/bus
-__GMAIL_UNIT_LINES____EMAIL_BACKEND_LINES__ExecStart=__PYTHON__ __SYSTEM_ROOT__/scripts/serge-queue.py --queue %i
+__GMAIL_UNIT_LINES__ExecStart=__PYTHON__ __SYSTEM_ROOT__/scripts/serge-queue.py --queue %i
 Restart=always
 RestartSec=10
 NoNewPrivileges=yes

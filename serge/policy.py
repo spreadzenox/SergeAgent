@@ -26,7 +26,7 @@ SCHEMA_VERSION = 2
 # Les sortes de réglage : un nombre (entier ou non), un choix, une liste.
 NUMBER_KINDS = frozenset({'eur', 'pct', 'nombre'})
 INTEGER_KINDS = frozenset({'curseur', 'heure'})
-CHOICE_KINDS = frozenset({'canaux', 'jours'})
+CHOICE_KINDS = frozenset({'canaux', 'jours', 'choix'})
 # La page de Mission Control d'une famille de réglages.
 PAGES = frozenset({'policy', 'pipeline'})
 KINDS = (

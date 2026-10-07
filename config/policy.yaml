@@ -16,7 +16,8 @@
 # - eur, pct, nombre : un nombre entre min et max (pct : 0,25 = 25 %) ;
 # - curseur, heure : un nombre entier entre min et max ;
 # - liste : une valeur parmi « choices » ;
-# - canaux, jours : plusieurs valeurs parmi « choices » ([valeur, libellé]) ;
+# - canaux, jours, choix : plusieurs valeurs parmi « choices » ([valeur,
+#   libellé]) ;
 # - fenetres : des plages horaires [h, min, h, min] ;
 # - nombres : une liste de nombres entiers entre min et max.
 # Chaque réglage d'ici est lu par au moins un programme (un test le vérifie).
@@ -63,14 +64,6 @@ sections:
     title: Plafonds par canal
     why: Combien de messages, appels ou invitations, pour ne pas spammer.
     settings:
-      - id: email_per_mailbox_per_day
-        value: 40
-        title: E-mails par boîte, par jour
-        help: Le compteur du jour est sur la page En direct.
-        kind: curseur
-        min: 0
-        max: 200
-        step: 1
       - id: voice_max_calls_per_day
         value: 50
         title: Appels par jour
@@ -568,6 +561,16 @@ sections:
         min: 0
         max: 1440
         step: 1
+      - id: email.max_per_day
+        value: 40
+        title: E-mails envoyés au plus, par jour
+        help: >-
+          Au-delà, les e-mails attendent le lendemain (0 : aucun e-mail ne
+          part). Le compteur du jour est sur la page En direct.
+        kind: curseur
+        min: 0
+        max: 200
+        step: 1
       - id: email.max_poll_age_minutes
         value: 60
         title: E-mail, relève récente (minutes)
@@ -580,6 +583,33 @@ sections:
         max: 1440
         step: 5
 
+  - id: contacts
+    title: Contacts
+    why: À qui Serge n’écrit plus de lui-même.
+    settings:
+      - id: stop_states
+        value: [REJECTED, UNREACHABLE, OPTED_OUT, BLOCKED, INVALID, CUSTOMER]
+        title: Étapes où Serge n’écrit plus de lui-même
+        help: >-
+          À un contact à l’une de ces étapes, Serge n’envoie plus de premier
+          message ni de relance ; il lui répond encore s’il écrit. Une
+          personne désinscrite n’a jamais de réponse, quoi qu’il arrive
+          (décision Q79).
+        kind: choix
+        choices:
+          - [NEW, Nouveau]
+          - [QUALIFIED, Qualifié]
+          - [CONTACTING, En prise de contact]
+          - [ENGAGED, Engagé]
+          - [INTENT, Intention d’achat]
+          - [MEETING, Rendez-vous]
+          - [CUSTOMER, Client]
+          - [REJECTED, Écarté ou refus]
+          - [UNREACHABLE, Injoignable]
+          - [OPTED_OUT, Désinscrit]
+          - [BLOCKED, Bloqué]
+          - [INVALID, Fiche invalide]
+
 # « tel réglage ≤ tel autre » (« < » : strictement plus petit).
 relations:
   - [standing.capital_min, '<=', standing.capital_max]
@@ -590,6 +620,7 @@ relations:
 # Un réglage qui change de nom garde sa valeur (celle du serveur, peut-être
 # changée dans Mission Control) : [ancien nom, nouveau nom].
 renamed:
+  - [quotas.email_per_mailbox_per_day, channels.email.max_per_day]
   - [quotas.llm_recalls_json, llm_calls.format_retries]
   - [quotas.llm_outil_resultat_max_caracteres, llm_calls.tool_result_max_chars]
 

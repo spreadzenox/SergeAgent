@@ -34,9 +34,10 @@ llm_models:
   - tier: smart
     max_price_usd: 8.00
 
-# Les textes envoyés au modèle, modifiables sur la page Pipeline. Un
-# repère entre accolades ({erreurs}, {reste}) est remplacé au moment de
-# l'envoi ; un texte vide n'est pas envoyé.
+# Les textes de Serge, modifiables sur la page Pipeline : ceux envoyés au
+# modèle, et la phrase de fin de chaque e-mail. Un repère entre accolades
+# ({erreurs}, {reste}) est remplacé au moment de l'envoi ; un texte vide
+# n'est pas envoyé.
 serge_texts:
   - id: presentation
     title: Qui est Serge
@@ -80,6 +81,14 @@ serge_texts:
     body: >-
       (résultat tronqué : {reste} caractères de plus ; demande moins à la
       fois)
+  - id: footer_email
+    title: Fin de chaque e-mail
+    help: >-
+      Ajoutée à la fin de chaque e-mail envoyé à un contact (pas au texte
+      gardé dans son fil). Une réponse « STOP » est une désinscription
+      (décision Q79). Vide : rien n’est ajouté.
+    body: >-
+      Pour ne plus recevoir de message de Serge, répondez STOP.
 
 # Les outils : une capacité du code, réglée pour un usage précis. Une
 # invocation s'en sert de deux façons : en lecture donnée d'office (Serge

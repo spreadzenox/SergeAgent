@@ -17,10 +17,13 @@ Scénarios :
   envois en attente sont annulés, Julien et Clem ont un ticket ;
 - jamais deux fois : un envoi interrompu est confirmé auprès du canal, pas
   renvoyé ; une adresse bloquée n'est jamais écrite ;
-- le délai de réponse est tiré entre les deux réglages du canal ;
+- le délai de réponse est tiré entre les deux réglages du canal ; le
+  plafond du jour atteint, l'envoi attend le lendemain ;
 - les relances : 4 jours sans réponse, une relance est rédigée et part
   dans le fil ; pas de relance si Marc a écrit, ni si la boîte n'a pas été
-  relevée récemment ; une réponse d'absence ne les arrête pas.
+  relevée récemment ; une réponse d'absence ne les arrête pas ; pas de
+  relance à un contact qui a refusé, tant que « refus » est coché dans
+  les étapes où Serge n'écrit plus (page Policy).
 """
 
 from __future__ import annotations
@@ -37,12 +40,8 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from serge.channels.base import (  # noqa: E402
-    ADAPTERS,
-    Adapter,
-    Incoming,
-    Outgoing,
-)
+from serge.channels.adapters import ADAPTERS  # noqa: E402
+from serge.channels.base import Adapter, Incoming, Outgoing  # noqa: E402
 from serge.coupe_circuit import set_heartbeat  # noqa: E402
 from serge.db.boot import init_schema  # noqa: E402
 from serge.db.store import utcnow  # noqa: E402
@@ -268,7 +267,10 @@ class ConversationsTests(unittest.TestCase):
                 'Marc@exemple.fr',
                 '<m1@marc>',
                 'reply',
-                'Pas encore, mais le PDF marche partout.',
+                # La phrase de fin de l'e-mail part avec le message, mais
+                # n'entre pas dans le fil.
+                'Pas encore, mais le PDF marche partout.\n\n'
+                'Pour ne plus recevoir de message de Serge, répondez STOP.',
             ),
         )
         self.assertEqual(
@@ -406,6 +408,21 @@ class ConversationsTests(unittest.TestCase):
         ) / timedelta(minutes=1)
         self.assertTrue(4.9 < minutes <= 20, minutes)
 
+    def test_le_plafond_du_jour_fait_attendre_le_lendemain(self) -> None:
+        set_setting(self.conn, 'channels.email.max_per_day', 0, 't')
+        self._envoi('t6', 'reply', 'pending')
+        self._envoyer('t6')
+        self.assertEqual(self.canal.envoyes, [])
+        self.assertEqual(
+            self._un("SELECT status FROM touches WHERE id='t6'"), ('pending',)
+        )
+        (demain,) = self._un(
+            "SELECT not_before FROM tasks WHERE status='ready'"
+            " AND invocation_id='envoyer_message'"
+        )
+        attendu = (datetime.fromisoformat(utcnow()) + timedelta(days=1)).date()
+        self.assertEqual(demain, f'{attendu}T00:00:00+00:00')
+
     def test_une_relance_part_dans_le_fil(self) -> None:
         self._premier_message_il_y_a_4_jours()
         self._vider()
@@ -418,6 +435,19 @@ class ConversationsTests(unittest.TestCase):
         )
         self.assertEqual(self.canal.envoyes[0].in_reply_to, '<t1@serge>')
         # La suivante attend 7 jours.
+        self._relever()
+        self.assertEqual(len(self.canal.envoyes), 1)
+
+    def test_les_etapes_ou_serge_n_ecrit_plus_sont_en_base(self) -> None:
+        self._premier_message_il_y_a_4_jours()
+        self.conn.execute(
+            "UPDATE contacts SET funnel_state='REJECTED' WHERE id='c1'"
+        )
+        self.conn.commit()
+        self._vider()
+        self.assertEqual(self.canal.envoyes, [])
+        etapes = ['UNREACHABLE', 'OPTED_OUT', 'BLOCKED', 'INVALID', 'CUSTOMER']
+        set_setting(self.conn, 'contacts.stop_states', etapes, 't')
         self._relever()
         self.assertEqual(len(self.canal.envoyes), 1)
 

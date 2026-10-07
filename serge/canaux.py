@@ -2,10 +2,11 @@
 """Le catalogue des canaux : une ligne de ``canaux`` par canal connu.
 
 Un canal est **branché** quand son adaptateur existe dans le code
-(``serge/channels/base.py``, ``ADAPTERS``) : la ligne le dit
-(``connected``), avec la sorte d'adresse qu'il utilise et s'il se relève.
-Un canal décrit ici sans adaptateur est seulement **prévu** : sa fiche
-dans Mission Control dit ce qui manque. Le catalogue est rempli au
+(``serge/channels/adapters.py``, ``ADAPTERS``) et qu'il est configuré sur
+ce serveur : la ligne le dit (``connected``), avec la sorte d'adresse qu'il
+utilise et s'il se relève. Sinon il est seulement **prévu** : sa fiche
+dans Mission Control dit ce qui manque. Exemple : l'e-mail est prévu sur
+une instance sans boîte Gmail ni SMTP/IMAP. Le catalogue est rempli au
 démarrage ; la dernière relève (``polled_at``) est gardée.
 """
 
@@ -14,20 +15,12 @@ from __future__ import annotations
 import sqlite3
 from typing import Any
 
-from serge.channels.base import ADAPTERS
+from serge.channels.adapters import ADAPTERS
 
 # Les canaux prévus, pas encore branchés : id, titre, texte, sorte
 # d'adresse, chemin du code. Un canal branché est décrit par son
 # adaptateur.
 SEED: tuple[tuple[str, str, str, str, str], ...] = (
-    (
-        'email',
-        'E-mail',
-        'Écrire et lire des e-mails, par Gmail (outil gog) ou une boîte'
-        ' SMTP/IMAP. Branché au lot 8 (PR 2).',
-        'email',
-        'serge/channels/email_smtp.py',
-    ),
     (
         'voice',
         'Voix',
@@ -55,13 +48,13 @@ def ensure_canaux(conn: sqlite3.Connection) -> None:
     for ident, titre, doc, address, path in SEED:
         known.setdefault(ident, (titre, doc, address, path, None))
     for ident, (titre, doc, address, path, poll) in known.items():
-        branche = ident in ADAPTERS
+        branche = ident in ADAPTERS and ADAPTERS[ident].ready()
         values = (
             path,
             'branche' if branche else 'prevu',
             address,
             int(branche),
-            int(poll is not None),
+            int(branche and poll is not None),
         )
         if conn.execute(
             'SELECT 1 FROM canaux WHERE id=?', (ident,)
@@ -129,8 +122,10 @@ def fiche_canal(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
         cadres.append(
             {
                 'titre': 'État',
-                'todo': 'Pas encore branché : son adaptateur n’existe pas'
-                ' dans le code (serge/channels/).',
+                'todo': 'Pas branché sur ce serveur : son adaptateur'
+                ' n’existe pas encore dans le code (serge/channels/), ou'
+                ' le canal n’est pas configuré (pour l’e-mail : une boîte'
+                ' Gmail ou SMTP/IMAP dans le fichier d’instance).',
             }
         )
     return {

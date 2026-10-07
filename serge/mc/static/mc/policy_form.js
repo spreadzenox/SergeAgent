@@ -109,7 +109,7 @@ function champListe(chemin, spec, val) {
   return wrap;
 }
 
-// Plusieurs choix parmi ceux du réglage (canaux, jours) : chaque choix est
+// Plusieurs choix parmi ceux du réglage (canaux, jours, choix) : chaque choix est
 // [valeur, libellé] ; on montre le libellé, on lit la valeur.
 function champChoix(chemin, spec, val) {
   const wrap = cadre(chemin, spec);
@@ -212,6 +212,7 @@ const FABRIQUES = {
   liste: champListe,
   jours: champChoix,
   canaux: champChoix,
+  choix: champChoix,
   fenetres: champFenetres,
   nombres: champNombres,
 };

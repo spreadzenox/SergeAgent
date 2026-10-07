@@ -267,7 +267,7 @@ def main() -> None:
         {
             'allowed': False,
             'code': 'quota_email',
-            'champ': 'quotas.email_per_mailbox_per_day',
+            'champ': 'channels.email.max_per_day',
         },
         now - timedelta(minutes=35),
     )

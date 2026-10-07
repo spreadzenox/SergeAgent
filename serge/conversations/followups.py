@@ -14,7 +14,8 @@ Un contact est relancé quand :
 - il n'a rien écrit depuis ce dernier envoi (une réponse automatique
   d'absence, marquée ``ignored``, ne compte pas) ;
 - le délai de la relance suivante est passé, et il en reste une à faire ;
-- il n'a ni refusé, ni demandé à ne plus être contacté (un état final) ;
+- il n'est pas à une étape où Serge n'écrit plus de lui-même (refus,
+  désinscription, client… : ``contacts.stop_states``, page Policy) ;
 - les messages de son canal ont été relevés il y a moins de
   ``channels.<canal>.max_poll_age_minutes`` : on ne relance jamais à
   l'aveugle (décision Q37).
@@ -26,8 +27,8 @@ import sqlite3
 from datetime import datetime, timedelta
 from typing import Any
 
+from serge.conversations.send import stop_states
 from serge.db.store import utcnow
-from serge.funnels.contact_errors import TERMINAL
 from serge.policy_store import setting_value
 
 WAITING = frozenset({'to_write', 'pending', 'sending'})
@@ -110,12 +111,13 @@ def due_followups(
     ]
     now = datetime.fromisoformat(utcnow())
     rows = []
-    for contact, venture in conn.execute(
-        'SELECT DISTINCT c.id, c.venture_id FROM contacts c'
+    stopped = set(stop_states(conn))
+    for contact, venture, state in conn.execute(
+        'SELECT DISTINCT c.id, c.venture_id, c.funnel_state FROM contacts c'
         " JOIN touches t ON t.contact_id=c.id AND t.kind='first'"
-        f' WHERE c.funnel_state NOT IN ({",".join("?" * len(TERMINAL))})',
-        tuple(sorted(TERMINAL)),
     ).fetchall():
+        if str(state) in stopped:
+            continue
         found = _due(conn, str(contact), delays, now)
         if found:
             rows.append({**found, 'venture_id': str(venture)})

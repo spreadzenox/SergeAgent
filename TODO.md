@@ -200,14 +200,6 @@ partent toutes seules : les tickets qui font attendre une réponse viennent
 au lot 8 bis. La conception détaillée est dans
 [`docs/LOT8_CONCEPTION.md`](docs/LOT8_CONCEPTION.md).
 
-- [ ] **PR 2 — Le canal e-mail.** Il marche de bout en bout : envoyer,
-  relever la boîte, rattacher une réponse à son fil, confirmer un envoi.
-  Serge utilise Gmail par l'outil `gog` sur le serveur de Julien ; le code
-  sait aussi passer par une boîte SMTP/IMAP. L'ancienne relève de la boîte
-  est dans `pas_encore_branche/` pour s'en inspirer. Chaque e-mail finit
-  par une phrase réglable dans les textes de la page Pipeline, du type
-  « Répondez STOP pour ne plus être contacté » (Q79).
-
 - [ ] **PR 3 — Le canal appel, et un agent vocal qui sait à qui il
   parle.** Le code de la voix existe (`serge/voice/`) : le pont qui
   compose un appel, la conversation en direct avec un modèle vocal, le

@@ -1584,3 +1584,32 @@ Décidé :
    délai dans la PR qui le branche.
 Argument de Clem : le délai dépend du canal, et il ne règle pas ce que fait
 une invocation mais le moment où on la lance.
+
+### Q81 — Effacer les contacts des anciens essais quand l'e-mail se branche (demandé par Clem, 7 octobre 2026)
+Constat : une fois le canal e-mail branché (lot 8, PR 2), Serge relève sa
+boîte toutes les 2 minutes et répond tout seul à un message dont
+l'expéditeur est un contact en base. Les tables des contacts ne changent
+pas avec le lot 8 : une base existante garde ses contacts d'anciens essais.
+Décidé :
+1. **Les contacts et leurs adresses sont effacés une seule fois**, au
+   déploiement de la PR 2, par la migration v36. Une migration ne tourne
+   qu'une fois par base : les contacts créés ensuite ne sont jamais
+   touchés.
+2. **La liste de blocage et les accords sont gardés** : une personne qui
+   s'est désinscrite le reste. L'historique (envois, messages reçus,
+   journal) est gardé, et le journal note combien de contacts ont été
+   effacés.
+
+### Q82 — Les étapes où Serge n'écrit plus à un contact sont en base (validé par Clem, 7 octobre 2026)
+Constat : la liste des étapes « finales » d'un contact (refus, client,
+injoignable, désinscrit, bloqué, fiche invalide), où Serge n'envoie plus
+ni premier message ni relance, était écrite dans le code. Claude l'a
+signalée comme discutable.
+Décidé : **cette liste se règle sur la page Policy** (famille
+« Contacts », « Étapes où Serge n'écrit plus de lui-même »). Serge répond
+encore à un contact à l'une de ces étapes s'il écrit ; une personne
+désinscrite n'a jamais de réponse (Q79). Plus généralement, tout ce qui
+reste en dur et qui est discutable passe en base ; le reste du lot 8 est
+validé tel quel.
+Argument de Clem : l'étape de chaque contact est déjà une valeur en base ;
+la liste des étapes qui arrêtent Serge doit l'être aussi.

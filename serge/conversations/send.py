@@ -10,16 +10,22 @@ partir, dans cet ordre :
    Sinon il est envoyé ;
 3. devenu inutile, il est annulé :
    - la personne s'est désinscrite ;
-   - un premier message ou une relance à un contact dans un état final
-     (il a refusé, il est client, injoignable…) ;
+   - un premier message ou une relance à un contact à une étape où Serge
+     n'écrit plus de lui-même (``contacts.stop_states``, page Policy :
+     refus, client, injoignable…) ;
    - une réponse ou une relance, alors que le contact a écrit depuis
      qu'elle a été écrite (la réponse suivante répondra à tout le fil).
      Un message ``ignored`` (une réponse automatique d'absence) ne compte
      pas ;
    - une réponse, alors qu'une réponse plus récente est écrite ;
 4. sinon les garde-fous (``serge/guards``) : un envoi refusé est annulé,
-   avec sa raison. Puis ``sending`` enregistré en base, l'envoi, puis
-   ``sent`` et la référence du canal enregistrés.
+   avec sa raison ;
+5. le plafond du jour du canal (``channels.<canal>.max_per_day``, page
+   Policy) : atteint, l'envoi attend le lendemain ;
+6. ``sending`` enregistré en base, l'envoi, puis ``sent`` et la référence
+   du canal enregistrés. Le texte part avec la phrase de fin du canal
+   (``footer_<canal>``, page Pipeline : « Répondez STOP… » pour
+   l'e-mail).
 
 C'est une capacité qui agit hors de Serge (``acts_outside``) : elle
 enregistre en base pendant la tâche, pour qu'un arrêt du programme ne
@@ -29,16 +35,24 @@ fasse jamais partir un message deux fois. Décision Q79.
 from __future__ import annotations
 
 import sqlite3
+from datetime import datetime, timedelta
 from typing import Any
 
-from serge.channels.base import ChannelError, Outgoing, adapter
+from serge.channels.adapters import adapter
+from serge.channels.base import ChannelError, Outgoing
 from serge.db.store import append_event, utcnow
-from serge.funnels.contact_errors import TERMINAL
 from serge.funnels.contacts import normalise_value
 from serge.guards import check
-from serge.policy_store import policy_en_vigueur
+from serge.interpreter.intro import serge_text
+from serge.interpreter.tasks import enqueue_task
+from serge.policy_store import policy_en_vigueur, setting_value
 
 OPTED_OUT = 'OPTED_OUT'
+
+
+def stop_states(conn: sqlite3.Connection) -> list[str]:
+    """Les étapes où Serge n'écrit plus de lui-même (page Policy)."""
+    return [str(s) for s in setting_value(conn, 'contacts.stop_states') or []]
 
 
 def _touch(conn: sqlite3.Connection, touch_id: str) -> dict[str, Any] | None:
@@ -69,10 +83,11 @@ def _outdated(conn: sqlite3.Connection, touch: dict[str, Any]) -> str:
     kind = str(touch['kind'])
     if state == OPTED_OUT:
         return 'contact désinscrit'
-    # Un état final (refus, client, injoignable…) : plus de premier
-    # message ni de relance, mais on répond encore à ce qu'il écrit.
-    if kind != 'reply' and state in TERMINAL:
-        return 'contact dans un état final'
+    # Une étape où Serge n'écrit plus de lui-même (refus, client…, page
+    # Policy) : plus de premier message ni de relance, mais on répond
+    # encore à ce qu'il écrit.
+    if kind != 'reply' and state in stop_states(conn):
+        return 'contact à une étape où Serge n’écrit plus'
     if kind == 'first':
         return ''
     contact, written = str(touch['contact_id']), str(touch['created_at'])
@@ -116,20 +131,42 @@ def _set(
     conn.commit()
 
 
-def _outgoing(touch: dict[str, Any]) -> Outgoing:
+def _outgoing(conn: sqlite3.Connection, touch: dict[str, Any]) -> Outgoing:
+    footer = serge_text(conn, f'footer_{touch["channel"]}')
+    body = str(touch['body'])
     return Outgoing(
         touch_id=str(touch['id']),
         channel=str(touch['channel']),
         address=str(touch['address']),
         subject=str(touch['subject']),
-        body=str(touch['body']),
+        body=f'{body}\n\n{footer}' if footer else body,
         in_reply_to=str(touch['reply_ref']),
         kind=str(touch['kind']),
     )
 
 
+def _day_full(conn: sqlite3.Connection, channel: str) -> str:
+    """Le moment où l'envoi pourra partir si le plafond du jour du canal
+    est atteint (à minuit, heure UTC), sinon ``''``."""
+    cap = setting_value(conn, f'channels.{channel}.max_per_day')
+    if cap is None:
+        return ''
+    now = datetime.fromisoformat(utcnow())
+    sent = conn.execute(
+        "SELECT COUNT(*) FROM touches WHERE channel=? AND status='sent'"
+        ' AND sent_at LIKE ?',
+        (channel, f'{now.date().isoformat()}%'),
+    ).fetchone()[0]
+    if int(sent) < int(cap):
+        return ''
+    tomorrow = now + timedelta(days=1)
+    return tomorrow.replace(
+        hour=0, minute=0, second=0, microsecond=0
+    ).isoformat()
+
+
 def send_message(
-    conn: sqlite3.Connection, _tool: str, args: dict[str, Any], _inv: str
+    conn: sqlite3.Connection, _tool: str, args: dict[str, Any], inv: str
 ) -> dict[str, Any]:
     """Capacité « Envoyer un message » : ``{touch_id}``.
 
@@ -146,7 +183,7 @@ def send_message(
     if status in ('sent', 'cancelled'):
         return {'ok': True, 'status': status}
     channel = adapter(str(touch['channel']))
-    message = _outgoing(touch)
+    message = _outgoing(conn, touch)
     if status == 'sending':
         ref = channel.confirm(message)
         if ref:
@@ -177,6 +214,17 @@ def send_message(
             reason = verdict.reason.value
             _set(conn, touch, 'cancelled', last_error=reason)
             return {'ok': True, 'status': 'cancelled', 'reason': reason}
+        later = _day_full(conn, str(touch['channel']))
+        if later:
+            enqueue_task(
+                conn,
+                inv,
+                {'touch_id': str(touch['id'])},
+                origin_ref=f'plafond du jour : {touch["id"]}',
+                not_before=later,
+                key=f'{touch["id"]}:{later}',
+            )
+            return {'ok': True, 'status': 'pending', 'retry_at': later}
         _set(conn, touch, 'sending')
     try:
         ref = channel.send(message)

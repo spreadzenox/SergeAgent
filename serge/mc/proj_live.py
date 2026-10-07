@@ -162,9 +162,11 @@ def _quota_jour(quotas: Mapping[str, Any], cle: str) -> int:
 
 
 def _touches_jour(conn: sqlite3.Connection, canal: str, jour: str) -> int:
+    """Les envois partis ce jour-là, comptés comme le fait « Envoyer un
+    message » pour son plafond du jour."""
     row = conn.execute(
         'SELECT COUNT(*) FROM touches WHERE channel=?'
-        " AND status='sent' AND created_at LIKE ?",
+        " AND status='sent' AND sent_at LIKE ?",
         (canal, f'{jour}%'),
     ).fetchone()
     return int(row[0] if row else 0)
@@ -203,7 +205,9 @@ def project_jauges(
     quotas = policy.get('quotas') or {}
     email = _barre(
         _touches_jour(conn, 'email', day),
-        _quota_jour(quotas, 'email_per_mailbox_per_day'),
+        _quota_jour(
+            (policy.get('channels') or {}).get('email') or {}, 'max_per_day'
+        ),
     )
     return {
         'llm': {
