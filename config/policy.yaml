@@ -543,11 +543,49 @@ sections:
         max: 60
         step: 1
 
+  - id: channels
+    title: Canaux
+    why: >-
+      Comment Serge répond sur chaque canal : le délai avant de répondre, et
+      ce qu'il faut pour relancer sans risque.
+    settings:
+      - id: email.reply_delay_min_minutes
+        value: 5
+        title: E-mail, réponse au plus tôt (minutes)
+        help: >-
+          Serge répond à un e-mail entre ce délai et le délai au plus tard,
+          tiré au hasard, à toute heure et tous les jours. 0 pour une réponse
+          immédiate (tests).
+        kind: curseur
+        min: 0
+        max: 1440
+        step: 1
+      - id: email.reply_delay_max_minutes
+        value: 20
+        title: E-mail, réponse au plus tard (minutes)
+        help: Voir « réponse au plus tôt ».
+        kind: curseur
+        min: 0
+        max: 1440
+        step: 1
+      - id: email.max_poll_age_minutes
+        value: 60
+        title: E-mail, relève récente (minutes)
+        help: >-
+          Une relance ne part que si la boîte a été relevée il y a moins de ce
+          délai : Serge ne relance jamais quelqu'un qui a peut-être déjà
+          répondu.
+        kind: curseur
+        min: 5
+        max: 1440
+        step: 5
+
 # « tel réglage ≤ tel autre » (« < » : strictement plus petit).
 relations:
   - [standing.capital_min, '<=', standing.capital_max]
   - [tools.search_results, '<=', web.search_max_results]
   - [testing.kill_max_positives, '<', testing.scale_min_positives]
+  - [channels.email.reply_delay_min_minutes, '<=', channels.email.reply_delay_max_minutes]
 
 # Un réglage qui change de nom garde sa valeur (celle du serveur, peut-être
 # changée dans Mission Control) : [ancien nom, nouveau nom].

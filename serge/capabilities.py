@@ -29,6 +29,9 @@ class Capability:
     doc_md: str
     code_path: str
     params: tuple[Param, ...] = field(default_factory=tuple)
+    # Elle agit hors de Serge (envoyer, payer) : elle enregistre en base
+    # pendant la tâche, pour qu'un arrêt ne la fasse jamais agir deux fois.
+    acts_outside: bool = False
 
 
 CAPABILITIES: tuple[Capability, ...] = (
@@ -165,6 +168,67 @@ CAPABILITIES: tuple[Capability, ...] = (
             Param('context', 'text', False, 'Pourquoi on en a besoin.'),
         ),
     ),
+    Capability(
+        'receive_messages',
+        'Relever les messages d’un canal',
+        'Lit les messages reçus sur un canal depuis sa dernière relève, et'
+        ' rattache chacun à son contact : par le fil (il répond à un message'
+        ' de Serge), sinon par l’adresse de l’expéditeur. Un message sans'
+        ' contact est rendu « non rattaché ». Un message déjà relevé n’est'
+        ' jamais rendu deux fois.',
+        'serge/conversations/receive.py',
+        (Param('channel', 'text', True, 'Le canal à relever.'),),
+    ),
+    Capability(
+        'contact_thread',
+        'Lire le fil d’un contact',
+        'Rend tout ce qui s’est dit avec un contact, tous canaux confondus,'
+        ' du plus ancien au plus récent : les messages partis et les'
+        ' messages reçus.',
+        'serge/conversations/thread.py',
+        (Param('contact_id', 'text', True, 'Le contact.'),),
+    ),
+    Capability(
+        'send_message',
+        'Envoyer un message',
+        'Envoie un message écrit dans les envois, par l’adaptateur de son'
+        ' canal, après les garde-fous. Ne l’envoie jamais deux fois : son'
+        ' état est enregistré avant et après l’envoi, et un envoi'
+        ' interrompu est confirmé auprès du canal. Annule un message devenu'
+        ' inutile (le contact a écrit depuis, ou s’est désinscrit).',
+        'serge/conversations/send.py',
+        (Param('touch_id', 'text', True, 'L’envoi à faire partir.'),),
+        acts_outside=True,
+    ),
+    Capability(
+        'due_followups',
+        'Trouver les relances à faire',
+        'Rend les contacts à relancer : leur dernier message est parti, ils'
+        ' n’ont rien écrit depuis, le délai réglé dans la policy est passé,'
+        ' et leur canal a été relevé récemment.',
+        'serge/conversations/followups.py',
+    ),
+    Capability(
+        'unsubscribe_contact',
+        'Désinscrire une personne partout',
+        'Bloque toutes les adresses d’une personne, sur tous les canaux ;'
+        ' passe toutes ses fiches, dans tous les business, à « Désinscrit » ;'
+        ' annule ses envois en attente.',
+        'serge/conversations/unsubscribe.py',
+        (Param('contact_id', 'text', True, 'Le contact désinscrit.'),),
+    ),
+    Capability(
+        'inform_owners',
+        'Prévenir Julien et Clem',
+        'Ouvre un ticket d’information (sans réponse attendue), visible dans'
+        ' Mission Control et sur Discord.',
+        'serge/tickets/inform.py',
+        (
+            Param('title', 'text', True, 'Le titre du ticket.'),
+            Param('text', 'text', False, 'Ce qui s’est passé.'),
+            Param('contact_id', 'text', False, 'Le contact concerné.'),
+        ),
+    ),
 )
 
 
@@ -184,11 +248,19 @@ def ensure_capabilities(conn: sqlite3.Connection) -> None:
     for cap in CAPABILITIES:
         conn.execute(
             'INSERT INTO capabilities(id, title, doc_md, available, code_path,'
-            ' updated_at) VALUES(?,?,?,1,?,?)'
+            ' acts_outside, updated_at) VALUES(?,?,?,1,?,?,?)'
             ' ON CONFLICT(id) DO UPDATE SET title=excluded.title,'
             ' doc_md=excluded.doc_md, available=1,'
-            ' code_path=excluded.code_path',
-            (cap.id, cap.title, cap.doc_md, cap.code_path, now),
+            ' code_path=excluded.code_path,'
+            ' acts_outside=excluded.acts_outside',
+            (
+                cap.id,
+                cap.title,
+                cap.doc_md,
+                cap.code_path,
+                int(cap.acts_outside),
+                now,
+            ),
         )
         conn.execute(
             'DELETE FROM capability_params WHERE capability_id=?', (cap.id,)

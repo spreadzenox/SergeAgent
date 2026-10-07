@@ -28,19 +28,22 @@ plus tard LinkedIn. Il y a deux parties.
 **Dans le code, un adaptateur par canal**, avec trois fonctions, toujours
 les mêmes :
 
-- `send(message)` envoie un message à une adresse et rend une référence
-  (l'identifiant du mail chez le fournisseur, celui de l'appel) ;
+- `send(message)` envoie un message à une adresse et rend sa référence.
+  L'adaptateur la tire du numéro de l'envoi : pour l'e-mail, c'est son
+  `Message-ID`, qu'une réponse cite ;
 - `poll(depuis)` rend les messages reçus depuis une date, chacun avec son
   expéditeur, son texte, et à quel message il répond (pour l'e-mail, les
   en-têtes `In-Reply-To` et `References`). Un canal qui reçoit en direct
   (le téléphone) n'en a pas : son programme écrit lui-même chaque appel
   reçu (partie 4) ;
-- `confirm(message)` dit si un envoi est vraiment parti : l'e-mail est
-  cherché dans les messages envoyés, l'appel dans son journal.
+- `confirm(message)` dit si un envoi est vraiment parti (sa référence, ou
+  rien) : l'e-mail est cherché dans les messages envoyés, l'appel dans son
+  journal.
 
 Les adaptateurs sont rangés dans `serge/channels/`, un fichier par canal,
-et déclarés dans une seule liste. Ils ne savent rien d'une invocation ni
-d'un business : ils transportent un message.
+et déclarés dans une seule liste (`ADAPTERS`, `serge/channels/base.py`).
+Ils ne savent rien d'une invocation ni d'un business : ils transportent un
+message.
 
 **En base, une ligne de `canaux`** par canal : son titre, sa description,
 et en plus, au lot 8 :
@@ -49,6 +52,7 @@ et en plus, au lot 8 :
   `contact_addresses` (`email` pour l'e-mail, `phone` pour l'appel) ;
 - `connected` : 1 si son adaptateur existe dans le code (rempli au
   démarrage, comme les capacités) ;
+- `polls` : 1 s'il se relève (son adaptateur a une fonction `poll`) ;
 - `polled_at` : la dernière relève réussie (vide pour un canal qui reçoit
   en direct).
 
@@ -81,23 +85,24 @@ l'envoi :
 | `status` | `to_write`, `pending`, `sending`, `sent`, `failed`, `cancelled` | voir partie 6 |
 | `reply_to` | `ie_45` | le message reçu auquel il répond |
 | `followup_of` | `t_7` | l'envoi qu'il relance |
-| `thread_ref` | `<abc@serge>` | le fil d'e-mail (l'identifiant du message) |
-| `external_ref` | `18c2f…` | la référence rendue par l'adaptateur |
+| `external_ref` | `<tou_3f2a@serge>` | la référence rendue par l'adaptateur (pour l'e-mail, son Message-ID) |
 | `sent_at` | | quand il est parti |
+| `last_error` | `BLOCKLISTED` | pourquoi il a été annulé, ou n'est pas parti |
 
 **`inbound_events` : ce que Serge reçoit.** Une ligne par message reçu
 (un e-mail, un appel avec son résumé), avec en plus : `address`
-(l'expéditeur), `subject`, `body`, `thread_ref` (à quel message il
-répond), `external_ref` (sa référence chez le fournisseur : un même
-message n'est jamais écrit deux fois), `status` (`attached` ou
-`unattached`), `reaction` (remplie par « Traiter une réponse ») et
-`venture_id`.
+(l'expéditeur), `subject`, `body`, `message_ref` (sa référence, pour lui
+répondre dans le même fil), `external_ref` (sa référence chez le
+fournisseur : un même message n'est jamais écrit deux fois), `status`
+(`attached`, `unattached`, ou `ignored` pour une réponse automatique
+d'absence, qui n'arrête pas les relances), `reaction` (remplie par
+« Traiter une réponse ») et `venture_id`.
 
 **Le rattachement** d'un message reçu à son contact se fait au moment de
 la relève, dans le code de la capacité, dans cet ordre :
 
-1. par le fil : il répond à un message que Serge a envoyé (son
-   `thread_ref` désigne un envoi connu) ;
+1. par le fil : il répond à un message que Serge a envoyé (une des
+   références qu'il cite est l'`external_ref` d'un envoi) ;
 2. par l'adresse : l'expéditeur est une adresse connue sur ce canal. Si
    plusieurs fiches ont cette adresse (une personne contactée pour deux
    business), on prend celle à qui Serge a écrit le plus récemment.
@@ -113,7 +118,7 @@ message est rattaché à Marc par le fil, pas par l'adresse.
 ## 3. Des réglages de plus pour le pipeline en base
 
 Pour que le circuit des conversations soit décrit en base, l'interpréteur
-apprend cinq réglages, utiles à n'importe quelle invocation :
+apprend quatre réglages, utiles à n'importe quelle invocation :
 
 1. **Une condition sur un lien ou une écriture** : `condition_field`,
    `condition_op` (`=`, `!=`, `non_vide`) et `condition_value` sur `links`
@@ -131,13 +136,7 @@ apprend cinq réglages, utiles à n'importe quelle invocation :
    `invocations.single_pending_param` (`contact_id`). Si une tâche de cette
    invocation attend déjà pour ce contact, aucune autre n'est créée : deux
    messages coup sur coup ne créent qu'une réponse, qui lit tout le fil.
-4. **Annuler des tâches selon une autre colonne** : la règle d'annulation
-   du lot 7 (`task_cancel_rules`) compare un paramètre des tâches au numéro
-   de la ligne ; elle apprend `row_column`, la colonne de la ligne à
-   comparer. Exemple : un message reçu (`inbound_events` passé à
-   `attached`) annule les tâches en attente dont `contact_id` est le sien :
-   une relance prévue ne part pas.
-5. **Une capacité qui agit hors de Serge** : `capabilities.acts_outside`
+4. **Une capacité qui agit hors de Serge** : `capabilities.acts_outside`
    (1 pour envoyer). C'est ce qui l'autorise à enregistrer en cours de tâche
    (partie 6). Mission Control l'affiche sur la fiche de la capacité.
 
@@ -186,9 +185,12 @@ la fiche du business et la fiche produit. Sa réponse :
 - `requests` : les demandes sur le produit (`bug`, `insatisfaction`,
   `idée`), rangées dans `customer_requests`.
 
-Ses écritures : la réaction sur le message reçu ; un envoi `pending` de
-sorte `reply` si `reply` est non vide ; l'état du contact (`intéressé`,
-`refus`) ; les demandes. Son prompt contient les consignes de prudence :
+Ses écritures, chacune avec sa condition : la réaction sur le message
+reçu ; `ignored` sur le message si c'est une absence ; un envoi `pending`
+de sorte `reply` si `reply` est non vide ; l'étape du contact (question ou
+objection : `ENGAGED` ; intéressé : `INTENT` ; rendez-vous : `MEETING` ;
+refus : `REJECTED` ; elle n'avance que dans un sens) ; les demandes. Son
+prompt contient les consignes de prudence :
 ne jamais promettre une date ou une fonctionnalité absente de la fiche
 produit (une fonctionnalité manquante devient une demande `idée`) ; en cas
 de doute, répondre sans s'engager.
@@ -205,13 +207,23 @@ L'envoi est écrit `pending` ; « Envoyer un message » part entre 5 et
 Un envoi est écrit dans `touches` avant de partir. « Envoyer un message »
 fait ensuite, pour cet envoi :
 
-1. déjà `sent` : rien ;
+1. déjà `sent` ou `cancelled` : rien ;
 2. `sending` (le programme s'est arrêté pendant un envoi) : il demande à
    l'adaptateur `confirm`. Parti : il le marque `sent`. Pas parti : il
    l'envoie ;
-3. sinon : les garde-fous (adresse bloquée, accord exigé pour l'appel,
-   plafond de 4 contacts en 30 jours), puis `sending` **enregistré en
-   base**, l'envoi, puis `sent` et sa référence **enregistrés**.
+3. un envoi devenu inutile est annulé (`cancelled`, avec sa raison) : le
+   contact s'est désinscrit ; un premier message ou une relance à un
+   contact dans un état final (refus, client…) ; une réponse ou une
+   relance alors que le contact a écrit depuis qu'elle a été écrite
+   (« Traiter une réponse » répond alors à tout le fil ; une absence ne
+   compte pas) ; une réponse alors qu'une réponse plus récente est écrite
+   (deux messages coup sur coup pendant qu'elle s'écrivait) ;
+4. sinon : les garde-fous (canal connu, adresse bloquée, accord exigé
+   pour l'appel, plafond de 4 prises de contact en 30 jours, qui ne compte
+   que les premiers messages et les relances, pas les réponses) ; un envoi
+   refusé est annulé avec sa raison. Puis `sending` **enregistré en
+   base**, l'envoi, puis `sent` et sa référence **enregistrés**. Un canal
+   qui refuse le message le passe `failed`.
 
 C'est la seule capacité qui enregistre en cours de tâche
 (`acts_outside`). Il n'y a pas de bouton dans Mission Control : on fait
@@ -222,15 +234,15 @@ confiance à la confirmation du canal (Q79).
 ## 7. Les relances
 
 Les relances ne dépendent d'aucun canal ; elles partent sur le canal du
-premier message. Leurs réglages sont dans la policy (famille « Relances ») :
-`followups.delays_minutes` (4320, 10080 : 3 jours après le premier message,
-puis 7 jours après la première relance), dont la longueur donne le nombre
-maximum de relances.
+premier message, dans le même fil. Leurs réglages sont ceux de
+l'invocation « Préparer les relances », sur la page Policy : 4320 minutes
+(3 jours) avant la première, 10080 (7 jours) entre deux relances, deux au
+plus.
 
 « Préparer les relances » cherche les contacts dont :
 
 - le dernier événement du fil est un envoi `first` ou `followup` parti ;
-- aucun message n'est arrivé depuis ;
+- aucun message n'est arrivé depuis (une absence ne compte pas) ;
 - le délai de la prochaine relance est passé ;
 - le nombre de relances déjà faites est sous le maximum ;
 - le contact n'a ni refusé, ni demandé à ne plus être contacté ;
@@ -240,8 +252,7 @@ maximum de relances.
 Pour chacun, elle écrit un envoi `followup` au statut `to_write`.
 « Écrire une relance » en rédige le texte et le passe `pending`.
 « Envoyer un message » refait le contrôle au moment de partir : si un
-message est arrivé depuis, la relance est annulée (Q37). Un message reçu
-annule aussi les relances en attente (partie 3, réglage 4).
+message est arrivé depuis, la relance est annulée (Q37, partie 6).
 
 ---
 
@@ -258,8 +269,8 @@ plus », « STOP ») :
    Mission Control (Décisions) et sur Discord, pour qu'ils voient ce qui se
    passe et débloquent un cas rare.
 
-Chaque e-mail finit par une phrase réglable dans les textes de la page
-Pipeline : « Répondez STOP pour ne plus être contacté ».
+Chaque e-mail finira par une phrase réglable dans les textes de la page
+Pipeline : « Répondez STOP pour ne plus être contacté » (PR 2).
 
 ---
 
@@ -273,13 +284,12 @@ Pipeline : « Répondez STOP pour ne plus être contacté ».
   `insatisfaction`, `idée`), avec le contact et le message d'où elles
   viennent.
 
-Elles ont leur vue (`table_views`), comme les contacts, leurs adresses,
-les envois et les messages reçus. La fiche produit est écrite par
-l'invocation qui conçoit le produit (lot 10) ; la PR 4 en met une
-demi-fiche pour les tests.
+Elles ont leur vue (`table_views`), comme les contacts, les envois et les
+messages reçus. La fiche produit est écrite par l'invocation qui conçoit
+le produit (lot 10) ; la PR 4 en met une demi-fiche pour les tests.
 
-Les événements de ces tables nomment la ligne concernée : « Lire
-l'historique » d'un contact montre tout son fil.
+Le fil d'un contact se lit avec la capacité « Lire le fil d'un contact »,
+donnée d'office à « Traiter une réponse » et « Écrire une relance ».
 
 ---
 
@@ -287,10 +297,12 @@ l'historique » d'un contact montre tout son fil.
 
 L'adaptateur e-mail utilise Gmail par l'outil `gog`, comme sur le serveur
 de Julien, ou une boîte SMTP/IMAP (`serge/channels/email_gog.py`,
-`email_smtp.py`). Il ajoute à chaque envoi un `Message-ID` choisi par
-Serge, qui sert à rattacher les réponses et à confirmer un envoi. La
-réponse garde l'objet (« Re: … ») et les en-têtes du fil. La relève
-(`poll`) lit les messages reçus depuis la dernière relève.
+`email_smtp.py`). Il ajoute à chaque envoi un `Message-ID` tiré du
+numéro de l'envoi, qui sert à rattacher les réponses et à confirmer un
+envoi. La réponse garde l'objet (« Re: … ») et les en-têtes du fil. La
+relève (`poll`) lit les messages reçus depuis la dernière relève. Chaque
+e-mail finit par la phrase « Répondez STOP… », un texte de la page
+Pipeline.
 
 ## 11. PR 3 — Le canal appel
 

@@ -77,8 +77,9 @@ def resume_interrupted(conn: sqlite3.Connection, queue_id: str) -> list[str]:
     Exemple : un déploiement redémarre la file pendant un appel au modèle.
     La tâche n'a rien écrit (ses écritures ne sont enregistrées qu'à la
     fin), elle est donc reprise depuis le début, et c'est noté au journal.
-    Raccourci : valable tant qu'aucune capacité n'agit hors de Serge ; le
-    lot 8 ajoute un état « à vérifier » pour celles qui envoient ou paient.
+    Une capacité qui agit hors de Serge (envoyer un message) enregistre
+    elle-même son état pendant la tâche : reprise, elle demande au canal si
+    son envoi est parti avant de le refaire.
 
     Returns:
         Les tâches remises dans la file.

@@ -243,7 +243,7 @@ class GuardTests(unittest.TestCase):
             self.connection,
             POLICY,
             {
-                'channel': 'sms',
+                'channel': 'voice',
                 'subject': '+33612345678',
                 'idempotency_key': 'k-log2',
             },

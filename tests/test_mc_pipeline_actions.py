@@ -149,7 +149,7 @@ class ComparerTests(McBrowserCase):
             '/owner/api/invocation/comparer',
             {
                 'invocation_id': 'formuler_a',
-                'table': 'contacts',
+                'table': 'transactions',
                 'voir': True,
             },
             cookie,

@@ -15,6 +15,7 @@ from typing import Any
 
 from serge.seed_base import (
     PipelineSeedError,
+    condition_columns,
     exists,
     insert,
     list_of,
@@ -43,6 +44,7 @@ def seed_links(conn: sqlite3.Connection, data: Mapping[str, Any]) -> None:
         if exists(conn, 'links', 'id', ident):
             continue
         origin = str(link['from'])
+        cond = condition_columns(link.get('condition'), f'lien {ident}')
         for end in (origin, str(link['to'])):
             if not exists(conn, 'invocations', 'id', end):
                 raise PipelineSeedError(
@@ -61,6 +63,11 @@ def seed_links(conn: sqlite3.Connection, data: Mapping[str, Any]) -> None:
             enabled=int(bool(link.get('enabled', True))),
             origin='code',
             updated_by='pipeline.yaml',
+            delay_min_setting=str((link.get('delay') or {}).get('min', '')),
+            delay_max_setting=str((link.get('delay') or {}).get('max', '')),
+            condition_field=cond[0],
+            condition_op=cond[1],
+            condition_value=cond[2],
         )
         seed_params(
             conn, 'link_params', {'link_id': ident}, link.get('params'), ident

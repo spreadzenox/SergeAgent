@@ -123,3 +123,34 @@ def project_email(
     ).fetchone()
     derniere = str(row[0] or '') if row else ''
     return {'par_statut': par_statut, 'derniere_activite': derniere}
+
+
+def project_non_rattaches(
+    conn: sqlite3.Connection, policy: Mapping[str, Any], now: str
+) -> dict[str, Any]:
+    """Les messages reçus d'inconnus, que Serge ne traite pas (Q37, Q79).
+
+    Un message qui ne répond à aucun envoi de Serge et vient d'une adresse
+    inconnue reste ici : Julien ou Clem décident quoi en faire.
+
+    Returns:
+        Dict {items: [{heure, canal, expediteur, objet, extrait}]}, les 30
+        plus récents.
+    """
+    _ = (policy, now)
+    return {
+        'items': [
+            {
+                'heure': str(recu),
+                'canal': str(canal),
+                'expediteur': str(adresse),
+                'objet': str(objet),
+                'extrait': str(texte)[:200],
+            }
+            for recu, canal, adresse, objet, texte in conn.execute(
+                'SELECT received_at, channel, address, subject, body'
+                " FROM inbound_events WHERE status='unattached'"
+                ' ORDER BY received_at DESC LIMIT 30'
+            ).fetchall()
+        ]
+    }

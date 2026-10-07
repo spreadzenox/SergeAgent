@@ -261,7 +261,7 @@ def run_task(
         answer = _capability_answer(conn, inv, task)
     written = write_answer(conn, inv.id, task_id, task, answer)
     fire_row_triggers(conn, written)
-    pass_links(conn, inv.id, task_id, written)
+    pass_links(conn, inv.id, task_id, written, answer)
     finish_task(conn, task_id)
     append_event(
         conn,

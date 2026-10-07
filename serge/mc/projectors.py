@@ -18,6 +18,7 @@ from serge.mc.proj_analyse import (
 from serge.mc.proj_campagnes import (
     project_campagnes,
     project_email,
+    project_non_rattaches,
     project_population,
 )
 from serge.mc.proj_cerveau import (
@@ -195,6 +196,7 @@ PROJECTORS: dict[str, Callable[..., dict[str, Any]]] = {
     'campagnes': project_campagnes,
     'population': project_population,
     'email': project_email,
+    'non_rattaches': project_non_rattaches,
     'pensees': project_pensees,
     'decisions': project_decisions,
     'matrice': project_matrice,
@@ -236,7 +238,15 @@ PAGE_SECTIONS: dict[str, list[str]] = {
         'feed',
         'jauges',
     ],
-    'p1': ['meta', 'ilots', 'scheduler', 'campagnes', 'population', 'email'],
+    'p1': [
+        'meta',
+        'ilots',
+        'scheduler',
+        'campagnes',
+        'population',
+        'email',
+        'non_rattaches',
+    ],
     'p2': ['meta', 'pensees', 'decisions', 'matrice', 'signaux'],
     'p3': ['meta', 'tickets', 'diffs', 'metriques', 'digest'],
     'p4': ['meta', 'couches', 'consolidation', 'requested'],

@@ -20,18 +20,20 @@ place de test.
 
 from __future__ import annotations
 
+import random
 import sqlite3
 from collections.abc import Mapping
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
 from serge.db.store import utcnow
-from serge.interpreter.rules import quota_usage, safe_name
+from serge.interpreter.rules import condition_met, quota_usage, safe_name
 from serge.interpreter.schedule import due_slot
 from serge.interpreter.settings import load_settings
 from serge.interpreter.tasks import enqueue_task, task_params
 from serge.interpreter.writer import Written
+from serge.policy_store import setting_value
 
 
 def _params(
@@ -74,6 +76,7 @@ def _pass(
     auto: bool,
     source_ref: str,
     params: dict[str, str],
+    not_before: str = '',
 ) -> None:
     cursor = conn.execute(
         'INSERT OR IGNORE INTO link_passages(link_id, source_ref, created_at)'
@@ -89,7 +92,7 @@ def _pass(
             [(link_id, source_ref, k, v) for k, v in sorted(params.items())],
         )
         return
-    _mark_passed(conn, link_id, source_ref, to_invocation, params)
+    _mark_passed(conn, link_id, source_ref, to_invocation, params, not_before)
 
 
 def _mark_passed(
@@ -98,9 +101,15 @@ def _mark_passed(
     source_ref: str,
     to_invocation: str,
     params: Mapping[str, str],
+    not_before: str = '',
 ) -> str | None:
     task_id = enqueue_task(
-        conn, to_invocation, params, origin='link', origin_ref=link_id
+        conn,
+        to_invocation,
+        params,
+        origin='link',
+        origin_ref=link_id,
+        not_before=not_before,
     )
     conn.execute(
         'UPDATE link_passages SET task_id=?, passed_at=?'
@@ -161,43 +170,88 @@ def set_link_auto(conn: sqlite3.Connection, link_id: str, auto: bool) -> bool:
     return cursor.rowcount == 1
 
 
+def _delay(
+    conn: sqlite3.Connection,
+    min_setting: str,
+    max_setting: str,
+    source: Mapping[str, Any],
+) -> str:
+    """« Pas avant » : maintenant plus un délai tiré entre deux réglages.
+
+    Les réglages sont ceux de la policy (en minutes) ; ``{channel}`` dans
+    leur nom est remplacé par le canal de la ligne. Exemple :
+    ``channels.{channel}.reply_delay_min_minutes`` pour une réponse par
+    e-mail. Sans réglage, ou un délai de 0, la tâche part tout de suite.
+    """
+    if not min_setting:
+        return ''
+
+    def minutes(name: str) -> float:
+        for key, value in source.items():
+            name = name.replace('{' + str(key) + '}', str(value or ''))
+        return float(setting_value(conn, name) or 0)
+
+    low = minutes(min_setting)
+    high = max(low, minutes(max_setting or min_setting))
+    drawn = random.uniform(low, high)
+    if drawn <= 0:
+        return ''
+    start = datetime.fromisoformat(utcnow())
+    return (start + timedelta(minutes=drawn)).isoformat()
+
+
 def pass_links(
     conn: sqlite3.Connection,
     invocation_id: str,
     task_id: str,
     written: Mapping[int, Written],
+    answer: Any = None,
 ) -> None:
-    """Lance les invocations suivantes, selon les liens de celle-ci."""
+    """Lance les invocations suivantes, selon les liens de celle-ci.
+
+    Un lien peut avoir une condition, lue dans la réponse (lien
+    ``on_finish``) ou dans la ligne écrite (lien ``per_row``), et un délai
+    (voir ``_delay``).
+    """
     task = task_params(conn, task_id)
     settings = load_settings(conn, invocation_id)
-    for link_id, to_inv, mode, write_id, auto in conn.execute(
-        'SELECT id, to_invocation_id, mode, write_id, auto FROM links'
+    reponse = answer if isinstance(answer, Mapping) else {}
+    for link in conn.execute(
+        'SELECT id, to_invocation_id, mode, write_id, auto, condition_field,'
+        ' condition_op, condition_value, delay_min_setting,'
+        ' delay_max_setting FROM links'
         " WHERE from_invocation_id=? AND enabled=1 AND deleted_at=''",
         (invocation_id,),
     ).fetchall():
-        rows = _link_param_rows(conn, str(link_id))
+        link_id, to_inv, mode, write_id, auto = (str(x) for x in link[:5])
+        field, op, expected, low, high = (str(x or '') for x in link[5:])
+        rows = _link_param_rows(conn, link_id)
         if mode == 'on_finish':
-            _pass(
-                conn,
-                str(link_id),
-                str(to_inv),
-                bool(auto),
-                f'task:{task_id}',
-                _params(rows, task=task, settings=settings),
-            )
+            if condition_met(reponse.get(field), op, expected):
+                _pass(
+                    conn,
+                    link_id,
+                    to_inv,
+                    auto == '1',
+                    f'task:{task_id}',
+                    _params(rows, task=task, settings=settings),
+                    _delay(conn, low, high, task),
+                )
             continue
         done = written.get(int(write_id))
         if done is None:
             continue
         for row in done.rows:
-            ref = f'{done.table}:{row.get("id", "")}'
+            if not condition_met(row.get(field), op, expected):
+                continue
             _pass(
                 conn,
-                str(link_id),
-                str(to_inv),
-                bool(auto),
-                ref,
+                link_id,
+                to_inv,
+                auto == '1',
+                f'{done.table}:{row.get("id", "")}',
                 _params(rows, row=row, task=task, settings=settings),
+                _delay(conn, low, high, {**task, **row}),
             )
 
 
@@ -243,6 +297,27 @@ def fire_row_triggers(
                     origin='trigger',
                     origin_ref=f'{trig_id}:{done.table}:{row.get("id", "")}',
                 )
+
+
+def notify_rows_written(
+    conn: sqlite3.Connection, table: str, row_ids: list[str]
+) -> None:
+    """Prévient les déclencheurs « une ligne est écrite » pour des lignes
+    écrites hors de l'interpréteur.
+
+    Un programme qui reçoit de l'extérieur (un appel, un SMS) écrit sa
+    ligne, puis appelle cette fonction : le pipeline se réveille comme
+    après l'écriture d'une invocation. Exemple : le résumé d'un appel reçu,
+    écrit dans ``inbound_events``, lance « Traiter une réponse ».
+    """
+    cursor = conn.execute(
+        f'SELECT * FROM "{safe_name(table)}" WHERE id IN'
+        f' ({",".join("?" * len(row_ids))})',
+        row_ids,
+    )
+    names = [d[0] for d in cursor.description]
+    rows = [dict(zip(names, r, strict=True)) for r in cursor.fetchall()]
+    fire_row_triggers(conn, {0: Written(table, rows=rows)})
 
 
 def _trigger_param_rows(conn: sqlite3.Connection, trigger_id: str) -> list:

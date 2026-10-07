@@ -115,6 +115,17 @@ function renderEmail(main, payload, sig) {
   section.dataset.sig = sig;
 }
 
+function renderNonRattaches(main, payload, sig) {
+  const section = main.querySelector('[data-section="non_rattaches"]');
+  fillList(
+    section.querySelector('[data-list="messages"]'),
+    payload.items || [],
+    'Aucun message non rattaché.',
+    (m) => li(`${rel(m.heure)} · ${m.canal} · ${m.expediteur} · ${m.objet} — ${m.extrait}`),
+  );
+  section.dataset.sig = sig;
+}
+
 export function mount(main, store) {
   const tpl = document.getElementById('page-system');
   main.replaceChildren(tpl.content.cloneNode(true));
@@ -197,6 +208,7 @@ export function mount(main, store) {
     campagnes: renderCampagnes,
     population: renderPopulation,
     email: renderEmail,
+    non_rattaches: renderNonRattaches,
   };
   const unsubs = [
     store.subscribe('ilots', () => {
@@ -215,6 +227,9 @@ export function mount(main, store) {
     }),
     store.subscribe('email', (payload, sg) => {
       renderEmail(main, payload, sg);
+    }),
+    store.subscribe('non_rattaches', (payload, sg) => {
+      renderNonRattaches(main, payload, sg);
     }),
   ];
   majListe();

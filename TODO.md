@@ -167,9 +167,10 @@ discutable, qui peut un jour changer, se règle depuis Mission Control.**
   - lot 8 (conversations, voix) : jours et heures d'appel, jours de
     prospection, marge avant un rendez-vous, jours fériés et fuseau du
     pays ; durée et tours de parole d'un appel, longueur du script,
-    conservation des enregistrements, un numéro par business ; délai de
-    réponse et heures ouvrées des réponses, relève de la boîte mail ;
-    silences avant une relance ; seuils de lecture des réponses ;
+    conservation des enregistrements, un numéro par business ; seuils de
+    lecture des réponses. Le délai de réponse, la relève récente de la
+    boîte et les délais des relances sont remis (PR 1 du lot 8), sans
+    heures ouvrées : Serge répond à toute heure (Q79) ;
   - lot 9 (grille de points) : le barème de prospection ;
   - lot 10 (construire) : les bornes de la construction ;
   - lot 11 (étapes 3, 4, 6, 7 et 8) : la répartition du budget, les invitations
@@ -199,69 +200,13 @@ partent toutes seules : les tickets qui font attendre une réponse viennent
 au lot 8 bis. La conception détaillée est dans
 [`docs/LOT8_CONCEPTION.md`](docs/LOT8_CONCEPTION.md).
 
-- [ ] **PR 1 — L'architecture des canaux, sans canal réel.** Testée avec
-  un faux canal. Elle contient tout ce qui ne dépend d'aucun canal :
-  - **un canal est une ligne en base**, qui dit quelles capacités savent
-    envoyer, relever et confirmer un envoi pour lui. Ajouter un canal,
-    c'est écrire ces fonctions et ajouter des lignes, jamais retoucher le
-    pipeline ;
-  - **ne jamais agir deux fois** : un envoi est noté « en cours » avant
-    d'agir, puis « fait ». Si le programme s'arrête entre les deux, la
-    fonction de confirmation du canal dit si l'envoi est parti (l'e-mail
-    est cherché dans les messages envoyés, l'appel dans son journal), et
-    on lui fait confiance : pas de bouton dans Mission Control ;
-  - **le fil par contact**, tous canaux confondus : les envois (`touches`,
-    avec leur texte) et les messages reçus (`inbound_events`), par date
-    (Q37). Chaque message reçu est rattaché au bon contact, par son
-    adresse ou par le fil d'e-mail auquel il répond ; un message d'un
-    inconnu n'est pas traité et apparaît dans Mission Control, dans les
-    messages non rattachés ;
-  - **un message reçu réveille le pipeline** : les programmes qui reçoivent
-    de l'extérieur préviennent les déclencheurs « une ligne est écrite »,
-    comme le fait l'interpréteur ; « une seule tâche en attente par
-    contact », pour que deux messages coup sur coup ne créent qu'une
-    réponse ;
-  - **« Traiter une réponse »**, une seule invocation : elle reçoit le fil
-    du contact, sa fiche, la fiche du business et la fiche produit, et rend
-    la réaction (intéressé, question, objection, rendez-vous, refus,
-    désinscription, absence, hors sujet), la réponse à envoyer ou « pas de
-    réponse », et les demandes sur le produit (bug, insatisfaction, idée),
-    rangées dans une table. Son prompt contient les consignes de prudence :
-    ne jamais promettre une date ou une fonctionnalité absente de la fiche
-    produit ; en cas de doute, répondre sans s'engager (« je vérifie et je
-    reviens vers vous ») ;
-  - **une condition simple sur un lien ou une écriture** (« seulement si
-    `reaction` vaut `désinscription` »), pour que la suite dépende de la
-    réponse sans code propre ;
-  - **un délai sur un lien**, tiré entre le minimum et le maximum du canal,
-    réglables dans Mission Control (e-mail : entre 5 et 20 minutes, à toute
-    heure ; 0 répond tout de suite) ;
-  - **les relances**, quel que soit le canal, sur le canal du premier
-    message : la première 3 jours après, la seconde 7 jours après la
-    première, deux au plus, délais réglés en minutes en base. Toute réponse
-    reçue annule les relances en attente. Une relance ne part pas si les
-    messages de son canal n'ont pas été relevés depuis plus d'une heure ;
-  - **la désinscription vaut partout** : toutes les adresses de la personne
-    sont bloquées, sur tous les canaux et pour tous les business, ses
-    tâches en attente sont annulées, Serge ne lui répond rien, et un ticket
-    d'information prévient Julien et Clem (capacité « Prévenir Julien et
-    Clem »). Chaque e-mail finit par une phrase réglable du type
-    « Répondez STOP pour ne plus être contacté » ;
-  - **la fiche produit**, une table : ce que fait le produit et pour qui,
-    ce qu'il ne fait pas, le prix, les délais habituels, comment on
-    l'utilise, des questions fréquentes. Elle est écrite par l'invocation
-    qui conçoit le produit (lot 10) ; d'ici là, la PR 4 en met une
-    demi-fiche pour les tests ;
-  - **des vues de tables** (`table_views`) pour les contacts, leurs
-    adresses, les envois, les messages reçus et la fiche produit, et des
-    événements qui nomment la ligne concernée, pour que « Lire
-    l'historique » d'un contact montre tout son fil.
-
 - [ ] **PR 2 — Le canal e-mail.** Il marche de bout en bout : envoyer,
   relever la boîte, rattacher une réponse à son fil, confirmer un envoi.
   Serge utilise Gmail par l'outil `gog` sur le serveur de Julien ; le code
   sait aussi passer par une boîte SMTP/IMAP. L'ancienne relève de la boîte
-  est dans `pas_encore_branche/` pour s'en inspirer.
+  est dans `pas_encore_branche/` pour s'en inspirer. Chaque e-mail finit
+  par une phrase réglable dans les textes de la page Pipeline, du type
+  « Répondez STOP pour ne plus être contacté » (Q79).
 
 - [ ] **PR 3 — Le canal appel, et un agent vocal qui sait à qui il
   parle.** Le code de la voix existe (`serge/voice/`) : le pont qui

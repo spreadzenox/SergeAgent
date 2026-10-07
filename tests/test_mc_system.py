@@ -26,7 +26,15 @@ class SystemRegistryTests(unittest.TestCase):
         sections = PAGE_SECTIONS['p1']
         self.assertEqual(
             sections,
-            ['meta', 'ilots', 'scheduler', 'campagnes', 'population', 'email'],
+            [
+                'meta',
+                'ilots',
+                'scheduler',
+                'campagnes',
+                'population',
+                'email',
+                'non_rattaches',
+            ],
         )
         for section in sections:
             self.assertIn(section, PROJECTORS)
@@ -91,6 +99,13 @@ class McSystemTests(McBrowserCase):
                 (iso, iso),
             )
             conn.execute(
+                'INSERT INTO inbound_events(id, channel, address, subject,'
+                " body, status, received_at) VALUES('i1', 'email',"
+                " 'inconnu@ailleurs.fr', 'Une question', 'Bonjour',"
+                " 'unattached', ?)",
+                (iso,),
+            )
+            conn.execute(
                 'INSERT INTO transactions(id, venture_id, kind, amount_eur,'
                 ' intent_id, status, created_at, updated_at)'
                 " VALUES('x1','v1','invoice',50.0,'in-1','overdue',?,?)",
@@ -127,6 +142,10 @@ class McSystemTests(McBrowserCase):
         page = self._page_home()
         page.goto(f'{self.base}/owner#/system')
         expect(page.locator('[data-section="email"]')).to_be_visible()
+        # Le message d'un inconnu : pas traité, mais visible.
+        expect(page.locator('[data-section="non_rattaches"]')).to_contain_text(
+            'inconnu@ailleurs.fr · Une question'
+        )
         self.assertTrue(page.url.endswith('#/system'))
 
     def test_pas_de_fuite_boucle_ilots(self) -> None:

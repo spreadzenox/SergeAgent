@@ -109,12 +109,14 @@ class PolicyTests(unittest.TestCase):
         """Un réglage que rien ne lit ment dans Mission Control (Q68)."""
         # raccourci : on cherche le nom du réglage (son dernier mot) dans le
         # code ; un nom repris ailleurs (« timezone ») peut passer à tort.
+        # Le pipeline de départ en lit aussi : le délai d'un lien nomme ses
+        # réglages (« channels.{channel}.reply_delay_min_minutes »).
         sources = [
             p.read_text(encoding='utf-8')
             for dossier in ('serge', 'kit')
             for p in (ROOT / dossier).rglob('*')
             if p.suffix in {'.py', '.js'}
-        ]
+        ] + [(ROOT / 'config' / 'pipeline.yaml').read_text(encoding='utf-8')]
         orphelins = [
             chemin
             for chemin in _feuilles(load_policy())

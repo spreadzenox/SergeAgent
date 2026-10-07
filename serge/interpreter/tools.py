@@ -14,9 +14,15 @@ import sqlite3
 from collections.abc import Callable, Mapping
 from typing import Any
 
+from serge.conversations.followups import due_followups
+from serge.conversations.receive import receive_messages
+from serge.conversations.send import send_message
+from serge.conversations.thread import contact_thread
+from serge.conversations.unsubscribe import unsubscribe_contact
 from serge.interpreter.seen import CHOICES, read_seen_table, row_history
 from serge.interpreter.settings import load_settings
 from serge.policy_store import policy_en_vigueur
+from serge.tickets.inform import inform_owners
 
 Runner = Callable[
     [sqlite3.Connection, str, dict[str, Any], str], dict[str, Any]
@@ -157,6 +163,12 @@ def _echo(
 
 RUNNERS: dict[str, Runner] = {
     'echo': _echo,
+    'receive_messages': receive_messages,
+    'contact_thread': contact_thread,
+    'send_message': send_message,
+    'due_followups': due_followups,
+    'unsubscribe_contact': unsubscribe_contact,
+    'inform_owners': inform_owners,
     'db_read': _db_read,
     'web_search': _web_search,
     'memory_search': _memory_search,

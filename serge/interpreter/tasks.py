@@ -54,14 +54,15 @@ def enqueue_task(
 
     Returns:
         L'id de la tâche, celui de la tâche déjà existante pour la même
-        clé, ou ``None`` si l'invocation ne peut pas être lancée.
+        clé (ou qui attend déjà pour le même ``single_pending_param``), ou
+        ``None`` si l'invocation ne peut pas être lancée.
 
     Raises:
         TaskError: Invocation inconnue.
     """
     row = conn.execute(
-        'SELECT queue_id, priority, enabled, deleted_at FROM invocations'
-        ' WHERE id=?',
+        'SELECT queue_id, priority, enabled, deleted_at, single_pending_param'
+        ' FROM invocations WHERE id=?',
         (invocation_id,),
     ).fetchone()
     if row is None:
@@ -71,6 +72,19 @@ def enqueue_task(
     values = {
         str(k): '' if v is None else str(v) for k, v in (params or {}).items()
     }
+    # Une seule tâche en attente par valeur de ce paramètre : deux messages
+    # d'un contact coup sur coup ne créent qu'une réponse, qui lit tout le
+    # fil.
+    single = str(row[4] or '')
+    if single and values.get(single):
+        waiting = conn.execute(
+            'SELECT t.id FROM tasks t JOIN task_params p ON p.task_id=t.id'
+            " WHERE t.invocation_id=? AND t.status='ready' AND p.name=?"
+            ' AND p.value=? LIMIT 1',
+            (invocation_id, single, values[single]),
+        ).fetchone()
+        if waiting is not None:
+            return str(waiting[0])
     idem = key or task_key(invocation_id, origin, origin_ref, values)
     found = conn.execute(
         'SELECT id FROM tasks WHERE idempotency_key=?', (idem,)
