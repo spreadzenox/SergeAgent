@@ -203,6 +203,45 @@ class PipelineSeedTests(unittest.TestCase):
             (0,),
         )
 
+    def test_une_instance_existante_recoit_ce_qui_lui_manque(self) -> None:
+        """Le cas du serveur au kit d'essai : les business avaient déjà leurs
+        changements de statut, sans « création → TEST » ; « Traiter une
+        réponse » avait le prompt de la PR 1 du lot 8."""
+        import yaml
+
+        self.conn.execute(
+            "DELETE FROM status_transitions WHERE to_value IN ('TEST',"
+            " 'CONTACTING') AND from_value IN ('', 'NEW', 'QUALIFIED')"
+        )
+        ancien = yaml.safe_load(
+            (ROOT / 'config/pipeline.yaml').read_text(encoding='utf-8')
+        )
+        ancien = next(
+            c for c in ancien['changes'] if c['id'] == 'lot8_traiter_un_appel'
+        )['set']['prompt']['from'].strip()
+        self.conn.execute(
+            "UPDATE invocations SET prompt=? WHERE id='traiter_reponse'",
+            (ancien,),
+        )
+        self.conn.execute(
+            "DELETE FROM pipeline_changes WHERE id='lot8_traiter_un_appel'"
+        )
+        ensure_pipeline(self.conn)
+        self.assertEqual(
+            self._one(
+                "SELECT COUNT(*) FROM status_transitions WHERE (to_value='TEST'"
+                " AND from_value='') OR (to_value='CONTACTING' AND"
+                " from_value IN ('NEW', 'QUALIFIED'))"
+            ),
+            (3,),
+        )
+        self.assertIn(
+            'transcription d',
+            self._one(
+                "SELECT prompt FROM invocations WHERE id='traiter_reponse'"
+            )[0],
+        )
+
     def test_une_invocation_supprimee_ne_revient_pas(self) -> None:
         seed_pipeline(self.conn, _pipeline())
         self.conn.execute(

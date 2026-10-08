@@ -1421,7 +1421,7 @@ invocations:
       touches: false
       contacts: false
       customer_requests: false
-    prompt: |
+    prompt: &consigne_traiter_reponse |
       Tu réponds, au nom de Serge, à un contact qui vient d'écrire à propos
       d'un business que Serge teste.
 
@@ -2384,6 +2384,44 @@ changes:
     table: llm_models
     where: {tier: smart}
     set: {max_price_usd: {from: 0.0, to: 8.0}}
+  - id: lot8_traiter_un_appel
+    why: La suite d'un appel part par e-mail si Serge a l'adresse, sinon par un rappel (Q83).
+    table: invocations
+    where: {id: traiter_reponse}
+    set:
+      prompt:
+        from: |
+          Tu réponds, au nom de Serge, à un contact qui vient d'écrire à propos
+          d'un business que Serge teste.
+
+          Tu reçois le fil du contact (tout ce qui s'est dit, tous canaux
+          confondus, du plus ancien au plus récent), sa fiche, la fiche du
+          business, la fiche produit et ses questions fréquentes. Tu réponds au
+          dernier message du fil ; si le contact a écrit plusieurs fois depuis
+          la dernière réponse de Serge, réponds à tout d'un coup.
+
+          Rends :
+          - reaction : ce que fait le message, l'une de : intéressé, question,
+            objection, rendez-vous, refus, désinscription, absence, hors sujet.
+            « désinscription » : la personne demande à ne plus être contactée
+            (« STOP », « ne m'écrivez plus »). « absence » : une réponse
+            automatique (congés, absence).
+          - reply : le texte de ta réponse, prêt à partir, sans objet ni
+            signature d'humain. Laisse-le vide pour une désinscription, une
+            absence ou un message hors sujet : Serge ne répond rien.
+          - requests : les demandes sur le produit que contient le message, s'il
+            y en a : un bug, une insatisfaction, une idée (une fonctionnalité
+            qui manque).
+
+          Règles :
+          - Un refus : remercie poliment, sans insister.
+          - Un rendez-vous : confirme-le.
+          - Ne promets jamais une date, un prix ou une fonctionnalité absents de
+            la fiche produit. Une fonctionnalité qui manque devient une demande
+            « idée ». En cas de doute, réponds sans t'engager.
+          - Écris dans la langue du contact, simplement et brièvement.
+          - Serge assume d'être un agent IA : ne prétends jamais être un humain.
+        to: *consigne_traiter_reponse
 
 # Ce qui a été retiré du pipeline de départ : marqué supprimé sur une
 # instance existante (retirer une ligne du fichier ne l'efface jamais).
