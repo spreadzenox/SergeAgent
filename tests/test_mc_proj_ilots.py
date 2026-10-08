@@ -260,44 +260,71 @@ class ProjIlotsTests(ProjSystemFixtures):
                         'resume': '1 documents (24 h)',
                     },
                     {
-                        'id': 'allocator',
-                        'label': 'Arbitre',
+                        'id': 'email',
+                        'label': 'E-mail',
                         'sante': 'inconnu',
                         'activite': 0.0,
-                        'resume': 'Pas de source (lot 6).',
+                        'resume': 'Pas branché sur ce serveur (page Système,'
+                        ' Essais).',
+                    },
+                    {
+                        'id': 'voice',
+                        'label': 'Voix',
+                        'sante': 'inconnu',
+                        'activite': 0.0,
+                        'resume': 'Pas branché sur ce serveur (page Système,'
+                        ' Essais).',
                     },
                     {
                         'id': 'sms',
                         'label': 'SMS',
-                        'sante': 'ok',
-                        'activite': 0.1,
-                        'resume': '1 reçus (24 h) — pas d’envoi (writer absent)',
-                    },
-                    {
-                        'id': 'email',
-                        'label': 'Email',
                         'sante': 'inconnu',
-                        'activite': 0.1,
-                        'resume': '1 envoyés — envoi pas encore branché'
-                        ' (lot 8)',
+                        'activite': 0.0,
+                        'resume': 'Pas branché : le SMS viendra après'
+                        ' l’e-mail et la voix.',
                     },
                     {
                         'id': 'discord',
                         'label': 'Discord',
                         'sante': 'inconnu',
                         'activite': 0.0,
-                        'resume': 'Sonde gateway au lot 12.',
-                    },
-                    {
-                        'id': 'voix',
-                        'label': 'Voix',
-                        'sante': 'inconnu',
-                        'activite': 0.0,
-                        'resume': 'Ledger voix au lot 11.',
+                        'resume': 'Pas de sonde ici : le service du bot est'
+                        ' sur la page Health.',
                     },
                 ]
             },
         )
+
+    def test_un_canal_branche_dit_ce_qui_part_et_arrive(self) -> None:
+        """L'e-mail branché : partis et reçus sur 24 h, sa dernière relève ;
+        une boîte pas relevée depuis plus d'une heure est « dégradée »."""
+        self.conn.execute(
+            "UPDATE canaux SET etat='branche', polls=1,"
+            " polled_at='2026-09-10T11:50:00+00:00' WHERE id='email'"
+        )
+        self.conn.execute(
+            "UPDATE touches SET sent_at='2026-09-10T11:00:00+00:00'"
+            " WHERE channel='email' AND status='sent'"
+        )
+        self.conn.execute(
+            'INSERT INTO inbound_events(id, channel, received_at) VALUES'
+            "('r1', 'email', '2026-09-10T11:30:00+00:00')"
+        )
+        email = {
+            i['id']: i for i in project_ilots(self.conn, POLICY, NOW)['items']
+        }['email']
+        self.assertEqual(
+            (email['sante'], email['resume']),
+            ('ok', '1 partis, 1 reçus (24 h), relevé à 11:50'),
+        )
+        self.conn.execute(
+            "UPDATE canaux SET polled_at='2026-09-10T09:00:00+00:00'"
+            " WHERE id='email'"
+        )
+        email = {
+            i['id']: i for i in project_ilots(self.conn, POLICY, NOW)['items']
+        }['email']
+        self.assertEqual(email['sante'], 'degrade')
 
     def test_scheduler_golden(self) -> None:
         self.assertEqual(

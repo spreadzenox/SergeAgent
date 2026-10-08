@@ -17,6 +17,17 @@ Chaque modification est appliquée une seule fois par instance, et
 seulement si la valeur en base est encore celle d'origine (``from``) : une
 valeur changée dans Mission Control est gardée. Le résultat est noté dans
 ``pipeline_changes`` (visible dans Mission Control, page SQLite).
+
+Un outil nouveau d'une invocation déjà en base s'ajoute de la même façon,
+une seule fois, à la fin de ses outils (un outil retiré ensuite ne revient
+pas) :
+
+    changes:
+      - id: un_outil_de_plus
+        why: L'invocation lit aussi l'e-mail du contact.
+        invocation: <l'invocation>
+        add_tools:
+          - {tool: <l'outil>, mode: given, label: Son e-mail}
 """
 
 from __future__ import annotations
@@ -26,7 +37,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from serge.interpreter.rules import safe_name, table_columns
-from serge.seed_base import PipelineSeedError
+from serge.seed_base import PipelineSeedError, seed_tool_link
 
 # Les tables du pipeline qu'une modification peut viser.
 TABLES = frozenset(
@@ -94,6 +105,37 @@ def _result(
     return ' ; '.join(parts)
 
 
+def _add_tools(conn: sqlite3.Connection, invocation: str, raw: Any) -> str:
+    """Ajoute des outils à une invocation déjà en base ; rend ce qui s'est
+    passé, en clair. Un outil déjà lié (même outil, même mode) est gardé."""
+    if not isinstance(raw, list) or not all(
+        isinstance(tool, Mapping) and tool.get('tool') for tool in raw
+    ):
+        raise PipelineSeedError('changes : add_tools, une liste d’outils')
+    if not conn.execute(
+        'SELECT 1 FROM invocations WHERE id=?', (invocation,)
+    ).fetchone():
+        return 'objet absent'
+    parts = []
+    for tool in raw:
+        tool_id, mode = str(tool['tool']), str(tool.get('mode', 'callable'))
+        if conn.execute(
+            'SELECT 1 FROM invocation_tools WHERE invocation_id=?'
+            ' AND tool_id=? AND mode=?',
+            (invocation, tool_id, mode),
+        ).fetchone():
+            parts.append(f'{tool_id} déjà là')
+            continue
+        position = conn.execute(
+            'SELECT COALESCE(MAX(position) + 1, 0) FROM invocation_tools'
+            ' WHERE invocation_id=?',
+            (invocation,),
+        ).fetchone()[0]
+        seed_tool_link(conn, invocation, tool, int(position))
+        parts.append(f'{tool_id} ajouté')
+    return ' ; '.join(parts)
+
+
 def apply_changes(conn: sqlite3.Connection, raw: Any) -> None:
     """Applique les modifications de ``pipeline.yaml`` pas encore passées.
 
@@ -109,18 +151,24 @@ def apply_changes(conn: sqlite3.Connection, raw: Any) -> None:
             'SELECT 1 FROM pipeline_changes WHERE id=?', (ident,)
         ).fetchone():
             continue
-        table = str(change['table'])
-        if table not in TABLES:
-            raise PipelineSeedError(
-                f'changes.{ident} : table {table} interdite'
+        if 'add_tools' in change:
+            result = _add_tools(
+                conn, str(change.get('invocation') or ''), change['add_tools']
             )
-        where, sets = change.get('where'), change.get('set')
-        if not isinstance(where, Mapping) or not where:
-            raise PipelineSeedError(f'changes.{ident} : where manquant')
-        if not isinstance(sets, Mapping) or not sets:
-            raise PipelineSeedError(f'changes.{ident} : set manquant')
+        else:
+            table = str(change['table'])
+            if table not in TABLES:
+                raise PipelineSeedError(
+                    f'changes.{ident} : table {table} interdite'
+                )
+            where, sets = change.get('where'), change.get('set')
+            if not isinstance(where, Mapping) or not where:
+                raise PipelineSeedError(f'changes.{ident} : where manquant')
+            if not isinstance(sets, Mapping) or not sets:
+                raise PipelineSeedError(f'changes.{ident} : set manquant')
+            result = _result(conn, table, where, sets)
         conn.execute(
             'INSERT INTO pipeline_changes(id, applied_at, result)'
             ' VALUES(?,?,?)',
-            (ident, iso_utc(), _result(conn, table, where, sets)),
+            (ident, iso_utc(), result),
         )

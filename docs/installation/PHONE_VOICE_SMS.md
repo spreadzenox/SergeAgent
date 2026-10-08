@@ -170,11 +170,13 @@ La voix principale est **en temps réel** (speech-to-speech)
 via AudioSocket (xAI Realtime d'abord, OpenAI Realtime en secours).
 L'agent est réglé en base comme une invocation, « Parler au téléphone »
 (page Pipeline) : son prompt, ses fournisseurs, modèles et voix, sa durée
-maximale, ce qu'il reçoit au décrochage (la fiche du contact, son fil, la
-fiche produit, le but de l'appel) et ses outils (chercher un contact,
-noter une adresse). Le plan d'appel écrit le sens et le numéro de l'appel
-dans l'UUID d'AudioSocket : l'agent sait à qui il parle. À la fin, la
-transcription des deux voix entre dans le fil du contact.
+maximale, ce qu'il reçoit au décrochage (la fiche du contact, son e-mail,
+son fil, la fiche produit, le but de l'appel) et ses outils (chercher un
+contact, noter une adresse une fois confirmée). Le plan d'appel écrit le
+sens et le numéro de l'appel dans l'UUID d'AudioSocket : l'agent sait à
+qui il parle, et commence selon le sens (« Début d'un appel que Serge
+passe » ou « … reçoit », page Pipeline). À la fin, la transcription des
+deux voix entre dans le fil du contact.
 
 ```
 appel → Asterisk → AudioSocket 127.0.0.1:8792

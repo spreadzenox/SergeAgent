@@ -40,6 +40,7 @@ from serge.seed_base import (
     insert,
     list_of,
     seed_params,
+    seed_tool_link,
 )
 
 __all__ = ['PipelineSeedError', 'ensure_pipeline', 'seed_pipeline']
@@ -304,25 +305,7 @@ def _seed_invocation(conn: sqlite3.Connection, inv: Mapping[str, Any]) -> None:
         ident,
     )
     for position, tool in enumerate(list_of(inv, 'tools')):
-        link_id = insert(
-            conn,
-            'invocation_tools',
-            invocation_id=ident,
-            tool_id=str(tool['tool']),
-            mode=str(tool.get('mode', 'callable')),
-            label=str(tool.get('label', '')),
-            max_rows=int(tool.get('max_rows', 0)),
-            batch_size=str(tool.get('batch_size', '')),
-            max_calls=str(tool.get('max_calls', '')),
-            position=position,
-        )
-        seed_params(
-            conn,
-            'invocation_tool_params',
-            {'invocation_id': ident, 'invocation_tool_id': link_id},
-            tool.get('params'),
-            ident,
-        )
+        seed_tool_link(conn, ident, tool, position)
     for position, out in enumerate(list_of(inv, 'output')):
         insert(
             conn,

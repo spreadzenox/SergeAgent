@@ -344,10 +344,13 @@ plafonds) puis compose. Le canal est branché quand le fichier d'instance a
 - **L'agent vocal est une invocation** (« Parler au téléphone », file
   « Appels », qui n'a pas de runner) : son prompt, ses réglages
   (fournisseurs, modèles, voix, durée maximale), ce qu'il reçoit au
-  décrochage (la fiche du contact, son fil, la fiche du business et la
-  fiche produit, et le but de l'appel), ses outils (« Chercher un contact »,
-  « Noter une adresse ») et ses écritures sont en base. Chaque appel est une
-  tâche de cette invocation, menée en direct par le pont.
+  décrochage (la fiche du contact, son e-mail, son fil, la fiche du
+  business et la fiche produit, et le but de l'appel), ses outils
+  (« Chercher un contact », « Noter une adresse ») et ses écritures sont en
+  base. Chaque appel est une tâche de cette invocation, menée en direct par
+  le pont. Il parle le premier : le texte de début d'appel dépend du sens
+  (Serge appelle : il dit tout de suite pourquoi ; Serge décroche : il
+  demande en quoi il peut aider), deux textes de la page Pipeline.
 - **L'agent sait à qui il parle.** Le plan d'appel d'Asterisk écrit le sens
   et le numéro de l'appel dans l'UUID d'AudioSocket ; le numéro est
   cherché parmi les adresses des contacts. Un appelant inconnu reconnu par
@@ -355,8 +358,11 @@ plafonds) puis compose. Le canal est branché quand le fichier d'instance a
 - **Après l'appel**, la transcription des deux voix entre dans le fil
   (`inbound_events`, canal `voice`), ce qui lance « Traiter une réponse ».
   La suite part par e-mail si Serge a l'adresse du contact, sinon Serge
-  rappelle (`channels.voice.reply_by`, décision Q83) ; l'agent demande
-  l'e-mail dès qu'un document doit être envoyé, et le note.
+  rappelle (`channels.voice.reply_by`, décision Q83). Dès qu'un document
+  doit être envoyé, l'agent propose l'e-mail qu'il a (une personne
+  reconnue par son numéro), sinon le demande et le fait épeler ; il ne
+  note une adresse qu'une fois confirmée, et celle que la personne corrige
+  est désactivée, jamais effacée (correctifs du premier essai réel).
 - **Le secours tour par tour** (`serge/voice/turn.py`) suit le même agent :
   son prompt, son modèle de secours, ses tours ; ses phrases fixes sont des
   textes de la page Pipeline.

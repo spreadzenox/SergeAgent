@@ -11,6 +11,8 @@ Scénarios :
 - une instance déployée avant les réglages de recommandation (niveaux de
   modèle sans prix maximum) les reçoit, sans écraser un prix que Julien a
   déjà changé ;
+- un outil nouveau s'ajoute une seule fois à une invocation déjà en base,
+  à la fin de ses outils, avec ses paramètres ;
 - une modification mal écrite est refusée.
 """
 
@@ -90,6 +92,52 @@ class ChangesTests(unittest.TestCase):
         self.assertEqual(
             resultats['lot7_formuler_a_plusieurs_pages'], 'prompt déjà à jour'
         )
+        self.assertEqual(
+            resultats['voix_email_du_contact'], 'email_du_contact déjà là'
+        )
+
+    def test_un_outil_nouveau_s_ajoute_une_seule_fois(self) -> None:
+        outil = {
+            'tool': 'fiche_contact',
+            'mode': 'given',
+            'label': 'Sa fiche',
+            'params': {'contact_id': {'source': 'task', 'value': 'contact_id'}},
+        }
+        self.conn.execute(
+            "DELETE FROM invocation_tools WHERE invocation_id='explorer_web'"
+            " AND tool_id='fiche_contact'"
+        )
+        changes = [
+            {'id': 'outil', 'invocation': 'explorer_web', 'add_tools': [outil]},
+            {'id': 'absente', 'invocation': 'inconnue', 'add_tools': [outil]},
+        ]
+        apply_changes(self.conn, changes)
+        self.assertEqual(self._resultat('outil'), 'fiche_contact ajouté')
+        self.assertEqual(self._resultat('absente'), 'objet absent')
+        lien, position = self.conn.execute(
+            'SELECT id, position FROM invocation_tools'
+            " WHERE invocation_id='explorer_web' AND tool_id='fiche_contact'"
+        ).fetchone()
+        self.assertEqual(
+            position,
+            self.conn.execute(
+                'SELECT MAX(position) FROM invocation_tools'
+                " WHERE invocation_id='explorer_web'"
+            ).fetchone()[0],
+        )
+        self.assertEqual(
+            self.conn.execute(
+                'SELECT param_name, source, value FROM invocation_tool_params'
+                ' WHERE invocation_tool_id=?',
+                (lien,),
+            ).fetchall(),
+            [('contact_id', 'task', 'contact_id')],
+        )
+        with self.assertRaises(PipelineSeedError):
+            apply_changes(
+                self.conn,
+                [{'id': 'mal', 'invocation': 'explorer_web', 'add_tools': {}}],
+            )
 
     def test_une_modification_mal_ecrite_est_refusee(self) -> None:
         for mauvais in (
@@ -115,7 +163,7 @@ class InstanceDuLot7Tests(unittest.TestCase):
         anciens = {
             c['where']['id']: c['set']['prompt']['from']
             for c in data['changes']
-            if 'prompt' in c['set']
+            if 'prompt' in c.get('set', {})
         }
         for ident, tours in (
             ('explorer_web', 25),

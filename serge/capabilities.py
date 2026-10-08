@@ -243,13 +243,20 @@ CAPABILITIES: tuple[Capability, ...] = (
         'add_contact_address',
         'Noter une adresse',
         'Ajoute une adresse e-mail ou un numéro à la fiche d’un contact, à'
-        ' côté des autres : une adresse n’est jamais écrasée.',
+        ' côté des autres : une adresse n’est jamais écrasée. L’adresse que'
+        ' la personne corrige est désactivée.',
         'serge/conversations/contact.py',
         (
             Param('contact_id', 'text', True, 'Le numéro du contact.'),
             Param('channel', 'text', True, 'email ou phone.'),
             Param(
-                'value', 'text', True, 'L’adresse, vérifiée avec la personne.'
+                'value', 'text', True, 'L’adresse, confirmée par la personne.'
+            ),
+            Param(
+                'replaces',
+                'text',
+                False,
+                'L’adresse fausse qu’elle remplace, s’il y en a une.',
             ),
         ),
     ),

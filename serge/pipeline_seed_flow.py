@@ -155,9 +155,10 @@ def seed_deleted(conn: sqlite3.Connection, data: Mapping[str, Any]) -> None:
     """Ce qui a été retiré du pipeline de départ, retiré aussi de la base.
 
     Format : ``{invocations: [...], links: [...], triggers: [...],
-    tools: [...], quotas: [...]}``. Les invocations, liens et déclencheurs
-    sont marqués supprimés (``deleted_at``) ; les outils et les quotas,
-    qui n'ont pas cette colonne, sont effacés.
+    tools: [...], quotas: [...], serge_texts: [...]}``. Les invocations,
+    liens et déclencheurs sont marqués supprimés (``deleted_at``) ; les
+    outils, les quotas et les textes de Serge, qui n'ont pas cette
+    colonne, sont effacés.
     """
     from serge.horloge import iso_utc
 
@@ -192,3 +193,5 @@ def seed_deleted(conn: sqlite3.Connection, data: Mapping[str, Any]) -> None:
             'DELETE FROM trigger_conditions WHERE quota_id=?', (str(ident),)
         )
         conn.execute('DELETE FROM table_quotas WHERE id=?', (str(ident),))
+    for ident in raw.get('serge_texts') or []:
+        conn.execute('DELETE FROM serge_texts WHERE id=?', (str(ident),))

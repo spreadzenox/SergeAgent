@@ -242,6 +242,82 @@ class PipelineSeedTests(unittest.TestCase):
             )[0],
         )
 
+    def test_l_agent_vocal_deploye_recoit_ses_correctifs(self) -> None:
+        """Le cas du serveur après le premier essai réel : l'agent vocal a
+        l'ancien prompt, pas l'outil « Son e-mail », et l'ancien texte de
+        début d'appel."""
+        import yaml
+
+        ancien = yaml.safe_load(
+            (ROOT / 'config/pipeline.yaml').read_text(encoding='utf-8')
+        )
+        ancien = next(
+            c for c in ancien['changes'] if c['id'] == 'voix_adresse_confirmee'
+        )['set']['prompt']['from'].strip()
+        self.conn.execute(
+            "UPDATE invocations SET prompt=? WHERE id='parler_au_telephone'",
+            (ancien,),
+        )
+        self.conn.execute(
+            "DELETE FROM pipeline_changes WHERE id IN ('voix_adresse_confirmee',"
+            " 'voix_email_du_contact')"
+        )
+        self.conn.execute(
+            'DELETE FROM invocation_tool_params WHERE invocation_tool_id IN'
+            " (SELECT id FROM invocation_tools WHERE tool_id='email_du_contact')"
+        )
+        self.conn.execute(
+            "DELETE FROM invocation_tools WHERE tool_id='email_du_contact'"
+        )
+        self.conn.execute(
+            "DELETE FROM serge_texts WHERE id LIKE 'voice_opening_%'"
+        )
+        self.conn.execute(
+            "INSERT INTO serge_texts(id, title, body) VALUES('voice_opening',"
+            " 'Début d’un appel', 'dis bonjour')"
+        )
+        avant = self._one(
+            'SELECT MAX(position) FROM invocation_tools'
+            " WHERE invocation_id='parler_au_telephone'"
+        )[0]
+        ensure_pipeline(self.conn)
+        self.assertIn(
+            'ne se note qu',
+            self._one(
+                "SELECT prompt FROM invocations WHERE id='parler_au_telephone'"
+            )[0],
+        )
+        self.assertEqual(
+            self._one(
+                'SELECT mode, label, position FROM invocation_tools'
+                " WHERE tool_id='email_du_contact'"
+            ),
+            ('given', 'Son e-mail', avant + 1),
+        )
+        self.assertEqual(
+            [
+                row[0]
+                for row in self.conn.execute(
+                    "SELECT id FROM serge_texts WHERE id LIKE 'voice_opening%'"
+                    ' ORDER BY id'
+                ).fetchall()
+            ],
+            ['voice_opening_inbound', 'voice_opening_outbound'],
+        )
+        # L'ajout ne se fait qu'une fois : retiré ensuite, l'outil ne revient
+        # pas au démarrage suivant.
+        self.conn.execute(
+            "DELETE FROM invocation_tools WHERE tool_id='email_du_contact'"
+        )
+        ensure_pipeline(self.conn)
+        self.assertEqual(
+            self._one(
+                'SELECT COUNT(*) FROM invocation_tools'
+                " WHERE tool_id='email_du_contact'"
+            ),
+            (0,),
+        )
+
     def test_une_invocation_supprimee_ne_revient_pas(self) -> None:
         seed_pipeline(self.conn, _pipeline())
         self.conn.execute(

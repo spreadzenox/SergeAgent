@@ -162,35 +162,53 @@ def _ilot_listen(conn: sqlite3.Connection, depuis: str) -> dict[str, Any]:
     }
 
 
-def _ilot_sms(conn: sqlite3.Connection, depuis: str) -> dict[str, Any]:
+def _ilot_canal(
+    conn: sqlite3.Connection, canal: str, label: str, now: str, depuis: str
+) -> dict[str, Any]:
+    """Un canal de conversation : branché ou pas sur ce serveur, ce qui est
+    parti et arrivé en 24 h, sa dernière relève (lot 8)."""
+    row = conn.execute(
+        'SELECT etat, polls, polled_at FROM canaux WHERE id=?', (canal,)
+    ).fetchone()
+    if row is None or str(row[0]) != 'branche':
+        return _ilot_inconnu(
+            canal, label, 'Pas branché sur ce serveur (page Système, Essais).'
+        )
+    partis = _compte(
+        conn,
+        "SELECT COUNT(*) FROM touches WHERE channel=? AND status='sent'"
+        ' AND sent_at>?',
+        (canal, depuis),
+    )
     recus = _compte(
         conn,
-        "SELECT COUNT(*) FROM inbound_events WHERE channel='sms'"
-        ' AND received_at>?',
-        (depuis,),
+        'SELECT COUNT(*) FROM inbound_events WHERE channel=? AND received_at>?',
+        (canal, depuis),
     )
-    return {
-        'id': 'sms',
-        'label': 'SMS',
-        'sante': 'ok',
-        'activite': min(1.0, recus / 10),
-        'resume': f'{recus} reçus (24 h) — pas d’envoi (writer absent)',
-    }
-
-
-def _ilot_email(conn: sqlite3.Connection) -> dict[str, Any]:
-    par_statut = _groupes(
+    echecs = _compte(
         conn,
-        "SELECT status, COUNT(*) FROM touches WHERE channel='email'"
-        ' GROUP BY status',
+        "SELECT COUNT(*) FROM touches WHERE channel=? AND status='failed'"
+        ' AND updated_at>?',
+        (canal, depuis),
     )
-    envoyes = par_statut.get('sent', 0) + par_statut.get('delivered', 0)
+    resume = f'{partis} partis, {recus} reçus (24 h)'
+    resume += f', {echecs} en échec' if echecs else ''
+    sante = 'erreur' if echecs else 'ok'
+    # Un canal qui se relève : une boîte pas relevée depuis une heure est
+    # le signe d'une panne (accès, réseau).
+    if int(row[1]):
+        relevee = str(row[2] or '')
+        resume += (
+            f', relevé à {relevee[11:16]}' if relevee else ', jamais relevé'
+        )
+        if not relevee or relevee < avant_iso(now, hours=1):
+            sante = 'degrade' if sante == 'ok' else sante
     return {
-        'id': 'email',
-        'label': 'Email',
-        'sante': 'inconnu',
-        'activite': min(1.0, envoyes / 10),
-        'resume': f'{envoyes} envoyés — envoi pas encore branché (lot 8)',
+        'id': canal,
+        'label': label,
+        'sante': sante,
+        'activite': min(1.0, (partis + recus) / 10),
+        'resume': resume,
     }
 
 
@@ -207,7 +225,7 @@ def _ilot_inconnu(ilot_id: str, label: str, resume: str) -> dict[str, Any]:
 def project_ilots(
     conn: sqlite3.Connection, policy: Mapping[str, Any], now: str
 ) -> dict[str, Any]:
-    """11 îlots : santé + activité + résumé FR (P1 Système).
+    """Les îlots : santé + activité + résumé FR (P1 Système).
 
     Args:
         conn: Connexion canon (lecture).
@@ -226,10 +244,17 @@ def project_ilots(
         _ilot_funnels(conn, depuis),
         _ilot_collect(conn),
         _ilot_listen(conn, depuis),
-        _ilot_inconnu('allocator', 'Arbitre', 'Pas de source (lot 6).'),
-        _ilot_sms(conn, depuis),
-        _ilot_email(conn),
-        _ilot_inconnu('discord', 'Discord', 'Sonde gateway au lot 12.'),
-        _ilot_inconnu('voix', 'Voix', 'Ledger voix au lot 11.'),
+        _ilot_canal(conn, 'email', 'E-mail', now, depuis),
+        _ilot_canal(conn, 'voice', 'Voix', now, depuis),
+        _ilot_inconnu(
+            'sms',
+            'SMS',
+            'Pas branché : le SMS viendra après l’e-mail et la voix.',
+        ),
+        _ilot_inconnu(
+            'discord',
+            'Discord',
+            'Pas de sonde ici : le service du bot est sur la page Health.',
+        ),
     ]
     return {'items': items}

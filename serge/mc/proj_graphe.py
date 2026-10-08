@@ -12,6 +12,7 @@ from serge.etape_fiches import fiche_etape
 from serge.etapes import ETAPE_IDS, etats_etapes
 from serge.mc.libelles import ORBITES, phrase_noyau, phrase_recit
 from serge.mc.proj_etape import invocations_chaudes, lister_invocations
+from serge.mc.proj_outils import chiffres_conversations
 from serge.mc.proj_taches import tache_en_cours
 from serge.tickets.lifecycle import OPENISH
 
@@ -170,7 +171,7 @@ def project_graphe(
 def project_business(
     conn: sqlite3.Connection, policy: Mapping[str, Any], now: str
 ) -> dict[str, Any]:
-    """Venture active, tests, U1–U3, phrase noyau."""
+    """Venture active, ses campagnes, ses conversations, phrase noyau."""
     _ = (policy, now)
     from serge.funnels.metrics import campaign_metrics
 
@@ -205,15 +206,11 @@ def project_business(
                     'u3': int(m.get('u3', 0)),
                 }
             )
-            u1 += int(m.get('u1', 0))
-            u2 += int(m.get('u2', 0))
-            u3 += int(m.get('u3', 0))
-        paid_row = conn.execute(
-            'SELECT COALESCE(SUM(amount_eur),0) FROM transactions'
-            " WHERE venture_id=? AND status='paid'",
-            (row[0],),
-        ).fetchone()
-        paid = float(paid_row[0] if paid_row else 0)
+        # Les chiffres du bandeau : ses conversations (lot 8), pas ses
+        # anciennes campagnes.
+        chiffres = chiffres_conversations(conn, str(row[0]))
+        u1, u2, u3 = (int(chiffres[k]) for k in ('u1', 'u2', 'u3'))
+        paid = chiffres['paid']
     recit = ''
     if venture:
         recit = phrase_recit(

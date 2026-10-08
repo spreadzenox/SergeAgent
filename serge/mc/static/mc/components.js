@@ -1,6 +1,6 @@
 // Composants HUD : toast, drawer, modale, sparkline, jauge.
 // DOM via createElement uniquement (règle A4).
-// Libellés FR en dur (centralisation i18n.js au lot 8).
+// Les libellés partagés sont dans libelles.js.
 export function toast(container, message, kind = 'info') {
   const node = document.createElement('p');
   node.className = `toast toast-${kind}`;
@@ -153,7 +153,6 @@ export function fillList(list, items, empty, render) {
   }
 }
 
-// TODO lot 8 : migrer vers i18n.js (dates relatives + libellés).
 export function rel(ts) {
   const diff = Date.now() - Date.parse(ts);
   if (Number.isNaN(diff)) {

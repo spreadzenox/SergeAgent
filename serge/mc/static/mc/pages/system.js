@@ -63,7 +63,7 @@ function renderCampagnes(main, payload, sig) {
   fillList(
     section.querySelector('[data-list="items"]'),
     payload.items,
-    'Aucune campagne pour le moment.',
+    'Pas encore branché : aucune invocation ne crée de campagne (lot 11, la prospection). Les échanges d’un essai n’en sont pas une.',
     (item) =>
       li(
         `${item.id} — ${ETATS_CAMPAGNE[item.state] || item.state}`

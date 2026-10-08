@@ -134,10 +134,41 @@ def _feed_touches(conn: sqlite3.Connection) -> list[dict[str, Any]]:
     return items
 
 
+def _feed_recus(conn: sqlite3.Connection) -> list[dict[str, Any]]:
+    """Les messages reçus (e-mails, appels), avec ce qu'en a dit « Traiter
+    une réponse » ; un message que Serge n'a pas su rattacher le dit."""
+    items = []
+    for row in conn.execute(
+        'SELECT i.id, i.received_at, i.channel, i.status, i.reaction,'
+        ' i.address, i.contact_id, c.display'
+        ' FROM inbound_events i LEFT JOIN contacts c ON c.id=i.contact_id'
+        ' ORDER BY i.received_at DESC LIMIT 30'
+    ).fetchall():
+        qui = str(row[7] or row[5] or row[6] or '')
+        if row[3] == 'unattached':
+            quoi = 'pas rattaché'
+        else:
+            quoi = str(row[4] or '')
+        items.append(
+            {
+                'ts': row[1],
+                'source': 'reçu',
+                'kind': f'{row[2]}.recu',
+                'titre': f'{qui} ({quoi})' if quoi else qui,
+                'extra': {
+                    'inbound_id': str(row[0]),
+                    'contact_id': str(row[6] or ''),
+                },
+            }
+        )
+    return items
+
+
 def project_feed(
     conn: sqlite3.Connection, policy: Mapping[str, Any], now: str
 ) -> dict[str, Any]:
-    """Feed unifié : events + tickets + touches, triés (P0 feed).
+    """Feed unifié : événements, tickets, envois et messages reçus, triés
+    (P0 feed).
 
     Args:
         conn: Connexion canon (lecture).
@@ -146,10 +177,14 @@ def project_feed(
 
     Returns:
         Dict {items: [{ts, source, kind, titre, extra}] cap 30}.
-        Calls voix : différés au lot 7 (ledger séparé).
     """
     _ = (policy, now)
-    items = _feed_events(conn) + _feed_tickets(conn) + _feed_touches(conn)
+    items = (
+        _feed_events(conn)
+        + _feed_tickets(conn)
+        + _feed_touches(conn)
+        + _feed_recus(conn)
+    )
     items.sort(key=lambda item: str(item['ts']), reverse=True)
     return {'items': items[:30]}
 
@@ -172,11 +207,19 @@ def _touches_jour(conn: sqlite3.Connection, canal: str, jour: str) -> int:
     return int(row[0] if row else 0)
 
 
-def _barre(faits: int, quota: int) -> dict[str, Any]:
+def _barre(
+    conn: sqlite3.Connection, canal: str, faits: int, quota: int
+) -> dict[str, Any]:
+    """Le compteur du jour d'un canal ; ``branche`` dit si le canal peut
+    envoyer sur ce serveur (catalogue ``canaux``)."""
+    row = conn.execute(
+        'SELECT etat FROM canaux WHERE id=?', (canal,)
+    ).fetchone()
     return {
         'faits': faits,
         'quota': quota,
         'ratio': (faits / quota) if quota > 0 else None,
+        'branche': row is not None and str(row[0]) == 'branche',
     }
 
 
@@ -192,7 +235,8 @@ def project_jauges(
         now: Maintenant ISO UTC.
 
     Returns:
-        Dict llm / mois / email / voix / linkedin (ratio None si plafond 0).
+        Dict llm / mois / email / voix / linkedin (ratio None si plafond 0,
+        ``branche`` faux pour un canal qui ne peut pas envoyer ici).
     """
     day = now[:10]
     depense = llm_spend(conn, policy, day)
@@ -204,6 +248,8 @@ def project_jauges(
     cap_mois = float(budget.get('monthly_eur', 0) or 0)
     quotas = policy.get('quotas') or {}
     email = _barre(
+        conn,
+        'email',
         _touches_jour(conn, 'email', day),
         _quota_jour(
             (policy.get('channels') or {}).get('email') or {}, 'max_per_day'
@@ -233,6 +279,8 @@ def project_jauges(
         },
         'voix': {
             **_barre(
+                conn,
+                'voice',
                 _touches_jour(conn, 'voice', day),
                 _quota_jour(
                     (policy.get('channels') or {}).get('voice') or {},
@@ -243,6 +291,8 @@ def project_jauges(
         },
         'linkedin': {
             **_barre(
+                conn,
+                'linkedin',
                 _touches_jour(conn, 'linkedin', day),
                 _quota_jour(quotas, 'linkedin_connect_per_day'),
             ),

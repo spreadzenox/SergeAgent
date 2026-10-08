@@ -65,11 +65,14 @@ function renderCdr(main, payload, sig) {
 
 function renderQualite(main, payload, sig) {
   const pMoy = main.querySelector('#voice-qualite-moyenne');
-  const note = payload.note_moyenne !== null ? `${payload.note_moyenne} / 5` : 'Aucune note';
-  pMoy.textContent = `Score moyen récent : ${note} (${payload.total_notes || 0} notés)`;
+  // Aucune invocation ne note encore les appels : la section le dit tant
+  // qu'aucune note n'existe.
+  pMoy.textContent = payload.note_moyenne !== null
+    ? `Score moyen récent : ${payload.note_moyenne} / 5 (${payload.total_notes || 0} notés)`
+    : 'Pas encore branché : aucune invocation ne note les appels. Le journal ci-dessus garde chaque appel et sa transcription.';
 
   const ul = main.querySelector('[data-section="qualite_voix"] [data-list="scores"]');
-  fillList(ul, payload.scores || [], 'Aucun score d’appel récent.', (s) =>
+  fillList(ul, payload.scores || [], 'Aucun appel noté.', (s) =>
     li(`Appel [${s.cdr || '—'}] : Note ${s.note || '—'} / 5 (flags: ${(s.flags || []).join(', ') || 'aucun'})`)
   );
   main.querySelector('[data-section="qualite_voix"]').dataset.sig = sig;
