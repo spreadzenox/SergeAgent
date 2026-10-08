@@ -24,8 +24,8 @@ def grant_consent(
 ) -> dict[str, Any]:
     if not E164_RE.match(to_e164):
         raise VoiceBrokerDenied('consent target must be E.164')
-    if basis not in {'contract', 'consent'}:
-        raise VoiceBrokerDenied('consent basis must be contract|consent')
+    if basis not in {'contract', 'consent', 'test'}:
+        raise VoiceBrokerDenied('consent basis must be contract|consent|test')
     now = utcnow()
     digest = subject_hash(to_e164)
     connection = _canon(canon_path)

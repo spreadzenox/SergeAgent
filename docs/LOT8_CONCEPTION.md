@@ -363,9 +363,23 @@ plafonds) puis compose. Le canal est branché quand le fichier d'instance a
 
 ## 12. PR 4 — Le kit de test
 
-Une demi-fiche produit et un business bidon, des invocations temporaires
-« Écrire le premier message » et « Faire le premier appel », et un bouton
-« Lancer un essai » dans Mission Control : Clem y tape ses coordonnées, qui
-restent en base (le dépôt est public). Le bouton enregistre son accord pour
-l'appel de test. Les délais de réponse se mettent à 0 dans la policy pour
-une réponse immédiate.
+Le bouton « Lancer un essai » (page Système de Mission Control, avec
+l'état des canaux) : on y tape un nom, une adresse e-mail et un numéro au
+format international ; ils restent en base (le dépôt est public). Tout est
+décrit en base, avec des invocations temporaires, à retirer avant le vrai
+lancement :
+
+1. « Lancer un essai » remplace le business d'essai précédent par un
+   business bidon neuf (statut `TEST` : il n'entre jamais dans la chaîne des
+   étapes), avec sa demi-fiche produit et deux questions fréquentes ;
+2. « Créer le contact d'essai » (capacité « Créer un contact ») crée la
+   fiche, avec l'accord « test » pour être appelé, puis un premier e-mail
+   et un premier appel à rédiger (seulement pour les adresses tapées) ;
+3. « Écrire le premier message » et « Préparer le premier appel » rédigent
+   l'e-mail et le but de l'appel ; « Envoyer un message » les fait partir.
+
+L'accord « test » laisse l'appel partir à toute heure et hors du plafond
+par personne (Q79) : c'est un membre de l'équipe qui essaie Serge. Pour
+une réponse immédiate, les délais de réponse se mettent à 0 sur la page
+Policy. Ensuite, on répond, on rappelle Serge ou on lui écrit : tout le
+circuit des parties 2 à 11 est réel.

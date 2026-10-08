@@ -1,6 +1,7 @@
 // Page Écoute : les boutons de l’étape 1 (déclencheurs en base), le dernier
 // cycle, les business, les flux RSS suivis.
-import {confirmModal, toast, draftField, rememberDrafts} from '../components.js';
+import {afficherBoutons, brancherBoutons} from '../boutons.js';
+import {toast} from '../components.js';
 import {fetchState} from '../sse.js';
 
 async function poster(path, body) {
@@ -29,56 +30,6 @@ const ETIQUETTES = {
   enrichit: 'enrichit un business',
   preuve: 'preuve d’un business',
 };
-
-// Un bloc par déclencheur « bouton » : ses champs, ses conditions, son bouton.
-function afficherBoutons(conteneur, boutons) {
-  const cle = JSON.stringify(boutons);
-  const restore = rememberDrafts(conteneur);
-  if (conteneur.dataset.cle === cle) {
-    return;  // ne pas effacer ce qui est en train d’être tapé
-  }
-  conteneur.dataset.cle = cle;
-  if (!boutons.length) {
-    conteneur.replaceChildren(el(
-      'p',
-      '',
-      'Aucun bouton en base pour cette étape : il sera ajouté au pipeline de départ.',
-    ));
-    return;
-  }
-  conteneur.replaceChildren(...boutons.map((bouton) => {
-    const bloc = el('div', 'grille-champs ecoute-bouton');
-    for (const champ of bouton.champs || []) {
-      const label = el('label', 'champ-large', `${champ === 'guide' ? 'Texte de guidage' : champ} `);
-      const zone = draftField(el('textarea'), `${bouton.id}.${champ}`);
-      zone.maxLength = 4000;
-      zone.dataset.champ = champ;
-      label.append(zone);
-      bloc.append(label);
-    }
-    const barre = el('div', 'barre-policy');
-    const btn = el('button', 'btn-fort', bouton.titre);
-    btn.type = 'button';
-    btn.dataset.ecouteAction = 'lancer';
-    btn.dataset.trigger = bouton.id;
-    btn.dataset.confirmer = bouton.confirmer || '';
-    btn.disabled = Boolean(bouton.refus);
-    barre.append(btn);
-    bloc.append(barre, el('p', '', `Lance « ${bouton.invocation_titre} ».`));
-    for (const condition of bouton.conditions || []) {
-      bloc.append(el(
-        'p',
-        'legende-policy',
-        `${condition.texte} : ${condition.occupe} sur ${condition.max}.`,
-      ));
-    }
-    if (bouton.refus) {
-      bloc.append(el('p', 'todo-mc', `Pas maintenant : ${bouton.refus}.`));
-    }
-    return bloc;
-  }));
-  restore();
-}
 
 function afficherCycle(conteneur, cycle) {
   if (!cycle) {
@@ -140,7 +91,11 @@ function afficherFlux(conteneur, flux) {
 
 function afficher(main, payload, sig) {
   const zone = (nom) => main.querySelector(`[data-ecoute="${nom}"]`);
-  afficherBoutons(zone('boutons'), payload.boutons || []);
+  afficherBoutons(
+    zone('boutons'),
+    payload.boutons || [],
+    'Aucun bouton en base pour cette étape : il sera ajouté au pipeline de départ.',
+  );
   afficherCycle(zone('cycle'), payload.cycle);
   zone('candidates').replaceChildren(...(payload.candidates || []).map((c) => {
     const raison = c.raison ? ` — ${c.raison}` : '';
@@ -157,47 +112,10 @@ function afficher(main, payload, sig) {
   main.querySelector('[data-section="ecoute"]').dataset.sig = sig;
 }
 
-async function lancer(btn, store) {
-  if (btn.disabled) return;
-  btn.disabled = true;
-  const titre = btn.textContent;
-  try {
-  if (btn.dataset.confirmer) {
-    const ok = await confirmModal(document.body, {
-      title: `${titre} ?`,
-      message: btn.dataset.confirmer,
-      confirm: titre,
-    });
-    if (!ok) {
-      return;
-    }
-  }
-  const form = {};
-  for (const zone of btn.closest('.grille-champs').querySelectorAll('[data-champ]')) {
-    form[zone.dataset.champ] = zone.value;
-  }
-    const result = await poster('/owner/api/bouton', {trigger_id: btn.dataset.trigger, form});
-    toast(document.body, result.ok ? 'Tâche placée dans la file.' : (result.data.erreur || 'Refusé.'), result.ok ? 'succes' : 'erreur');
-    if (result.ok) {
-      btn.closest('.grille-champs').querySelectorAll('[data-draft]').forEach((f) => delete f.dataset.dirty);
-      await rafraichir(store);
-    }
-  } catch {
-    toast(document.body, 'Action injoignable. Réessaie : ta saisie est conservée.', 'erreur');
-  } finally {
-    btn.disabled = false;
-  }
-}
-
 export function mount(main, store) {
   const tpl = document.getElementById('page-ecoute');
   main.replaceChildren(tpl.content.cloneNode(true));
-  main.querySelector('[data-ecoute="boutons"]').addEventListener('click', (ev) => {
-    const btn = ev.target.closest('[data-ecoute-action="lancer"]');
-    if (btn) {
-      lancer(btn, store);
-    }
-  });
+  brancherBoutons(main.querySelector('[data-ecoute="boutons"]'), () => rafraichir(store));
   main.querySelector('[data-ecoute="flux"]').addEventListener('click', async (ev) => {
     const btn = ev.target.closest('[data-ecoute-flux]');
     if (!btn) {

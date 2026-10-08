@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
-"""Trouver un contact, et noter une adresse qu'il donne.
+"""Créer un contact, le trouver, noter une adresse qu'il donne.
 
-Deux capacités, d'abord pour l'agent vocal : un appelant inconnu dit son
-nom ou son e-mail, l'agent cherche sa fiche ; une personne qui veut
-recevoir un document donne son e-mail, l'agent le note sur sa fiche
-(décision Q83).
+- « Créer un contact » : une fiche, ses adresses et, au besoin, son accord
+  pour être appelé. Exemple : le bouton d'essai de Mission Control crée la
+  fiche de Clem avec l'accord « test » (décision Q79).
+- « Chercher un contact » et « Noter une adresse », pour l'agent vocal : un
+  appelant inconnu dit son nom ou son e-mail, l'agent cherche sa fiche ;
+  une personne qui veut recevoir un document donne son e-mail, l'agent le
+  note sur sa fiche (décision Q83).
 """
 
 from __future__ import annotations
@@ -13,13 +16,75 @@ import re
 import sqlite3
 from typing import Any
 
-from serge.db.store import append_event
+from serge.db.store import append_event, utcnow
 from serge.funnels.contact_errors import ContactError
-from serge.funnels.contacts import add_address, normalise_value
+from serge.funnels.contacts import add_address, create_contact, normalise_value
+from serge.privacy import subject_hash
 
 # Les fiches rendues au plus par une recherche.
 SEARCH_MAX = 5
 _EMAIL = re.compile(r'[^@\s]+@[^@\s]+\.[^@\s]+')
+_PHONE = re.compile(r'\+[1-9][0-9]{7,14}')
+# Les accords qu'une fiche peut porter pour être appelée.
+CALL_CONSENTS = frozenset({'consent', 'test'})
+
+
+def add_contact(
+    conn: sqlite3.Connection, _tool: str, args: dict[str, Any], inv: str
+) -> dict[str, Any]:
+    """Capacité « Créer un contact » : ``{venture_id, name, email, phone,
+    call_consent}``.
+
+    Crée la fiche et ses adresses ; ``call_consent`` (``consent`` ou
+    ``test``) note l'accord de la personne pour être appelée sur ce numéro.
+    Rend la fiche créée (``rows``), avec ses adresses remises en forme.
+
+    Raises:
+        ValueError: Une adresse invalide (un e-mail sans @, un numéro qui
+            n'est pas au format international ``+33…``) ; la tâche échoue
+            avec la raison, rien n'est créé.
+    """
+    name = str(args.get('name') or '').strip()
+    email = str(args.get('email') or '').strip()
+    phone = normalise_value('phone', str(args.get('phone') or ''))
+    consent = str(args.get('call_consent') or '')
+    if not name or not (email or phone):
+        raise ValueError(
+            'un nom et une adresse (e-mail ou numéro) sont requis'
+        )
+    if email and not _EMAIL.fullmatch(email):
+        raise ValueError(f'adresse e-mail invalide : {email}')
+    if phone and not _PHONE.fullmatch(phone):
+        raise ValueError('numéro au format international attendu (+33…)')
+    if consent and consent not in CALL_CONSENTS:
+        raise ValueError(f'accord inconnu : {consent}')
+    venture = str(args.get('venture_id') or '')
+    contact = create_contact(conn, venture, name, email=email, phone=phone)
+    if consent and phone:
+        digest = subject_hash(phone)
+        conn.execute(
+            'INSERT INTO consents(id, channel, subject_hash, subject_ref,'
+            " basis, granted_at, revoked_at) VALUES(?, 'voice', ?, ?, ?, ?, '')"
+            ' ON CONFLICT(channel, subject_hash) DO UPDATE SET'
+            ' basis=excluded.basis, granted_at=excluded.granted_at,'
+            " revoked_at=''",
+            (f'voice_{digest}', digest, contact, consent, utcnow()),
+        )
+    append_event(
+        conn,
+        actor=f'invocation:{inv}',
+        type='contact.created',
+        venture_id=venture,
+        payload={'call_consent': consent},
+        rows=[('contacts', contact)],
+    )
+    row = {
+        'contact_id': contact,
+        'venture_id': venture,
+        'email': normalise_value('email', email),
+        'phone': phone,
+    }
+    return {'ok': True, 'rows': [row]}
 
 
 def contact_search(

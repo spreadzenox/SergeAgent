@@ -173,11 +173,14 @@ class PipelineSeedTests(unittest.TestCase):
             self._one("SELECT at_time FROM triggers WHERE id='chaque_lundi'"),
             ('08:30',),
         )
+        # Celles du pipeline de départ ('' → CANDIDATE, CANDIDATE →
+        # POC_SELECTED, '' → TEST pour le business d'essai), le fichier de
+        # test n'en ajoute pas de nouvelle.
         self.assertEqual(
             self._one(
                 "SELECT COUNT(*) FROM status_transitions WHERE table_name='ventures'"
             ),
-            (2,),
+            (3,),
         )
 
     def test_rien_n_est_ecrase(self) -> None:

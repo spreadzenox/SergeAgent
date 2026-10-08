@@ -538,6 +538,23 @@ writable_tables:
       - {name: inbound_id, description: Le message d'où elle vient.}
       - {name: kind, description: 'Bug, insatisfaction ou idée.'}
       - {name: text, description: La demande.}
+  - table: product_sheets
+    insert: true
+    description: Les fiches produit des business.
+    columns:
+      - {name: venture_id, description: Le business.}
+      - {name: summary, description: Ce que fait le produit et pour qui.}
+      - {name: limits, description: Ce qu'il ne fait pas.}
+      - {name: price, description: Son prix.}
+      - {name: delays, description: Ses délais habituels.}
+      - {name: usage, description: Comment on l'utilise.}
+  - table: product_faq
+    insert: true
+    description: Les questions fréquentes sur un produit.
+    columns:
+      - {name: venture_id, description: Le business.}
+      - {name: question, description: La question.}
+      - {name: answer, description: Sa réponse.}
 
 # Les changements d'étiquette et de statut permis. Un business naît
 # candidat, et seul un candidat peut être choisi : un business déjà en test
@@ -576,6 +593,12 @@ status_transitions:
   - {table: contacts, column: funnel_state, from: INTENT, to: MEETING}
   - {table: contacts, column: funnel_state, from: INTENT, to: REJECTED}
   - {table: contacts, column: funnel_state, from: MEETING, to: REJECTED}
+  # Le business d'essai (bouton « Lancer un essai ») n'entre jamais dans
+  # la chaîne des étapes ; un contact à qui Serge écrit passe « en prise de
+  # contact ».
+  - {table: ventures, column: lifecycle, from: '', to: TEST}
+  - {table: contacts, column: funnel_state, from: NEW, to: CONTACTING}
+  - {table: contacts, column: funnel_state, from: QUALIFIED, to: CONTACTING}
 
 # Les quotas : le code d'écriture refuse une ligne de trop, quelle que soit
 # l'invocation, et un bouton ne lance rien si son quota est plein. Les
@@ -1770,6 +1793,219 @@ invocations:
           status: {source: field, value: status}
           received_at: {source: now}
 
+# --- Le kit d'essai (lot 8, PR 4, décision Q79) -----------------------------
+# Temporaire : à retirer avant le vrai lancement de Serge. Le bouton
+# « Lancer un essai » (page Système) crée un business bidon avec une
+# demi-fiche produit, la fiche de la personne qui essaie (ses coordonnées
+# restent en base, jamais dans le dépôt) avec son accord pour l'appel de
+# test, puis Serge lui écrit et l'appelle.
+  - id: lancer_essai
+    title: Lancer un essai (temporaire)
+    role: >-
+      Temporaire, pour essayer les canaux : remplace le business d'essai
+      précédent par un business bidon neuf, avec sa demi-fiche produit et
+      ses questions fréquentes. Sans LLM.
+    type: capability
+    capability: echo
+    queue: conversations
+    priority: 60
+    params:
+      name: {source: task, value: name}
+      email: {source: task, value: email}
+      phone: {source: task, value: phone}
+    writes:
+      - table: ventures
+        operation: delete
+        key: {column: lifecycle, source: fixed, value: TEST}
+      - table: ventures
+        operation: insert
+        values:
+          name: {source: fixed, value: Devis Vocal}
+          description: {source: fixed, value: 'Les artisans dictent leurs devis au téléphone ; Devis Vocal les met en page et les envoie au client.'}
+          sellable_offer: {source: fixed, value: 'Un mois d''essai gratuit, puis 29 € par mois, sans engagement.'}
+          lifecycle: {source: fixed, value: TEST}
+      - table: product_sheets
+        operation: insert
+        parent: 1
+        values:
+          venture_id: {source: parent_row, value: id}
+          summary: {source: fixed, value: 'Pour les artisans du bâtiment : on appelle un numéro, on dicte son devis en parlant normalement, et le devis mis en page part au client par e-mail en moins de 10 minutes.'}
+          limits: {source: fixed, value: 'Pas d''export vers un logiciel de comptabilité ; pas de factures, seulement des devis ; en français seulement.'}
+          price: {source: fixed, value: 'Un mois d''essai gratuit, puis 29 € par mois, sans engagement.'}
+          delays: {source: fixed, value: 'Un devis part en moins de 10 minutes après l''appel.'}
+          usage: {source: fixed, value: 'On appelle le numéro Devis Vocal, on dit le nom du client, les prestations et les prix ; on relit le devis reçu par e-mail avant qu''il parte.'}
+      - table: product_faq
+        operation: insert
+        parent: 1
+        values:
+          venture_id: {source: parent_row, value: id}
+          question: {source: fixed, value: 'Est-ce que je peux corriger un devis avant qu''il parte ?'}
+          answer: {source: fixed, value: 'Oui : vous le recevez d''abord par e-mail, et il ne part au client que quand vous répondez « OK ».'}
+      - table: product_faq
+        operation: insert
+        parent: 1
+        values:
+          venture_id: {source: parent_row, value: id}
+          question: {source: fixed, value: 'Ça marche avec mon logo ?'}
+          answer: {source: fixed, value: 'Oui : vous envoyez votre logo une fois par e-mail, il est mis sur tous vos devis.'}
+
+  - id: creer_contact_essai
+    title: Créer le contact d'essai (temporaire)
+    role: >-
+      Temporaire : crée la fiche de la personne qui essaie, avec son accord
+      pour l'appel de test (à toute heure, décision Q79), puis un premier
+      e-mail et un premier appel à rédiger. Sans LLM.
+    type: capability
+    capability: add_contact
+    queue: conversations
+    priority: 60
+    params:
+      venture_id: {source: task, value: venture_id}
+      name: {source: task, value: name}
+      email: {source: task, value: email}
+      phone: {source: task, value: phone}
+      call_consent: {source: fixed, value: test}
+    writes:
+      - table: touches
+        operation: insert
+        for_each: rows
+        condition: {field: rows.email, op: non_vide}
+        values:
+          contact_id: {source: field, value: rows.contact_id}
+          venture_id: {source: field, value: rows.venture_id}
+          channel: {source: fixed, value: email}
+          address: {source: field, value: rows.email}
+          kind: {source: fixed, value: first}
+          status: {source: fixed, value: to_write}
+      - table: touches
+        operation: insert
+        for_each: rows
+        condition: {field: rows.phone, op: non_vide}
+        values:
+          contact_id: {source: field, value: rows.contact_id}
+          venture_id: {source: field, value: rows.venture_id}
+          channel: {source: fixed, value: voice}
+          address: {source: field, value: rows.phone}
+          kind: {source: fixed, value: first}
+          status: {source: fixed, value: to_write}
+
+  - id: ecrire_premier_message
+    title: Écrire le premier message (temporaire)
+    role: >-
+      Temporaire : rédige le premier e-mail au contact d'essai, qui lui
+      présente le business et son offre.
+    type: llm
+    model_tier: mid
+    queue: conversations
+    priority: 50
+    gets_serge_intro: true
+    max_tool_turns: 3
+    compare:
+      touches: false
+      contacts: false
+    prompt: |
+      Tu écris le premier e-mail de Serge à une personne qu'il ne connaît
+      pas encore, pour lui présenter un business.
+
+      Tu reçois la fiche du business, la fiche produit et ses questions
+      fréquentes, et la fiche de la personne. Écris un objet court et un
+      message de quelques phrases : le problème que le produit résout, ce
+      qu'il fait, l'offre, et une question simple pour l'inviter à
+      répondre. Ne promets rien qui ne soit pas dans la fiche produit.
+      Serge assume d'être un agent IA : pas de signature d'humain.
+    tools:
+      - tool: fiche_business
+        mode: given
+        label: La fiche du business
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: fiche_produit
+        mode: given
+        label: La fiche produit
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: questions_produit
+        mode: given
+        label: Les questions fréquentes
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: fiche_contact
+        mode: given
+        label: La fiche de la personne
+        params:
+          contact_id: {source: task, value: contact_id}
+    output:
+      - {path: subject, type: text, description: L'objet de l'e-mail.}
+      - {path: body, type: text, description: Le texte de l'e-mail.}
+    writes:
+      - table: touches
+        operation: update
+        key: {column: id, source: task, value: touch_id}
+        values:
+          subject: {source: field, value: subject}
+          body: {source: field, value: body}
+          status: {source: fixed, value: pending}
+      - table: contacts
+        operation: update
+        key: {column: id, source: task, value: contact_id}
+        values:
+          funnel_state: {source: fixed, value: CONTACTING}
+
+  - id: preparer_premier_appel
+    title: Préparer le premier appel (temporaire)
+    role: >-
+      Temporaire : écrit le but du premier appel au contact d'essai, que
+      l'agent vocal reçoit au décrochage.
+    type: llm
+    model_tier: mid
+    queue: conversations
+    priority: 50
+    gets_serge_intro: true
+    max_tool_turns: 3
+    compare:
+      touches: false
+      contacts: false
+    prompt: |
+      Tu prépares le premier appel de Serge à une personne qu'il ne connaît
+      pas encore, pour lui présenter un business.
+
+      Tu reçois la fiche du business, la fiche produit et la fiche de la
+      personne. Écris le but de l'appel en deux ou trois phrases, pour
+      l'agent vocal : ce qu'il présente, l'offre, et ce qu'il veut obtenir
+      (un intérêt, un rendez-vous, une adresse e-mail pour envoyer la
+      documentation).
+    tools:
+      - tool: fiche_business
+        mode: given
+        label: La fiche du business
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: fiche_produit
+        mode: given
+        label: La fiche produit
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: fiche_contact
+        mode: given
+        label: La fiche de la personne
+        params:
+          contact_id: {source: task, value: contact_id}
+    output:
+      - {path: body, type: text, description: Le but de l'appel.}
+    writes:
+      - table: touches
+        operation: update
+        key: {column: id, source: task, value: touch_id}
+        values:
+          subject: {source: fixed, value: 'Appel d''essai'}
+          body: {source: field, value: body}
+          status: {source: fixed, value: pending}
+      - table: contacts
+        operation: update
+        key: {column: id, source: task, value: contact_id}
+        values:
+          funnel_state: {source: fixed, value: CONTACTING}
+
 links:
   - id: cycle_ouvert_vers_exploration
     title: Le cycle ouvert part en exploration
@@ -1849,6 +2085,49 @@ links:
     to: envoyer_message
     params:
       touch_id: {source: task, value: touch_id}
+  - id: essai_vers_contact
+    title: Le business d'essai reçoit son contact
+    from: lancer_essai
+    to: creer_contact_essai
+    mode: per_row
+    write: 1
+    params:
+      venture_id: {source: row, value: id}
+      name: {source: task, value: name}
+      email: {source: task, value: email}
+      phone: {source: task, value: phone}
+  - id: contact_essai_vers_message
+    title: Le premier e-mail est rédigé
+    from: creer_contact_essai
+    to: ecrire_premier_message
+    mode: per_row
+    write: 0
+    params:
+      touch_id: {source: row, value: id}
+      contact_id: {source: row, value: contact_id}
+      venture_id: {source: row, value: venture_id}
+  - id: contact_essai_vers_appel
+    title: Le premier appel est préparé
+    from: creer_contact_essai
+    to: preparer_premier_appel
+    mode: per_row
+    write: 1
+    params:
+      touch_id: {source: row, value: id}
+      contact_id: {source: row, value: contact_id}
+      venture_id: {source: row, value: venture_id}
+  - id: premier_message_vers_envoi
+    title: Le premier e-mail part
+    from: ecrire_premier_message
+    to: envoyer_message
+    params:
+      touch_id: {source: task, value: touch_id}
+  - id: premier_appel_vers_envoi
+    title: Le premier appel part
+    from: preparer_premier_appel
+    to: envoyer_message
+    params:
+      touch_id: {source: task, value: touch_id}
 
 triggers:
   - id: lancer_cycle
@@ -1923,6 +2202,19 @@ triggers:
     invocation: preparer_relances
     event: every
     every_minutes: 15
+  - id: bouton_lancer_essai
+    title: Lancer un essai
+    invocation: lancer_essai
+    event: button
+    confirm: >-
+      Serge crée un business bidon (il remplace le précédent), puis écrit à
+      cette adresse et appelle ce numéro pour lui présenter le business.
+      L'appel part à toute heure : c'est un essai. Les coordonnées restent
+      en base.
+    params:
+      name: {source: form, value: nom}
+      email: {source: form, value: e-mail}
+      phone: {source: form, value: 'téléphone (+33…)'}
 
 # Les modifications d'objets déjà en base sur une instance existante (le
 # fichier ne les écrase jamais) : chacune n'est appliquée qu'une fois, et

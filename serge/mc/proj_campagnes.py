@@ -154,3 +154,32 @@ def project_non_rattaches(
             ).fetchall()
         ]
     }
+
+
+def project_essais(
+    conn: sqlite3.Connection, policy: Mapping[str, Any], now: str
+) -> dict[str, Any]:
+    """Les boutons sans étape (« Lancer un essai ») et l'état des canaux.
+
+    Returns:
+        Dict {boutons: [...] (comme la page Écoute), canaux: [{id, titre,
+        etat, releve}]} : un canal « branche » ou « prevu », et sa dernière
+        relève.
+    """
+    from serge.mc.proj_ecoute import boutons_de_etape
+
+    _ = (policy, now)
+    return {
+        'boutons': boutons_de_etape(conn, ''),
+        'canaux': [
+            {
+                'id': str(ident),
+                'titre': str(titre),
+                'etat': str(etat),
+                'releve': str(releve or ''),
+            }
+            for ident, titre, etat, releve in conn.execute(
+                'SELECT id, titre, etat, polled_at FROM canaux ORDER BY id'
+            ).fetchall()
+        ],
+    }

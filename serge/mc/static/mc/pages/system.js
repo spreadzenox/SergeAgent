@@ -1,4 +1,5 @@
 // Page P1 Système : canvas îlots + panneau drill-down + liste accessible.
+import {afficherBoutons, brancherBoutons} from '../boutons.js';
 import {fillList, li, rel} from '../components.js';
 import {dispositionIlots, startIlots} from '../hud.js';
 import {patchSection} from '../patch.js';
@@ -115,6 +116,24 @@ function renderEmail(main, payload, sig) {
   section.dataset.sig = sig;
 }
 
+const ETATS_CANAL = {branche: 'branché', prevu: 'pas branché sur ce serveur'};
+
+function renderEssais(main, payload, sig) {
+  const section = main.querySelector('[data-section="essais"]');
+  fillList(
+    section.querySelector('[data-list="canaux"]'),
+    payload.canaux || [],
+    'Aucun canal.',
+    (c) => li(`${c.titre} : ${ETATS_CANAL[c.etat] || c.etat}${c.releve ? ` (relevé ${rel(c.releve)})` : ''}`),
+  );
+  afficherBoutons(
+    section.querySelector('[data-essais="boutons"]'),
+    payload.boutons || [],
+    'Aucun bouton d’essai en base.',
+  );
+  section.dataset.sig = sig;
+}
+
 function renderNonRattaches(main, payload, sig) {
   const section = main.querySelector('[data-section="non_rattaches"]');
   fillList(
@@ -129,6 +148,8 @@ function renderNonRattaches(main, payload, sig) {
 export function mount(main, store) {
   const tpl = document.getElementById('page-system');
   main.replaceChildren(tpl.content.cloneNode(true));
+  // La tâche placée, le flux de Mission Control montre la suite.
+  brancherBoutons(main.querySelector('[data-essais="boutons"]'), async () => {});
   let choisi = 'scheduler';
   const canvas = main.querySelector('[data-hud="ilots"]');
   const etat = () => ({items: ilotsDuStore(store), choisi});
@@ -209,6 +230,7 @@ export function mount(main, store) {
     population: renderPopulation,
     email: renderEmail,
     non_rattaches: renderNonRattaches,
+    essais: renderEssais,
   };
   const unsubs = [
     store.subscribe('ilots', () => {
@@ -230,6 +252,9 @@ export function mount(main, store) {
     }),
     store.subscribe('non_rattaches', (payload, sg) => {
       renderNonRattaches(main, payload, sg);
+    }),
+    store.subscribe('essais', (payload, sg) => {
+      renderEssais(main, payload, sg);
     }),
   ];
   majListe();
