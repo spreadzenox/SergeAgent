@@ -18,19 +18,6 @@ const ROUTES = {
   ecoute: 'p10',
   pipeline: 'p11',
 };
-const LABELS = {
-  p2: 'Cerveau',
-  p3: 'Décisions',
-  p4: 'Mémoire',
-  p5: 'Policy',
-  p6: 'Économie',
-  p7: 'Voix',
-  p8: 'Health',
-  p9: 'Identité',
-  p10: 'Écoute',
-  p11: 'Pipeline',
-};
-
 const store = createStore();
 const stats = {applied: 0, skipped: 0, mode: 'boot', page: 'p0'};
 window.__MC = {stats};
@@ -41,10 +28,6 @@ function current() {
     return 'objet';
   }
   return ROUTES[raw] || 'p0';
-}
-
-function template(id) {
-  return document.getElementById(id).content.cloneNode(true);
 }
 
 function apply(section, sig, payload) {
@@ -160,10 +143,6 @@ async function render() {
       return;
     }
     unmount = mount(main, store);
-  } else {
-    const node = template('page-bientot');
-    node.querySelector('h2').textContent = LABELS[page];
-    main.replaceChildren(node);
   }
   if (stream) {
     stream.close();

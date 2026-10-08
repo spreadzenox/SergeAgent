@@ -85,14 +85,18 @@ class ProjCerveauTests(unittest.TestCase):
         conn = self.conn
         _insere_usage(conn)
         conn.execute(
-            'INSERT INTO inbound_events(id, contact_id, channel, native_type,'
-            " signal, class, score, received_at) VALUES('b1','p1','sms',"
-            "'MO','reply','positive',0.9,'2026-09-10T11:20:00+00:00')"
+            'INSERT INTO contacts(id, venture_id, display, created_at,'
+            " updated_at) VALUES('p1','v1','Ada','t','t')"
         )
         conn.execute(
-            'INSERT INTO inbound_events(id, contact_id, channel, native_type,'
-            " signal, class, score, received_at) VALUES('b2','p2','email',"
-            "'reply','bounce','',0,'2026-09-10T11:10:00+00:00')"
+            'INSERT INTO inbound_events(id, contact_id, channel, status,'
+            " reaction, received_at) VALUES('b1','p1','email','attached',"
+            "'question','2026-09-10T11:20:00+00:00')"
+        )
+        conn.execute(
+            'INSERT INTO inbound_events(id, contact_id, channel, address,'
+            " status, received_at) VALUES('b2','','email','x@example.org',"
+            "'unattached','2026-09-10T11:10:00+00:00')"
         )
         for did, cluster, fetched, titre in (
             ('d1', 'cA', '2026-09-10T11:00:00+00:00', 'Bruit prix'),
@@ -112,21 +116,19 @@ class ProjCerveauTests(unittest.TestCase):
             {
                 'items': [
                     {
-                        'channel': 'sms',
-                        'type': 'MO',
-                        'signal': 'reply',
-                        'classe': 'positive',
-                        'score': 0.9,
+                        'channel': 'email',
+                        'reaction': 'question',
+                        'rattache': True,
+                        'contact': 'Ada',
                         'contact_id': 'p1',
                         'ts': '2026-09-10T11:20:00+00:00',
                     },
                     {
                         'channel': 'email',
-                        'type': 'reply',
-                        'signal': 'bounce',
-                        'classe': '',
-                        'score': 0.0,
-                        'contact_id': 'p2',
+                        'reaction': '',
+                        'rattache': False,
+                        'contact': 'x@example.org',
+                        'contact_id': '',
                         'ts': '2026-09-10T11:10:00+00:00',
                     },
                 ]

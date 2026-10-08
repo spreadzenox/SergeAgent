@@ -85,6 +85,38 @@ def seed_params(
         )
 
 
+def seed_tool_link(
+    conn: sqlite3.Connection,
+    invocation_id: str,
+    tool: Mapping[str, Any],
+    position: int,
+) -> None:
+    """Un outil d'une invocation, avec ses paramètres.
+
+    Format de ``tool`` : ``{tool, mode, label, max_rows, batch_size,
+    max_calls, params}``, comme dans ``pipeline.yaml``.
+    """
+    link_id = insert(
+        conn,
+        'invocation_tools',
+        invocation_id=invocation_id,
+        tool_id=str(tool['tool']),
+        mode=str(tool.get('mode', 'callable')),
+        label=str(tool.get('label', '')),
+        max_rows=int(tool.get('max_rows', 0)),
+        batch_size=str(tool.get('batch_size', '')),
+        max_calls=str(tool.get('max_calls', '')),
+        position=position,
+    )
+    seed_params(
+        conn,
+        'invocation_tool_params',
+        {'invocation_id': invocation_id, 'invocation_tool_id': link_id},
+        tool.get('params'),
+        invocation_id,
+    )
+
+
 # Les opérateurs d'une condition sur un lien ou une écriture.
 CONDITION_OPS = frozenset({'=', '!=', 'non_vide'})
 

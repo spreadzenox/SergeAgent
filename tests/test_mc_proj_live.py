@@ -235,13 +235,36 @@ class ProjLiveTests(unittest.TestCase):
         self.assertEqual(jauges['mois']['plafond_eur'], 30.0)
 
     def test_feed_tri_et_sources(self) -> None:
+        self.conn.executemany(
+            'INSERT INTO inbound_events(id, contact_id, channel, address,'
+            ' status, reaction, received_at) VALUES(?,?,?,?,?,?,?)',
+            [
+                ('i1', 'p1', 'email', 'ada@example.org', 'attached',
+                 'question', '2026-09-10T11:58:00+00:00'),
+                ('i2', '', 'email', 'x@example.org', 'unattached', '',
+                 '2026-09-10T11:59:00+00:00'),
+            ],
+        )
         items = project_feed(self.conn, POLICY, NOW)['items']
         stamps = [item['ts'] for item in items]
         self.assertEqual(stamps, sorted(stamps, reverse=True))
         self.assertEqual(
-            {item['source'] for item in items}, {'event', 'ticket', 'touche'}
+            {item['source'] for item in items},
+            {'event', 'ticket', 'touche', 'reçu'},
         )
         self.assertLessEqual(len(items), 30)
+        recus = [
+            (item['kind'], item['titre'], item['extra']['contact_id'])
+            for item in items
+            if item['source'] == 'reçu'
+        ]
+        self.assertEqual(
+            recus,
+            [
+                ('email.recu', 'x@example.org (pas rattaché)', ''),
+                ('email.recu', 'Ada (question)', 'p1'),
+            ],
+        )
 
     def test_jauges_llm_et_email(self) -> None:
         jauges = project_jauges(self.conn, POLICY, NOW)

@@ -181,14 +181,19 @@ def contact_search(
 def add_contact_address(
     conn: sqlite3.Connection, _tool: str, args: dict[str, Any], inv: str
 ) -> dict[str, Any]:
-    """Capacité « Noter une adresse » : ``{contact_id, channel, value}``.
+    """Capacité « Noter une adresse » : ``{contact_id, channel, value,
+    replaces}``.
 
     Ajoute l'adresse à la fiche, à côté des autres (une adresse n'est
-    jamais écrasée). Exemple : ``email``, ``marc@acme.fr``.
+    jamais écrasée). Une adresse confirmée qui était désactivée redevient
+    active. ``replaces`` : l'adresse que la personne vient de corriger,
+    désactivée (jamais effacée). Exemple : ``email``, ``marc@acme.fr``,
+    qui remplace ``marc@acme.com``.
     """
     contact = str(args.get('contact_id') or '')
     channel = str(args.get('channel') or '')
     value = str(args.get('value') or '').strip()
+    replaces = str(args.get('replaces') or '').strip()
     if channel not in ('email', 'phone'):
         return {'ok': False, 'code': 'sorte_d_adresse_inconnue'}
     if channel == 'email' and not _EMAIL.fullmatch(value):
@@ -197,11 +202,28 @@ def add_contact_address(
         added = add_address(conn, contact, channel, value)
     except ContactError as exc:
         return {'ok': False, 'code': str(exc)}
+    norm = normalise_value(channel, value)
+    conn.execute(
+        'UPDATE contact_addresses SET active=1 WHERE contact_id=?'
+        ' AND channel=? AND value_norm=? AND active=0',
+        (contact, channel, norm),
+    )
+    replaced = False
+    old = normalise_value(channel, replaces) if replaces else ''
+    if old and old != norm:
+        replaced = (
+            conn.execute(
+                'UPDATE contact_addresses SET active=0 WHERE contact_id=?'
+                ' AND channel=? AND value_norm=? AND active=1',
+                (contact, channel, old),
+            ).rowcount
+            > 0
+        )
     append_event(
         conn,
         actor=f'invocation:{inv}',
         type='contact.address_added',
-        payload={'channel': channel, 'added': added},
+        payload={'channel': channel, 'added': added, 'replaced': replaced},
         rows=[('contacts', contact)],
     )
-    return {'ok': True, 'added': added}
+    return {'ok': True, 'added': added, 'replaced': replaced}

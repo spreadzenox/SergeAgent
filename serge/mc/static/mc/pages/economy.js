@@ -1,6 +1,6 @@
-// Page P6 Économie : entonnoir evidence-strict, transactions & MRR, coûts cognitifs, audit.
+// Page P6 Économie : l’entonnoir des conversations, transactions & MRR, coûts cognitifs, envois.
 import {fillList, li, rel} from '../components.js';
-import {allerObjet} from '../libelles.js';
+import {LIFECYCLE, allerObjet} from '../libelles.js';
 
 function tuile(n, libelle) {
   const box = document.createElement('div');
@@ -17,13 +17,13 @@ function renderEntonnoir(main, payload, sig) {
   const tot = payload.totaux || {};
   const pTot = main.querySelector('#eco-totaux');
   pTot.textContent =
-    `Total : ${tot.u1 || 0} envoyés (U1) → ${tot.u2 || 0} engagés (U2) → ${tot.u3 || 0} positifs (U3) | Encaissé : ${tot.paid_eur || 0} €`;
+    `Total : ${tot.u1 || 0} messages partis → ${tot.u2 || 0} réponses → ${tot.u3 || 0} intéressés | Encaissé : ${tot.paid_eur || 0} €`;
   const chips = main.querySelector('[data-tuiles="entonnoir"]');
   if (chips) {
     chips.replaceChildren(
-      tuile(tot.u1 || 0, 'Envois (U1)'),
-      tuile(tot.u2 || 0, 'Réponses (U2)'),
-      tuile(tot.u3 || 0, 'Réponses positives (U3)'),
+      tuile(tot.u1 || 0, 'Messages partis'),
+      tuile(tot.u2 || 0, 'Réponses'),
+      tuile(tot.u3 || 0, 'Intéressés'),
       tuile(`${tot.paid_eur || 0} €`, 'Encaissé'),
     );
   }
@@ -35,7 +35,7 @@ function renderEntonnoir(main, payload, sig) {
     btn.type = 'button';
     btn.className = 'clic-ligne';
     btn.textContent =
-      `${v.name || v.id} [${v.lifecycle}] : ${v.u1} U1 → ${v.u2} U2 → ${v.u3} U3 | ${v.paid_eur} €`;
+      `${v.name || v.id} [${LIFECYCLE[v.lifecycle] || v.lifecycle}] : ${v.u1} partis → ${v.u2} réponses → ${v.u3} intéressés | ${v.paid_eur} €`;
     btn.addEventListener('click', () => allerObjet('venture', v.id));
     node.append(btn);
     return node;
@@ -83,14 +83,25 @@ function renderCouts(main, payload, sig) {
   main.querySelector('[data-section="couts_cognitifs"]').dataset.sig = sig;
 }
 
+const CANAUX = {email: 'e-mail', voice: 'appel'};
+const SORTES = {first: 'premier message', reply: 'réponse', followup: 'relance'};
+const STATUTS = {
+  to_write: 'à rédiger',
+  pending: 'à envoyer',
+  sending: 'en cours d’envoi',
+  sent: 'parti',
+  failed: 'en échec',
+  cancelled: 'annulé',
+};
+
 function renderAudit(main, payload, sig) {
   const ulRep = main.querySelector('[data-section="audit_reponses"] [data-list="reponses"]');
   fillList(ulRep, payload.reponses || [], 'Aucun envoi enregistré.', (r) =>
-    li(`${r.channel} → ${r.contact} [${r.status}] coût: ${r.cost_eur} € (${rel(r.created_at)})`)
+    li(`${CANAUX[r.channel] || r.channel} → ${r.contact} · ${SORTES[r.kind] || r.kind || 'envoi'} · ${STATUTS[r.status] || r.status}${r.raison ? ` — ${r.raison}` : ''} (${rel(r.created_at)})`)
   );
 
   const ulDette = main.querySelector('[data-section="audit_reponses"] [data-list="dette_builder"]');
-  fillList(ulDette, payload.dette_builder || [], 'Aucun livrable enregistré.', (d) =>
+  fillList(ulDette, payload.dette_builder || [], 'Pas encore branché : la construction (lot 10) écrira les livrables.', (d) =>
     li(`Artifact ${d.kind} v${d.version} (${rel(d.created_at)})`)
   );
   main.querySelector('[data-section="audit_reponses"]').dataset.sig = sig;

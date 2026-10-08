@@ -561,6 +561,13 @@ fait attendre une réponse jusqu'à ce que Julien ou Clem ait répondu :
   le vrai lancement de Serge, retirer le bouton « Effacer les idées
   (test) » (le lister dans la section `deleted` de `pipeline.yaml`).
 
+- [ ] **Noter les appels, ou retirer la section qui les attend.** La page
+  Voix de MC a une section « Qualité des appels », et
+  `serge/voice/quality.py` sait ranger la note d'un appel, mais aucune
+  invocation ne note les appels : la section dit « pas encore branché ».
+  Il faut soit une invocation qui note chaque transcription (en base,
+  comme les autres), soit retirer la section et ce code.
+
 - [ ] **Avant le vrai lancement : retirer le kit d'essai des canaux.** Le
   bouton « Lancer un essai » et ses invocations temporaires (« Lancer un
   essai », « Créer le contact d'essai », « Écrire le premier message »,

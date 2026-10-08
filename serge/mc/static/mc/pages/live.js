@@ -226,6 +226,8 @@ function renderFeed(main, payload, sig) {
       cible = ['touch', extra.touch_id];
     } else if (extra.event_id) {
       cible = ['event', extra.event_id];
+    } else if (extra.contact_id) {
+      cible = ['prospect', extra.contact_id];
     } else if (extra.task && String(item.kind || '').startsWith('task.')) {
       cible = ['task', extra.task];
     }
@@ -330,8 +332,13 @@ function renderJauges(main, payload, sig, gauges) {
     if (!slot) {
       continue;
     }
-    updateGauge(slot.node, barre.ratio || 0, barre.ratio > 0.8 ? 'alerte' : '');
     const lib = barre.libelle || nom;
+    if (barre.branche === false) {
+      updateGauge(slot.node, 0, '');
+      slot.label.textContent = `${lib} : pas branché sur ce serveur`;
+      continue;
+    }
+    updateGauge(slot.node, barre.ratio || 0, barre.ratio > 0.8 ? 'alerte' : '');
     tweenNombre(
       slot.label,
       barre.faits || barre.envoyes || 0,

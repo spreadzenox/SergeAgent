@@ -79,8 +79,9 @@ class McMindTests(McBrowserCase):
             )
             conn.execute(
                 'INSERT INTO inbound_events(id, contact_id, channel,'
-                ' native_type, signal, class, score, received_at)'
-                " VALUES('b1','p1','sms','MO','reply','positive',0.9,?)",
+                ' address, status, reaction, received_at)'
+                " VALUES('b1','','email','ada@example.org','attached',"
+                "'question',?)",
                 (iso,),
             )
             conn.commit()
@@ -122,7 +123,7 @@ class McMindTests(McBrowserCase):
         expect(decisions).to_contain_text('classer — ok')
         expect(decisions).to_contain_text('format_invalide')
         expect(page.locator('[data-section="signaux"]')).to_contain_text(
-            'sms reply (positive)'
+            'E-mail de ada@example.org : question'
         )
 
     def test_page_cerveau_vide(self) -> None:
@@ -143,7 +144,7 @@ class McMindTests(McBrowserCase):
         for section, text in (
             ('pensees', 'Aucune pensée pour le moment.'),
             ('decisions', 'Aucune décision récente.'),
-            ('signaux', 'Aucun signal récent.'),
+            ('signaux', 'Aucun message reçu pour le moment.'),
         ):
             expect(
                 page.locator(f'[data-section="{section}"]')

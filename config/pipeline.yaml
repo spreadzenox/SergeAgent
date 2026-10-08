@@ -94,13 +94,24 @@ serge_texts:
       (décision Q79). Vide : rien n’est ajouté.
     body: >-
       Pour ne plus recevoir de message de Serge, répondez STOP.
-  - id: voice_opening
-    title: Début d’un appel
+  - id: voice_opening_outbound
+    title: Début d’un appel que Serge passe
     help: >-
-      Envoyé à l’agent vocal au décrochage, pour qu’il parle le premier.
+      Envoyé à l’agent vocal quand la personne décroche, pour qu’il parle
+      le premier.
     body: >-
-      L’appel commence : dis bonjour en une phrase, comme le dit ta
-      consigne, puis écoute.
+      C’est toi qui appelles, la personne vient de décrocher. Dis bonjour,
+      présente-toi et dis tout de suite pourquoi tu appelles (le but de
+      l’appel), en deux phrases au plus, puis demande si c’est le bon
+      moment.
+  - id: voice_opening_inbound
+    title: Début d’un appel que Serge reçoit
+    help: >-
+      Envoyé à l’agent vocal quand il décroche un appel entrant, pour qu’il
+      parle le premier.
+    body: >-
+      On t’appelle, tu viens de décrocher. Dis bonjour, présente-toi en une
+      phrase et demande en quoi tu peux aider, puis écoute.
   - id: voice_backup_greeting
     title: Secours de la voix, accueil d’un appel entrant
     help: >-
@@ -406,8 +417,25 @@ tools:
     title: Noter une adresse
     doc: >-
       Ajoute à la fiche d'un contact une adresse e-mail ou un numéro qu'il
-      vient de donner, après l'avoir fait épeler et relue.
+      vient de donner, une fois qu'il l'a confirmée. Une adresse qu'il
+      corrige est désactivée.
     capability: add_contact_address
+  - id: email_du_contact
+    title: L'e-mail du contact
+    doc: >-
+      Les adresses e-mail actives du contact. Au téléphone, Serge propose
+      celle qu'il a au lieu de la faire épeler.
+    capability: db_read
+    read:
+      tables: [contact_addresses]
+      columns:
+        - {table: contact_addresses, name: value, as: email}
+      filters:
+        - {id: contact, table: contact_addresses, column: contact_id, param: contact_id}
+        - {id: e-mail, table: contact_addresses, column: channel, fixed: email}
+        - {id: active, table: contact_addresses, column: active, fixed: '1'}
+      params:
+        - {name: contact_id, required: true, description: Le numéro du contact.}
   - id: but_de_l_appel
     title: Le but de l'appel
     doc: >-
@@ -1706,13 +1734,14 @@ invocations:
       voix_openai: {type: text, value: alloy, description: La voix chez OpenAI.}
       modele_secours: {type: text, value: openai/gpt-4o-mini, description: 'Le modèle du secours tour par tour (OpenRouter), quand la voix en direct ne répond pas.'}
       tours_secours: {value: 4, min: 1, max: 20, description: Les tours de parole au plus dans le secours tour par tour.}
-    prompt: |
+    prompt: &consigne_parler_au_telephone |
       Tu es Serge, au téléphone. Tu parles français, simplement, une ou
       deux phrases courtes à la fois, sans liste ni formule écrite.
 
-      Tu reçois peut-être la fiche de ton interlocuteur, son fil (ce qui
-      s'est déjà dit, tous canaux confondus), la fiche du business et la
-      fiche produit, et, pour un appel que tu passes, son but.
+      Tu reçois peut-être la fiche de ton interlocuteur, son e-mail, son
+      fil (ce qui s'est déjà dit, tous canaux confondus), la fiche du
+      business et la fiche produit, et, pour un appel que tu passes, son
+      but.
 
       - Un appel que tu passes : présente-toi, dis pourquoi tu appelles
         (son but), demande si c'est le bon moment.
@@ -1726,10 +1755,17 @@ invocations:
       - Une proposition faite à Serge (un partenariat, une offre) :
         réponds poliment que tu ne peux pas traiter ce genre de demande
         pour l'instant.
-      - Un document à envoyer (une documentation, un devis) : demande son
-        adresse e-mail, fais-la épeler, relis-la, puis note-la avec
-        l'outil « Noter une adresse ». Dis que le document arrive par
-        e-mail.
+      - Un document à envoyer (une documentation, un devis) : il part par
+        e-mail. Si tu as son e-mail (« Son e-mail »), propose-le : « Je
+        vous l'envoie à cette adresse, c'est bien la bonne ? ». Sinon,
+        ou si elle n'est plus bonne, demande-lui son adresse, fais-la
+        épeler et relis-la lettre par lettre.
+      - Une adresse ne se note qu'une fois confirmée : attends que la
+        personne dise « oui » à ta relecture avant d'appeler « Noter une
+        adresse ». Si elle corrige, reprends la relecture depuis le
+        début. Si elle remplace une adresse que tu avais, passe
+        l'ancienne dans « replaces » : elle ne servira plus.
+        Ensuite seulement, dis que le document arrive par e-mail.
       - Ne promets jamais une date, un prix ou une fonctionnalité absents
         de la fiche produit. En cas de doute, dis que tu vérifies et que
         tu reviens vers la personne.
@@ -1773,6 +1809,12 @@ invocations:
         mode: callable
       - tool: noter_adresse
         mode: callable
+      - &outil_email_du_contact
+        tool: email_du_contact
+        mode: given
+        label: Son e-mail
+        params:
+          contact_id: {source: task, value: contact_id}
     output:
       - {path: transcript, type: text, description: 'Ce qui s''est dit, une ligne par phrase.'}
       - {path: contact_id, type: text, required: false, description: Le contact de l'appel.}
@@ -2422,12 +2464,64 @@ changes:
           - Écris dans la langue du contact, simplement et brièvement.
           - Serge assume d'être un agent IA : ne prétends jamais être un humain.
         to: *consigne_traiter_reponse
+  - id: voix_adresse_confirmee
+    why: >-
+      Au premier essai réel, l'agent vocal notait une adresse avant que la
+      personne la confirme, et faisait épeler un e-mail que Serge avait
+      déjà. Il propose désormais l'e-mail qu'il a et ne note une adresse
+      qu'une fois confirmée.
+    table: invocations
+    where: {id: parler_au_telephone}
+    set:
+      prompt:
+        from: |
+          Tu es Serge, au téléphone. Tu parles français, simplement, une ou
+          deux phrases courtes à la fois, sans liste ni formule écrite.
+
+          Tu reçois peut-être la fiche de ton interlocuteur, son fil (ce qui
+          s'est déjà dit, tous canaux confondus), la fiche du business et la
+          fiche produit, et, pour un appel que tu passes, son but.
+
+          - Un appel que tu passes : présente-toi, dis pourquoi tu appelles
+            (son but), demande si c'est le bon moment.
+          - Un appel que tu reçois d'un numéro inconnu : « Bonjour, je suis
+            Serge, en quoi puis-je vous aider ? ». Demande à qui tu parles,
+            puis cherche sa fiche avec l'outil « Chercher un contact » (son
+            nom, son entreprise, son e-mail ou son numéro).
+          - Une personne reconnue seulement par son nom : ne lui répète
+            aucune information sensible (montants, adresses, propos d'un
+            collègue).
+          - Une proposition faite à Serge (un partenariat, une offre) :
+            réponds poliment que tu ne peux pas traiter ce genre de demande
+            pour l'instant.
+          - Un document à envoyer (une documentation, un devis) : demande son
+            adresse e-mail, fais-la épeler, relis-la, puis note-la avec
+            l'outil « Noter une adresse ». Dis que le document arrive par
+            e-mail.
+          - Ne promets jamais une date, un prix ou une fonctionnalité absents
+            de la fiche produit. En cas de doute, dis que tu vérifies et que
+            tu reviens vers la personne.
+          - Une personne qui ne veut plus être contactée : dis que c'est noté,
+            puis au revoir.
+          - Tu es un agent IA : dis-le si on te le demande, ne prétends
+            jamais être un humain.
+          - Pour finir, dis au revoir.
+        to: *consigne_parler_au_telephone
+  - id: voix_email_du_contact
+    why: >-
+      L'agent vocal reçoit au décrochage l'e-mail que Serge a pour la
+      personne (reconnue par son numéro), pour le proposer au lieu de le
+      faire épeler.
+    invocation: parler_au_telephone
+    add_tools: [*outil_email_du_contact]
 
 # Ce qui a été retiré du pipeline de départ : marqué supprimé sur une
 # instance existante (retirer une ligne du fichier ne l'efface jamais).
 # Le demi-cycle de démonstration du lot 6 est remplacé par l'étape 1.
 deleted:
   invocations: [demo_ouvrir_cycle, demo_formuler, demo_choisir]
+  # Le début d'un appel dépend de son sens : deux textes le remplacent.
+  serge_texts: [voice_opening]
   links: [demo_cycle_vers_formuler, demo_formuler_vers_choisir]
   triggers: [demo_lancer_cycle]
   tools: [known_business_candidates, eligible_poc_candidates, listen_cycle_documents]

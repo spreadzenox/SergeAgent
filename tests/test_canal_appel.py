@@ -169,6 +169,9 @@ class _Appel(unittest.TestCase):
     def _un(self, sql: str, params: tuple = ()) -> tuple:
         return tuple(self.conn.execute(sql, params).fetchone())
 
+    def _tous(self, sql: str) -> list[tuple]:
+        return [tuple(row) for row in self.conn.execute(sql).fetchall()]
+
     def _envoi(self, ident: str, status: str = 'pending') -> None:
         moment = utcnow()
         self.conn.execute(
@@ -326,6 +329,78 @@ class AgentTests(_Appel):
         )
         self.assertEqual(len(self.composes), 0)
 
+    def test_l_agent_propose_l_e_mail_qu_il_a_et_note_la_correction(
+        self,
+    ) -> None:
+        self.conn.execute(
+            'INSERT INTO contact_addresses(contact_id, channel, value,'
+            " value_norm, created_at) VALUES('c1', 'email',"
+            " 'marc@exemple.com', 'marc@exemple.com', '2026-01-01')"
+        )
+        self._envoi('t1', status='sent')
+        appel = start_call(self.conn, 'outbound', MARC, 'cdr_2', 't1')
+        assert appel is not None
+        self.assertIn('marc@exemple.com', instructions(self.conn, appel))
+        # La personne corrige : l'ancienne adresse ne sert plus.
+        resultat = json.loads(
+            run_tool_call(
+                self.conn,
+                appel,
+                'noter_adresse',
+                json.dumps(
+                    {
+                        'contact_id': 'c1',
+                        'channel': 'email',
+                        'value': 'marc@exemple.fr',
+                        'replaces': 'marc@exemple.com',
+                    }
+                ),
+            )
+        )
+        self.assertEqual(
+            (resultat['added'], resultat['replaced']), (True, True)
+        )
+        self.assertEqual(
+            self._tous(
+                "SELECT value, active FROM contact_addresses WHERE channel='email'"
+                ' ORDER BY value'
+            ),
+            [('marc@exemple.com', 0), ('marc@exemple.fr', 1)],
+        )
+        # Revenue à la première adresse, la personne la réactive.
+        run_tool_call(
+            self.conn,
+            appel,
+            'noter_adresse',
+            json.dumps(
+                {
+                    'contact_id': 'c1',
+                    'channel': 'email',
+                    'value': 'marc@exemple.com',
+                    'replaces': 'marc@exemple.fr',
+                }
+            ),
+        )
+        self.assertEqual(
+            self._tous(
+                "SELECT value, active FROM contact_addresses WHERE channel='email'"
+                ' ORDER BY value'
+            ),
+            [('marc@exemple.com', 1), ('marc@exemple.fr', 0)],
+        )
+
+    def test_un_appelant_reconnu_par_son_nom_n_entend_pas_d_adresse(
+        self,
+    ) -> None:
+        self.conn.execute(
+            'INSERT INTO contact_addresses(contact_id, channel, value,'
+            " value_norm, created_at) VALUES('c1', 'email',"
+            " 'marc@exemple.com', 'marc@exemple.com', '2026-01-01')"
+        )
+        appel = start_call(self.conn, 'inbound', '+33700000000', 'cdr_6')
+        assert appel is not None
+        self.assertNotIn('marc@exemple.com', instructions(self.conn, appel))
+
     def test_sans_e_mail_serge_rappelle(self) -> None:
         appel = start_call(self.conn, 'inbound', MARC, 'cdr_9')
         assert appel is not None
@@ -446,6 +521,11 @@ class PompeTests(_Appel):
         droite.close()
         consigne = ouvre.call_args[0][1]
         self.assertIn('Présenter les devis dictés', consigne)
+        # Serge appelle : il dit tout de suite pourquoi.
+        self.assertIn(
+            'dis tout de suite pourquoi tu appelles',
+            session.inject_text.call_args[0][0],
+        )
         sortie = session.send_tool_output.call_args[0]
         self.assertEqual(
             (sortie[0], json.loads(sortie[1])['ok']), ('o1', True)

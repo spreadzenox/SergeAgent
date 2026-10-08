@@ -7,15 +7,16 @@ import sqlite3
 from collections.abc import Mapping
 from typing import Any
 
-from serge.funnels.metrics import campaign_metrics
 from serge.llm.runtime import llm_spend
+from serge.mc.proj_outils import chiffres_conversations
 from serge.text_ids import strip_ids
 
 
 def project_entonnoir(
     conn: sqlite3.Connection, policy: Mapping[str, Any], now: str
 ) -> dict[str, Any]:
-    """Entonnoir kit unifié : Ventures x U1-U5 x Intents Collect (evidence-strict).
+    """L'entonnoir de chaque business : messages partis, réponses,
+    réponses intéressées, euros encaissés (``chiffres_conversations``).
 
     Args:
         conn: Connexion canon (lecture).
@@ -36,23 +37,11 @@ def project_entonnoir(
 
     for v in v_rows:
         vid, vname, vlife = str(v[0]), str(v[1]), str(v[2])
-        # Récupère campagnes
-        c_rows = conn.execute(
-            'SELECT id FROM campaigns WHERE venture_id=?', (vid,)
-        ).fetchall()
-        u1 = u2 = u3 = 0
-        for c in c_rows:
-            m = campaign_metrics(conn, str(c[0]))
-            u1 += int(m.get('u1', 0))
-            u2 += int(m.get('u2', 0))
-            u3 += int(m.get('u3', 0))
-
-        # Transactions paid pour cette venture
-        t_row = conn.execute(
-            "SELECT COALESCE(SUM(amount_eur), 0) FROM transactions WHERE venture_id=? AND status='paid'",
-            (vid,),
-        ).fetchone()
-        paid_eur = float(t_row[0]) if t_row else 0.0
+        # Les conversations du business (lot 8) : messages partis, réponses,
+        # réponses intéressées, euros encaissés.
+        chiffres = chiffres_conversations(conn, vid)
+        u1, u2, u3 = (int(chiffres[k]) for k in ('u1', 'u2', 'u3'))
+        paid_eur = chiffres['paid']
 
         tot_u1 += u1
         tot_u2 += u2
@@ -200,19 +189,21 @@ def project_audit_reponses(
         Dict {reponses: [...], dette_builder: [...]}.
     """
     _ = (policy, now)
-    # Historique des envois (les réponses sont dans inbound_events).
+    # Les derniers envois (les messages reçus sont dans inbound_events) :
+    # sa sorte, son statut, et la raison d'un refus ou d'une annulation.
     touch_rows = conn.execute(
-        'SELECT t.id, t.campaign_id, t.channel, t.status, t.cost_eur, t.created_at, c.display'
-        ' FROM touches t LEFT JOIN contacts c ON c.id=t.contact_id'
+        'SELECT t.id, t.channel, t.kind, t.status, t.last_error,'
+        ' t.created_at, c.display FROM touches t'
+        ' LEFT JOIN contacts c ON c.id=t.contact_id'
         ' ORDER BY t.created_at DESC LIMIT 20'
     ).fetchall()
     reponses = [
         {
             'id': str(r[0]),
-            'campaign_id': str(r[1]),
-            'channel': str(r[2]),
+            'channel': str(r[1]),
+            'kind': str(r[2]),
             'status': str(r[3]),
-            'cost_eur': float(r[4] or 0),
+            'raison': str(r[4] or ''),
             'created_at': str(r[5]),
             'contact': strip_ids(str(r[6] or '—')),
         }

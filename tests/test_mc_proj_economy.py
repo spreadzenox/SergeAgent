@@ -51,8 +51,12 @@ class ProjEconomyTests(unittest.TestCase):
         )
         add_address(conn, 'ct1', 'email', 'alice@test.com')
         conn.execute(
-            'INSERT INTO touches(id, campaign_id, contact_id, channel, status, cost_eur, idempotency_key, created_at, updated_at)'
-            " VALUES('t1', 'c1', 'ct1', 'email', 'sent', 0.02, 'k1', '2026-09-03T10:00:00+00:00', 't')"
+            'INSERT INTO touches(id, campaign_id, contact_id, venture_id, channel, status, cost_eur, idempotency_key, created_at, updated_at)'
+            " VALUES('t1', 'c1', 'ct1', 'v1', 'email', 'sent', 0.02, 'k1', '2026-09-03T10:00:00+00:00', 't')"
+        )
+        conn.execute(
+            'INSERT INTO inbound_events(id, contact_id, venture_id, channel, status, reaction, received_at)'
+            " VALUES('i1', 'ct1', 'v1', 'email', 'attached', 'intéressé', '2026-09-03T12:00:00+00:00')"
         )
         conn.execute(
             'INSERT INTO transactions(id, venture_id, kind, amount_eur, currency, intent_id, status, created_at, updated_at)'
@@ -77,7 +81,9 @@ class ProjEconomyTests(unittest.TestCase):
         self.assertEqual(len(data['ventures']), 1)
         v = data['ventures'][0]
         self.assertEqual(v['id'], 'v1')
-        self.assertEqual(v['u1'], 1)
+        # Messages partis, réponses, intéressés : les conversations du
+        # business (lot 8).
+        self.assertEqual((v['u1'], v['u2'], v['u3']), (1, 1, 1))
         self.assertEqual(v['paid_eur'], 100.0)
         self.assertEqual(data['totaux']['u1'], 1)
         self.assertEqual(data['totaux']['paid_eur'], 100.0)

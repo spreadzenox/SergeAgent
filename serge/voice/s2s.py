@@ -194,7 +194,10 @@ def pump(ast: socket.socket, max_s: float | None = None) -> None:
         sys.stderr.write(
             f'voice-s2s: session {getattr(call, "provider", "?")}\n'
         )
-        call.inject_text(serge_text(canon, 'voice_opening'))
+        # Le début de l'appel dépend de son sens : Serge appelle (il dit
+        # pourquoi) ou décroche (il demande en quoi il peut aider).
+        sens = agent.task.get('direction') or 'inbound'
+        call.inject_text(serge_text(canon, f'voice_opening_{sens}'))
         greeting_done = False
         chunks = 0
         mic_n = 0

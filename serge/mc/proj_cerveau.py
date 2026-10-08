@@ -18,7 +18,8 @@ from serge.mc.proj_outils import avant_iso
 def project_signaux(
     conn: sqlite3.Connection, policy: Mapping[str, Any], now: str
 ) -> dict[str, Any]:
-    """Signaux entrants : 30 derniers classés (P2 signaux).
+    """Signaux entrants : les 30 derniers messages reçus, avec ce qu'en a dit
+    « Traiter une réponse » (P2 signaux).
 
     Args:
         conn: Connexion canon (lecture).
@@ -26,24 +27,24 @@ def project_signaux(
         now: Maintenant ISO (ignoré, uniformité).
 
     Returns:
-        Dict {items: [{channel, type, signal, classe, score,
-        contact_id, ts}]}.
+        Dict {items: [{channel, reaction, rattache, contact, contact_id,
+        ts}]}.
     """
     _ = (policy, now)
     items = []
     for row in conn.execute(
-        'SELECT channel, native_type, signal, class, score, contact_id,'
-        ' received_at FROM inbound_events ORDER BY received_at DESC,'
-        ' id DESC LIMIT 30'
+        'SELECT i.channel, i.status, i.reaction, i.address, i.contact_id,'
+        ' c.display, i.received_at'
+        ' FROM inbound_events i LEFT JOIN contacts c ON c.id=i.contact_id'
+        ' ORDER BY i.received_at DESC, i.id DESC LIMIT 30'
     ).fetchall():
         items.append(
             {
                 'channel': str(row[0]),
-                'type': str(row[1]),
-                'signal': str(row[2]),
-                'classe': str(row[3]),
-                'score': float(row[4]),
-                'contact_id': str(row[5]),
+                'reaction': str(row[2]),
+                'rattache': row[1] != 'unattached',
+                'contact': str(row[5] or row[3] or ''),
+                'contact_id': str(row[4]),
                 'ts': str(row[6]),
             }
         )

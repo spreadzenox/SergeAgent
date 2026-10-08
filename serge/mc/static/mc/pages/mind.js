@@ -7,6 +7,7 @@ import {
   rel,
   toast,
 } from '../components.js';
+import {allerObjet} from '../libelles.js';
 import {fetchState} from '../sse.js';
 
 function etatPoint(item) {
@@ -115,17 +116,32 @@ function renderMatrice(main, payload, sig, store) {
   main.querySelector('[data-section="matrice"]').dataset.sig = sig;
 }
 
+const CANAUX = {email: 'E-mail', voice: 'Appel', sms: 'SMS'};
+
 function renderSignaux(main, payload, sig) {
   const section = main.querySelector('[data-section="signaux"]');
   fillList(
     section.querySelector('[data-list="items"]'),
     payload.items,
-    'Aucun signal récent.',
-    (item) =>
-      li(
-        `${rel(item.ts)} · ${item.channel} ${item.signal}`
-        + (item.classe ? ` (${item.classe})` : ' (non classé)'),
-      ),
+    'Aucun message reçu pour le moment.',
+    (item) => {
+      const quoi = item.rattache
+        ? item.reaction || 'pas encore traité'
+        : 'pas rattaché à un contact';
+      const texte = `${rel(item.ts)} · ${CANAUX[item.channel] || item.channel}`
+        + `${item.contact ? ` de ${item.contact}` : ''} : ${quoi}`;
+      if (!item.contact_id) {
+        return li(texte);
+      }
+      const node = li('');
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'clic-ligne';
+      btn.textContent = texte;
+      btn.addEventListener('click', () => allerObjet('prospect', item.contact_id));
+      node.append(btn);
+      return node;
+    },
   );
   section.dataset.sig = sig;
 }

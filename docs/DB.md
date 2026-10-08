@@ -47,15 +47,20 @@ prompt ; une nouvelle instance reçoit celui du fichier.
 
 Trois exceptions, toutes décrites dans `config/pipeline.yaml` :
 - ce qui est **nouveau dans un objet existant** s'ajoute : un réglage
-  nouveau d'une invocation, un droit d'écriture ou une colonne nouvelle
-  d'une vue de table ; rien de ce qui existe n'est modifié ;
+  nouveau d'une invocation, un droit d'écriture, un changement de statut
+  permis ou une colonne nouvelle d'une vue de table ; rien de ce qui existe
+  n'est modifié ;
 - une **valeur d'un objet existant** ne change que par la section
   `changes` : une seule fois par instance, et seulement si la valeur en
   base est encore celle d'origine (une valeur changée dans Mission Control
   est gardée). Le résultat est noté dans `pipeline_changes`. Détail :
-  [`LOT7_CONCEPTION.md`](LOT7_CONCEPTION.md), partie 5 ;
-- ce qui est **retiré** du fichier est listé dans la section `deleted` et
-  marqué supprimé en base.
+  [`LOT7_CONCEPTION.md`](LOT7_CONCEPTION.md), partie 5. Un **outil
+  nouveau d'une invocation existante** passe aussi par `changes`
+  (`add_tools`) : il s'ajoute une seule fois, à la fin de ses outils, et
+  un outil retiré ensuite ne revient pas ;
+- ce qui est **retiré** du fichier est listé dans la section `deleted` :
+  marqué supprimé en base (invocations, liens, déclencheurs), ou effacé
+  (outils, quotas, textes de Serge).
 
 Rien d'autre n'est effacé au démarrage : une invocation supprimée dans
 Mission Control (`deleted_at` rempli) ne revient pas. Seule une capacité retirée du
