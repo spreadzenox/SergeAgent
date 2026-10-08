@@ -142,26 +142,21 @@ def _seed_rules(conn: sqlite3.Connection, data: Mapping[str, Any]) -> None:
                 column_name=str(column['name']),
                 description=str(column.get('description', '')),
             )
-    groups: dict[tuple[str, str], list[Mapping[str, Any]]] = {}
+    # Chaque changement permis est un objet : il s'ajoute s'il manque, même
+    # sur une colonne qui en a déjà. Exemple : « création → TEST » pour le
+    # business d'essai, sur une instance où les business avaient déjà leurs
+    # règles. Un changement déjà en base n'est jamais touché.
     for rule in list_of(data, 'status_transitions'):
-        key = (str(rule['table']), str(rule['column']))
-        groups.setdefault(key, []).append(rule)
-    for (table, column), rules in groups.items():
-        if conn.execute(
-            'SELECT 1 FROM status_transitions WHERE table_name=?'
-            ' AND column_name=?',
-            (table, column),
-        ).fetchone():
-            continue
-        for rule in rules:
-            insert(
-                conn,
-                'status_transitions',
-                table_name=table,
-                column_name=column,
-                from_value=str(rule.get('from', '')),
-                to_value=str(rule['to']),
-            )
+        conn.execute(
+            'INSERT OR IGNORE INTO status_transitions(table_name, column_name,'
+            ' from_value, to_value) VALUES(?,?,?,?)',
+            (
+                str(rule['table']),
+                str(rule['column']),
+                str(rule.get('from', '')),
+                str(rule['to']),
+            ),
+        )
     for quota in list_of(data, 'table_quotas'):
         ident = str(quota['id'])
         if exists(conn, 'table_quotas', 'id', ident):

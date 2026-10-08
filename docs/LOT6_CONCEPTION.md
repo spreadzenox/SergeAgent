@@ -318,7 +318,10 @@ valeur à la création. Exemple : pour `ventures.lifecycle`, la ligne
 (`CANDIDATE` → `POC_SELECTED`) permet de choisir un candidat, et comme il
 n'existe aucune ligne (`SMOKE_RUNNING` → `POC_SELECTED`), un business déjà
 en test est refusé, avec une note au journal. C'est la protection d'aujourd'hui
-« refuser un business déjà en test », sans code spécial.
+« refuser un business déjà en test », sans code spécial. Sur une instance
+existante, un changement permis ajouté au fichier s'ajoute au démarrage,
+même sur une colonne qui en a déjà ; un changement déjà en base n'est
+jamais touché.
 
 ### `dedup_rules` et `dedup_rule_columns` — repérer un doublon
 
