@@ -14,7 +14,11 @@ import sqlite3
 from collections.abc import Callable, Mapping
 from typing import Any
 
-from serge.conversations.contact import add_contact_address, contact_search
+from serge.conversations.contact import (
+    add_contact,
+    add_contact_address,
+    contact_search,
+)
 from serge.conversations.followups import due_followups
 from serge.conversations.receive import receive_messages
 from serge.conversations.send import send_message
@@ -170,6 +174,7 @@ RUNNERS: dict[str, Runner] = {
     'due_followups': due_followups,
     'unsubscribe_contact': unsubscribe_contact,
     'contact_search': contact_search,
+    'add_contact': add_contact,
     'add_contact_address': add_contact_address,
     'inform_owners': inform_owners,
     'db_read': _db_read,

@@ -73,7 +73,7 @@ catalogue et la mécanique.
 
 | Table | Contenu |
 |---|---|
-| `ventures` | Les business, de leur découverte à leur fermeture. Colonne `lifecycle` : le statut. Fiche : `name`, `description`, `observations`, `sellable_offer`, `family` (sa famille de business), `choice_reason` (pourquoi il a été choisi pour un test). `dedup_key` sert à écarter les doublons. |
+| `ventures` | Les business, de leur découverte à leur fermeture. Colonne `lifecycle` : le statut (`TEST` : le business bidon du bouton « Lancer un essai », hors de la chaîne des étapes). Fiche : `name`, `description`, `observations`, `sellable_offer`, `family` (sa famille de business), `choice_reason` (pourquoi il a été choisi pour un test). `dedup_key` sert à écarter les doublons. |
 | `venture_sources` | Les pages qui prouvent le besoin derrière un business. |
 | `campaigns` | Les campagnes de test : business, canal, taille, fenêtre, seuils. |
 | `contacts` | Les prospects et clients : une fiche par personne dans un business. Colonne `funnel_state` : où la personne en est. Les contacts des anciens essais ont été effacés une fois, avec leurs adresses, au branchement de l'e-mail (version 36, décision Q81). |
@@ -83,7 +83,7 @@ catalogue et la mécanique.
 | `product_sheets`, `product_faq` | La fiche produit d'un business (ce que fait le produit et pour qui, ce qu'il ne fait pas, son prix, ses délais habituels, comment on l'utilise) et ses questions fréquentes. « Traiter une réponse » les lit pour répondre (version 35). |
 | `customer_requests` | Les demandes des contacts sur le produit : `bug`, `insatisfaction` ou `idée`, avec le contact et le message d'où elles viennent (version 35). |
 | `accounts_standing` | Les comptes web que Serge a créés : lieu, identifiant, mot de passe en clair, dossier de session, santé du compte. |
-| `consents`, `blocklist` | Consentements et personnes à ne plus contacter. |
+| `consents`, `blocklist` | Consentements et personnes à ne plus contacter. Un accord a une sorte (`basis`) : `contract`, `consent`, ou `test` (un membre de l'équipe qui essaie Serge : l'appel part à toute heure et hors du plafond par personne, Q79). |
 | `transactions` | Les paiements. |
 | `subscriptions` | Les abonnements Stripe, chacun rattaché à son business (lu dans le champ `metadata.venture_id` du prix ou de l'abonnement Stripe). `venture_id` vide : business inconnu, signalé au journal. |
 | `artifacts` | Les livrables (pas encore utilisée). |

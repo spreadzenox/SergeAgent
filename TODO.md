@@ -103,9 +103,11 @@ remplir la base, dans `config/pipeline.yaml` (le détail est dans
 
 On avance par lots. Un lot est un ensemble de tâches qui vont ensemble ;
 chaque lot se termine par des tests verts et un commit, puis Julien ou
-Clem regarde le résultat avant qu'on attaque le suivant. Les lots 1 à 7
+Clem regarde le résultat avant qu'on attaque le suivant. Les lots 1 à 8
 sont faits (l'historique git en garde la trace) : le runner et le
-pipeline en base, et l'étape 1 y sont en place.
+pipeline en base, l'étape 1, et les conversations par e-mail et par
+téléphone y sont en place (lot 8 : voir
+[`docs/LOT8_CONCEPTION.md`](docs/LOT8_CONCEPTION.md)).
 
 - [ ] **Avant le lot 8 : les réglages en base.** Toute grandeur
   discutable se règle depuis Mission Control, sans réglage en double
@@ -113,13 +115,6 @@ pipeline en base, et l'étape 1 y sont en place.
   et Pipeline ; il reste à remettre, lot par lot, les réglages retirés
   parce que rien ne les lisait. Le détail est dans la partie « Avant le
   lot 8 » plus bas.
-- [ ] **Lot 8 « Conversations ».** Une architecture qui accueille
-  facilement un nouveau canal, puis l'e-mail et la voix (Q79) : un fil par
-  contact, un message reçu qui réveille le pipeline, une seule invocation
-  pour traiter une réponse, des relances quel que soit le canal, une
-  désinscription qui vaut partout, une fiche produit, et un agent vocal
-  qui sait à qui il parle. Quatre PR, la dernière pour que Clem teste tout
-  depuis Mission Control.
 - [ ] **Lot 8 bis « Julien dans la conversation ».** Les tickets qui font
   attendre une réponse : « besoin de Julien », valider un brouillon, la
   réponse de Julien qui repart dans la conversation, des tickets qu'on
@@ -183,32 +178,6 @@ discutable, qui peut un jour changer, se règle depuis Mission Control.**
   téléphone ») : son prompt, ses modèles, sa durée maximale et ses tours
   de secours ; ses heures d'appel et ses plafonds sont sur la page Policy
   (lot 8, PR 3).
-
----
-
-## Lot 8 — Conversations : les canaux, l'e-mail et la voix
-
-Les messages des prospects et des clients sont imprévisibles : questions
-sur le produit, demandes de changement, questions de délais, sujets sans
-rapport. On ne peut pas tout prévoir, mais on calibre les cas classiques.
-Clem a fixé le périmètre le 7 octobre 2026 (décision Q79) : une
-architecture qui accueille facilement un nouveau canal, puis l'e-mail et
-la voix, dont le code existe déjà en partie. LinkedIn et les autres sites
-demanderont une machine virtuelle pilotée par un LLM (lot 12). Les réponses
-partent toutes seules : les tickets qui font attendre une réponse viennent
-au lot 8 bis. La conception détaillée est dans
-[`docs/LOT8_CONCEPTION.md`](docs/LOT8_CONCEPTION.md).
-
-- [ ] **PR 4 — Le kit de test.** Une demi-fiche produit et un business
-  bidon en base, des invocations temporaires « Écrire le premier message »
-  et « Faire le premier appel », et un bouton dans Mission Control pour
-  lancer l'essai : Clem y tape ses coordonnées (jamais dans le dépôt, qui
-  est public), le bouton enregistre son accord pour l'appel de test, et
-  Serge lui pitche un projet bidon par e-mail et par téléphone. Clem
-  répond, appelle et écrit lui-même ; Serge doit répondre seul et savoir
-  qui il est. Un appel de test vers un numéro qui a donné son accord part
-  à toute heure (Q79) : aujourd'hui, tout appel sortant reste dans les
-  heures d'appel de la page Policy.
 
 ---
 
@@ -419,7 +388,8 @@ fait attendre une réponse jusqu'à ce que Julien ou Clem ait répondu :
   proposer quelque chose de concret à essayer, pas seulement une promesse.
   Pour chaque business choisi, une invocation « Concevoir le POC » écrit
   un plan de A à Z : le livrable d'essai, les prospects visés, les canaux,
-  le rythme des relances, et la fiche produit du POC (voir le lot 8). Une
+  le rythme des relances, et la fiche produit du POC (table
+  `product_sheets`, lot 8). Une
   deuxième invocation, « Challenger le POC », relit ce plan et ne peut
   répondre que deux choses par remarque : « à corriger » ou « il faut une
   nouvelle capacité ». On fait au plus trois allers-retours, et le plan
@@ -430,7 +400,7 @@ fait attendre une réponse jusqu'à ce que Julien ou Clem ait répondu :
   test. Le détail est dans
   [`docs/etapes/2-conception-poc.md`](docs/etapes/2-conception-poc.md).
   Cette tâche a besoin des liens entre invocations et de la construction
-  de l'étape 5. En attendant les tickets du lot 8, le lien entre la
+  de l'étape 5. En attendant les tickets du lot 8 bis, le lien entre la
   conception et la construction peut être réglé à la main : Julien donne
   son feu vert avec « Passer à la suite », sur la fiche du lien dans MC.
 
@@ -491,8 +461,8 @@ fait attendre une réponse jusqu'à ce que Julien ou Clem ait répondu :
 
 - [ ] **Construire le vrai produit.** Pas de prospection lourde sans
   pouvoir encaisser. Une invocation conçoit le produit et écrit sa fiche
-  produit (voir le lot 8), une autre les critique, puis Julien valide dans
-  un ticket, en fixant le prix définitif. Serge construit ensuite le
+  produit (table `product_sheets`, lot 8), une autre les critique, puis
+  Julien valide dans un ticket, en fixant le prix définitif. Serge construit ensuite le
   produit avec un duo : un constructeur qui écrit, un relecteur qui répond
   « bon », « à corriger » ou « il faut une nouvelle capacité ». Ce duo est
   fait de deux invocations LLM réglées en base, qui travaillent dans un bac
@@ -590,6 +560,14 @@ fait attendre une réponse jusqu'à ce que Julien ou Clem ait répondu :
   la coupure automatique d'un flux après 5 cycles de bruit (Q65). Avant
   le vrai lancement de Serge, retirer le bouton « Effacer les idées
   (test) » (le lister dans la section `deleted` de `pipeline.yaml`).
+
+- [ ] **Avant le vrai lancement : retirer le kit d'essai des canaux.** Le
+  bouton « Lancer un essai » et ses invocations temporaires (« Lancer un
+  essai », « Créer le contact d'essai », « Écrire le premier message »,
+  « Préparer le premier appel ») servent à essayer l'e-mail et la voix
+  (lot 8, Q79). Les lister dans la section `deleted` de `pipeline.yaml`
+  quand les vraies invocations de prospection (lot 11) écriront les
+  premiers messages.
 
 - [ ] **La consolidation de la mémoire dans le pipeline.** Aujourd'hui,
   la consolidation (étape 7) relit chaque jour le journal et propose des

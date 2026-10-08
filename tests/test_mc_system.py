@@ -34,6 +34,7 @@ class SystemRegistryTests(unittest.TestCase):
                 'population',
                 'email',
                 'non_rattaches',
+                'essais',
             ],
         )
         for section in sections:
@@ -142,6 +143,12 @@ class McSystemTests(McBrowserCase):
         page = self._page_home()
         page.goto(f'{self.base}/owner#/system')
         expect(page.locator('[data-section="email"]')).to_be_visible()
+        # Le bouton d'essai, déclaré en base, et l'état des canaux.
+        essais = page.locator('[data-section="essais"]')
+        expect(essais.locator('[data-bouton-base]')).to_have_text(
+            'Lancer un essai'
+        )
+        expect(essais).to_contain_text('E-mail : pas branché sur ce serveur')
         # Le message d'un inconnu : pas traité, mais visible.
         expect(page.locator('[data-section="non_rattaches"]')).to_contain_text(
             'inconnu@ailleurs.fr · Une question'

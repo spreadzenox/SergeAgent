@@ -131,7 +131,7 @@ class McEcouteFrontTests(McBrowserCase):
         page = self._auth_context().new_page()
         self._watch_errors(page)
         page.goto(f'{self.base}/owner#/ecoute')
-        bouton = page.locator('[data-ecoute-action="lancer"]')
+        bouton = page.locator('[data-bouton-base]')
         expect(bouton).to_have_text('Lancer un cycle d’écoute', timeout=10000)
         page.locator('[data-champ="guide"]').fill('devis artisans')
         bouton.click()
@@ -158,7 +158,7 @@ class McEcouteFrontTests(McBrowserCase):
         page = self._auth_context().new_page()
         self._watch_errors(page)
         page.goto(f'{self.base}/owner#/ecoute')
-        boutons = page.locator('[data-ecoute-action="lancer"]')
+        boutons = page.locator('[data-bouton-base]')
         expect(boutons).to_have_text(
             ['Lancer un cycle d’écoute', 'Explorer un thème'], timeout=10000
         )
@@ -179,4 +179,4 @@ class McEcouteFrontTests(McBrowserCase):
         expect(page.locator('[data-ecoute="boutons"]')).to_contain_text(
             'Aucun bouton en base', timeout=10000
         )
-        expect(page.locator('[data-ecoute-action="lancer"]')).to_have_count(0)
+        expect(page.locator('[data-bouton-base]')).to_have_count(0)

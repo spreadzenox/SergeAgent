@@ -18,6 +18,7 @@ from serge.mc.proj_analyse import (
 from serge.mc.proj_campagnes import (
     project_campagnes,
     project_email,
+    project_essais,
     project_non_rattaches,
     project_population,
 )
@@ -197,6 +198,7 @@ PROJECTORS: dict[str, Callable[..., dict[str, Any]]] = {
     'population': project_population,
     'email': project_email,
     'non_rattaches': project_non_rattaches,
+    'essais': project_essais,
     'pensees': project_pensees,
     'decisions': project_decisions,
     'matrice': project_matrice,
@@ -246,6 +248,7 @@ PAGE_SECTIONS: dict[str, list[str]] = {
         'population',
         'email',
         'non_rattaches',
+        'essais',
     ],
     'p2': ['meta', 'pensees', 'decisions', 'matrice', 'signaux'],
     'p3': ['meta', 'tickets', 'diffs', 'metriques', 'digest'],

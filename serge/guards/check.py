@@ -132,14 +132,15 @@ def _decide(
     ).fetchone()
     if blocked:
         return Verdict(False, Reason.BLOCKLISTED)
-    if channel in _opt_in_channels(policy):
-        granted = connection.execute(
-            'SELECT 1 FROM consents WHERE subject_hash=? AND channel IN (?,?)'
-            " AND revoked_at=''",
-            (digest, channel, '*'),
-        ).fetchone()
-        if not granted:
-            return Verdict(False, Reason.NO_CONSENT)
+    granted = connection.execute(
+        'SELECT basis FROM consents WHERE subject_hash=? AND channel IN (?,?)'
+        " AND revoked_at=''",
+        (digest, channel, '*'),
+    ).fetchone()
+    if channel in _opt_in_channels(policy) and not granted:
+        return Verdict(False, Reason.NO_CONSENT)
+    # Un accord « test » (le bouton d'essai) : un appel à toute heure (Q79).
+    testing = bool(granted) and str(granted[0]) == 'test'
     contact_id = str(action.get('contact_id') or '')
     if contact_id and action.get('kind') != 'reply':
         cap = _zone_cap(policy, str(action.get('zone') or ''))
@@ -161,7 +162,7 @@ def _decide(
                     datetime.fromisoformat(str(oldest)) + timedelta(days=30)
                 ).isoformat()
             return Verdict(False, Reason.QUOTA_CONTACT_30D, retry_at=retry)
-    if channel == 'voice':
+    if channel == 'voice' and not testing:
         try:
             paris = paris_now(current)
             hours = call_hours(policy)

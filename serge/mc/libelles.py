@@ -61,6 +61,7 @@ LIFECYCLE = {
     'EXTEND': 'Extension',
     'KILLED': 'Arrêté',
     'INVALID_RETRY': 'À refaire',
+    'TEST': 'Business d’essai',
 }
 
 FUNNEL = {

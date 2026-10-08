@@ -42,6 +42,8 @@ from serge.voice.policy import (
 )
 
 PURPOSES = frozenset({'prospection', 'contract', 'callback', 'test'})
+# L'accord d'un membre de l'équipe qui essaie Serge (bouton d'essai).
+TEST_BASIS = 'test'
 PENDING_CLAIM_SECONDS = 600
 
 
@@ -280,14 +282,19 @@ class VoiceLedger:
             return 'cli_not_locked_npv'
         if self.is_blocked(to_e164):
             return 'blocklisted'
-        if self.consent_basis(to_e164) is None:
+        basis = self.consent_basis(to_e164)
+        if basis is None:
             return 'no_consent_or_contract'
+        # Un accord « test » (le bouton d'essai de Mission Control) : un
+        # membre de l'équipe qui essaie Serge. L'appel part à toute heure et
+        # ne compte pas dans le plafond par personne (décision Q79).
+        testing = basis == TEST_BASIS
         try:
             paris = paris_now(created)
         except VoiceBrokerDenied:
             return 'timezone_unavailable'
         per_day, per_recipient, hours = call_limits(self.canon_path)
-        if not within_legal_hours(paris, hours):
+        if not testing and not within_legal_hours(paris, hours):
             return 'outside_legal_hours'
         day_start = paris.replace(hour=0, minute=0, second=0, microsecond=0)
         month_start = paris - timedelta(days=30)
@@ -301,7 +308,8 @@ class VoiceLedger:
         ):
             return 'daily_quota_exceeded'
         if (
-            self._count_allowed(
+            not testing
+            and self._count_allowed(
                 connection,
                 _hash(to_e164),
                 month_start.astimezone(UTC).isoformat(),
