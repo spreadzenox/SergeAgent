@@ -44,7 +44,7 @@ class PolicyTests(unittest.TestCase):
             os.environ.pop('SERGE_ENV', None)
             policy = load_policy()
         self.assertEqual(policy['budget']['monthly_eur'], 50.0)
-        self.assertEqual(policy['quotas']['voice_max_calls_per_day'], 50)
+        self.assertEqual(policy['channels']['voice']['max_per_day'], 50)
         self.assertEqual(policy['calling_zones']['default'], 'FR')
         self.assertEqual(policy['calling_zones']['FR']['contact_per_30d'], 4)
         self.assertEqual(policy['testing']['n_smoke_min'], 30)
@@ -57,7 +57,7 @@ class PolicyTests(unittest.TestCase):
             policy = load_policy()
         self.assertEqual(policy['budget']['monthly_eur'], 2.0)
         self.assertEqual(policy['channels']['email']['max_per_day'], 2)
-        self.assertEqual(policy['quotas']['voice_max_calls_per_day'], 0)
+        self.assertEqual(policy['channels']['voice']['max_per_day'], 0)
         self.assertEqual(policy['quotas']['linkedin_connect_per_day'], 0)
         # Non surchargé = valeur prod conservée.
         self.assertEqual(policy['budget']['eur_per_usd'], 0.9)

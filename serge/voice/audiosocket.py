@@ -10,7 +10,6 @@ Kind = Literal['hangup', 'uuid', 'audio']
 
 LISTEN_HOST = '127.0.0.1'
 LISTEN_PORT = 8792
-SESSION_UUID = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee'
 
 _KINDS: dict[int, Kind] = {0x00: 'hangup', 0x01: 'uuid', 0x10: 'audio'}
 _CODES: dict[Kind, int] = {name: code for code, name in _KINDS.items()}

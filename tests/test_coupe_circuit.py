@@ -134,7 +134,8 @@ class CoupeCircuitTests(unittest.TestCase):
         self.assertFalse(data['serge'])
         self.assertEqual(len(data['etapes']), 8)
         self.assertEqual(
-            [f['id'] for f in data['files']], ['conversations', 'works']
+            [f['id'] for f in data['files']],
+            ['conversations', 'voice', 'works'],
         )
         self.assertEqual([i['id'] for i in data['invocations']], ['a', 'b'])
         for groupe in ('etapes', 'files', 'invocations'):

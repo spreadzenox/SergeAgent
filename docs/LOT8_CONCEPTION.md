@@ -328,15 +328,38 @@ l'autre, le canal n'est pas branché.
 
 ## 11. PR 3 — Le canal appel
 
-L'adaptateur appel passe par le pont téléphonique existant
-(`serge/voice/bridge.py`). Un appel sortant a pour « message » le but de
-l'appel ; l'agent vocal reçoit au décrochage la fiche du contact, son fil,
-la fiche du business et la fiche produit, avec son prompt, son modèle et
-ses outils réglés en base comme une invocation. Après l'appel, son résultat
-(joint ou non, durée, résumé) est écrit dans le fil, ce qui réveille
-« Traiter une réponse ». Un appel reçu cherche le numéro en base (TODO,
-lot 8, PR 3). Un appel de test vers un numéro qui a donné son accord part
-à toute heure ; un appel de prospection reste dans les heures légales.
+L'adaptateur appel (`serge/channels/voice.py`) demande l'appel au pont
+téléphonique existant (`serge/voice/bridge.py`, à l'adresse locale
+`127.0.0.1:8791`), qui décide (accord, liste de blocage, heures et
+plafonds) puis compose. Le canal est branché quand le fichier d'instance a
+`features.phone_voice`.
+
+- **Le « message » d'un appel est son but.** Il est remis à l'agent vocal
+  au décrochage. Un envoi interrompu est retrouvé dans le journal des
+  appels : un appel déjà composé n'est jamais refait.
+- **Hors des heures d'appel, l'appel attend le prochain créneau** (décision
+  Q83). Les jours et heures d'appel sont des réglages de la page Policy
+  (« Pays et appels ») ; le pont qui refuse pour un temps (un appel déjà en
+  cours, le plafond du jour) fait attendre aussi.
+- **L'agent vocal est une invocation** (« Parler au téléphone », file
+  « Appels », qui n'a pas de runner) : son prompt, ses réglages
+  (fournisseurs, modèles, voix, durée maximale), ce qu'il reçoit au
+  décrochage (la fiche du contact, son fil, la fiche du business et la
+  fiche produit, et le but de l'appel), ses outils (« Chercher un contact »,
+  « Noter une adresse ») et ses écritures sont en base. Chaque appel est une
+  tâche de cette invocation, menée en direct par le pont.
+- **L'agent sait à qui il parle.** Le plan d'appel d'Asterisk écrit le sens
+  et le numéro de l'appel dans l'UUID d'AudioSocket ; le numéro est
+  cherché parmi les adresses des contacts. Un appelant inconnu reconnu par
+  « Chercher un contact » (une seule fiche trouvée) est rattaché à sa fiche.
+- **Après l'appel**, la transcription des deux voix entre dans le fil
+  (`inbound_events`, canal `voice`), ce qui lance « Traiter une réponse ».
+  La suite part par e-mail si Serge a l'adresse du contact, sinon Serge
+  rappelle (`channels.voice.reply_by`, décision Q83) ; l'agent demande
+  l'e-mail dès qu'un document doit être envoyé, et le note.
+- **Le secours tour par tour** (`serge/voice/turn.py`) suit le même agent :
+  son prompt, son modèle de secours, ses tours ; ses phrases fixes sont des
+  textes de la page Pipeline.
 
 ## 12. PR 4 — Le kit de test
 

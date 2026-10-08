@@ -1,16 +1,23 @@
 #!/usr/bin/env python3
 """Turn-based voice call leg (Asterisk AGI entry). Robust fallback path.
 
-Rework target (matrix C, point P5) is speech-to-speech realtime. This
-module remains the NPV-compatible floor: when realtime is unavailable
-(or fails mid-call) the call degrades here — never a crash, never
-silence, never a hard hangup.
+Le secours de la voix en direct (``s2s.py``) : quand la session temps réel
+n'est pas joignable (ou lâche en plein appel), l'appel passe ici, tour par
+tour (enregistrer, transcrire, répondre, lire) — jamais un plantage,
+jamais un silence, jamais un raccrochage sec.
+
+C'est le même agent vocal, réglé en base (``serge/voice/agent.py``) : son
+prompt, la fiche du contact, son modèle de secours (``modele_secours``) et
+son nombre de tours (``tours_secours``). Ses phrases fixes (accueil, menu
+de rappel, « je ne vous entends pas »…) sont des textes de la page
+Pipeline. À la fin, ce qui s'est dit entre dans le fil du contact.
 """
 
 from __future__ import annotations
 
 import json
 import re
+import sqlite3
 import sys
 import time
 from pathlib import Path
@@ -19,6 +26,16 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from serge.coupe_circuit import serge_demarre  # noqa: E402
+from serge.db.store import default_canon_path, open_db  # noqa: E402
+from serge.interpreter.intro import serge_text  # noqa: E402
+from serge.voice.agent import (  # noqa: E402
+    Call,
+    finish_call,
+    hear,
+    instructions,
+    settings,
+    start_call,
+)
 from serge.voice.agi import Agi, AgiHangup, strip_ext  # noqa: E402
 from serge.voice.ledger import VoiceLedger  # noqa: E402
 from serge.voice.policy import default_ledger_path  # noqa: E402
@@ -31,48 +48,45 @@ from serge.voice.providers import (  # noqa: E402
     transcribe,
 )
 
-MAX_TURNS = 4
 RECORD_TIMEOUT_MS = 7000
 RECORD_SILENCE_S = 2
 VOICEMAIL_TIMEOUT_MS = 45000
 
-INBOUND_GREETING = (
-    'Bonjour, vous êtes bien chez Serge. '
-    'Je vous écoute, que puis-je pour vous ?'
-)
-OUTBOUND_DEFAULT_PITCH = (
-    'Bonjour, ici Serge. Je vous appelle suite à votre demande.'
-)
-CALLBACK_MENU = (
-    'Pour être rappelé par un humain, tapez 1. '
-    'Sinon, laissez votre message après le bip.'
-)
-NOT_UNDERSTOOD = "Pardon, je n'ai pas compris. Pouvez-vous répéter ?"
-CANNOT_HEAR = (
-    'Je ne vous entends pas. Laissez votre message après le bip, '
-    'nous vous rappellerons.'
-)
-GOODBYE = 'Merci, au revoir.'
-
 
 class VoiceTurn:
-    def __init__(self, agi: Agi, root: Path, ledger: VoiceLedger):
+    def __init__(
+        self,
+        agi: Agi,
+        root: Path,
+        ledger: VoiceLedger,
+        canon: sqlite3.Connection,
+    ):
         self.agi = agi
         self.root = root
         self.ledger = ledger
+        self.canon = canon
         self.keys = secrets()
         self.turns: list[dict[str, str]] = []
+        self.call: Call | None = None
+
+    def text(self, ident: str) -> str:
+        """Une phrase fixe du secours (page Pipeline)."""
+        return serge_text(self.canon, ident)
 
     def play_text(self, text: str) -> None:
+        if not text:
+            return
         wav = synthesize(text, self.keys['openai'], self.root)
         if wav is None:
             return
         self.agi.stream(strip_ext(wav))
 
     def dialogue(self, prefix: str) -> None:
+        cfg = settings(self.canon, self.call) if self.call else {}
+        system = instructions(self.canon, self.call) if self.call else ''
         history: list[dict[str, str]] = []
         empty_streak = 0
-        for turn in range(MAX_TURNS):
+        for turn in range(int(cfg.get('tours_secours') or 0)):
             rec_path = (
                 self.root / 'state/voice/records' / f'{prefix}-t{turn}.wav'
             )
@@ -86,24 +100,35 @@ class VoiceTurn:
             if not text:
                 empty_streak += 1
                 if empty_streak >= 2:
-                    self.play_text(CANNOT_HEAR)
+                    self.play_text(self.text('voice_backup_cannot_hear'))
                     return
-                self.play_text(NOT_UNDERSTOOD)
+                self.play_text(self.text('voice_backup_not_understood'))
                 continue
             empty_streak = 0
             history.append({'role': 'user', 'content': text})
-            reply = chat_reply(history, self.keys['openrouter'])
+            reply = chat_reply(
+                history,
+                self.keys['openrouter'],
+                system,
+                cfg.get('modele_secours', ''),
+            )
             if not reply:
                 return
             history.append({'role': 'assistant', 'content': reply})
             self.turns.append({'user': text, 'serge': reply})
+            if self.call:
+                hear(self.call, 'Contact', text)
+                hear(self.call, 'Serge', reply)
             self.play_text(reply)
             if re.search(r'au\s*revoir', reply, re.IGNORECASE):
                 return
 
     def callback_menu(self, prefix: str) -> bool:
         """DTMF-1 callback offer. Returns True when callback requested."""
-        menu_wav = synthesize(CALLBACK_MENU, self.keys['openai'], self.root)
+        menu = self.text('voice_backup_menu')
+        menu_wav = (
+            synthesize(menu, self.keys['openai'], self.root) if menu else None
+        )
         if menu_wav is None:
             return False
         digits = self.agi.get_data(strip_ext(menu_wav), 6000, 1)
@@ -121,15 +146,24 @@ class VoiceTurn:
 
     def run_outbound(self, to_e164: str) -> dict[str, Any]:
         started = time.time()
-        claim = self.ledger.claim_outbound(to_e164)
-        cdr = (claim or {}).get('cdr_id', f'cdr_manual_{int(started)}')
+        claim = self.ledger.claim_outbound(to_e164) or {}
+        cdr = claim.get('cdr_id') or f'cdr_manual_{int(started)}'
+        self.call = start_call(
+            self.canon,
+            'outbound',
+            to_e164,
+            cdr,
+            str(claim.get('task_id') or ''),
+        )
         prefix = re.sub(r'[^A-Za-z0-9]+', '', cdr)
         self.agi.answer()
-        pitch = (
-            (claim or {}).get('message') or ''
-        ).strip() or OUTBOUND_DEFAULT_PITCH
+        pitch = str(claim.get('message') or '').strip() or self.text(
+            'voice_backup_pitch'
+        )
         if self.keys['openai']:
             self.play_text(pitch)
+            if self.call:
+                hear(self.call, 'Serge', pitch)
             self.dialogue(prefix)
             callback = self.callback_menu(prefix)
             recording = self.voicemail(prefix)
@@ -145,10 +179,14 @@ class VoiceTurn:
         record = self.ledger.record_inbound(
             caller=caller or 'unknown', did=did
         )
+        self.call = start_call(self.canon, 'inbound', caller, record['cdr_id'])
         prefix = re.sub(r'[^A-Za-z0-9]+', '', record['cdr_id'])
         self.agi.answer()
         if self.keys['openai']:
-            self.play_text(INBOUND_GREETING)
+            greeting = self.text('voice_backup_greeting')
+            self.play_text(greeting)
+            if self.call:
+                hear(self.call, 'Serge', greeting)
             self.dialogue(prefix)
             callback = self.callback_menu(prefix)
             recording = self.voicemail(prefix)
@@ -181,7 +219,7 @@ class VoiceTurn:
         started: float,
     ) -> dict[str, Any]:
         try:
-            self.play_text(GOODBYE)
+            self.play_text(self.text('voice_backup_goodbye'))
         except AgiHangup:
             pass
         meta = {
@@ -213,6 +251,8 @@ class VoiceTurn:
                 recording_path=str(recording),
                 callback_requested=callback,
             )
+            if self.call:
+                finish_call(self.canon, self.call)
         except Exception:  # noqa: BLE001 — CDR write must not fail the call
             pass
         try:
@@ -237,7 +277,8 @@ def main(argv: list[str] | None = None) -> int:
         # Serge arrêté dans Mission Control : on ne décroche pas.
         agi.hangup()
         return 0
-    turn = VoiceTurn(agi, root, VoiceLedger(default_ledger_path(root)))
+    canon = open_db(default_canon_path())
+    turn = VoiceTurn(agi, root, VoiceLedger(default_ledger_path(root)), canon)
     try:
         if args[0] == 'outbound':
             turn.run_outbound(args[1])
@@ -254,6 +295,8 @@ def main(argv: list[str] | None = None) -> int:
         except AgiHangup:
             pass
         return 0
+    finally:
+        canon.close()
     return 0
 
 

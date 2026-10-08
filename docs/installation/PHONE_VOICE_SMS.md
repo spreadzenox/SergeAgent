@@ -167,9 +167,14 @@ vers son propre mobile (le CLI affiché est bien le NPV ?).
 ### 2. L’agent Serge (speech-to-speech ; repli tour-par-tour)
 
 La voix principale est **en temps réel** (speech-to-speech)
-via AudioSocket, mêmes providers que Mission Control (xAI Realtime
-primaire `grok-voice-think-fast-2.0`, OpenAI Realtime rollback
-`gpt-realtime-2.1-mini`). Garde-fous et repli tour par tour déclarés.
+via AudioSocket (xAI Realtime d'abord, OpenAI Realtime en secours).
+L'agent est réglé en base comme une invocation, « Parler au téléphone »
+(page Pipeline) : son prompt, ses fournisseurs, modèles et voix, sa durée
+maximale, ce qu'il reçoit au décrochage (la fiche du contact, son fil, la
+fiche produit, le but de l'appel) et ses outils (chercher un contact,
+noter une adresse). Le plan d'appel écrit le sens et le numéro de l'appel
+dans l'UUID d'AudioSocket : l'agent sait à qui il parle. À la fin, la
+transcription des deux voix entre dans le fil du contact.
 
 ```
 appel → Asterisk → AudioSocket 127.0.0.1:8792
@@ -178,7 +183,8 @@ appel → Asterisk → AudioSocket 127.0.0.1:8792
   → PCM 8 kHz (xAI) / 24 kHz (OpenAI), lecture 20 ms
   → micro continu après le bonjour (VAD + commit 1,2 s)
 si socket/session HS → AGI turn.py (Record 6 s → Whisper →
-  OpenRouter → TTS, 4 tours) → menu DTMF « 1 = rappel » → répondeur
+  OpenRouter → TTS, tours réglés en base) → menu DTMF « 1 = rappel »
+  → répondeur
 ```
 
 - Clés sidecar (inchangées) : `openai_api_key`, `xai_api_key`,

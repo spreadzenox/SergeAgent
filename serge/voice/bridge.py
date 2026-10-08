@@ -16,18 +16,24 @@ import subprocess
 import sys
 import tomllib
 import urllib.parse
+from datetime import UTC, datetime, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
+from serge.db.store import default_canon_path  # noqa: E402
 from serge.e164 import E164_RE  # noqa: E402
+from serge.funnels.contacts import normalise_value  # noqa: E402
 from serge.paths import config_root, system_root  # noqa: E402
 from serge.voice.ledger import VoiceLedger  # noqa: E402
 from serge.voice.policy import (  # noqa: E402
     VoiceBrokerDenied,
+    call_limits,
     default_ledger_path,
+    next_legal_moment,
+    paris_now,
     resolve_policy,
 )
 
@@ -182,6 +188,60 @@ def health() -> dict[str, Any]:
     }
 
 
+# Un appel déjà en cours vers ce numéro : on réessaie dans 10 minutes.
+BUSY_RETRY = timedelta(minutes=10)
+
+
+def retry_at(reason: str) -> str:
+    """Quand une demande refusée pour un temps pourra repartir, ou ``''``.
+
+    Hors des heures d'appel : le prochain créneau (décision Q83) ; plafond
+    du jour : minuit, heure de Paris ; un appel déjà en cours, ou Serge
+    arrêté : dans 10 minutes. Un autre refus est définitif.
+    """
+    now = datetime.now(UTC)
+    if reason == 'outside_legal_hours':
+        hours = call_limits(default_canon_path())[2]
+        return (
+            next_legal_moment(paris_now(now), hours)
+            .astimezone(UTC)
+            .isoformat()
+        )
+    if reason == 'daily_quota_exceeded':
+        tomorrow = paris_now(now) + timedelta(days=1)
+        start = tomorrow.replace(hour=0, minute=0, second=0, microsecond=0)
+        return start.astimezone(UTC).isoformat()
+    if reason in ('already_in_progress', 'serge_arrete'):
+        return (now + BUSY_RETRY).isoformat()
+    return ''
+
+
+def originate_for_task(payload: dict[str, Any]) -> dict[str, Any]:
+    """Une demande d'appel du pipeline (``POST /originate``).
+
+    Le numéro de la demande est tiré de l'envoi (``task_id``) et du nombre
+    de demandes déjà faites pour lui : ``tou_3f2a.1``, ``tou_3f2a.2``… Le
+    numéro de l'interlocuteur est remis en forme E.164. Un refus pour un
+    temps dit quand réessayer (``retry_at``).
+    """
+    ledger = VoiceLedger(default_ledger_path())
+    task_id = str(payload.get('task_id') or '')
+    request_id = str(payload.get('request_id') or '')
+    if task_id and not request_id:
+        request_id = f'{task_id}.{len(ledger.calls_for_task(task_id)) + 1}'
+    result = originate(
+        request_id=request_id,
+        to_e164=normalise_value('phone', str(payload.get('to') or '')),
+        purpose=str(payload.get('purpose') or ''),
+        task_id=task_id,
+        message=str(payload.get('message') or ''),
+        ledger=ledger,
+    )
+    if result['decision'] != 'allowed':
+        result['retry_at'] = retry_at(str(result.get('reason') or ''))
+    return result
+
+
 class Handler(BaseHTTPRequestHandler):
     # Param name `format` matches BaseHTTPRequestHandler (Liskov).
     def log_message(self, format: str, *args: Any) -> None:  # noqa: N802, A002
@@ -200,6 +260,14 @@ class Handler(BaseHTTPRequestHandler):
         if parsed.path == '/healthz':
             info = health()
             self._send(200 if info['status'] == 'ok' else 503, info)
+            return
+        if parsed.path == '/calls':
+            # Les demandes d'appel d'un envoi : confirmer qu'un appel est
+            # parti, sans jamais le recomposer.
+            query = urllib.parse.parse_qs(parsed.query)
+            task_id = (query.get('task_id') or [''])[0]
+            ledger = VoiceLedger(default_ledger_path())
+            self._send(200, {'calls': ledger.calls_for_task(task_id)})
             return
         self._send(404, {'error': 'not_found'})
 
@@ -224,13 +292,7 @@ class Handler(BaseHTTPRequestHandler):
             self._send(400, {'error': 'invalid_payload'})
             return
         try:
-            result = originate(
-                request_id=str(payload.get('request_id') or ''),
-                to_e164=str(payload.get('to') or ''),
-                purpose=str(payload.get('purpose') or ''),
-                task_id=str(payload.get('task_id') or ''),
-                message=str(payload.get('message') or ''),
-            )
+            result = originate_for_task(payload)
         except VoiceBrokerDenied as exc:
             self._send(400, {'error': str(exc)})
             return
@@ -243,8 +305,14 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def serve(listen: str = DEFAULT_LISTEN) -> int:
+    from contextlib import closing
+
+    from serge.db.store import default_canon_path, open_db
+    from serge.voice.agent import close_interrupted_calls
     from serge.voice.s2s import start_audiosocket_thread
 
+    with closing(open_db(default_canon_path())) as canon:
+        close_interrupted_calls(canon)
     start_audiosocket_thread()
     host, _, port_raw = listen.rpartition(':')
     server = ThreadingHTTPServer(

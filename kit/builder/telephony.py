@@ -10,7 +10,12 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
-from kit.asterisk import AsteriskError, render_asterisk, render_asterisk_conf
+from kit.asterisk import (
+    AsteriskError,
+    render_asterisk,
+    render_asterisk_conf,
+    render_extensions,
+)
 from kit.builder.guards import BuilderError
 from kit.instance_file import SMS_RECEIVER_UPSTREAM, SMS_VENTURE_ID
 
@@ -57,21 +62,27 @@ def write_asterisk_conf(
     config_root: Path,
     facts: Mapping[str, str],
 ) -> str:
-    """Réécrit asterisk.conf sans toucher pjsip.conf (secret trunk)."""
+    """Réécrit asterisk.conf et le plan d'appel (extensions.conf), sans
+    toucher pjsip.conf (secret trunk) : une mise à jour du plan d'appel
+    arrive au déploiement, même sans le mot de passe du trunk."""
     if not (loaded.get('features') or {}).get('phone_voice'):
         return ''
     try:
-        text = render_asterisk_conf(loaded, facts)
+        files = {
+            'asterisk.conf': render_asterisk_conf(loaded, facts),
+            'extensions.conf': render_extensions(loaded, facts),
+        }
     except AsteriskError as exc:
         raise BuilderError(str(exc)) from exc
     dest_dir = config_root / 'asterisk'
     dest_dir.mkdir(parents=True, exist_ok=True)
     (dest_dir / 'var/lib/keys').mkdir(parents=True, exist_ok=True)
     (dest_dir / 'var/spool').mkdir(parents=True, exist_ok=True)
-    dest = dest_dir / 'asterisk.conf'
-    dest.write_text(text, encoding='utf-8')
-    dest.chmod(0o644)
-    return dest.name
+    for name, text in files.items():
+        dest = dest_dir / name
+        dest.write_text(text, encoding='utf-8')
+        dest.chmod(0o644)
+    return ', '.join(files)
 
 
 def seed_sms_route(

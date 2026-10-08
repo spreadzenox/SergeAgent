@@ -134,7 +134,7 @@ class PipelineSeedTests(unittest.TestCase):
 
     def test_le_depart_remplit_files_modeles_et_presentation(self) -> None:
         queues = {r[0] for r in self.conn.execute('SELECT id FROM queues')}
-        self.assertEqual(queues, {'conversations', 'works'})
+        self.assertEqual(queues, {'conversations', 'voice', 'works'})
         tiers = {
             r[0] for r in self.conn.execute('SELECT tier FROM llm_models')
         }

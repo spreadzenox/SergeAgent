@@ -64,16 +64,6 @@ sections:
     title: Plafonds par canal
     why: Combien de messages, appels ou invitations, pour ne pas spammer.
     settings:
-      - id: voice_max_calls_per_day
-        value: 50
-        title: Appels par jour
-        help: >-
-          Au-delà, la voix refuse tout nouvel appel sortant jusqu’au
-          lendemain. Le compteur du jour est sur En direct.
-        kind: curseur
-        min: 0
-        max: 200
-        step: 1
       - id: sms_per_sender_per_min
         value: 10
         title: SMS reçus par expéditeur, par minute
@@ -127,6 +117,28 @@ sections:
         help: Si on ne sait pas où est la personne.
         kind: liste
         choices: [FR]
+      - id: FR.call_days
+        value: [lun, mar, mer, jeu, ven]
+        title: Jours d’appel (France)
+        help: >-
+          Un appel sortant ne part que ces jours-là, jamais un jour férié.
+          Sinon il attend le prochain créneau (décision Q83).
+        kind: jours
+        choices:
+          - [lun, Lundi]
+          - [mar, Mardi]
+          - [mer, Mercredi]
+          - [jeu, Jeudi]
+          - [ven, Vendredi]
+          - [sam, Samedi]
+          - [dim, Dimanche]
+      - id: FR.call_windows
+        value: [[10, 0, 13, 0], [14, 0, 20, 0]]
+        title: Heures d’appel (France)
+        help: >-
+          Règle légale en France pour un appel de prospection. Hors de ces
+          heures, l’appel attend le prochain créneau (décision Q83).
+        kind: fenetres
       - id: FR.contact_per_30d
         value: 4
         title: Prises de contact au plus, par personne, sur 30 jours (France)
@@ -571,6 +583,42 @@ sections:
         min: 0
         max: 200
         step: 1
+      - id: voice.max_per_day
+        value: 50
+        title: Appels passés au plus, par jour
+        help: >-
+          Au-delà, les appels attendent le lendemain. Le compteur du jour est
+          sur la page En direct.
+        kind: curseur
+        min: 0
+        max: 200
+        step: 1
+      - id: voice.reply_by
+        value: email
+        title: Appel, la suite part par
+        help: >-
+          Après un appel, la suite part par e-mail si Serge a l’adresse du
+          contact ; sinon Serge rappelle (décision Q83).
+        kind: liste
+        choices: [email, voice]
+      - id: voice.reply_delay_min_minutes
+        value: 5
+        title: Appel, suite au plus tôt (minutes)
+        help: >-
+          La suite d’un appel (un e-mail ou un rappel) part entre ce délai et
+          le délai au plus tard, tiré au hasard.
+        kind: curseur
+        min: 0
+        max: 1440
+        step: 1
+      - id: voice.reply_delay_max_minutes
+        value: 20
+        title: Appel, suite au plus tard (minutes)
+        help: Voir « suite au plus tôt ».
+        kind: curseur
+        min: 0
+        max: 1440
+        step: 1
       - id: email.max_poll_age_minutes
         value: 60
         title: E-mail, relève récente (minutes)
@@ -616,11 +664,13 @@ relations:
   - [tools.search_results, '<=', web.search_max_results]
   - [testing.kill_max_positives, '<', testing.scale_min_positives]
   - [channels.email.reply_delay_min_minutes, '<=', channels.email.reply_delay_max_minutes]
+  - [channels.voice.reply_delay_min_minutes, '<=', channels.voice.reply_delay_max_minutes]
 
 # Un réglage qui change de nom garde sa valeur (celle du serveur, peut-être
 # changée dans Mission Control) : [ancien nom, nouveau nom].
 renamed:
   - [quotas.email_per_mailbox_per_day, channels.email.max_per_day]
+  - [quotas.voice_max_calls_per_day, channels.voice.max_per_day]
   - [quotas.llm_recalls_json, llm_calls.format_retries]
   - [quotas.llm_outil_resultat_max_caracteres, llm_calls.tool_result_max_chars]
 
@@ -637,16 +687,6 @@ changes:
           Combien de messages, appels ou invitations, pour ne pas spammer, et
           combien de fois on redemande une réponse au modèle.
         to: Combien de messages, appels ou invitations, pour ne pas spammer.
-  - id: aide_appels_par_jour
-    why: La voix lit maintenant ce réglage (pas de réglage en double, Q78).
-    table: policy_settings
-    where: {id: quotas.voice_max_calls_per_day}
-    set:
-      help:
-        from: Plafond d’appels sortants. Le compteur du jour est sur En direct.
-        to: >-
-          Au-delà, la voix refuse tout nouvel appel sortant jusqu’au
-          lendemain. Le compteur du jour est sur En direct.
   - id: aide_contacts_30_jours
     why: La voix lit maintenant ce réglage (pas de réglage en double, Q78).
     table: policy_settings

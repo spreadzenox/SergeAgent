@@ -23,7 +23,14 @@ SUNDAY = '2026-09-06T10:30:00+00:00'
 
 POLICY = {
     'consent': {'opt_in_channels': ['voice', 'sms']},
-    'calling_zones': {'default': 'FR', 'FR': {'contact_per_30d': 4}},
+    'calling_zones': {
+        'default': 'FR',
+        'FR': {
+            'contact_per_30d': 4,
+            'call_days': ['lun', 'mar', 'mer', 'jeu', 'ven'],
+            'call_windows': [[10, 0, 13, 0], [14, 0, 20, 0]],
+        },
+    },
 }
 
 
@@ -192,10 +199,10 @@ class GuardTests(unittest.TestCase):
         )
         action2 = dict(action)
         action2['idempotency_key'] = 'k-w2'
-        self.assertEqual(
-            check(self.connection, POLICY, action2, SUNDAY).reason,
-            Reason.OUTSIDE_WINDOW,
-        )
+        verdict = check(self.connection, POLICY, action2, SUNDAY)
+        self.assertEqual(verdict.reason, Reason.OUTSIDE_WINDOW)
+        # L'appel attend le lundi à 10 h, heure de Paris (Q83).
+        self.assertEqual(verdict.retry_at, '2026-09-07T08:00:00+00:00')
 
     def test_canal_inconnu_refuse(self) -> None:
         verdict = check(

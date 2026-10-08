@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Turn-based voice providers: OpenAI STT/TTS + OpenRouter chat. Degrade, never crash."""
+"""Turn-based voice providers: OpenAI STT/TTS + OpenRouter chat. Degrade, never crash.
+
+Le prompt et le modèle du tour par tour sont ceux de l'agent vocal en base
+(``serge/voice/agent.py``) : ils sont donnés par l'appelant.
+"""
 
 from __future__ import annotations
 
@@ -15,18 +19,9 @@ from serge.paths import config_root, system_root
 from serge.secrets import read_secret_file
 
 HTTP_TIMEOUT = 20.0
-CHAT_MODEL_DEFAULT = 'openai/gpt-4o-mini'
 TTS_VOICE = 'alloy'
 TTS_MODEL = 'tts-1'
 STT_MODEL = 'whisper-1'
-
-SYSTEM_PROMPT = (
-    'Tu es Serge, agent vocal commercial francophone. '
-    'Réponds en français, une à deux phrases courtes maximum, sans markdown, '
-    'sans listes, sans émoji. Reste courtois et concret. '
-    "Si la conversation est terminée ou si l'interlocuteur dit au revoir, "
-    'réponds exactement : Au revoir.'
-)
 
 
 __all__ = ['config_root', 'read_secret_file', 'system_root']
@@ -147,19 +142,21 @@ def transcribe(wav_path: Path, api_key: str) -> str:
     return str(payload.get('text') or '').strip()
 
 
-def chat_reply(history: list[dict[str, str]], api_key: str) -> str:
-    """One OpenRouter chat turn. Empty string on any failure."""
-    if not api_key:
+def chat_reply(
+    history: list[dict[str, str]], api_key: str, system: str, model: str
+) -> str:
+    """One OpenRouter chat turn. Empty string on any failure.
+
+    Args:
+        history: Les tours précédents.
+        api_key: Clé OpenRouter.
+        system: Le prompt de l'agent vocal (en base).
+        model: Le modèle du tour par tour (réglage de l'agent vocal).
+    """
+    if not api_key or not model:
         return ''
-    model = os.environ.get('SERGE_VOICE_CHAT_MODEL', CHAT_MODEL_DEFAULT)
-    messages = [{'role': 'system', 'content': SYSTEM_PROMPT}, *history[-8:]]
-    body = json.dumps(
-        {
-            'model': model,
-            'messages': messages,
-            'temperature': 0.4,
-        }
-    ).encode('utf-8')
+    messages = [{'role': 'system', 'content': system}, *history[-8:]]
+    body = json.dumps({'model': model, 'messages': messages}).encode('utf-8')
     headers = {
         'Authorization': f'Bearer {api_key}',
         'Content-Type': 'application/json',

@@ -209,6 +209,29 @@ CAPABILITIES: tuple[Capability, ...] = (
         'serge/conversations/followups.py',
     ),
     Capability(
+        'contact_search',
+        'Chercher un contact',
+        'Cherche une fiche de contact par son e-mail ou son numéro, sinon par'
+        ' un morceau de son nom. Rend au plus 5 fiches : numéro, nom,'
+        ' business, étape ; jamais ses adresses ni son fil.',
+        'serge/conversations/contact.py',
+        (Param('query', 'text', True, 'Le nom, l’e-mail ou le numéro.'),),
+    ),
+    Capability(
+        'add_contact_address',
+        'Noter une adresse',
+        'Ajoute une adresse e-mail ou un numéro à la fiche d’un contact, à'
+        ' côté des autres : une adresse n’est jamais écrasée.',
+        'serge/conversations/contact.py',
+        (
+            Param('contact_id', 'text', True, 'Le numéro du contact.'),
+            Param('channel', 'text', True, 'email ou phone.'),
+            Param(
+                'value', 'text', True, 'L’adresse, vérifiée avec la personne.'
+            ),
+        ),
+    ),
+    Capability(
         'unsubscribe_contact',
         'Désinscrire une personne partout',
         'Bloque toutes les adresses d’une personne, sur tous les canaux ;'

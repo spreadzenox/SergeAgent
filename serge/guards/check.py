@@ -5,7 +5,8 @@ Dans l'ordre : un canal connu (une ligne de ``canaux``), jamais deux fois
 le même envoi, une adresse bloquée, l'accord exigé pour certains canaux,
 le plafond de prises de contact en 30 jours (les premiers messages et les
 relances, pas les réponses à un contact qui a écrit), les heures légales
-pour la voix. Chaque quota a un seul propriétaire : voix par jour dans le
+pour la voix (hors de ces heures, le verdict dit quand l'appel pourra
+partir). Chaque quota a un seul propriétaire : voix par jour dans le
 broker voix ; ici, le plafond commun à tous les canaux.
 """
 
@@ -22,6 +23,8 @@ from serge.policy import PolicyError
 from serge.privacy import subject_hash
 from serge.voice.policy import (
     VoiceBrokerDenied,
+    call_hours,
+    next_legal_moment,
     paris_now,
     within_legal_hours,
 )
@@ -161,8 +164,15 @@ def _decide(
     if channel == 'voice':
         try:
             paris = paris_now(current)
+            hours = call_hours(policy)
         except VoiceBrokerDenied as exc:
             raise PolicyError('fuseau Europe/Paris indisponible') from exc
-        if not within_legal_hours(paris):
-            return Verdict(False, Reason.OUTSIDE_WINDOW)
+        except (KeyError, TypeError, ValueError) as exc:
+            raise PolicyError('policy.calling_zones : heures d’appel') from exc
+        if not within_legal_hours(paris, hours):
+            # L'appel attend le prochain créneau (décision Q83).
+            later = next_legal_moment(paris, hours).astimezone(current.tzinfo)
+            return Verdict(
+                False, Reason.OUTSIDE_WINDOW, retry_at=later.isoformat()
+            )
     return Verdict(True, Reason.OK)

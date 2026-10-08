@@ -18,11 +18,13 @@ from serge.coupe_circuit import set_heartbeat  # noqa: E402
 from serge.db.store import open_db  # noqa: E402
 from serge.policy_store import set_setting  # noqa: E402
 from serge.voice import (  # noqa: E402
+    CallHours,
     VoiceBrokerDenied,
     VoiceLedger,
     VoicePolicy,
     easter_sunday,
     french_holidays,
+    next_legal_moment,
     within_legal_hours,
 )
 
@@ -84,15 +86,32 @@ class VoiceBrokerTests(unittest.TestCase):
 
     def test_legal_hours_windows(self) -> None:
         paris = ZoneInfo('Europe/Paris')
-        self.assertTrue(within_legal_hours(TUESDAY_NOON.astimezone(paris)))
+        heures = CallHours(
+            days=frozenset(range(5)),
+            windows=((10, 0, 13, 0), (14, 0, 20, 0)),
+        )
+        self.assertTrue(
+            within_legal_hours(TUESDAY_NOON.astimezone(paris), heures)
+        )
         early = datetime(2026, 9, 8, 5, 0, tzinfo=UTC)  # 07:00 Paris
-        self.assertFalse(within_legal_hours(early.astimezone(paris)))
+        self.assertFalse(within_legal_hours(early.astimezone(paris), heures))
         lunch = datetime(2026, 9, 8, 11, 30, tzinfo=UTC)  # 13:30 Paris
-        self.assertFalse(within_legal_hours(lunch.astimezone(paris)))
+        self.assertFalse(within_legal_hours(lunch.astimezone(paris), heures))
         saturday = datetime(2026, 9, 12, 10, 0, tzinfo=UTC)
-        self.assertFalse(within_legal_hours(saturday.astimezone(paris)))
+        self.assertFalse(
+            within_legal_hours(saturday.astimezone(paris), heures)
+        )
         may_day = datetime(2026, 5, 1, 10, 0, tzinfo=UTC)
-        self.assertFalse(within_legal_hours(may_day.astimezone(paris)))
+        self.assertFalse(within_legal_hours(may_day.astimezone(paris), heures))
+        # Le prochain créneau : après le déjeuner, puis le lundi 4 mai (le
+        # vendredi 1er mai est férié, le week-end n'est pas permis).
+        self.assertEqual(
+            next_legal_moment(lunch.astimezone(paris), heures).hour, 14
+        )
+        self.assertEqual(
+            next_legal_moment(may_day.astimezone(paris), heures).isoformat(),
+            '2026-05-04T10:00:00+02:00',
+        )
 
     def test_happy_path_allowed(self) -> None:
         result = self._allowed_call()
@@ -247,7 +266,7 @@ class VoiceBrokerTests(unittest.TestCase):
         self.assertEqual(sixth['decision'], 'allowed')
 
     def test_daily_quota(self) -> None:
-        self._regler('quotas.voice_max_calls_per_day', 1)
+        self._regler('channels.voice.max_per_day', 1)
         policy = _policy()
         self.ledger.grant_consent(TO, 'contract')
         self.ledger.grant_consent('+33612345679', 'contract')
@@ -356,7 +375,11 @@ class VoiceBrokerTests(unittest.TestCase):
             'consent': {'opt_in_channels': ['voice']},
             'calling_zones': {
                 'default': 'FR',
-                'FR': {'contact_per_30d': 4},
+                'FR': {
+                    'contact_per_30d': 4,
+                    'call_days': ['lun', 'mar', 'mer', 'jeu', 'ven'],
+                    'call_windows': [[10, 0, 13, 0], [14, 0, 20, 0]],
+                },
             },
         }
         canon = sqlite3.connect(Path(self.tmp.name) / 'canon.db')

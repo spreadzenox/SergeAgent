@@ -11,7 +11,6 @@ budget:
   llm_daily_eur: 2.0
 
 quotas:
-  voice_max_calls_per_day: 0         # voix exclue du scope live (B8)
   sms_per_sender_per_min: 2
   sms_global_per_min: 4
   linkedin_connect_per_day: 0
@@ -22,6 +21,8 @@ voice:
 channels:
   email:
     max_per_day: 2
+  voice:
+    max_per_day: 0         # voix exclue du scope live (B8)
 
 tickets:
   digest_hour: 8

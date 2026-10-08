@@ -10,20 +10,21 @@ from serge.voice.ledger import (
     VoiceLedger,
 )
 from serge.voice.policy import (
-    CALL_WINDOWS,
     PARIS_TZ,
+    CallHours,
     VoiceBrokerDenied,
     VoicePolicy,
     default_ledger_path,
     easter_sunday,
     french_holidays,
+    next_legal_moment,
     paris_now,
     resolve_policy,
     within_legal_hours,
 )
 
 __all__ = [
-    'CALL_WINDOWS',
+    'CallHours',
     'E164_RE',
     'PARIS_TZ',
     'PENDING_CLAIM_SECONDS',
@@ -34,6 +35,7 @@ __all__ = [
     'default_ledger_path',
     'easter_sunday',
     'french_holidays',
+    'next_legal_moment',
     'paris_now',
     'resolve_policy',
     'within_legal_hours',
