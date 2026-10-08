@@ -36,7 +36,7 @@ class VoiceTranscriptTests(unittest.TestCase):
         self.ledger = VoiceLedger(root / 'voice.db', canon_path=canon)
         self.ledger.grant_consent(TO, 'contract')
 
-    def test_clore_dernier_ecrit_transcript(self) -> None:
+    def test_l_appel_ferme_garde_sa_transcription(self) -> None:
         policy = VoicePolicy(
             mode='live',
             mandate_outbound_allowed=True,
@@ -46,29 +46,45 @@ class VoiceTranscriptTests(unittest.TestCase):
         )
         asked = self.ledger.request_call(
             policy,
-            request_id='req_tr',
+            request_id='t1.1',
             to_e164=TO,
             cli=CLI,
             purpose='contract',
+            task_id='t1',
             now=TUESDAY_NOON,
         )
         self.assertEqual(asked['decision'], 'allowed')
-        out = self.ledger.clore_dernier_autorise(
-            duration_s=42, transcript='Bonjour, ici Serge.'
+        out = self.ledger.record_outcome(
+            asked['cdr_id'],
+            outcome='completed',
+            duration_s=42,
+            transcript='Serge : Bonjour, ici Serge.',
         )
         self.assertEqual(out['status'], 'recorded')
-        self.assertEqual(out['cdr_id'], asked['cdr_id'])
+        # Le journal retrouve l'appel par son envoi (confirmer un envoi).
+        self.assertEqual(
+            self.ledger.calls_for_task('t1'),
+            [
+                {
+                    'request_id': 't1.1',
+                    'decision': 'allowed',
+                    'reason': 'allowed',
+                    'outcome': 'completed',
+                    'cdr_id': asked['cdr_id'],
+                }
+            ],
+        )
         row = (
             self.ledger._connect()
             .execute(
                 'SELECT outcome, duration_s, transcript FROM calls WHERE cdr_id=?',
-                (out['cdr_id'],),
+                (asked['cdr_id'],),
             )
             .fetchone()
         )
-        self.assertEqual(row[0], 'completed')
-        self.assertEqual(row[1], 42)
-        self.assertIn('Serge', row[2])
+        self.assertEqual(
+            tuple(row), ('completed', 42, 'Serge : Bonjour, ici Serge.')
+        )
 
 
 if __name__ == '__main__':

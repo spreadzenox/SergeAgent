@@ -66,9 +66,20 @@ class AsteriskRenderTests(unittest.TestCase):
         self.assertIn('U(serge-s2s^${EXTEN})', extensions)
         self.assertIn('[serge-s2s]', extensions)
         self.assertIn('serge-campaign', extensions)
-        self.assertIn('Wait(180)', extensions)
+        self.assertIn('Wait(3600)', extensions)
+        # L'UUID dit le sens (1 entrant, 2 sortant) et le numéro.
         self.assertIn(
-            'AudioSocket(aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee,127.0.0.1:8792)',
+            'Set(SERGE_PEER=000000000000000${FILTER(0-9,${CALLERID(num)})})',
+            extensions,
+        )
+        self.assertIn(
+            'AudioSocket(5e7e0000-0000-4000-1${SERGE_PEER:-15:3}'
+            '-${SERGE_PEER:-12},127.0.0.1:8792)',
+            extensions,
+        )
+        self.assertIn(
+            'AudioSocket(5e7e0000-0000-4000-2${SERGE_PEER:-15:3}'
+            '-${SERGE_PEER:-12},127.0.0.1:8792)',
             extensions,
         )
         self.assertIn('AGI(turn.py,', extensions)

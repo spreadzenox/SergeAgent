@@ -30,9 +30,11 @@ from tests.taches_fixtures import invocations, tache  # noqa: E402
 NOW = '2026-09-10T12:00:00+00:00'
 POLICY = {
     'budget': {'llm_daily_eur': 5.0},
-    'channels': {'email': {'max_per_day': 40}},
+    'channels': {
+        'email': {'max_per_day': 40},
+        'voice': {'max_per_day': 50},
+    },
     'quotas': {
-        'voice_max_calls_per_day': 50,
         'linkedin_connect_per_day': 20,
     },
 }

@@ -17,23 +17,9 @@ from typing import Any
 
 from serge.channels.adapters import ADAPTERS
 
-# Les canaux prévus, pas encore branchés : id, titre, texte, sorte
-# d'adresse, chemin du code. Un canal branché est décrit par son
-# adaptateur.
-SEED: tuple[tuple[str, str, str, str, str], ...] = (
-    (
-        'voice',
-        'Voix',
-        'Appel sortant et entrant : le pont compose après les garde-fous,'
-        ' un agent vocal parle en direct. Branché au lot 8 (PR 3).',
-        'phone',
-        'serge/voice/bridge.py',
-    ),
-)
-
 
 def ensure_canaux(conn: sqlite3.Connection) -> None:
-    """Remplit le catalogue : les canaux branchés, puis les canaux prévus.
+    """Remplit le catalogue : un canal par adaptateur du code.
 
     Le titre et le texte ne sont posés qu'à la création ; l'état, la sorte
     d'adresse et le fait de se relever suivent le code.
@@ -45,10 +31,8 @@ def ensure_canaux(conn: sqlite3.Connection) -> None:
         a.id: (a.title, a.doc, a.address_channel, a.code_path, a.poll)
         for a in ADAPTERS.values()
     }
-    for ident, titre, doc, address, path in SEED:
-        known.setdefault(ident, (titre, doc, address, path, None))
     for ident, (titre, doc, address, path, poll) in known.items():
-        branche = ident in ADAPTERS and ADAPTERS[ident].ready()
+        branche = ADAPTERS[ident].ready()
         values = (
             path,
             'branche' if branche else 'prevu',

@@ -1613,3 +1613,17 @@ reste en dur et qui est discutable passe en base ; le reste du lot 8 est
 validé tel quel.
 Argument de Clem : l'étape de chaque contact est déjà une valeur en base ;
 la liste des étapes qui arrêtent Serge doit l'être aussi.
+
+### Q83 — Lot 8, canal appel : la suite d'un appel et les heures légales (validé par Clem, 8 octobre 2026)
+Constat : avant la PR 3 du lot 8 (le canal appel), Claude a demandé ce que
+fait Serge après un appel, et quand un appel tombe hors des heures légales.
+Décidé :
+1. **La suite d'un appel** : « Traiter une réponse » lit la transcription.
+   Si une suite est utile, elle part par e-mail si Serge a l'adresse
+   e-mail du contact ; s'il n'a que son numéro, Serge rappelle.
+2. **L'agent vocal demande l'adresse e-mail** dès qu'un document doit être
+   envoyé, et la note sur la fiche du contact.
+3. **Un appel hors des heures légales attend le prochain créneau légal**
+   (lundi au vendredi, 10 h – 13 h et 14 h – 20 h, jours fériés exclus),
+   comme un e-mail attend le lendemain quand le plafond du jour est
+   atteint. Il n'est pas refusé.

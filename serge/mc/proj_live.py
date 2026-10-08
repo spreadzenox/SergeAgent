@@ -234,7 +234,10 @@ def project_jauges(
         'voix': {
             **_barre(
                 _touches_jour(conn, 'voice', day),
-                _quota_jour(quotas, 'voice_max_calls_per_day'),
+                _quota_jour(
+                    (policy.get('channels') or {}).get('voice') or {},
+                    'max_per_day',
+                ),
             ),
             'libelle': 'Appels',
         },

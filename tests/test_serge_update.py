@@ -203,7 +203,15 @@ class SergeUpdateTests(unittest.TestCase):
                 systemd_user_dir=home / '.config/systemd/user',
             )
             conf = (config / 'asterisk.conf').read_text(encoding='utf-8')
-            self.assertEqual(receipt['asterisk_conf_written'], 'asterisk.conf')
+            # Le plan d'appel n'a pas de secret : il est réécrit aussi.
+            self.assertEqual(
+                receipt['asterisk_conf_written'],
+                'asterisk.conf, extensions.conf',
+            )
+            self.assertIn(
+                'AudioSocket(5e7e0000-0000-4000-2',
+                (config / 'extensions.conf').read_text(encoding='utf-8'),
+            )
             self.assertIn('[directories]', conf)
             self.assertNotIn('[directories](!)', conf)
             self.assertIn('astdatadir => /var/lib/asterisk', conf)

@@ -286,11 +286,11 @@ class VoiceLedger:
             paris = paris_now(created)
         except VoiceBrokerDenied:
             return 'timezone_unavailable'
-        if not within_legal_hours(paris):
+        per_day, per_recipient, hours = call_limits(self.canon_path)
+        if not within_legal_hours(paris, hours):
             return 'outside_legal_hours'
         day_start = paris.replace(hour=0, minute=0, second=0, microsecond=0)
         month_start = paris - timedelta(days=30)
-        per_day, per_recipient = call_limits(self.canon_path)
         if (
             self._count_allowed(
                 connection,
@@ -439,39 +439,20 @@ class VoiceLedger:
             connection.close()
         return {'status': 'recorded' if row.rowcount else 'unknown_cdr'}
 
-    def clore_dernier_autorise(
-        self, *, duration_s: int, transcript: str
-    ) -> dict[str, Any]:
-        """Referme le dernier appel autorisé encore ouvert (S2S).
-
-        Args:
-            duration_s: Durée réelle de la session AudioSocket.
-            transcript: Texte entendu / dit (peut être vide).
-
-        Returns:
-            ``{status, cdr_id}``.
-        """
+    def calls_for_task(self, task_id: str) -> list[dict[str, str]]:
+        """Les demandes d'appel d'un envoi (``task_id``), de la plus ancienne
+        à la plus récente : décision, raison, issue, numéro de l'appel."""
         connection = self._connect()
         try:
-            assurer_colonnes_calls(connection)
-            row = connection.execute(
-                "SELECT cdr_id FROM calls WHERE decision='allowed'"
-                " AND outcome='pending' ORDER BY created_at DESC LIMIT 1"
-            ).fetchone()
-            if row is None:
-                return {'status': 'none', 'cdr_id': ''}
-            cdr_id = str(row[0])
+            rows = connection.execute(
+                'SELECT request_id, decision, reason, outcome, cdr_id'
+                ' FROM calls WHERE task_id=? ORDER BY created_at',
+                (task_id,),
+            ).fetchall()
         finally:
             connection.close()
-        return {
-            **self.record_outcome(
-                cdr_id,
-                outcome='completed',
-                duration_s=duration_s,
-                transcript=transcript,
-            ),
-            'cdr_id': cdr_id,
-        }
+        names = ('request_id', 'decision', 'reason', 'outcome', 'cdr_id')
+        return [dict(zip(names, map(str, r), strict=True)) for r in rows]
 
     def doctor(self) -> dict[str, Any]:
         connection = self._connect()

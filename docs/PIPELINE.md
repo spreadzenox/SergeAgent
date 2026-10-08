@@ -190,8 +190,11 @@ pour ne jamais agir deux fois : reprise après un arrêt, elle demande
 d'abord au canal si son message est parti (décision Q79).
 
 Les appels téléphoniques sont à part : le standard téléphonique décroche et
-confie l'appel à un programme vocal séparé, qui parle en direct et tourne
-en parallèle du runner.
+confie l'appel au pont vocal, qui parle en direct et tourne en parallèle
+du runner. L'agent vocal est pourtant une invocation comme les autres
+(« Parler au téléphone », file « Appels ») : chaque appel devient une de
+ses tâches, menée en direct par le pont, avec son prompt, ce qu'il reçoit
+et ses outils lus en base.
 
 ---
 
@@ -355,7 +358,11 @@ Le circuit est décrit en base (lot 8, décision Q79) :
 
 Le canal e-mail est branché : Gmail par l'outil `gog`, ou une boîte
 SMTP/IMAP, selon le fichier d'instance ; au plus 40 e-mails par jour (page
-Policy). Le canal appel se branche ensuite (lot 8, PR 3). Le détail est
+Policy). Le canal appel est branché aussi : un appel part dans les heures
+d'appel de la page Policy (sinon il attend le prochain créneau), l'agent
+vocal sait à qui il parle, et la transcription entre dans le fil ; la
+suite d'un appel part par e-mail si Serge a l'adresse, sinon il rappelle
+(décision Q83). Le détail est
 dans [`LOT8_CONCEPTION.md`](LOT8_CONCEPTION.md).
 
 ---

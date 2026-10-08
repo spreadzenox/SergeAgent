@@ -10,12 +10,17 @@
 
 schema_version: 1
 
-# Les deux files du runner. Chacune tourne en parallèle de l'autre.
+# Les files. Les deux premières sont celles du runner, chacune en parallèle
+# de l'autre ; la troisième n'a pas de runner : chaque appel téléphonique
+# devient une tâche de son invocation allumée, menée en direct par le pont
+# téléphonique (serge/voice/agent.py).
 queues:
   - id: conversations
     title: 'Conversations (tâches courtes : relever, répondre, envoyer)'
   - id: works
     title: 'Travaux (tâches longues : écoute, conception, construction)'
+  - id: voice
+    title: 'Appels (menés en direct par l’agent vocal, pas par une file)'
 
 # Le modèle derrière chaque niveau. Un modèle vide veut dire : prendre
 # celui choisi à l'installation de l'instance. La page Pipeline recommande,
@@ -89,6 +94,43 @@ serge_texts:
       (décision Q79). Vide : rien n’est ajouté.
     body: >-
       Pour ne plus recevoir de message de Serge, répondez STOP.
+  - id: voice_opening
+    title: Début d’un appel
+    help: >-
+      Envoyé à l’agent vocal au décrochage, pour qu’il parle le premier.
+    body: >-
+      L’appel commence : dis bonjour en une phrase, comme le dit ta
+      consigne, puis écoute.
+  - id: voice_backup_greeting
+    title: Secours de la voix, accueil d’un appel entrant
+    help: >-
+      Quand la voix en direct ne répond pas, le secours tour par tour lit
+      cette phrase à un appelant.
+    body: Bonjour, vous êtes bien chez Serge. Que puis-je pour vous ?
+  - id: voice_backup_pitch
+    title: Secours de la voix, appel sortant sans but
+    help: Lu au décrochage d’un appel sortant dont le but est inconnu.
+    body: Bonjour, ici Serge. Je vous appelle suite à votre demande.
+  - id: voice_backup_menu
+    title: Secours de la voix, menu de rappel
+    help: Lu à la fin d’un appel de secours ; la touche 1 demande un rappel.
+    body: >-
+      Pour être rappelé par un humain, tapez 1. Sinon, laissez votre message
+      après le bip.
+  - id: voice_backup_not_understood
+    title: Secours de la voix, pas compris
+    help: Lu quand une phrase n’a pas pu être transcrite.
+    body: Pardon, je n’ai pas compris. Pouvez-vous répéter ?
+  - id: voice_backup_cannot_hear
+    title: Secours de la voix, plus de son
+    help: Lu après deux phrases sans son.
+    body: >-
+      Je ne vous entends pas. Laissez votre message après le bip, nous vous
+      rappellerons.
+  - id: voice_backup_goodbye
+    title: Secours de la voix, au revoir
+    help: Lu avant de raccrocher.
+    body: Merci, au revoir.
 
 # Les outils : une capacité du code, réglée pour un usage précis. Une
 # invocation s'en sert de deux façons : en lecture donnée d'office (Serge
@@ -353,6 +395,34 @@ tools:
         - {id: business, table: product_faq, column: venture_id, param: venture_id}
       params:
         - {name: venture_id, required: true, description: Le numéro du business.}
+  - id: chercher_contact
+    title: Chercher un contact
+    doc: >-
+      Cherche la fiche d'un appelant par son e-mail, son numéro, ou un
+      morceau de son nom ou de son entreprise. Rend son nom, son business
+      et son étape ; jamais ses adresses ni son fil.
+    capability: contact_search
+  - id: noter_adresse
+    title: Noter une adresse
+    doc: >-
+      Ajoute à la fiche d'un contact une adresse e-mail ou un numéro qu'il
+      vient de donner, après l'avoir fait épeler et relue.
+    capability: add_contact_address
+  - id: but_de_l_appel
+    title: Le but de l'appel
+    doc: >-
+      Pour un appel sortant, l'envoi qui l'a lancé : son objet et son
+      texte disent pourquoi Serge appelle.
+    capability: db_read
+    read:
+      tables: [touches]
+      columns:
+        - {table: touches, name: subject}
+        - {table: touches, name: body}
+      filters:
+        - {id: envoi, table: touches, column: id, param: touch_id}
+      params:
+        - {name: touch_id, required: true, description: Le numéro de l'envoi.}
 
 # Ce qu'une invocation a le droit d'écrire, et les protections des tables.
 # Ces règles valent pour toutes les invocations : elles sont réglées sur la
@@ -1338,6 +1408,12 @@ invocations:
       dernier message du fil ; si le contact a écrit plusieurs fois depuis
       la dernière réponse de Serge, réponds à tout d'un coup.
 
+      Le dernier message peut être la transcription d'un appel (canal
+      voice). La suite part alors par e-mail si Serge a son adresse, sinon
+      Serge rappelle : écris-la comme un e-mail court qui reprend ce qui a
+      été promis (un document, un devis), ou laisse-la vide s'il n'y a
+      rien à ajouter après l'appel.
+
       Rends :
       - reaction : ce que fait le message, l'une de : intéressé, question,
         objection, rendez-vous, refus, désinscription, absence, hors sujet.
@@ -1582,6 +1658,117 @@ invocations:
       title: {source: fixed, value: Un contact s'est désinscrit}
       text: {source: fixed, value: 'Serge ne le contactera plus, sur aucun canal ni pour aucun business.'}
       contact_id: {source: task, value: contact_id}
+
+  - id: parler_au_telephone
+    title: Parler au téléphone
+    role: >-
+      L'agent vocal : il mène chaque appel, entrant ou sortant, en direct.
+      Il reçoit au décrochage la fiche du contact, son fil, la fiche du
+      business et la fiche produit ; il peut chercher un appelant inconnu
+      et noter une adresse. À la fin, ce qui s'est dit entre dans le fil
+      du contact, ce qui lance la suite.
+    type: llm
+    model_tier: ''
+    queue: voice
+    priority: 100
+    gets_serge_intro: true
+    compare:
+      inbound_events: false
+    settings:
+      duree_max_secondes: {value: 180, min: 30, max: 1800, policy: true, description: 'La durée maximale d''un appel, en secondes.'}
+      fournisseurs: {type: text, value: 'xai,openai', description: 'Les fournisseurs de la voix en direct, dans l''ordre (xai, openai) : le second sert si le premier ne répond pas.'}
+      modele_xai: {type: text, value: grok-voice-think-fast-2.0, description: Le modèle vocal chez xAI.}
+      voix_xai: {type: text, value: eve, description: La voix chez xAI.}
+      modele_openai: {type: text, value: gpt-realtime-2.1-mini, description: Le modèle vocal chez OpenAI.}
+      voix_openai: {type: text, value: alloy, description: La voix chez OpenAI.}
+      modele_secours: {type: text, value: openai/gpt-4o-mini, description: 'Le modèle du secours tour par tour (OpenRouter), quand la voix en direct ne répond pas.'}
+      tours_secours: {value: 4, min: 1, max: 20, description: Les tours de parole au plus dans le secours tour par tour.}
+    prompt: |
+      Tu es Serge, au téléphone. Tu parles français, simplement, une ou
+      deux phrases courtes à la fois, sans liste ni formule écrite.
+
+      Tu reçois peut-être la fiche de ton interlocuteur, son fil (ce qui
+      s'est déjà dit, tous canaux confondus), la fiche du business et la
+      fiche produit, et, pour un appel que tu passes, son but.
+
+      - Un appel que tu passes : présente-toi, dis pourquoi tu appelles
+        (son but), demande si c'est le bon moment.
+      - Un appel que tu reçois d'un numéro inconnu : « Bonjour, je suis
+        Serge, en quoi puis-je vous aider ? ». Demande à qui tu parles,
+        puis cherche sa fiche avec l'outil « Chercher un contact » (son
+        nom, son entreprise, son e-mail ou son numéro).
+      - Une personne reconnue seulement par son nom : ne lui répète
+        aucune information sensible (montants, adresses, propos d'un
+        collègue).
+      - Une proposition faite à Serge (un partenariat, une offre) :
+        réponds poliment que tu ne peux pas traiter ce genre de demande
+        pour l'instant.
+      - Un document à envoyer (une documentation, un devis) : demande son
+        adresse e-mail, fais-la épeler, relis-la, puis note-la avec
+        l'outil « Noter une adresse ». Dis que le document arrive par
+        e-mail.
+      - Ne promets jamais une date, un prix ou une fonctionnalité absents
+        de la fiche produit. En cas de doute, dis que tu vérifies et que
+        tu reviens vers la personne.
+      - Une personne qui ne veut plus être contactée : dis que c'est noté,
+        puis au revoir.
+      - Tu es un agent IA : dis-le si on te le demande, ne prétends
+        jamais être un humain.
+      - Pour finir, dis au revoir.
+    tools:
+      - tool: but_de_l_appel
+        mode: given
+        label: Le but de l'appel
+        params:
+          touch_id: {source: task, value: touch_id}
+      - tool: fil_du_contact
+        mode: given
+        label: Le fil de ton interlocuteur
+        params:
+          contact_id: {source: task, value: contact_id}
+      - tool: fiche_contact
+        mode: given
+        label: Sa fiche
+        params:
+          contact_id: {source: task, value: contact_id}
+      - tool: fiche_business
+        mode: given
+        label: La fiche du business
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: fiche_produit
+        mode: given
+        label: La fiche produit
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: questions_produit
+        mode: given
+        label: Les questions fréquentes
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: chercher_contact
+        mode: callable
+      - tool: noter_adresse
+        mode: callable
+    output:
+      - {path: transcript, type: text, description: 'Ce qui s''est dit, une ligne par phrase.'}
+      - {path: contact_id, type: text, required: false, description: Le contact de l'appel.}
+      - {path: venture_id, type: text, required: false, description: Son business.}
+      - {path: status, type: text, description: 'attached (contact connu) ou unattached.'}
+    writes:
+      - table: inbound_events
+        operation: insert
+        values:
+          channel: {source: fixed, value: voice}
+          contact_id: {source: field, value: contact_id}
+          venture_id: {source: field, value: venture_id}
+          native_type: {source: fixed, value: call}
+          address: {source: task, value: phone}
+          subject: {source: fixed, value: Suite à notre appel}
+          body: {source: field, value: transcript}
+          external_ref: {source: task, value: cdr_id}
+          status: {source: field, value: status}
+          received_at: {source: now}
 
 links:
   - id: cycle_ouvert_vers_exploration

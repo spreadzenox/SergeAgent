@@ -18,10 +18,14 @@ partir, dans cet ordre :
      Un message ``ignored`` (une réponse automatique d'absence) ne compte
      pas ;
    - une réponse, alors qu'une réponse plus récente est écrite ;
-4. sinon les garde-fous (``serge/guards``) : un envoi refusé est annulé,
-   avec sa raison ;
-5. le plafond du jour du canal (``channels.<canal>.max_per_day``, page
-   Policy) : atteint, l'envoi attend le lendemain ;
+4. une réponse part par le canal que la policy préfère pour la suite d'un
+   message de ce canal (``channels.<canal>.reply_by``) : après un appel,
+   par e-mail si Serge a l'adresse, sinon par un rappel (décision Q83) ;
+5. les garde-fous (``serge/guards``) : un envoi refusé est annulé, avec sa
+   raison ; un appel hors des heures d'appel attend le prochain créneau ;
+   le plafond du jour du canal (``channels.<canal>.max_per_day``, page
+   Policy) atteint, l'envoi attend le lendemain ; un canal qui ne peut pas
+   maintenant (``ChannelLater``) fait attendre aussi ;
 6. ``sending`` enregistré en base, l'envoi, puis ``sent`` et la référence
    du canal enregistrés. Le texte part avec la phrase de fin du canal
    (``footer_<canal>``, page Pipeline : « Répondez STOP… » pour
@@ -38,11 +42,11 @@ import sqlite3
 from datetime import datetime, timedelta
 from typing import Any
 
-from serge.channels.adapters import adapter
-from serge.channels.base import ChannelError, Outgoing
+from serge.channels.adapters import ADAPTERS, adapter
+from serge.channels.base import ChannelError, ChannelLater, Outgoing
 from serge.db.store import append_event, utcnow
 from serge.funnels.contacts import normalise_value
-from serge.guards import check
+from serge.guards import Reason, check
 from serge.interpreter.intro import serge_text
 from serge.interpreter.tasks import enqueue_task
 from serge.policy_store import policy_en_vigueur, setting_value
@@ -165,6 +169,63 @@ def _day_full(conn: sqlite3.Connection, channel: str) -> str:
     ).isoformat()
 
 
+def _reply_route(
+    conn: sqlite3.Connection, touch: dict[str, Any]
+) -> dict[str, Any]:
+    """La suite d'un message reçu, par le canal que la policy préfère.
+
+    Exemple : après un appel, ``channels.voice.reply_by`` vaut ``email`` ;
+    si Serge a l'adresse e-mail du contact (et que l'e-mail est branché),
+    la suite part par e-mail, sinon Serge rappelle (décision Q83).
+    """
+    preferred = setting_value(conn, f'channels.{touch["channel"]}.reply_by')
+    other = ADAPTERS.get(str(preferred or ''))
+    if (
+        touch['kind'] != 'reply'
+        or other is None
+        or other.id == touch['channel']
+        or not other.ready()
+    ):
+        return touch
+    row = conn.execute(
+        'SELECT value FROM contact_addresses WHERE contact_id=? AND channel=?'
+        ' AND active=1 ORDER BY created_at DESC LIMIT 1',
+        (str(touch['contact_id']), other.address_channel),
+    ).fetchone()
+    if row is None:
+        return touch
+    conn.execute(
+        'UPDATE touches SET channel=?, address=?, reply_to=?, updated_at=?'
+        ' WHERE id=?',
+        (other.id, str(row[0]), '', utcnow(), str(touch['id'])),
+    )
+    return _touch(conn, str(touch['id'])) or touch
+
+
+def _wait(
+    conn: sqlite3.Connection,
+    inv: str,
+    touch: dict[str, Any],
+    until: str,
+    reason: str,
+) -> dict[str, Any]:
+    """L'envoi attend ``until`` : la même invocation le reprendra."""
+    enqueue_task(
+        conn,
+        inv,
+        {'touch_id': str(touch['id'])},
+        origin_ref=f'{reason} : {touch["id"]}',
+        not_before=until,
+        key=f'{touch["id"]}:{until}',
+    )
+    return {
+        'ok': True,
+        'status': 'pending',
+        'retry_at': until,
+        'reason': reason,
+    }
+
+
 def send_message(
     conn: sqlite3.Connection, _tool: str, args: dict[str, Any], inv: str
 ) -> dict[str, Any]:
@@ -172,9 +233,11 @@ def send_message(
 
     Rend le statut final de l'envoi : ``sent``, ``cancelled`` (devenu
     inutile, ou refusé par un garde-fou : la raison est dans
-    ``last_error``) ou ``failed`` (le canal a refusé le message). Une
-    panne imprévue fait échouer la tâche et l'envoi reste ``sending`` : la
-    tâche relancée demandera au canal s'il est parti.
+    ``last_error``), ``failed`` (le canal a refusé le message) ou
+    ``pending`` avec ``retry_at`` (il attend : le plafond du jour, ou le
+    prochain créneau d'appel). Une panne imprévue fait échouer la tâche et
+    l'envoi reste ``sending`` : la tâche relancée demandera au canal s'il
+    est parti.
     """
     touch = _touch(conn, str(args.get('touch_id') or ''))
     if touch is None:
@@ -182,6 +245,14 @@ def send_message(
     status = str(touch['status'])
     if status in ('sent', 'cancelled'):
         return {'ok': True, 'status': status}
+    if status == 'pending':
+        reason = _outdated(conn, touch)
+        if reason:
+            _set(conn, touch, 'cancelled', last_error=reason)
+            return {'ok': True, 'status': 'cancelled', 'reason': reason}
+        touch = _reply_route(conn, touch)
+    elif status != 'sending':
+        return {'ok': False, 'code': f'statut_{status}'}
     channel = adapter(str(touch['channel']))
     message = _outgoing(conn, touch)
     if status == 'sending':
@@ -189,13 +260,7 @@ def send_message(
         if ref:
             _set(conn, touch, 'sent', external_ref=ref, sent_at=utcnow())
             return {'ok': True, 'status': 'sent', 'confirmed': True}
-    elif status != 'pending':
-        return {'ok': False, 'code': f'statut_{status}'}
     else:
-        reason = _outdated(conn, touch)
-        if reason:
-            _set(conn, touch, 'cancelled', last_error=reason)
-            return {'ok': True, 'status': 'cancelled', 'reason': reason}
         verdict = check(
             conn,
             policy_en_vigueur(conn),
@@ -210,24 +275,21 @@ def send_message(
                 'contact_id': touch['contact_id'],
             },
         )
+        if verdict.reason == Reason.OUTSIDE_WINDOW and verdict.retry_at:
+            return _wait(conn, inv, touch, verdict.retry_at, 'hors créneau')
         if not verdict.allowed:
             reason = verdict.reason.value
             _set(conn, touch, 'cancelled', last_error=reason)
             return {'ok': True, 'status': 'cancelled', 'reason': reason}
         later = _day_full(conn, str(touch['channel']))
         if later:
-            enqueue_task(
-                conn,
-                inv,
-                {'touch_id': str(touch['id'])},
-                origin_ref=f'plafond du jour : {touch["id"]}',
-                not_before=later,
-                key=f'{touch["id"]}:{later}',
-            )
-            return {'ok': True, 'status': 'pending', 'retry_at': later}
+            return _wait(conn, inv, touch, later, 'plafond du jour')
         _set(conn, touch, 'sending')
     try:
         ref = channel.send(message)
+    except ChannelLater as exc:
+        _set(conn, touch, 'pending', last_error=str(exc))
+        return _wait(conn, inv, touch, exc.until, str(exc))
     except ChannelError as exc:
         _set(conn, touch, 'failed', last_error=str(exc))
         return {'ok': False, 'status': 'failed', 'reason': str(exc)}

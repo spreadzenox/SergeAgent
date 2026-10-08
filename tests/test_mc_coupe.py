@@ -132,7 +132,9 @@ class ProjCoupesTests(unittest.TestCase):
         self.assertFalse(data['serge'])  # arrêté par défaut
         self.assertEqual(data['etapes'][0]['id'], 'pre_prospection')
         self.assertIn('Pré-prospection', data['etapes'][0]['titre'])
-        self.assertIn('Travaux', data['files'][1]['titre'])
+        titres = {f['id']: f['titre'] for f in data['files']}
+        self.assertIn('Travaux', titres['works'])
+        self.assertIn('Appels', titres['voice'])
         self.assertEqual(
             data['invocations'],
             [
@@ -162,8 +164,9 @@ class McCoupeFrontTests(McBrowserCase):
         expect(page.locator('#live-headline')).to_contain_text('arrêté')
         etapes = page.locator('[data-coupes="etapes"] .btn-kill')
         self.assertGreaterEqual(etapes.count(), 8)
+        # Conversations, travaux, et les appels (l'agent vocal).
         expect(page.locator('[data-coupes="files"] .btn-kill')).to_have_count(
-            2
+            3
         )
         expect(
             page.locator('[data-coupes="invocations"] .btn-kill')

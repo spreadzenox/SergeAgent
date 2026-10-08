@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """Voice policy gate: legal hours, mandate bits, runtime state. Fail-closed.
 
+Les jours et heures d'appel du pays sont des réglages de la page Policy
+(« Pays et appels ») ; les jours fériés français sont calculés.
+
 No SIP here. voice_bridge.py originates only what this policy allowed, and
 only with the locked CLI. Inbound answering needs no consent (answering is
 not prospection) but is still mandate-gated.
@@ -11,6 +14,7 @@ from __future__ import annotations
 import json
 import os
 import tomllib
+from collections.abc import Mapping
 from contextlib import closing
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
@@ -25,8 +29,8 @@ from serge.paths import system_root
 from serge.policy_store import policy_en_vigueur
 
 PARIS_TZ = 'Europe/Paris'
-# Legal cold-call windows, lunch break excluded, Monday-Friday only.
-CALL_WINDOWS = ((10, 0, 13, 0), (14, 0, 20, 0))
+# Les jours de la semaine, dans l'ordre de ``datetime.weekday()``.
+DAYS = ('lun', 'mar', 'mer', 'jeu', 'ven', 'sam', 'dim')
 
 
 class VoiceBrokerDenied(ValueError):
@@ -80,17 +84,70 @@ def french_holidays(year: int) -> set[date]:
     return fixed | movable
 
 
-def within_legal_hours(moment: datetime) -> bool:
-    """Mon-Fri, 10h-13h / 14h-20h Paris time, public holidays excluded."""
-    if moment.weekday() >= 5:
+@dataclass(frozen=True)
+class CallHours:
+    """Les jours et heures d'appel d'un pays (page Policy).
+
+    Exemple pour la France : du lundi au vendredi, 10 h – 13 h et
+    14 h – 20 h (``[[10, 0, 13, 0], [14, 0, 20, 0]]``).
+    """
+
+    days: frozenset[int]
+    windows: tuple[tuple[int, int, int, int], ...]
+
+
+def call_hours(pol: Mapping[str, Any]) -> CallHours:
+    """Les jours et heures d'appel du pays par défaut."""
+    zones = pol['calling_zones']
+    zone = zones[zones['default']]
+    return CallHours(
+        days=frozenset(DAYS.index(str(d)) for d in zone['call_days']),
+        windows=tuple(
+            (int(a), int(b), int(c), int(d))
+            for a, b, c, d in zone['call_windows']
+        ),
+    )
+
+
+def within_legal_hours(moment: datetime, hours: CallHours) -> bool:
+    """Un jour et une heure d'appel (heure de Paris), jamais un jour férié."""
+    if moment.weekday() not in hours.days:
         return False
     if moment.date() in french_holidays(moment.year):
         return False
     current = (moment.hour, moment.minute)
-    for start_h, start_m, end_h, end_m in CALL_WINDOWS:
+    for start_h, start_m, end_h, end_m in hours.windows:
         if (start_h, start_m) <= current < (end_h, end_m):
             return True
     return False
+
+
+def next_legal_moment(moment: datetime, hours: CallHours) -> datetime:
+    """Le prochain moment d'appel permis (``moment`` lui-même s'il l'est).
+
+    Exemple : un samedi à 9 h, c'est le lundi suivant à 10 h. Cherché sur
+    les 30 jours qui viennent ; sans aucun créneau, dans 30 jours.
+
+    Raises:
+        VoiceBrokerDenied: ``moment`` sans fuseau.
+    """
+    if moment.tzinfo is None:
+        raise VoiceBrokerDenied('moment sans fuseau')
+    if within_legal_hours(moment, hours):
+        return moment
+    for offset in range(31):
+        day = moment + timedelta(days=offset)
+        if day.weekday() not in hours.days:
+            continue
+        if day.date() in french_holidays(day.year):
+            continue
+        for start_h, start_m, _end_h, _end_m in sorted(hours.windows):
+            start = day.replace(
+                hour=start_h, minute=start_m, second=0, microsecond=0
+            )
+            if start > moment:
+                return start
+    return moment + timedelta(days=30)
 
 
 @dataclass(frozen=True)
@@ -172,17 +229,21 @@ def default_ledger_path(root: Path | None = None) -> Path:
     return base / 'state/voice/voice.db'
 
 
-def call_limits(canon_path: Path) -> tuple[int, int]:
-    """Appels par jour, et appels à une même personne sur 30 jours.
+def call_limits(canon_path: Path) -> tuple[int, int, CallHours]:
+    """Appels par jour, appels à une même personne sur 30 jours, et les
+    jours et heures d'appel.
 
-    Lus dans les réglages en vigueur (page Policy) : « Appels par jour » et
-    « Prises de contact au plus, par personne, sur 30 jours » du pays par
-    défaut. Une seule valeur, en base : pas de réglage en double (Q78).
+    Lus dans les réglages en vigueur (page Policy) : « Appels passés au
+    plus, par jour » (famille « Canaux »), et, pour le pays par défaut,
+    « Prises de contact au plus, par personne, sur 30 jours » et ses jours
+    et heures d'appel. Une seule valeur, en base : pas de réglage en double
+    (Q78).
     """
     with closing(open_db(canon_path)) as canon:
         pol = policy_en_vigueur(canon)
     zones = pol['calling_zones']
     return (
-        int(pol['quotas']['voice_max_calls_per_day']),
+        int(pol['channels']['voice']['max_per_day']),
         int(zones[zones['default']]['contact_per_30d']),
+        call_hours(pol),
     )

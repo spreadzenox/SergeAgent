@@ -4,6 +4,12 @@
 Providers : xAI Realtime primaire, OpenAI rollback (même forme
 d'événements). Échec à tout moment = RealtimeError → l'appelant
 dégrade vers tour-par-tour (turn.py), jamais de silence. Audio PCM16.
+
+L'agent peut appeler des outils pendant l'appel (chercher un contact,
+noter une adresse) : ils sont déclarés dans la session, le fournisseur
+demande un appel (``response.function_call_arguments.done``) et reçoit
+son résultat (``function_call_output``). Ce que dit l'interlocuteur
+revient transcrit (``conversation.item.input_audio_transcription``).
 """
 
 from __future__ import annotations
@@ -19,14 +25,14 @@ PROVIDERS = {
     'openai': 'wss://api.openai.com/v1/realtime',
     'xai': 'wss://api.x.ai/v1/realtime',
 }
-DEFAULT_MODELS = {
-    'xai': 'grok-voice-think-fast-2.0',
-    'openai': 'gpt-realtime-2.1-mini',
-}
+# Le modèle et la voix de chaque fournisseur sont des réglages de l'agent
+# vocal, en base (serge/voice/agent.py).
 DEFAULT_VOICE = 'alloy'
-DEFAULT_VOICES = {'xai': 'eve', 'openai': 'alloy'}
 PCM_RATE = 24000
 DEFAULT_RATES = {'xai': 8000, 'openai': 24000}
+# OpenAI ne transcrit l'interlocuteur que si on le demande ; xAI le fait
+# d'office.
+TRANSCRIBE_MODELS = {'openai': 'whisper-1'}
 
 
 class RealtimeError(ValueError):
@@ -37,28 +43,45 @@ def build_session_update(
     instructions: str,
     voice: str = DEFAULT_VOICE,
     rate: int = PCM_RATE,
+    tools: list[dict[str, Any]] | None = None,
+    transcribe: str = '',
 ) -> dict[str, Any]:
-    """Événement session.update (instructions + voix + PCM).
+    """Événement session.update (instructions + voix + PCM + outils).
 
     Args:
-        instructions: Prompt système (script P4 + règles dures).
+        instructions: Prompt système (lu en base, avec la fiche du contact).
         voice: Voix synthèse (eve xAI, alloy OpenAI).
         rate: Fréquence PCM (8000 xAI / 24000 OpenAI).
+        tools: Les outils appelables (``{type, name, description,
+            parameters}``).
+        transcribe: Le modèle qui transcrit l'interlocuteur, ou ``''``.
 
     Returns:
         L'événement à envoyer.
     """
     pcm = {'type': 'audio/pcm', 'rate': rate}
+    heard: dict[str, Any] = {'format': pcm}
+    if transcribe:
+        heard['transcription'] = {'model': transcribe}
+    session: dict[str, Any] = {
+        'instructions': instructions,
+        'voice': voice,
+        'turn_detection': {'type': 'server_vad'},
+        'audio': {'input': heard, 'output': {'format': pcm}},
+    }
+    if tools:
+        session['tools'] = tools
+    return {'type': 'session.update', 'session': session}
+
+
+def build_tool_output(call_id: str, output: str) -> dict[str, Any]:
+    """Le résultat d'un outil, rendu au modèle."""
     return {
-        'type': 'session.update',
-        'session': {
-            'instructions': instructions,
-            'voice': voice,
-            'turn_detection': {'type': 'server_vad'},
-            'audio': {
-                'input': {'format': pcm},
-                'output': {'format': pcm},
-            },
+        'type': 'conversation.item.create',
+        'item': {
+            'type': 'function_call_output',
+            'call_id': call_id,
+            'output': output,
         },
     }
 
@@ -114,7 +137,9 @@ def route_event(
         state: État mutable (transcript, audio, done, error).
 
     Returns:
-        Actions [(audio|transcript|transcript_delta|done|error|speech, ...)].
+        Actions [(audio|transcript|transcript_delta|done|error|speech|tool|
+        heard, ...)] : ``transcript`` est ce que dit Serge, ``heard`` ce que
+        dit l'interlocuteur.
     """
     kind = str(event.get('type') or '')
     if kind in {'response.audio.delta', 'response.output_audio.delta'}:
@@ -136,6 +161,19 @@ def route_event(
     if kind == 'session.updated':
         state['ready'] = True
         return [('ready', True)]
+    if kind == 'response.function_call_arguments.done':
+        return [
+            (
+                'tool',
+                {
+                    'call_id': str(event.get('call_id') or ''),
+                    'name': str(event.get('name') or ''),
+                    'arguments': str(event.get('arguments') or '{}'),
+                },
+            )
+        ]
+    if kind == 'conversation.item.input_audio_transcription.completed':
+        return [('heard', str(event.get('transcript') or ''))]
     if kind == 'response.done':
         state['done'] = True
         return [('done', dict(event.get('response') or {}))]
@@ -160,6 +198,8 @@ class RealtimeCall:
         instructions: str,
         voice: str = DEFAULT_VOICE,
         rate: int = PCM_RATE,
+        tools: list[dict[str, Any]] | None = None,
+        transcribe: str = '',
     ):
         self.ws = ws
         self.provider = ''
@@ -167,7 +207,11 @@ class RealtimeCall:
         self.state: dict[str, Any] = {}
         try:
             ws.send_text(
-                json.dumps(build_session_update(instructions, voice, rate))
+                json.dumps(
+                    build_session_update(
+                        instructions, voice, rate, tools, transcribe
+                    )
+                )
             )
         except WsError as exc:
             raise RealtimeError(f'WS: session ({exc})') from exc
@@ -181,6 +225,7 @@ class RealtimeCall:
         instructions: str,
         voice: str = DEFAULT_VOICE,
         timeout: float = 20.0,
+        tools: list[dict[str, Any]] | None = None,
     ) -> RealtimeCall:
         """Ouvre une session chez le provider.
 
@@ -191,6 +236,7 @@ class RealtimeCall:
             instructions: Prompt système.
             voice: Voix synthèse.
             timeout: Timeout socket.
+            tools: Les outils que l'agent peut appeler.
 
         Returns:
             Session prête.
@@ -209,14 +255,19 @@ class RealtimeCall:
         headers = {'Authorization': f'Bearer {api_key}'}
         if provider == 'openai':
             headers['OpenAI-Beta'] = 'realtime=v1'
-        if voice == DEFAULT_VOICE:
-            voice = DEFAULT_VOICES.get(provider, voice)
         try:
             ws = WsClient.connect(url, headers, timeout)
         except WsError as exc:
             raise RealtimeError(f'WS: {exc}') from exc
         rate = DEFAULT_RATES.get(provider, PCM_RATE)
-        call = cls(ws, instructions, voice, rate)
+        call = cls(
+            ws,
+            instructions,
+            voice,
+            rate,
+            tools,
+            TRANSCRIBE_MODELS.get(provider, ''),
+        )
         call.provider = provider
         return call
 
@@ -254,6 +305,18 @@ class RealtimeCall:
             self.ws.send_text(json.dumps(build_response_create()))
         except WsError as exc:
             raise RealtimeError(f'WS: inject ({exc})') from exc
+
+    def send_tool_output(self, call_id: str, output: str) -> None:
+        """Rend le résultat d'un outil, puis demande la suite.
+
+        Raises:
+            RealtimeError: Socket rompue.
+        """
+        try:
+            self.ws.send_text(json.dumps(build_tool_output(call_id, output)))
+            self.ws.send_text(json.dumps(build_response_create()))
+        except WsError as exc:
+            raise RealtimeError(f'WS: outil ({exc})') from exc
 
     def poll(self) -> list[tuple[str, Any]]:
         """Lit + route les événements (erreurs provider → RealtimeError).

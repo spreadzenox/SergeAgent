@@ -77,3 +77,15 @@ class Adapter:
 
 class ChannelError(ValueError):
     """Un canal n'est pas branché, ou le canal a refusé le message."""
+
+
+class ChannelLater(ChannelError):
+    """Le canal ne peut pas maintenant : l'envoi attend ``until`` (ISO).
+
+    Exemple : un appel hors des heures légales attend le prochain créneau
+    (décision Q83).
+    """
+
+    def __init__(self, reason: str, until: str) -> None:
+        super().__init__(reason)
+        self.until = until

@@ -164,13 +164,13 @@ discutable, qui peut un jour changer, se règle depuis Mission Control.**
   est rangé dans `pas_encore_branche/`. Un test vérifie que chaque réglage
   de la policy est lu par au moins un programme. **Le lot qui rebranche une
   capacité remet ses réglages**, lus par son code :
-  - lot 8 (conversations, voix) : jours et heures d'appel, jours de
-    prospection, marge avant un rendez-vous, jours fériés et fuseau du
-    pays ; durée et tours de parole d'un appel, longueur du script,
+  - lot 8 (conversations, voix) : jours de prospection, marge avant un
+    rendez-vous, jours fériés et fuseau du pays ; longueur du script,
     conservation des enregistrements, un numéro par business ; seuils de
-    lecture des réponses. Le délai de réponse, la relève récente de la
-    boîte et les délais des relances sont remis (PR 1 du lot 8), sans
-    heures ouvrées : Serge répond à toute heure (Q79) ;
+    lecture des réponses. Sont remis : le délai de réponse, la relève
+    récente de la boîte et les délais des relances (PR 1 du lot 8, sans
+    heures ouvrées : Serge répond à toute heure, Q79) ; les jours et
+    heures d'appel, la durée et les tours de parole d'un appel (PR 3) ;
   - lot 9 (grille de points) : le barème de prospection ;
   - lot 10 (construire) : les bornes de la construction ;
   - lot 11 (étapes 3, 4, 6, 7 et 8) : la répartition du budget, les invitations
@@ -179,11 +179,10 @@ discutable, qui peut un jour changer, se règle depuis Mission Control.**
     aucune fonction en marche ne l'appelle aujourd'hui) ;
   - lot 12 (web) : le plafond du navigateur, les recherches en mémoire par
     cycle.
-- La voix n'est pas dans ce chantier : le lot 8 la règle en base comme une
-  invocation. Aujourd'hui, ses heures d'appel, la durée et les tours de
-  parole d'un appel sont encore écrits dans son code ; ses deux plafonds
-  (appels par jour, contacts par personne sur 30 jours) sont déjà lus en
-  base (Q78).
+- La voix est réglée en base comme une invocation (« Parler au
+  téléphone ») : son prompt, ses modèles, sa durée maximale et ses tours
+  de secours ; ses heures d'appel et ses plafonds sont sur la page Policy
+  (lot 8, PR 3).
 
 ---
 
@@ -200,28 +199,6 @@ partent toutes seules : les tickets qui font attendre une réponse viennent
 au lot 8 bis. La conception détaillée est dans
 [`docs/LOT8_CONCEPTION.md`](docs/LOT8_CONCEPTION.md).
 
-- [ ] **PR 3 — Le canal appel, et un agent vocal qui sait à qui il
-  parle.** Le code de la voix existe (`serge/voice/`) : le pont qui
-  compose un appel, la conversation en direct avec un modèle vocal, le
-  journal des appels, les accords. Il reste à le brancher sur le
-  pipeline : passer un appel, recevoir son résultat (joint ou non, durée,
-  résumé) dans le fil, et régler l'agent en base comme une invocation (son
-  prompt, son modèle, ce qu'il reçoit au décrochage, ses outils ; seul le
-  transport de la voix reste du code). Au décrochage, le numéro est
-  cherché en base ; s'il est connu, l'agent reçoit la fiche du contact,
-  son fil, la fiche du business et la fiche produit. S'il est inconnu,
-  l'agent dit « Bonjour, je suis Serge, en quoi puis-je vous aider ? »,
-  demande à qui il parle et cherche la fiche avec un outil (nom,
-  entreprise, e-mail ou numéro). S'il propose quelque chose à Serge (un
-  partenariat), l'agent répond poliment qu'il ne peut pas traiter ce genre
-  de demande pour l'instant, et le résumé est quand même noté. Reconnue
-  seulement par son nom, la personne ne se voit répéter aucune
-  information sensible (montants, adresses, propos d'un collègue). Après
-  l'appel, le résumé entre dans le fil et « Traiter une réponse » est
-  lancée s'il y a une suite à donner. Un appel de prospection reste dans
-  les heures légales ; un appel de test vers un numéro qui a donné son
-  accord peut partir à toute heure.
-
 - [ ] **PR 4 — Le kit de test.** Une demi-fiche produit et un business
   bidon en base, des invocations temporaires « Écrire le premier message »
   et « Faire le premier appel », et un bouton dans Mission Control pour
@@ -229,7 +206,9 @@ au lot 8 bis. La conception détaillée est dans
   est public), le bouton enregistre son accord pour l'appel de test, et
   Serge lui pitche un projet bidon par e-mail et par téléphone. Clem
   répond, appelle et écrit lui-même ; Serge doit répondre seul et savoir
-  qui il est.
+  qui il est. Un appel de test vers un numéro qui a donné son accord part
+  à toute heure (Q79) : aujourd'hui, tout appel sortant reste dans les
+  heures d'appel de la page Policy.
 
 ---
 

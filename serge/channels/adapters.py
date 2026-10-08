@@ -4,15 +4,15 @@
 Un canal est branché quand son adaptateur est ici **et** qu'il est
 configuré sur ce serveur. Exemple : l'e-mail est dans le code, mais une
 instance sans boîte Gmail ni SMTP/IMAP ne l'a pas branché. Le catalogue
-``canaux`` le dit (``serge/canaux.py``). Le lot 8 ajoute l'appel (PR 3).
+``canaux`` le dit (``serge/canaux.py``).
 """
 
 from __future__ import annotations
 
-from serge.channels import mail
+from serge.channels import mail, voice
 from serge.channels.base import Adapter, ChannelError
 
-ADAPTERS: dict[str, Adapter] = {mail.ADAPTER.id: mail.ADAPTER}
+ADAPTERS: dict[str, Adapter] = {a.id: a for a in (mail.ADAPTER, voice.ADAPTER)}
 
 
 def adapter(channel: str) -> Adapter:
