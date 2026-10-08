@@ -117,6 +117,19 @@ function renderEmail(main, payload, sig) {
 }
 
 const ETATS_CANAL = {branche: 'branché', prevu: 'pas branché sur ce serveur'};
+const CANAUX = {email: 'e-mail', voice: 'appel'};
+const SORTES = {first: 'premier message', reply: 'réponse', followup: 'relance'};
+const STATUTS = {
+  to_write: 'à rédiger',
+  pending: 'à envoyer',
+  sending: 'en cours d’envoi',
+  sent: 'parti',
+  failed: 'en échec',
+  cancelled: 'annulé',
+  attached: 'rattaché',
+  unattached: 'non rattaché',
+  ignored: 'ignoré',
+};
 
 function renderEssais(main, payload, sig) {
   const section = main.querySelector('[data-section="essais"]');
@@ -130,6 +143,16 @@ function renderEssais(main, payload, sig) {
     section.querySelector('[data-essais="boutons"]'),
     payload.boutons || [],
     'Aucun bouton d’essai en base.',
+  );
+  const essai = payload.essai;
+  section.querySelector('[data-essais="contact"]').textContent = essai
+    ? `${essai.contact} — étape : ${essai.etape}.`
+    : 'Aucun essai pour l’instant.';
+  fillList(
+    section.querySelector('[data-list="fil"]'),
+    essai ? essai.fil : [],
+    'Rien n’est encore parti ni arrivé.',
+    (e) => li(`${rel(e.heure)} · ${e.sens} · ${CANAUX[e.canal] || e.canal} · ${SORTES[e.sorte] || e.sorte} · ${STATUTS[e.statut] || e.statut}${e.detail ? ` — ${e.detail}` : ''}`),
   );
   section.dataset.sig = sig;
 }

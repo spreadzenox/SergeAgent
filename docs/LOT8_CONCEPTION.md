@@ -364,8 +364,10 @@ plafonds) puis compose. Le canal est branché quand le fichier d'instance a
 ## 12. PR 4 — Le kit de test
 
 Le bouton « Lancer un essai » (page Système de Mission Control, avec
-l'état des canaux) : on y tape un nom, une adresse e-mail et un numéro au
-format international ; ils restent en base (le dépôt est public). Tout est
+l'état des canaux et le fil du dernier essai : chaque envoi, son statut
+et la raison d'un refus, chaque message reçu et sa réaction) : on y tape
+un nom, une adresse e-mail et un numéro (`+33…`, ou `06…` en France) ;
+ils restent en base (le dépôt est public). Tout est
 décrit en base, avec des invocations temporaires, à retirer avant le vrai
 lancement :
 
@@ -379,7 +381,9 @@ lancement :
    l'e-mail et le but de l'appel ; « Envoyer un message » les fait partir.
 
 L'accord « test » laisse l'appel partir à toute heure et hors du plafond
-par personne (Q79) : c'est un membre de l'équipe qui essaie Serge. Pour
+par personne (Q79) : c'est un membre de l'équipe qui essaie Serge. Un
+essai relancé lève aussi la désinscription de ces adresses-là : après un
+essai de « STOP », on peut réessayer (c'est noté au journal). Pour
 une réponse immédiate, les délais de réponse se mettent à 0 sur la page
 Policy. Ensuite, on répond, on rappelle Serge ou on lui écrit : tout le
 circuit des parties 2 à 11 est réel.
