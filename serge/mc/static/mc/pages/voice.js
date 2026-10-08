@@ -1,4 +1,4 @@
-// Page P7 Voix : CDR, audio signée (E7), qualité F4c, pont.
+// Page P7 Voix : CDR, audio signée (E7), qualité F4c, pont, journaux du serveur.
 import {fillList, li, rel} from '../components.js';
 
 function libelleIssue(c) {
@@ -78,6 +78,29 @@ function renderQualite(main, payload, sig) {
   main.querySelector('[data-section="qualite_voix"]').dataset.sig = sig;
 }
 
+function renderJournaux(main, payload, sig) {
+  const conteneur = main.querySelector('[data-journaux="blocs"]');
+  conteneur.replaceChildren();
+  for (const bloc of payload.blocs || []) {
+    const titre = document.createElement('h3');
+    titre.textContent = bloc.titre;
+    conteneur.append(titre);
+    const lignes = bloc.lignes || [];
+    if (bloc.erreur || lignes.length === 0) {
+      const p = document.createElement('p');
+      p.textContent = bloc.erreur || 'Rien dans ce journal.';
+      conteneur.append(p);
+      continue;
+    }
+    const pre = document.createElement('pre');
+    pre.className = 'diff-bloc journal-serveur';
+    pre.textContent = lignes.join('\n');
+    conteneur.append(pre);
+    pre.scrollTop = pre.scrollHeight;
+  }
+  main.querySelector('[data-section="journal_voix"]').dataset.sig = sig;
+}
+
 export function mount(main, store) {
   const tpl = document.getElementById('page-voice');
   main.replaceChildren(tpl.content.cloneNode(true));
@@ -86,6 +109,7 @@ export function mount(main, store) {
     store.subscribe('bridge_statut', (p, s) => renderBridge(main, p, s)),
     store.subscribe('cdr_appels', (p, s) => renderCdr(main, p, s)),
     store.subscribe('qualite_voix', (p, s) => renderQualite(main, p, s)),
+    store.subscribe('journal_voix', (p, s) => renderJournaux(main, p, s)),
   ];
 
   for (const [section, env] of store.all()) {
@@ -95,6 +119,8 @@ export function mount(main, store) {
       renderCdr(main, env.payload, env.sig);
     } else if (section === 'qualite_voix') {
       renderQualite(main, env.payload, env.sig);
+    } else if (section === 'journal_voix') {
+      renderJournaux(main, env.payload, env.sig);
     }
   }
 

@@ -597,6 +597,11 @@ table.tableau th {
   white-space: pre-wrap;
 }
 
+.journal-serveur {
+  max-height: 28rem;
+  overflow-y: auto;
+}
+
 .cmdk-fond {
   align-items: flex-start;
   padding-top: 10vh;

@@ -20,6 +20,7 @@ import re
 import sqlite3
 import sys
 import time
+import traceback
 from pathlib import Path
 from typing import Any
 
@@ -275,9 +276,17 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if not serge_demarre():
         # Serge arrêté dans Mission Control : on ne décroche pas.
+        sys.stderr.write('voice-turn: Serge arrêté, appel refusé\n')
         agi.hangup()
         return 0
-    canon = open_db(default_canon_path())
+    try:
+        canon = open_db(default_canon_path())
+    except Exception:  # noqa: BLE001 — never crash an AGI leg
+        sys.stderr.write(
+            'voice-turn: base illisible\n' + traceback.format_exc()
+        )
+        agi.hangup()
+        return 0
     turn = VoiceTurn(agi, root, VoiceLedger(default_ledger_path(root)), canon)
     try:
         if args[0] == 'outbound':
@@ -289,6 +298,8 @@ def main(argv: list[str] | None = None) -> int:
     except AgiHangup:
         return 0
     except Exception as exc:  # noqa: BLE001 — never crash an AGI leg
+        # La trace va au journal d'Asterisk, que Mission Control montre.
+        sys.stderr.write('voice-turn: erreur\n' + traceback.format_exc())
         try:
             agi.verbose(f'serge voice error: {exc}')
             agi.hangup()

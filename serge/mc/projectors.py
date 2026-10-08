@@ -69,6 +69,7 @@ from serge.mc.proj_tickets import project_tickets
 from serge.mc.proj_voice import (
     project_bridge_statut,
     project_cdr_appels,
+    project_journal_voix,
     project_qualite_voix,
 )
 
@@ -91,6 +92,7 @@ SLOW_SECTIONS = frozenset(
         'cdr_appels',
         'qualite_voix',
         'bridge_statut',
+        'journal_voix',
         'charte_metriques',
         'audit_trail',
         'versions_drift',
@@ -219,6 +221,7 @@ PROJECTORS: dict[str, Callable[..., dict[str, Any]]] = {
     'cdr_appels': project_cdr_appels,
     'qualite_voix': project_qualite_voix,
     'bridge_statut': project_bridge_statut,
+    'journal_voix': project_journal_voix,
     'charte_metriques': project_charte_metriques,
     'audit_trail': project_audit_trail,
     'versions_drift': project_versions_drift,
@@ -270,6 +273,7 @@ PAGE_SECTIONS: dict[str, list[str]] = {
         'cdr_appels',
         'qualite_voix',
         'bridge_statut',
+        'journal_voix',
     ],
     'p8': [
         'meta',

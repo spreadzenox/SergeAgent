@@ -25,13 +25,20 @@ class VoiceRegistryTests(unittest.TestCase):
         sections = PAGE_SECTIONS['p7']
         self.assertEqual(
             sections,
-            ['meta', 'cdr_appels', 'qualite_voix', 'bridge_statut'],
+            [
+                'meta',
+                'cdr_appels',
+                'qualite_voix',
+                'bridge_statut',
+                'journal_voix',
+            ],
         )
         for section in sections:
             self.assertIn(section, PROJECTORS)
         self.assertIn('cdr_appels', SLOW_SECTIONS)
         self.assertIn('qualite_voix', SLOW_SECTIONS)
         self.assertIn('bridge_statut', SLOW_SECTIONS)
+        self.assertIn('journal_voix', SLOW_SECTIONS)
 
 
 class McVoiceTests(McBrowserCase):
@@ -66,3 +73,7 @@ class McVoiceTests(McBrowserCase):
         expect(page.locator('[data-section="qualite_voix"]')).to_contain_text(
             '4.5 / 5'
         )
+        # Les journaux du serveur : un bloc par source, même illisible.
+        journaux = page.locator('[data-section="journal_voix"]')
+        expect(journaux).to_contain_text('Pont vocal')
+        expect(journaux).to_contain_text('Asterisk, fichier messages')
