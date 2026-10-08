@@ -3,12 +3,15 @@
 
 from __future__ import annotations
 
+import shutil
 import sqlite3
+import subprocess
 from collections.abc import Mapping
 from typing import Any
 from urllib.parse import urlencode
 
 from serge.coupe_circuit import heartbeat_marche
+from serge.paths import system_root
 from serge.voice.ledger import assurer_colonnes_calls
 from serge.voice.policy import default_ledger_path
 from serge.voice.quality import recent_scores
@@ -133,3 +136,90 @@ def project_bridge_statut(
         'kill_switch': is_killed,
         'bridge': b_info,
     }
+
+
+# Ce qui raconte un appel : le pont vocal (la voix en direct), Asterisk (la
+# ligne, et le secours tour par tour qu'il lance), et le fichier d'Asterisk.
+JOURNAUX_VOIX = (
+    ('serge-voice-bridge.service', 'Pont vocal'),
+    ('serge-asterisk.service', 'Asterisk et le secours tour par tour'),
+)
+LIGNES_JOURNAL = 150
+
+
+def _journal_service(unit: str) -> tuple[list[str], str]:
+    """Les dernières lignes du journal d'un service ; ``(lignes, erreur)``."""
+    if shutil.which('journalctl') is None:
+        return [], 'journalctl absent sur ce serveur'
+    try:
+        p = subprocess.run(
+            [
+                'journalctl',
+                '--user',
+                '--unit',
+                unit,
+                '--lines',
+                str(LIGNES_JOURNAL),
+                '--no-pager',
+                '--output',
+                'short-iso',
+            ],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        return [], f'journal illisible ({type(exc).__name__})'
+    lignes = p.stdout.splitlines()
+    if p.returncode != 0 and not lignes:
+        return [], (p.stderr.strip() or f'journalctl a rendu {p.returncode}')[
+            :300
+        ]
+    return lignes, ''
+
+
+def _fichier_asterisk() -> tuple[list[str], str]:
+    """La fin du fichier ``messages`` d'Asterisk ; ``(lignes, erreur)``."""
+    chemin = system_root() / 'logs/asterisk/messages'
+    if not chemin.is_file():
+        return [], 'pas de fichier messages'
+    try:
+        texte = chemin.read_text(encoding='utf-8', errors='replace')
+    except OSError as exc:
+        return [], f'fichier illisible ({type(exc).__name__})'
+    return texte.splitlines()[-LIGNES_JOURNAL:], ''
+
+
+def project_journal_voix(
+    conn: sqlite3.Connection, policy: Mapping[str, Any], now: str
+) -> dict[str, Any]:
+    """Les derniers journaux du pont vocal et d'Asterisk, lus sur le serveur.
+
+    Mission Control tourne sous le même compte que ces services : un appel
+    qui échoue se lit ici, sans accès à la machine. Un journal illisible le
+    dit, sans casser la page.
+
+    Args:
+        conn: Connexion canon (ignorée).
+        policy: Policy (ignorée).
+        now: Maintenant ISO (ignoré).
+
+    Returns:
+        Dict {blocs: [{titre, lignes, erreur}]}, les lignes les plus
+        récentes en dernier.
+    """
+    _ = (conn, policy, now)
+    blocs = []
+    for unit, titre in JOURNAUX_VOIX:
+        lignes, erreur = _journal_service(unit)
+        blocs.append({'titre': titre, 'lignes': lignes, 'erreur': erreur})
+    lignes, erreur = _fichier_asterisk()
+    blocs.append(
+        {
+            'titre': 'Asterisk, fichier messages',
+            'lignes': lignes,
+            'erreur': erreur,
+        }
+    )
+    return {'blocs': blocs}

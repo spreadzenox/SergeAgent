@@ -18,6 +18,7 @@ import sqlite3
 import sys
 import threading
 import time
+import traceback
 
 from serge.coupe_circuit import serge_demarre
 from serge.db.store import default_canon_path, open_db
@@ -179,6 +180,10 @@ def pump(ast: socket.socket, max_s: float | None = None) -> None:
     except BaseException:
         canon.close()
         raise
+    sys.stderr.write(
+        f'voice-s2s: appel {agent.task.get("direction") or "?"} pris en main'
+        f' (journal {cdr_id or "introuvable"})\n'
+    )
     cfg = settings(canon, agent)
     limit = max_s or float(cfg.get('duree_max_secondes') or 0)
     ast.settimeout(POLL_S)
@@ -295,7 +300,19 @@ def handle_call(conn: socket.socket) -> None:
     try:
         pump(conn)
     except (RealtimeError, AudioSocketError, OSError) as exc:
-        sys.stderr.write(f'voice-s2s: fin ({type(exc).__name__})\n')
+        sys.stderr.write(
+            f'voice-s2s: fin ({type(exc).__name__} : {str(exc)[:300]})\n'
+        )
+        try:
+            conn.close()
+        except OSError:
+            pass
+    except Exception:  # noqa: BLE001 — l'erreur doit se lire dans le journal
+        # Une erreur imprévue tue l'appel : sa trace complète va au journal
+        # du pont, que Mission Control montre (page Voix).
+        sys.stderr.write(
+            'voice-s2s: erreur imprévue\n' + traceback.format_exc()
+        )
         try:
             conn.close()
         except OSError:
