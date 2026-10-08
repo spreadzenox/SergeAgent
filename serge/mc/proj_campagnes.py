@@ -156,14 +156,62 @@ def project_non_rattaches(
     }
 
 
+def _dernier_essai(conn: sqlite3.Connection) -> dict[str, Any] | None:
+    """Le fil du dernier contact d'essai : chaque envoi (statut, raison
+    d'un refus) et chaque message reçu (réaction), du plus récent au plus
+    ancien. ``None`` avant le premier essai."""
+    row = conn.execute(
+        'SELECT c.id, c.display, c.funnel_state FROM contacts c'
+        " JOIN ventures v ON v.id=c.venture_id WHERE v.lifecycle='TEST'"
+        ' ORDER BY c.created_at DESC, c.rowid DESC LIMIT 1'
+    ).fetchone()
+    if row is None:
+        return None
+    fil = [
+        {
+            'heure': str(quand),
+            'sens': 'envoi',
+            'canal': str(canal),
+            'sorte': str(sorte),
+            'statut': str(statut),
+            'detail': str(erreur or objet or ''),
+        }
+        for quand, canal, sorte, statut, erreur, objet in conn.execute(
+            "SELECT COALESCE(NULLIF(sent_at, ''), updated_at), channel, kind,"
+            ' status, last_error, subject FROM touches WHERE contact_id=?',
+            (row[0],),
+        ).fetchall()
+    ] + [
+        {
+            'heure': str(quand),
+            'sens': 'reçu',
+            'canal': str(canal),
+            'sorte': str(reaction or 'pas encore lu'),
+            'statut': str(statut),
+            'detail': str(texte or '')[:120],
+        }
+        for quand, canal, reaction, statut, texte in conn.execute(
+            'SELECT received_at, channel, reaction, status, body'
+            ' FROM inbound_events WHERE contact_id=?',
+            (row[0],),
+        ).fetchall()
+    ]
+    return {
+        'contact': str(row[1]),
+        'etape': str(row[2]),
+        'fil': sorted(fil, key=lambda e: e['heure'], reverse=True)[:30],
+    }
+
+
 def project_essais(
     conn: sqlite3.Connection, policy: Mapping[str, Any], now: str
 ) -> dict[str, Any]:
     """Les boutons sans étape (« Lancer un essai ») et l'état des canaux.
 
     Returns:
-        Dict {boutons: [...] (comme la page Écoute), canaux: [{id, titre,
-        etat, releve}]} : un canal « branche » ou « prevu », et sa dernière
+        Dict {boutons: [...] (comme la page Écoute), essai: le fil du
+        dernier contact d'essai (ou None), canaux: [{id, titre, etat,
+        releve}]} : un canal « branche » ou « prevu », et sa dernière
         relève.
     """
     from serge.mc.proj_ecoute import boutons_de_etape
@@ -171,6 +219,7 @@ def project_essais(
     _ = (policy, now)
     return {
         'boutons': boutons_de_etape(conn, ''),
+        'essai': _dernier_essai(conn),
         'canaux': [
             {
                 'id': str(ident),

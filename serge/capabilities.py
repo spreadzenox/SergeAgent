@@ -212,15 +212,21 @@ CAPABILITIES: tuple[Capability, ...] = (
         'add_contact',
         'Créer un contact',
         'Crée la fiche d’un contact pour un business, avec son e-mail et son'
-        ' numéro (au format international), et, au besoin, son accord pour'
-        ' être appelé (consent, ou test pour un membre de l’équipe qui'
-        ' essaie Serge). Rend la fiche créée.',
+        ' numéro (mis au format international), et, au besoin, son accord'
+        ' pour être appelé (consent, ou test pour un membre de l’équipe qui'
+        ' essaie Serge : sa désinscription éventuelle est alors levée).'
+        ' Rend la fiche créée.',
         'serge/conversations/contact.py',
         (
             Param('venture_id', 'text', True, 'Le business.'),
             Param('name', 'text', True, 'Son nom.'),
             Param('email', 'text', False, 'Son adresse e-mail.'),
-            Param('phone', 'text', False, 'Son numéro, au format +33….'),
+            Param(
+                'phone',
+                'text',
+                False,
+                'Son numéro : +33…, ou national du pays par défaut (06…).',
+            ),
             Param('call_consent', 'text', False, 'consent, test, ou vide.'),
         ),
     ),

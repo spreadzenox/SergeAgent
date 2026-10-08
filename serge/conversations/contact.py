@@ -19,6 +19,7 @@ from typing import Any
 from serge.db.store import append_event, utcnow
 from serge.funnels.contact_errors import ContactError
 from serge.funnels.contacts import add_address, create_contact, normalise_value
+from serge.policy_store import setting_value
 from serge.privacy import subject_hash
 
 # Les fiches rendues au plus par une recherche.
@@ -27,6 +28,48 @@ _EMAIL = re.compile(r'[^@\s]+@[^@\s]+\.[^@\s]+')
 _PHONE = re.compile(r'\+[1-9][0-9]{7,14}')
 # Les accords qu'une fiche peut porter pour être appelée.
 CALL_CONSENTS = frozenset({'consent', 'test'})
+# L'indicatif d'un pays : un numéro national (0768…) du pays par défaut
+# (page Policy, « Pays et appels ») devient international (+33768…).
+COUNTRY_CODES = {'FR': '33'}
+
+
+def _international(conn: sqlite3.Connection, raw: str) -> str:
+    """Un numéro au format international, ou ``''``.
+
+    Exemple : ``07 68 12 34 56`` en France donne ``+33768123456``.
+    """
+    phone = normalise_value('phone', raw)
+    if phone.startswith('0') and len(phone) == 10:
+        zone = str(setting_value(conn, 'calling_zones.default') or '')
+        code = COUNTRY_CODES.get(zone)
+        phone = f'+{code}{phone[1:]}' if code else phone
+    return phone
+
+
+def _unblock_for_test(
+    conn: sqlite3.Connection, addresses: list[str], contact: str, inv: str
+) -> None:
+    """Relancer un essai lève la désinscription de ces adresses-là.
+
+    Un membre de l'équipe qui a essayé « STOP » doit pouvoir réessayer :
+    c'est lui qui retape ses adresses dans Mission Control. Seul un blocage
+    venu d'une désinscription est levé ; c'est noté au journal.
+    """
+    digests = [subject_hash(a) for a in addresses if a]
+    holes = ','.join('?' * len(digests))
+    lifted = conn.execute(
+        f'DELETE FROM blocklist WHERE subject_hash IN ({holes})'
+        " AND reason='désinscription'",
+        digests,
+    ).rowcount
+    if lifted:
+        append_event(
+            conn,
+            actor=f'invocation:{inv}',
+            type='contact.unblocked_for_test',
+            payload={'addresses': lifted},
+            rows=[('contacts', contact)],
+        )
 
 
 def add_contact(
@@ -37,7 +80,10 @@ def add_contact(
 
     Crée la fiche et ses adresses ; ``call_consent`` (``consent`` ou
     ``test``) note l'accord de la personne pour être appelée sur ce numéro.
-    Rend la fiche créée (``rows``), avec ses adresses remises en forme.
+    Un numéro national du pays par défaut est mis au format international.
+    Avec l'accord ``test`` (un membre de l'équipe qui essaie Serge), la
+    désinscription de ces adresses est levée. Rend la fiche créée
+    (``rows``), avec ses adresses remises en forme.
 
     Raises:
         ValueError: Une adresse invalide (un e-mail sans @, un numéro qui
@@ -46,7 +92,7 @@ def add_contact(
     """
     name = str(args.get('name') or '').strip()
     email = str(args.get('email') or '').strip()
-    phone = normalise_value('phone', str(args.get('phone') or ''))
+    phone = _international(conn, str(args.get('phone') or ''))
     consent = str(args.get('call_consent') or '')
     if not name or not (email or phone):
         raise ValueError(
@@ -69,6 +115,10 @@ def add_contact(
             ' basis=excluded.basis, granted_at=excluded.granted_at,'
             " revoked_at=''",
             (f'voice_{digest}', digest, contact, consent, utcnow()),
+        )
+    if consent == 'test':
+        _unblock_for_test(
+            conn, [normalise_value('email', email), phone], contact, inv
         )
     append_event(
         conn,

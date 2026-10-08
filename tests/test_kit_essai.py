@@ -11,8 +11,11 @@ Scénarios :
   fiche de la personne avec son accord « test », puis un premier e-mail
   rédigé et envoyé, et un premier appel composé, même un dimanche ;
 - un deuxième essai remplace le business bidon ;
-- un numéro qui n'est pas au format international : l'essai échoue avec
-  la raison, rien ne part.
+- un numéro français tapé tel quel (06…) est mis au format +33 ; un
+  numéro illisible arrête l'essai avec la raison, rien ne part ;
+- un essai relancé après un « STOP » lève la désinscription de ces
+  adresses-là : on peut réessayer ;
+- le fil du dernier essai est visible dans Mission Control (page Système).
 """
 
 from __future__ import annotations
@@ -209,8 +212,36 @@ class KitEssaiTests(unittest.TestCase):
         )
         self.assertEqual(len(self.mails), 2)
 
-    def test_un_numero_mal_forme_arrete_l_essai(self) -> None:
+    def test_un_numero_national_est_mis_au_format_international(self) -> None:
         self._essai({**FORMULAIRE, 'téléphone (+33…)': '06 00 00 00 01'})
+        self.assertEqual(
+            [c['to_e164'] for c in self.composes], ['+33600000001']
+        )
+
+    def test_un_essai_relance_apres_stop_peut_reecrire(self) -> None:
+        self.conn.execute(
+            'INSERT INTO blocklist(id, channel, subject_hash, reason,'
+            " added_at) VALUES('b1', '*', ?, 'désinscription', 't')",
+            (subject_hash('essai@exemple.fr'),),
+        )
+        self.conn.commit()
+        self._essai(FORMULAIRE)
+        self.assertEqual([m.address for m in self.mails], ['essai@exemple.fr'])
+        self.assertEqual(self._un('SELECT COUNT(*) FROM blocklist'), (0,))
+
+    def test_le_fil_de_l_essai_est_dans_mission_control(self) -> None:
+        from serge.mc.proj_campagnes import project_essais
+
+        self._essai(FORMULAIRE)
+        essai = project_essais(self.conn, {}, '')['essai']
+        self.assertEqual(essai['contact'], 'Essai Testeur')
+        self.assertEqual(
+            sorted((e['sens'], e['canal'], e['statut']) for e in essai['fil']),
+            [('envoi', 'email', 'sent'), ('envoi', 'voice', 'sent')],
+        )
+
+    def test_un_numero_mal_forme_arrete_l_essai(self) -> None:
+        self._essai({**FORMULAIRE, 'téléphone (+33…)': '12 34'})
         (erreur,) = self._un(
             "SELECT last_error FROM tasks WHERE status='failed'"
             " AND invocation_id='creer_contact_essai'"
