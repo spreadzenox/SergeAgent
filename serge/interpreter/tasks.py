@@ -91,7 +91,10 @@ def enqueue_task(
     ).fetchone()
     if found is not None:
         return str(found[0])
-    task_id = f't_{idem[:20]}'
+    # L'id vient de l'empreinte de la clé entière : deux clés qui commencent
+    # pareil (les appels « appel:cdr_20261008T16… » et
+    # « appel:cdr_20261008T17… ») ne donnent jamais le même id.
+    task_id = f't_{hashlib.sha256(idem.encode("utf-8")).hexdigest()[:20]}'
     conn.execute(
         'INSERT INTO tasks(id, invocation_id, queue_id, priority, status,'
         ' not_before, origin, origin_ref, idempotency_key, created_at)'

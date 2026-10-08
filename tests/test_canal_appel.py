@@ -401,6 +401,19 @@ class AgentTests(_Appel):
         assert appel is not None
         self.assertNotIn('marc@exemple.com', instructions(self.conn, appel))
 
+    def test_deux_appels_dans_la_meme_heure(self) -> None:
+        """Les numéros du journal des appels commencent par la date et
+        l'heure : le deuxième appel de la tranche horaire avait le même
+        numéro de tâche que le premier, et mourait sans un mot."""
+        premier = start_call(
+            self.conn, 'inbound', MARC, 'cdr_20261008T163512_aaaaaaaaaaaa'
+        )
+        second = start_call(
+            self.conn, 'inbound', MARC, 'cdr_20261008T164801_bbbbbbbbbbbb'
+        )
+        assert premier is not None and second is not None
+        self.assertNotEqual(premier.task_id, second.task_id)
+
     def test_sans_e_mail_serge_rappelle(self) -> None:
         appel = start_call(self.conn, 'inbound', MARC, 'cdr_9')
         assert appel is not None
