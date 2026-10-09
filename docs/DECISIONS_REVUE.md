@@ -1627,3 +1627,33 @@ Décidé :
    (lundi au vendredi, 10 h – 13 h et 14 h – 20 h, jours fériés exclus),
    comme un e-mail attend le lendemain quand le plafond du jour est
    atteint. Il n'est pas refusé.
+
+### Q84 — Lot 9 : la grille de points (validé par Clem, 9 octobre 2026)
+Constat : avant le lot 9, Claude a demandé comment compter les points d'un
+business. Les réactions existent depuis le lot 8 : « Traiter une réponse »
+classe chaque e-mail reçu et chaque appel transcrit parmi huit réactions
+(intéressé, question, objection, rendez-vous, refus, désinscription,
+absence, hors sujet). Le coût d'un business n'était pas mesuré : le coût
+des modèles est noté sans sa tâche, et les minutes d'appel ne sont notées
+nulle part.
+Décidé :
+1. **Un prospect compte une fois, pour sa meilleure réaction** dans un
+   business : on mesure jusqu'où chacun est allé. Un prospect qui écrit
+   cinq fois ne gonfle pas le total. Précise Q16 (« chaque signal rapporte
+   des points »).
+2. **Le barème porte sur ces réactions, par canal**, de 0 à 10 points,
+   modifiable dans Mission Control. Barème de départ, le même pour
+   l'e-mail et l'appel : rendez-vous 10, intéressé 8, question 4,
+   objection 3, refus 1, absence 0, hors sujet 0, désinscription 0. Les
+   points sont recalculés avec le barème du moment : le changer recompte
+   tous les business de la même façon.
+3. **« Dépensé », pour les points par euro** : le coût réel des modèles
+   des tâches du business, plus ses minutes d'appel au prix réglé sur la
+   page Policy. Les achats (publicité, domaines) s'ajouteront quand ils
+   existeront.
+4. **Pas de suivi des ouvertures ni des clics des e-mails** : seules les
+   réponses comptent. Remplace, pour l'e-mail, les signaux « a vu » et
+   « a cliqué » de Q16.
+5. **Pas de réaction « veut acheter »** : rendez-vous et intéressé
+   couvrent l'intention d'achat ; l'argent encaissé reste un chiffre à
+   part (Q16 bis, Q42).

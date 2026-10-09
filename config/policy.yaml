@@ -658,6 +658,143 @@ sections:
           - [BLOCKED, Bloqué]
           - [INVALID, Fiche invalide]
 
+  - id: points
+    title: Grille de points
+    why: >-
+      Ce que vaut chaque réaction d’un prospect, canal par canal, pour
+      comparer deux tests faits sur des canaux différents. Un prospect
+      compte une fois, pour sa meilleure réaction dans son business
+      (décision Q84).
+    settings:
+      - id: email.rendez-vous
+        value: 10
+        title: E-mail, rendez-vous
+        help: Le prospect propose ou accepte un rendez-vous.
+        kind: nombre
+        min: 0
+        max: 10
+        step: 0.5
+      - id: email.intéressé
+        value: 8
+        title: E-mail, intéressé
+        help: Le prospect dit son intérêt pour l’offre.
+        kind: nombre
+        min: 0
+        max: 10
+        step: 0.5
+      - id: email.question
+        value: 4
+        title: E-mail, question
+        help: Le prospect pose une question sur l’offre.
+        kind: nombre
+        min: 0
+        max: 10
+        step: 0.5
+      - id: email.objection
+        value: 3
+        title: E-mail, objection
+        help: Le prospect oppose une objection (prix, moment, besoin).
+        kind: nombre
+        min: 0
+        max: 10
+        step: 0.5
+      - id: email.refus
+        value: 1
+        title: E-mail, refus
+        help: Un refus poli, qui montre que le besoin intéresse un peu.
+        kind: nombre
+        min: 0
+        max: 10
+        step: 0.5
+      - id: email.absence
+        value: 0
+        title: E-mail, absence
+        help: Une réponse automatique (congés, absence).
+        kind: nombre
+        min: 0
+        max: 10
+        step: 0.5
+      - id: email.hors sujet
+        value: 0
+        title: E-mail, hors sujet
+        help: Un message sans rapport avec l’offre.
+        kind: nombre
+        min: 0
+        max: 10
+        step: 0.5
+      - id: email.désinscription
+        value: 0
+        title: E-mail, désinscription
+        help: Le prospect demande à ne plus être contacté.
+        kind: nombre
+        min: 0
+        max: 10
+        step: 0.5
+      - id: voice.rendez-vous
+        value: 10
+        title: Appel, rendez-vous
+        help: Le prospect propose ou accepte un rendez-vous.
+        kind: nombre
+        min: 0
+        max: 10
+        step: 0.5
+      - id: voice.intéressé
+        value: 8
+        title: Appel, intéressé
+        help: Le prospect dit son intérêt pour l’offre.
+        kind: nombre
+        min: 0
+        max: 10
+        step: 0.5
+      - id: voice.question
+        value: 4
+        title: Appel, question
+        help: Le prospect pose une question sur l’offre.
+        kind: nombre
+        min: 0
+        max: 10
+        step: 0.5
+      - id: voice.objection
+        value: 3
+        title: Appel, objection
+        help: Le prospect oppose une objection (prix, moment, besoin).
+        kind: nombre
+        min: 0
+        max: 10
+        step: 0.5
+      - id: voice.refus
+        value: 1
+        title: Appel, refus
+        help: Un refus poli, qui montre que le besoin intéresse un peu.
+        kind: nombre
+        min: 0
+        max: 10
+        step: 0.5
+      - id: voice.absence
+        value: 0
+        title: Appel, absence
+        help: Une réponse automatique (congés, absence).
+        kind: nombre
+        min: 0
+        max: 10
+        step: 0.5
+      - id: voice.hors sujet
+        value: 0
+        title: Appel, hors sujet
+        help: Un message sans rapport avec l’offre.
+        kind: nombre
+        min: 0
+        max: 10
+        step: 0.5
+      - id: voice.désinscription
+        value: 0
+        title: Appel, désinscription
+        help: Le prospect demande à ne plus être contacté.
+        kind: nombre
+        min: 0
+        max: 10
+        step: 0.5
+
 # « tel réglage ≤ tel autre » (« < » : strictement plus petit).
 relations:
   - [standing.capital_min, '<=', standing.capital_max]

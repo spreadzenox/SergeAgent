@@ -84,6 +84,9 @@ class ProjEconomyTests(unittest.TestCase):
         # Messages partis, réponses, intéressés : les conversations du
         # business (lot 8).
         self.assertEqual((v['u1'], v['u2'], v['u3']), (1, 1, 1))
+        # La grille de points (lot 9) : « intéressé » par e-mail vaut 8.
+        self.assertEqual(v['points'], 8.0)
+        self.assertEqual(data['totaux']['points'], 8.0)
         self.assertEqual(v['paid_eur'], 100.0)
         self.assertEqual(data['totaux']['u1'], 1)
         self.assertEqual(data['totaux']['paid_eur'], 100.0)

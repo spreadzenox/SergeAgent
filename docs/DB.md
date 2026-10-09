@@ -185,9 +185,11 @@ livrer à chaque client). Les fiches produit, les demandes clients et les
 délais de réponse de chaque canal (dans la policy, à toute heure, décision
 Q79) sont faits (version 35).
 
-**De nouvelles tables pour l'étape 1 et la mesure des tests.** La liste des
-flux RSS suivis (`listen_feeds`), et une table de barème qui donne des
-points à chaque réaction, canal par canal.
+**La mesure des tests.** Faite au lot 9 sans table nouvelle : le barème
+de la grille de points est un réglage par canal et par réaction, dans
+`policy_settings` (famille `points`, décision Q84). Les points se
+recalculent à partir des réactions des messages reçus
+(`inbound_events.reaction`).
 
 **De nouveaux statuts de business** : mis de côté (`PARKED`), en
 maintenance (`MAINTENANCE`) et fermé (`CLOSED`), avec le code qui les pose.

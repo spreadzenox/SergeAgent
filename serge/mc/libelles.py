@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+from serge.funnels.points import texte_points
+
 EVENTS = {
     'cycle': 'Cycle',
     'guard': 'Garde-fou',
@@ -170,16 +172,23 @@ def phrase_noyau(
 
 
 def phrase_recit(
-    nom: str, lifecycle: str, u1: int, u2: int, u3: int, paid: float
+    nom: str,
+    lifecycle: str,
+    u1: int,
+    u2: int,
+    u3: int,
+    paid: float,
+    points: float = 0.0,
 ) -> str:
-    """Phrase métier pour un étranger : touche → réponse → euro."""
+    """Phrase métier pour un étranger : touche → réponse → points → euro."""
     cycle = LIFECYCLE.get(lifecycle, lifecycle)
     euros = f'{paid:.0f}'.replace('.', ',')
     repondu = 'a répondu' if u2 == 1 else 'ont répondu'
     oui = 'a dit oui' if u3 == 1 else 'ont dit oui'
+    total = texte_points(points)
     return (
         f'{nom} — {cycle}. {u1} personnes touchées, {u2} {repondu},'
-        f' {u3} {oui}. {euros} € encaissés.'
+        f' {u3} {oui}, {total} points. {euros} € encaissés.'
     )
 
 
