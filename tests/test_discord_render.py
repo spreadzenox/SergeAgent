@@ -13,8 +13,6 @@ sys.path.insert(0, str(ROOT))
 from serge.discord.render import (  # noqa: E402
     remaining_fr,
     render_card,
-    render_digest_line,
-    render_urgent_line,
 )
 from serge.registry import load_ticket_types  # noqa: E402
 
@@ -77,17 +75,18 @@ class DiscordRenderTests(unittest.TestCase):
         buttons = card['components'][0]['components']
         self.assertTrue(all(button['disabled'] for button in buttons))
 
-    def test_h1_prefere_au_brut(self) -> None:
-        h1 = {
-            'titre': 'x',
-            'ou': 'Compte à 90 %.',
-            'enjeu': 'Stratégique.',
-            'attente': 'Résous le CAPTCHA.',
+    def test_un_ticket_tranche_dit_par_qui(self) -> None:
+        tranche = {
+            **GUICHET,
+            'state': 'APPROVED',
+            'tranche': 'Approuvé par Clem',
         }
-        card = render_card(GUICHET, self.types['GUICHET'], h1=h1, now_iso=NOW)
-        names = [field['name'] for field in card['embeds'][0]['fields']]
-        self.assertIn('Où on en est', names)
-        self.assertIn('Ce qu’on attend de toi', names)
+        card = render_card(tranche, self.types['GUICHET'], now_iso=NOW)
+        champs = {f['name']: f['value'] for f in card['embeds'][0]['fields']}
+        self.assertEqual(champs['Tranché'], 'Approuvé par Clem')
+        ouvert = render_card(GUICHET, self.types['GUICHET'], now_iso=NOW)
+        noms = [f['name'] for f in ouvert['embeds'][0]['fields']]
+        self.assertNotIn('Tranché', noms)
 
     def test_qcm_select(self) -> None:
         ticket = {
@@ -129,19 +128,6 @@ class DiscordRenderTests(unittest.TestCase):
         self.assertTrue(first[0]['custom_id'].endswith(':ti_1'))
         last = card['components'][-1]['components']
         self.assertEqual(last[0]['label'], 'Tout approuver')
-
-    def test_lignes_urgent_digest(self) -> None:
-        line = render_urgent_line(GUICHET, '999988887777666555', NOW)
-        self.assertIn('<@999988887777666555>', line)
-        self.assertIn('12 min', line)
-        self.assertNotIn('t_abc123def456', line)
-        fyi = {
-            'title': 'Résultats smoke',
-            'payload': {'contenu': 'U3=3, on scale.'},
-        }
-        digest = render_digest_line(fyi)
-        self.assertIn('Résultats smoke', digest)
-        self.assertIn('U3=3', digest)
 
 
 if __name__ == '__main__':

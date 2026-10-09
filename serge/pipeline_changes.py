@@ -20,7 +20,9 @@ valeur changée dans Mission Control est gardée. Le résultat est noté dans
 
 Un outil nouveau d'une invocation déjà en base s'ajoute de la même façon,
 une seule fois, à la fin de ses outils (un outil retiré ensuite ne revient
-pas) :
+pas). De même pour un champ nouveau de sa réponse (``add_outputs``) et une
+valeur nouvelle d'une de ses écritures (``add_write_values``, avec le rang
+``write`` de l'écriture) :
 
     changes:
       - id: un_outil_de_plus
@@ -136,6 +138,98 @@ def _add_tools(conn: sqlite3.Connection, invocation: str, raw: Any) -> str:
     return ' ; '.join(parts)
 
 
+def _invocation_absente(conn: sqlite3.Connection, invocation: str) -> bool:
+    return not conn.execute(
+        'SELECT 1 FROM invocations WHERE id=?', (invocation,)
+    ).fetchone()
+
+
+def _add_outputs(conn: sqlite3.Connection, invocation: str, raw: Any) -> str:
+    """Ajoute des champs à la réponse d'une invocation déjà en base ; un
+    champ déjà là (même chemin) est gardé."""
+    if not isinstance(raw, list) or not all(
+        isinstance(out, Mapping) and out.get('path') and out.get('type')
+        for out in raw
+    ):
+        raise PipelineSeedError('changes : add_outputs, une liste de champs')
+    if _invocation_absente(conn, invocation):
+        return 'objet absent'
+    parts = []
+    for out in raw:
+        path = str(out['path'])
+        if conn.execute(
+            'SELECT 1 FROM invocation_output_fields WHERE invocation_id=?'
+            ' AND path=?',
+            (invocation, path),
+        ).fetchone():
+            parts.append(f'{path} déjà là')
+            continue
+        position = conn.execute(
+            'SELECT COALESCE(MAX(position) + 1, 0) FROM'
+            ' invocation_output_fields WHERE invocation_id=?',
+            (invocation,),
+        ).fetchone()[0]
+        conn.execute(
+            'INSERT INTO invocation_output_fields(invocation_id, path, type,'
+            ' choices, required, description, position)'
+            ' VALUES(?,?,?,?,?,?,?)',
+            (
+                invocation,
+                path,
+                str(out['type']),
+                ', '.join(str(c) for c in out.get('choices') or []),
+                int(bool(out.get('required', True))),
+                str(out.get('description', '')),
+                int(position),
+            ),
+        )
+        parts.append(f'{path} ajouté')
+    return ' ; '.join(parts)
+
+
+def _add_write_values(
+    conn: sqlite3.Connection, invocation: str, write: Any, raw: Any
+) -> str:
+    """Ajoute des valeurs à une écriture d'une invocation déjà en base
+    (son rang ``write`` dans ``writes``) ; une colonne déjà écrite est
+    gardée."""
+    if not isinstance(raw, Mapping) or not isinstance(write, int):
+        raise PipelineSeedError(
+            'changes : add_write_values, un rang write et des valeurs'
+        )
+    if _invocation_absente(conn, invocation):
+        return 'objet absent'
+    row = conn.execute(
+        'SELECT id FROM invocation_writes WHERE invocation_id=? AND position=?',
+        (invocation, write),
+    ).fetchone()
+    if row is None:
+        return 'écriture absente'
+    parts = []
+    for column, spec in raw.items():
+        if not isinstance(spec, Mapping):
+            raise PipelineSeedError(f'changes : valeur de {column} mal écrite')
+        if conn.execute(
+            'SELECT 1 FROM invocation_write_values WHERE write_id=?'
+            ' AND column_name=?',
+            (row[0], str(column)),
+        ).fetchone():
+            parts.append(f'{column} déjà là')
+            continue
+        conn.execute(
+            'INSERT INTO invocation_write_values(write_id, column_name,'
+            ' source, value) VALUES(?,?,?,?)',
+            (
+                row[0],
+                str(column),
+                str(spec['source']),
+                str(spec.get('value', '')),
+            ),
+        )
+        parts.append(f'{column} ajouté')
+    return ' ; '.join(parts)
+
+
 def apply_changes(conn: sqlite3.Connection, raw: Any) -> None:
     """Applique les modifications de ``pipeline.yaml`` pas encore passées.
 
@@ -151,9 +245,17 @@ def apply_changes(conn: sqlite3.Connection, raw: Any) -> None:
             'SELECT 1 FROM pipeline_changes WHERE id=?', (ident,)
         ).fetchone():
             continue
+        invocation = str(change.get('invocation') or '')
         if 'add_tools' in change:
-            result = _add_tools(
-                conn, str(change.get('invocation') or ''), change['add_tools']
+            result = _add_tools(conn, invocation, change['add_tools'])
+        elif 'add_outputs' in change:
+            result = _add_outputs(conn, invocation, change['add_outputs'])
+        elif 'add_write_values' in change:
+            result = _add_write_values(
+                conn,
+                invocation,
+                change.get('write'),
+                change['add_write_values'],
             )
         else:
             table = str(change['table'])

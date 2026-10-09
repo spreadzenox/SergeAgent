@@ -9,10 +9,10 @@ import {
 import {allerObjet} from '../libelles.js';
 import {fetchState} from '../sse.js';
 
-const OUTCOME_FR = {APPROVED: 'approuvé', REJECTED: 'rejeté', EDITED: 'édité', ACK: 'accusé réception'};
+const OUTCOME_FR = {APPROVED: 'approuvé', REJECTED: 'rejeté', EDITED: 'édité', ACK: 'accusé réception', DISCUSSING: 'en réécriture'};
 const ETAT_ITEM_FR = {keep: 'gardé', edit: 'à modifier', drop: 'jeté'};
 
-async function poster(chemin, charge) {
+export async function poster(chemin, charge) {
   const res = await fetch(chemin, {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
@@ -21,7 +21,7 @@ async function poster(chemin, charge) {
   return {ok: res.ok, data: await res.json()};
 }
 
-async function rafraichir(main, store) {
+export async function rafraichir(main, store) {
   try {
     const data = await fetchState('p3');
     for (const [section, env] of Object.entries(data.sections || {})) {
@@ -40,16 +40,21 @@ export async function agirTicket(main, store, ticketId, acte, options = []) {
   let charge = {ticket_id: ticketId, acte};
   if (acte === 'discuter_fil') acte = 'discuter';
   charge.acte = acte;
-  if (['editer','discuter','reponse_libre','choix_qcm'].includes(acte)) {
+  if (['editer','discuter','reponse_libre','choix_qcm','ma_reponse','reecrire'].includes(acte)) {
     const estEdit = acte !== 'discuter';
+    const consignes = {
+      editer: ['Décris la modification.', 'Note : '],
+      ma_reponse: ['Le message qui partira au contact, tel quel.', 'Réponse : '],
+      reecrire: ['Tes consignes : Serge réécrit, et le brouillon revient ici.', 'Consignes : '],
+    }[acte];
     const valeurs = await promptModal(document.body, {
       title: libelleActe(acte),
-      message: acte === 'editer' ? 'Décris la modification.' :
+      message: consignes ? consignes[0] :
         (estEdit ? 'Choisis ou saisis ta réponse.' : 'Écris ton message.'),
       fields: [
         {
           nom: estEdit ? 'note' : 'message',
-          label: acte === 'editer' ? 'Note : ' :
+          label: consignes ? consignes[1] :
             (estEdit ? 'Réponse : ' : 'Message : '),
           defaut: '',
           requis: true,
@@ -81,7 +86,7 @@ export async function agirTicket(main, store, ticketId, acte, options = []) {
       title: `${libelleActe(acte)} ?`,
       message: `Ticket ${ticketId} — acte irréversible côté état.`,
       confirm: libelleActe(acte),
-      danger: ['rejeter','abandonner','refuser','annuler'].includes(acte),
+      danger: ['rejeter','abandonner','refuser','annuler','ne_rien_envoyer'].includes(acte),
     });
     if (!confirmer) {
       return;
@@ -146,7 +151,7 @@ export async function agirItem(main, store, ticketId, item, acte) {
   }
 }
 
-function libelleActe(acte) {
+export function libelleActe(acte) {
   return (
     {
       approuver: 'Approuver',
@@ -158,6 +163,9 @@ function libelleActe(acte) {
       abandonner: 'Abandonner', refuser: 'Refuser', annuler: 'Annuler',
       accuse_reception: 'Accuser réception', choix_qcm: 'Choisir une réponse',
       reponse_libre: 'Répondre librement', tout_approuver: 'Tout approuver',
+      envoyer_brouillon: 'Envoyer le brouillon', ma_reponse: 'Ma réponse',
+      reecrire: 'Réécrire', ne_rien_envoyer: 'Ne rien envoyer',
+      passer: 'Passer à la suite', ne_pas_passer: 'Ne pas passer',
     }[acte] || acte
   );
 }

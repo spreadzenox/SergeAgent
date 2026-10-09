@@ -318,6 +318,83 @@ class PipelineSeedTests(unittest.TestCase):
             (0,),
         )
 
+    def test_traiter_une_reponse_deployee_recoit_besoin_de_julien(
+        self,
+    ) -> None:
+        """Le serveur avant le lot 8 bis : « Traiter une réponse » n'a ni les
+        champs besoin_julien et question_produit, ni leurs valeurs dans
+        l'envoi écrit, ni le nouveau prompt."""
+        import yaml
+
+        ancien = yaml.safe_load(
+            (ROOT / 'config/pipeline.yaml').read_text(encoding='utf-8')
+        )
+        ancien = next(
+            c
+            for c in ancien['changes']
+            if c['id'] == 'reponse_besoin_de_julien'
+        )['set']['prompt']['from'].strip()
+        self.conn.execute(
+            "UPDATE invocations SET prompt=? WHERE id='traiter_reponse'",
+            (ancien,),
+        )
+        self.conn.execute(
+            'DELETE FROM invocation_output_fields WHERE invocation_id='
+            "'traiter_reponse' AND path IN ('besoin_julien',"
+            " 'question_produit')"
+        )
+        ecriture = self._one(
+            'SELECT id FROM invocation_writes WHERE invocation_id='
+            "'traiter_reponse' AND position=2"
+        )[0]
+        self.conn.execute(
+            'DELETE FROM invocation_write_values WHERE write_id=?'
+            " AND column_name IN ('needs_owner', 'owner_question')",
+            (ecriture,),
+        )
+        self.conn.execute(
+            "DELETE FROM pipeline_changes WHERE id LIKE 'reponse_%'"
+        )
+        ensure_pipeline(self.conn)
+        self.assertIn(
+            'besoin_julien',
+            self._one(
+                "SELECT prompt FROM invocations WHERE id='traiter_reponse'"
+            )[0],
+        )
+        self.assertEqual(
+            self._one(
+                'SELECT COUNT(*) FROM invocation_output_fields WHERE'
+                " invocation_id='traiter_reponse' AND path IN"
+                " ('besoin_julien', 'question_produit') AND required=0"
+            ),
+            (2,),
+        )
+        self.assertEqual(
+            sorted(
+                tuple(r)
+                for r in self.conn.execute(
+                    'SELECT column_name, source, value FROM'
+                    ' invocation_write_values WHERE write_id=? AND'
+                    " column_name IN ('needs_owner', 'owner_question')",
+                    (ecriture,),
+                )
+            ),
+            [
+                ('needs_owner', 'field', 'besoin_julien'),
+                ('owner_question', 'field', 'question_produit'),
+            ],
+        )
+        # Une seconde fois, rien ne s'ajoute en double.
+        ensure_pipeline(self.conn)
+        self.assertEqual(
+            self._one(
+                'SELECT COUNT(*) FROM invocation_output_fields WHERE'
+                " invocation_id='traiter_reponse' AND path='besoin_julien'"
+            ),
+            (1,),
+        )
+
     def test_une_invocation_supprimee_ne_revient_pas(self) -> None:
         seed_pipeline(self.conn, _pipeline())
         self.conn.execute(

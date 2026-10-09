@@ -116,17 +116,21 @@ def publish(connection: sqlite3.Connection, ticket_id: str) -> None:
     _transition(connection, ticket_id, frozenset({'DRAFT'}), 'OPEN', 'serge')
 
 
-def discuss(connection: sqlite3.Connection, ticket_id: str) -> None:
+def discuss(
+    connection: sqlite3.Connection, ticket_id: str, actor: str = 'owner'
+) -> None:
     if fetch_ticket(connection, ticket_id)['state'] == 'DISCUSSING':
         return
     _transition(
-        connection, ticket_id, frozenset({'OPEN'}), 'DISCUSSING', 'owner'
+        connection, ticket_id, frozenset({'OPEN'}), 'DISCUSSING', actor
     )
 
 
-def reopen(connection: sqlite3.Connection, ticket_id: str) -> None:
+def reopen(
+    connection: sqlite3.Connection, ticket_id: str, actor: str = 'owner'
+) -> None:
     _transition(
-        connection, ticket_id, frozenset({'DISCUSSING'}), 'OPEN', 'owner'
+        connection, ticket_id, frozenset({'DISCUSSING'}), 'OPEN', actor
     )
 
 
@@ -186,31 +190,48 @@ def cancel(
 
 
 def expire_due(
-    connection: sqlite3.Connection, now: str | None = None
-) -> list[str]:
-    """Expire les tickets dépassés : défaut annoncé appliqué + log.
+    connection: sqlite3.Connection,
+    now: str | None = None,
+    types: Mapping[str, Any] | None = None,
+) -> list[tuple[str, str]]:
+    """Expire les tickets dépassés : leur décision par défaut s'applique.
+
+    Un type qui reste ouvert (``rester_ouvert`` dans sa déclaration, par
+    exemple une conversation qui attend Julien) n'est pas fermé : sa
+    décision par défaut s'applique une fois (une réponse d'attente), et le
+    ticket attend toujours une réponse (décision Q85).
 
     Returns:
-        Ids expirés (tickets sans expiry ignorés).
+        ``(id, décision par défaut)`` des tickets expirés ou relancés
+        (les tickets sans délai sont ignorés).
     """
     moment = now or utcnow()
     rows = connection.execute(
-        'SELECT id, state, default_action FROM tickets WHERE state IN'
+        'SELECT id, state, default_action, type FROM tickets WHERE state IN'
         " ('DRAFT','OPEN','DISCUSSING') AND expiry_at<>'' AND expiry_at<=?",
         (moment,),
     ).fetchall()
-    expired: list[str] = []
+    expired: list[tuple[str, str]] = []
     for row in rows:
-        connection.execute(
-            'UPDATE tickets SET state=?, updated_at=? WHERE id=?',
-            ('EXPIRED', moment, row[0]),
-        )
+        spec = (types or {}).get(str(row[3])) or {}
+        if spec.get('rester_ouvert'):
+            connection.execute(
+                "UPDATE tickets SET expiry_at='', updated_at=? WHERE id=?",
+                (moment, row[0]),
+            )
+            kind = 'transition.relance'
+        else:
+            connection.execute(
+                'UPDATE tickets SET state=?, updated_at=? WHERE id=?',
+                ('EXPIRED', moment, row[0]),
+            )
+            kind = 'transition.expired'
         record_event(
             connection,
             row[0],
             'serge',
-            'transition.expired',
+            kind,
             {'from': row[1], 'default_applied': row[2]},
         )
-        expired.append(row[0])
+        expired.append((str(row[0]), str(row[2])))
     return expired

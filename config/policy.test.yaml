@@ -24,5 +24,3 @@ channels:
   voice:
     max_per_day: 0         # voix exclue du scope live (B8)
 
-tickets:
-  digest_hour: 8

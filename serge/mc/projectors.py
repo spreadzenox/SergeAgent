@@ -12,7 +12,6 @@ from typing import Any
 from serge.mc import MC_VERSION
 from serge.mc.proj_analyse import (
     project_diffs,
-    project_digest,
     project_metriques_tickets,
 )
 from serge.mc.proj_campagnes import (
@@ -29,6 +28,10 @@ from serge.mc.proj_cerveau import (
     project_signaux,
 )
 from serge.mc.proj_coupes import project_coupes
+from serge.mc.proj_discord import (
+    project_admins_discord,
+    project_types_tickets,
+)
 from serge.mc.proj_economy import (
     project_audit_reponses,
     project_couts_cognitifs,
@@ -208,7 +211,8 @@ PROJECTORS: dict[str, Callable[..., dict[str, Any]]] = {
     'tickets': project_tickets,
     'diffs': project_diffs,
     'metriques': project_metriques_tickets,
-    'digest': project_digest,
+    'admins_discord': project_admins_discord,
+    'types_tickets': project_types_tickets,
     'couches': project_couches,
     'consolidation': project_consolidation,
     'requested': project_requested,
@@ -254,7 +258,14 @@ PAGE_SECTIONS: dict[str, list[str]] = {
         'essais',
     ],
     'p2': ['meta', 'pensees', 'decisions', 'matrice', 'signaux'],
-    'p3': ['meta', 'tickets', 'diffs', 'metriques', 'digest'],
+    'p3': [
+        'meta',
+        'tickets',
+        'diffs',
+        'metriques',
+        'admins_discord',
+        'types_tickets',
+    ],
     'p4': ['meta', 'couches', 'consolidation', 'requested'],
     'p5': [
         'meta',

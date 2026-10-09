@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""CLI bot Discord : serve | verify | mirror-once (config + secrets)."""
+"""CLI bot Discord : serve | verify | deliver-once (config + secrets)."""
 
 from __future__ import annotations
 
@@ -30,7 +30,7 @@ def load_discord_cfg(instance_file: str = '') -> dict[str, str]:
         instance_file: Chemin TOML (défaut : SERGE_INSTANCE_FILE).
 
     Returns:
-        Dict des 5 ids + instance_file.
+        Dict des ids (serveur, premier administrateur) + instance_file.
 
     Raises:
         BotError: Fichier/table/ids manquants.
@@ -52,7 +52,7 @@ def load_discord_cfg(instance_file: str = '') -> dict[str, str]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """CLI : serve | verify | mirror-once."""
+    """CLI : serve | verify | deliver-once."""
     import argparse
 
     from serge.discord.rest import DiscordError
@@ -60,7 +60,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description='Serge Discord bot')
     parser.add_argument(
         'command',
-        choices=('serve', 'verify', 'mirror-once'),
+        choices=('serve', 'verify', 'deliver-once'),
         nargs='?',
         default='serve',
     )
@@ -106,9 +106,9 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps({'status': 'refused', 'error': str(exc)}))
             return 2
         bot = Bot(conn, policy, cfg, token)
-        if args.command == 'mirror-once':
-            count = bot.mirror_due()
-            print(json.dumps({'status': 'ok', 'mirrored': count}))
+        if args.command == 'deliver-once':
+            count = bot.deliver_due()
+            print(json.dumps({'status': 'ok', 'delivered': count}))
             return 0
         bot.serve()
     finally:

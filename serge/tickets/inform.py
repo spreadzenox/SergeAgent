@@ -11,8 +11,8 @@ from __future__ import annotations
 import sqlite3
 from typing import Any
 
-from serge.registry import load_ticket_types
 from serge.tickets.lifecycle import create_ticket, publish
+from serge.tickets.types import ticket_types
 
 
 def inform_owners(
@@ -30,7 +30,7 @@ def inform_owners(
     text = str(args.get('text') or '').strip()
     ticket_id = create_ticket(
         conn,
-        load_ticket_types(),
+        ticket_types(conn),
         'FYI',
         title,
         {

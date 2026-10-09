@@ -325,10 +325,7 @@ def ask_interactive() -> dict[str, Any]:
     if features['discord']:
         for key, label in (
             ('guild_id', 'ID du serveur Discord'),
-            ('forum_channel_id', 'ID du forum tickets'),
-            ('urgent_channel_id', 'ID du canal urgent'),
-            ('digest_channel_id', 'ID du canal digest'),
-            ('owner_user_id', 'ID de ton compte owner'),
+            ('owner_user_id', 'ID de ton compte (premier administrateur)'),
         ):
             answers['discord'][key] = _prompt_guided(
                 f'{label} (clic droit → copier l’identifiant)',

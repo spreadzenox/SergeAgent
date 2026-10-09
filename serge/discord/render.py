@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Rendu tickets → carte Discord FR (H §5) + composants (H §7).
+"""Rendu tickets → carte Discord FR + boutons, envoyée en message privé.
 
-Déterministe : embed + boutons depuis le registre (spec buttons +
-render). H1 injecté si dispo (sinon champs bruts). IDs backend strippés
-du visible (§5 : custom_id uniquement). États terminaux = boutons morts.
+Déterministe : embed + boutons depuis le type du ticket en base (boutons,
+couleur, emoji). IDs backend strippés du visible (custom_id uniquement).
+Un ticket tranché garde sa carte, boutons morts, avec qui l'a tranché.
 """
 
 from __future__ import annotations
@@ -31,6 +31,20 @@ BUTTONS: dict[str, dict[str, Any]] = {
     'refuser': {'label': 'Refuser', 'style': 4, 'emoji': '❌'},
     'accuse_reception': {'label': 'Bien reçu', 'style': 2, 'emoji': '👀'},
     'reponse_libre': {'label': 'Réponse libre', 'style': 2, 'emoji': '✍️'},
+    'envoyer_brouillon': {
+        'label': 'Envoyer le brouillon',
+        'style': 3,
+        'emoji': '✅',
+    },
+    'ma_reponse': {'label': 'Ma réponse', 'style': 1, 'emoji': '✍️'},
+    'reecrire': {'label': 'Réécrire', 'style': 2, 'emoji': '🔁'},
+    'ne_rien_envoyer': {
+        'label': 'Ne rien envoyer',
+        'style': 4,
+        'emoji': '🚫',
+    },
+    'passer': {'label': 'Passer à la suite', 'style': 3, 'emoji': '▶️'},
+    'ne_pas_passer': {'label': 'Ne pas passer', 'style': 4, 'emoji': '⏹️'},
     'garder': {'label': 'Garder', 'style': 3, 'emoji': '✅'},
     'modifier': {'label': 'Modifier', 'style': 2, 'emoji': '✏️'},
     'jeter': {'label': 'Jeter', 'style': 4, 'emoji': '🗑️'},
@@ -101,7 +115,9 @@ def _qcm_row(ticket_id: str, options: list[str], disabled: bool) -> dict:
         {'label': str(item)[:100], 'value': str(item)[:100]}
         for item in options[:24]
     ]
-    choices.append({'label': 'Autre (écrire en fil)', 'value': '__autre__'})
+    choices.append(
+        {'label': 'Autre (écrire ma réponse)', 'value': '__autre__'}
+    )
     return {
         'type': 1,
         'components': [
@@ -118,45 +134,51 @@ def _qcm_row(ticket_id: str, options: list[str], disabled: bool) -> dict:
     }
 
 
+# Ce qu'une carte Discord montre au plus : 1 024 caractères par champ, et
+# une marge sous les 6 000 de tout le message.
+CHAMP_MAX = 1024
+CARTE_MAX = 5000
+
+
+def _coupe(texte: str, place: int) -> str:
+    """Un texte trop long garde sa fin (les derniers messages d'un fil)."""
+    return texte if len(texte) <= place else '…' + texte[-(place - 1) :]
+
+
 def _fields(
-    ticket: Mapping[str, Any],
-    spec: Mapping[str, Any],
-    h1: Mapping[str, Any] | None,
+    ticket: Mapping[str, Any], spec: Mapping[str, Any]
 ) -> list[dict[str, Any]]:
-    if h1:
-        return [
-            {'name': 'Où on en est', 'value': str(h1.get('ou') or '—')[:1024]},
-            {'name': 'Enjeu', 'value': str(h1.get('enjeu') or '—')[:1024]},
-            {
-                'name': 'Ce qu’on attend de toi',
-                'value': str(h1.get('attente') or '—')[:1024],
-            },
-        ]
-    shown = [
-        f'**{key} :** {value}' for key, value in champs_carte(ticket, spec)
-    ]
-    return [
-        {
-            'name': f'{ticket.get("type")} • {ticket.get("state")}',
-            'value': ('\n'.join(shown) or '—')[:1024],
-        }
-    ]
+    """Un champ par valeur du ticket, dans l'ordre de son type ; puis, s'il
+    est tranché, qui l'a tranché et comment (la même carte chez tous les
+    administrateurs, décision Q85)."""
+    reste = CARTE_MAX
+    fields = []
+    for key, value in champs_carte(ticket, spec):
+        place = min(CHAMP_MAX, reste)
+        if place < 20:
+            break
+        texte = _coupe(str(value) or '—', place)
+        reste -= len(texte)
+        fields.append({'name': str(key)[:256], 'value': texte})
+    if ticket.get('tranche'):
+        fields.append(
+            {'name': 'Tranché', 'value': str(ticket['tranche'])[:CHAMP_MAX]}
+        )
+    return fields
 
 
 def render_card(
     ticket: Mapping[str, Any],
     spec: Mapping[str, Any],
     *,
-    h1: Mapping[str, Any] | None = None,
     now_iso: str = '',
 ) -> dict[str, Any]:
-    """Carte de décision (embed + boutons/select, H §5).
+    """Carte de décision (embed + boutons/select).
 
     Args:
         ticket: Ticket (id, type, title, state, payload, expiry_at,
-            default_action, default_detail?, items?).
-        spec: Déclaration registre (buttons, render...).
-        h1: Rendu H1 (titre/ou/enjeu/attente) ou None (brut).
+            default_action, items?, tranche? : qui l'a tranché et comment).
+        spec: Type du ticket en base (buttons, render...).
         now_iso: Maintenant ISO (compte à rebours).
 
     Returns:
@@ -183,6 +205,7 @@ def render_card(
     )
     embed: dict[str, Any] = {
         'title': title,
+        'description': f'{ticket.get("type")} • {ticket.get("state")}',
         'color': color,
         'fields': [
             {
@@ -190,7 +213,7 @@ def render_card(
                 'value': strip_ids(str(field['value'])),
                 'inline': False,
             }
-            for field in _fields(ticket, spec, h1)
+            for field in _fields(ticket, spec)
         ],
         'footer': {'text': strip_ids(footer)[:2048]},
     }
@@ -259,41 +282,3 @@ def render_card(
         if row:
             components.append({'type': 1, 'components': row[:5]})
     return {'embeds': [embed], 'components': components[:5]}
-
-
-def render_urgent_line(
-    ticket: Mapping[str, Any], owner_user_id: str, now_iso: str = ''
-) -> str:
-    """Ligne miroir urgent (mention owner, H §2).
-
-    Args:
-        ticket: Ticket urgente (GUICHET/ALERT/veto proche).
-        owner_user_id: Snowflake owner (mention).
-        now_iso: Maintenant ISO.
-
-    Returns:
-        Contenu (IDs strippés, mention incluse).
-    """
-    remaining = remaining_fr(str(ticket.get('expiry_at') or ''), now_iso)
-    text = (
-        f'<@{owner_user_id}> 🔴 **{ticket.get("type")}** :'
-        f' {ticket.get("title")} — expire {remaining}.'
-    )
-    return strip_ids(text)
-
-
-def render_digest_line(ticket: Mapping[str, Any]) -> str:
-    """Ligne digest FYI (lecture seule, H §2).
-
-    Args:
-        ticket: Ticket FYI/rapport.
-
-    Returns:
-        Contenu une ligne (IDs strippés).
-    """
-    payload = ticket.get('payload')
-    body = ''
-    if isinstance(payload, dict):
-        body = str(payload.get('contenu') or '')[:200]
-    text = f'📣 **{ticket.get("title")}** — {body or "voir le fil"}'
-    return strip_ids(text)

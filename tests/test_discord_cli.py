@@ -29,9 +29,9 @@ class DiscordCliTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as raw:
             toml = Path(raw) / 'i.toml'
             toml.write_text(
-                '[discord]\nguild_id = "1"\nforum_channel_id = "10"\n'
-                'urgent_channel_id = "11"\ndigest_channel_id = "12"\n'
-                f'owner_user_id = "{OWNER}"\n',
+                # Les salons ne sont plus demandés (Q86) : le serveur et
+                # le premier administrateur suffisent.
+                f'[discord]\nguild_id = "1"\nowner_user_id = "{OWNER}"\n',
                 encoding='utf-8',
             )
             cfg = load_discord_cfg(str(toml))

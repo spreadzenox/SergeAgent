@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
-"""Bot Discord (H) : miroir temps réel des tickets (DB = vérité)."""
+"""Bot Discord : les tickets en message privé à chaque administrateur."""
 
 from __future__ import annotations
 
 from serge.discord.rest import (
     DiscordError,
     bot_token,
-    create_forum_post,
+    create_dm,
     delete_message,
     edit_message,
     get_channel,
     interaction_callback,
-    list_messages,
     send_message,
     verify_token,
 )
@@ -19,12 +18,11 @@ from serge.discord.rest import (
 __all__ = [
     'DiscordError',
     'bot_token',
-    'create_forum_post',
+    'create_dm',
     'delete_message',
     'edit_message',
     'get_channel',
     'interaction_callback',
-    'list_messages',
     'send_message',
     'verify_token',
 ]

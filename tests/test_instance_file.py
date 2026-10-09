@@ -186,9 +186,6 @@ class InstanceFileTests(unittest.TestCase):
         extra = (
             '[discord]\n'
             'guild_id = "123456789012345678"\n'
-            'forum_channel_id = "123456789012345679"\n'
-            'urgent_channel_id = "123456789012345680"\n'
-            'digest_channel_id = "123456789012345681"\n'
             'owner_user_id = "999988887777666555"\n'
         )
         with tempfile.TemporaryDirectory() as raw:
@@ -205,9 +202,6 @@ class InstanceFileTests(unittest.TestCase):
         extra = (
             '[discord]\n'
             'guild_id = "123456789012345678"\n'
-            'forum_channel_id = "123456789012345679"\n'
-            'urgent_channel_id = "123456789012345680"\n'
-            'digest_channel_id = "123456789012345681"\n'
             'owner_user_id = "999988887777666555"\n'
         )
         secrets = (

@@ -18,16 +18,10 @@ from serge.discord.rest import USER_AGENT
 from serge.voice.ws import WsClient, WsError
 
 GATEWAY_URL = 'wss://gateway.discord.gg/?v=10&encoding=json'
+# Les boutons et les fenêtres de saisie arrivent sans intention
+# particulière : le bot ne lit ni les messages ni les réactions.
 INTENT_GUILDS = 1 << 0
-INTENT_GUILD_MESSAGES = 1 << 9
-INTENT_GUILD_REACTIONS = 1 << 10
-INTENT_MESSAGE_CONTENT = 1 << 15
-DEFAULT_INTENTS = (
-    INTENT_GUILDS
-    | INTENT_GUILD_MESSAGES
-    | INTENT_GUILD_REACTIONS
-    | INTENT_MESSAGE_CONTENT
-)
+DEFAULT_INTENTS = INTENT_GUILDS
 
 
 class GatewayError(ValueError):

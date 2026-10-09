@@ -23,7 +23,15 @@ class TicketsRegistryTests(unittest.TestCase):
     def test_registre_p3(self) -> None:
         sections = PAGE_SECTIONS['p3']
         self.assertEqual(
-            sections, ['meta', 'tickets', 'diffs', 'metriques', 'digest']
+            sections,
+            [
+                'meta',
+                'tickets',
+                'diffs',
+                'metriques',
+                'admins_discord',
+                'types_tickets',
+            ],
         )
         for section in sections:
             self.assertIn(section, PROJECTORS)
@@ -215,8 +223,44 @@ class McTicketsTests(McBrowserCase):
         metriques = page.locator('[data-section="metriques"]')
         expect(metriques).to_contain_text('Backlog en cours : 3 ouverts')
         expect(metriques).to_contain_text('Taux d’approbation :')
-        digest = page.locator('[data-section="digest"]')
-        expect(digest).to_contain_text('Digest quotidien :')
+
+    def test_administrateurs_et_types_de_tickets(self) -> None:
+        """Ajouter puis retirer un administrateur Discord ; changer le délai
+        d'un type de ticket (décisions Q85 et Q86)."""
+        import sqlite3
+
+        from playwright.sync_api import expect
+
+        page = self._page_tickets()
+        admins = page.locator('[data-section="admins_discord"]')
+        expect(admins).to_contain_text('Aucun administrateur')
+        form = admins.locator('[data-admins="ajout"]')
+        form.locator('input[name="user_id"]').fill('123')
+        form.locator('button[type="submit"]').click()
+        expect(page.locator('.toast').last).to_contain_text('17 à 20 chiffres')
+        form.locator('input[name="user_id"]').fill('111122223333444455')
+        form.locator('input[name="name"]').fill('Clem')
+        form.locator('button[type="submit"]').click()
+        expect(admins).to_contain_text('Clem — 111122223333444455')
+        admins.get_by_role('button', name='Retirer').click()
+        page.locator('.modale').get_by_role('button', name='Retirer').click()
+        expect(admins).to_contain_text('Aucun administrateur')
+        types = page.locator('[data-section="types_tickets"]')
+        bloc = types.locator('[data-type-ticket="QNA"]')
+        expect(bloc).to_contain_text('aujourd’hui 3 j')
+        bloc.locator('input[name="expiry_minutes"]').fill('120')
+        bloc.get_by_role('button', name='Enregistrer').click()
+        expect(types.locator('[data-type-ticket="QNA"]')).to_contain_text(
+            'aujourd’hui 2 h'
+        )
+        conn = sqlite3.connect(self.db_path)
+        try:
+            delai = conn.execute(
+                "SELECT expiry_minutes FROM ticket_types WHERE id='QNA'"
+            ).fetchone()[0]
+        finally:
+            conn.close()
+        self.assertEqual(delai, 120)
 
     def test_memory_pagination_front(self) -> None:
         from playwright.sync_api import expect

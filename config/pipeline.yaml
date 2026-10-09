@@ -436,6 +436,40 @@ tools:
         - {id: active, table: contact_addresses, column: active, fixed: '1'}
       params:
         - {name: contact_id, required: true, description: Le numéro du contact.}
+  - id: brouillon_de_l_envoi
+    title: Le brouillon de l'envoi
+    doc: Le canal, l'objet et le texte d'un envoi qui attend.
+    capability: db_read
+    read:
+      tables: [touches]
+      columns:
+        - {table: touches, name: channel}
+        - {table: touches, name: subject}
+        - {table: touches, name: body}
+      filters:
+        - {id: envoi, table: touches, column: id, param: touch_id}
+      params:
+        - {name: touch_id, required: true, description: Le numéro de l'envoi.}
+  - id: envoi_en_attente
+    title: L'envoi qui attend
+    doc: >-
+      À qui et par où part un envoi qui attend un humain : son contact, son
+      business, son canal, son adresse, son objet et le message auquel il
+      répond. Sert à lui préparer une réponse d'attente.
+    capability: db_read
+    read:
+      tables: [touches]
+      columns:
+        - {table: touches, name: contact_id}
+        - {table: touches, name: venture_id}
+        - {table: touches, name: channel}
+        - {table: touches, name: address}
+        - {table: touches, name: subject}
+        - {table: touches, name: reply_to}
+      filters:
+        - {id: envoi, table: touches, column: id, param: touch_id}
+      params:
+        - {name: touch_id, required: true, description: Le numéro de l'envoi.}
   - id: but_de_l_appel
     title: Le but de l'appel
     doc: >-
@@ -547,6 +581,10 @@ writable_tables:
       - {name: body, description: Le texte.}
       - {name: reply_to, description: Le message reçu auquel il répond.}
       - {name: followup_of, description: L'envoi qu'il relance.}
+      - {name: needs_owner, description: 'Pourquoi un humain doit le voir avant qu''il parte (vide : il part seul).'}
+      - {name: owner_question, description: La question du contact sur le produit sans réponse dans la fiche.}
+      - {name: owner_ok_at, description: Quand un humain l'a validé.}
+      - {name: last_error, description: 'La raison d''un refus, d''une annulation ou d''une attente.'}
   - table: canaux
     update: true
     description: Les canaux de Serge.
@@ -610,6 +648,10 @@ status_transitions:
   - {table: touches, column: status, from: '', to: pending}
   - {table: touches, column: status, from: '', to: to_write}
   - {table: touches, column: status, from: to_write, to: pending}
+  # Un envoi qui attend un humain part quand il est validé, ou est annulé
+  # (lot 8 bis, Q85).
+  - {table: touches, column: status, from: waiting_owner, to: pending}
+  - {table: touches, column: status, from: waiting_owner, to: cancelled}
   # L'étape d'un contact n'avance que dans un sens, d'après sa réponse.
   - {table: contacts, column: funnel_state, from: CONTACTING, to: ENGAGED}
   - {table: contacts, column: funnel_state, from: CONTACTING, to: INTENT}
@@ -1477,13 +1519,27 @@ invocations:
       - requests : les demandes sur le produit que contient le message, s'il
         y en a : un bug, une insatisfaction, une idée (une fonctionnalité
         qui manque).
+      - besoin_julien : vide si tu peux répondre seul. Sinon, en une phrase,
+        pourquoi un humain doit voir ta réponse avant qu'elle parte : une
+        question sur le produit à laquelle la fiche produit et les
+        questions fréquentes ne répondent pas, un prix, une date ou un
+        engagement que tu ne peux pas prendre, une proposition faite à
+        Serge (un partenariat, une offre), un échange tendu, ou un doute
+        réel. Écris quand même ton meilleur brouillon dans reply : Julien
+        l'enverra, le remplacera par sa réponse, ou te demandera de le
+        réécrire.
+      - question_produit : si le message pose une question sur le produit
+        à laquelle la fiche produit ne répond pas, cette question en une
+        phrase ; sinon vide. La réponse de Julien rejoindra les questions
+        fréquentes, et la fois suivante tu répondras seul.
 
       Règles :
       - Un refus : remercie poliment, sans insister.
       - Un rendez-vous : confirme-le.
       - Ne promets jamais une date, un prix ou une fonctionnalité absents de
         la fiche produit. Une fonctionnalité qui manque devient une demande
-        « idée ». En cas de doute, réponds sans t'engager.
+        « idée ». En cas de doute, réponds sans t'engager et remplis
+        besoin_julien.
       - Écris dans la langue du contact, simplement et brièvement.
       - Serge assume d'être un agent IA : ne prétends jamais être un humain.
     tools:
@@ -1518,6 +1574,8 @@ invocations:
       - {path: requests, type: list, required: false, description: Les demandes sur le produit.}
       - {path: requests.kind, type: choice, choices: [bug, insatisfaction, idée], description: La sorte de demande.}
       - {path: requests.text, type: text, description: 'La demande, en une phrase.'}
+      - &sortie_besoin_julien {path: besoin_julien, type: text, required: false, description: 'Vide si Serge répond seul ; sinon pourquoi un humain doit voir la réponse avant qu''elle parte.'}
+      - &sortie_question_produit {path: question_produit, type: text, required: false, description: 'La question du contact sur le produit à laquelle la fiche ne répond pas, ou vide.'}
     writes:
       - table: inbound_events
         operation: update
@@ -1543,6 +1601,8 @@ invocations:
           kind: {source: fixed, value: reply}
           status: {source: fixed, value: pending}
           reply_to: {source: task, value: inbound_id}
+          needs_owner: &valeur_besoin_julien {source: field, value: besoin_julien}
+          owner_question: &valeur_question_produit {source: field, value: question_produit}
       - table: contacts
         operation: update
         key: {column: id, source: task, value: contact_id}
@@ -1595,6 +1655,213 @@ invocations:
     priority: 50
     params:
       touch_id: {source: task, value: touch_id}
+
+  # --- Julien dans la conversation (lot 8 bis, décisions Q85 et Q86) ------
+  # Un envoi qui attend un humain ouvre un ticket « Conversation », envoyé
+  # en message privé à chaque administrateur. Chaque bouton est une réponse
+  # (table ticket_answers) qui réveille une de ces invocations.
+  - id: demander_julien
+    title: Demander à Julien
+    role: >-
+      Un envoi attend un humain : ouvre son ticket « Conversation » (le
+      business, le prospect, le fil, le brouillon, pourquoi Serge demande,
+      la question), ou le met à jour et le rouvre si le brouillon a été
+      réécrit. Sans LLM.
+    type: capability
+    capability: ask_owners
+    queue: conversations
+    priority: 90
+    params:
+      ticket_type: {source: fixed, value: CONVERSATION}
+      ref_table: {source: fixed, value: touches}
+      ref_id: {source: task, value: touch_id}
+      raison: {source: task, value: raison}
+      question: {source: task, value: question}
+      title: {source: fixed, value: Une réponse attend ton avis}
+
+  - id: valider_envoi
+    title: Envoyer le brouillon validé
+    role: >-
+      « Envoyer le brouillon » : l'envoi qui attendait est validé, et part.
+      Sans LLM.
+    type: capability
+    capability: echo
+    queue: conversations
+    priority: 80
+    params:
+      touch_id: {source: task, value: touch_id}
+    writes:
+      - table: touches
+        operation: update
+        key: {column: id, source: task, value: touch_id}
+        values:
+          status: {source: fixed, value: pending}
+          owner_ok_at: {source: now}
+
+  - id: envoyer_reponse_de_julien
+    title: Envoyer la réponse de Julien
+    role: >-
+      « Ma réponse » : le texte de Julien remplace le brouillon, et part tel
+      quel. Sans LLM.
+    type: capability
+    capability: echo
+    queue: conversations
+    priority: 80
+    params:
+      touch_id: {source: task, value: touch_id}
+      texte: {source: task, value: texte}
+    writes:
+      - table: touches
+        operation: update
+        key: {column: id, source: task, value: touch_id}
+        values:
+          body: {source: task, value: texte}
+          status: {source: fixed, value: pending}
+          owner_ok_at: {source: now}
+
+  - id: ajouter_question_frequente
+    title: Ajouter aux questions fréquentes
+    role: >-
+      « Ma réponse » à une question sur le produit : la question du contact
+      et la réponse de Julien rejoignent les questions fréquentes de la
+      fiche produit ; la fois suivante, Serge répond seul (Q50). Sans LLM.
+    type: capability
+    capability: echo
+    queue: conversations
+    priority: 70
+    params:
+      venture_id: {source: task, value: venture_id}
+      question: {source: task, value: question}
+      texte: {source: task, value: texte}
+    writes:
+      - table: product_faq
+        operation: insert
+        condition: {field: question, op: non_vide}
+        values:
+          venture_id: {source: task, value: venture_id}
+          question: {source: task, value: question}
+          answer: {source: task, value: texte}
+
+  - id: annuler_envoi
+    title: Ne rien envoyer
+    role: >-
+      « Ne rien envoyer » : l'envoi qui attendait est annulé. Sans LLM.
+    type: capability
+    capability: echo
+    queue: conversations
+    priority: 80
+    params:
+      touch_id: {source: task, value: touch_id}
+    writes:
+      - table: touches
+        operation: update
+        key: {column: id, source: task, value: touch_id}
+        values:
+          status: {source: fixed, value: cancelled}
+          last_error: {source: fixed, value: annulé par un administrateur}
+
+  - id: reecrire_brouillon
+    title: Réécrire un brouillon
+    role: >-
+      « Réécrire » : réécrit le brouillon qui attend selon les consignes de
+      Julien ; le nouveau brouillon revient dans le même ticket.
+    type: llm
+    model_tier: mid
+    queue: conversations
+    priority: 80
+    gets_serge_intro: true
+    max_tool_turns: 2
+    compare:
+      touches: false
+    prompt: |
+      Tu réécris, au nom de Serge, une réponse à un contact. Julien a lu le
+      brouillon et te donne ses consignes (dans les paramètres de la tâche,
+      « consignes ») : suis-les à la lettre.
+
+      Tu reçois le brouillon, le fil du contact, la fiche du business, la
+      fiche produit et ses questions fréquentes.
+
+      Rends reply : la nouvelle réponse, prête à partir, sans objet ni
+      signature d'humain. Écris dans la langue du contact, simplement et
+      brièvement. Ne promets jamais une date, un prix ou une fonctionnalité
+      absents de la fiche produit, sauf si Julien te le demande. Serge
+      assume d'être un agent IA.
+    tools:
+      - tool: brouillon_de_l_envoi
+        mode: given
+        label: Le brouillon
+        params:
+          touch_id: {source: task, value: touch_id}
+      - tool: fil_du_contact
+        mode: given
+        label: Le fil du contact
+        params:
+          contact_id: {source: task, value: contact_id}
+      - tool: fiche_business
+        mode: given
+        label: La fiche du business
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: fiche_produit
+        mode: given
+        label: La fiche produit
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: questions_produit
+        mode: given
+        label: Les questions fréquentes
+        params:
+          venture_id: {source: task, value: venture_id}
+    output:
+      - {path: reply, type: text, description: 'La nouvelle réponse, prête à partir.'}
+    writes:
+      - table: touches
+        operation: update
+        key: {column: id, source: task, value: touch_id}
+        values:
+          body: {source: field, value: reply}
+
+  - id: preparer_reponse_attente
+    title: Préparer une réponse d'attente
+    role: >-
+      Personne n'a répondu au ticket à temps : prépare une réponse
+      d'attente prudente au contact, par le même canal ; le ticket reste
+      ouvert et le brouillon attend toujours Julien (Q85). Sans LLM.
+    type: capability
+    capability: db_read
+    queue: conversations
+    priority: 80
+    params:
+      tool_id: {source: fixed, value: envoi_en_attente}
+      touch_id: {source: task, value: touch_id}
+    writes:
+      - table: touches
+        operation: insert
+        for_each: rows
+        values:
+          contact_id: {source: field, value: rows.contact_id}
+          venture_id: {source: field, value: rows.venture_id}
+          channel: {source: field, value: rows.channel}
+          address: {source: field, value: rows.address}
+          subject: {source: field, value: rows.subject}
+          reply_to: {source: field, value: rows.reply_to}
+          body: {source: fixed, value: 'Merci pour votre message. Je vérifie ce point et je reviens vers vous très vite.'}
+          kind: {source: fixed, value: reply}
+          status: {source: fixed, value: pending}
+          owner_ok_at: {source: now}
+
+  - id: passer_la_main
+    title: Passer à la suite (ticket)
+    role: >-
+      Le feu vert d'un ticket « Passage » : fait partir le passage qui
+      attendait un clic, comme le bouton de Mission Control (Q62). Sans
+      LLM.
+    type: capability
+    capability: pass_link
+    queue: conversations
+    priority: 90
+    params:
+      passage: {source: task, value: passage}
 
   - id: preparer_relances
     title: Préparer les relances
@@ -2111,6 +2378,32 @@ links:
     to: prevenir_julien_et_clem
     params:
       contact_id: {source: task, value: contact_id}
+  - id: envoi_valide_part
+    title: Le brouillon validé part
+    from: valider_envoi
+    to: envoyer_message
+    params:
+      touch_id: {source: task, value: touch_id}
+  - id: reponse_de_julien_part
+    title: La réponse de Julien part
+    from: envoyer_reponse_de_julien
+    to: envoyer_message
+    params:
+      touch_id: {source: task, value: touch_id}
+  - id: brouillon_reecrit_revient
+    title: Le brouillon réécrit revient dans le ticket
+    from: reecrire_brouillon
+    to: envoyer_message
+    params:
+      touch_id: {source: task, value: touch_id}
+  - id: reponse_attente_part
+    title: La réponse d'attente part
+    from: preparer_reponse_attente
+    to: envoyer_message
+    mode: per_row
+    write: 0
+    params:
+      touch_id: {source: row, value: id}
   - id: relance_a_rediger
     title: Chaque relance à faire est rédigée
     from: preparer_relances
@@ -2239,6 +2532,87 @@ triggers:
       channel: {source: row, value: channel}
       address: {source: row, value: address}
       subject: {source: row, value: subject}
+  - id: envoi_attend_julien
+    title: Un envoi attend un humain
+    invocation: demander_julien
+    event: row_written
+    table: touches
+    filter_column: status
+    filter_value: waiting_owner
+    params:
+      touch_id: {source: row, value: id}
+      raison: {source: row, value: last_error}
+      question: {source: row, value: owner_question}
+      version: {source: row, value: updated_at}
+  - id: julien_envoie_le_brouillon
+    title: « Envoyer le brouillon »
+    invocation: valider_envoi
+    event: row_written
+    table: ticket_answers
+    filter_column: acte
+    filter_value: envoyer_brouillon
+    params:
+      touch_id: {source: row, value: ref_id}
+  - id: julien_donne_sa_reponse
+    title: « Ma réponse »
+    invocation: envoyer_reponse_de_julien
+    event: row_written
+    table: ticket_answers
+    filter_column: acte
+    filter_value: ma_reponse
+    params:
+      touch_id: {source: row, value: ref_id}
+      texte: {source: row, value: text}
+  - id: reponse_de_julien_en_question_frequente
+    title: « Ma réponse » à une question sur le produit
+    invocation: ajouter_question_frequente
+    event: row_written
+    table: ticket_answers
+    filter_column: acte
+    filter_value: ma_reponse
+    params:
+      venture_id: {source: row, value: venture_id}
+      question: {source: row, value: question}
+      texte: {source: row, value: text}
+  - id: julien_demande_de_reecrire
+    title: « Réécrire »
+    invocation: reecrire_brouillon
+    event: row_written
+    table: ticket_answers
+    filter_column: acte
+    filter_value: reecrire
+    params:
+      touch_id: {source: row, value: ref_id}
+      consignes: {source: row, value: text}
+      contact_id: {source: row, value: contact_id}
+      venture_id: {source: row, value: venture_id}
+  - id: julien_n_envoie_rien
+    title: « Ne rien envoyer »
+    invocation: annuler_envoi
+    event: row_written
+    table: ticket_answers
+    filter_column: acte
+    filter_value: ne_rien_envoyer
+    params:
+      touch_id: {source: row, value: ref_id}
+  - id: personne_n_a_repondu
+    title: Le ticket d'une conversation a expiré
+    invocation: preparer_reponse_attente
+    event: row_written
+    table: ticket_answers
+    filter_column: acte
+    filter_value: reponse_attente
+    params:
+      touch_id: {source: row, value: ref_id}
+  - id: feu_vert_d_un_passage
+    title: « Passer à la suite » sur un ticket
+    invocation: passer_la_main
+    event: row_written
+    table: ticket_answers
+    filter_column: acte
+    filter_value: passer
+    params:
+      passage: {source: row, value: ref_id}
   - id: relances_regulieres
     title: Chercher les relances à faire
     invocation: preparer_relances
@@ -2507,6 +2881,64 @@ changes:
             jamais être un humain.
           - Pour finir, dis au revoir.
         to: *consigne_parler_au_telephone
+  - id: reponse_besoin_de_julien
+    why: >-
+      « Traiter une réponse » dit quand un humain doit voir sa réponse avant
+      qu'elle parte, et quelle question sur le produit reste sans réponse
+      (lot 8 bis, Q85).
+    table: invocations
+    where: {id: traiter_reponse}
+    set:
+      prompt:
+        from: |
+          Tu réponds, au nom de Serge, à un contact qui vient d'écrire à propos
+          d'un business que Serge teste.
+
+          Tu reçois le fil du contact (tout ce qui s'est dit, tous canaux
+          confondus, du plus ancien au plus récent), sa fiche, la fiche du
+          business, la fiche produit et ses questions fréquentes. Tu réponds au
+          dernier message du fil ; si le contact a écrit plusieurs fois depuis
+          la dernière réponse de Serge, réponds à tout d'un coup.
+
+          Le dernier message peut être la transcription d'un appel (canal
+          voice). La suite part alors par e-mail si Serge a son adresse, sinon
+          Serge rappelle : écris-la comme un e-mail court qui reprend ce qui a
+          été promis (un document, un devis), ou laisse-la vide s'il n'y a
+          rien à ajouter après l'appel.
+
+          Rends :
+          - reaction : ce que fait le message, l'une de : intéressé, question,
+            objection, rendez-vous, refus, désinscription, absence, hors sujet.
+            « désinscription » : la personne demande à ne plus être contactée
+            (« STOP », « ne m'écrivez plus »). « absence » : une réponse
+            automatique (congés, absence).
+          - reply : le texte de ta réponse, prêt à partir, sans objet ni
+            signature d'humain. Laisse-le vide pour une désinscription, une
+            absence ou un message hors sujet : Serge ne répond rien.
+          - requests : les demandes sur le produit que contient le message, s'il
+            y en a : un bug, une insatisfaction, une idée (une fonctionnalité
+            qui manque).
+
+          Règles :
+          - Un refus : remercie poliment, sans insister.
+          - Un rendez-vous : confirme-le.
+          - Ne promets jamais une date, un prix ou une fonctionnalité absents de
+            la fiche produit. Une fonctionnalité qui manque devient une demande
+            « idée ». En cas de doute, réponds sans t'engager.
+          - Écris dans la langue du contact, simplement et brièvement.
+          - Serge assume d'être un agent IA : ne prétends jamais être un humain.
+        to: *consigne_traiter_reponse
+  - id: reponse_sorties_besoin_de_julien
+    why: Les deux champs nouveaux de la réponse de « Traiter une réponse ».
+    invocation: traiter_reponse
+    add_outputs: [*sortie_besoin_julien, *sortie_question_produit]
+  - id: reponse_envoi_besoin_de_julien
+    why: L'envoi écrit garde pourquoi il attend un humain, et la question.
+    invocation: traiter_reponse
+    write: 2
+    add_write_values:
+      needs_owner: *valeur_besoin_julien
+      owner_question: *valeur_question_produit
   - id: voix_email_du_contact
     why: >-
       L'agent vocal reçoit au décrochage l'e-mail que Serge a pour la

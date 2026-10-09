@@ -166,6 +166,31 @@ def _echo(
     return dict(args)
 
 
+def _pass_link(
+    conn: sqlite3.Connection, _tool: str, args: dict[str, Any], _inv: str
+) -> dict[str, Any]:
+    from serge.interpreter.flow import pass_waiting
+
+    link_id, _, source_ref = str(args.get('passage') or '').partition(':')
+    task_id = pass_waiting(conn, link_id, source_ref)
+    if task_id is None:
+        return {'ok': False, 'code': 'rien_n_attend'}
+    return {'ok': True, 'task_id': task_id}
+
+
+def _ask_owners(
+    conn: sqlite3.Connection, _tool: str, args: dict[str, Any], inv: str
+) -> dict[str, Any]:
+    from serge.tickets.demander import ask_owners
+
+    def lancer(tool: str, tool_args: dict[str, Any]) -> dict[str, Any]:
+        return run_capability(
+            conn, tool_capability(conn, tool), tool, tool_args, inv
+        )
+
+    return ask_owners(conn, args, inv, lancer)
+
+
 RUNNERS: dict[str, Runner] = {
     'echo': _echo,
     'receive_messages': receive_messages,
@@ -177,6 +202,8 @@ RUNNERS: dict[str, Runner] = {
     'add_contact': add_contact,
     'add_contact_address': add_contact_address,
     'inform_owners': inform_owners,
+    'ask_owners': _ask_owners,
+    'pass_link': _pass_link,
     'db_read': _db_read,
     'web_search': _web_search,
     'memory_search': _memory_search,

@@ -50,7 +50,7 @@ secrets...). Exemples : “c’est quoi un trunk SIP ?”, “quel mode choisir 
 
 Le wizard enchaîne instance → features → **domaine public** (MC,
 `sms.<domaine>`, webhook Stripe) → téléphone → **discord (IDs
-serveur/forum/urgent/digest/owner)** → si Stripe : affichage de
+serveur et premier administrateur)** → si Stripe : affichage de
 `https://<domaine>/hooks/stripe` à coller au Dashboard → secrets (la
 clé OpenRouter n’est pas redemandée) → sidecar age → mandat optionnel,
 puis l’installeur construit : arbre vierge (`git archive`, jamais

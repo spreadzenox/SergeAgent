@@ -104,11 +104,12 @@ remplir la base, dans `config/pipeline.yaml` (le détail est dans
 On avance par lots. Un lot est un ensemble de tâches qui vont ensemble ;
 chaque lot se termine par des tests verts et un commit, puis Julien ou
 Clem regarde le résultat avant qu'on attaque le suivant. Les lots 1 à 9,
-sauf le 8 bis, sont faits (l'historique git en garde la trace) : le
-runner et le pipeline en base, l'étape 1, les conversations par e-mail et
-par téléphone (lot 8 : voir
-[`docs/LOT8_CONCEPTION.md`](docs/LOT8_CONCEPTION.md)), et la grille de
-points (lot 9, décision Q84).
+et le 8 bis, sont faits (l'historique git en garde la trace) : le runner
+et le pipeline en base, l'étape 1, les conversations par e-mail et par
+téléphone (lot 8 : voir
+[`docs/LOT8_CONCEPTION.md`](docs/LOT8_CONCEPTION.md)), Julien dans la
+conversation (lot 8 bis, décisions Q85 et Q86) et la grille de points
+(lot 9, décision Q84).
 
 - [ ] **Avant le lot 8 : les réglages en base.** Toute grandeur
   discutable se règle depuis Mission Control, sans réglage en double
@@ -116,10 +117,6 @@ points (lot 9, décision Q84).
   et Pipeline ; il reste à remettre, lot par lot, les réglages retirés
   parce que rien ne les lisait. Le détail est dans la partie « Avant le
   lot 8 » plus bas.
-- [ ] **Lot 8 bis « Julien dans la conversation ».** Les tickets qui font
-  attendre une réponse : « besoin de Julien », valider un brouillon, la
-  réponse de Julien qui repart dans la conversation, des tickets qu'on
-  comprend sans suivre Serge.
 - [ ] **Lot 10 « Concevoir et construire ».** On écrit le plan d'un POC
   et sa fiche produit, on les fait critiquer, Julien les valide, puis
   Serge construit et met en ligne, d'abord le POC, ensuite le vrai
@@ -175,50 +172,6 @@ discutable, qui peut un jour changer, se règle depuis Mission Control.**
   téléphone ») : son prompt, ses modèles, sa durée maximale et ses tours
   de secours ; ses heures d'appel et ses plafonds sont sur la page Policy
   (lot 8, PR 3).
-
----
-
-## Lot 8 bis — Julien dans la conversation
-
-Au lot 8, les réponses partent toutes seules (Q79). Ce lot ajoute ce qui
-fait attendre une réponse jusqu'à ce que Julien ou Clem ait répondu :
-
-- [ ] **« Besoin de Julien »** : « Traiter une réponse » dit aussi si
-  Julien doit intervenir, et pourquoi. Un oui ouvre un ticket et fait
-  attendre la tâche (`ask_julien_field`, et un statut « attend Julien »
-  sur les tâches). Un garde-fou qui bloque un envoi fait de même. Sans
-  réponse à l'expiration du ticket (délai réglable), Serge envoie une
-  réponse d'attente prudente, sans s'engager, et le ticket reste ouvert
-  (Q85).
-- [ ] **Valider un brouillon avant l'envoi**, au début ou pour un business
-  sensible : un interrupteur par business, éteint par défaut (Q85), et la
-  validation d'un lien par ticket, à côté du passage à la main construit
-  au lot 6 (bouton « Passer à la suite » sur la fiche du lien, fonction
-  `pass_waiting`) ; les deux portes restent ouvertes (Q62).
-- [ ] **La réponse de Julien repart dans la conversation** : trois
-  boutons, « Envoyer le brouillon », « Envoyer ma réponse telle quelle »,
-  « Réécrire avec mes consignes » (le nouveau brouillon revient dans le
-  même ticket, Q85). Quand la question portait sur le produit, sa réponse
-  s'ajoute aux questions fréquentes de la fiche produit : la fois
-  suivante, Serge répond seul (Q50).
-- [ ] **Des tickets qu'on comprend sans suivre Serge.** Quand un ticket
-  arrive, Julien et Clem ne connaissent ni le business ni le prospect.
-  Chaque ticket de conversation contient, dans cet ordre : le business en
-  trois lignes (nom, ce qu'il vend, prix, où il en est) ; le prospect (nom,
-  entreprise, où il en est) ; le fil, avec les derniers messages en
-  entier ; le brouillon de Serge ; pourquoi il a besoin d'aide et la
-  question précise ; un lien vers la fiche du prospect dans Mission
-  Control (Q50). Ouvrir un ticket est une capacité générale : le ticket
-  reprend ce que l'invocation a reçu et ce qu'elle a répondu, dans l'ordre
-  réglé en base, jamais un modèle de ticket par invocation.
-- [ ] **Les types de tickets en base** : leurs boutons, leur délai et leur
-  décision par défaut sont aujourd'hui dans `config/ticket-types.yaml`.
-  Ils passent en base, réglables dans Mission Control (Q85).
-- [ ] **Les administrateurs Discord en base** : on ajoute un
-  administrateur de Serge depuis Mission Control ; chaque ticket lui est
-  envoyé en message privé, comme à tous les autres. Dès qu'un
-  administrateur répond, le ticket est fermé instantanément pour tous, et
-  une ou plusieurs invocations sont réveillées pour réagir (Q85).
 
 ---
 
@@ -398,9 +351,10 @@ fait attendre une réponse jusqu'à ce que Julien ou Clem ait répondu :
   test. Le détail est dans
   [`docs/etapes/2-conception-poc.md`](docs/etapes/2-conception-poc.md).
   Cette tâche a besoin des liens entre invocations et de la construction
-  de l'étape 5. En attendant les tickets du lot 8 bis, le lien entre la
-  conception et la construction peut être réglé à la main : Julien donne
-  son feu vert avec « Passer à la suite », sur la fiche du lien dans MC.
+  de l'étape 5. Le lien entre la conception et la construction peut être
+  réglé à la main : Julien donne son feu vert par le ticket « Passage »
+  qu'il reçoit en message privé, ou avec « Passer à la suite » sur la
+  fiche du lien dans MC (lot 8 bis, Q62).
 
 ---
 

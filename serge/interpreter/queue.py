@@ -25,6 +25,8 @@ from serge.interpreter.tasks import next_task
 from serge.llm.runtime import budget_reached
 from serge.policy_store import policy_en_vigueur
 from serge.tickets import expire_due
+from serge.tickets.reponses import noter_reponse
+from serge.tickets.types import ticket_types
 
 
 def _queue_enabled(conn: sqlite3.Connection, queue_id: str) -> bool:
@@ -106,6 +108,22 @@ def resume_interrupted(conn: sqlite3.Connection, queue_id: str) -> list[str]:
     return ids
 
 
+def expirer_tickets(
+    conn: sqlite3.Connection, now: str | None = None
+) -> list[str]:
+    """Expire les tickets dépassés ; rend leurs ids.
+
+    La décision par défaut d'un ticket expiré est une réponse : elle
+    réveille les invocations réglées en base (décision Q85). Un type qui
+    reste ouvert (une conversation qui attend Julien) n'est pas fermé.
+    """
+    faits = []
+    for ticket_id, defaut in expire_due(conn, now, types=ticket_types(conn)):
+        noter_reponse(conn, ticket_id, defaut, '', 'serge')
+        faits.append(ticket_id)
+    return faits
+
+
 def run_forever(
     conn: sqlite3.Connection,
     queue_id: str,
@@ -122,7 +140,7 @@ def run_forever(
     """
     resume_interrupted(conn, queue_id)
     while True:
-        expire_due(conn)
+        expirer_tickets(conn)
         conn.commit()
         if process_one(conn, queue_id, timezone=timezone) is None:
             time.sleep(idle_seconds)

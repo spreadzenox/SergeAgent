@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Client REST Discord v10 (stdlib) : forum, messages, embeds, callbacks.
+"""Client REST Discord v10 (stdlib) : messages privés, messages, callbacks.
 
 Token en header uniquement, jamais logué. 429 = backoff borné puis erreur
 typée. Toutes les erreurs sont DiscordError à code routable.
@@ -186,29 +186,6 @@ def edit_message(
     return result
 
 
-def list_messages(
-    token: str,
-    channel_id: str,
-    limit: int = 5,
-    *,
-    base_url: str = DISCORD_API,
-) -> list[dict[str, Any]]:
-    """Liste les derniers messages (post starter, dédup...).
-
-    Raises:
-        DiscordError: Voir _request.
-    """
-    result = _request(
-        token,
-        'GET',
-        f'/channels/{channel_id}/messages?limit={max(1, min(50, limit))}',
-        base_url=base_url,
-    )
-    if not isinstance(result, list):
-        raise DiscordError('API: réponse liste messages invalide')
-    return [item for item in result if isinstance(item, dict)]
-
-
 def delete_message(
     token: str,
     channel_id: str,
@@ -229,24 +206,9 @@ def delete_message(
     )
 
 
-def create_forum_post(
-    token: str,
-    forum_id: str,
-    name: str,
-    message: dict[str, Any],
-    *,
-    base_url: str = DISCORD_API,
-) -> dict[str, Any]:
-    """Crée un post forum = thread + message initial (carte ticket).
-
-    Args:
-        token: Token bot.
-        forum_id: Canal forum.
-        name: Titre du post (≤ 100c).
-        message: {content?, embeds?, components?}.
-
-    Returns:
-        Le thread créé (id du post).
+def create_dm(token: str, user_id: str, *, base_url: str = DISCORD_API) -> str:
+    """Ouvre (ou retrouve) le message privé avec une personne ; rend l'id
+    du canal. La personne doit partager un serveur avec le bot.
 
     Raises:
         DiscordError: Voir _request.
@@ -254,17 +216,13 @@ def create_forum_post(
     result = _request(
         token,
         'POST',
-        f'/channels/{forum_id}/threads',
-        {
-            'name': name[:100],
-            'auto_archive_duration': 10080,
-            'message': message,
-        },
+        '/users/@me/channels',
+        {'recipient_id': user_id},
         base_url=base_url,
     )
     if not isinstance(result, dict) or not result.get('id'):
-        raise DiscordError('API: création post forum invalide')
-    return result
+        raise DiscordError('API: ouverture du message privé invalide')
+    return str(result['id'])
 
 
 def interaction_callback(
@@ -277,7 +235,8 @@ def interaction_callback(
 ) -> None:
     """Ack une interaction (pas de token bot : token d'interaction).
 
-    Types : 1 pong, 4 message, 5 deferred, 6 deferred update, 7 update.
+    Types : 1 pong, 4 message, 5 deferred, 6 deferred update, 7 update,
+    9 fenêtre de saisie.
 
     Raises:
         DiscordError: NETWORK/API (jamais AUTH : pas de secret ici).

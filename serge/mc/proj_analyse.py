@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Projecteurs P3 analyse : diffs, MEMORY paginé, métriques, digest."""
+"""Projecteurs P3 analyse : diffs, MEMORY paginé, métriques."""
 
 from __future__ import annotations
 
@@ -169,32 +169,6 @@ def project_metriques_tickets(
             'expires': int(guichet_kinds.get('transition.expired', 0)),
         },
         'reponse_mediane_s': medianes,
-    }
-
-
-def project_digest(
-    conn: sqlite3.Connection, policy: Mapping[str, Any], now: str
-) -> dict[str, Any]:
-    """Réglages digest/notifs : config pure (calcul prochain côté front).
-
-    Args:
-        conn: Connexion canon (ignorée, uniformité).
-        policy: Policy (tickets.digest_hour, windows.quiet_hours).
-        now: Maintenant ISO (ignoré : JAMAIS de temps signé).
-
-    Returns:
-        Dict {digest_hour, quiet_hours} (fail-soft).
-    """
-    _ = (conn, now)
-    tickets_cfg = policy.get('tickets') or {}
-    windows = policy.get('windows') or {}
-    if not isinstance(tickets_cfg, dict):
-        tickets_cfg = {}
-    if not isinstance(windows, dict):
-        windows = {}
-    return {
-        'digest_hour': tickets_cfg.get('digest_hour', 8),
-        'quiet_hours': windows.get('quiet_hours', []),
     }
 
 

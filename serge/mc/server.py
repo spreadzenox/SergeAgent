@@ -27,6 +27,7 @@ from serge.mc.auth import (
     revoke_session,
 )
 from serge.mc.coupe_actions import CoupeActionsMixin
+from serge.mc.discord_actions import DiscordActionsMixin
 from serge.mc.etape_actions import EtapeActionsMixin
 from serge.mc.llm_actions import LlmActionsMixin
 from serge.mc.pipeline_actions import PipelineActionsMixin
@@ -67,6 +68,7 @@ class McHandler(
     ApiViewsMixin,
     PolicyActionsMixin,
     CoupeActionsMixin,
+    DiscordActionsMixin,
     EtapeActionsMixin,
     PipelineActionsMixin,
     LlmActionsMixin,
@@ -359,6 +361,9 @@ class McHandler(
             '/owner/api/ticket/acte': self._api_ticket_acte,
             '/owner/api/ticket/item': self._api_ticket_item,
             '/owner/api/ticket/discuter': self._api_ticket_discuter,
+            '/owner/api/ticket/type': self._api_ticket_type,
+            '/owner/api/discord/admin': self._api_discord_admin,
+            '/owner/api/business/validation': self._api_business_validation,
             '/owner/api/memory/lesson': self._api_memory_lesson,
             '/owner/api/reglage': self._api_reglage,
             '/owner/api/reglage/precedent': self._api_reglage_precedent,

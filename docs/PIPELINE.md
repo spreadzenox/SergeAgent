@@ -301,8 +301,12 @@ absente, et la fiche des outils qui s'en servaient le signale.
 
 ## Qui décide quoi
 
-Serge agit seul par défaut. Julien valide dans un ticket Discord, où l'on
-peut discuter, les décisions suivantes :
+Serge agit seul par défaut. Un ticket part en message privé Discord à
+chaque administrateur de Serge (en base, ajoutés dans Mission Control) ;
+la première réponse, sur Discord ou dans Mission Control, le tranche pour
+tous, et réveille les invocations réglées en base pour ce bouton
+(décisions Q85 et Q86). Julien valide ainsi, et l'on peut discuter, les
+décisions suivantes :
 
 - le plan d'un POC et sa fiche produit, à l'étape 2 ; sans réponse sous
   48 heures, le plan s'applique ;
@@ -317,12 +321,16 @@ peut discuter, les décisions suivantes :
 - les leçons proposées par la consolidation, à l'étape 7 ; sans réponse
   sous 48 heures, elles sont acceptées.
 
-Après le lot 8, Serge ouvrira aussi un ticket quand il ne saura pas
-répondre à un prospect (lot « Julien dans la conversation » ; d'ici là,
-les réponses partent seules, décision Q79).
+Un lien réglé à la main dans Mission Control ouvre aussi un ticket
+« Passage » pour chaque passage qui attend : son feu vert fait passer,
+comme le bouton « Passer à la suite » de la fiche du lien (Q62).
+
+Serge ouvre enfin un ticket « Conversation » quand il ne sait pas
+répondre seul à un prospect (voir plus bas).
 Ce ticket doit être compréhensible par quelqu'un qui ne suit pas Serge : il
-contient le business en trois lignes, le prospect, le fil de la
-conversation, le brouillon de Serge et la question précise posée.
+contient, dans l'ordre réglé sur son type en base, le business, le
+prospect, le fil de la conversation, le brouillon de Serge, pourquoi il
+demande et la question précise posée (Q50).
 
 **La seule limite de Serge est la légalité.** Il ne trompe personne et
 assume d'être un agent IA.
@@ -355,6 +363,27 @@ Le circuit est décrit en base (lot 8, décision Q79) :
   7 jours après, sur le même canal ;
 - une désinscription bloque la personne partout, sur tous les canaux et
   pour tous les business, et un ticket prévient Julien et Clem.
+
+Julien dans la conversation (lot 8 bis, décisions Q50, Q85 et Q86) :
+
+- « Traiter une réponse » dit quand un humain doit voir sa réponse avant
+  qu'elle parte, et pourquoi : une question que la fiche produit ne
+  couvre pas, un prix ou une date qu'il ne peut pas promettre, une
+  proposition faite à Serge, un doute. Un business peut aussi demander
+  qu'on valide chaque brouillon (interrupteur sur sa fiche). L'envoi
+  attend alors un humain, et un ticket « Conversation » part à chaque
+  administrateur ;
+- quatre boutons : « Envoyer le brouillon » ; « Ma réponse », qui part
+  telle quelle et rejoint les questions fréquentes de la fiche produit
+  quand le contact avait posé une question sur le produit (la fois
+  suivante, Serge répond seul) ; « Réécrire », avec des consignes : le
+  nouveau brouillon revient dans le même ticket ; « Ne rien envoyer » ;
+- sans réponse dans le délai du type de ticket (24 heures au départ,
+  réglable sur la page Décisions), une réponse d'attente prudente part
+  au contact, et le ticket reste ouvert ;
+- un garde-fou qui bloque un envoi (une règle légale : désinscription,
+  pas d'accord, limite des 30 jours) annule l'envoi et prévient Julien et
+  Clem par un ticket d'information : un humain ne peut pas le lever.
 
 Le canal e-mail est branché : Gmail par l'outil `gog`, ou une boîte
 SMTP/IMAP, selon le fichier d'instance ; au plus 40 e-mails par jour (page

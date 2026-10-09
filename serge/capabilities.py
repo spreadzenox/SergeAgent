@@ -281,6 +281,32 @@ CAPABILITIES: tuple[Capability, ...] = (
             Param('contact_id', 'text', False, 'Le contact concerné.'),
         ),
     ),
+    Capability(
+        'ask_owners',
+        'Demander à Julien',
+        'Ouvre un ticket qui fait attendre, envoyé à chaque administrateur :'
+        ' il porte sur une ligne (un envoi qui attend), montre ce que son'
+        ' type de ticket nomme en base (le business, le prospect, le fil, le'
+        ' brouillon), puis pourquoi Serge demande et la question précise. Un'
+        ' ticket encore ouvert sur la même ligne est mis à jour et rouvert.',
+        'serge/tickets/demander.py',
+        (
+            Param('ticket_type', 'text', True, 'Le type de ticket.'),
+            Param('ref_table', 'text', True, 'La table de la ligne.'),
+            Param('ref_id', 'text', True, 'La ligne dont parle le ticket.'),
+            Param('raison', 'text', True, 'Pourquoi Serge demande.'),
+            Param('question', 'text', False, 'La question précise.'),
+            Param('title', 'text', False, 'Le titre du ticket.'),
+        ),
+    ),
+    Capability(
+        'pass_link',
+        'Passer à la suite',
+        'Fait partir un passage qui attendait un clic (un lien réglé à la'
+        ' main), comme le bouton « Passer à la suite » de Mission Control.',
+        'serge/interpreter/flow.py',
+        (Param('passage', 'text', True, 'Le passage : « lien:source ».'),),
+    ),
 )
 
 

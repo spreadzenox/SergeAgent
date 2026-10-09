@@ -37,11 +37,12 @@ HOST_ONLY_FEATURES = frozenset({'metagrok'})
 PHONE_VOICE_TRANSPORTS = frozenset({'udp', 'tcp', 'tls'})
 PHONE_VOICE_DEFAULT_TRANSPORT = 'tls'
 DISCORD_SNOWFLAKE_RE = re.compile(r'^[0-9]{5,25}$')
+# Le serveur Discord de Serge (les administrateurs doivent y être pour
+# recevoir ses messages privés) et le premier administrateur, repris une
+# fois en base (décision Q86). Les autres administrateurs s'ajoutent dans
+# Mission Control.
 DISCORD_ID_KEYS = (
     'guild_id',
-    'forum_channel_id',
-    'urgent_channel_id',
-    'digest_channel_id',
     'owner_user_id',
 )
 SMS_RECEIVER_UPSTREAM = '127.0.0.1:8787'
