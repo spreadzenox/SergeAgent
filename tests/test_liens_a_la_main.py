@@ -7,6 +7,10 @@ pas lancée : le passage attend, avec son paramètre ``cycle_id``. Julien
 clique sur « Passer à la suite » : la tâche est créée avec ce paramètre,
 et le passage ne peut plus être relancé. Puis il remet le lien en
 automatique.
+
+Le passage qui attend ouvre aussi un ticket « Passage », envoyé à chaque
+administrateur (Q62) : son feu vert fait passer ; un passage fait depuis
+Mission Control annule le ticket.
 """
 
 from __future__ import annotations
@@ -28,6 +32,7 @@ from serge.interpreter.flow import (  # noqa: E402
 )
 from serge.interpreter.queue import process_one  # noqa: E402
 from serge.mc.proj_objet import project_objet  # noqa: E402
+from serge.tickets.admins import add_admin  # noqa: E402
 from tests.mc_server_case import McBrowserCase  # noqa: E402
 
 NOW = '2026-09-28T10:00:00+00:00'
@@ -115,6 +120,52 @@ class PasserALaMainTests(unittest.TestCase):
         champs = {c['k']: c['v'] for c in fiche['champs']}
         self.assertEqual(champs['Passage automatique'], 'oui')
         self.assertEqual(_taches(self.conn), [])
+
+
+class TicketDePassageTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.conn = sqlite3.connect(':memory:')
+        self.conn.row_factory = sqlite3.Row
+        self.addCleanup(self.conn.close)
+        init_schema(self.conn)
+        self.ref = _ouvrir_un_cycle_a_la_main(self.conn)
+
+    def _ticket(self) -> tuple:
+        return tuple(
+            self.conn.execute(
+                'SELECT id, state, ref_table, ref_id, payload_json FROM'
+                " tickets WHERE type='PASSAGE'"
+            ).fetchone()
+        )
+
+    def test_un_ticket_s_ouvre_et_son_feu_vert_fait_passer(self) -> None:
+        from serge.discord.interactions import route_interaction
+
+        ticket_id, state, table, ref, payload = self._ticket()
+        self.assertEqual(
+            (state, table, ref),
+            ('OPEN', 'link_passages', f'{LIEN}:{self.ref}'),
+        )
+        self.assertIn('cycle_id = ', payload)
+        add_admin(self.conn, '111122223333444455', 'Clem', 'test')
+        resultat = route_interaction(
+            self.conn,
+            {
+                'id': '8001',
+                'type': 3,
+                'user': {'id': '111122223333444455'},
+                'data': {'custom_id': f't:{ticket_id}:passer'},
+            },
+        )
+        self.assertEqual(resultat['status'], 'applied')
+        self.conn.commit()
+        process_one(self.conn, 'conversations', now=NOW)
+        self.assertEqual([r[0] for r in _taches(self.conn)], ['explorer_web'])
+        self.assertEqual(self._ticket()[1], 'APPROVED')
+
+    def test_passer_dans_mission_control_annule_le_ticket(self) -> None:
+        self.assertIsNotNone(pass_waiting(self.conn, LIEN, self.ref))
+        self.assertEqual(self._ticket()[1], 'CANCELLED')
 
 
 class PasserALaMainFrontTests(McBrowserCase):

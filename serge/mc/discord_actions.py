@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""MC : les administrateurs Discord et les types de tickets (Q85, Q86).
+"""MC : Julien dans la conversation (lot 8 bis, décisions Q85 et Q86).
 
 - POST /owner/api/discord/admin : ajouter un administrateur (identifiant
   Discord et nom) ou le retirer ;
 - POST /owner/api/ticket/type : changer le délai, la décision par défaut
-  annoncée ou les boutons d'un type de ticket.
+  annoncée ou les boutons d'un type de ticket ;
+- POST /owner/api/business/validation : chaque brouillon d'un business
+  attend, ou non, la validation d'un humain avant de partir.
 """
 
 from __future__ import annotations
@@ -103,3 +105,34 @@ class DiscordActionsMixin(_Base):
                 payload={'acte': 'ticket_type', 'id': ident},
             )
         self._send_json(200, {'ok': True})
+
+    def _api_business_validation(self) -> None:
+        if not self._require_owner():
+            return
+        body = self._json_body()
+        venture = str((body or {}).get('venture_id') or '')
+        actif = (body or {}).get('actif')
+        if not venture or not isinstance(actif, bool):
+            self._refus(
+                400,
+                'Business et choix requis.',
+                'venture_id',
+                'Envoie {"venture_id": "…", "actif": true}.',
+            )
+            return
+        with self._db() as conn:
+            cursor = conn.execute(
+                'UPDATE ventures SET validate_drafts=? WHERE id=?',
+                (int(actif), venture),
+            )
+            if cursor.rowcount != 1:
+                self._refus(404, 'Business inconnu.', 'venture_id', venture)
+                return
+            append_event(
+                conn,
+                actor='owner',
+                type='venture.validate_drafts',
+                venture_id=venture,
+                payload={'actif': actif},
+            )
+        self._send_json(200, {'ok': True, 'actif': actif})

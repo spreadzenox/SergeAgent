@@ -127,3 +127,39 @@ types:
     default_detail: Pas d'encaissement sans ouverture explicite.
     fields: [prix_owné_version, catalogue_ids, e2e_sandbox_vert, canary_1eur_receipt]
     buttons: [ouvrir, refuser, discuter]
+  CONVERSATION:
+    role: >-
+      Serge a besoin d'un humain pour répondre à un prospect : un brouillon
+      à valider, une question que la fiche produit ne couvre pas, un
+      engagement qu'il ne peut pas prendre (lot 8 bis, Q50 et Q85).
+    render: {color: 3447003, emoji: "💬"}
+    urgency: normale
+    expiry_hours: 24
+    default: reponse_attente
+    default_detail: >-
+      Serge envoie une réponse d'attente prudente au contact ; le ticket
+      reste ouvert.
+    # Expiré, le ticket n'est pas fermé : sa décision par défaut (la
+    # réponse d'attente) s'applique une fois, et il attend toujours.
+    rester_ouvert: true
+    # Ce que montre le ticket, dans cet ordre : des outils en base, et la
+    # colonne de l'envoi que chacun reçoit (Q50).
+    contenu:
+      - {label: Le business, tool: fiche_business, params: {venture_id: venture_id}}
+      - {label: Le prospect, tool: fiche_contact, params: {contact_id: contact_id}}
+      - {label: Le fil, tool: fil_du_contact, params: {contact_id: contact_id}}
+      - {label: Le brouillon de Serge, tool: brouillon_de_l_envoi, params: {touch_id: id}}
+    fields: [Le business, Le prospect, Le fil, Le brouillon de Serge, Pourquoi, La question]
+    buttons: [envoyer_brouillon, ma_reponse, reecrire, ne_rien_envoyer]
+  PASSAGE:
+    role: >-
+      Un lien réglé à la main attend un feu vert : passer à l'invocation
+      suivante, avec ces paramètres (Q62). Le bouton « Passer à la suite »
+      de Mission Control reste ; le premier qui passe l'emporte.
+    render: {color: 15844367, emoji: "🚦"}
+    urgency: normale
+    expiry_hours: null
+    default: attend
+    default_detail: Le passage attend un feu vert, sans limite de temps.
+    fields: [Le lien, Ce qui passe]
+    buttons: [passer, ne_pas_passer]

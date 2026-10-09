@@ -95,11 +95,28 @@ def _venture(conn: sqlite3.Connection, ident: str) -> dict | None:
             for t in txs
         ]
     )
+    # Chaque brouillon de ce business attend-il un humain (Q85) ?
+    valide = bool(row['validate_drafts'])
+    bascule = {
+        'libelle': 'Ne plus valider les brouillons'
+        if valide
+        else 'Valider chaque brouillon',
+        'route': '/owner/api/business/validation',
+        'charge': {'venture_id': ident, 'actif': not valide},
+        'confirmer': (
+            'Les brouillons partiront seuls ; Serge demandera encore quand'
+            ' il a un doute.'
+            if valide
+            else 'Chaque brouillon de ce business ouvrira un ticket, envoyé'
+            ' à chaque administrateur, et attendra sa validation.'
+        ),
+    }
     return {
         'type': 'venture',
         'id': ident,
         'titre': row['name'] or ident,
         'pourquoi': 'Une idée de business, de sa formulation à ses clients.',
+        'actions': [bascule],
         'champs': _champs(
             [
                 (
@@ -109,6 +126,10 @@ def _venture(conn: sqlite3.Connection, ident: str) -> dict | None:
                 (
                     'Serge peut avancer tout seul',
                     'oui' if row['schedulable'] else 'non',
+                ),
+                (
+                    'Chaque brouillon attend un humain',
+                    'oui' if valide else 'non (Serge demande s’il a un doute)',
                 ),
                 (
                     'Points',

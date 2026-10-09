@@ -163,7 +163,7 @@ class TicketTests(unittest.TestCase):
         )
         publish(self.connection, future)
         expired = expire_due(self.connection, NOW)
-        self.assertEqual(expired, [ticket_id])
+        self.assertEqual(expired, [(ticket_id, 'refus_conservateur')])
         self.assertEqual(self._col(ticket_id, 'state'), 'EXPIRED')
         self.assertEqual(self._col(future, 'state'), 'OPEN')
         last = self.connection.execute(

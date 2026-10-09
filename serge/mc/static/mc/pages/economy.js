@@ -106,6 +106,7 @@ const CANAUX = {email: 'e-mail', voice: 'appel'};
 const SORTES = {first: 'premier message', reply: 'réponse', followup: 'relance'};
 const STATUTS = {
   to_write: 'à rédiger',
+  waiting_owner: 'attend un humain',
   pending: 'à envoyer',
   sending: 'en cours d’envoi',
   sent: 'parti',

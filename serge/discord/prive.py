@@ -6,9 +6,10 @@ La base est la vérité ; le bot la recopie à chaque tour :
 - un ticket ouvert part en message privé à chaque administrateur ajouté
   avant lui (les tickets plus anciens restent dans Mission Control), avec
   notification, à toute heure ;
-- dès qu'il change d'état (tranché sur Discord ou dans Mission Control,
-  expiré, annulé), sa carte est mise à jour chez tous : boutons morts, et
-  qui l'a tranché.
+- dès qu'il change (tranché sur Discord ou dans Mission Control, expiré,
+  annulé, ou un nouveau brouillon après « Réécrire »), sa carte est mise
+  à jour chez tous ; tranché, ses boutons sont morts, et elle dit qui l'a
+  tranché.
 
 Un message qui ne part pas (la personne n'est pas sur le serveur, ou
 refuse les messages privés) est réessayé après ``RETRY_MINUTES``.
@@ -35,8 +36,12 @@ from serge.tickets.admins import admin_name, admins
 from serge.tickets.types import ticket_types
 
 RETRY_MINUTES = 10
-# L'état d'un message qui n'est pas parti.
+# L'état d'un message qui n'est pas parti, et d'une carte qui n'a pas pu
+# être modifiée (réessayée après RETRY_MINUTES).
 ECHEC = 'ECHEC'
+ECHEC_MODIF = 'ECHEC_MODIF'
+# La version d'un ticket : son état et sa dernière mise à jour.
+VERSION = "t.state || '@' || t.updated_at"
 VERDICTS = {
     'APPROVED': 'Approuvé',
     'REJECTED': 'Rejeté',
@@ -108,14 +113,16 @@ def _carte(
 def _a_envoyer(
     conn: sqlite3.Connection, now_iso: str
 ) -> list[tuple[str, str, str]]:
-    """Les (ticket, administrateur, état) qui n'ont pas encore leur message."""
+    """Les (ticket, administrateur, version) qui n'ont pas encore leur
+    message ; la version d'un ticket est son état et sa dernière mise à
+    jour : une carte suit chaque changement, même de contenu."""
     retry = (
         datetime.fromisoformat(now_iso) - timedelta(minutes=RETRY_MINUTES)
     ).isoformat()
     out = []
     for admin in admins(conn):
-        for ticket_id, state in conn.execute(
-            'SELECT t.id, t.state FROM tickets t'
+        for ticket_id, version in conn.execute(
+            f'SELECT t.id, {VERSION} FROM tickets t'
             " WHERE t.state IN ('OPEN','DISCUSSING') AND t.created_at>=?"
             ' AND NOT EXISTS (SELECT 1 FROM ticket_messages m'
             ' WHERE m.ticket_id=t.id AND m.user_id=?'
@@ -123,7 +130,7 @@ def _a_envoyer(
             ' ORDER BY t.created_at',
             (admin['added_at'], admin['user_id'], ECHEC, retry),
         ).fetchall():
-            out.append((str(ticket_id), admin['user_id'], str(state)))
+            out.append((str(ticket_id), admin['user_id'], str(version)))
     return out
 
 
@@ -135,14 +142,14 @@ def deliver(
     messages envoyés ou modifiés."""
     moment = now_iso or utcnow()
     count = 0
-    for ticket_id, user_id, state in _a_envoyer(conn, moment):
+    for ticket_id, user_id, version in _a_envoyer(conn, moment):
         carte = _carte(conn, ticket_id, moment)
         if carte is None:
             continue
         try:
             channel = create_dm(token, user_id)
             message = send_message(token, channel, carte)
-            values = (channel, str(message.get('id') or ''), state)
+            values = (channel, str(message.get('id') or ''), version)
         except DiscordError:
             values = ('', '', ECHEC)
         conn.execute(
@@ -158,10 +165,11 @@ def deliver(
     retry = (
         datetime.fromisoformat(moment) - timedelta(minutes=RETRY_MINUTES)
     ).isoformat()
-    for ticket_id, user_id, channel, message_id in conn.execute(
-        'SELECT m.ticket_id, m.user_id, m.channel_id, m.message_id'
-        ' FROM ticket_messages m JOIN tickets t ON t.id=m.ticket_id'
-        " WHERE m.message_id<>'' AND m.shown_state<>t.state"
+    for ticket_id, user_id, channel, message_id, version in conn.execute(
+        'SELECT m.ticket_id, m.user_id, m.channel_id, m.message_id,'
+        f' {VERSION} FROM ticket_messages m JOIN tickets t'
+        " ON t.id=m.ticket_id WHERE m.message_id<>''"
+        f' AND m.shown_state<>{VERSION}'
         ' AND (t.updated_at>m.updated_at OR m.updated_at<=?)',
         (retry,),
     ).fetchall():
@@ -170,19 +178,19 @@ def deliver(
             continue
         try:
             edit_message(token, str(channel), str(message_id), carte)
-            shown = '(SELECT state FROM tickets WHERE id=?)'
+            montre = True
         except DiscordError:
-            shown = 'shown_state'
+            montre = False
         conn.execute(
-            f'UPDATE ticket_messages SET shown_state={shown}, updated_at=?'
+            'UPDATE ticket_messages SET shown_state=?, updated_at=?'
             ' WHERE ticket_id=? AND user_id=?',
             (
-                *((ticket_id,) if shown != 'shown_state' else ()),
+                str(version) if montre else ECHEC_MODIF,
                 moment,
                 ticket_id,
                 user_id,
             ),
         )
         conn.commit()
-        count += shown != 'shown_state'
+        count += montre
     return count

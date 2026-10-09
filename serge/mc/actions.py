@@ -20,7 +20,8 @@ from serge.tickets import (
     set_item,
     tout_approuver,
 )
-from serge.tickets.acts import APPROVE, REJECT
+from serge.tickets.acts import APPROVE, EDITER, REJECT, REPONDRE
+from serge.tickets.reponses import noter_reponse
 from serge.tickets.shared import TicketError, fetch_ticket, record_event
 from serge.tickets.types import ticket_types
 
@@ -30,13 +31,17 @@ MAX_JSON_BYTES = 65536
 ACTES_TICKET = {
     'approuver': 'APPROVED',
     'rejeter': 'REJECTED',
-    'editer': 'EDITED',
+    **{act: 'EDITED' for act in EDITER},
     **{act: 'APPROVED' for act in APPROVE},
     **{act: 'REJECTED' for act in REJECT},
-    'choix_qcm': 'APPROVED',
-    'reponse_libre': 'APPROVED',
+    **{act: 'APPROVED' for act in REPONDRE},
+    # « Réécrire » ne tranche pas : le ticket passe en discussion, et le
+    # nouveau brouillon y revient (Q85).
+    'reecrire': 'DISCUSSING',
     'accuse_reception': 'ACK',
 }
+# Les actes qui demandent un texte (la note).
+ACTES_TEXTE = EDITER | REPONDRE | {'reecrire'}
 
 ACTES_ITEM = {'garder': 'keep', 'modifier': 'edit', 'jeter': 'drop'}
 
@@ -131,10 +136,7 @@ class ActionsMixin(_Base):
                 'Utilise un des actes proposés sur la carte du ticket.',
             )
             return
-        if (
-            acte in {'editer', 'choix_qcm', 'reponse_libre'}
-            and not note.strip()
-        ):
+        if acte in ACTES_TEXTE and not note.strip():
             self._refus(
                 400,
                 'Note ou réponse requise.',
@@ -175,6 +177,11 @@ class ActionsMixin(_Base):
                     record_event(
                         conn, ticket_id, 'owner', 'mc.accuse_reception'
                     )
+                elif outcome == 'DISCUSSING':
+                    discuss(conn, ticket_id)
+                    record_event(
+                        conn, ticket_id, 'owner', 'mc.fil', {'message': note}
+                    )
                 else:
                     if acte == 'tout_approuver':
                         tout_approuver(conn, ticket_id)
@@ -182,6 +189,8 @@ class ActionsMixin(_Base):
             except TicketError as exc:
                 self._refus_ticket(exc, 'Ticket')
                 return
+            # La réponse réveille les invocations réglées en base (Q85).
+            noter_reponse(conn, ticket_id, acte, note, 'owner')
             if decision:
                 record_event(
                     conn,
@@ -378,6 +387,7 @@ class ActionsMixin(_Base):
                 'mc.fil',
                 {'decision_id': decision, 'message': message},
             )
+            noter_reponse(conn, ticket_id, 'discuter', message, 'owner')
             append_event(
                 conn,
                 actor='owner',

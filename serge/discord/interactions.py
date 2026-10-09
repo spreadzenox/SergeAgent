@@ -16,10 +16,11 @@ import sqlite3
 from collections.abc import Mapping
 from typing import Any
 
-from serge.tickets.acts import APPROVE, REJECT
+from serge.tickets.acts import APPROVE, DISCUTER, EDITER, REJECT, REPONDRE
 from serge.tickets.admins import is_admin
 from serge.tickets.items import set_item, tout_approuver
 from serge.tickets.lifecycle import decide, discuss
+from serge.tickets.reponses import noter_reponse
 from serge.tickets.shared import TicketError, already_applied, record_event
 
 ITEM_STATES = {'garder': 'keep', 'modifier': 'edit', 'jeter': 'drop'}
@@ -31,6 +32,8 @@ SAISIES = {
     'choix_qcm': ('Autre réponse', 'Ta réponse'),
     'discuter': ('Discuter', 'Ton message'),
     'discuter_fil': ('Discuter', 'Ton message'),
+    'ma_reponse': ('Ta réponse au contact', 'Le message qui partira'),
+    'reecrire': ('Réécrire le brouillon', 'Tes consignes à Serge'),
 }
 # Les types d'interaction Discord : un composant, une fenêtre envoyée.
 COMPOSANT = frozenset({2, 3})
@@ -132,11 +135,11 @@ def _saisie(
     """Applique le texte d'une fenêtre ; rend une erreur, ou None."""
     if not texte:
         return {'status': 'error', 'error': 'texte_vide'}
-    if action == 'editer':
+    if action in EDITER:
         decide(connection, ticket_id, 'EDITED', actor=actor, note=texte)
-    elif action in {'reponse_libre', 'choix_qcm'}:
+    elif action in REPONDRE:
         decide(connection, ticket_id, 'APPROVED', actor=actor, note=texte)
-    elif action in {'discuter', 'discuter_fil'}:
+    elif action in DISCUTER:
         discuss(connection, ticket_id, actor=actor)
         record_event(
             connection, ticket_id, actor, 'discord.fil', {'message': texte}
@@ -230,6 +233,11 @@ def route_interaction(
         return {'status': 'error', 'error': str(exc)}
     if result is not None:
         return {**result, 'ticket_id': ticket_id, 'action': action}
+    # La réponse réveille les invocations réglées en base (Q85).
+    texte = _texte(data) if saisie else ''
+    if not saisie and action == 'choix_qcm':
+        texte = str((data.get('values') or [''])[0])
+    noter_reponse(connection, ticket_id, action, texte, actor)
     if decision_id:
         _stamp(
             connection,

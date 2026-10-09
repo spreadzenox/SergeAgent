@@ -5,6 +5,16 @@ Un envoi est écrit (statut ``pending``) avant de partir. Au moment de
 partir, dans cet ordre :
 
 1. déjà ``sent`` ou ``cancelled`` : rien ;
+1 bis. un humain doit le voir avant qu'il parte (décisions Q85 et Q86) :
+   l'invocation qui l'a écrit le demande (``needs_owner``, avec sa
+   raison), ou son business demande de valider chaque brouillon
+   (``ventures.validate_drafts``). L'envoi passe à ``waiting_owner`` et
+   les déclencheurs de ``touches`` sont prévenus : le pipeline en base
+   ouvre le ticket (« Demander à Julien »). Un envoi encore en attente qui
+   repasse ici (son brouillon vient d'être réécrit) prévient à nouveau :
+   le ticket est mis à jour. Un envoi validé par un humain
+   (``owner_ok_at``) part, et n'est annulé comme inutile que si la
+   personne s'est désinscrite ;
 2. ``sending`` (le programme s'est arrêté pendant un envoi) : on demande au
    canal s'il est parti (``confirm``). Parti : il est marqué ``sent``.
    Sinon il est envoyé ;
@@ -22,7 +32,9 @@ partir, dans cet ordre :
    message de ce canal (``channels.<canal>.reply_by``) : après un appel,
    par e-mail si Serge a l'adresse, sinon par un rappel (décision Q83) ;
 5. les garde-fous (``serge/guards``) : un envoi refusé est annulé, avec sa
-   raison ; un appel hors des heures d'appel attend le prochain créneau ;
+   raison, et Julien et Clem en sont prévenus par un ticket
+   d'information (un garde-fou légal ne se contourne pas) ; un appel hors
+   des heures d'appel attend le prochain créneau ;
    le plafond du jour du canal (``channels.<canal>.max_per_day``, page
    Policy) atteint, l'envoi attend le lendemain ; un canal qui ne peut pas
    maintenant (``ChannelLater``) fait attendre aussi ;
@@ -47,9 +59,11 @@ from serge.channels.base import ChannelError, ChannelLater, Outgoing
 from serge.db.store import append_event, utcnow
 from serge.funnels.contacts import normalise_value
 from serge.guards import Reason, check
+from serge.interpreter.flow import notify_rows_written
 from serge.interpreter.intro import serge_text
 from serge.interpreter.tasks import enqueue_task
 from serge.policy_store import policy_en_vigueur, setting_value
+from serge.tickets.inform import inform_owners
 
 OPTED_OUT = 'OPTED_OUT'
 
@@ -68,8 +82,10 @@ def _touch(conn: sqlite3.Connection, touch_id: str) -> dict[str, Any] | None:
     cursor = conn.execute(
         "SELECT t.*, COALESCE(c.funnel_state, '') AS funnel_state,"
         " COALESCE(i.message_ref, f.external_ref, '') AS reply_ref,"
-        " COALESCE(k.address_channel, '') AS address_channel"
+        " COALESCE(k.address_channel, '') AS address_channel,"
+        ' COALESCE(v.validate_drafts, 0) AS validate_drafts'
         ' FROM touches t LEFT JOIN contacts c ON c.id=t.contact_id'
+        ' LEFT JOIN ventures v ON v.id=t.venture_id'
         ' LEFT JOIN inbound_events i ON i.id=t.reply_to'
         ' LEFT JOIN touches f ON f.id=t.followup_of'
         ' LEFT JOIN canaux k ON k.id=t.channel WHERE t.id=?',
@@ -82,11 +98,18 @@ def _touch(conn: sqlite3.Connection, touch_id: str) -> dict[str, Any] | None:
 
 
 def _outdated(conn: sqlite3.Connection, touch: dict[str, Any]) -> str:
-    """Pourquoi l'envoi est devenu inutile, ou ``''``."""
+    """Pourquoi l'envoi est devenu inutile, ou ``''``.
+
+    Un envoi validé par un humain part même si le contact a écrit depuis
+    ou qu'une autre réponse (une réponse d'attente) est partie : seule une
+    désinscription l'arrête.
+    """
     state = str(touch['funnel_state'])
     kind = str(touch['kind'])
     if state == OPTED_OUT:
         return 'contact désinscrit'
+    if touch.get('owner_ok_at'):
+        return ''
     # Une étape où Serge n'écrit plus de lui-même (refus, client…, page
     # Policy) : plus de premier message ni de relance, mais on répond
     # encore à ce qu'il écrit.
@@ -133,6 +156,46 @@ def _set(
         rows=[('touches', touch['id']), ('contacts', touch['contact_id'])],
     )
     conn.commit()
+
+
+# Les statuts d'un envoi qu'un humain doit peut-être voir avant qu'il parte.
+WAITING_OR_PENDING = frozenset({'pending', 'waiting_owner'})
+
+
+def _besoin_humain(touch: dict[str, Any]) -> str:
+    """Pourquoi un humain doit voir l'envoi avant qu'il parte, ou ``''``.
+
+    Un envoi déjà validé (``owner_ok_at``) part sans attendre.
+    """
+    if touch.get('owner_ok_at'):
+        return ''
+    if str(touch.get('needs_owner') or '').strip():
+        return str(touch['needs_owner']).strip()
+    if int(touch.get('validate_drafts') or 0):
+        return 'Ce business demande de valider chaque brouillon avant l’envoi.'
+    if touch.get('status') == 'waiting_owner':
+        return str(touch.get('last_error') or 'En attente d’un humain.')
+    return ''
+
+
+def _prevenir_blocage(
+    conn: sqlite3.Connection, touch: dict[str, Any], reason: str, inv: str
+) -> None:
+    """Un garde-fou a bloqué l'envoi : Julien et Clem sont prévenus."""
+    inform_owners(
+        conn,
+        '',
+        {
+            'title': f'Envoi bloqué par un garde-fou ({reason})',
+            'text': (
+                f'Un envoi {touch["channel"]} n’est pas parti : {reason}.'
+                ' Un garde-fou légal ne se contourne pas ; le contact reste'
+                ' dans son fil.'
+            ),
+            'contact_id': str(touch['contact_id']),
+        },
+        inv,
+    )
 
 
 def _outgoing(conn: sqlite3.Connection, touch: dict[str, Any]) -> Outgoing:
@@ -233,7 +296,8 @@ def send_message(
 
     Rend le statut final de l'envoi : ``sent``, ``cancelled`` (devenu
     inutile, ou refusé par un garde-fou : la raison est dans
-    ``last_error``), ``failed`` (le canal a refusé le message) ou
+    ``last_error``), ``waiting_owner`` (un humain doit le voir avant : son
+    ticket est ouvert), ``failed`` (le canal a refusé le message) ou
     ``pending`` avec ``retry_at`` (il attend : le plafond du jour, ou le
     prochain créneau d'appel). Une panne imprévue fait échouer la tâche et
     l'envoi reste ``sending`` : la tâche relancée demandera au canal s'il
@@ -245,6 +309,14 @@ def send_message(
     status = str(touch['status'])
     if status in ('sent', 'cancelled'):
         return {'ok': True, 'status': status}
+    raison = _besoin_humain(touch) if status in WAITING_OR_PENDING else ''
+    if raison:
+        # Un humain doit le voir : le pipeline en base ouvre (ou met à jour)
+        # son ticket (décisions Q85 et Q86).
+        _set(conn, touch, 'waiting_owner', last_error=raison)
+        notify_rows_written(conn, 'touches', [str(touch['id'])])
+        conn.commit()
+        return {'ok': True, 'status': 'waiting_owner', 'reason': raison}
     if status == 'pending':
         reason = _outdated(conn, touch)
         if reason:
@@ -280,6 +352,8 @@ def send_message(
         if not verdict.allowed:
             reason = verdict.reason.value
             _set(conn, touch, 'cancelled', last_error=reason)
+            if not verdict.duplicate:
+                _prevenir_blocage(conn, touch, reason, inv)
             return {'ok': True, 'status': 'cancelled', 'reason': reason}
         later = _day_full(conn, str(touch['channel']))
         if later:

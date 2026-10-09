@@ -224,6 +224,12 @@ CATALOGUE: dict[str, tuple[str, str, str, str]] = {
         'Le bot Discord : un ticket tranché est mis à jour chez tous.',
         'shown_state : l’état du ticket que montre le message.',
     ),
+    'ticket_answers': (
+        'Chaque réponse à un ticket : le bouton, le texte, qui a répondu.',
+        'Discord, Mission Control, l’expiration (décision par défaut).',
+        'Les déclencheurs « une ligne est écrite » réveillent le pipeline.',
+        'acte : le bouton. Recopie ce dont parle le ticket (ref_id…).',
+    ),
     'lessons': (
         'Ce que Serge croit avoir appris. Candidate d’abord.',
         'consolidate, owner (confirmer / infirmer).',

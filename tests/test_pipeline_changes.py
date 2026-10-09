@@ -101,14 +101,20 @@ class ChangesTests(unittest.TestCase):
             'tool': 'fiche_contact',
             'mode': 'given',
             'label': 'Sa fiche',
-            'params': {'contact_id': {'source': 'task', 'value': 'contact_id'}},
+            'params': {
+                'contact_id': {'source': 'task', 'value': 'contact_id'}
+            },
         }
         self.conn.execute(
             "DELETE FROM invocation_tools WHERE invocation_id='explorer_web'"
             " AND tool_id='fiche_contact'"
         )
         changes = [
-            {'id': 'outil', 'invocation': 'explorer_web', 'add_tools': [outil]},
+            {
+                'id': 'outil',
+                'invocation': 'explorer_web',
+                'add_tools': [outil],
+            },
             {'id': 'absente', 'invocation': 'inconnue', 'add_tools': [outil]},
         ]
         apply_changes(self.conn, changes)
@@ -138,6 +144,38 @@ class ChangesTests(unittest.TestCase):
                 self.conn,
                 [{'id': 'mal', 'invocation': 'explorer_web', 'add_tools': {}}],
             )
+        # Les champs d'une réponse et les valeurs d'une écriture : une
+        # invocation ou une écriture absente est notée, une forme fausse
+        # est refusée.
+        apply_changes(
+            self.conn,
+            [
+                {
+                    'id': 'sortie_absente',
+                    'invocation': 'inconnue',
+                    'add_outputs': [{'path': 'x', 'type': 'text'}],
+                },
+                {
+                    'id': 'ecriture_absente',
+                    'invocation': 'explorer_web',
+                    'write': 99,
+                    'add_write_values': {'x': {'source': 'fixed'}},
+                },
+            ],
+        )
+        self.assertEqual(self._resultat('sortie_absente'), 'objet absent')
+        self.assertEqual(
+            self._resultat('ecriture_absente'), 'écriture absente'
+        )
+        for mauvais in (
+            {'add_outputs': [{'path': 'x'}]},
+            {'write': 'deux', 'add_write_values': {}},
+        ):
+            with self.assertRaises(PipelineSeedError, msg=mauvais):
+                apply_changes(
+                    self.conn,
+                    [{'id': 'mal2', 'invocation': 'explorer_web', **mauvais}],
+                )
 
     def test_une_modification_mal_ecrite_est_refusee(self) -> None:
         for mauvais in (

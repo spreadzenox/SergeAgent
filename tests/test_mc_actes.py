@@ -121,6 +121,95 @@ class TicketActeTests(McServerCase):
             conn.close()
         self.assertEqual(total, 1)
 
+    def test_reecrire_et_ma_reponse_depuis_mission_control(self) -> None:
+        """Les boutons d'une conversation, dans la page Décisions (Q85)."""
+        conn = open_db(self.db_path)
+        ticket_id = create_ticket(
+            conn,
+            load_ticket_types(),
+            'CONVERSATION',
+            'Une réponse attend ton avis',
+            {'Pourquoi': 'doute'},
+        )
+        publish(conn, ticket_id)
+        conn.commit()
+        conn.close()
+        cookie = self._auth_cookie()
+        status, _, _ = self._api_post(
+            '/owner/api/ticket/acte',
+            {'ticket_id': ticket_id, 'acte': 'ma_reponse', 'note': ''},
+            cookie,
+        )
+        self.assertEqual(status, 400)
+        status, _, _ = self._api_post(
+            '/owner/api/ticket/acte',
+            {'ticket_id': ticket_id, 'acte': 'reecrire', 'note': 'Plus court'},
+            cookie,
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(self._etat(ticket_id), 'DISCUSSING')
+        conn = open_db(self.db_path)
+        try:
+            reponse = conn.execute(
+                'SELECT acte, text, answered_by FROM ticket_answers'
+                ' WHERE ticket_id=?',
+                (ticket_id,),
+            ).fetchone()
+        finally:
+            conn.close()
+        self.assertEqual(tuple(reponse), ('reecrire', 'Plus court', 'owner'))
+
+    def test_valider_chaque_brouillon_d_un_business(self) -> None:
+        """L'interrupteur de la fiche d'un business (Q85)."""
+        from serge.mc.proj_objet import project_objet
+
+        conn = open_db(self.db_path)
+        conn.execute(
+            'INSERT INTO ventures(id, name, lifecycle, created_at,'
+            " updated_at) VALUES('v_val', 'Devis', 'TEST', 't', 't')"
+        )
+        conn.commit()
+        fiche = project_objet(conn, 'venture', 'v_val')
+        conn.close()
+        assert fiche is not None
+        action = fiche['actions'][0]
+        self.assertEqual(
+            (action['libelle'], action['charge']),
+            (
+                'Valider chaque brouillon',
+                {'venture_id': 'v_val', 'actif': True},
+            ),
+        )
+        cookie = self._auth_cookie()
+        status, _, _ = self._api_post(
+            action['route'], action['charge'], cookie
+        )
+        self.assertEqual(status, 200)
+        for charge, code in (
+            ({'venture_id': 'inconnu', 'actif': True}, 404),
+            ({'venture_id': 'v_val', 'actif': 'oui'}, 400),
+        ):
+            with self.subTest(charge=charge):
+                status, _, _ = self._api_post(action['route'], charge, cookie)
+                self.assertEqual(status, code)
+        conn = open_db(self.db_path)
+        try:
+            self.assertEqual(
+                conn.execute(
+                    "SELECT validate_drafts FROM ventures WHERE id='v_val'"
+                ).fetchone()[0],
+                1,
+            )
+            fiche = project_objet(conn, 'venture', 'v_val')
+        finally:
+            conn.close()
+        assert fiche is not None
+        champs = {c['k']: c['v'] for c in fiche['champs']}
+        self.assertEqual(champs['Chaque brouillon attend un humain'], 'oui')
+        self.assertEqual(
+            fiche['actions'][0]['libelle'], 'Ne plus valider les brouillons'
+        )
+
     def test_acte_refus(self) -> None:
         conn = open_db(self.db_path)
         ticket_id = self._ticket_ouvert(conn)

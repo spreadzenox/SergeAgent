@@ -31,6 +31,20 @@ BUTTONS: dict[str, dict[str, Any]] = {
     'refuser': {'label': 'Refuser', 'style': 4, 'emoji': '❌'},
     'accuse_reception': {'label': 'Bien reçu', 'style': 2, 'emoji': '👀'},
     'reponse_libre': {'label': 'Réponse libre', 'style': 2, 'emoji': '✍️'},
+    'envoyer_brouillon': {
+        'label': 'Envoyer le brouillon',
+        'style': 3,
+        'emoji': '✅',
+    },
+    'ma_reponse': {'label': 'Ma réponse', 'style': 1, 'emoji': '✍️'},
+    'reecrire': {'label': 'Réécrire', 'style': 2, 'emoji': '🔁'},
+    'ne_rien_envoyer': {
+        'label': 'Ne rien envoyer',
+        'style': 4,
+        'emoji': '🚫',
+    },
+    'passer': {'label': 'Passer à la suite', 'style': 3, 'emoji': '▶️'},
+    'ne_pas_passer': {'label': 'Ne pas passer', 'style': 4, 'emoji': '⏹️'},
     'garder': {'label': 'Garder', 'style': 3, 'emoji': '✅'},
     'modifier': {'label': 'Modifier', 'style': 2, 'emoji': '✏️'},
     'jeter': {'label': 'Jeter', 'style': 4, 'emoji': '🗑️'},
@@ -120,23 +134,35 @@ def _qcm_row(ticket_id: str, options: list[str], disabled: bool) -> dict:
     }
 
 
+# Ce qu'une carte Discord montre au plus : 1 024 caractères par champ, et
+# une marge sous les 6 000 de tout le message.
+CHAMP_MAX = 1024
+CARTE_MAX = 5000
+
+
+def _coupe(texte: str, place: int) -> str:
+    """Un texte trop long garde sa fin (les derniers messages d'un fil)."""
+    return texte if len(texte) <= place else '…' + texte[-(place - 1) :]
+
+
 def _fields(
     ticket: Mapping[str, Any], spec: Mapping[str, Any]
 ) -> list[dict[str, Any]]:
-    shown = [
-        f'**{key} :** {value}' for key, value in champs_carte(ticket, spec)
-    ]
-    fields = [
-        {
-            'name': f'{ticket.get("type")} • {ticket.get("state")}',
-            'value': ('\n'.join(shown) or '—')[:1024],
-        }
-    ]
-    # Qui a tranché, et comment : la même carte chez tous les
-    # administrateurs (décision Q85).
+    """Un champ par valeur du ticket, dans l'ordre de son type ; puis, s'il
+    est tranché, qui l'a tranché et comment (la même carte chez tous les
+    administrateurs, décision Q85)."""
+    reste = CARTE_MAX
+    fields = []
+    for key, value in champs_carte(ticket, spec):
+        place = min(CHAMP_MAX, reste)
+        if place < 20:
+            break
+        texte = _coupe(str(value) or '—', place)
+        reste -= len(texte)
+        fields.append({'name': str(key)[:256], 'value': texte})
     if ticket.get('tranche'):
         fields.append(
-            {'name': 'Tranché', 'value': str(ticket['tranche'])[:1024]}
+            {'name': 'Tranché', 'value': str(ticket['tranche'])[:CHAMP_MAX]}
         )
     return fields
 
@@ -179,6 +205,7 @@ def render_card(
     )
     embed: dict[str, Any] = {
         'title': title,
+        'description': f'{ticket.get("type")} • {ticket.get("state")}',
         'color': color,
         'fields': [
             {

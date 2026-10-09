@@ -43,7 +43,11 @@ def record_event(
 def fetch_ticket(
     connection: sqlite3.Connection, ticket_id: str
 ) -> sqlite3.Row:
-    row = connection.execute(
+    """Le ticket, lisible par le nom de ses colonnes quelle que soit la
+    connexion (une tâche peut ouvrir un ticket)."""
+    cursor = connection.cursor()
+    cursor.row_factory = sqlite3.Row
+    row = cursor.execute(
         'SELECT id, type, title, state, payload_json, expiry_at,'
         ' default_action, versions_json, thread_ref, created_at, updated_at'
         ' FROM tickets WHERE id=?',
@@ -75,17 +79,22 @@ def already_applied(
     return row is not None
 
 
+# Les champs d'une carte au plus (une conversation en a sept).
+CHAMPS_MAX = 8
+
+
 def champs_carte(
     ticket: Mapping[str, Any], spec: Mapping[str, Any]
 ) -> list[tuple[str, str]]:
-    """Champs carte §17 bruts (registre fields × payload) — E14/B3.
+    """Les champs d'une carte : ceux du type de ticket (``fields``), dans
+    leur ordre, avec leur valeur dans le ticket.
 
     Args:
         ticket: Ticket (payload dict ou payload_json str).
-        spec: Déclaration registre (fields).
+        spec: Type du ticket en base (fields).
 
     Returns:
-        Liste [(titre, texte)] (cap 5, vide = '—').
+        Liste [(titre, texte)] (au plus ``CHAMPS_MAX``, vide = '—').
     """
     payload = ticket.get('payload')
     if payload is None and isinstance(ticket.get('payload_json'), str):
@@ -96,7 +105,7 @@ def champs_carte(
     if not isinstance(payload, dict):
         payload = {}
     champs = []
-    for key in list(spec.get('fields') or [])[:5]:
+    for key in list(spec.get('fields') or [])[:CHAMPS_MAX]:
         value = payload.get(key, '—')
         if isinstance(value, (dict, list)):
             value = f'{len(value)} élément(s)'

@@ -363,6 +363,7 @@ class McHandler(
             '/owner/api/ticket/discuter': self._api_ticket_discuter,
             '/owner/api/ticket/type': self._api_ticket_type,
             '/owner/api/discord/admin': self._api_discord_admin,
+            '/owner/api/business/validation': self._api_business_validation,
             '/owner/api/memory/lesson': self._api_memory_lesson,
             '/owner/api/reglage': self._api_reglage,
             '/owner/api/reglage/precedent': self._api_reglage_precedent,
