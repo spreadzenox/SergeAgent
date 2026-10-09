@@ -388,10 +388,14 @@ recalculent avec le barème du moment : le changer recompte tous les
 business de la même façon. Seules les réponses comptent : Serge ne suit
 ni les ouvertures ni les clics de ses e-mails.
 
-On compare deux business avec deux chiffres : le total de leurs points
-(fiche du business, page Économie, bandeau d'En direct), et leurs points
-par euro dépensé (à venir : le coût des modèles de leurs tâches et leurs
-minutes d'appel). Chaque message, avec sa réaction, reste dans le fil du
+On compare deux business avec deux chiffres, sur la fiche du business, la
+page Économie et le bandeau d'En direct : le total de leurs points, et
+leurs points par euro dépensé. « Dépensé » compte le coût réel des appels
+au modèle faits pour les tâches du business (les jetons d'un appel sans
+coût connu sont signalés à part, jamais estimés) et ses minutes d'appel,
+au prix réglé sur la page Policy (« Prix d'une minute d'appel », famille
+Argent) ; les achats (publicité, domaines) s'ajouteront quand ils
+existeront. Chaque message, avec sa réaction, reste dans le fil du
 contact.
 
 ---

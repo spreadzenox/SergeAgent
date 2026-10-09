@@ -59,6 +59,18 @@ sections:
         min: 0.5
         max: 1.5
         step: 0.01
+      - id: call_minute_eur
+        value: 0.1
+        title: Prix d’une minute d’appel
+        help: >-
+          La ligne téléphonique et la voix en direct, en euros. Il compte ce
+          qu’un business a dépensé en appels, pour ses points par euro
+          (grille de points). Les plafonds du jour et du mois ne comptent
+          que les modèles.
+        kind: eur
+        min: 0
+        max: 2
+        step: 0.01
 
   - id: quotas
     title: Plafonds par canal

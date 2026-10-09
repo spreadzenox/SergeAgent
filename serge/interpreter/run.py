@@ -64,19 +64,21 @@ def resolve_model(
 def _record_usage(
     conn: sqlite3.Connection,
     inv: Invocation,
+    task_id: str,
     model: str,
     result: ChatResult | None,
     verdict: str,
 ) -> None:
-    """Note un appel au modèle, et l'enregistre aussitôt.
+    """Note un appel au modèle, avec sa tâche, et l'enregistre aussitôt.
 
     ``result`` vaut ``None`` pour un appel raté : il n'a ni jetons ni coût.
-    Le coût est celui qu'OpenRouter a facturé, quand il le donne.
+    Le coût est celui qu'OpenRouter a facturé, quand il le donne. La tâche
+    rattache le coût à son business (points par euro dépensé).
     """
     conn.execute(
         'INSERT INTO llm_usage(point, tier, model, tokens_in, tokens_out,'
-        ' latency_ms, verdict, cost_usd, created_at)'
-        ' VALUES(?,?,?,?,?,?,?,?,?)',
+        ' latency_ms, verdict, cost_usd, task_id, created_at)'
+        ' VALUES(?,?,?,?,?,?,?,?,?,?)',
         (
             inv.id,
             inv.model_tier,
@@ -86,6 +88,7 @@ def _record_usage(
             result.latency_ms if result else 0,
             verdict,
             result.cost_usd if result else None,
+            task_id,
             utcnow(),
         ),
     )
@@ -127,7 +130,17 @@ def _llm_answer(
             {'role': 'user', 'content': user or 'Commence.'},
         ]
         answers.append(
-            _ask(conn, inv, messages, task, fields, caller, api_key, model)
+            _ask(
+                conn,
+                inv,
+                task_id,
+                messages,
+                task,
+                fields,
+                caller,
+                api_key,
+                model,
+            )
         )
     return _merge(answers)
 
@@ -149,6 +162,7 @@ def _merge(answers: list[Any]) -> Any:
 def _ask(
     conn: sqlite3.Connection,
     inv: Invocation,
+    task_id: str,
     messages: list[dict[str, Any]],
     task: Mapping[str, str],
     fields: list,
@@ -167,7 +181,7 @@ def _ask(
     """
 
     def record(result: ChatResult | None, verdict: str) -> None:
-        _record_usage(conn, inv, model, result, verdict)
+        _record_usage(conn, inv, task_id, model, result, verdict)
 
     # Les nouveaux essais d'une réponse mal formée (page Pipeline).
     retries = int(policy_en_vigueur(conn)['llm_calls']['format_retries'])

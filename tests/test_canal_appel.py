@@ -452,6 +452,15 @@ class AgentTests(_Appel):
             self._un('SELECT contact_id, status FROM inbound_events'),
             ('c1', 'attached'),
         )
+        # La tâche de l'appel garde son business : ses minutes y comptent.
+        self.assertEqual(
+            self._un(
+                "SELECT value FROM task_params WHERE name='venture_id'"
+                ' AND task_id=?',
+                (appel.task_id,),
+            ),
+            ('v1',),
+        )
 
     def test_la_file_appels_coupee_fait_taire_l_agent(self) -> None:
         self.conn.execute("UPDATE queues SET enabled=0 WHERE id='voice'")

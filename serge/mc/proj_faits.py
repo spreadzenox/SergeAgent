@@ -7,6 +7,11 @@ import sqlite3
 from typing import Any
 
 from serge.funnels.contacts import addresses
+from serge.funnels.depense import (
+    depense_business,
+    points_par_euro,
+    texte_euros,
+)
 from serge.funnels.points import (
     points_contact,
     points_prospects,
@@ -38,8 +43,17 @@ def _venture(conn: sqlite3.Connection, ident: str) -> dict | None:
         'SELECT id, amount_eur, status FROM transactions WHERE venture_id=?',
         (ident,),
     ).fetchall()
-    # La grille de points : la meilleure réaction de chaque prospect.
+    # La grille de points : la meilleure réaction de chaque prospect, et ce
+    # que le business a dépensé.
     scores = points_prospects(conn, ident)
+    total = sum(v['points'] for v in scores.values())
+    depense = depense_business(conn, ident)
+    par_euro = points_par_euro(total, depense['total_eur'])
+    sans_cout = (
+        f' ; {depense["jetons_sans_cout"]} jetons sans coût connu, non comptés'
+        if depense['jetons_sans_cout']
+        else ''
+    )
     preuves = conn.execute(
         'SELECT d.id, d.title FROM venture_sources s'
         ' JOIN listen_docs d ON d.id=s.doc_id WHERE s.venture_id=?'
@@ -98,9 +112,22 @@ def _venture(conn: sqlite3.Connection, ident: str) -> dict | None:
                 ),
                 (
                     'Points',
-                    f'{texte_points(sum(v["points"] for v in scores.values()))}'
+                    f'{texte_points(total)}'
                     f' ({len(scores)} prospects ont réagi ; chacun compte'
                     ' pour sa meilleure réaction)',
+                ),
+                (
+                    'Dépensé',
+                    f'{texte_euros(depense["total_eur"])} € (modèles'
+                    f' {texte_euros(depense["modeles_eur"])} € ;'
+                    f' {texte_points(depense["minutes"])} minutes d’appel,'
+                    f' {texte_euros(depense["appels_eur"])} €{sans_cout})',
+                ),
+                (
+                    'Points par euro',
+                    texte_points(par_euro)
+                    if par_euro is not None
+                    else 'rien dépensé',
                 ),
                 ('Ce qu’il vend et à qui', row['description'] or '—'),
                 ('Famille', row['family'] or '—'),

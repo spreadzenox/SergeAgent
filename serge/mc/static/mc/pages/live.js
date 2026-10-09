@@ -81,13 +81,16 @@ function etatCampagne(etat) {
   return etat || '';
 }
 
-function ligneMetriques(u1, u2, u3, points, paid) {
+function ligneMetriques(u1, u2, u3, points, parEuro, paid) {
   const t = u1 || 0;
   const r = u2 || 0;
   const touch = t <= 1 ? `${t} touchée` : `${t} touchées`;
   const rep = r <= 1 ? `${r} réponse` : `${r} réponses`;
   const pts = Number(points || 0).toLocaleString('fr-FR');
-  return `${touch} · ${rep} · ${u3 || 0} oui · ${pts} points · ${paid || 0} € encaissés`;
+  const rendement = parEuro === null || parEuro === undefined
+    ? ''
+    : ` · ${Number(parEuro).toLocaleString('fr-FR')} points par euro`;
+  return `${touch} · ${rep} · ${u3 || 0} oui · ${pts} points${rendement} · ${paid || 0} € encaissés`;
 }
 
 function renderBusiness(main, payload, sig) {
@@ -125,6 +128,7 @@ function renderBusiness(main, payload, sig) {
         payload.u2,
         payload.u3,
         payload.points,
+        payload.points_par_euro,
         payload.paid_eur,
       );
       cadre.append(etiq, titre, cycle, met);

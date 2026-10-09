@@ -188,6 +188,7 @@ def project_business(
     tests = []
     u1 = u2 = u3 = 0
     points = paid = 0.0
+    par_euro: float | None = None
     if row:
         venture = {'id': row[0], 'nom': row[1] or row[0], 'lifecycle': row[2]}
         for camp in conn.execute(
@@ -211,6 +212,7 @@ def project_business(
         chiffres = chiffres_conversations(conn, str(row[0]))
         u1, u2, u3 = (int(chiffres[k]) for k in ('u1', 'u2', 'u3'))
         points = chiffres['points']
+        par_euro = chiffres['points_par_euro']
         paid = chiffres['paid']
     recit = ''
     if venture:
@@ -222,6 +224,7 @@ def project_business(
             u3,
             paid,
             points,
+            par_euro,
         )
     running = tache_en_cours(conn)
     urgents = _count(
@@ -236,6 +239,7 @@ def project_business(
         'u2': u2,
         'u3': u3,
         'points': points,
+        'points_par_euro': par_euro,
         'paid_eur': paid,
         'voix': phrase_noyau(urgents, running, paid, heartbeat_marche(conn)),
         'recit': recit,

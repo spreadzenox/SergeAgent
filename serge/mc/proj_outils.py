@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 import sqlite3
 from datetime import datetime, timedelta
+from typing import Any
 
 
 def avant_iso(now_iso: str, **duree: int) -> str:
@@ -61,14 +62,17 @@ INTERESSE = ('intéressé', 'rendez-vous')
 
 def chiffres_conversations(
     conn: sqlite3.Connection, venture_id: str
-) -> dict[str, float]:
+) -> dict[str, Any]:
     """Les conversations d'un business, comptées (lot 8).
 
     ``u1`` : messages partis ; ``u2`` : réponses reçues de ses contacts
     (sans les absences) ; ``u3`` : réponses intéressées (intérêt, rendez-
-    vous) ; ``points`` : ses points (grille de points, lot 9) ; ``paid`` :
-    euros encaissés.
+    vous) ; ``points`` : ses points (grille de points, lot 9) ;
+    ``depense_eur`` : ce qu'il a dépensé (modèles et minutes d'appel) ;
+    ``points_par_euro`` : ses points par euro dépensé, ``None`` s'il n'a
+    rien dépensé ; ``paid`` : euros encaissés.
     """
+    from serge.funnels.depense import depense_business, points_par_euro
     from serge.funnels.points import points_business
 
     def compte(sql: str, *params: str) -> int:
@@ -80,6 +84,8 @@ def chiffres_conversations(
         " WHERE venture_id=? AND status='paid'",
         (venture_id,),
     ).fetchone()[0]
+    points = points_business(conn, venture_id)
+    depense = depense_business(conn, venture_id)['total_eur']
     return {
         'u1': compte(
             "SELECT COUNT(*) FROM touches WHERE venture_id=? AND status='sent'"
@@ -93,6 +99,8 @@ def chiffres_conversations(
             f" AND status='attached' AND reaction IN ({holes})",
             *INTERESSE,
         ),
-        'points': points_business(conn, venture_id),
+        'points': points,
+        'depense_eur': depense,
+        'points_par_euro': points_par_euro(points, depense),
         'paid': float(paid or 0),
     }
