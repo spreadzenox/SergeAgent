@@ -103,21 +103,14 @@ sections:
 
   - id: windows
     title: Horaires
-    why: Quand on a le droit de parler aux gens, et quand on se tait.
+    why: Le fuseau dans lequel Serge lit ses heures.
     settings:
       - id: timezone
         value: Europe/Paris
         title: Fuseau
-        help: >-
-          Les heures des déclencheurs et du résumé du jour sont lues dans ce
-          fuseau.
+        help: Les heures des déclencheurs sont lues dans ce fuseau.
         kind: liste
         choices: [Europe/Paris, Europe/Brussels, Europe/London, UTC]
-      - id: quiet_hours
-        value: [[23, 0, 8, 0]]
-        title: Heures silencieuses
-        help: Pas de notification Discord, sauf un guichet qui expire très vite.
-        kind: fenetres
 
   - id: calling_zones
     title: Pays et appels
@@ -344,19 +337,6 @@ sections:
         kind: curseur
         min: 7
         max: 180
-        step: 1
-
-  - id: tickets
-    title: Tes questions
-    why: À quelle heure arrive le résumé du jour.
-    settings:
-      - id: digest_hour
-        value: 8
-        title: Heure du résumé du jour
-        help: Dans le fuseau des horaires.
-        kind: heure
-        min: 0
-        max: 23
         step: 1
 
   - id: llm_calls
@@ -836,6 +816,24 @@ changes:
           Combien de messages, appels ou invitations, pour ne pas spammer, et
           combien de fois on redemande une réponse au modèle.
         to: Combien de messages, appels ou invitations, pour ne pas spammer.
+  - id: horaires_sans_heures_silencieuses
+    why: Les heures silencieuses de Discord n'existent plus (Q86).
+    table: policy_sections
+    where: {id: windows}
+    set:
+      why:
+        from: Quand on a le droit de parler aux gens, et quand on se tait.
+        to: Le fuseau dans lequel Serge lit ses heures.
+  - id: fuseau_sans_resume_du_jour
+    why: Le résumé du jour sur Discord n'existe plus (Q86).
+    table: policy_settings
+    where: {id: windows.timezone}
+    set:
+      help:
+        from: >-
+          Les heures des déclencheurs et du résumé du jour sont lues dans ce
+          fuseau.
+        to: Les heures des déclencheurs sont lues dans ce fuseau.
   - id: aide_contacts_30_jours
     why: La voix lit maintenant ce réglage (pas de réglage en double, Q78).
     table: policy_settings
@@ -849,6 +847,10 @@ changes:
 
 # Les réglages retirés de ce fichier, effacés aussi de la base.
 deleted:
+  # Les tickets partent en message privé, à toute heure, sans résumé du
+  # jour (Q86) : plus rien ne lit ces deux réglages (Q78).
+  - tickets.digest_hour
+  - windows.quiet_hours
   # Rien ne s'en servait : ils ne bornaient que d'autres réglages (Q78).
   - testing.n_smoke_max
   - testing.n_full_min

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Projecteurs P3 Décisions : liste, carte, diffs, MEMORY, métriques, digest."""
+"""Projecteurs P3 Décisions : liste, carte, diffs, MEMORY, métriques."""
 
 from __future__ import annotations
 
@@ -9,19 +9,11 @@ from collections.abc import Mapping
 from typing import Any
 
 from serge.mc.proj_outils import apres_iso
-from serge.policy import PolicyError
-from serge.registry import load_ticket_types
 from serge.text_ids import strip_ids
 from serge.tickets import champs_carte, get_ticket
 from serge.tickets.lifecycle import OPENISH
 from serge.tickets.shared import TicketError
-
-
-def _types() -> dict:
-    try:
-        return load_ticket_types()
-    except PolicyError:
-        return {}
+from serge.tickets.types import ticket_types
 
 
 def _est_urgent(typ: str, etat: str, expiry: str, now: str) -> bool:
@@ -60,7 +52,7 @@ def project_tickets(
         urgent}]} (filtres/recherche/tri côté client).
     """
     _ = policy
-    types = _types()
+    types = ticket_types(conn)
     items = []
     for row in conn.execute(
         'SELECT id, type, title, state, expiry_at FROM tickets WHERE'
@@ -103,7 +95,7 @@ def project_carte(
         ticket = get_ticket(conn, ticket_id)
     except TicketError:
         return None
-    spec = _types().get(str(ticket.get('type')), {})
+    spec = ticket_types(conn).get(str(ticket.get('type')), {})
     if not isinstance(spec, dict):
         spec = {}
     try:

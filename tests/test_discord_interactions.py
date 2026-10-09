@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Interactions Discord : actes typés, idempotence, garde owner."""
+"""Interactions Discord : actes typés, idempotence, administrateurs en base,
+fenêtres de saisie (décision Q86)."""
 
 from __future__ import annotations
 
@@ -17,10 +18,12 @@ from serge.discord.interactions import (  # noqa: E402
     parse_custom_id,
     route_interaction,
 )
-from serge.registry import load_ticket_types  # noqa: E402
 from serge.tickets import add_item, create_ticket, publish  # noqa: E402
+from serge.tickets.admins import add_admin  # noqa: E402
+from serge.tickets.types import ticket_types  # noqa: E402
 
 OWNER = '999988887777666555'
+CLEM = '111122223333444455'
 NOW = '2026-09-09T19:00:00+00:00'
 
 
@@ -36,9 +39,36 @@ def _interaction(
         data['component_type'] = 3
     return {
         'id': interaction_id,
+        'type': 3,
         'token': 'tok-interaction-1',
-        'member': {'user': {'id': user_id}},
+        # En message privé, Discord donne ``user`` (pas ``member``).
+        'user': {'id': user_id},
         'data': data,
+    }
+
+
+def _fenetre(
+    custom_id: str,
+    texte: str,
+    user_id: str = OWNER,
+    interaction_id: str = '9001',
+) -> dict:
+    return {
+        'id': interaction_id,
+        'type': 5,
+        'token': 'tok-interaction-2',
+        'user': {'id': user_id},
+        'data': {
+            'custom_id': custom_id,
+            'components': [
+                {
+                    'type': 1,
+                    'components': [
+                        {'type': 4, 'custom_id': 'texte', 'value': texte}
+                    ],
+                }
+            ],
+        },
     }
 
 
@@ -47,8 +77,10 @@ class DiscordInteractionsTests(unittest.TestCase):
         self.conn = sqlite3.connect(':memory:')
         self.conn.row_factory = sqlite3.Row
         init_schema(self.conn)
+        add_admin(self.conn, OWNER, 'Julien', 'test')
+        add_admin(self.conn, CLEM, 'Clem', 'test')
         self.conn.commit()
-        self.types = load_ticket_types()
+        self.types = ticket_types(self.conn)
 
     def tearDown(self) -> None:
         self.conn.close()
@@ -85,32 +117,44 @@ class DiscordInteractionsTests(unittest.TestCase):
         result = route_interaction(
             self.conn,
             _interaction(f't:{first}:approuver', interaction_id='2001'),
-            OWNER,
         )
         self.assertEqual(result['status'], 'applied')
         self.assertEqual(self._state(first), 'APPROVED')
         second = self._ticket()
         result = route_interaction(
-            self.conn, _interaction(f't:{second}:rejeter'), OWNER
+            self.conn, _interaction(f't:{second}:rejeter')
         )
         self.assertEqual(self._state(second), 'REJECTED')
+        # « Discuter » ouvre une fenêtre de saisie ; le message envoyé passe
+        # le ticket en discussion et reste dans son fil.
         third = self._ticket()
         result = route_interaction(
-            self.conn, _interaction(f't:{third}:discuter'), OWNER
+            self.conn, _interaction(f't:{third}:discuter')
         )
+        self.assertEqual(result['status'], 'modal')
+        self.assertEqual(result['modal']['custom_id'], f'm:{third}:discuter')
+        self.assertEqual(self._state(third), 'OPEN')
+        result = route_interaction(
+            self.conn, _fenetre(f'm:{third}:discuter', 'On en parle ?')
+        )
+        self.assertEqual(result['status'], 'applied')
         self.assertEqual(self._state(third), 'DISCUSSING')
+        self.assertEqual(
+            self.conn.execute(
+                "SELECT actor, payload_json FROM ticket_events WHERE kind='discord.fil'"
+            ).fetchone()[0],
+            f'discord:{OWNER}',
+        )
 
     def test_idempotence_double_clic(self) -> None:
         ticket_id = self._ticket()
         first = route_interaction(
             self.conn,
             _interaction(f't:{ticket_id}:approuver', interaction_id='3001'),
-            OWNER,
         )
         second = route_interaction(
             self.conn,
             _interaction(f't:{ticket_id}:approuver', interaction_id='3001'),
-            OWNER,
         )
         self.assertEqual(first['status'], 'applied')
         self.assertEqual(second['status'], 'duplicate')
@@ -120,7 +164,6 @@ class DiscordInteractionsTests(unittest.TestCase):
         result = route_interaction(
             self.conn,
             _interaction(f't:{ticket_id}:approuver', user_id='1111'),
-            OWNER,
         )
         self.assertEqual(result['status'], 'refused')
         self.assertEqual(self._state(ticket_id), 'OPEN')
@@ -134,12 +177,10 @@ class DiscordInteractionsTests(unittest.TestCase):
             _interaction(
                 f't:{ticket_id}:garder:{keep}', interaction_id='6001'
             ),
-            OWNER,
         )
         route_interaction(
             self.conn,
             _interaction(f't:{ticket_id}:jeter:{drop}', interaction_id='6002'),
-            OWNER,
         )
         states = {
             row[0]: row[1]
@@ -157,7 +198,6 @@ class DiscordInteractionsTests(unittest.TestCase):
         approved = route_interaction(
             self.conn,
             _interaction(f't:{memory_id}:tout_approuver'),
-            OWNER,
         )
         self.assertEqual(approved['status'], 'applied')
         self.assertEqual(self._state(memory_id), 'APPROVED')
@@ -173,7 +213,6 @@ class DiscordInteractionsTests(unittest.TestCase):
                 values=['Email'],
                 interaction_id='4001',
             ),
-            OWNER,
         )
         self.assertEqual(self._state(qna_id), 'APPROVED')
 
@@ -182,20 +221,69 @@ class DiscordInteractionsTests(unittest.TestCase):
         route_interaction(
             self.conn,
             _interaction(f't:{ticket_id}:approuver', interaction_id='5001'),
-            OWNER,
         )
         result = route_interaction(
             self.conn,
             _interaction(f't:{ticket_id}:rejeter', interaction_id='5002'),
-            OWNER,
         )
         self.assertEqual(result['status'], 'error')
         self.assertEqual(self._state(ticket_id), 'APPROVED')
 
+    def test_n_importe_quel_administrateur_tranche(self) -> None:
+        ticket_id = self._ticket()
+        result = route_interaction(
+            self.conn,
+            _interaction(f't:{ticket_id}:approuver', user_id=CLEM),
+        )
+        self.assertEqual(result['status'], 'applied')
+        self.assertEqual(
+            self.conn.execute(
+                'SELECT actor FROM ticket_events WHERE ticket_id=?'
+                " AND kind='transition.approved'",
+                (ticket_id,),
+            ).fetchone()[0],
+            f'discord:{CLEM}',
+        )
+
+    def test_un_texte_s_ecrit_dans_une_fenetre(self) -> None:
+        ticket_id = self._ticket()
+        ouverte = route_interaction(
+            self.conn, _interaction(f't:{ticket_id}:editer')
+        )
+        self.assertEqual(ouverte['status'], 'modal')
+        champ = ouverte['modal']['components'][0]['components'][0]
+        self.assertEqual((champ['type'], champ['custom_id']), (4, 'texte'))
+        vide = route_interaction(
+            self.conn, _fenetre(f'm:{ticket_id}:editer', '  ')
+        )
+        self.assertEqual(vide['status'], 'error')
+        route_interaction(
+            self.conn,
+            _fenetre(f'm:{ticket_id}:editer', 'Baisse le prix', user_id=CLEM),
+        )
+        self.assertEqual(self._state(ticket_id), 'EDITED')
+        note = self.conn.execute(
+            'SELECT payload_json FROM ticket_events WHERE ticket_id=?'
+            " AND kind='transition.edited'",
+            (ticket_id,),
+        ).fetchone()[0]
+        self.assertIn('Baisse le prix', note)
+        # « Autre » d'un choix ouvre aussi une fenêtre, qui tranche.
+        qna_id = self._ticket('QNA')
+        autre = route_interaction(
+            self.conn,
+            _interaction(f't:{qna_id}:choix_qcm', values=['__autre__']),
+        )
+        self.assertEqual(autre['status'], 'modal')
+        route_interaction(
+            self.conn, _fenetre(f'm:{qna_id}:choix_qcm', 'Par SMS')
+        )
+        self.assertEqual(self._state(qna_id), 'APPROVED')
+
     def test_action_inconnue(self) -> None:
         ticket_id = self._ticket()
         result = route_interaction(
-            self.conn, _interaction(f't:{ticket_id}:lancer_fusee'), OWNER
+            self.conn, _interaction(f't:{ticket_id}:lancer_fusee')
         )
         self.assertEqual(result['status'], 'error')
 

@@ -116,11 +116,13 @@ def publish(connection: sqlite3.Connection, ticket_id: str) -> None:
     _transition(connection, ticket_id, frozenset({'DRAFT'}), 'OPEN', 'serge')
 
 
-def discuss(connection: sqlite3.Connection, ticket_id: str) -> None:
+def discuss(
+    connection: sqlite3.Connection, ticket_id: str, actor: str = 'owner'
+) -> None:
     if fetch_ticket(connection, ticket_id)['state'] == 'DISCUSSING':
         return
     _transition(
-        connection, ticket_id, frozenset({'OPEN'}), 'DISCUSSING', 'owner'
+        connection, ticket_id, frozenset({'OPEN'}), 'DISCUSSING', actor
     )
 
 

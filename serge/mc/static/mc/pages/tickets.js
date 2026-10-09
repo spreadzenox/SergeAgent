@@ -1,7 +1,13 @@
-// Page P3 Décisions : liste, filtres, carte (actes), diffs, MEMORY, E5, digest.
+// Page P3 Décisions : liste, filtres, carte (actes), diffs, MEMORY, E5,
+// administrateurs Discord et types de tickets.
 import {fillList, li, rel} from '../components.js';
 import {TYPES_TICKET, allerObjet} from '../libelles.js';
 import {chargerCarte} from './tickets_actes.js';
+import {
+  brancherAjoutAdmin,
+  renderAdmins,
+  renderTypes,
+} from './tickets_reglages.js';
 
 const OUVERTS = ['DRAFT', 'OPEN', 'DISCUSSING'];
 
@@ -182,18 +188,6 @@ function renderMetriques(main, payload, sig) {
   section.dataset.sig = sig;
 }
 
-function renderDigest(main, payload, sig) {
-  const info = main.querySelector('#digest-info');
-  const heure = payload.digest_hour ?? 8;
-  const plages = (payload.quiet_hours || [])
-    .map(([deb, fin]) => `${deb}h-${fin}h`)
-    .join(', ');
-  info.textContent =
-    `Digest quotidien : ${heure}h (Europe/Paris).`
-    + (plages ? ` Heures silencieuses : ${plages}.` : '');
-  main.querySelector('[data-section="digest"]').dataset.sig = sig;
-}
-
 function initMemory(main) {
   let page = 1;
   const taille = 10;
@@ -253,7 +247,8 @@ export function mount(main, store) {
     tickets: renderListe,
     diffs: renderDiffs,
     metriques: renderMetriques,
-    digest: renderDigest,
+    admins_discord: renderAdmins,
+    types_tickets: renderTypes,
   };
   const unsubs = Object.keys(rendus).map((section) =>
     store.subscribe(section, (payload, sg) => {
@@ -277,6 +272,7 @@ export function mount(main, store) {
     }
   }
   initMemory(main);
+  brancherAjoutAdmin(main, store);
   return () => {
     unsubs.forEach((unsub) => unsub());
   };

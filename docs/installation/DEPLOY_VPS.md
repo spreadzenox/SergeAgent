@@ -46,8 +46,9 @@ inactifs tant que Serge n'a pas été démarré dans Mission Control (bouton
 « Démarrer Serge ») : un déploiement ne démarre jamais Serge. Au premier
 déploiement après le lot 6, l'ancien `serge-pipeline.timer` est arrêté,
 désactivé et effacé ; s'il tournait, les deux files sont lancées à sa
-place. Plus de `sergectl`, plus de daily-report, plus de burn-in. Le digest reste Discord `📣-digest` + MC
-(`tickets.digest_hour`).
+place. Plus de `sergectl`, plus de daily-report, plus de burn-in, plus de
+résumé du jour : les tickets partent en message privé à chaque
+administrateur (décision Q86).
 
 Ingress : `serge/ingress/caddy.py` (inventaire + Caddyfile). Caddy est
 le serveur.

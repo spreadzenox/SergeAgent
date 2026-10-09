@@ -211,14 +211,12 @@ fait attendre une réponse jusqu'à ce que Julien ou Clem ait répondu :
   Control (Q50). Ouvrir un ticket est une capacité générale : le ticket
   reprend ce que l'invocation a reçu et ce qu'elle a répondu, dans l'ordre
   réglé en base, jamais un modèle de ticket par invocation.
-- [ ] **Les types de tickets en base** : leurs boutons, leur délai et leur
-  décision par défaut sont aujourd'hui dans `config/ticket-types.yaml`.
-  Ils passent en base, réglables dans Mission Control (Q85).
-- [ ] **Les administrateurs Discord en base** : on ajoute un
-  administrateur de Serge depuis Mission Control ; chaque ticket lui est
-  envoyé en message privé, comme à tous les autres. Dès qu'un
-  administrateur répond, le ticket est fermé instantanément pour tous, et
-  une ou plusieurs invocations sont réveillées pour réagir (Q85).
+- [ ] **Une réponse réveille le pipeline.** Les types de tickets et les
+  administrateurs Discord sont en base, et chaque ticket part en message
+  privé à chacun ; la première réponse le tranche pour tous (PR 1, Q85 et
+  Q86). Il reste à réveiller une ou plusieurs invocations quand un ticket
+  est tranché, réglées en base par type de ticket, et à appliquer la
+  décision par défaut d'un type à l'expiration.
 
 ---
 

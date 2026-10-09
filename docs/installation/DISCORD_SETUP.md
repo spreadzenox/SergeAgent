@@ -1,40 +1,46 @@
-# Discord : serveur privé + bot (H §2)
+# Discord : serveur privé + bot
 
-Le bot est un **miroir temps réel** des tickets (DB = vérité) : cartes de
-décision FR, boutons = actes typés, mentions/slash pour le sens inverse.
-Aucun LLM ne décide : il rédige, le déterministe tranche.
+Le bot envoie chaque ticket en **message privé à chaque administrateur**
+de Serge (décisions Q85 et Q86). La base est la vérité : la carte du
+ticket, avec ses boutons, est la même chez tous. Dès qu'un administrateur
+répond (sur Discord ou dans Mission Control), le ticket est tranché pour
+tous : sa carte est mise à jour chez chacun, boutons morts, avec qui l'a
+tranché. Aucun LLM ne décide.
 
 ## 1. Serveur privé (5 min)
 
-1. Crée un serveur privé (toi seul + le bot).
-2. Crée 3 canaux :
-   - **Forum** `🎫-tickets-serge` (1 post = 1 ticket),
-   - **Texte** `🔴-urgent` (miroir GUICHET/veto/ALERT),
-   - **Texte** `📣-digest` (FYI, lecture).
-3. Active le **mode développeur** (Réglages → Avancés), puis clic droit →
-   **copier l’identifiant** sur : le serveur, les 3 canaux, ton compte.
+1. Crée un serveur privé : les administrateurs de Serge et le bot. Le bot
+   ne peut écrire en message privé qu'à une personne qui partage un
+   serveur avec lui.
+2. Active le **mode développeur** (Réglages → Avancés), puis clic droit →
+   **copier l’identifiant** sur : le serveur et ton compte.
+
+Il n'y a plus de salon à créer : les tickets ne passent plus par un
+forum, un salon des urgences ou un salon du résumé.
 
 ## 2. Application + bot (portail développeur)
 
 1. [Applications](https://discord.com/developers/applications) → New
    Application → onglet **Bot** → Reset Token → **copie le token**
    (il ne s’affichera plus ; il part dans le sidecar, jamais dans git).
-2. **Privileged Gateway Intents** : active **MESSAGE CONTENT INTENT**
-   (sans ça, le bot ne lit pas les mentions).
-3. Onglet **OAuth2 → URL Generator** : scopes `bot`, permissions
-   minimales (View Channels, Send Messages, Create Public Threads,
-   Send Messages in Threads, Embed Links, Read Message History,
-   Add Reactions) → ouvre l’URL → ajoute au serveur privé.
-4. Remets le bot dans les 3 canaux si besoin (permissions par canal).
+2. Aucune **Privileged Gateway Intent** n'est nécessaire : le bot ne lit
+   ni les messages ni les réactions, seulement les clics sur ses boutons
+   et les fenêtres de saisie.
+3. Onglet **OAuth2 → URL Generator** : scope `bot`, permission minimale
+   Send Messages → ouvre l’URL → ajoute au serveur privé.
 
 ## 3. Kit (wizard)
 
-- `features.discord = true` → le wizard demande les **5 IDs** (`[discord]`
-  du TOML, pas secrets) puis le **token bot** à l’étape secrets
-  (sidecar chiffré → `secrets/discord-bot-token`, 0600).
+- `features.discord = true` → le wizard demande **2 identifiants**
+  (`[discord]` du TOML, pas secrets) : le serveur, et ton compte, qui
+  devient le premier administrateur au premier démarrage du bot. Puis le
+  **token bot** à l’étape secrets (sidecar chiffré →
+  `secrets/discord-bot-token`, 0600).
+- Les autres administrateurs s'ajoutent dans Mission Control, page
+  Décisions, par leur identifiant Discord.
 - Vérifie : `serge/discord/cli.py verify` (token + username, rien d’autre).
 - Le service `serge-discord-bot` démarre avec l’instance (boucle gateway
-  + miroir, reconnect backoff).
+  + messages privés, reconnect backoff).
 
 ## 4. Tests live-prudents
 
@@ -44,11 +50,11 @@ verify → nom du canal → send/edit/delete (rien ne persiste, cap 6).
 
 ## 5. Règles d’usage
 
-- Canaux **owner-only** (H §10). Jamais de secret/PII dans Discord :
-  liens signés expirables pour les écrans sensibles.
-- Boutons = actes (idempotents, double-clic = 1 acte). La prose ne
-  tranche jamais : en fil, “oui” reçoit un rappel vers les boutons.
-- `!` / `--force` / “sans confirmation” = bypass logué + FYI post-hoc.
-  La constitution (§14.1a : faux avis, usurpation, spam illégal…)
-  **n’est jamais bypassée** (refus avec explication).
+- Seuls les administrateurs en base peuvent agir ; un autre compte reçoit
+  un refus. Jamais de secret ni de donnée sensible dans Discord.
+- Boutons = actes (idempotents, double-clic = 1 acte). Un bouton qui
+  demande un texte (« Éditer », « Réponse libre », « Discuter », « Autre »
+  d'un choix) ouvre une fenêtre de saisie, rattachée au ticket. Un message
+  libre n'est pas lu.
+- Les tickets partent tout de suite, à toute heure, avec notification.
 - Fiche architecture : [`MISSION_CONTROL.md`](../MISSION_CONTROL.md#discord).

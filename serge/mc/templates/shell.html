@@ -256,9 +256,20 @@
 <h2>Rythme des décisions</h2>
 <div data-metriques="contenu"></div>
 </section>
-<section class="panneau" data-section="digest" data-sig="">
-<h2>Digest & heures silencieuses</h2>
-<p id="digest-info">…</p>
+<section class="panneau" data-section="admins_discord" data-sig="">
+<h2>Administrateurs Discord</h2>
+<p>Chaque ticket leur est envoyé en message privé ; la première réponse, sur Discord ou ici, le tranche pour tous. Pour ajouter quelqu’un : son identifiant Discord (en mode développeur, clic droit sur la personne, « Copier l’identifiant »). Il doit être sur le serveur Discord de Serge, et reçoit les tickets ouverts après son ajout.</p>
+<ul data-list="admins"></ul>
+<form data-admins="ajout">
+<label>Identifiant Discord <input name="user_id" inputmode="numeric" required></label>
+<label>Nom <input name="name"></label>
+<button type="submit">Ajouter</button>
+</form>
+</section>
+<section class="panneau" data-section="types_tickets" data-sig="">
+<h2>Types de tickets</h2>
+<p>Pour chaque type : le délai avant expiration, la décision annoncée à l’expiration, et ses boutons. Un nouveau délai vaut pour les tickets créés ensuite.</p>
+<div data-types="liste"></div>
 </section>
 </template>
 <template id="page-memory">

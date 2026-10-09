@@ -35,7 +35,6 @@ class RegistryTests(unittest.TestCase):
         self.assertEqual(
             types['GUICHET']['default'], 'pause_propre_reproposee'
         )
-        self.assertTrue(types['GUICHET']['mirror_urgent'])
         self.assertEqual(types['MEMORY']['default'], 'auto_accepte_sauf_veto')
 
     def test_ticket_render_blocks(self) -> None:

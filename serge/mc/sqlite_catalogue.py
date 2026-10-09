@@ -206,6 +206,24 @@ CATALOGUE: dict[str, tuple[str, str, str, str]] = {
         'Carte ticket, parité Discord.',
         'Append-only comme events, mais scopé ticket.',
     ),
+    'ticket_types': (
+        'Les types de tickets : boutons, délai, décision par défaut.',
+        'config/ticket-types.yaml (types nouveaux), Mission Control.',
+        'Création des tickets, cartes Discord, page Décisions.',
+        'expiry_minutes vide : pas d’expiration. Le reste est dans spec_json.',
+    ),
+    'discord_admins': (
+        'Les administrateurs Discord de Serge (décision Q86).',
+        'Mission Control (page Décisions), Julien au premier démarrage.',
+        'Le bot Discord : chaque ticket part en message privé à chacun.',
+        'user_id : l’identifiant Discord, copié en mode développeur.',
+    ),
+    'ticket_messages': (
+        'Le message privé de chaque ticket, chez chaque administrateur.',
+        'Le bot Discord, à l’envoi.',
+        'Le bot Discord : un ticket tranché est mis à jour chez tous.',
+        'shown_state : l’état du ticket que montre le message.',
+    ),
     'lessons': (
         'Ce que Serge croit avoir appris. Candidate d’abord.',
         'consolidate, owner (confirmer / infirmer).',

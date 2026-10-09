@@ -12,7 +12,7 @@ import {fetchState} from '../sse.js';
 const OUTCOME_FR = {APPROVED: 'approuvé', REJECTED: 'rejeté', EDITED: 'édité', ACK: 'accusé réception'};
 const ETAT_ITEM_FR = {keep: 'gardé', edit: 'à modifier', drop: 'jeté'};
 
-async function poster(chemin, charge) {
+export async function poster(chemin, charge) {
   const res = await fetch(chemin, {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
@@ -21,7 +21,7 @@ async function poster(chemin, charge) {
   return {ok: res.ok, data: await res.json()};
 }
 
-async function rafraichir(main, store) {
+export async function rafraichir(main, store) {
   try {
     const data = await fetchState('p3');
     for (const [section, env] of Object.entries(data.sections || {})) {
@@ -146,7 +146,7 @@ export async function agirItem(main, store, ticketId, item, acte) {
   }
 }
 
-function libelleActe(acte) {
+export function libelleActe(acte) {
   return (
     {
       approuver: 'Approuver',

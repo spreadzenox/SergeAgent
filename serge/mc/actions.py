@@ -13,7 +13,6 @@ from typing import TYPE_CHECKING, Any, Protocol
 
 from serge.db.store import append_event
 from serge.memory.lessons import delete_lesson, update_lesson
-from serge.registry import load_ticket_types
 from serge.tickets import (
     already_applied,
     decide,
@@ -23,6 +22,7 @@ from serge.tickets import (
 )
 from serge.tickets.acts import APPROVE, REJECT
 from serge.tickets.shared import TicketError, fetch_ticket, record_event
+from serge.tickets.types import ticket_types
 
 MAX_FORM_BYTES = 4096
 MAX_JSON_BYTES = 65536
@@ -148,7 +148,7 @@ class ActionsMixin(_Base):
                 return
             try:
                 ticket = fetch_ticket(conn, ticket_id)
-                spec = load_ticket_types().get(ticket['type'], {})
+                spec = ticket_types(conn).get(ticket['type'], {})
                 if acte not in spec.get('buttons', []):
                     self._refus(
                         400,

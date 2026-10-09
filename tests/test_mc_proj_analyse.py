@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Projecteurs P3 analyse : goldens diffs/memory/métriques/digest + endpoint."""
+"""Projecteurs P3 analyse : goldens diffs/memory/métriques + endpoint."""
 
 from __future__ import annotations
 
@@ -15,7 +15,6 @@ sys.path.insert(0, str(ROOT))
 from serge.db.boot import init_schema  # noqa: E402
 from serge.mc.proj_analyse import (  # noqa: E402
     project_diffs,
-    project_digest,
     project_memory_items,
     project_metriques_tickets,
 )
@@ -264,16 +263,6 @@ class ProjAnalyseTests(unittest.TestCase):
                 'guichet': {'resolus': 1, 'expires': 1},
                 'reponse_mediane_s': {'VETO_AMONT': 5400, 'GUICHET': 1800},
             },
-        )
-
-    def test_digest(self) -> None:
-        self.assertEqual(
-            project_digest(self.conn, POLICY, NOW),
-            {'digest_hour': 8, 'quiet_hours': [[23, 0]]},
-        )
-        self.assertEqual(
-            project_digest(self.conn, {}, NOW),
-            {'digest_hour': 8, 'quiet_hours': []},
         )
 
 

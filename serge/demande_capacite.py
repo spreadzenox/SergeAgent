@@ -8,8 +8,8 @@ import sqlite3
 from collections.abc import Mapping
 from typing import Any
 
-from serge.registry import load_ticket_types
 from serge.tickets.lifecycle import create_ticket, publish
+from serge.tickets.types import ticket_types
 
 OUVERTS = frozenset({'DRAFT', 'OPEN', 'DISCUSSING'})
 TITRE_MAX = 80
@@ -55,7 +55,7 @@ def poser_demande(
             'type': 'REQUESTED',
             'deja': True,
         }
-    registre = types if types is not None else load_ticket_types()
+    registre = types if types is not None else ticket_types(conn)
     ticket_id = create_ticket(
         conn,
         registre,

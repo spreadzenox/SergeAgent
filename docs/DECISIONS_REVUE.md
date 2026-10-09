@@ -1684,3 +1684,22 @@ Décidé :
    administrateur répond, le ticket est fermé instantanément chez tous les
    autres, et une ou plusieurs invocations sont réveillées pour réagir à
    la réponse.
+
+### Q86 — Lot 8 bis : les tickets en message privé à tous les administrateurs (validé par Clem, 9 octobre 2026)
+Constat : aujourd'hui, le bot Discord ne connaît qu'un administrateur
+(Julien, dans le fichier d'instance), recopie les tickets dans un salon
+forum (plus un salon des urgences et un salon du résumé), et seul Julien
+peut répondre. Clem veut des administrateurs en base, qui reçoivent
+chaque ticket en message privé (Q85, points 5 et 6).
+Décidé :
+1. **Un administrateur s'ajoute par son identifiant Discord**, collé dans
+   Mission Control (mode développeur de Discord, « Copier l'identifiant »).
+   Julien y entre d'office avec son identifiant actuel.
+2. **Un texte s'écrit dans une fenêtre de saisie** : les boutons qui
+   demandent du texte (« Ma réponse telle quelle », « Mes consignes »)
+   ouvrent une fenêtre Discord, rattachée au ticket.
+3. **Les messages privés remplacent les salons** : le forum, le salon des
+   urgences et le salon du résumé ne reçoivent plus rien, et leur code est
+   retiré.
+4. **La nuit, un ticket part tout de suite, avec notification** : aucune
+   heure calme pour les messages privés.

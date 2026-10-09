@@ -15,6 +15,7 @@ from serge.db.store import open_db  # noqa: E402
 from serge.discord.interactions import route_interaction  # noqa: E402
 from serge.registry import load_ticket_types  # noqa: E402
 from serge.tickets import create_ticket, publish  # noqa: E402
+from serge.tickets.admins import add_admin  # noqa: E402
 from tests.mc_server_case import McServerCase  # noqa: E402
 from tests.test_discord_interactions import OWNER  # noqa: E402
 
@@ -164,10 +165,10 @@ class TicketActeTests(McServerCase):
         conn.close()
         conn = open_db(self.db_path)
         try:
+            add_admin(conn, OWNER, 'Julien', 'test')
             resultat = route_interaction(
                 conn,
                 _interaction_discord(f't:{t_discord}:approuver'),
-                OWNER,
             )
             conn.commit()
         finally:
@@ -213,7 +214,6 @@ class TicketActeTests(McServerCase):
                 _interaction_discord(
                     f't:{t_cross}:approuver', interaction_id='9002'
                 ),
-                OWNER,
             )
             conn.commit()
         finally:
@@ -415,12 +415,12 @@ class TicketActeTests(McServerCase):
         conn.close()
         conn = open_db(self.db_path)
         try:
+            add_admin(conn, OWNER, 'Julien', 'test')
             resultat = route_interaction(
                 conn,
                 _interaction_discord(
                     f't:{ticket_id}:jeter:{i1}', interaction_id='9003'
                 ),
-                OWNER,
             )
             conn.commit()
         finally:
