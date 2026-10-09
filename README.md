@@ -109,18 +109,22 @@ CI verte.
 kit/             l'installeur (fichier d'instance, secrets chiffrés, assistants)
 serge/           Serge lui-même
   db/            la base : ouverture, migrations
-  llm/           appels au LLM, budget, tools
-  points/        les invocations LLM (un prompt et sa vérification chacune)
-  workers/       ce que le runner exécute
+  interpreter/   l'interpréteur du pipeline en base : tâches, outils, écritures
+  llm/           appels au LLM, budget
   listen/        l'écoute (étape 1)
-  funnels/       campagnes, contacts, statuts des ventures
-  observe/       traduction des réponses en signaux
+  channels/      les canaux de conversation : e-mail, appel
+  conversations/ envoyer, relever, le fil d'un contact, les relances
+  funnels/       contacts, campagnes, statuts des business, grille de points
+  guards/        les garde-fous avant un envoi
+  tickets/       les tickets
   collect/       la caisse (Stripe, relances)
   memory/        leçons, résumés, recherche
   voice/, sms/   téléphone
   discord/       le bot Discord
+  ingress/       l'accès web (Caddy)
   mc/            Mission Control
-config/          valeurs de départ : policy, invocations LLM, types de tickets
+pas_encore_branche/  le code retiré au lot 6, gardé pour les lots suivants
+config/          valeurs de départ : pipeline, policy, types de tickets
 systemd/         services du serveur
 tests/           les tests
 docs/            la documentation

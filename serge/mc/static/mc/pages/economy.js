@@ -2,6 +2,11 @@
 import {fillList, li, rel} from '../components.js';
 import {LIFECYCLE, allerObjet} from '../libelles.js';
 
+// Les points d'un business (grille de points) : « 8 », « 0,5 ».
+function points(n) {
+  return Number(n || 0).toLocaleString('fr-FR');
+}
+
 function tuile(n, libelle) {
   const box = document.createElement('div');
   box.className = 'tuile';
@@ -17,13 +22,14 @@ function renderEntonnoir(main, payload, sig) {
   const tot = payload.totaux || {};
   const pTot = main.querySelector('#eco-totaux');
   pTot.textContent =
-    `Total : ${tot.u1 || 0} messages partis → ${tot.u2 || 0} réponses → ${tot.u3 || 0} intéressés | Encaissé : ${tot.paid_eur || 0} €`;
+    `Total : ${tot.u1 || 0} messages partis → ${tot.u2 || 0} réponses → ${tot.u3 || 0} intéressés | ${points(tot.points)} points | Encaissé : ${tot.paid_eur || 0} €`;
   const chips = main.querySelector('[data-tuiles="entonnoir"]');
   if (chips) {
     chips.replaceChildren(
       tuile(tot.u1 || 0, 'Messages partis'),
       tuile(tot.u2 || 0, 'Réponses'),
       tuile(tot.u3 || 0, 'Intéressés'),
+      tuile(points(tot.points), 'Points'),
       tuile(`${tot.paid_eur || 0} €`, 'Encaissé'),
     );
   }
@@ -35,7 +41,7 @@ function renderEntonnoir(main, payload, sig) {
     btn.type = 'button';
     btn.className = 'clic-ligne';
     btn.textContent =
-      `${v.name || v.id} [${LIFECYCLE[v.lifecycle] || v.lifecycle}] : ${v.u1} partis → ${v.u2} réponses → ${v.u3} intéressés | ${v.paid_eur} €`;
+      `${v.name || v.id} [${LIFECYCLE[v.lifecycle] || v.lifecycle}] : ${v.u1} partis → ${v.u2} réponses → ${v.u3} intéressés | ${points(v.points)} points | ${v.paid_eur} €`;
     btn.addEventListener('click', () => allerObjet('venture', v.id));
     node.append(btn);
     return node;

@@ -166,7 +166,6 @@ discutable, qui peut un jour changer, se règle depuis Mission Control.**
     récente de la boîte et les délais des relances (PR 1 du lot 8, sans
     heures ouvrées : Serge répond à toute heure, Q79) ; les jours et
     heures d'appel, la durée et les tours de parole d'un appel (PR 3) ;
-  - lot 9 (grille de points) : le barème de prospection ;
   - lot 10 (construire) : les bornes de la construction ;
   - lot 11 (étapes 3, 4, 6, 7 et 8) : la répartition du budget, les invitations
     LinkedIn par mois, les devis et les essais de caisse, la consolidation
@@ -262,16 +261,17 @@ fait attendre une réponse jusqu'à ce que Julien ou Clem ait répondu :
   base une table vide que personne n'écrit. Sans elles, on ne peut pas
   savoir quand un business peut être fermé.
 
-- [ ] **La grille de points.** Chaque canal (e-mail, appel, publicité,
-  réseau social, page web) traduit déjà ce qui se passe en réactions
-  communes : a vu, a réagi, a répondu, veut acheter, refuse, se
-  désinscrit. Il faut une table de barème, avec une ligne par canal et par
-  réaction, qui donne de 0 à 10 points, modifiable dans MC. Exemple pour
-  l'e-mail : ouvert 0,5 point, clic 1, réponse 4, veut acheter 10, refus 1
-  (un refus poli montre quand même que le besoin intéresse). Chaque
-  business affiche alors deux chiffres : le total de ses points, et ses
-  points par euro dépensé. C'est ce qui permet de comparer un test fait
-  par e-mail et un test fait par appel, sans rater les signaux faibles.
+- [ ] **La grille de points : les points par euro.** Les points sont
+  faits (lot 9, PR 1, décision Q84) : un barème par canal et par
+  réaction sur la page Policy, chaque prospect compté pour sa meilleure
+  réaction, le total sur la fiche du business, la page Économie et le
+  bandeau d'En direct. Il reste le second chiffre, les points par euro
+  dépensé. « Dépensé » compte le coût réel des modèles des tâches du
+  business, et ses minutes d'appel au prix réglé sur la page Policy ; les
+  achats (publicité, domaines) s'ajouteront quand ils existeront. Il faut
+  pour cela rattacher chaque appel au modèle à sa tâche (aujourd'hui,
+  `llm_usage` ne garde ni la tâche ni le business) et noter les minutes
+  d'appel, que rien ne compte encore, pas même le budget du mois.
 
 - [ ] **Remplir l'index de recherche dans la mémoire.** Le tool qui
   permet à une invocation de chercher dans la mémoire de Serge (leçons,
@@ -453,7 +453,10 @@ fait attendre une réponse jusqu'à ce que Julien ou Clem ait répondu :
   place, mais ils peuvent être repris plus tard. La comparaison inclut
   aussi les business mis de côté dont le test date de moins de 60 jours ;
   au-delà, ils redeviennent de simples candidats. Cette tâche a besoin des
-  places de test et de la grille de points.
+  places de test et de la grille de points. Les seuils d'un essai (page
+  Policy, « Taille des essais ») comptent encore les signaux « veut
+  acheter » des anciennes campagnes, que plus rien n'écrit : ils doivent
+  passer aux points.
 
 ---
 

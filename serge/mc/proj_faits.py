@@ -7,6 +7,11 @@ import sqlite3
 from typing import Any
 
 from serge.funnels.contacts import addresses
+from serge.funnels.points import (
+    points_contact,
+    points_prospects,
+    texte_points,
+)
 from serge.mc.libelles import (
     ETATS_CAMPAGNE,
     ETATS_FACTURE,
@@ -33,6 +38,8 @@ def _venture(conn: sqlite3.Connection, ident: str) -> dict | None:
         'SELECT id, amount_eur, status FROM transactions WHERE venture_id=?',
         (ident,),
     ).fetchall()
+    # La grille de points : la meilleure réaction de chaque prospect.
+    scores = points_prospects(conn, ident)
     preuves = conn.execute(
         'SELECT d.id, d.title FROM venture_sources s'
         ' JOIN listen_docs d ON d.id=s.doc_id WHERE s.venture_id=?'
@@ -56,7 +63,12 @@ def _venture(conn: sqlite3.Connection, ident: str) -> dict | None:
             (
                 'client' if p[2] == 'CUSTOMER' else 'prospect',
                 str(p[0]),
-                f'{p[1] or p[0]} · {FUNNEL.get(p[2], p[2])}',
+                f'{p[1] or p[0]} · {FUNNEL.get(p[2], p[2])}'
+                + (
+                    f' · {texte_points(scores[p[0]]["points"])} points'
+                    if p[0] in scores
+                    else ''
+                ),
             )
             for p in people
         ]
@@ -83,6 +95,12 @@ def _venture(conn: sqlite3.Connection, ident: str) -> dict | None:
                 (
                     'Serge peut avancer tout seul',
                     'oui' if row['schedulable'] else 'non',
+                ),
+                (
+                    'Points',
+                    f'{texte_points(sum(v["points"] for v in scores.values()))}'
+                    f' ({len(scores)} prospects ont réagi ; chacun compte'
+                    ' pour sa meilleure réaction)',
                 ),
                 ('Ce qu’il vend et à qui', row['description'] or '—'),
                 ('Famille', row['family'] or '—'),
@@ -123,6 +141,7 @@ def _campagne(conn: sqlite3.Connection, ident: str) -> dict | None:
 
 
 CANAUX_ADRESSE = {'email': 'E-mail', 'phone': 'Téléphone'}
+CANAUX_REACTION = {'email': 'par e-mail', 'voice': 'au téléphone'}
 
 
 def _contact(conn: sqlite3.Connection, ident: str) -> dict | None:
@@ -131,6 +150,7 @@ def _contact(conn: sqlite3.Connection, ident: str) -> dict | None:
         return None
     typ = 'client' if row['funnel_state'] == 'CUSTOMER' else 'prospect'
     adresses = addresses(conn, ident)
+    score = points_contact(conn, ident)
     return {
         'type': typ,
         'id': ident,
@@ -149,6 +169,13 @@ def _contact(conn: sqlite3.Connection, ident: str) -> dict | None:
                 (
                     'Comment on s’est parlé',
                     REGIMES.get(row['regime'], row['regime']),
+                ),
+                (
+                    'Points',
+                    f'{texte_points(score["points"])} (meilleure réaction :'
+                    f' {score["reaction"]}, {CANAUX_REACTION.get(score["canal"], score["canal"])})'
+                    if score
+                    else 'pas encore de réaction',
                 ),
             ]
             + [

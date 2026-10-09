@@ -371,18 +371,28 @@ personne indiquée. Le détail est dans
 
 ## Mesurer un test : la grille de points
 
-Chaque canal (e-mail, appel, publicité, réseau social, page web) traduit ce
-qui se passe en réactions communes : a vu, a réagi, a répondu, veut
-acheter, refuse, se désinscrit, erreur technique, inclassable. Ces
-réactions existent aujourd'hui dans le code, et des compteurs sont calculés
-dessus.
+Chaque message reçu (un e-mail, la transcription d'un appel) est classé
+par « Traiter une réponse » parmi huit réactions : rendez-vous, intéressé,
+question, objection, refus, absence, hors sujet, désinscription. La grille
+de points donne à chaque réaction de 0 à 10 points, selon un barème par
+canal, réglé sur la page Policy (famille « Grille de points », un réglage
+par canal et par réaction). Le barème de départ est le même pour l'e-mail
+et l'appel : rendez-vous 10, intéressé 8, question 4, objection 3, refus 1
+(un refus poli montre quand même que le besoin intéresse), 0 pour le
+reste. Un nouveau canal arrive avec son barème de départ.
 
-Julien a décidé que chaque réaction rapporte de 0 à 10 points, selon un
-barème par canal modifiable dans Mission Control. Exemple pour l'e-mail :
-ouvert 0,5 point, clic 1, réponse 4, veut acheter 10, refus 1 (un refus
-poli montre quand même que le besoin intéresse). On compare deux business
-avec deux chiffres : le total de leurs points, et leurs points par euro
-dépensé. Le détail de chaque réaction reste dans le journal.
+Un prospect compte une fois, pour sa meilleure réaction dans son business,
+tous canaux confondus : on mesure jusqu'où chacun est allé, et un prospect
+qui écrit cinq fois ne gonfle pas le total (décision Q84). Les points se
+recalculent avec le barème du moment : le changer recompte tous les
+business de la même façon. Seules les réponses comptent : Serge ne suit
+ni les ouvertures ni les clics de ses e-mails.
+
+On compare deux business avec deux chiffres : le total de leurs points
+(fiche du business, page Économie, bandeau d'En direct), et leurs points
+par euro dépensé (à venir : le coût des modèles de leurs tâches et leurs
+minutes d'appel). Chaque message, avec sa réaction, reste dans le fil du
+contact.
 
 ---
 

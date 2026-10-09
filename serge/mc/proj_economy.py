@@ -16,7 +16,8 @@ def project_entonnoir(
     conn: sqlite3.Connection, policy: Mapping[str, Any], now: str
 ) -> dict[str, Any]:
     """L'entonnoir de chaque business : messages partis, réponses,
-    réponses intéressées, euros encaissés (``chiffres_conversations``).
+    réponses intéressées, points, euros encaissés
+    (``chiffres_conversations``).
 
     Args:
         conn: Connexion canon (lecture).
@@ -24,7 +25,7 @@ def project_entonnoir(
         now: Horodatage ISO (ignoré).
 
     Returns:
-        Dict {ventures: [...], totaux: {u1, u2, u3, paid_eur}}.
+        Dict {ventures: [...], totaux: {u1, u2, u3, points, paid_eur}}.
     """
     _ = (policy, now)
     v_rows = conn.execute(
@@ -33,15 +34,16 @@ def project_entonnoir(
 
     ventures = []
     tot_u1 = tot_u2 = tot_u3 = 0
-    tot_paid_eur = 0.0
+    tot_points = tot_paid_eur = 0.0
 
     for v in v_rows:
         vid, vname, vlife = str(v[0]), str(v[1]), str(v[2])
         # Les conversations du business (lot 8) : messages partis, réponses,
-        # réponses intéressées, euros encaissés.
+        # réponses intéressées, points (lot 9), euros encaissés.
         chiffres = chiffres_conversations(conn, vid)
         u1, u2, u3 = (int(chiffres[k]) for k in ('u1', 'u2', 'u3'))
         paid_eur = chiffres['paid']
+        tot_points += chiffres['points']
 
         tot_u1 += u1
         tot_u2 += u2
@@ -56,6 +58,7 @@ def project_entonnoir(
                 'u1': u1,
                 'u2': u2,
                 'u3': u3,
+                'points': chiffres['points'],
                 'paid_eur': paid_eur,
             }
         )
@@ -66,6 +69,7 @@ def project_entonnoir(
             'u1': tot_u1,
             'u2': tot_u2,
             'u3': tot_u3,
+            'points': round(tot_points, 1),
             'paid_eur': round(tot_paid_eur, 2),
         },
     }

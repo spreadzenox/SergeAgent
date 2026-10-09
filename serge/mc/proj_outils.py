@@ -66,8 +66,10 @@ def chiffres_conversations(
 
     ``u1`` : messages partis ; ``u2`` : réponses reçues de ses contacts
     (sans les absences) ; ``u3`` : réponses intéressées (intérêt, rendez-
-    vous) ; ``paid`` : euros encaissés.
+    vous) ; ``points`` : ses points (grille de points, lot 9) ; ``paid`` :
+    euros encaissés.
     """
+    from serge.funnels.points import points_business
 
     def compte(sql: str, *params: str) -> int:
         return int(conn.execute(sql, (venture_id, *params)).fetchone()[0])
@@ -91,5 +93,6 @@ def chiffres_conversations(
             f" AND status='attached' AND reaction IN ({holes})",
             *INTERESSE,
         ),
+        'points': points_business(conn, venture_id),
         'paid': float(paid or 0),
     }
