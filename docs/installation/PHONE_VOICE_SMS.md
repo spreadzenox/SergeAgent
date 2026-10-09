@@ -176,7 +176,9 @@ contact, noter une adresse une fois confirmée). Le plan d'appel écrit le
 sens et le numéro de l'appel dans l'UUID d'AudioSocket : l'agent sait à
 qui il parle, et commence selon le sens (« Début d'un appel que Serge
 passe » ou « … reçoit », page Pipeline). À la fin, la transcription des
-deux voix entre dans le fil du contact.
+deux voix entre dans le fil du contact. Pour comprendre un appel raté sans
+accès à la machine : page Voix de Mission Control, « Journaux du serveur »
+(le pont vocal, Asterisk et le secours tour par tour).
 
 ```
 appel → Asterisk → AudioSocket 127.0.0.1:8792

@@ -18,6 +18,7 @@ from serge.db.boot import init_schema  # noqa: E402
 from serge.mc.proj_voice import (  # noqa: E402
     project_bridge_statut,
     project_cdr_appels,
+    project_journal_voix,
     project_qualite_voix,
 )
 from serge.voice.ledger import VoiceLedger  # noqa: E402
@@ -92,6 +93,79 @@ class ProjVoiceTests(unittest.TestCase):
     def test_serge_arrete_visible_dans_le_statut(self) -> None:
         res = project_bridge_statut(self.conn, POLICY, NOW)
         self.assertTrue(res['kill_switch'])  # arrêté par défaut
+
+    def test_les_journaux_du_serveur_se_lisent_dans_mission_control(
+        self,
+    ) -> None:
+        """Le journal du pont et d'Asterisk, et le fichier d'Asterisk : un
+        journal illisible le dit sans casser la page."""
+        fichier = self.root / 'logs/asterisk/messages'
+        fichier.parent.mkdir(parents=True)
+        fichier.write_text(
+            ''.join(f'[ligne {i}]\n' for i in range(200)), encoding='utf-8'
+        )
+        appels = []
+
+        def journalctl(args, **_kw):
+            appels.append(args)
+            unit = args[args.index('--unit') + 1]
+            if unit == 'serge-asterisk.service':
+                return mock.Mock(
+                    returncode=1, stdout='', stderr='Failed to open journal'
+                )
+            return mock.Mock(
+                returncode=0,
+                stdout='voice-s2s: appel\nvoice-s2s: erreur imprévue\n',
+                stderr='',
+            )
+
+        with (
+            mock.patch.dict(
+                'os.environ', {'SERGE_SYSTEM_ROOT': str(self.root)}
+            ),
+            mock.patch(
+                'serge.mc.proj_voice.shutil.which', return_value='/bin/x'
+            ),
+            mock.patch(
+                'serge.mc.proj_voice.subprocess.run', side_effect=journalctl
+            ),
+        ):
+            blocs = project_journal_voix(self.conn, POLICY, NOW)['blocs']
+        self.assertEqual(
+            [(b['titre'], b['erreur']) for b in blocs],
+            [
+                ('Pont vocal', ''),
+                (
+                    'Asterisk et le secours tour par tour',
+                    'Failed to open journal',
+                ),
+                ('Asterisk, fichier messages', ''),
+            ],
+        )
+        self.assertEqual(
+            blocs[0]['lignes'],
+            ['voice-s2s: appel', 'voice-s2s: erreur imprévue'],
+        )
+        self.assertEqual(len(blocs[2]['lignes']), 150)
+        self.assertEqual(blocs[2]['lignes'][-1], '[ligne 199]')
+        self.assertIn('--user', appels[0])
+
+    def test_sans_journalctl_la_section_le_dit(self) -> None:
+        with (
+            mock.patch.dict(
+                'os.environ', {'SERGE_SYSTEM_ROOT': str(self.root)}
+            ),
+            mock.patch('serge.mc.proj_voice.shutil.which', return_value=None),
+        ):
+            blocs = project_journal_voix(self.conn, POLICY, NOW)['blocs']
+        self.assertEqual(
+            [b['erreur'] for b in blocs],
+            [
+                'journalctl absent sur ce serveur',
+                'journalctl absent sur ce serveur',
+                'pas de fichier messages',
+            ],
+        )
 
 
 if __name__ == '__main__':
