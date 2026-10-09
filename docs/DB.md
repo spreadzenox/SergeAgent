@@ -106,7 +106,7 @@ catalogue et la mécanique.
 | `events` | Le journal général : qui, quoi, quand, avec un contenu JSON. |
 | `event_rows` | Quel événement concerne quelle ligne (une table et un numéro). C'est l'historique d'une ligne, que lit l'outil « Lire l'historique ». Rempli par chaque écriture d'invocation et par chaque événement d'un business. |
 | `ticket_events` | L'historique de chaque ticket. |
-| `llm_usage` | Chaque appel au modèle, noté aussitôt : invocation, modèle, jetons, durée, résultat (`ok`, `format_invalide`, `outil` pour un tour d'outils, `erreur` pour un appel raté) et coût réel facturé par OpenRouter (`cost_usd`, en dollars, vide s'il n'est pas donné). Les plafonds du jour et du mois comptent ce coût réel. |
+| `llm_usage` | Chaque appel au modèle, noté aussitôt : invocation, modèle, jetons, durée, résultat (`ok`, `format_invalide`, `outil` pour un tour d'outils, `erreur` pour un appel raté) et coût réel facturé par OpenRouter (`cost_usd`, en dollars, vide s'il n'est pas donné). Les plafonds du jour et du mois comptent ce coût réel. `task_id` : la tâche de l'appel, qui rattache son coût à son business (paramètre `venture_id` de la tâche), pour les points par euro de la grille de points (version 37, décision Q84). |
 | `episode_archives` | Les archives d'événements anciens. |
 
 ### La connaissance

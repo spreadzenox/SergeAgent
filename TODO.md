@@ -103,11 +103,12 @@ remplir la base, dans `config/pipeline.yaml` (le détail est dans
 
 On avance par lots. Un lot est un ensemble de tâches qui vont ensemble ;
 chaque lot se termine par des tests verts et un commit, puis Julien ou
-Clem regarde le résultat avant qu'on attaque le suivant. Les lots 1 à 8
-sont faits (l'historique git en garde la trace) : le runner et le
-pipeline en base, l'étape 1, et les conversations par e-mail et par
-téléphone y sont en place (lot 8 : voir
-[`docs/LOT8_CONCEPTION.md`](docs/LOT8_CONCEPTION.md)).
+Clem regarde le résultat avant qu'on attaque le suivant. Les lots 1 à 9,
+sauf le 8 bis, sont faits (l'historique git en garde la trace) : le
+runner et le pipeline en base, l'étape 1, les conversations par e-mail et
+par téléphone (lot 8 : voir
+[`docs/LOT8_CONCEPTION.md`](docs/LOT8_CONCEPTION.md)), et la grille de
+points (lot 9, décision Q84).
 
 - [ ] **Avant le lot 8 : les réglages en base.** Toute grandeur
   discutable se règle depuis Mission Control, sans réglage en double
@@ -119,9 +120,6 @@ téléphone y sont en place (lot 8 : voir
   attendre une réponse : « besoin de Julien », valider un brouillon, la
   réponse de Julien qui repart dans la conversation, des tickets qu'on
   comprend sans suivre Serge.
-- [ ] **Lot 9 « Grille de points ».** On donne des points à chaque
-  réaction d'un prospect, avec un barème par canal, pour pouvoir comparer
-  deux tests faits sur des canaux différents.
 - [ ] **Lot 10 « Concevoir et construire ».** On écrit le plan d'un POC
   et sa fiche produit, on les fait critiquer, Julien les valide, puis
   Serge construit et met en ligne, d'abord le POC, ensuite le vrai
@@ -188,17 +186,21 @@ fait attendre une réponse jusqu'à ce que Julien ou Clem ait répondu :
 - [ ] **« Besoin de Julien »** : « Traiter une réponse » dit aussi si
   Julien doit intervenir, et pourquoi. Un oui ouvre un ticket et fait
   attendre la tâche (`ask_julien_field`, et un statut « attend Julien »
-  sur les tâches). Un garde-fou qui bloque un envoi fait de même.
+  sur les tâches). Un garde-fou qui bloque un envoi fait de même. Sans
+  réponse à l'expiration du ticket (délai réglable), Serge envoie une
+  réponse d'attente prudente, sans s'engager, et le ticket reste ouvert
+  (Q85).
 - [ ] **Valider un brouillon avant l'envoi**, au début ou pour un business
-  sensible : un interrupteur par business, et la validation d'un lien par
-  ticket, à côté du passage à la main construit au lot 6 (bouton « Passer
-  à la suite » sur la fiche du lien, fonction `pass_waiting`) ; les deux
-  portes restent ouvertes (Q62).
+  sensible : un interrupteur par business, éteint par défaut (Q85), et la
+  validation d'un lien par ticket, à côté du passage à la main construit
+  au lot 6 (bouton « Passer à la suite » sur la fiche du lien, fonction
+  `pass_waiting`) ; les deux portes restent ouvertes (Q62).
 - [ ] **La réponse de Julien repart dans la conversation** : trois
   boutons, « Envoyer le brouillon », « Envoyer ma réponse telle quelle »,
-  « Réécrire avec mes consignes ». Quand la question portait sur le
-  produit, sa réponse s'ajoute aux questions fréquentes de la fiche
-  produit : la fois suivante, Serge répond seul (Q50).
+  « Réécrire avec mes consignes » (le nouveau brouillon revient dans le
+  même ticket, Q85). Quand la question portait sur le produit, sa réponse
+  s'ajoute aux questions fréquentes de la fiche produit : la fois
+  suivante, Serge répond seul (Q50).
 - [ ] **Des tickets qu'on comprend sans suivre Serge.** Quand un ticket
   arrive, Julien et Clem ne connaissent ni le business ni le prospect.
   Chaque ticket de conversation contient, dans cet ordre : le business en
@@ -209,6 +211,14 @@ fait attendre une réponse jusqu'à ce que Julien ou Clem ait répondu :
   Control (Q50). Ouvrir un ticket est une capacité générale : le ticket
   reprend ce que l'invocation a reçu et ce qu'elle a répondu, dans l'ordre
   réglé en base, jamais un modèle de ticket par invocation.
+- [ ] **Les types de tickets en base** : leurs boutons, leur délai et leur
+  décision par défaut sont aujourd'hui dans `config/ticket-types.yaml`.
+  Ils passent en base, réglables dans Mission Control (Q85).
+- [ ] **Les administrateurs Discord en base** : on ajoute un
+  administrateur de Serge depuis Mission Control ; chaque ticket lui est
+  envoyé en message privé, comme à tous les autres. Dès qu'un
+  administrateur répond, le ticket est fermé instantanément pour tous, et
+  une ou plusieurs invocations sont réveillées pour réagir (Q85).
 
 ---
 
@@ -260,18 +270,6 @@ fait attendre une réponse jusqu'à ce que Julien ou Clem ait répondu :
   traitement des réponses et l'encaissement), pour ne pas laisser dans la
   base une table vide que personne n'écrit. Sans elles, on ne peut pas
   savoir quand un business peut être fermé.
-
-- [ ] **La grille de points : les points par euro.** Les points sont
-  faits (lot 9, PR 1, décision Q84) : un barème par canal et par
-  réaction sur la page Policy, chaque prospect compté pour sa meilleure
-  réaction, le total sur la fiche du business, la page Économie et le
-  bandeau d'En direct. Il reste le second chiffre, les points par euro
-  dépensé. « Dépensé » compte le coût réel des modèles des tâches du
-  business, et ses minutes d'appel au prix réglé sur la page Policy ; les
-  achats (publicité, domaines) s'ajouteront quand ils existeront. Il faut
-  pour cela rattacher chaque appel au modèle à sa tâche (aujourd'hui,
-  `llm_usage` ne garde ni la tâche ni le business) et noter les minutes
-  d'appel, que rien ne compte encore, pas même le budget du mois.
 
 - [ ] **Remplir l'index de recherche dans la mémoire.** Le tool qui
   permet à une invocation de chercher dans la mémoire de Serge (leçons,

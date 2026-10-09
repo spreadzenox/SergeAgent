@@ -368,16 +368,18 @@ class InterpreterTests(unittest.TestCase):
         self.assertIn('non permis', self._events('write.refused')[0]['reason'])
 
     def test_une_reponse_mal_formee_est_redemandee(self) -> None:
-        enqueue_task(self.conn, 'chercheur', {'sujet': 'cy2'})
+        tache = enqueue_task(self.conn, 'chercheur', {'sujet': 'cy2'})
         self._run(FakeModel(bad_first=True))
-        verdicts = [
-            r[0]
-            for r in self.conn.execute(
-                "SELECT verdict FROM llm_usage WHERE point='chercheur' ORDER BY id"
-            )
-        ]
+        lignes = self.conn.execute(
+            'SELECT verdict, task_id FROM llm_usage'
+            " WHERE point='chercheur' ORDER BY id"
+        ).fetchall()
         # Le tour d'outils (une recherche) est noté, puis les deux réponses.
-        self.assertEqual(verdicts, ['outil', 'format_invalide', 'ok'])
+        self.assertEqual(
+            [r[0] for r in lignes], ['outil', 'format_invalide', 'ok']
+        )
+        # Chaque appel garde sa tâche : son coût va à son business.
+        self.assertEqual({r[1] for r in lignes}, {tache})
 
     def test_une_tache_en_echec_n_ecrit_rien(self) -> None:
         self.conn.execute(

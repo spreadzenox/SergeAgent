@@ -7,6 +7,18 @@ function points(n) {
   return Number(n || 0).toLocaleString('fr-FR');
 }
 
+// Les points par euro dépensé (modèles et minutes d'appel), et la dépense.
+function parEuro(ligne) {
+  const depense = Number(ligne.depense_eur || 0).toLocaleString('fr-FR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  if (ligne.points_par_euro === null || ligne.points_par_euro === undefined) {
+    return 'rien dépensé';
+  }
+  return `${points(ligne.points_par_euro)} par euro (${depense} € dépensés)`;
+}
+
 function tuile(n, libelle) {
   const box = document.createElement('div');
   box.className = 'tuile';
@@ -22,7 +34,7 @@ function renderEntonnoir(main, payload, sig) {
   const tot = payload.totaux || {};
   const pTot = main.querySelector('#eco-totaux');
   pTot.textContent =
-    `Total : ${tot.u1 || 0} messages partis → ${tot.u2 || 0} réponses → ${tot.u3 || 0} intéressés | ${points(tot.points)} points | Encaissé : ${tot.paid_eur || 0} €`;
+    `Total : ${tot.u1 || 0} messages partis → ${tot.u2 || 0} réponses → ${tot.u3 || 0} intéressés | ${points(tot.points)} points, ${parEuro(tot)} | Encaissé : ${tot.paid_eur || 0} €`;
   const chips = main.querySelector('[data-tuiles="entonnoir"]');
   if (chips) {
     chips.replaceChildren(
@@ -30,6 +42,7 @@ function renderEntonnoir(main, payload, sig) {
       tuile(tot.u2 || 0, 'Réponses'),
       tuile(tot.u3 || 0, 'Intéressés'),
       tuile(points(tot.points), 'Points'),
+      tuile(tot.points_par_euro === null || tot.points_par_euro === undefined ? '—' : points(tot.points_par_euro), 'Points par euro'),
       tuile(`${tot.paid_eur || 0} €`, 'Encaissé'),
     );
   }
@@ -41,7 +54,7 @@ function renderEntonnoir(main, payload, sig) {
     btn.type = 'button';
     btn.className = 'clic-ligne';
     btn.textContent =
-      `${v.name || v.id} [${LIFECYCLE[v.lifecycle] || v.lifecycle}] : ${v.u1} partis → ${v.u2} réponses → ${v.u3} intéressés | ${points(v.points)} points | ${v.paid_eur} €`;
+      `${v.name || v.id} [${LIFECYCLE[v.lifecycle] || v.lifecycle}] : ${v.u1} partis → ${v.u2} réponses → ${v.u3} intéressés | ${points(v.points)} points, ${parEuro(v)} | ${v.paid_eur} €`;
     btn.addEventListener('click', () => allerObjet('venture', v.id));
     node.append(btn);
     return node;

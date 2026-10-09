@@ -70,7 +70,7 @@ def read_api_key(root: Path | None = None) -> str:
 
 # Les appels qui ont eu une réponse, donc des jetons (tours d'outils
 # compris) ; un appel raté (« erreur ») n'a rien coûté.
-_COMPTES = "('ok', 'format_invalide', 'outil')"
+VERDICTS_COMPTES = "('ok', 'format_invalide', 'outil')"
 
 
 @dataclass(frozen=True)
@@ -109,7 +109,7 @@ def llm_spend(
         'SELECT COALESCE(SUM(cost_usd), 0), COALESCE(SUM(CASE WHEN cost_usd'
         ' IS NULL THEN tokens_in + tokens_out ELSE 0 END), 0),'
         ' COALESCE(SUM(tokens_in + tokens_out), 0) FROM llm_usage'
-        f' WHERE verdict IN {_COMPTES} AND created_at LIKE ?',
+        f' WHERE verdict IN {VERDICTS_COMPTES} AND created_at LIKE ?',
         (f'{prefix}%',),
     ).fetchone()
     return LlmSpend(float(row[0]) * eur_per_usd, int(row[2]), int(row[1]))
@@ -131,7 +131,7 @@ def daily_tokens(
     prefix = day or datetime.now(UTC).strftime('%Y-%m-%d')
     row = conn.execute(
         'SELECT COALESCE(SUM(tokens_in),0), COALESCE(SUM(tokens_out),0)'
-        f' FROM llm_usage WHERE verdict IN {_COMPTES} AND created_at LIKE ?',
+        f' FROM llm_usage WHERE verdict IN {VERDICTS_COMPTES} AND created_at LIKE ?',
         (f'{prefix}%',),
     ).fetchone()
     return int(row[0]), int(row[1])
@@ -143,7 +143,7 @@ def tokens_since(conn: sqlite3.Connection, since: str) -> tuple[int, int]:
     """
     row = conn.execute(
         'SELECT COALESCE(SUM(tokens_in),0), COALESCE(SUM(tokens_out),0)'
-        f' FROM llm_usage WHERE verdict IN {_COMPTES} AND created_at >= ?',
+        f' FROM llm_usage WHERE verdict IN {VERDICTS_COMPTES} AND created_at >= ?',
         (since,),
     ).fetchone()
     return int(row[0]), int(row[1])

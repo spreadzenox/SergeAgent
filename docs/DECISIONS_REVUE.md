@@ -1657,3 +1657,30 @@ Décidé :
 5. **Pas de réaction « veut acheter »** : rendez-vous et intéressé
    couvrent l'intention d'achat ; l'argent encaissé reste un chiffre à
    part (Q16 bis, Q42).
+
+### Q85 — Lot 8 bis : Julien dans la conversation (validé par Clem, 9 octobre 2026)
+Constat : pendant le lot 9, Clem a voulu discuter du lot 8 bis, où un envoi
+attend la réponse d'un humain. Les tickets existent (cycle de vie,
+expiration et décision par défaut, réponse dans Mission Control ou sur
+Discord), mais rien ne fait attendre un envoi ni ne relance la conversation
+quand un ticket est tranché. Les types de tickets sont dans un fichier
+(`config/ticket-types.yaml`), pas en base.
+Décidé :
+1. **Un ticket « Besoin de Julien » sans réponse** : à l'expiration (délai
+   réglable dans Mission Control), Serge envoie une réponse d'attente
+   prudente, sans s'engager (« je vérifie et je reviens vers vous ») ; le
+   ticket reste ouvert. Le prospect n'est jamais laissé sans nouvelles.
+2. **Valider les brouillons avant l'envoi** : un interrupteur par business,
+   éteint par défaut. Allumé (business sensible, premiers jours), chaque
+   brouillon ouvre un ticket.
+3. **« Réécrire avec mes consignes »** : le nouveau brouillon revient dans
+   le même ticket pour un dernier clic ; rien ne part sans avoir été vu.
+4. **Les types de tickets passent en base** dans ce lot (boutons, délai,
+   décision par défaut), réglables dans Mission Control.
+5. **Les administrateurs Discord de Serge sont en base**, et on en ajoute
+   depuis Mission Control. Chaque ticket est envoyé à tous les
+   administrateurs, pour l'instant en message privé.
+6. **La première réponse ferme le ticket pour tous** : dès qu'un
+   administrateur répond, le ticket est fermé instantanément chez tous les
+   autres, et une ou plusieurs invocations sont réveillées pour réagir à
+   la réponse.

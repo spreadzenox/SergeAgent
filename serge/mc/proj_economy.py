@@ -7,6 +7,7 @@ import sqlite3
 from collections.abc import Mapping
 from typing import Any
 
+from serge.funnels.depense import points_par_euro
 from serge.llm.runtime import llm_spend
 from serge.mc.proj_outils import chiffres_conversations
 from serge.text_ids import strip_ids
@@ -25,7 +26,8 @@ def project_entonnoir(
         now: Horodatage ISO (ignoré).
 
     Returns:
-        Dict {ventures: [...], totaux: {u1, u2, u3, points, paid_eur}}.
+        Dict {ventures: [...], totaux: {u1, u2, u3, points, depense_eur,
+        points_par_euro, paid_eur}}.
     """
     _ = (policy, now)
     v_rows = conn.execute(
@@ -34,7 +36,7 @@ def project_entonnoir(
 
     ventures = []
     tot_u1 = tot_u2 = tot_u3 = 0
-    tot_points = tot_paid_eur = 0.0
+    tot_points = tot_depense = tot_paid_eur = 0.0
 
     for v in v_rows:
         vid, vname, vlife = str(v[0]), str(v[1]), str(v[2])
@@ -44,6 +46,7 @@ def project_entonnoir(
         u1, u2, u3 = (int(chiffres[k]) for k in ('u1', 'u2', 'u3'))
         paid_eur = chiffres['paid']
         tot_points += chiffres['points']
+        tot_depense += chiffres['depense_eur']
 
         tot_u1 += u1
         tot_u2 += u2
@@ -59,6 +62,8 @@ def project_entonnoir(
                 'u2': u2,
                 'u3': u3,
                 'points': chiffres['points'],
+                'depense_eur': chiffres['depense_eur'],
+                'points_par_euro': chiffres['points_par_euro'],
                 'paid_eur': paid_eur,
             }
         )
@@ -70,6 +75,8 @@ def project_entonnoir(
             'u2': tot_u2,
             'u3': tot_u3,
             'points': round(tot_points, 1),
+            'depense_eur': round(tot_depense, 4),
+            'points_par_euro': points_par_euro(tot_points, tot_depense),
             'paid_eur': round(tot_paid_eur, 2),
         },
     }

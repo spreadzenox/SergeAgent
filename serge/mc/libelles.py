@@ -179,6 +179,7 @@ def phrase_recit(
     u3: int,
     paid: float,
     points: float = 0.0,
+    par_euro: float | None = None,
 ) -> str:
     """Phrase métier pour un étranger : touche → réponse → points → euro."""
     cycle = LIFECYCLE.get(lifecycle, lifecycle)
@@ -186,9 +187,14 @@ def phrase_recit(
     repondu = 'a répondu' if u2 == 1 else 'ont répondu'
     oui = 'a dit oui' if u3 == 1 else 'ont dit oui'
     total = texte_points(points)
+    rendement = (
+        f' ({texte_points(par_euro)} par euro dépensé)'
+        if par_euro is not None
+        else ''
+    )
     return (
         f'{nom} — {cycle}. {u1} personnes touchées, {u2} {repondu},'
-        f' {u3} {oui}, {total} points. {euros} € encaissés.'
+        f' {u3} {oui}, {total} points{rendement}. {euros} € encaissés.'
     )
 
 

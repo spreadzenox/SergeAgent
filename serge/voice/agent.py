@@ -26,6 +26,7 @@ import json
 import sqlite3
 import uuid
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Any
 
 from serge.db.store import utcnow
@@ -246,6 +247,14 @@ def finish_call(conn: sqlite3.Connection, call: Call) -> None:
             'SELECT venture_id FROM contacts WHERE id=?', (contact,)
         ).fetchone()
         venture = str(row[0]) if row else ''
+        # L'appelant reconnu pendant l'appel : la tâche garde son business,
+        # et ses minutes comptent dans ce que ce business a dépensé.
+        if venture:
+            conn.execute(
+                'INSERT OR REPLACE INTO task_params(task_id, name, value)'
+                " VALUES(?, 'venture_id', ?)",
+                (call.task_id, venture),
+            )
     if call.lines:
         answer = {
             'transcript': '\n'.join(call.lines),
@@ -260,6 +269,27 @@ def finish_call(conn: sqlite3.Connection, call: Call) -> None:
         pass_links(conn, call.inv.id, call.task_id, written, answer)
     finish_task(conn, call.task_id)
     conn.commit()
+
+
+def call_seconds(conn: sqlite3.Connection, venture_id: str) -> float:
+    """La durée des appels d'un business, en secondes : ses tâches d'appel
+    terminées, du décroché à la fin. Un appel coupé par un redémarrage du
+    pont ne compte pas : sa fin n'est pas celle de l'appel."""
+    total = 0.0
+    for started, finished in conn.execute(
+        'SELECT t.started_at, t.finished_at FROM tasks t JOIN task_params p'
+        " ON p.task_id=t.id AND p.name='venture_id'"
+        " WHERE t.queue_id=? AND p.value=? AND t.status='done'"
+        " AND t.started_at<>'' AND t.finished_at<>''",
+        (VOICE_QUEUE, venture_id),
+    ).fetchall():
+        try:
+            debut = datetime.fromisoformat(str(started))
+            fin = datetime.fromisoformat(str(finished))
+        except ValueError:
+            continue
+        total += max(0.0, (fin - debut).total_seconds())
+    return total
 
 
 def close_interrupted_calls(conn: sqlite3.Connection) -> int:
