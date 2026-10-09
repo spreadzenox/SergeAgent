@@ -336,6 +336,25 @@ class InterpreterTests(unittest.TestCase):
         self.assertIn(('chercheur', 'ok'), usage)
         self.assertIn(('choisir', 'ok'), usage)
 
+    def test_deux_cles_qui_commencent_pareil_font_deux_taches(self) -> None:
+        """Deux appels de la même heure : leurs clés ne diffèrent qu'après
+        le 20e caractère. La même clé rend toujours la même tâche."""
+        premiere = enqueue_task(
+            self.conn, 'chercheur', {}, key='appel:cdr_20261008T163512_a'
+        )
+        seconde = enqueue_task(
+            self.conn, 'chercheur', {}, key='appel:cdr_20261008T164801_b'
+        )
+        self.assertIsNotNone(premiere)
+        self.assertIsNotNone(seconde)
+        self.assertNotEqual(premiere, seconde)
+        self.assertEqual(
+            enqueue_task(
+                self.conn, 'chercheur', {}, key='appel:cdr_20261008T163512_a'
+            ),
+            premiere,
+        )
+
     def test_un_business_deja_en_test_est_refuse(self) -> None:
         task = enqueue_task(self.conn, 'choisir', {'venture_id': 'v_old'})
         self.assertIsNotNone(task)
