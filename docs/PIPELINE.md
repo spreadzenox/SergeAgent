@@ -393,7 +393,9 @@ vocal sait à qui il parle, et la transcription entre dans le fil ; la
 suite d'un appel part par e-mail si Serge a l'adresse, sinon il rappelle
 (décision Q83). Pour essayer les deux canaux, le bouton « Lancer un essai »
 (page Système) crée un business bidon, puis Serge écrit et appelle la
-personne indiquée. Le détail est dans
+personne indiquée ; avec la case « Valider chaque brouillon » cochée,
+chaque message, le premier compris, attend un administrateur. Le détail
+est dans
 [`LOT8_CONCEPTION.md`](LOT8_CONCEPTION.md).
 
 ---

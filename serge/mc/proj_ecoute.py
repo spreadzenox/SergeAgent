@@ -20,10 +20,10 @@ def boutons_de_etape(
     """Les déclencheurs « bouton » des invocations d'une étape.
 
     Chaque bouton dit quels champs du formulaire il transmet (paramètres
-    de source ``form``), la question posée avant de le lancer, et où en
-    sont les quotas dont il dépend. Exemple : ``{id, titre, champs:
-    ['guide'], conditions: [{texte: 'Places de test occupées', occupe: 2,
-    max: 3}], refus: ''}``.
+    de source ``form``) et ses cases à cocher (``form_case``), la question
+    posée avant de le lancer, et où en sont les quotas dont il dépend.
+    Exemple : ``{id, titre, champs: ['guide'], cases: [], conditions:
+    [{texte: 'Places de test occupées', occupe: 2, max: 3}], refus: ''}``.
     """
     boutons = []
     for trig_id, titre, inv_id, inv_titre, confirmer in conn.execute(
@@ -38,6 +38,14 @@ def boutons_de_etape(
             for r in conn.execute(
                 'SELECT value FROM trigger_params WHERE trigger_id=?'
                 " AND source='form' ORDER BY param_name",
+                (trig_id,),
+            ).fetchall()
+        ]
+        cases = [
+            str(r[0])
+            for r in conn.execute(
+                'SELECT value FROM trigger_params WHERE trigger_id=?'
+                " AND source='form_case' ORDER BY param_name",
                 (trig_id,),
             ).fetchall()
         ]
@@ -59,6 +67,7 @@ def boutons_de_etape(
                 'invocation': str(inv_id),
                 'invocation_titre': str(inv_titre or inv_id),
                 'champs': champs,
+                'cases': cases,
                 'confirmer': str(confirmer or ''),
                 'conditions': conditions,
                 'refus': trigger_refusal(conn, str(trig_id)),

@@ -15,7 +15,10 @@ Scénarios :
   numéro illisible arrête l'essai avec la raison, rien ne part ;
 - un essai relancé après un « STOP » lève la désinscription de ces
   adresses-là : on peut réessayer ;
-- le fil du dernier essai est visible dans Mission Control (page Système).
+- le fil du dernier essai est visible dans Mission Control (page Système) ;
+- la case « Valider chaque brouillon » cochée : le business d'essai naît
+  en mode validation, le premier e-mail et le premier appel attendent un
+  humain, et un ticket « Conversation » s'ouvre pour chacun.
 """
 
 from __future__ import annotations
@@ -211,6 +214,39 @@ class KitEssaiTests(unittest.TestCase):
             self._un("SELECT id FROM ventures WHERE lifecycle='TEST'"), premier
         )
         self.assertEqual(len(self.mails), 2)
+
+    def test_la_case_valider_fait_attendre_le_premier_message(self) -> None:
+        self._essai({**FORMULAIRE, 'Valider chaque brouillon': '1'})
+        self.assertEqual(
+            self._un(
+                "SELECT validate_drafts FROM ventures WHERE lifecycle='TEST'"
+            ),
+            (1,),
+        )
+        self.assertEqual(self.mails, [])
+        self.assertEqual(self.composes, [])
+        envois = self.conn.execute(
+            'SELECT channel, status FROM touches ORDER BY channel'
+        ).fetchall()
+        self.assertEqual(
+            [tuple(e) for e in envois],
+            [('email', 'waiting_owner'), ('voice', 'waiting_owner')],
+        )
+        self.assertEqual(
+            self._un(
+                "SELECT COUNT(*) FROM tickets WHERE type='CONVERSATION'"
+                " AND state='OPEN'"
+            ),
+            (2,),
+        )
+        # Sans la case, le business d'essai part seul, comme avant.
+        self._essai(FORMULAIRE)
+        self.assertEqual(
+            self._un(
+                "SELECT validate_drafts FROM ventures WHERE lifecycle='TEST'"
+            ),
+            (0,),
+        )
 
     def test_un_numero_national_est_mis_au_format_international(self) -> None:
         self._essai({**FORMULAIRE, 'téléphone (+33…)': '06 00 00 00 01'})

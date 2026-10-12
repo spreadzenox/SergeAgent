@@ -20,9 +20,10 @@ valeur changée dans Mission Control est gardée. Le résultat est noté dans
 
 Un outil nouveau d'une invocation déjà en base s'ajoute de la même façon,
 une seule fois, à la fin de ses outils (un outil retiré ensuite ne revient
-pas). De même pour un champ nouveau de sa réponse (``add_outputs``) et une
+pas). De même pour un champ nouveau de sa réponse (``add_outputs``), une
 valeur nouvelle d'une de ses écritures (``add_write_values``, avec le rang
-``write`` de l'écriture) :
+``write`` de l'écriture) et un paramètre nouveau d'un déclencheur
+(``add_trigger_params``, avec ``trigger``) :
 
     changes:
       - id: un_outil_de_plus
@@ -230,6 +231,42 @@ def _add_write_values(
     return ' ; '.join(parts)
 
 
+def _add_trigger_params(
+    conn: sqlite3.Connection, trigger: str, raw: Any
+) -> str:
+    """Ajoute des paramètres à un déclencheur déjà en base (un champ ou une
+    case de plus dans le formulaire d'un bouton) ; un paramètre déjà là est
+    gardé."""
+    if not isinstance(raw, Mapping):
+        raise PipelineSeedError('changes : add_trigger_params, des paramètres')
+    if not conn.execute(
+        'SELECT 1 FROM triggers WHERE id=?', (trigger,)
+    ).fetchone():
+        return 'objet absent'
+    parts = []
+    for name, spec in raw.items():
+        if not isinstance(spec, Mapping) or 'source' not in spec:
+            raise PipelineSeedError(f'changes : paramètre {name} mal écrit')
+        if conn.execute(
+            'SELECT 1 FROM trigger_params WHERE trigger_id=? AND param_name=?',
+            (trigger, str(name)),
+        ).fetchone():
+            parts.append(f'{name} déjà là')
+            continue
+        conn.execute(
+            'INSERT INTO trigger_params(trigger_id, param_name, source, value)'
+            ' VALUES(?,?,?,?)',
+            (
+                trigger,
+                str(name),
+                str(spec['source']),
+                str(spec.get('value', '')),
+            ),
+        )
+        parts.append(f'{name} ajouté')
+    return ' ; '.join(parts)
+
+
 def apply_changes(conn: sqlite3.Connection, raw: Any) -> None:
     """Applique les modifications de ``pipeline.yaml`` pas encore passées.
 
@@ -250,6 +287,12 @@ def apply_changes(conn: sqlite3.Connection, raw: Any) -> None:
             result = _add_tools(conn, invocation, change['add_tools'])
         elif 'add_outputs' in change:
             result = _add_outputs(conn, invocation, change['add_outputs'])
+        elif 'add_trigger_params' in change:
+            result = _add_trigger_params(
+                conn,
+                str(change.get('trigger') or ''),
+                change['add_trigger_params'],
+            )
         elif 'add_write_values' in change:
             result = _add_write_values(
                 conn,

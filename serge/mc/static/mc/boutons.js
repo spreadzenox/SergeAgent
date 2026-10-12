@@ -36,6 +36,15 @@ export function afficherBoutons(conteneur, boutons, vide) {
       label.append(zone);
       bloc.append(label);
     }
+    for (const caseLabel of bouton.cases || []) {
+      const label = el('label', 'champ-large');
+      const coche = el('input');
+      coche.type = 'checkbox';
+      coche.dataset.champ = caseLabel;
+      coche.dataset.case = '1';
+      label.append(coche, ` ${caseLabel}`);
+      bloc.append(label);
+    }
     const barre = el('div', 'barre-policy');
     const btn = el('button', 'btn-fort', bouton.titre);
     btn.type = 'button';
@@ -88,7 +97,7 @@ async function lancer(btn, apres) {
     }
     const form = {};
     for (const zone of btn.closest('.grille-champs').querySelectorAll('[data-champ]')) {
-      form[zone.dataset.champ] = zone.value;
+      form[zone.dataset.champ] = zone.dataset.case ? (zone.checked ? '1' : '') : zone.value;
     }
     const response = await fetch('/owner/api/bouton', {
       method: 'POST',
