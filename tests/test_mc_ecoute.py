@@ -111,6 +111,7 @@ class McBoutonApiTests(McServerCase):
                     'invocation': 'ouvrir_cycle_test',
                     'invocation_titre': 'Ouvrir un cycle',
                     'champs': ['guide'],
+                    'cases': [],
                     'confirmer': '',
                     'conditions': [],
                     'refus': '',
