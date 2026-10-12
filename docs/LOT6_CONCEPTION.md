@@ -398,8 +398,8 @@ transmis deux fois.
 ### `trigger_params` — ce que le déclencheur transmet
 
 `trigger_id`, `param_name`, `source` (`row` pour une colonne de la ligne
-écrite, `form` pour un champ rempli dans Mission Control, `fixed`),
-`value`.
+écrite, `form` pour un champ rempli dans Mission Control, `form_case` pour
+une case à cocher de ce formulaire, `fixed`), `value`.
 
 ---
 

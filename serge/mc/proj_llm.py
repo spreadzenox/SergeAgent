@@ -23,6 +23,7 @@ SOURCES = {
     'parent_row': 'la colonne « {} » de la ligne écrite juste avant',
     'row': 'la colonne « {} » de la ligne écrite',
     'form': 'le champ « {} » du formulaire',
+    'form_case': 'la case « {} » du formulaire',
     'now': 'la date et l’heure',
 }
 

@@ -379,7 +379,11 @@ lancement :
 
 1. « Lancer un essai » remplace le business d'essai précédent par un
    business bidon neuf (statut `TEST` : il n'entre jamais dans la chaîne des
-   étapes), avec sa demi-fiche produit et deux questions fréquentes ;
+   étapes), avec sa demi-fiche produit et deux questions fréquentes. Avec
+   la case « Valider chaque brouillon » cochée dans le formulaire, il naît
+   en mode validation : le premier e-mail et le premier appel attendent un
+   administrateur sur Discord, comme chaque brouillon après (décision
+   Q87) ;
 2. « Créer le contact d'essai » (capacité « Créer un contact ») crée la
    fiche, avec l'accord « test » pour être appelé, puis un premier e-mail
    et un premier appel à rédiger (seulement pour les adresses tapées) ;

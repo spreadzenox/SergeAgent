@@ -56,6 +56,10 @@ def _params(
             out[name] = str((task or {}).get(value, '') or '')
         elif source == 'form':
             out[name] = str((form or {}).get(value, '') or '')
+        elif source == 'form_case':
+            # Une case du formulaire : cochée, 1 ; sinon 0.
+            coche = str((form or {}).get(value, '') or '').lower()
+            out[name] = '1' if coche in {'1', 'true', 'on', 'oui'} else '0'
     return out
 
 

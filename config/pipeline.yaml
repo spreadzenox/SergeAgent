@@ -514,6 +514,7 @@ writable_tables:
       - {name: lifecycle, description: Le statut du business.}
       - {name: family, description: Sa famille de business.}
       - {name: choice_reason, description: Pourquoi il a été choisi.}
+      - {name: validate_drafts, description: '1 : chaque brouillon de ce business attend un humain.'}
   - table: listen_docs
     insert: true
     update: true
@@ -2133,6 +2134,7 @@ invocations:
           description: {source: fixed, value: 'Les artisans dictent leurs devis au téléphone ; Devis Vocal les met en page et les envoie au client.'}
           sellable_offer: {source: fixed, value: 'Un mois d''essai gratuit, puis 29 € par mois, sans engagement.'}
           lifecycle: {source: fixed, value: TEST}
+          validate_drafts: &valeur_essai_valider {source: task, value: valider}
       - table: product_sheets
         operation: insert
         parent: 1
@@ -2631,6 +2633,7 @@ triggers:
       name: {source: form, value: nom}
       email: {source: form, value: e-mail}
       phone: {source: form, value: 'téléphone (+33…)'}
+      valider: &case_essai_valider {source: form_case, value: Valider chaque brouillon}
 
 # Les modifications d'objets déjà en base sur une instance existante (le
 # fichier ne les écrase jamais) : chacune n'est appliquée qu'une fois, et
@@ -2939,6 +2942,19 @@ changes:
     add_write_values:
       needs_owner: *valeur_besoin_julien
       owner_question: *valeur_question_produit
+  - id: essai_case_valider
+    why: >-
+      Le business d'essai peut naître en mode « Valider chaque brouillon » :
+      même le premier e-mail attend un humain (lot 8 bis).
+    trigger: bouton_lancer_essai
+    add_trigger_params:
+      valider: *case_essai_valider
+  - id: essai_business_valider
+    why: Le business d'essai garde la case cochée dans le formulaire.
+    invocation: lancer_essai
+    write: 1
+    add_write_values:
+      validate_drafts: *valeur_essai_valider
   - id: voix_email_du_contact
     why: >-
       L'agent vocal reçoit au décrochage l'e-mail que Serge a pour la
