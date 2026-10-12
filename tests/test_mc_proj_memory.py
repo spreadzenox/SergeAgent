@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Projecteurs P4 Mémoire : goldens C1-C4, consolidation, demandes + recherche."""
+"""Projecteurs P4 Mémoire : goldens C1-C4, demandes + recherche."""
 
 from __future__ import annotations
 
@@ -15,12 +15,10 @@ sys.path.insert(0, str(ROOT))
 from serge.db.boot import init_schema  # noqa: E402
 from serge.db.store import open_db  # noqa: E402
 from serge.mc.proj_memory import (  # noqa: E402
-    project_consolidation,
     project_couches,
     project_requested,
 )
 from serge.memory.search import index_document  # noqa: E402
-from serge.memory.summaries import put_summary  # noqa: E402
 from tests.mc_server_case import McServerCase  # noqa: E402
 
 NOW = '2026-09-10T12:00:00+00:00'
@@ -87,18 +85,6 @@ class ProjMemoryTests(unittest.TestCase):
             ),
         )
 
-        # Consolidation summary & events
-        put_summary(conn, 'consolidation', '2026-09-08T10:00:00+00:00')
-        conn.execute(
-            'INSERT INTO events(ts, actor, type, payload_json) VALUES(?,?,?,?)',
-            (
-                '2026-09-08T10:00:00+00:00',
-                'consolidate',
-                'consolidate.run',
-                '{"lessons_added": 2}',
-            ),
-        )
-
         # Requested tickets
         conn.execute(
             'INSERT INTO tickets(id, type, title, state, payload_json,'
@@ -134,13 +120,6 @@ class ProjMemoryTests(unittest.TestCase):
         self.assertEqual(c4['items'][0]['confiance'], 0.85)
         self.assertEqual(c4['items'][0]['confirmations'], 5)
         self.assertNotIn('c5', data)
-
-    def test_consolidation_golden(self) -> None:
-        data = project_consolidation(self.conn, POLICY, NOW)
-        self.assertEqual(data['last_run'], '2026-09-08T10:00:00+00:00')
-        self.assertFalse(data['due'])  # 2 jours écoulés vs 3j
-        self.assertEqual(len(data['events']), 1)
-        self.assertEqual(data['events'][0]['acteur'], 'consolidate')
 
     def test_requested_golden(self) -> None:
         data = project_requested(self.conn, POLICY, NOW)

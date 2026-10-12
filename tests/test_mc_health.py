@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""MC P8 Santé : registre + rendu charte E6 + units systemd + drift + audit trail."""
+"""MC P8 Santé : registre + rendu charte E6 + drift + audit trail."""
 
 from __future__ import annotations
 
@@ -25,20 +25,13 @@ class HealthRegistryTests(unittest.TestCase):
         sections = PAGE_SECTIONS['p8']
         self.assertEqual(
             sections,
-            [
-                'meta',
-                'charte_metriques',
-                'audit_trail',
-                'versions_drift',
-                'units_systemd',
-            ],
+            ['meta', 'charte_metriques', 'versions_drift', 'audit_trail'],
         )
         for section in sections:
             self.assertIn(section, PROJECTORS)
         self.assertIn('charte_metriques', SLOW_SECTIONS)
         self.assertIn('audit_trail', SLOW_SECTIONS)
         self.assertIn('versions_drift', SLOW_SECTIONS)
-        self.assertIn('units_systemd', SLOW_SECTIONS)
 
 
 class McHealthTests(McBrowserCase):
@@ -81,9 +74,6 @@ class McHealthTests(McBrowserCase):
         expect(page.locator('#health-loc')).to_contain_text('lignes dans kit')
         expect(page.locator('#health-requested')).to_contain_text(
             'en attente : 1'
-        )
-        expect(page.locator('[data-section="units_systemd"]')).to_contain_text(
-            'File des travaux'
         )
         expect(page.locator('#health-versions')).to_contain_text(
             'Mission Control : v1'

@@ -19,10 +19,8 @@ from serge.mc.proj_voice import (  # noqa: E402
     project_bridge_statut,
     project_cdr_appels,
     project_journal_voix,
-    project_qualite_voix,
 )
 from serge.voice.ledger import VoiceLedger  # noqa: E402
-from serge.voice.quality import record_call_score  # noqa: E402
 
 NOW = '2026-09-10T12:00:00+00:00'
 POLICY: dict = {}
@@ -70,19 +68,6 @@ class ProjVoiceTests(unittest.TestCase):
             self.assertTrue(
                 call['audio_url'].startswith('/owner/api/voice/audio?cdr=')
             )
-
-    def test_qualite_voix(self) -> None:
-        res0 = project_qualite_voix(self.conn, POLICY, NOW)
-        self.assertEqual(res0['total_notes'], 0)
-        self.assertIsNone(res0['note_moyenne'])
-
-        record_call_score(self.conn, 'cdr_1', 4, ['ok'], False)
-        record_call_score(self.conn, 'cdr_2', 5, ['parfait'], False)
-        self.conn.commit()
-
-        res1 = project_qualite_voix(self.conn, POLICY, NOW)
-        self.assertEqual(res1['total_notes'], 2)
-        self.assertEqual(res1['note_moyenne'], 4.5)
 
     def test_bridge_statut(self) -> None:
         set_heartbeat(self.conn, True)

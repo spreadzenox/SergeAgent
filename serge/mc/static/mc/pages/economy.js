@@ -120,10 +120,6 @@ function renderAudit(main, payload, sig) {
     li(`${CANAUX[r.channel] || r.channel} → ${r.contact} · ${SORTES[r.kind] || r.kind || 'envoi'} · ${STATUTS[r.status] || r.status}${r.raison ? ` — ${r.raison}` : ''} (${rel(r.created_at)})`)
   );
 
-  const ulDette = main.querySelector('[data-section="audit_reponses"] [data-list="dette_builder"]');
-  fillList(ulDette, payload.dette_builder || [], 'Pas encore branché : la construction (lot 10) écrira les livrables.', (d) =>
-    li(`Artifact ${d.kind} v${d.version} (${rel(d.created_at)})`)
-  );
   main.querySelector('[data-section="audit_reponses"]').dataset.sig = sig;
 }
 

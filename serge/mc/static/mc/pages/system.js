@@ -2,7 +2,6 @@
 import {afficherBoutons, brancherBoutons} from '../boutons.js';
 import {fillList, li, rel} from '../components.js';
 import {dispositionIlots, startIlots} from '../hud.js';
-import {patchSection} from '../patch.js';
 
 const SANTE_FR = {
   ok: 'En forme',
@@ -11,73 +10,9 @@ const SANTE_FR = {
   inconnu: 'Inconnu',
 };
 
-const ETATS_CAMPAGNE = {
-  DRAFT: 'Brouillon',
-  READY: 'Prête',
-  RUNNING: 'En cours',
-  PAUSED: 'En pause',
-  FINISHED: 'Terminée',
-  CANCELLED: 'Annulée',
-};
-
 function ilotsDuStore(store) {
   const env = store.get('ilots');
   return env && env.payload ? env.payload.items || [] : [];
-}
-
-function detailsScheduler(store) {
-  const env = store.get('scheduler');
-  if (!env || !env.payload) {
-    return '';
-  }
-  const file = env.payload;
-  if (!file.next) {
-    const vide = file.ready === 0 && file.running === 0;
-    if (vide) {
-      return 'File vide.';
-    }
-    return file.attente || 'File coincée (voir En direct).';
-  }
-  return (
-    `Prochain : ${file.next.kind}`
-    + ` (${file.ready} prêts, ${file.running} en cours).`
-  );
-}
-
-function renderScheduler(main, payload, sig) {
-  patchSection(main, 'scheduler', sig, payload);
-  const next = main.querySelector('#sys-next');
-  if (!payload.next) {
-    next.textContent =
-      payload.ready === 0
-        ? 'File vide, rien en attente.'
-        : payload.attente || 'File coincée : revoir les ventures.';
-  } else {
-    const venture = payload.next.venture_id || 'sans venture';
-    next.textContent = `Prochain : ${payload.next.kind} (${venture}).`;
-  }
-}
-
-function renderCampagnes(main, payload, sig) {
-  const section = main.querySelector('[data-section="campagnes"]');
-  fillList(
-    section.querySelector('[data-list="items"]'),
-    payload.items,
-    'Pas encore branché : aucune invocation ne crée de campagne (lot 11, la prospection). Les échanges d’un essai n’en sont pas une.',
-    (item) =>
-      li(
-        `${item.id} — ${ETATS_CAMPAGNE[item.state] || item.state}`
-        + ` (${item.channel}, ${item.envoyes}/${item.touches} envoyés)`,
-      ),
-  );
-  fillList(
-    section.querySelector('[data-list="cooldowns"]'),
-    payload.cooldowns,
-    'Aucun compte en cooldown.',
-    (item) =>
-      li(`${item.venue} ${item.handle} — ${rel(item.jusqu_a)}.`),
-  );
-  section.dataset.sig = sig;
 }
 
 function trie(obj) {
@@ -101,22 +36,6 @@ function renderPopulation(main, payload, sig) {
   section.dataset.sig = sig;
 }
 
-function renderEmail(main, payload, sig) {
-  const section = main.querySelector('[data-section="email"]');
-  fillList(
-    section.querySelector('[data-list="statuts"]'),
-    trie(payload.par_statut),
-    'Aucun volume.',
-    ([statut, n]) => li(`${statut} : ${n}`),
-  );
-  main.querySelector('#sys-email-acti').textContent =
-    payload.derniere_activite
-      ? `Dernière activité : ${rel(payload.derniere_activite)}.`
-      : 'Aucune activité.';
-  section.dataset.sig = sig;
-}
-
-const ETATS_CANAL = {branche: 'branché', prevu: 'pas branché sur ce serveur'};
 const CANAUX = {email: 'e-mail', voice: 'appel'};
 const SORTES = {first: 'premier message', reply: 'réponse', followup: 'relance'};
 const STATUTS = {
@@ -133,12 +52,6 @@ const STATUTS = {
 
 function renderEssais(main, payload, sig) {
   const section = main.querySelector('[data-section="essais"]');
-  fillList(
-    section.querySelector('[data-list="canaux"]'),
-    payload.canaux || [],
-    'Aucun canal.',
-    (c) => li(`${c.titre} : ${ETATS_CANAL[c.etat] || c.etat}${c.releve ? ` (relevé ${rel(c.releve)})` : ''}`),
-  );
   afficherBoutons(
     section.querySelector('[data-essais="boutons"]'),
     payload.boutons || [],
@@ -173,7 +86,7 @@ export function mount(main, store) {
   main.replaceChildren(tpl.content.cloneNode(true));
   // La tâche placée, le flux de Mission Control montre la suite.
   brancherBoutons(main.querySelector('[data-essais="boutons"]'), async () => {});
-  let choisi = 'scheduler';
+  let choisi = 'taches';
   const canvas = main.querySelector('[data-hud="ilots"]');
   const etat = () => ({items: ilotsDuStore(store), choisi});
   const boucleIlots = startIlots(canvas, etat);
@@ -193,9 +106,9 @@ export function mount(main, store) {
     sante.textContent = SANTE_FR[ilot.sante] || ilot.sante;
     sante.dataset.niveau = ilot.sante;
     main.querySelector('[data-ilot="resume"]').textContent = ilot.resume;
-    const noeudDetails = main.querySelector('[data-ilot="details"]');
-    noeudDetails.textContent =
-      ilot.id === 'scheduler' ? detailsScheduler(store) : '';
+    main.querySelector('[data-ilot="details"]').replaceChildren(
+      ...(ilot.details || []).map((ligne) => li(ligne)),
+    );
   }
 
   function majListe() {
@@ -248,10 +161,7 @@ export function mount(main, store) {
   canvas.addEventListener('click', choisirAuClic);
 
   const rendus = {
-    scheduler: renderScheduler,
-    campagnes: renderCampagnes,
     population: renderPopulation,
-    email: renderEmail,
     non_rattaches: renderNonRattaches,
     essais: renderEssais,
   };
@@ -260,18 +170,8 @@ export function mount(main, store) {
       majListe();
       majPanneau();
     }),
-    store.subscribe('scheduler', (payload, sg) => {
-      majPanneau();
-      renderScheduler(main, payload, sg);
-    }),
-    store.subscribe('campagnes', (payload, sg) => {
-      renderCampagnes(main, payload, sg);
-    }),
     store.subscribe('population', (payload, sg) => {
       renderPopulation(main, payload, sg);
-    }),
-    store.subscribe('email', (payload, sg) => {
-      renderEmail(main, payload, sg);
     }),
     store.subscribe('non_rattaches', (payload, sg) => {
       renderNonRattaches(main, payload, sg);

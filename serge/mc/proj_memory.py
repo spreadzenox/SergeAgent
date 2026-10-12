@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Projecteurs P4 Mémoire : épisodes, procédures, pièges, leçons, consolidation, demandes."""
+"""Projecteurs P4 Mémoire : épisodes, procédures, pièges, leçons, demandes."""
 
 from __future__ import annotations
 
@@ -126,44 +126,6 @@ def project_couches(
     }
 
     return {'c1': c1, 'c2': c2, 'c3': c3, 'c4': c4}
-
-
-def project_consolidation(
-    conn: sqlite3.Connection, policy: Mapping[str, Any], now: str
-) -> dict[str, Any]:
-    """La consolidation de la mémoire (P4 Mémoire) : pas encore branchée.
-
-    Son code est rangé dans ``pas_encore_branche/`` : elle reviendra comme
-    une invocation décrite en base (voir « Plus tard » dans ``TODO.md``).
-    On montre seulement ses derniers événements passés.
-
-    Args:
-        conn: Connexion à la base (lecture).
-        policy: Policy (ignorée, uniformité).
-        now: Maintenant ISO UTC (ignoré, uniformité).
-
-    Returns:
-        ``{branchee, last_run, due, events}``.
-    """
-    _ = (policy, now)
-    ev_rows = conn.execute(
-        "SELECT ts, actor, type, payload_json FROM events WHERE actor='consolidate'"
-        " OR type LIKE 'consolidate%' ORDER BY id DESC LIMIT 5"
-    ).fetchall()
-    return {
-        'branchee': False,
-        'last_run': str(ev_rows[0][0]) if ev_rows else '',
-        'due': False,
-        'events': [
-            {
-                'ts': str(row[0]),
-                'acteur': str(row[1]),
-                'type': str(row[2]),
-                'charge': charge_json(row[3]),
-            }
-            for row in ev_rows
-        ],
-    }
 
 
 def project_requested(

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Projecteurs P8 Santé : charte E6, audit trail, drift versions, units systemd."""
+"""Projecteurs P8 Santé : charte E6, audit trail, drift versions."""
 
 from __future__ import annotations
 
@@ -152,74 +152,3 @@ def project_versions_drift(
         'schema_ok': schema_db == SCHEMA_VERSION,
         'gog_version': gog_ver,
     }
-
-
-def project_units_systemd(
-    conn: sqlite3.Connection, policy: Mapping[str, Any], now: str
-) -> dict[str, Any]:
-    """Sonde lente des services systemd (timeout court, fail-soft).
-
-    Args:
-        conn: Connexion canon (lecture).
-        policy: Policy.
-        now: Maintenant ISO.
-
-    Returns:
-        Dict {units: [...]}.
-    """
-    _ = (conn, policy, now)
-    unites = (
-        (
-            'serge-queue@conversations.service',
-            'File des conversations',
-            'tâches courtes, en continu',
-        ),
-        (
-            'serge-queue@works.service',
-            'File des travaux',
-            'tâches longues, en continu',
-        ),
-        ('serge-discord-bot.service', 'Bot Discord', 'écoute en continu'),
-        ('serge-voice-bridge.service', 'Pont voix', 'appels'),
-        (
-            'serge-public-dashboard.service',
-            'Mission Control',
-            'cette interface',
-        ),
-    )
-
-    resultats = []
-    has_systemctl = shutil.which('systemctl') is not None
-
-    for unit, titre, role in unites:
-        etat = 'inconnu'
-        if has_systemctl:
-            try:
-                p = subprocess.run(
-                    ['systemctl', '--user', 'is-active', unit],
-                    capture_output=True,
-                    text=True,
-                    timeout=1.5,
-                    check=False,
-                )
-                etat = p.stdout.strip() or 'inactive'
-            except Exception:
-                etat = 'non_disponible'
-        ok = etat == 'active'
-        if etat == 'active':
-            libelle = f'en marche ({role})'
-        elif etat == 'inactive':
-            libelle = 'arrêté'
-        else:
-            libelle = etat.replace('_', ' ')
-        resultats.append(
-            {
-                'unit': unit,
-                'titre': titre,
-                'status': etat,
-                'libelle': libelle,
-                'ok': ok,
-            }
-        )
-
-    return {'units': resultats}

@@ -14,17 +14,9 @@ from serge.mc.proj_analyse import (
     project_diffs,
     project_metriques_tickets,
 )
-from serge.mc.proj_campagnes import (
-    project_campagnes,
-    project_email,
-    project_essais,
-    project_non_rattaches,
-    project_population,
-)
 from serge.mc.proj_cerveau import (
     project_decisions,
     project_matrice,
-    project_pensees,
     project_signaux,
 )
 from serge.mc.proj_coupes import project_coupes
@@ -43,7 +35,6 @@ from serge.mc.proj_graphe import project_business, project_graphe
 from serge.mc.proj_health import (
     project_audit_trail,
     project_charte_metriques,
-    project_units_systemd,
     project_versions_drift,
 )
 from serge.mc.proj_identite import project_identite_page
@@ -54,7 +45,6 @@ from serge.mc.proj_live import (
     project_urgents,
 )
 from serge.mc.proj_memory import (
-    project_consolidation,
     project_couches,
     project_requested,
 )
@@ -63,17 +53,20 @@ from serge.mc.proj_policy import (
     project_politique_active,
     project_reglages,
 )
+from serge.mc.proj_systeme import (
+    project_essais,
+    project_non_rattaches,
+    project_population,
+)
 from serge.mc.proj_taches import (
     project_file,
     project_hero,
-    project_scheduler,
 )
 from serge.mc.proj_tickets import project_tickets
 from serge.mc.proj_voice import (
     project_bridge_statut,
     project_cdr_appels,
     project_journal_voix,
-    project_qualite_voix,
 )
 
 LIVE_TTL_S = 2.0
@@ -81,25 +74,23 @@ SLOW_TTL_S = 30.0
 SLOW_SECTIONS = frozenset(
     {
         'jauges',
+        'ilots',
         'population',
         'matrice',
         'diffs',
         'metriques',
         'couches',
-        'consolidation',
         'requested',
         'entonnoir',
         'transactions_subscriptions',
         'couts_cognitifs',
         'audit_reponses',
         'cdr_appels',
-        'qualite_voix',
         'bridge_statut',
         'journal_voix',
         'charte_metriques',
         'audit_trail',
         'versions_drift',
-        'units_systemd',
         'identite',
     }
 )
@@ -198,13 +189,9 @@ PROJECTORS: dict[str, Callable[..., dict[str, Any]]] = {
     'feed': project_feed,
     'jauges': project_jauges,
     'ilots': project_ilots,
-    'scheduler': project_scheduler,
-    'campagnes': project_campagnes,
     'population': project_population,
-    'email': project_email,
     'non_rattaches': project_non_rattaches,
     'essais': project_essais,
-    'pensees': project_pensees,
     'decisions': project_decisions,
     'matrice': project_matrice,
     'signaux': project_signaux,
@@ -214,7 +201,6 @@ PROJECTORS: dict[str, Callable[..., dict[str, Any]]] = {
     'admins_discord': project_admins_discord,
     'types_tickets': project_types_tickets,
     'couches': project_couches,
-    'consolidation': project_consolidation,
     'requested': project_requested,
     'politique_active': project_politique_active,
     'reglages': project_reglages,
@@ -223,13 +209,11 @@ PROJECTORS: dict[str, Callable[..., dict[str, Any]]] = {
     'couts_cognitifs': project_couts_cognitifs,
     'audit_reponses': project_audit_reponses,
     'cdr_appels': project_cdr_appels,
-    'qualite_voix': project_qualite_voix,
     'bridge_statut': project_bridge_statut,
     'journal_voix': project_journal_voix,
     'charte_metriques': project_charte_metriques,
     'audit_trail': project_audit_trail,
     'versions_drift': project_versions_drift,
-    'units_systemd': project_units_systemd,
     'identite': project_identite_page,
     'ecoute': project_ecoute,
     'pipeline': project_pipeline,
@@ -247,17 +231,8 @@ PAGE_SECTIONS: dict[str, list[str]] = {
         'feed',
         'jauges',
     ],
-    'p1': [
-        'meta',
-        'ilots',
-        'scheduler',
-        'campagnes',
-        'population',
-        'email',
-        'non_rattaches',
-        'essais',
-    ],
-    'p2': ['meta', 'pensees', 'decisions', 'matrice', 'signaux'],
+    'p1': ['meta', 'ilots', 'essais', 'population', 'non_rattaches'],
+    'p2': ['meta', 'decisions', 'matrice', 'signaux'],
     'p3': [
         'meta',
         'tickets',
@@ -266,7 +241,7 @@ PAGE_SECTIONS: dict[str, list[str]] = {
         'admins_discord',
         'types_tickets',
     ],
-    'p4': ['meta', 'couches', 'consolidation', 'requested'],
+    'p4': ['meta', 'couches', 'requested'],
     'p5': [
         'meta',
         'politique_active',
@@ -279,20 +254,8 @@ PAGE_SECTIONS: dict[str, list[str]] = {
         'couts_cognitifs',
         'audit_reponses',
     ],
-    'p7': [
-        'meta',
-        'cdr_appels',
-        'qualite_voix',
-        'bridge_statut',
-        'journal_voix',
-    ],
-    'p8': [
-        'meta',
-        'charte_metriques',
-        'audit_trail',
-        'versions_drift',
-        'units_systemd',
-    ],
+    'p7': ['meta', 'bridge_statut', 'cdr_appels', 'journal_voix'],
+    'p8': ['meta', 'charte_metriques', 'versions_drift', 'audit_trail'],
     'p9': ['meta', 'identite'],
     'p10': ['meta', 'ecoute'],
     'p11': ['meta', 'pipeline'],

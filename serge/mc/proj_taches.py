@@ -142,7 +142,7 @@ def _prochaine(
     return _resume(row) if row else None
 
 
-def _compte(conn: sqlite3.Connection, status: str) -> int:
+def compte_taches(conn: sqlite3.Connection, status: str) -> int:
     """Les tâches dans cet état, sauf celles d'une invocation supprimée,
     qui ne partiront jamais (une invocation éteinte, elle, attend)."""
     row = conn.execute(
@@ -183,7 +183,7 @@ def project_hero(
     plafond = plafond_atteint(conn, policy, now)
     return {
         'running': tache_en_cours(conn),
-        'ready': _compte(conn, 'ready'),
+        'ready': compte_taches(conn, 'ready'),
         'next': _prochaine(conn, now, llm=not plafond),
         'attente': _attente(conn, plafond),
     }
@@ -200,32 +200,8 @@ def project_file(
     plafond = plafond_atteint(conn, policy, now)
     return {
         'running': _en_cours(conn, 10),
-        'ready_count': _compte(conn, 'ready'),
+        'ready_count': compte_taches(conn, 'ready'),
         'next': _prochaine(conn, now, llm=not plafond),
-        'attente': _attente(conn, plafond),
-    }
-
-
-def project_scheduler(
-    conn: sqlite3.Connection, policy: Mapping[str, Any], now: str
-) -> dict[str, Any]:
-    """Page Système : la prochaine tâche et les compteurs des files.
-
-    Returns:
-        ``{next, ready, running, bloques, attente}`` ; ``bloques`` compte
-        les tâches prêtes dont la date « pas avant » n'est pas encore
-        passée.
-    """
-    plafond = plafond_atteint(conn, policy, now)
-    row = conn.execute(
-        "SELECT COUNT(*) FROM tasks WHERE status='ready' AND not_before>?",
-        (now,),
-    ).fetchone()
-    return {
-        'next': _prochaine(conn, now, llm=not plafond),
-        'ready': _compte(conn, 'ready'),
-        'running': _compte(conn, 'running'),
-        'bloques': int(row[0]) if row else 0,
         'attente': _attente(conn, plafond),
     }
 

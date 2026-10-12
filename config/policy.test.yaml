@@ -15,9 +15,6 @@ quotas:
   sms_global_per_min: 4
   linkedin_connect_per_day: 0
 
-voice:
-  quality_window: 4
-
 channels:
   email:
     max_per_day: 2

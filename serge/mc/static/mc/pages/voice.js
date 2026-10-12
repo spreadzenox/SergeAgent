@@ -1,4 +1,4 @@
-// Page P7 Voix : CDR, audio signée (E7), qualité F4c, pont, journaux du serveur.
+// Page P7 Voix : CDR, audio signée (E7), pont, journaux du serveur.
 import {fillList, li, rel} from '../components.js';
 
 function libelleIssue(c) {
@@ -63,21 +63,6 @@ function renderCdr(main, payload, sig) {
   main.querySelector('[data-section="cdr_appels"]').dataset.sig = sig;
 }
 
-function renderQualite(main, payload, sig) {
-  const pMoy = main.querySelector('#voice-qualite-moyenne');
-  // Aucune invocation ne note encore les appels : la section le dit tant
-  // qu'aucune note n'existe.
-  pMoy.textContent = payload.note_moyenne !== null
-    ? `Score moyen récent : ${payload.note_moyenne} / 5 (${payload.total_notes || 0} notés)`
-    : 'Pas encore branché : aucune invocation ne note les appels. Le journal ci-dessus garde chaque appel et sa transcription.';
-
-  const ul = main.querySelector('[data-section="qualite_voix"] [data-list="scores"]');
-  fillList(ul, payload.scores || [], 'Aucun appel noté.', (s) =>
-    li(`Appel [${s.cdr || '—'}] : Note ${s.note || '—'} / 5 (flags: ${(s.flags || []).join(', ') || 'aucun'})`)
-  );
-  main.querySelector('[data-section="qualite_voix"]').dataset.sig = sig;
-}
-
 function renderJournaux(main, payload, sig) {
   const conteneur = main.querySelector('[data-journaux="blocs"]');
   conteneur.replaceChildren();
@@ -108,7 +93,6 @@ export function mount(main, store) {
   const unsubs = [
     store.subscribe('bridge_statut', (p, s) => renderBridge(main, p, s)),
     store.subscribe('cdr_appels', (p, s) => renderCdr(main, p, s)),
-    store.subscribe('qualite_voix', (p, s) => renderQualite(main, p, s)),
     store.subscribe('journal_voix', (p, s) => renderJournaux(main, p, s)),
   ];
 
@@ -117,8 +101,6 @@ export function mount(main, store) {
       renderBridge(main, env.payload, env.sig);
     } else if (section === 'cdr_appels') {
       renderCdr(main, env.payload, env.sig);
-    } else if (section === 'qualite_voix') {
-      renderQualite(main, env.payload, env.sig);
     } else if (section === 'journal_voix') {
       renderJournaux(main, env.payload, env.sig);
     }

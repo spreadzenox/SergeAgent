@@ -70,10 +70,6 @@ class ProjEconomyTests(unittest.TestCase):
             'INSERT INTO llm_usage(point, tier, model, tokens_in, tokens_out, latency_ms, verdict, cost_usd, created_at)'
             " VALUES('qualify', 'T1', 'nemo', 1000, 1000, 50, 'ok', 0.02, '2026-09-05T10:00:00+00:00')"
         )
-        conn.execute(
-            'INSERT INTO artifacts(id, venture_id, kind, version, path_or_url, created_at)'
-            " VALUES('art1', 'v1', 'landing', 1, '/tmp/landing', '2026-09-06T10:00:00+00:00')"
-        )
         conn.commit()
 
     def test_entonnoir_golden(self) -> None:
@@ -122,8 +118,6 @@ class ProjEconomyTests(unittest.TestCase):
         data = project_audit_reponses(self.conn, POLICY, NOW)
         self.assertEqual(len(data['reponses']), 1)
         self.assertEqual(data['reponses'][0]['contact'], 'Alice')
-        self.assertEqual(len(data['dette_builder']), 1)
-        self.assertEqual(data['dette_builder'][0]['kind'], 'landing')
 
 
 if __name__ == '__main__':

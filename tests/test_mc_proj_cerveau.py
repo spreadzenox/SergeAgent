@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Projecteurs P2 : goldens signaux/clusters/décisions/pensées/usage."""
+"""Projecteurs P2 : goldens signaux/clusters/décisions/usage."""
 
 from __future__ import annotations
 
@@ -15,7 +15,6 @@ from serge.db.boot import init_schema  # noqa: E402
 from serge.mc.proj_cerveau import (  # noqa: E402
     project_decisions,
     project_matrice,
-    project_pensees,
     project_signaux,
     project_usage_points,
 )
@@ -148,12 +147,6 @@ class ProjCerveauTests(unittest.TestCase):
         )
         self.assertEqual(projete[0]['latence_ms'], 50)
         self.assertEqual(projete[0]['tier'], 'T1')
-
-    def test_pensees_stub(self) -> None:
-        self.assertEqual(
-            project_pensees(self.conn, POLICY, NOW),
-            {'items': [], 'source': 'aucune (émetteurs futurs)'},
-        )
 
     def test_usage_points_golden(self) -> None:
         self.assertEqual(

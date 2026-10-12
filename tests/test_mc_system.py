@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import sys
 import unittest
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -26,20 +26,13 @@ class SystemRegistryTests(unittest.TestCase):
         sections = PAGE_SECTIONS['p1']
         self.assertEqual(
             sections,
-            [
-                'meta',
-                'ilots',
-                'scheduler',
-                'campagnes',
-                'population',
-                'email',
-                'non_rattaches',
-                'essais',
-            ],
+            ['meta', 'ilots', 'essais', 'population', 'non_rattaches'],
         )
         for section in sections:
             self.assertIn(section, PROJECTORS)
         self.assertIn('population', SLOW_SECTIONS)
+        # Les îlots lisent l'état des services : lents à sonder.
+        self.assertIn('ilots', SLOW_SECTIONS)
 
 
 class McSystemTests(McBrowserCase):
@@ -106,25 +99,10 @@ class McSystemTests(McBrowserCase):
                 " 'unattached', ?)",
                 (iso,),
             )
-            conn.execute(
-                'INSERT INTO transactions(id, venture_id, kind, amount_eur,'
-                ' intent_id, status, created_at, updated_at)'
-                " VALUES('x1','v1','invoice',50.0,'in-1','overdue',?,?)",
-                (iso, iso),
-            )
             invocations(
                 conn, ('envoyer', 'Envoyer un e-mail', 'prospection_light')
             )
             tache(conn, 'envoyer', {'venture_id': 'v1'}, key='k-w1')
-            conn.execute(
-                'INSERT INTO accounts_standing(id, venue, handle,'
-                ' cooldown_until, updated_at) VALUES'
-                "('s1','gmail','a@x.io',?,?)",
-                (
-                    (now + timedelta(hours=3)).isoformat(),  # → 'dans 2 h'
-                    iso,
-                ),
-            )
             conn.commit()
         finally:
             conn.close()
@@ -142,13 +120,21 @@ class McSystemTests(McBrowserCase):
 
         page = self._page_home()
         page.goto(f'{self.base}/owner#/system')
-        expect(page.locator('[data-section="email"]')).to_be_visible()
-        # Le bouton d'essai, déclaré en base, et l'état des canaux.
+        # Un îlot par morceau qui tourne ; un clic montre ses détails.
+        ilots = page.locator('[data-ilots="liste"]')
+        for label in ('Files de tâches', 'E-mail', 'Voix', 'Discord'):
+            expect(ilots).to_contain_text(label)
+        ilots.locator('[data-ilot="discord"]').click()
+        expect(page.locator('[data-ilot="label"]')).to_have_text('Discord')
+        page.locator('[data-ilot="email"]').click()
+        expect(page.locator('[data-ilot="resume"]')).to_have_text(
+            'Pas branché sur ce serveur.'
+        )
+        # Le bouton d'essai, déclaré en base, avec sa case à cocher.
         essais = page.locator('[data-section="essais"]')
         expect(essais.locator('[data-bouton-base]')).to_have_text(
             'Lancer un essai'
         )
-        expect(essais).to_contain_text('E-mail : pas branché sur ce serveur')
         # Le message d'un inconnu : pas traité, mais visible.
         expect(page.locator('[data-section="non_rattaches"]')).to_contain_text(
             'inconnu@ailleurs.fr · Une question'

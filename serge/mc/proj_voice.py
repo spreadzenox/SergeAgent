@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Projecteurs P7 Voix : CDR, audio, qualité, bridge, statut kill M9/M11."""
+"""Projecteurs P7 Voix : CDR, audio, bridge, statut kill M9/M11, journaux."""
 
 from __future__ import annotations
 
@@ -14,7 +14,6 @@ from serge.coupe_circuit import heartbeat_marche
 from serge.paths import system_root
 from serge.voice.ledger import assurer_colonnes_calls
 from serge.voice.policy import default_ledger_path
-from serge.voice.quality import recent_scores
 
 
 def project_cdr_appels(
@@ -80,31 +79,6 @@ def project_cdr_appels(
         )
 
     return {'calls': calls, 'total': int(tot), 'disponible': True}
-
-
-def project_qualite_voix(
-    conn: sqlite3.Connection, policy: Mapping[str, Any], now: str
-) -> dict[str, Any]:
-    """Métriques qualité voix F4c : scores récents, moyenne, drapeaux.
-
-    Args:
-        conn: Connexion canon.
-        policy: Policy (qualite window).
-        now: Maintenant ISO.
-
-    Returns:
-        Dict {scores: [...], note_moyenne, total_notes}.
-    """
-    _ = now
-    scores = recent_scores(conn, window=20)
-    notes = [s['note'] for s in scores if s.get('note') is not None]
-    moyenne = round(sum(notes) / len(notes), 2) if notes else None
-
-    return {
-        'scores': scores,
-        'note_moyenne': moyenne,
-        'total_notes': len(notes),
-    }
 
 
 def project_bridge_statut(

@@ -7,7 +7,6 @@ import sqlite3
 import sys
 import unittest
 from pathlib import Path
-from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -17,7 +16,6 @@ from serge.db.schema import SCHEMA_VERSION  # noqa: E402
 from serge.mc.proj_health import (  # noqa: E402
     project_audit_trail,
     project_charte_metriques,
-    project_units_systemd,
     project_versions_drift,
 )
 
@@ -64,12 +62,6 @@ class ProjHealthTests(unittest.TestCase):
         self.assertEqual(data['schema_version'], SCHEMA_VERSION)
         self.assertTrue(data['schema_ok'])
         self.assertIn('mc_version', data)
-
-    def test_units_systemd(self) -> None:
-        with mock.patch('shutil.which', return_value=None):
-            data = project_units_systemd(self.conn, POLICY, NOW)
-            self.assertEqual(len(data['units']), 5)
-            self.assertEqual(data['units'][0]['status'], 'inconnu')
 
 
 if __name__ == '__main__':
