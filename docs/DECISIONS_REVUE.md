@@ -1703,3 +1703,14 @@ Décidé :
    retiré.
 4. **La nuit, un ticket part tout de suite, avec notification** : aucune
    heure calme pour les messages privés.
+
+### Q87 — L'essai peut naître en mode « Valider chaque brouillon » (validé par Clem, 12 octobre 2026)
+Constat : Clem allume « Valider chaque brouillon » sur la fiche du
+business d'essai, puis clique « Lancer un essai ». Le bouton efface le
+business d'essai et en crée un neuf, interrupteur éteint : le premier
+e-mail part sans passer par Discord. On lui a proposé un contournement
+(allumer l'interrupteur après le lancement) ou une correction.
+Décidé : **pas de contournement, on corrige.** Le formulaire « Lancer un
+essai » a une case « Valider chaque brouillon ». Cochée, le business
+d'essai naît en mode validation : le premier e-mail et le premier appel
+attendent un administrateur sur Discord, comme chaque brouillon après.

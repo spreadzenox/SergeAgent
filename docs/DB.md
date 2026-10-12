@@ -57,7 +57,9 @@ Trois exceptions, toutes décrites dans `config/pipeline.yaml` :
   [`LOT7_CONCEPTION.md`](LOT7_CONCEPTION.md), partie 5. Un **outil
   nouveau d'une invocation existante** passe aussi par `changes`
   (`add_tools`) : il s'ajoute une seule fois, à la fin de ses outils, et
-  un outil retiré ensuite ne revient pas ;
+  un outil retiré ensuite ne revient pas. De même pour un paramètre
+  nouveau d'un déclencheur existant (`add_trigger_params`), par exemple
+  une case de plus dans le formulaire d'un bouton ;
 - ce qui est **retiré** du fichier est listé dans la section `deleted` :
   marqué supprimé en base (invocations, liens, déclencheurs), ou effacé
   (outils, quotas, textes de Serge).
@@ -149,7 +151,7 @@ est déjà en base. Chaque table est expliquée dans
 | `task_cancel_rules` | Les tâches à annuler quand une ligne change d'état : « quand un cycle passe à `ABANDONED`, ses tâches en attente (paramètre `cycle_id`) sont annulées ». |
 | `table_quotas` | Une protection de plus : « au plus N lignes dont telle colonne vaut l'une de ces valeurs » (exemple : au plus 3 business choisis pour un POC). Modifiable sur la page Policy, qui garde la valeur précédente. |
 | `links`, `link_params`, `link_passages`, `link_passage_params` | Les liens entre invocations, ce qui est déjà passé, et ce qui attend un clic « Passer à la suite » avec ses paramètres (lien réglé à la main). Un lien peut avoir une condition (comme une écriture : lue dans la réponse, ou dans la ligne écrite pour un lien `per_row`) et un délai tiré entre deux réglages de la policy (`delay_min_setting`, `delay_max_setting` ; `{channel}` y est remplacé par le canal de la ligne, version 35). |
-| `triggers`, `trigger_params`, `trigger_conditions` | Ce qui lance une invocation : une ligne écrite, une heure (une tâche par ligne d'une table, si le déclencheur en vise une), un bouton (avec sa question de confirmation). `trigger_conditions` : les quotas qui doivent avoir de la place. |
+| `triggers`, `trigger_params`, `trigger_conditions` | Ce qui lance une invocation : une ligne écrite, une heure (une tâche par ligne d'une table, si le déclencheur en vise une), un bouton (avec sa question de confirmation). `trigger_params` : ce que le déclencheur transmet à la tâche, pris dans la ligne écrite (`row`), dans un champ du formulaire du bouton (`form`), dans une case à cocher de ce formulaire (`form_case` : `1` cochée, `0` sinon, version 40) ou fixe (`fixed`). `trigger_conditions` : les quotas qui doivent avoir de la place. |
 | `pipeline_changes` | Les modifications d'objets déjà en base passées par la section `changes` de `pipeline.yaml`, une ligne par modification, avec son résultat. |
 | `queues`, `tasks`, `task_params`, `task_inputs`, `task_seen_tables` | Les files (conversations, travaux, et « Appels » : chaque appel téléphonique est une tâche de l'agent vocal, menée en direct par le pont téléphonique, lot 8), leurs tâches, et ce que chaque tâche a reçu : ses lectures d'office, les tables à comparer et ses leçons (lignes données, lignes laissées de côté). |
 | `llm_models` | Chaque niveau (rapide, moyen, intelligent) : le modèle derrière lui, et pour la recommandation de la page Pipeline son prix maximum (`max_price_usd`, $ par million de jetons) et sa tolérance (`tolerance_pct`, % de la meilleure note sous ce prix). |
