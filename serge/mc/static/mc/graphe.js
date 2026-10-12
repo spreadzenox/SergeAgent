@@ -295,7 +295,7 @@ export function monterGraphe(main, getPayload, stoppers) {
         policy: '#/policy',
         voix: '#/voice',
         discord: '#/tickets',
-        scheduler: '#/health',
+        scheduler: '#/system',
         stripe: '#/economy',
       };
       if (hash[n.id]) {

@@ -19,20 +19,16 @@ from serge.mc.projectors import (  # noqa: E402
 )
 from serge.memory.lessons import add_lesson  # noqa: E402
 from serge.memory.search import index_document  # noqa: E402
-from serge.memory.summaries import put_summary  # noqa: E402
 from tests.mc_server_case import McBrowserCase  # noqa: E402
 
 
 class MemoryRegistryTests(unittest.TestCase):
     def test_registre_p4(self) -> None:
         sections = PAGE_SECTIONS['p4']
-        self.assertEqual(
-            sections, ['meta', 'couches', 'consolidation', 'requested']
-        )
+        self.assertEqual(sections, ['meta', 'couches', 'requested'])
         for section in sections:
             self.assertIn(section, PROJECTORS)
         self.assertIn('couches', SLOW_SECTIONS)
-        self.assertIn('consolidation', SLOW_SECTIONS)
         self.assertIn('requested', SLOW_SECTIONS)
 
 
@@ -63,9 +59,6 @@ class McMemoryTests(McBrowserCase):
             add_lesson(
                 conn, 'Valider le SIRET systématiquement', confidence=0.85
             )
-
-            # Consolidation
-            put_summary(conn, 'consolidation', iso)
 
             # Requested
             conn.execute(
@@ -121,10 +114,7 @@ class McMemoryTests(McBrowserCase):
             'Valider le SIRET'
         )
 
-        # Consolidation & requested
-        expect(page.locator('[data-section="consolidation"]')).to_contain_text(
-            'Dernière exécution :'
-        )
+        # Demandes d'évolution
         expect(page.locator('[data-section="requested"]')).to_contain_text(
             'Filtre NAF'
         )

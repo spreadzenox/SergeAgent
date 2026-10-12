@@ -1,4 +1,4 @@
-// Page P2 Cerveau : stream, décisions, invocations, signaux.
+// Page P2 Cerveau : décisions, invocations, signaux.
 import {
   confirmModal,
   fillList,
@@ -20,17 +20,6 @@ function verdictsCompacts(verdicts) {
     return '—';
   }
   return entrees.map(([v, n]) => `${v}×${n}`).join(', ');
-}
-
-function renderPensees(main, payload, sig) {
-  const section = main.querySelector('[data-section="pensees"]');
-  fillList(
-    section.querySelector('[data-list="items"]'),
-    payload.items,
-    'Aucune pensée pour le moment.',
-    (item) => li(`${rel(item.ts)} · ${item.texte}`),
-  );
-  section.dataset.sig = sig;
 }
 
 function renderDecisions(main, payload, sig) {
@@ -150,7 +139,6 @@ export function mount(main, store) {
   const tpl = document.getElementById('page-mind');
   main.replaceChildren(tpl.content.cloneNode(true));
   const rendus = {
-    pensees: renderPensees,
     decisions: renderDecisions,
     matrice: renderMatrice,
     signaux: renderSignaux,

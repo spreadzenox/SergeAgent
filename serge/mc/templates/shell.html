@@ -142,6 +142,7 @@
 </section>
 </template>
 <template id="page-system">
+<p class="page-intro">Ce qui tourne : un îlot par morceau de Serge (les files de tâches, l’e-mail, la voix, Discord, l’écoute du web, les garde-fous), avec l’état de son service. Clique un îlot pour ses détails.</p>
 <section class="panneau" data-section="ilots" data-sig="">
 <h2>Îlots</h2>
 <div class="system-layout">
@@ -150,21 +151,18 @@
 <h3 data-ilot="label">…</h3>
 <p data-ilot="sante">…</p>
 <p data-ilot="resume">…</p>
-<p data-ilot="details"></p>
+<ul data-ilot="details"></ul>
 </aside>
 </div>
 <ul class="ilots-liste" data-ilots="liste"></ul>
 </section>
-<section class="panneau" data-section="scheduler" data-sig="">
-<h2>Ordonnanceur</h2>
-<p id="sys-next">…</p>
-<p><span data-field="ready">…</span> prêts, <span data-field="running">…</span> en cours, <span data-field="bloques">…</span> bloqués.</p>
-</section>
-<section class="panneau" data-section="campagnes" data-sig="">
-<h2>Campagnes</h2>
-<ul data-list="items"></ul>
-<h3>Cooldowns</h3>
-<ul data-list="cooldowns"></ul>
+<section class="panneau" data-section="essais" data-sig="">
+<h2>Essais</h2>
+<p class="page-intro">Pour essayer les canaux : Serge écrit et appelle la personne indiquée, pour lui présenter un business bidon. Ses coordonnées restent en base.</p>
+<div data-essais="boutons"></div>
+<h3>Le dernier essai</h3>
+<p data-essais="contact">Aucun essai pour l’instant.</p>
+<ul data-list="fil"></ul>
 </section>
 <section class="panneau" data-section="population" data-sig="">
 <h2>Population</h2>
@@ -172,20 +170,6 @@
 <ul data-list="contacts"></ul>
 <h3>Ventures</h3>
 <ul data-list="ventures"></ul>
-</section>
-<section class="panneau" data-section="email" data-sig="">
-<h2>Email</h2>
-<ul data-list="statuts"></ul>
-<p id="sys-email-acti">…</p>
-</section>
-<section class="panneau" data-section="essais" data-sig="">
-<h2>Essais</h2>
-<p class="page-intro">Pour essayer les canaux : Serge écrit et appelle la personne indiquée, pour lui présenter un business bidon. Ses coordonnées restent en base.</p>
-<ul data-list="canaux"></ul>
-<div data-essais="boutons"></div>
-<h3>Le dernier essai</h3>
-<p data-essais="contact">Aucun essai pour l’instant.</p>
-<ul data-list="fil"></ul>
 </section>
 <section class="panneau" data-section="non_rattaches" data-sig="">
 <h2>Messages non rattachés</h2>
@@ -195,10 +179,6 @@
 </template>
 <template id="page-mind">
 <p class="page-intro">Le cerveau : chaque ligne est une invocation, telle qu’elle est décrite en base. Clique pour l’allumer, l’éteindre ou ouvrir sa fiche.</p>
-<section class="panneau" data-section="pensees" data-sig="">
-<h2>Pensées</h2>
-<ul data-list="items"></ul>
-</section>
 <section class="panneau" data-section="decisions" data-sig="">
 <h2>Décisions récentes</h2>
 <ul data-list="items"></ul>
@@ -292,11 +272,6 @@
 </form>
 <div data-recherche="resultats"></div>
 </section>
-<section class="panneau" data-section="consolidation" data-sig="">
-<h2>Consolidation</h2>
-<p id="cons-status">…</p>
-<ul data-list="events"></ul>
-</section>
 <section class="panneau" data-section="requested" data-sig="">
 <h2>Demandes d’évolution</h2>
 <ul data-list="items"></ul>
@@ -341,11 +316,8 @@
 <p id="eco-ratio-tokens">…</p>
 </section>
 <section class="panneau" data-section="audit_reponses" data-sig="">
-<h2>Envois et livrables</h2>
-<h3>Derniers envois</h3>
+<h2>Derniers envois</h2>
 <ul data-list="reponses"></ul>
-<h3>Derniers livrables</h3>
-<ul data-list="dette_builder"></ul>
 </section>
 </template>
 <template id="page-voice">
@@ -359,11 +331,6 @@
 <p id="voice-cdr-total">…</p>
 <ul data-list="calls"></ul>
 </section>
-<section class="panneau" data-section="qualite_voix" data-sig="">
-<h2>Qualité des appels</h2>
-<p id="voice-qualite-moyenne">…</p>
-<ul data-list="scores"></ul>
-</section>
 <section class="panneau" data-section="journal_voix" data-sig="">
 <h2>Journaux du serveur</h2>
 <p>Les dernières lignes du pont vocal et d’Asterisk, lues sur le serveur, les plus récentes en bas. Un appel qui échoue y laisse son erreur. Mises à jour toutes les 30 secondes.</p>
@@ -371,17 +338,13 @@
 </section>
 </template>
 <template id="page-health">
-<p class="page-intro">Santé de la machine : services, versions, piste d’audit. Rien d’inventé.</p>
+<p class="page-intro">Santé du code : sa taille, ses versions, la piste d’audit. L’état des services est sur la page Système, dans leurs îlots.</p>
 <section class="panneau" data-section="charte_metriques" data-sig="">
 <h2>Charte et métriques</h2>
 <div class="tuiles" data-tuiles="sante"></div>
 <p id="health-loc">…</p>
 <p id="health-ratio-cognitif">…</p>
 <p id="health-requested">…</p>
-</section>
-<section class="panneau" data-section="units_systemd" data-sig="">
-<h2>Services</h2>
-<ul data-list="units"></ul>
 </section>
 <section class="panneau" data-section="versions_drift" data-sig="">
 <h2>Versions</h2>

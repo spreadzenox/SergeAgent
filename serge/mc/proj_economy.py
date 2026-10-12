@@ -189,7 +189,7 @@ def project_couts_cognitifs(
 def project_audit_reponses(
     conn: sqlite3.Connection, policy: Mapping[str, Any], now: str
 ) -> dict[str, Any]:
-    """Derniers envois et livrables (clés historiques reponses/dette_builder).
+    """Les 20 derniers envois (clé historique ``reponses``).
 
     Args:
         conn: Connexion canon (lecture).
@@ -197,7 +197,7 @@ def project_audit_reponses(
         now: Horodatage ISO (ignoré).
 
     Returns:
-        Dict {reponses: [...], dette_builder: [...]}.
+        Dict {reponses: [...]}.
     """
     _ = (policy, now)
     # Les derniers envois (les messages reçus sont dans inbound_events) :
@@ -220,24 +220,4 @@ def project_audit_reponses(
         }
         for r in touch_rows
     ]
-
-    # Tous les derniers livrables, sans interprétation de dette.
-    art_rows = conn.execute(
-        'SELECT id, venture_id, kind, version, created_at FROM artifacts'
-        ' ORDER BY created_at DESC LIMIT 10'
-    ).fetchall()
-    dette_builder = [
-        {
-            'id': str(r[0]),
-            'venture_id': str(r[1]),
-            'kind': str(r[2]),
-            'version': int(r[3]),
-            'created_at': str(r[4]),
-        }
-        for r in art_rows
-    ]
-
-    return {
-        'reponses': reponses,
-        'dette_builder': dette_builder,
-    }
+    return {'reponses': reponses}

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Projecteurs P1 : goldens îlots/scheduler/campagnes/population/email."""
+"""Page Système : les îlots, un par morceau de Serge qui tourne."""
 
 from __future__ import annotations
 
@@ -7,15 +7,16 @@ import sqlite3
 import sys
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from serge.db.boot import init_schema  # noqa: E402
 from serge.db.store import append_event  # noqa: E402
+from serge.discord.prive import ECHEC  # noqa: E402
 from serge.funnels.contacts import add_address  # noqa: E402
 from serge.mc.proj_ilots import project_ilots  # noqa: E402
-from serge.mc.proj_taches import project_scheduler  # noqa: E402
 from tests.taches_fixtures import invocations, tache  # noqa: E402
 
 NOW = '2026-09-10T12:00:00+00:00'
@@ -23,10 +24,11 @@ POLICY: dict = {}
 
 
 class ProjSystemFixtures(unittest.TestCase):
-    """Fixtures P1 partagées (sans test — base des goldens îlots/campagnes)."""
+    """Fixtures P1 partagées (sans test — base des goldens de la page Système)."""
 
     def setUp(self) -> None:
         self.conn = sqlite3.connect(':memory:')
+        self.addCleanup(self.conn.close)
         self.conn.row_factory = sqlite3.Row
         init_schema(self.conn)
         conn = self.conn
@@ -126,26 +128,6 @@ class ProjSystemFixtures(unittest.TestCase):
                     updated,
                 ),
             )
-        conn.execute(
-            'INSERT INTO transactions(id, venture_id, kind, amount_eur,'
-            ' intent_id, status, created_at, updated_at) VALUES'
-            "('x1','v1','invoice',100.0,'in-1','paid','t','t')"
-        )
-        conn.execute(
-            'INSERT INTO transactions(id, venture_id, kind, amount_eur,'
-            ' intent_id, status, created_at, updated_at) VALUES'
-            "('x2','v1','invoice',50.0,'in-2','overdue','t','t')"
-        )
-        conn.execute(
-            'INSERT INTO accounts_standing(id, venue, handle, cooldown_until,'
-            " updated_at) VALUES('s1','gmail','a@x.io',"
-            "'2026-09-10T14:00:00+00:00','t')"
-        )
-        conn.execute(
-            'INSERT INTO accounts_standing(id, venue, handle, cooldown_until,'
-            " updated_at) VALUES('s2','sms','+331',"
-            "'2026-09-10T10:00:00+00:00','t')"
-        )
         invocations(
             conn,
             ('envoyer', 'Envoyer un e-mail', 'prospection_light'),
@@ -211,85 +193,79 @@ class ProjSystemFixtures(unittest.TestCase):
 
 
 class ProjIlotsTests(ProjSystemFixtures):
+    def setUp(self) -> None:
+        super().setUp()
+        # Les services de la machine : aucun ici, sauf ceux d'un test.
+        self.services: dict[str, str] = {}
+        patch = mock.patch(
+            'serge.mc.proj_ilots.etat_service',
+            side_effect=lambda unit: self.services.get(unit, 'inconnu'),
+        )
+        patch.start()
+        self.addCleanup(patch.stop)
+
+    def _ilot(self, ident: str) -> dict:
+        return {
+            i['id']: i for i in project_ilots(self.conn, POLICY, NOW)['items']
+        }[ident]
+
     def test_ilots_golden(self) -> None:
         self.assertEqual(
             project_ilots(self.conn, POLICY, NOW),
             {
                 'items': [
                     {
-                        'id': 'scheduler',
+                        'id': 'taches',
                         'label': 'Files de tâches',
-                        'sante': 'ok',
-                        'activite': 0.3,
-                        'resume': '2 prêtes, 1 en cours,'
-                        ' 1 en attente de leur heure',
-                    },
-                    {
-                        'id': 'workers',
-                        'label': 'Exécution',
                         'sante': 'erreur',
                         'activite': 0.3,
-                        'resume': '1 en cours, 2 prêtes, 1 échouées (24 h)',
-                    },
-                    {
-                        'id': 'guards',
-                        'label': 'Gardes',
-                        'sante': 'ok',
-                        'activite': 0.1,
-                        'resume': '2 verdicts (1 refus)',
-                    },
-                    {
-                        'id': 'funnels',
-                        'label': 'Entonnoirs',
-                        'sante': 'ok',
-                        'activite': 0.15,
-                        'resume': '2 ventures, 3 touches (24 h)',
-                    },
-                    {
-                        'id': 'collect',
-                        'label': 'Collecte',
-                        'sante': 'erreur',
-                        'activite': 0.2,
-                        'resume': '2 intentions (1 payées), 1 en retard',
-                    },
-                    {
-                        'id': 'listen',
-                        'label': 'Écoute',
-                        'sante': 'ok',
-                        'activite': 0.05,
-                        'resume': '1 documents (24 h)',
+                        'resume': '1 en cours, 2 prêtes, 1 en attente de'
+                        ' leur heure, 1 échouées (24 h)',
+                        'details': [
+                            'File des conversations : état inconnu.',
+                            'File des travaux : état inconnu.',
+                        ],
                     },
                     {
                         'id': 'email',
                         'label': 'E-mail',
                         'sante': 'inconnu',
                         'activite': 0.0,
-                        'resume': 'Pas branché sur ce serveur (page Système,'
-                        ' Essais).',
+                        'resume': 'Pas branché sur ce serveur.',
+                        'details': [],
                     },
                     {
                         'id': 'voice',
                         'label': 'Voix',
                         'sante': 'inconnu',
                         'activite': 0.0,
-                        'resume': 'Pas branché sur ce serveur (page Système,'
-                        ' Essais).',
-                    },
-                    {
-                        'id': 'sms',
-                        'label': 'SMS',
-                        'sante': 'inconnu',
-                        'activite': 0.0,
-                        'resume': 'Pas branché : le SMS viendra après'
-                        ' l’e-mail et la voix.',
+                        'resume': 'Pas branché sur ce serveur.',
+                        'details': [],
                     },
                     {
                         'id': 'discord',
                         'label': 'Discord',
                         'sante': 'inconnu',
                         'activite': 0.0,
-                        'resume': 'Pas de sonde ici : le service du bot est'
-                        ' sur la page Health.',
+                        'resume': 'Pas branché : pas de bot sur ce serveur,'
+                        ' aucun administrateur.',
+                        'details': [],
+                    },
+                    {
+                        'id': 'listen',
+                        'label': 'Écoute',
+                        'sante': 'ok',
+                        'activite': 0.05,
+                        'resume': '1 pages lues (24 h)',
+                        'details': [],
+                    },
+                    {
+                        'id': 'guards',
+                        'label': 'Garde-fous',
+                        'sante': 'ok',
+                        'activite': 0.1,
+                        'resume': '2 verdicts, 1 refus (24 h)',
+                        'details': [],
                     },
                 ]
             },
@@ -310,9 +286,7 @@ class ProjIlotsTests(ProjSystemFixtures):
             'INSERT INTO inbound_events(id, channel, received_at) VALUES'
             "('r1', 'email', '2026-09-10T11:30:00+00:00')"
         )
-        email = {
-            i['id']: i for i in project_ilots(self.conn, POLICY, NOW)['items']
-        }['email']
+        email = self._ilot('email')
         self.assertEqual(
             (email['sante'], email['resume']),
             ('ok', '1 partis, 1 reçus (24 h), relevé à 11:50'),
@@ -321,38 +295,41 @@ class ProjIlotsTests(ProjSystemFixtures):
             "UPDATE canaux SET polled_at='2026-09-10T09:00:00+00:00'"
             " WHERE id='email'"
         )
-        email = {
-            i['id']: i for i in project_ilots(self.conn, POLICY, NOW)['items']
-        }['email']
-        self.assertEqual(email['sante'], 'degrade')
+        self.assertEqual(self._ilot('email')['sante'], 'degrade')
 
-    def test_scheduler_golden(self) -> None:
+    def test_la_voix_dit_l_etat_du_pont_vocal(self) -> None:
+        self.conn.execute("UPDATE canaux SET etat='branche' WHERE id='voice'")
+        self.services['serge-voice-bridge.service'] = 'active'
+        voix = self._ilot('voice')
         self.assertEqual(
-            project_scheduler(self.conn, POLICY, NOW),
-            {
-                'next': {
-                    'id': self.w_ready,
-                    'kind': 'Classer une réponse',
-                    'venture_id': 'v1',
-                    'since': '',
-                    'file': 'works',
-                },
-                'ready': 2,
-                'running': 1,
-                'bloques': 1,
-                'attente': '',
-            },
+            (voix['sante'], voix['details']),
+            ('ok', ['Pont vocal : en marche.']),
+        )
+        self.services['serge-voice-bridge.service'] = 'failed'
+        voix = self._ilot('voice')
+        self.assertEqual(
+            (voix['sante'], voix['details']),
+            ('erreur', ['Pont vocal : en panne.']),
         )
 
-    def test_taches_pretes_non_servies_degrade(self) -> None:
-        self.conn.execute('UPDATE invocations SET enabled=0')
-        projete = project_scheduler(self.conn, POLICY, NOW)
-        self.assertIsNone(projete['next'])
-        self.assertEqual(projete['ready'], 2)
-        ilots = project_ilots(self.conn, POLICY, NOW)['items']
-        self.assertEqual(ilots[0]['sante'], 'degrade')
+    def test_une_file_arretee_est_en_erreur(self) -> None:
+        self.conn.execute("DELETE FROM tasks WHERE status='failed'")
+        self.services['serge-queue@conversations.service'] = 'active'
+        self.services['serge-queue@works.service'] = 'active'
+        self.assertEqual(self._ilot('taches')['sante'], 'ok')
+        self.services['serge-queue@works.service'] = 'inactive'
+        taches = self._ilot('taches')
+        self.assertEqual(taches['sante'], 'erreur')
+        self.assertIn('File des travaux : arrêté.', taches['details'])
 
-    def test_workers_suspect_degrade(self) -> None:
+    def test_taches_pretes_non_servies_degrade(self) -> None:
+        self.conn.execute("DELETE FROM tasks WHERE status='failed'")
+        self.conn.execute('UPDATE invocations SET enabled=0')
+        taches = self._ilot('taches')
+        self.assertEqual(taches['sante'], 'degrade')
+        self.assertIn('voir En direct', taches['details'][-1])
+
+    def test_une_tache_en_cours_depuis_longtemps_degrade(self) -> None:
         self.conn.execute('DELETE FROM tasks')
         tache(
             self.conn,
@@ -361,6 +338,53 @@ class ProjIlotsTests(ProjSystemFixtures):
             status='running',
             created_at='2026-09-10T10:00:00+00:00',
         )
-        ilots = project_ilots(self.conn, POLICY, NOW)['items']
-        self.assertEqual(ilots[1]['sante'], 'degrade')
-        self.assertEqual(ilots[0]['sante'], 'ok')
+        taches = self._ilot('taches')
+        self.assertEqual(taches['sante'], 'degrade')
+        self.assertIn(
+            '1 en cours depuis plus de 30 minutes.', taches['details']
+        )
+
+    def test_discord_dit_le_bot_les_administrateurs_et_les_messages(
+        self,
+    ) -> None:
+        """Le bot en marche sans administrateur : dégradé. Avec un
+        administrateur : en forme. Un message privé pas parti : dégradé.
+        Le bot arrêté : en erreur."""
+        self.services['serge-discord-bot.service'] = 'active'
+        discord = self._ilot('discord')
+        self.assertEqual(discord['sante'], 'degrade')
+        self.assertIn('Aucun administrateur', discord['details'][1])
+        self.conn.execute(
+            'INSERT INTO discord_admins(user_id, name, added_by, added_at)'
+            " VALUES('123456789012345678', 'Clem', 'mc', ?)",
+            (NOW,),
+        )
+        self.conn.execute(
+            'INSERT INTO ticket_messages(ticket_id, user_id, channel_id,'
+            " message_id, shown_state, updated_at) VALUES('k1',"
+            " '123456789012345678', 'dm1', 'm1', 'OPEN@t', ?)",
+            (NOW,),
+        )
+        discord = self._ilot('discord')
+        self.assertEqual(
+            (discord['sante'], discord['resume'], discord['details']),
+            (
+                'ok',
+                '1 administrateurs, 0 tickets ouverts, 1 messages privés'
+                ' (24 h)',
+                ['Bot : en marche.', 'Administrateurs : Clem.'],
+            ),
+        )
+        self.conn.execute(
+            "UPDATE ticket_messages SET message_id='', shown_state=?",
+            (ECHEC,),
+        )
+        discord = self._ilot('discord')
+        self.assertEqual(discord['sante'], 'degrade')
+        self.assertIn('1 messages privés pas partis', discord['details'][2])
+        self.services['serge-discord-bot.service'] = 'failed'
+        self.assertEqual(self._ilot('discord')['sante'], 'erreur')
+
+
+if __name__ == '__main__':
+    unittest.main()

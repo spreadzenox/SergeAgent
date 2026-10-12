@@ -1,4 +1,4 @@
-// Page P8 Santé : charte E6, services systemd, versions drift, audit trail.
+// Page P8 Santé : charte E6, versions drift, audit trail.
 import {fillList, li, rel} from '../components.js';
 
 function tuile(n, libelle) {
@@ -43,22 +43,6 @@ function renderCharte(main, payload, sig) {
   main.querySelector('[data-section="charte_metriques"]').dataset.sig = sig;
 }
 
-function renderUnits(main, payload, sig) {
-  const ul = main.querySelector('[data-section="units_systemd"] [data-list="units"]');
-  fillList(ul, payload.units || [], 'Aucun service renseigné.', (u) => {
-    const liEl = li(`${u.titre || u.unit} — ${u.libelle || u.status}`);
-    if (u.ok) {
-      liEl.style.color = 'var(--vert)';
-    } else if (u.status === 'inactive') {
-      liEl.style.color = 'var(--texte-doux)';
-    } else {
-      liEl.style.color = 'var(--orange)';
-    }
-    return liEl;
-  });
-  main.querySelector('[data-section="units_systemd"]').dataset.sig = sig;
-}
-
 function renderVersions(main, payload, sig) {
   const pVer = main.querySelector('#health-versions');
   const schTxt = payload.schema_ok ? `schéma v${payload.schema_version} (conforme)` : `schéma v${payload.schema_version} (ATTENDU: v${payload.schema_attendu})`;
@@ -88,7 +72,6 @@ export function mount(main, store) {
 
   const unsubs = [
     store.subscribe('charte_metriques', (p, s) => renderCharte(main, p, s)),
-    store.subscribe('units_systemd', (p, s) => renderUnits(main, p, s)),
     store.subscribe('versions_drift', (p, s) => renderVersions(main, p, s)),
     store.subscribe('audit_trail', (p, s) => renderAudit(main, p, s)),
   ];
@@ -96,8 +79,6 @@ export function mount(main, store) {
   for (const [section, env] of store.all()) {
     if (section === 'charte_metriques') {
       renderCharte(main, env.payload, env.sig);
-    } else if (section === 'units_systemd') {
-      renderUnits(main, env.payload, env.sig);
     } else if (section === 'versions_drift') {
       renderVersions(main, env.payload, env.sig);
     } else if (section === 'audit_trail') {

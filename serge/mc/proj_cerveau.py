@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Projecteurs P2 Cerveau : signaux, décisions, pensées, invocations.
+"""Projecteurs P2 Cerveau : signaux, décisions, invocations.
 
 Lecture seule. Allumer ou éteindre une invocation passe par le
 coupe-circuit (``/owner/api/coupe``, cible ``invocation``).
@@ -84,23 +84,6 @@ def project_decisions(
             }
         )
     return {'items': items}
-
-
-def project_pensees(
-    conn: sqlite3.Connection, policy: Mapping[str, Any], now: str
-) -> dict[str, Any]:
-    """Thought stream : stub fail-soft, pas d'émetteurs (P2 stream).
-
-    Args:
-        conn: Connexion canon (ignorée, uniformité).
-        policy: Policy (ignorée, uniformité).
-        now: Maintenant ISO (ignoré, uniformité).
-
-    Returns:
-        Dict {items: [], source} (contrat stable pour la page).
-    """
-    _ = (conn, policy, now)
-    return {'items': [], 'source': 'aucune (émetteurs futurs)'}
 
 
 def project_usage_points(

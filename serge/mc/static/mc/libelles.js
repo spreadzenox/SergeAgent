@@ -30,7 +30,6 @@ export const EVENTS = {
   'contact.inbound': 'Contact qui a répondu',
   'contact.outbound': 'Contact redevenu silencieux',
   'contacts.cleared': 'Contacts vidés',
-  'call.scored': 'Appel noté',
   'voice.purged': 'Enregistrements d’appels effacés',
   'touch.waiting_owner': 'Envoi en attente d’un humain',
   'waiting_owner': 'Attend un humain',

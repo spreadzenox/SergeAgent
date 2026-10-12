@@ -1,4 +1,4 @@
-// Page P4 Mémoire : épisodes, procédures, pièges, leçons, recherche, consolidation, demandes.
+// Page P4 Mémoire : épisodes, procédures, pièges, leçons, recherche, demandes.
 import {fillList, li, rel} from '../components.js';
 import {allerObjet} from '../libelles.js';
 
@@ -83,27 +83,6 @@ function renderCoucheVue(main, payload) {
   }
 }
 
-function renderConsolidation(main, payload, sig) {
-  const status = main.querySelector('#cons-status');
-  const derniere = payload.last_run
-    ? rel(payload.last_run)
-    : 'jamais exécutée';
-  status.textContent = payload.branchee === false
-    ? `Pas encore branchée au pipeline. Dernière exécution : ${derniere}.`
-    : `Dernière exécution : ${derniere}.`
-      + ` État : ${payload.due ? 'Échéance atteinte (due)' : 'À jour'}.`;
-  const liste = main.querySelector(
-    '[data-section="consolidation"] [data-list="events"]',
-  );
-  fillList(
-    liste,
-    payload.events || [],
-    'Aucun événement de consolidation.',
-    (ev) => li(`${rel(ev.ts)} · ${ev.acteur} — ${ev.type}`),
-  );
-  main.querySelector('[data-section="consolidation"]').dataset.sig = sig;
-}
-
 function renderRequested(main, payload, sig) {
   const liste = main.querySelector(
     '[data-section="requested"] [data-list="items"]',
@@ -185,9 +164,6 @@ export function mount(main, store) {
       renderCoucheVue(main, payload);
       main.querySelector('[data-section="couches"]').dataset.sig = sg;
     }),
-    store.subscribe('consolidation', (p, s) =>
-      renderConsolidation(main, p, s),
-    ),
     store.subscribe('requested', (p, s) => renderRequested(main, p, s)),
   ];
 
@@ -196,8 +172,6 @@ export function mount(main, store) {
       renderCoucheVue(main, env.payload);
       main.querySelector('[data-section="couches"]').dataset.sig =
         env.sig;
-    } else if (section === 'consolidation') {
-      renderConsolidation(main, env.payload, env.sig);
     } else if (section === 'requested') {
       renderRequested(main, env.payload, env.sig);
     }

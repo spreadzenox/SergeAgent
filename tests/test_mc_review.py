@@ -351,7 +351,7 @@ class ReviewBrowserTests(McBrowserCase):
         page.keyboard.press('Control+k')
         page.locator('.cmdk-input').fill('Système')
         page.keyboard.press('Enter')
-        expect(page.locator('[data-section="email"]')).to_be_visible()
+        expect(page.locator('[data-section="ilots"]')).to_be_visible()
 
     def test_carte_reactive_et_navigation_sans_course(self):
         page = self._auth_context().new_page()

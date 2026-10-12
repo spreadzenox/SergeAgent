@@ -88,11 +88,6 @@ class McEconomyTests(McBrowserCase):
                 " VALUES('qualify', 'T1', 'nemo', 2000, 500, 45, 'ok', ?)",
                 (iso,),
             )
-            conn.execute(
-                'INSERT INTO artifacts(id, venture_id, kind, version, path_or_url, created_at)'
-                " VALUES('art_eco', 'v_eco', 'rapport', 1, '/tmp/rapport', ?)",
-                (iso,),
-            )
             conn.commit()
         finally:
             conn.close()
@@ -132,6 +127,3 @@ class McEconomyTests(McBrowserCase):
         expect(
             page.locator('[data-section="audit_reponses"]')
         ).to_contain_text('Bernard')
-        expect(
-            page.locator('[data-section="audit_reponses"]')
-        ).to_contain_text('Artifact rapport v1')

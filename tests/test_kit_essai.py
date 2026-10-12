@@ -266,7 +266,7 @@ class KitEssaiTests(unittest.TestCase):
         self.assertEqual(self._un('SELECT COUNT(*) FROM blocklist'), (0,))
 
     def test_le_fil_de_l_essai_est_dans_mission_control(self) -> None:
-        from serge.mc.proj_campagnes import project_essais
+        from serge.mc.proj_systeme import project_essais
 
         self._essai(FORMULAIRE)
         essai = project_essais(self.conn, {}, '')['essai']

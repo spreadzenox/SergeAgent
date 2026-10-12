@@ -26,7 +26,7 @@ class MindRegistryTests(unittest.TestCase):
         sections = PAGE_SECTIONS['p2']
         self.assertEqual(
             sections,
-            ['meta', 'pensees', 'decisions', 'matrice', 'signaux'],
+            ['meta', 'decisions', 'matrice', 'signaux'],
         )
         for section in sections:
             self.assertIn(section, PROJECTORS)
@@ -116,9 +116,6 @@ class McMindTests(McBrowserCase):
         expect(matrice).to_contain_text('Classer une réponse')
         expect(matrice).to_contain_text('Allumée')
         expect(matrice).to_contain_text('Éteinte')
-        expect(page.locator('[data-section="pensees"]')).to_contain_text(
-            'Aucune pensée pour le moment.'
-        )
         decisions = page.locator('[data-section="decisions"]')
         expect(decisions).to_contain_text('classer — ok')
         expect(decisions).to_contain_text('format_invalide')
@@ -142,7 +139,6 @@ class McMindTests(McBrowserCase):
             'Aucune invocation en base'
         )
         for section, text in (
-            ('pensees', 'Aucune pensée pour le moment.'),
             ('decisions', 'Aucune décision récente.'),
             ('signaux', 'Aucun message reçu pour le moment.'),
         ):
