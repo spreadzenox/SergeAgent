@@ -267,6 +267,15 @@ class ProjIlotsTests(ProjSystemFixtures):
                         'resume': '2 verdicts, 1 refus (24 h)',
                         'details': [],
                     },
+                    {
+                        'id': 'sandbox',
+                        'label': 'Chantiers',
+                        'sante': 'inconnu',
+                        'activite': 0.0,
+                        'resume': 'Aucun chantier encore : « Essayer le'
+                        ' chantier », plus bas.',
+                        'details': [],
+                    },
                 ]
             },
         )

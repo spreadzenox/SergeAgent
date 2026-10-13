@@ -4,8 +4,8 @@
 Chaque îlot dit sa santé, son activité, un résumé et ses détails : les
 files de tâches (avec leurs deux services), l'e-mail, la voix (avec le
 pont vocal), Discord (le bot, le forum des tickets, les administrateurs),
-l'écoute du web et les garde-fous. Fenêtre de 24 h ; une tâche en cours
-depuis plus de 30 min est suspecte. L'état d'un service se lit avec
+l'écoute du web, les garde-fous et les chantiers. Fenêtre de 24 h ; une
+tâche en cours depuis plus de 30 min est suspecte. L'état d'un service se lit avec
 ``systemctl --user`` (Mission Control tourne sous le même compte).
 """
 
@@ -295,6 +295,44 @@ def _ilot_garde_fous(conn: sqlite3.Connection, depuis: str) -> dict[str, Any]:
     )
 
 
+def _ilot_chantiers(conn: sqlite3.Connection, depuis: str) -> dict[str, Any]:
+    """Les chantiers (lot 10) : lequel tourne, la place qu'ils prennent,
+    les commandes lancées en 24 h, et pourquoi l'un a été arrêté."""
+    rows = conn.execute(
+        'SELECT id, status, disk_mb, last_error FROM sandboxes'
+        ' ORDER BY updated_at DESC'
+    ).fetchall()
+    if not rows:
+        return _ilot(
+            'sandbox',
+            'Chantiers',
+            'inconnu',
+            0.0,
+            'Aucun chantier encore : « Essayer le chantier », plus bas.',
+            [],
+        )
+    commandes = _compte(
+        conn,
+        "SELECT COUNT(*) FROM events WHERE type='sandbox.command' AND ts>?",
+        (depuis,),
+    )
+    etats = {'running': 'allumé', 'stopped': 'éteint', 'removed': 'supprimé'}
+    details = []
+    for ident, status, disk, erreur in rows[:6]:
+        ligne = f'{ident} : {etats.get(str(status), status)}, {disk} Mo'
+        details.append(f'{ligne} ({erreur}).' if erreur else f'{ligne}.')
+    allumes = sum(1 for r in rows if r[1] == 'running')
+    return _ilot(
+        'sandbox',
+        'Chantiers',
+        'degrade' if any(r[3] for r in rows) else 'ok',
+        commandes / 20,
+        f'{len(rows)} chantiers, {allumes} allumé, {commandes} commandes'
+        ' (24 h)',
+        details,
+    )
+
+
 def project_ilots(
     conn: sqlite3.Connection, policy: Mapping[str, Any], now: str
 ) -> dict[str, Any]:
@@ -324,5 +362,6 @@ def project_ilots(
             _ilot_discord(conn, depuis),
             _ilot_ecoute(conn, depuis),
             _ilot_garde_fous(conn, depuis),
+            _ilot_chantiers(conn, depuis),
         ]
     }

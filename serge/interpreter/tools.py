@@ -27,6 +27,12 @@ from serge.conversations.unsubscribe import unsubscribe_contact
 from serge.interpreter.seen import CHOICES, read_seen_table, row_history
 from serge.interpreter.settings import load_settings
 from serge.policy_store import policy_en_vigueur
+from serge.sandbox.chantier import (
+    sandbox_command,
+    sandbox_edit_file,
+    sandbox_read_file,
+    sandbox_write_file,
+)
 from serge.tickets.inform import inform_owners
 
 Runner = Callable[
@@ -212,6 +218,10 @@ RUNNERS: dict[str, Runner] = {
     'rss_read': _rss_read,
     'seen_table_read': read_seen_table,
     'row_history': row_history,
+    'sandbox_command': sandbox_command,
+    'sandbox_read_file': sandbox_read_file,
+    'sandbox_write_file': sandbox_write_file,
+    'sandbox_edit_file': sandbox_edit_file,
 }
 
 
