@@ -62,7 +62,7 @@ def parse_custom_id(
 
 
 def actor_id(interaction: Mapping[str, Any]) -> str:
-    """Snowflake auteur (member.user.id en salon, user.id en message privé).
+    """Snowflake auteur (member.user.id sur le serveur, user.id en privé).
 
     Args:
         interaction: Objet interaction Discord.

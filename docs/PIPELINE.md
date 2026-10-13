@@ -301,11 +301,11 @@ absente, et la fiche des outils qui s'en servaient le signale.
 
 ## Qui décide quoi
 
-Serge agit seul par défaut. Un ticket part en message privé Discord à
-chaque administrateur de Serge (en base, ajoutés dans Mission Control) ;
-la première réponse, sur Discord ou dans Mission Control, le tranche pour
-tous, et réveille les invocations réglées en base pour ce bouton
-(décisions Q85 et Q86). Julien valide ainsi, et l'on peut discuter, les
+Serge agit seul par défaut. Un ticket ouvre un fil dans le forum
+« tickets » du serveur Discord de Serge et mentionne ses administrateurs
+(en base, ajoutés dans Mission Control) ; la première réponse, sur
+Discord ou dans Mission Control, le tranche pour tous, et réveille les
+invocations réglées en base pour ce bouton (décisions Q85, Q86 et Q88). Julien valide ainsi, et l'on peut discuter, les
 décisions suivantes :
 
 - le plan d'un POC et sa fiche produit, à l'étape 2 ; sans réponse sous

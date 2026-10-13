@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Client REST Discord v10 (stdlib) : messages privés, messages, callbacks.
+"""Client REST Discord v10 (stdlib) : fils de forum, messages, callbacks.
 
 Token en header uniquement, jamais logué. 429 = backoff borné puis erreur
 typée. Toutes les erreurs sont DiscordError à code routable.
@@ -206,9 +206,16 @@ def delete_message(
     )
 
 
-def create_dm(token: str, user_id: str, *, base_url: str = DISCORD_API) -> str:
-    """Ouvre (ou retrouve) le message privé avec une personne ; rend l'id
-    du canal. La personne doit partager un serveur avec le bot.
+def create_forum_post(
+    token: str,
+    forum_id: str,
+    name: str,
+    message: dict[str, Any],
+    *,
+    base_url: str = DISCORD_API,
+) -> str:
+    """Ouvre un fil dans un forum, avec son premier message ; rend l'id du
+    fil, qui est aussi celui de ce premier message.
 
     Raises:
         DiscordError: Voir _request.
@@ -216,13 +223,34 @@ def create_dm(token: str, user_id: str, *, base_url: str = DISCORD_API) -> str:
     result = _request(
         token,
         'POST',
-        '/users/@me/channels',
-        {'recipient_id': user_id},
+        f'/channels/{forum_id}/threads',
+        {'name': name[:100] or 'Ticket', 'message': message},
         base_url=base_url,
     )
     if not isinstance(result, dict) or not result.get('id'):
-        raise DiscordError('API: ouverture du message privé invalide')
+        raise DiscordError('API: ouverture du fil invalide')
     return str(result['id'])
+
+
+def archive_thread(
+    token: str,
+    thread_id: str,
+    archived: bool,
+    *,
+    base_url: str = DISCORD_API,
+) -> None:
+    """Archive un fil, ou le rouvre (pour modifier sa carte).
+
+    Raises:
+        DiscordError: Voir _request.
+    """
+    _request(
+        token,
+        'PATCH',
+        f'/channels/{thread_id}',
+        {'archived': archived},
+        base_url=base_url,
+    )
 
 
 def _post_interaction(

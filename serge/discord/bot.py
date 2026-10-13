@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Bot Discord : les tickets en message privé à chaque administrateur.
+"""Bot Discord : les tickets dans le forum du serveur de Serge.
 
-Boucle : la gateway (boutons, fenêtres de saisie) puis l'envoi des tickets
-dus et la mise à jour des cartes (``prive.deliver``). La base est la
-vérité (décisions Q85 et Q86). CLI dans cli.py. Secrets : sidecar
-uniquement.
+La gateway reçoit les clics (boutons, fenêtres de saisie) ; un fil à part
+ouvre les fils des tickets et met leurs cartes à jour (``forum.deliver``).
+La base est la vérité (décisions Q85, Q86 et Q88). CLI dans cli.py.
+Secrets : sidecar uniquement.
 """
 
 from __future__ import annotations
@@ -20,6 +20,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from serge.db.store import default_canon_path, open_db  # noqa: E402
+from serge.discord.forum import deliver  # noqa: E402
 from serge.discord.gateway import Gateway, GatewayError  # noqa: E402
 from serge.discord.interactions import (  # noqa: E402
     COMPOSANT,
@@ -28,7 +29,6 @@ from serge.discord.interactions import (  # noqa: E402
     premiere_reponse,
     route_interaction,
 )
-from serge.discord.prive import deliver  # noqa: E402
 from serge.discord.rest import (  # noqa: E402
     DiscordError,
     interaction_callback,

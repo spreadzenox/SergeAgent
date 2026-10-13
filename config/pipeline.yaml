@@ -1658,8 +1658,8 @@ invocations:
       touch_id: {source: task, value: touch_id}
 
   # --- Julien dans la conversation (lot 8 bis, décisions Q85 et Q86) ------
-  # Un envoi qui attend un humain ouvre un ticket « Conversation », envoyé
-  # en message privé à chaque administrateur. Chaque bouton est une réponse
+  # Un envoi qui attend un humain ouvre un ticket « Conversation », dans le
+  # forum « tickets » du serveur Discord (Q88). Chaque bouton est une réponse
   # (table ticket_answers) qui réveille une de ces invocations.
   - id: demander_julien
     title: Demander à Julien

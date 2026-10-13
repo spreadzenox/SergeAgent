@@ -14,7 +14,7 @@ sys.path.insert(0, str(ROOT))
 
 from serge.db.boot import init_schema  # noqa: E402
 from serge.db.store import append_event  # noqa: E402
-from serge.discord.prive import ECHEC  # noqa: E402
+from serge.discord.forum import ECHEC, regler_forum  # noqa: E402
 from serge.funnels.contacts import add_address  # noqa: E402
 from serge.mc.proj_ilots import project_ilots  # noqa: E402
 from tests.taches_fixtures import invocations, tache  # noqa: E402
@@ -248,7 +248,7 @@ class ProjIlotsTests(ProjSystemFixtures):
                         'sante': 'inconnu',
                         'activite': 0.0,
                         'resume': 'Pas branché : pas de bot sur ce serveur,'
-                        ' aucun administrateur.',
+                        ' ni forum, ni administrateur.',
                         'details': [],
                     },
                     {
@@ -344,25 +344,26 @@ class ProjIlotsTests(ProjSystemFixtures):
             '1 en cours depuis plus de 30 minutes.', taches['details']
         )
 
-    def test_discord_dit_le_bot_les_administrateurs_et_les_messages(
+    def test_discord_dit_le_bot_le_forum_et_les_administrateurs(
         self,
     ) -> None:
-        """Le bot en marche sans administrateur : dégradé. Avec un
-        administrateur : en forme. Un message privé pas parti : dégradé.
-        Le bot arrêté : en erreur."""
+        """Le bot en marche sans forum ni administrateur : dégradé. Avec
+        les deux : en forme. Un fil pas ouvert : dégradé. Le bot arrêté :
+        en erreur."""
         self.services['serge-discord-bot.service'] = 'active'
         discord = self._ilot('discord')
         self.assertEqual(discord['sante'], 'degrade')
-        self.assertIn('Aucun administrateur', discord['details'][1])
+        self.assertIn('Pas de forum réglé', discord['details'][1])
+        self.assertIn('Aucun administrateur', discord['details'][2])
+        regler_forum(self.conn, '222233334444555566', 'owner')
         self.conn.execute(
             'INSERT INTO discord_admins(user_id, name, added_by, added_at)'
             " VALUES('123456789012345678', 'Clem', 'mc', ?)",
             (NOW,),
         )
         self.conn.execute(
-            'INSERT INTO ticket_messages(ticket_id, user_id, channel_id,'
-            " message_id, shown_state, updated_at) VALUES('k1',"
-            " '123456789012345678', 'dm1', 'm1', 'OPEN@t', ?)",
+            'INSERT INTO ticket_posts(ticket_id, thread_id, shown_state,'
+            " updated_at) VALUES('k1', 'fil1', 'OPEN@t', ?)",
             (NOW,),
         )
         discord = self._ilot('discord')
@@ -370,18 +371,21 @@ class ProjIlotsTests(ProjSystemFixtures):
             (discord['sante'], discord['resume'], discord['details']),
             (
                 'ok',
-                '1 administrateurs, 0 tickets ouverts, 1 messages privés'
-                ' (24 h)',
-                ['Bot : en marche.', 'Administrateurs : Clem.'],
+                '1 administrateurs, 0 tickets ouverts, 1 cartes envoyées ou'
+                ' mises à jour (24 h)',
+                [
+                    'Bot : en marche.',
+                    'Forum des tickets : 222233334444555566.',
+                    'Administrateurs : Clem.',
+                ],
             ),
         )
         self.conn.execute(
-            "UPDATE ticket_messages SET message_id='', shown_state=?",
-            (ECHEC,),
+            "UPDATE ticket_posts SET thread_id='', shown_state=?", (ECHEC,)
         )
         discord = self._ilot('discord')
         self.assertEqual(discord['sante'], 'degrade')
-        self.assertIn('1 messages privés pas partis', discord['details'][2])
+        self.assertIn('1 fils pas ouverts', discord['details'][3])
         self.services['serge-discord-bot.service'] = 'failed'
         self.assertEqual(self._ilot('discord')['sante'], 'erreur')
 
