@@ -73,6 +73,13 @@ d'un business donne son total de points, ce qu'il a dépensé (modèles et
 minutes d'appel) et ses points par euro, et ses prospects avec leurs
 points ; son dernier plan et les remarques du critique, ses passages de construction avec le verdict du relecteur, les dernières captures, ses publications (staging et prod : version, adresse, état) et ses versions (lot 10) ; son bouton « Valider chaque brouillon » fait attendre chaque
 brouillon de ce business jusqu'à ce qu'un humain le valide (Q85) ;
+ses boutons d'essai Stripe (lot 10, Q91) : « Essayer Stripe (mode test) »
+crée pour ce business un produit, un prix de 1 € par mois et un lien de
+paiement, avec la clé du mode test, et rend le lien sur la fiche de la
+tâche ; « Supprimer de Stripe (mode test) » et « Supprimer de Stripe
+(vrai mode) » archivent ses prix et ses produits, après confirmation (un
+bouton déclaré en base qui attend un business est sur sa fiche, pas sur
+la page Système) ;
 la fiche d'un prospect donne ses points et sa meilleure réaction (grille
 de points, décision Q84).
 

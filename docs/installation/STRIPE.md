@@ -64,5 +64,20 @@ fausse : 401. Webhook trop vieux : 400.
 | `unmatched` | `intent_id` ledger ≠ `pi_` Stripe |
 | Payé dans Stripe, draft chez Serge | webhook jamais reçu (mauvaise URL) |
 
+## Les mêmes clés pour « Appeler une API » (lot 10)
+
+Depuis le lot 10, les invocations appellent aussi Stripe elles-mêmes
+(créer un produit, un prix, un lien de paiement, rembourser, archiver),
+par la capacité « Appeler une API ». Elles lisent les mêmes fichiers :
+`stripe-test.key` pour le service `stripe_test`, `stripe-live.key` pour
+`stripe_live` (table `api_services`, page SQLite). Rien de plus à
+installer. Sans le fichier, l'appel échoue avec `secret_absent`, et la
+raison est au journal (`connecteur : stripe_test : secret
+stripe-test.key absent`).
+
+Pour essayer : sur la fiche d'un business, « Essayer Stripe (mode
+test) », puis vérifier le produit dans le Dashboard Stripe (mode test),
+puis « Supprimer de Stripe (mode test) ».
+
 Détail contrat : [`INSTANCE_CONTRACT.md`](INSTANCE_CONTRACT.md).
 Install : [`INSTALL.md`](INSTALL.md).

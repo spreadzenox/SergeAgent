@@ -15,7 +15,9 @@ Scénarios :
   retirée de l'historique ; la fiche de la tâche montre les captures ;
 - Mission Control sert une capture à une session connectée, et rien hors
   de files/ ;
-- l'adresse http://chantier:3000 mène au conteneur du chantier de la tâche.
+- l'adresse http://chantier:3000 mène au conteneur du chantier de la tâche ;
+- taper un secret : seuls les secrets figés en base sont permis ; la page
+  relue, même remise en forme, et une capture ne montrent jamais sa valeur.
 """
 
 from __future__ import annotations
@@ -220,6 +222,91 @@ class NavigateurTests(unittest.TestCase):
         self.assertTrue(any('oups' in e for e in lue['erreurs']))
         navigateur.close_sessions()
         self.assertEqual(navigateur._ETAT.sessions, {})
+
+    def test_taper_un_secret_sans_le_montrer(self) -> None:
+        config = self.dossier / 'config'
+        (config / 'secrets').mkdir(parents=True)
+        (config / 'secrets/carte-numero.key').write_text('4242424242424242\n')
+        instance = self.dossier / 'instance.toml'
+        instance.write_text(f'[paths]\nconfig_root = "{config}"\n')
+        patcher = mock.patch.dict(
+            os.environ, {'SERGE_INSTANCE_FILE': str(instance)}
+        )
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        page = self._outil(
+            'browser_action', action='ouvrir', text=f'{self.site}/'
+        )['page']
+        champ = re.search(r'\[(e\d+)\] champ email « E-mail »', page)
+        assert champ, page
+        tape = self._outil(
+            'browser_action',
+            action='taper_secret',
+            ref=champ[1],
+            text='carte-numero.key',
+            secrets='carte-numero.key',
+        )
+        self.assertTrue(tape['ok'])
+        self.assertIn('= ••••', tape['page'])
+        self.assertNotIn('4242424242424242', json.dumps(tape))
+        refus = self._outil(
+            'browser_action',
+            action='taper_secret',
+            ref=champ[1],
+            text='stripe-live.key',
+            secrets='carte-numero.key',
+        )
+        self.assertFalse(refus['ok'])
+        self.assertIn('secret non permis', refus['detail'])
+        # Remis en forme par la page, le numéro reste caché.
+        self.assertEqual(
+            navigateur.masquer(
+                'n° 4242 4242 4242 4242, exp. 12 / 34', {'4242424242424242'}
+            ),
+            'n° ••••, exp. 12 / 34',
+        )
+
+    def test_une_capture_ne_montre_pas_un_secret(self) -> None:
+        config = self.dossier / 'config'
+        (config / 'secrets').mkdir(parents=True)
+        (config / 'secrets/carte-a.key').write_text('4242424242424242\n')
+        instance = self.dossier / 'instance.toml'
+        instance.write_text(f'[paths]\nconfig_root = "{config}"\n')
+        patcher = mock.patch.dict(
+            os.environ, {'SERGE_INSTANCE_FILE': str(instance)}
+        )
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        page = self._outil(
+            'browser_action', action='ouvrir', text=f'{self.site}/'
+        )['page']
+        champ = re.search(r'\[(e\d+)\] champ email « E-mail »', page)
+        assert champ, page
+        self._outil(
+            'browser_action',
+            action='taper_secret',
+            ref=champ[1],
+            text='carte-a.key',
+            secrets='carte-a.key',
+        )
+        onglet = navigateur._session(self.conn, 't1').page
+        style = (
+            '() => getComputedStyle(document.getElementById("email"))'
+            '.webkitTextSecurity'
+        )
+        vu: list[str] = []
+        vraie = onglet.screenshot
+
+        def capture(**kwargs: Any) -> bytes:
+            vu.append(onglet.evaluate(style))
+            return vraie(**kwargs)
+
+        # Pendant la capture, le champ qui a reçu le secret montre des
+        # points, comme un mot de passe ; après, il redevient normal.
+        with mock.patch.object(onglet, 'screenshot', capture):
+            self.assertTrue(self._outil('browser_screenshot')['ok'])
+        self.assertEqual(vu, ['disc'])
+        self.assertEqual(onglet.evaluate(style), 'none')
 
     def test_essayer_l_interface_web(self) -> None:
         self.assertEqual(

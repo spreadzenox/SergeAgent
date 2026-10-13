@@ -11,10 +11,14 @@ from pathlib import Path
 from typing import Any
 
 from serge.db.boot import init_schema
+from serge.db.migrate import read_version
+from serge.db.schema import SCHEMA_VERSION
 from serge.horloge import iso_utc
 from serge.paths import system_root
 
 _INIT_LOCK = threading.RLock()
+# Les bases que ce processus a déjà migrées et remplies (chemin absolu).
+_PRETES: set[Path] = set()
 
 
 def utcnow() -> str:
@@ -42,6 +46,13 @@ def default_canon_path(root: Path | None = None) -> Path:
 def open_db(path: Path) -> sqlite3.Connection:
     """Ouvre le canon : migrations + catalogue, 0600, WAL.
 
+    Les migrations et le remplissage de départ ne passent qu'à la première
+    ouverture d'une base par ce processus, c'est-à-dire au démarrage d'un
+    service : les rejouer relit ``config/pipeline.yaml`` en entier (plus
+    d'une demi-seconde, sous un verrou commun), alors que Mission Control
+    rouvre la base à chaque requête et, pour chaque page ouverte, toutes
+    les 2 secondes. Une base recréée depuis repasse par tout.
+
     Args:
         path: DB file (parent created, mode 0600 enforced).
 
@@ -54,9 +65,16 @@ def open_db(path: Path) -> sqlite3.Connection:
     connection.row_factory = sqlite3.Row
     connection.execute('PRAGMA journal_mode=WAL')
     connection.execute('PRAGMA foreign_keys=ON')
-    with _INIT_LOCK:
-        init_schema(connection)
-    connection.commit()
+    cle = path.resolve()
+    if (
+        fresh
+        or cle not in _PRETES
+        or read_version(connection) != SCHEMA_VERSION
+    ):
+        with _INIT_LOCK:
+            init_schema(connection)
+        connection.commit()
+        _PRETES.add(cle)
     if fresh:
         try:
             path.chmod(0o600)
