@@ -11,7 +11,12 @@ from typing import Any
 
 from kit.builder.guards import BuilderError, assert_instance_paths_safe
 from kit.builder.install import write_units
-from kit.builder.seed import dest_is_empty, git_archive_into, resolve_git_sha
+from kit.builder.seed import (
+    dest_is_empty,
+    ensure_writable_tree,
+    git_archive_into,
+    resolve_git_sha,
+)
 from kit.builder.telephony import write_asterisk, write_asterisk_conf
 from kit.instance_file import (
     InstanceError,
@@ -21,7 +26,9 @@ from kit.instance_file import (
 )
 from kit.units import host_facts_from_instance
 
-PRESERVE_TOP = frozenset({'state', 'queue', 'logs', 'reports', 'evidence'})
+PRESERVE_TOP = frozenset(
+    {'state', 'queue', 'logs', 'reports', 'evidence', 'files'}
+)
 
 
 def loaded_from_instance(instance_file: Path) -> dict[str, Any]:
@@ -118,7 +125,12 @@ def update_instance(
             f'system_root vide ({system_root}) : utilise l’installeur'
         )
     copied = overlay_git_archive(source_repo, git_sha, system_root)
+    # Les dossiers où les services écrivent : ceux d'une version récente
+    # (files/, lot 10) n'existent pas sur une instance installée avant.
+    ensure_writable_tree(system_root)
     home = Path(str(loaded['paths']['home']))
+    # Docker y écrit quand il construit l'image d'un produit (lot 10).
+    (home / '.docker').mkdir(parents=True, exist_ok=True)
     user_systemd = systemd_user_dir or (home / '.config/systemd/user')
     facts = host_facts_from_instance(loaded, uid=uid, python=python)
     units = write_units(

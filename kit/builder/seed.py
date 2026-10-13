@@ -33,6 +33,8 @@ WRITABLE_DIRS = (
     'reports',
     'projects',
     'orchestrator/runtime',
+    # Les livrables du lot 10 : versions figées d'un produit, captures.
+    'files',
     'state/sms',
     'state/voice',
     'state/voice/records',

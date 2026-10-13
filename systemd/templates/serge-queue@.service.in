@@ -24,7 +24,7 @@ NoNewPrivileges=yes
 PrivateTmp=yes
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=__SYSTEM_ROOT__/queue __SYSTEM_ROOT__/evidence __SYSTEM_ROOT__/logs __SYSTEM_ROOT__/state __SYSTEM_ROOT__/orchestrator/runtime __SYSTEM_ROOT__/projects __CONFIG_ROOT__ __HOME__/.local/share /tmp
+ReadWritePaths=__SYSTEM_ROOT__/queue __SYSTEM_ROOT__/evidence __SYSTEM_ROOT__/logs __SYSTEM_ROOT__/state __SYSTEM_ROOT__/orchestrator/runtime __SYSTEM_ROOT__/projects -__SYSTEM_ROOT__/files __CONFIG_ROOT__ __HOME__/.local/share -__HOME__/.docker /tmp
 LockPersonality=yes
 
 [Install]
