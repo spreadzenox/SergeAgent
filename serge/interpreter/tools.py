@@ -178,6 +178,20 @@ def _echo(
     return dict(args)
 
 
+def _next_round(
+    _conn: sqlite3.Connection, _tool: str, args: dict[str, Any], _inv: str
+) -> dict[str, Any]:
+    """Compter les tours d'une boucle : « encore » sous le maximum.
+
+    Exemple : au plus 3 critiques d'un plan ; au tour 3, « fini ».
+    """
+    tour = int(str(args.get('round') or '1') or 1)
+    maximum = int(str(args.get('max') or '1') or 1)
+    if tour < maximum:
+        return {'suite': 'encore', 'tour_suivant': tour + 1}
+    return {'suite': 'fini', 'tour_suivant': tour}
+
+
 def _pass_link(
     conn: sqlite3.Connection, _tool: str, args: dict[str, Any], _inv: str
 ) -> dict[str, Any]:
@@ -216,6 +230,7 @@ RUNNERS: dict[str, Runner] = {
     'inform_owners': inform_owners,
     'ask_owners': _ask_owners,
     'pass_link': _pass_link,
+    'next_round': _next_round,
     'db_read': _db_read,
     'web_search': _web_search,
     'memory_search': _memory_search,

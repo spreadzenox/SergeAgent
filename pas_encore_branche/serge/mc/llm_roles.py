@@ -150,22 +150,6 @@ ROLES: dict[str, tuple[str, str, str, str, str]] = {
         'Toi si ça sort des limites.',
         'Canal + enveloppe + motif.',
     ),
-    'build_artifact': (
-        'Fabrique un livrable (page, PDF, texte) à partir de l’idée'
-        ' de business. On garde une version et une empreinte.',
-        'L’offre + les moules de fabrication.',
-        'Un fichier (chemin + empreinte).',
-        'La relecture, puis l’envoi.',
-        'Type, chemin, version.',
-    ),
-    'review_build': (
-        'Relit le livrable avant envoi : promesse, prix, ton.'
-        ' Une erreur ici peut brûler un compte (e-mail, réseau).',
-        'Le livrable + une checklist.',
-        'OK, ou une liste de retouches.',
-        'On corrige, ou on envoie.',
-        'Avis + retouches.',
-    ),
     'summarize_build_debt': (
         'Liste ce qu’il reste à fabriquer pour que l’argent puisse'
         ' vraiment rentrer. Visible, pas honteux.',

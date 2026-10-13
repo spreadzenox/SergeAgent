@@ -137,6 +137,7 @@ class McSystemTests(McBrowserCase):
         expect(essais.locator('[data-bouton-base]')).to_have_text(
             [
                 'Essayer le chantier',
+                "Essayer l'étape 2",
                 "Essayer l'interface web",
                 'Lancer un essai',
                 "Publier le chantier d'essai",

@@ -151,6 +151,43 @@ types:
       - {label: Le brouillon de Serge, tool: brouillon_de_l_envoi, params: {touch_id: id}}
     fields: [Le business, Le prospect, Le fil, Le brouillon de Serge, Pourquoi, La question]
     buttons: [envoyer_brouillon, ma_reponse, reecrire, ne_rien_envoyer]
+  PLAN_POC:
+    role: >-
+      Le plan d'un POC et sa fiche produit, à valider avant la construction
+      (lot 10, Q34, Q35 et Q91). « Valider » lance la construction ; « À
+      corriger » renvoie le plan à la conception avec tes consignes.
+    render: {color: 3066993, emoji: "🧭"}
+    urgency: normale
+    expiry_hours: 48
+    default: valider
+    default_detail: >-
+      Le plan s'applique : la construction du POC commence (Q34).
+    contenu:
+      - {label: Le business, tool: fiche_business, params: {venture_id: venture_id}}
+      - {label: Le plan, tool: plan_par_numero, params: {plan_id: id}}
+      - {label: La critique, tool: critiques_du_plan, params: {plan_id: id}}
+      - {label: La fiche produit, tool: fiche_produit, params: {venture_id: venture_id}}
+    fields: [Le business, Le plan, La critique, La fiche produit, Pourquoi]
+    buttons: [valider, a_corriger, arreter_business, discuter]
+  TEST_POC:
+    role: >-
+      Le POC en ligne en staging, à essayer comme un prospect avant la
+      prospection légère (lot 10, Q91). « Valider » le met en prod ; « À
+      corriger » relance la construction avec tes consignes.
+    render: {color: 15105570, emoji: "🧪"}
+    urgency: normale
+    expiry_hours: null
+    default: attend
+    default_detail: >-
+      Le POC attend qu'un humain l'essaie, sans limite de temps : rien ne
+      part vers des prospects avant.
+    contenu:
+      - {label: Le business, tool: fiche_business, params: {venture_id: venture_id}}
+      - {label: Le staging, tool: staging_du_business, params: {venture_id: venture_id}}
+      - {label: Les scénarios de test, tool: plan_valide_du_poc, params: {venture_id: venture_id}}
+      - {label: Le relecteur, tool: passage_par_numero, params: {build_id: id}}
+    fields: [Le business, Le staging, Les scénarios de test, Le relecteur, Pourquoi]
+    buttons: [valider, a_corriger, arreter_business, discuter]
   PASSAGE:
     role: >-
       Un lien réglé à la main attend un feu vert : passer à l'invocation

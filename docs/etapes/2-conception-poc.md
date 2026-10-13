@@ -15,13 +15,41 @@ de test léger prête pour l'étape 3.
 
 ## Aujourd'hui
 
-**Rien n'est branché.** L'invocation « Écrire l'idée de business »
-(hypothèse, taille de 30 à 50 prospects, canaux, seuil de succès, durée
-de 10 jours au plus, prix indicatif), jamais appelée, est rangée dans
-`pas_encore_branche/` (`serge/points/hypotheses.py`). Le code qui crée une
-campagne de test (`serge/funnels/essai.py`) existe, mais rien ne l'appelle.
+**L'étape est en base depuis le lot 10 (PR 4, décision Q91).** Aucune
+ligne de code ne lui est propre : ses invocations, ses liens et ses
+tickets sont dans `config/pipeline.yaml` et `config/ticket-types.yaml`.
 
----
+1. **Concevoir le POC** (niveau intelligent) part d'un business choisi
+   pour un POC, par « Choisir les business » (étape 1) ou par le bouton
+   « Essayer l'étape 2 » de la page Système. Elle écrit le plan
+   (`product_plans`), la fiche produit et ses questions fréquentes, et la
+   campagne de test, au brouillon (`campaigns`). Réglages : 30 à 50
+   prospects, 10 jours au plus (page Policy).
+2. **Challenger le POC** (niveau intelligent) rend « bon » ou
+   « a_corriger » avec ses remarques (`plan_critiques`). « Compter les
+   tours de critique » renvoie le plan à la conception, 3 tours au plus.
+3. **Le ticket « Plan »** (`PLAN_POC`) : « Valider », « À corriger » (les
+   consignes repartent à la conception), « Arrêter le business » (il
+   libère sa place de test). Sans réponse sous 48 heures, le plan
+   s'applique.
+4. **Construire le POC** (niveau « code ») travaille dans le chantier du
+   business et essaie son produit dans le navigateur. Son compte rendu va
+   dans `builds`. Une construction pas finie (plafond du jour atteint)
+   ou une publication ratée reprend, 3 reprises au plus.
+5. **Publier le POC en staging** : `staging-<nom du business>.<domaine>`,
+   non indexé.
+6. **Relire le POC** (niveau « code ») l'essaie comme un prospect, sans
+   voir le code, garde ses captures, et rend « bon » ou « a_corriger ».
+   « Compter les passages » relance la construction, 3 passages au plus.
+7. **Le ticket « Tester le produit »** (`TEST_POC`) n'expire jamais :
+   « Valider » met le POC en prod sur `<nom du business>.<domaine>`, sa
+   campagne passe à prête et le business au test léger (`SMOKE_READY`) ;
+   « À corriger » relance la construction avec les consignes ; « Arrêter
+   le business » l'arrête.
+
+La fiche du business, dans Mission Control, montre le plan, les
+remarques du critique, les passages avec le verdict du relecteur, les
+captures, les publications et les versions.
 
 ## Décidé
 

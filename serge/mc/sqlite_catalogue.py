@@ -245,6 +245,24 @@ CATALOGUE: dict[str, tuple[str, str, str, str]] = {
         'host_port : le port fixe sur 127.0.0.1, que vise la route de'
         ' Caddy. status failed : last_error dit pourquoi.',
     ),
+    'product_plans': (
+        'Les plans d’un POC ou d’un produit fini, une ligne par version.',
+        '« Concevoir », « Challenger », le ticket « Plan » (lot 10).',
+        'La construction, le relecteur, le ticket « Tester le produit ».',
+        'status : draft, challenged, validated, to_fix, refused.',
+    ),
+    'plan_critiques': (
+        'Les remarques « à corriger » du critique, par plan et par tour.',
+        '« Challenger » (lot 10).',
+        'La conception, au tour suivant ; le ticket « Plan ».',
+        'Un manque passe par « Demander une nouvelle capacité ».',
+    ),
+    'builds': (
+        'Les passages de construction, avec le verdict du relecteur.',
+        '« Construire » puis « Relire » (lot 10).',
+        'La construction suivante ; le ticket « Tester le produit ».',
+        'status : built, unfinished, reviewed ; verdict : bon, a_corriger.',
+    ),
     'lessons': (
         'Ce que Serge croit avoir appris. Candidate d’abord.',
         'consolidate, owner (confirmer / infirmer).',

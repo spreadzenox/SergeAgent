@@ -378,15 +378,15 @@ ses quotas en base, comme le demande la règle de tous les lots.
   compte, faire un premier devis, le télécharger en PDF ». Pour le
   produit fini : aussi le nom de domaine proposé. Statut : `draft`,
   `challenged`, `validated`, `refused`.
-- **`plan_critiques`** : une ligne par remarque de « Challenger » : le
-  plan, le tour, la remarque. Une remarque « nouvelle capacité » passe par
-  l'outil « Demander une nouvelle capacité » (charte, partie 4) ; la
-  ligne garde le numéro de la demande.
-- **`builds`** : une ligne par passage de construction : le plan, le
-  numéro du passage, le compte rendu du constructeur (ce qui est fait, ce
-  qui reste, fini ou non), la version produite, le verdict du relecteur
-  (`bon`, `a_corriger`, `nouvelle_capacite`) et ses remarques. Statut :
-  `building`, `interrupted` (plafond du jour), `reviewing`, `done`.
+- **`plan_critiques`** : une ligne par remarque « à corriger » du
+  critique : le plan, le tour, la remarque. Un manque de Serge (« il
+  faut une nouvelle capacité ») passe par l'outil « Demander une nouvelle
+  capacité » (charte, partie 4), pas par cette table.
+- **`builds`** : une ligne par passage de construction : le numéro du
+  passage, le compte rendu du constructeur, le verdict du relecteur
+  (`bon`, `a_corriger`), ses remarques, ce qu'il a essayé, et les
+  consignes d'un humain. Statut : `built`, `unfinished` (pas fini : le
+  plafond du jour, ou trop long), `reviewed`.
 - **`artifacts`** (existe, vide) : complétée par la taille, l'adresse
   publique et le passage de construction (Q40). Une capture gardée comme
   preuve y a sa fiche, comme une version.
@@ -415,47 +415,29 @@ ses quotas en base, comme le demande la règle de tous les lots.
 
 ## 8. L'étape 2 dans le pipeline
 
-Tout est en base : les invocations, les liens et les tickets. Aucune ligne
-de code ne leur est propre.
+Fait au lot 10, PR 4 : le détail, invocation par invocation, est dans
+[`etapes/2-conception-poc.md`](etapes/2-conception-poc.md). Tout est en
+base : les invocations, les liens et les tickets ; aucune ligne de code
+ne leur est propre. Trois briques générales ont suffi :
 
-1. **Concevoir le POC** (LLM, niveau intelligent, file des travaux).
-   Lancée par le lien qui part de « Choisir les business », pour chaque
-   business choisi. Elle reçoit d'office la fiche du business et ses
-   preuves ; au tour suivant, son plan précédent et sa critique. Elle
-   écrit le plan (`product_plans`), la fiche produit du POC et ses
-   questions fréquentes, et la campagne de test (`campaigns`, au statut
-   brouillon).
-2. **Challenger le POC** (LLM, niveau intelligent). Elle relit le plan et
-   rend ses remarques « à corriger » ; pour un manque, elle appelle
-   « Demander une nouvelle capacité » (Q35). Lien : s'il y a des
-   remarques et que moins de 3 tours sont faits, retour à « Concevoir le
-   POC » ; sinon, ticket du plan.
-3. **Ticket « Plan »** : plan final, fiche produit, critique, ce qui a été
-   corrigé, ce qui reste. Julien valide, refuse ou discute. Sans réponse
-   sous 48 heures, le plan s'applique (Q34).
-4. **Construire** (LLM, niveau « code », file des travaux, profil
-   « chantier »). Elle reçoit d'office le plan validé, la fiche produit,
-   les demandes des clients du business (aucune pour un premier POC), et,
-   au passage suivant, les remarques et les captures du relecteur, ou les
-   consignes d'un humain. Ses outils : le chantier (partie 1),
-   l'interface web (partie 2) pour essayer son produit, et « Demander une
-   nouvelle capacité ». Elle rend son compte rendu (`builds`).
-5. **Publier en staging** (sans LLM, partie 5).
-6. **Relire** (LLM, niveau « code »). Elle ne voit jamais le code : elle
-   n'a que l'interface web. Elle suit les scénarios de test du plan, sur
-   ordinateur puis sur mobile, comme un prospect ordinaire, et garde ses
-   captures comme preuves. Elle rend « bon », ou « à corriger » avec ses
-   remarques ; pour un manque, elle appelle « Demander une nouvelle
-   capacité ». Lien : « à corriger » et moins de 3 passages faits, retour
-   à « Construire » ; sinon, ticket de test.
-7. **Ticket « Tester le produit »** (partie 10), avec le lien du staging.
-8. **Publier en prod** (sans LLM) la version validée, à
-   `<business>.<domaine de Serge>`.
-9. **Prêt pour le test léger** (sans LLM) : la campagne passe de
-   brouillon à prête, le business à `SMOKE_READY`. L'étape 3 (trouver des
-   prospects, lot 11) prend la suite.
+- **« Compter les tours »** (`next_round`), une capacité sans LLM :
+  « encore » et le tour suivant tant que le tour est sous un maximum
+  (un réglage), sinon « fini ». Elle borne chaque boucle : 3 tours de
+  critique, 3 passages de construction, 3 reprises d'un même passage.
+- **Un paramètre de lien peut venir de la réponse** de l'invocation qui
+  vient de finir (source `field`) : exemple, le tour suivant, ou
+  l'adresse du staging rendue par « Publier ».
+- **Trois boutons de ticket** : « Valider », « À corriger » (avec un
+  texte, les consignes) et « Arrêter le business ».
 
----
+Une réponse à un ticket réveille une invocation sans LLM (« Suite du
+ticket ») par un déclencheur sur `ticket_answers` filtré par type de
+ticket ; ses liens, conditionnés sur le bouton, lancent la suite. Exemple :
+« Valider » sur le ticket « Plan » lance « Construire le POC ».
+
+Pour l'essayer sans cycle d'écoute, le bouton « Essayer l'étape 2 » de la
+page Système crée un business, le choisit pour un POC (il prend une place
+de test) et lance l'étape.
 
 ## 9. L'étape 5 dans le pipeline
 
@@ -508,28 +490,25 @@ servira à l'étape 6, au lot 11.
 
 ## 10. Les tickets
 
-Deux types de tickets nouveaux, en base comme les autres (lot 8 bis,
-Q85), réglables sur la page Décisions :
+Les types de tickets nouveaux, en base comme les autres (lot 8 bis,
+Q85), réglables sur la page Décisions. Leurs boutons : « Valider »,
+« À corriger » (avec des consignes), « Arrêter le business » et
+« Discuter ».
 
-- **« Plan »** : un plan et sa fiche produit à valider. Boutons :
-  « Valider », « À corriger » (avec des consignes, qui repartent à la
-  conception), « Refuser ». Pour un POC, sans réponse sous 48 heures, le
-  plan s'applique (Q34). Pour le produit fini, le ticket n'expire jamais :
-  il fixe le prix définitif et le nom de domaine (Q91).
-- **« Tester le produit »** (Q91) : le lien du staging, les scénarios de
-  test, la fiche produit, le verdict du relecteur et ses captures. Il
-  **n'expire jamais** : rien ne part vers des prospects sans qu'un humain
-  ait essayé le produit. Boutons : « Valider » (la version passe en
-  prod) ; « À corriger », avec des consignes, qui repartent au
-  constructeur pour un nouveau passage ; « Arrêter le business ». Il
-  sert deux fois : entre la construction du POC et la prospection légère,
-  et entre la construction du produit fini et la prospection lourde.
+- **« Plan » d'un POC** (`PLAN_POC`, PR 4) : le business, le plan, la
+  critique, la fiche produit. Sans réponse sous 48 heures, le plan
+  s'applique (Q34).
+- **« Tester le produit » d'un POC** (`TEST_POC`, PR 4) : le business,
+  l'adresse du staging, les scénarios de test, le verdict du relecteur.
+  Il **n'expire jamais** : rien ne part vers des prospects sans qu'un
+  humain ait essayé le produit (Q91).
+- **« Plan » et « Tester le produit » du produit fini** (PR 5) : le
+  ticket du plan n'expire pas non plus, puisqu'il fixe le prix définitif
+  et le nom de domaine (Q91).
 
 Ils remplacent les tickets d'information prévus aux étapes 2 et 5 (Q35,
 Q41). Les tickets restent pour les achats importants et les étapes
 importantes ; ailleurs, Serge est autonome avec sa carte (Q91).
-
----
 
 ## 11. Les réglages
 
