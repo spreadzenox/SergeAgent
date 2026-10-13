@@ -30,6 +30,15 @@ recrée jamais ensuite.
 3. **Le calcul des empreintes** du code de chaque objet
    (`serge/objet_sha.py`).
 
+Ces trois choses ne passent qu'à la **première ouverture** d'une base par
+un processus, c'est-à-dire au démarrage d'un service (lot 10) : le
+remplissage relit `config/pipeline.yaml` en entier, plus d'une
+demi-seconde, alors que Mission Control rouvre la base à chaque requête
+et, pour chaque page ouverte, toutes les 2 secondes. Une base recréée
+depuis, ou qui n'est pas à la version du code, repasse par tout. Un
+changement de `config/` prend donc effet au redémarrage des services,
+comme après une mise à jour.
+
 ### La règle « insérer sans écraser »
 
 Les réglages écrits dans le code et dans `config/pipeline.yaml` ne servent
