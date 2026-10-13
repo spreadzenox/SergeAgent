@@ -128,10 +128,15 @@ conversation (lot 8 bis, décisions Q85 et Q86) et la grille de points
   cliquer comme un humain) et « Appeler une API » (pour Stripe et l'achat
   des domaines). Le détail est dans
   [`docs/LOT10_CONCEPTION.md`](docs/LOT10_CONCEPTION.md).
-- [ ] **Lot 11 « Le reste des étapes ».** Trouver des prospects (étape 3),
-  choisir le business principal (étape 4), la prospection lourde et la vie
-  du business (étape 6), des leçons plus précises (étape 7) et une caisse
-  propre (étape 8).
+- [ ] **Lot 11 « Jusqu'aux premières ventes ».** Mettre en base les
+  tables, les liens et les invocations qui mènent un business de son POC
+  en ligne jusqu'à ses premières ventes : les campagnes de prospection
+  (leur début, leur fin), trouver des prospects (étape 3), mesurer et
+  juger un test léger avec des seuils chiffrés, choisir le business
+  principal (étape 4), la prospection lourde, les ventes et le point de la
+  semaine (étape 6), les places de test et l'étape 1 qui repart toute
+  seule. Le détail est dans
+  [`docs/LOT11_CONCEPTION.md`](docs/LOT11_CONCEPTION.md) (décision Q92).
 - [ ] **Lot 12 « Web ».** On donne à Serge de quoi chercher, lire des
   pages et agir sur n'importe quel site : créer un compte, publier,
   écrire. On le met tard parce que c'est un gros chantier, mais plusieurs
@@ -154,6 +159,14 @@ conversation (lot 8 bis, décisions Q85 et Q86) et la grille de points
   extension de navigateur, un bot. Il faudra un bac à sable avec un vrai
   bureau, où une invocation lance le logiciel, voit son écran et clique
   dedans, comme l'interface web du lot 10 le fait pour une page (Q91).
+- [ ] **Lot 15 « Faire vivre les produits ».** Un produit qui a des
+  clients s'entretient : ce n'est plus un pipeline avec un début et une
+  fin. Ce lot clarifie puis imagine le système complet d'entretien des
+  produits qui existent : les retours des clients et les nouvelles
+  versions, les livraisons, les impayés et les remboursements, la
+  maintenance et la fermeture d'un business. Ses tâches sont dans la
+  partie « Lot 15 » plus bas ; les décisions qu'elles citent sont à revoir
+  (Q92).
 
 ---
 
@@ -225,22 +238,6 @@ discutable, qui peut un jour changer, se règle depuis Mission Control.**
   les statuts d'un business et « un seul business actif à la fois », ce
   qui ne correspond plus à ce qu'on veut : ses règles doivent passer en
   base (`status_transitions`, `table_quotas`) et le module disparaître.
-
-- [ ] **Les livraisons et les demandes des clients.** Serge ne sait pas
-  aujourd'hui ce qui reste à livrer à un client. Il faut une table des
-  livraisons, avec une ligne par chose
-  vendue à livrer : le business, le client, le paiement, ce qu'il faut
-  livrer, la date promise, l'état (à faire, en cours, livrée, problème) et
-  le fichier livré. Une ligne est créée à chaque paiement d'un produit qui
-  n'est pas livré instantanément, et une livraison en retard apparaît dans
-  MC et passe en priorité haute. Cette table est créée en même temps que
-  le code qui la remplit (l'encaissement), pour ne pas laisser dans la
-  base une table vide que personne n'écrit. Les demandes des clients (les
-  bugs, les insatisfactions et les idées d'amélioration) ont déjà leur
-  table depuis le lot 8 (`customer_requests`), remplie par « Traiter une
-  réponse » ; le lot 10 lui ajoute son état : nouvelle, retenue, livrée
-  dans telle version, refusée avec sa raison (Q91). Sans ces deux tables,
-  on ne peut pas savoir quand un business peut être fermé.
 
 - [ ] **Remplir l'index de recherche dans la mémoire.** Le tool qui
   permet à une invocation de chercher dans la mémoire de Serge (leçons,
@@ -316,6 +313,8 @@ discutable, qui peut un jour changer, se règle depuis Mission Control.**
   découverte de contacts. Pour chacune, il faut soit la décrire en base
   dans le nouveau pipeline, soit la supprimer, et dans les deux cas
   supprimer le code qui lui était propre. On ne garde pas de code mort.
+  Le lot 11 en remplace neuf (voir
+  [`docs/LOT11_CONCEPTION.md`](docs/LOT11_CONCEPTION.md), partie 14).
 
 - [ ] **L'éditeur sans code dans Mission Control.** C'est le but du
   lot 6 à terme. Une fois tout le pipeline décrit en base, une page de MC
@@ -355,8 +354,11 @@ discutable, qui peut un jour changer, se règle depuis Mission Control.**
   business testé, avec des adresses qui ne rebondissent pas, et qui garde
   la page d'où vient chaque adresse (il faudra ajouter cette information à
   la table des adresses de contact). Par e-mail et par téléphone, on ne
-  contacte que des professionnels. Ce que l'invocation rend exactement
-  reste à définir. Cette tâche a besoin du web.
+  contacte que des professionnels. Au lot 11, elle cherche avec la
+  recherche web et l'interface web du lot 10, et rend ses prospects par
+  paquets de 10 (voir
+  [`docs/LOT11_CONCEPTION.md`](docs/LOT11_CONCEPTION.md), partie 4) ; le
+  lot 12 lui donnera SearXNG et les comptes.
 
 - [ ] **Prospecter sur LinkedIn.** LinkedIn est un canal important pour
   vendre à des professionnels. Serge l'utilise avec son propre compte, à
@@ -448,6 +450,47 @@ discutable, qui peut un jour changer, se règle depuis Mission Control.**
   invocations qui existent aujourd'hui sans être appelées (plan de passage
   à l'échelle, options de pivot, arbitre du budget).
 
+---
+
+## Étape 7 — Mémoire
+
+- [ ] **Des leçons plus précises.** Chaque invocation doit recevoir ce
+  qu'on a appris sur son propre travail. Depuis le lot 6, une leçon
+  rattachée à une invocation (portée `invocation:<id>`) ou à une étape
+  (`etape:<id>`) est donnée d'office à qui la concerne, avant celles de
+  tout Serge. Il reste à ce que la consolidation propose ce rattachement.
+  Une leçon encore candidate (pas encore gardée par Julien) est déjà
+  donnée comme les autres ; seules les leçons dépassées ou expirées ne le
+  sont pas.
+  Et chaque business arrêté ou fermé doit obligatoirement produire au
+  moins une leçon, pour ne pas refaire les mêmes erreurs. Pour un business
+  arrêté, c'est au lot 11 (« Tirer la leçon d'un business arrêté ») ; pour
+  un business fermé, au lot 15.
+
+---
+
+## Lot 15 — Faire vivre les produits
+
+Ces tâches viennent des étapes 5, 6 et 8. Elles décrivent ce qui avait été
+décidé (Q43 à Q47) ; le lot 15 commence par les clarifier, puis imagine le
+système complet (Q92).
+
+- [ ] **Les livraisons et les demandes des clients.** Serge ne sait pas
+  aujourd'hui ce qui reste à livrer à un client. Il faut une table des
+  livraisons, avec une ligne par chose
+  vendue à livrer : le business, le client, le paiement, ce qu'il faut
+  livrer, la date promise, l'état (à faire, en cours, livrée, problème) et
+  le fichier livré. Une ligne est créée à chaque paiement d'un produit qui
+  n'est pas livré instantanément, et une livraison en retard apparaît dans
+  MC et passe en priorité haute. Cette table est créée en même temps que
+  le code qui la remplit (l'encaissement), pour ne pas laisser dans la
+  base une table vide que personne n'écrit. Les demandes des clients (les
+  bugs, les insatisfactions et les idées d'amélioration) ont déjà leur
+  table depuis le lot 8 (`customer_requests`), remplie par « Traiter une
+  réponse » ; le lot 10 lui ajoute son état : nouvelle, retenue, livrée
+  dans telle version, refusée avec sa raison (Q91). Sans ces deux tables,
+  on ne peut pas savoir quand un business peut être fermé.
+
 - [ ] **Améliorer le produit avec les retours des clients.** Serge repère
   dans les messages des clients ce qui concerne le produit : un bug, une
   insatisfaction, une idée. Il corrige tout de suite ce qui est urgent,
@@ -471,25 +514,6 @@ discutable, qui peut un jour changer, se règle depuis Mission Control.**
   une leçon et Julien reçoit un ticket d'information. Cette tâche a besoin
   des tables des livraisons et des demandes clients.
 
----
-
-## Étape 7 — Mémoire
-
-- [ ] **Des leçons plus précises.** Chaque invocation doit recevoir ce
-  qu'on a appris sur son propre travail. Depuis le lot 6, une leçon
-  rattachée à une invocation (portée `invocation:<id>`) ou à une étape
-  (`etape:<id>`) est donnée d'office à qui la concerne, avant celles de
-  tout Serge. Il reste à ce que la consolidation propose ce rattachement.
-  Une leçon encore candidate (pas encore gardée par Julien) est déjà
-  donnée comme les autres ; seules les leçons dépassées ou expirées ne le
-  sont pas.
-  Et chaque business arrêté ou fermé doit obligatoirement produire au
-  moins une leçon, pour ne pas refaire les mêmes erreurs.
-
----
-
-## Étape 8 — Caisse
-
 - [ ] **Encaisser proprement.** L'argent doit rentrer sans jamais
   relancer un client qui a déjà répondu. Les relances d'impayés sont déjà
   écrites dans le code (polie après 7 jours, ferme après 14, puis arrêt et
@@ -505,10 +529,10 @@ discutable, qui peut un jour changer, se règle depuis Mission Control.**
 
 ## Plus tard
 
-- [ ] **L'étape 1 en automatique.** Au lot 7, le cycle se lance à la main
-  et un flux qui ne ramène que du bruit se coupe à la main. Plus tard : un
-  déclencheur qui lance le cycle tout seul quand une place se libère, et
-  la coupure automatique d'un flux après 5 cycles de bruit (Q65). Avant
+- [ ] **Couper tout seul un flux qui ne ramène que du bruit.** Au lot 7,
+  un flux se coupe à la main. Plus tard : la coupure automatique d'un flux
+  après 5 cycles de bruit (Q65). Le cycle qui repart tout seul quand une
+  place se libère est au lot 11 (Q92). Avant
   le vrai lancement de Serge, retirer le bouton « Effacer les idées
   (test) » (le lister dans la section `deleted` de `pipeline.yaml`).
 

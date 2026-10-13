@@ -94,7 +94,18 @@ Le but numéro un : **ne jamais relancer quelqu'un qui a déjà répondu.**
    été relevées récemment (exemple : boîte mail non lue depuis plus d'une
    heure), aucune relance ne part sur ce canal, et Mission Control affiche
    une alerte.
-5. **Le rythme** vient du plan du POC validé par Julien.
+5. **Le rythme** est un réglage commun à tous les business, sur la page
+   Policy (Q92) : la première relance 3 jours après le premier message, la
+   seconde 7 jours après, deux au plus.
+
+### Les campagnes, du début à la fin
+
+Le détail est dans [`LOT11_CONCEPTION.md`](../LOT11_CONCEPTION.md) : une
+campagne démarre quand le POC est en ligne ; « Trouver des prospects »
+cherche par paquets de 10, au rythme des envois ; le test se termine au
+plus tôt (relances parties depuis 7 jours, ou durée du plan, 30 jours au
+plus) ; « Mesurer le test » le juge avec des seuils chiffrés, et un test
+sous les seuils est arrêté, avec une leçon (Q92).
 
 ### Répondre aux prospects
 

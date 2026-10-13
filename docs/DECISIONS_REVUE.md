@@ -563,6 +563,8 @@ Les autres sont supprimés dès qu'un scénario couvre le même comportement.
    sur ce canal ; alerte dans MC.
 5. Rythme (délais, nombre max de messages) écrit dans le plan du POC et
    validé par Julien à l'étape 2.
+   Corrigé le 13 octobre 2026 (Q92) : le rythme des relances est un réglage
+   commun à tous les business (page Policy), plus celui du plan du POC.
 Le séquenceur fixe (supprimé par Clem, jamais branché) n'est pas recréé.
 
 ### Q38 — Circuit des réponses, priorités, délais (validé)
@@ -1884,3 +1886,31 @@ et l'essai par un humain avant de parler du produit à des prospects. Il
 n'y a pas de notion de coût par projet pour l'instant. Pouvoir supprimer
 les produits Stripe depuis Mission Control évite des galères pendant les
 essais. La carte de Serge est faite pour être à sa disposition.
+
+### Q92 — Lot 11 : de la prospection légère aux premières ventes (validé par Clem, 13 octobre 2026)
+Constat : Clem a demandé d'imaginer, à partir des décisions passées, une
+suite d'invocations cohérente qui mène un business de son POC en ligne
+(fin de l'étape 2, lot 10) jusqu'à ses premières ventes en prospection
+lourde, sans rien coder : les campagnes de prospection (leur début et
+leur fin), des critères chiffrés pour garder ou non un business, le choix
+du principal, la prospection lourde. L'étape 1 ne change pas. La vie d'un
+produit qui a des clients (retours, nouvelles versions, livraisons,
+impayés, maintenance) part dans un nouveau lot 15, tout à la fin. La
+proposition est dans [`LOT11_CONCEPTION.md`](LOT11_CONCEPTION.md).
+Décidé :
+1. **Un test léger se termine au plus tôt** : quand toutes ses relances
+   sont parties depuis 7 jours, ou à la durée de son plan (30 jours au
+   plus).
+2. **Un test sous les seuils est arrêté** (`KILLED`, avec une leçon) : il
+   libère sa place et n'est pas comparé pour le choix du principal. Les
+   seuils de départ (80 % de la cible contactée, 10 points) se règlent sur
+   la page Policy.
+3. **L'étape 1 repart toute seule** dès qu'une place de test se libère,
+   dans le lot 11. Le bouton reste ; la coupure automatique d'un flux qui
+   ne ramène que du bruit reste pour plus tard.
+4. **Le rythme des relances est un réglage commun** à tous les business
+   (page Policy), et non celui du plan de chaque business : Q37 est
+   corrigée.
+5. **Un nouveau lot 15, « Faire vivre les produits »**, tout à la fin,
+   pour clarifier et imaginer le système complet d'entretien des produits
+   qui existent.

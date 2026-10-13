@@ -132,6 +132,12 @@ ticket d'information. « Pivoter » et « arrêter » passent par un ticket
 Discord validé par Julien. Cette invocation remplace « Comment grandir »,
 « Trois autres idées » et « Arbitrer l'allocation ».
 
+La prospection lourde, les ventes et le point de la semaine sont détaillés
+dans [`LOT11_CONCEPTION.md`](../LOT11_CONCEPTION.md), parties 7 et 8
+(décision Q92). Les retours des clients, les nouvelles versions, la
+maintenance et la fermeture, ci-dessous, sont à revoir au lot 15, « Faire
+vivre les produits ».
+
 ### Les retours des clients
 
 1. « Traiter une réponse » repère aussi les **demandes sur le produit** :
