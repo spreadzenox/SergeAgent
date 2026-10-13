@@ -128,15 +128,20 @@ conversation (lot 8 bis, décisions Q85 et Q86) et la grille de points
   cliquer comme un humain) et « Appeler une API » (pour Stripe et l'achat
   des domaines). Le détail est dans
   [`docs/LOT10_CONCEPTION.md`](docs/LOT10_CONCEPTION.md).
+- [ ] **Lot 10 bis « Les réponses automatiques ».** Une réponse
+  automatique ne doit jamais faire répondre Serge sans fin : une porte de
+  sortie, « arrêter avec ce contact », coupe la communication (Q93). Le
+  détail est dans la partie « Lot 10 bis » plus bas.
 - [ ] **Lot 11 « Jusqu'aux premières ventes ».** Mettre en base les
   tables, les liens et les invocations qui mènent un business de son POC
   en ligne jusqu'à ses premières ventes : les campagnes de prospection
   (leur début, leur fin), trouver des prospects (étape 3), mesurer et
   juger un test léger avec des seuils chiffrés, choisir le business
-  principal (étape 4), la prospection lourde, les ventes et le point de la
-  semaine (étape 6), les places de test et l'étape 1 qui repart toute
-  seule. Le détail est dans
-  [`docs/LOT11_CONCEPTION.md`](docs/LOT11_CONCEPTION.md) (décision Q92).
+  principal (étape 4), vendre en masse le produit fini, tel qu'il sort de
+  la construction, et enregistrer les ventes (étape 6), les places de test
+  et l'étape 1 qui repart toute seule. Le détail est dans
+  [`docs/LOT11_CONCEPTION.md`](docs/LOT11_CONCEPTION.md) (décisions Q92
+  et Q93).
 - [ ] **Lot 12 « Web ».** On donne à Serge de quoi chercher, lire des
   pages et agir sur n'importe quel site : créer un compte, publier,
   écrire. On le met tard parce que c'est un gros chantier, mais plusieurs
@@ -162,11 +167,13 @@ conversation (lot 8 bis, décisions Q85 et Q86) et la grille de points
 - [ ] **Lot 15 « Faire vivre les produits ».** Un produit qui a des
   clients s'entretient : ce n'est plus un pipeline avec un début et une
   fin. Ce lot clarifie puis imagine le système complet d'entretien des
-  produits qui existent : les retours des clients et les nouvelles
-  versions, les livraisons, les impayés et les remboursements, la
-  maintenance et la fermeture d'un business. Ses tâches sont dans la
-  partie « Lot 15 » plus bas ; les décisions qu'elles citent sont à revoir
-  (Q92).
+  produits qui existent : le point de la semaine et ce que fait chacune de
+  ses décisions, les retours des clients et les nouvelles versions, un
+  service sur mesure (ajouter à un produit existant les fonctionnalités
+  qu'un client demande, en rappelant le constructeur), les livraisons,
+  les impayés et les remboursements, la maintenance et la fermeture d'un
+  business. Ses tâches sont dans la partie « Lot 15 » plus bas ; les
+  décisions qu'elles citent sont à revoir (Q92, Q93).
 
 ---
 
@@ -313,8 +320,9 @@ discutable, qui peut un jour changer, se règle depuis Mission Control.**
   découverte de contacts. Pour chacune, il faut soit la décrire en base
   dans le nouveau pipeline, soit la supprimer, et dans les deux cas
   supprimer le code qui lui était propre. On ne garde pas de code mort.
-  Le lot 11 en remplace neuf (voir
-  [`docs/LOT11_CONCEPTION.md`](docs/LOT11_CONCEPTION.md), partie 14).
+  Le lot 11 en remplace cinq, et le point de la semaine du lot 15 trois
+  autres (voir [`docs/LOT11_CONCEPTION.md`](docs/LOT11_CONCEPTION.md),
+  partie 13).
 
 - [ ] **L'éditeur sans code dans Mission Control.** C'est le but du
   lot 6 à terme. Une fois tout le pipeline décrit en base, une page de MC
@@ -344,6 +352,30 @@ discutable, qui peut un jour changer, se règle depuis Mission Control.**
 
 ---
 
+## Lot 10 bis — Les réponses automatiques
+
+- [ ] **Ne jamais répondre sans fin à une réponse automatique.** Un
+  e-mail de Serge peut recevoir une réponse automatique (« je suis absent
+  jusqu'au 20 », « votre demande n° 1234 est bien reçue »), et un robot
+  peut répondre à chaque message : Serge ne doit pas lui répondre à
+  l'infini. Ce qui existe (Q79) : « Traiter une réponse » classe une
+  réponse d'absence en « absence », Serge ne répond rien, et les relances
+  continuent, deux au plus. Ce qui manque (Q93) :
+  - **une porte de sortie** : « Traiter une réponse » peut rendre la
+    décision « arrêter avec ce contact » (un robot qui répond à tout, un
+    accusé de réception automatique, une liste de diffusion, une
+    conversation qui tourne en rond). Le contact passe à une étape où
+    Serge n'écrit plus (« arrêté », ajoutée à la liste de la page Policy,
+    Q82) : plus de réponse ni de relance, et c'est noté au journal ;
+  - **un garde-fou dans le code**, réglé en base : au plus 3 messages de
+    Serge à un même contact en 24 heures ; au-delà, l'envoi est annulé, le
+    contact arrêté, et un ticket d'information prévient Julien et Clem ;
+  - **les en-têtes des réponses automatiques** : la relève de l'e-mail
+    reconnaît `Auto-Submitted`, `X-Autoreply` et leurs cousins, et classe
+    le message « absence » sans appeler le modèle.
+
+---
+
 ## Étape 3 — Prospection légère
 
 - [ ] **Trouver des prospects.** Serge sait écrire des e-mails et passer
@@ -354,7 +386,9 @@ discutable, qui peut un jour changer, se règle depuis Mission Control.**
   business testé, avec des adresses qui ne rebondissent pas, et qui garde
   la page d'où vient chaque adresse (il faudra ajouter cette information à
   la table des adresses de contact). Par e-mail et par téléphone, on ne
-  contacte que des professionnels. Au lot 11, elle cherche avec la
+  contacte que des professionnels, et jamais une adresse générique
+  (`contact@`, `info@`…) : on cherche une personne nommée, avec son rôle
+  et son adresse directe (Q93). Au lot 11, elle cherche avec la
   recherche web et l'interface web du lot 10, et rend ses prospects par
   paquets de 10 (voir
   [`docs/LOT11_CONCEPTION.md`](docs/LOT11_CONCEPTION.md), partie 4) ; le
@@ -442,13 +476,9 @@ discutable, qui peut un jour changer, se règle depuis Mission Control.**
 
 ## Étape 6 — Prospection lourde
 
-- [ ] **Faire le point chaque semaine sur le business principal.** Une
-  seule question compte : on continue, et à quelle vitesse ? Une fois par
-  semaine, une invocation propose de continuer, d'accélérer (50 % de
-  prospects en plus ou un canal de plus), de pivoter ou d'arrêter. Pivoter
-  et arrêter passent par Julien. Cette invocation remplace trois
-  invocations qui existent aujourd'hui sans être appelées (plan de passage
-  à l'échelle, options de pivot, arbitre du budget).
+La vente en masse du produit fini est au lot 11 (voir
+[`docs/LOT11_CONCEPTION.md`](docs/LOT11_CONCEPTION.md), partie 7) ; le
+suivi pendant la vente est au lot 15.
 
 ---
 
@@ -473,7 +503,20 @@ discutable, qui peut un jour changer, se règle depuis Mission Control.**
 
 Ces tâches viennent des étapes 5, 6 et 8. Elles décrivent ce qui avait été
 décidé (Q43 à Q47) ; le lot 15 commence par les clarifier, puis imagine le
-système complet (Q92).
+système complet (Q92, Q93).
+
+- [ ] **Faire le point chaque semaine sur le business principal.** Une
+  seule question compte : on continue, et à quelle vitesse ? Une fois par
+  semaine, une invocation propose de continuer, d'accélérer (50 % de
+  prospects en plus ou un canal de plus), de pivoter ou d'arrêter. Pivoter
+  et arrêter passent par Julien. Cette invocation remplace trois
+  invocations qui existent aujourd'hui sans être appelées (plan de passage
+  à l'échelle, options de pivot, arbitre du budget).
+
+- [ ] **Un service sur mesure.** Proposer à un client d'ajouter à un
+  produit existant les fonctionnalités qu'il demande, en rappelant le
+  constructeur du lot 10 sur ce produit : le pipeline devient récursif.
+  Pas pour tout de suite (Q93).
 
 - [ ] **Les livraisons et les demandes des clients.** Serge ne sait pas
   aujourd'hui ce qui reste à livrer à un client. Il faut une table des

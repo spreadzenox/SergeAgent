@@ -1903,8 +1903,11 @@ Décidé :
    plus).
 2. **Un test sous les seuils est arrêté** (`KILLED`, avec une leçon) : il
    libère sa place et n'est pas comparé pour le choix du principal. Les
-   seuils de départ (80 % de la cible contactée, 10 points) se règlent sur
-   la page Policy.
+   seuils de départ (30 prospects contactés, 10 points) se règlent sur la
+   page Policy.
+   Corrigé le 13 octobre 2026 (Q93) : ce point disait « 80 % de la cible
+   contactée » ; la cible ne se compte pas, les seuils sont en chiffres
+   absolus.
 3. **L'étape 1 repart toute seule** dès qu'une place de test se libère,
    dans le lot 11. Le bouton reste ; la coupure automatique d'un flux qui
    ne ramène que du bruit reste pour plus tard.
@@ -1914,3 +1917,29 @@ Décidé :
 5. **Un nouveau lot 15, « Faire vivre les produits »**, tout à la fin,
    pour clarifier et imaginer le système complet d'entretien des produits
    qui existent.
+
+### Q93 — Lot 11 : des chiffres absolus par canal, des contacts précis, et seulement la vente du produit fini (validé par Clem, 13 octobre 2026)
+Constat : en relisant la conception du lot 11, Clem a précisé plusieurs
+points.
+Décidé :
+1. **Tous les seuils et volumes sont des réglages en base**, comme
+   d'habitude, et **le nombre de prospects se règle par canal**.
+2. **Des chiffres absolus, jamais une part de la cible** : la cible d'un
+   business ne se compte presque jamais. Exemple de Clem : « 200 prospects
+   par semaine jusqu'à 1 000 ». Un test léger compte aussi en prospects
+   contactés (30 au moins), pas en pourcentage.
+3. **Jamais d'adresse générique** pour les invocations qui cherchent des
+   contacts : un contact précis paie toujours, et beaucoup se trouvent en
+   ligne.
+4. **La prospection lourde, c'est seulement vendre en masse le produit
+   tel qu'il sort du constructeur final.** Le point de la semaine et ce
+   que fait chacune de ses décisions, le suivi et le raffinement pendant
+   la vente, partent au lot 15. Le lot 15 imaginera aussi un service sur
+   mesure : proposer aux clients d'ajouter des fonctionnalités à un
+   produit existant, en rappelant le constructeur. Pas pour tout de suite.
+5. **Un lot 10 bis pour les réponses automatiques** : une réponse
+   automatique à un e-mail ne doit pas faire répondre Serge à l'infini ;
+   il faut une porte de sortie, par exemple une décision « arrêter avec
+   ce prospect », qui coupe la communication. Clem n'était plus sûr de ce
+   qui existe déjà : « Traiter une réponse » classe une absence sans y
+   répondre (Q79), mais rien n'arrête une conversation qui tourne en rond.
