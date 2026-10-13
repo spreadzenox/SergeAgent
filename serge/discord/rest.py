@@ -269,7 +269,11 @@ def _post_interaction(
         with urllib.request.urlopen(request, timeout=timeout):
             pass
     except urllib.error.HTTPError as exc:
-        raise DiscordError(f'API: interaction HTTP {exc.code}') from exc
+        # Le corps de l'erreur dit pourquoi (pas de secret dedans).
+        detail = exc.read()[:300].decode('utf-8', 'replace')
+        raise DiscordError(
+            f'API: interaction HTTP {exc.code} {detail}'
+        ) from exc
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
         raise DiscordError(f'NETWORK: interaction ({exc})') from exc
 

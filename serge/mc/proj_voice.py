@@ -121,7 +121,7 @@ JOURNAUX_VOIX = (
 LIGNES_JOURNAL = 150
 
 
-def _journal_service(unit: str) -> tuple[list[str], str]:
+def journal_service(unit: str) -> tuple[list[str], str]:
     """Les dernières lignes du journal d'un service ; ``(lignes, erreur)``."""
     if shutil.which('journalctl') is None:
         return [], 'journalctl absent sur ce serveur'
@@ -186,7 +186,7 @@ def project_journal_voix(
     _ = (conn, policy, now)
     blocs = []
     for unit, titre in JOURNAUX_VOIX:
-        lignes, erreur = _journal_service(unit)
+        lignes, erreur = journal_service(unit)
         blocs.append({'titre': titre, 'lignes': lignes, 'erreur': erreur})
     lignes, erreur = _fichier_asterisk()
     blocs.append(

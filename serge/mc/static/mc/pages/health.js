@@ -1,5 +1,5 @@
-// Page P8 Santé : charte E6, versions drift, audit trail.
-import {fillList, li, rel} from '../components.js';
+// Page P8 Santé : charte E6, versions drift, journaux du serveur, audit trail.
+import {afficherJournaux, fillList, li, rel} from '../components.js';
 
 function tuile(n, libelle) {
   const box = document.createElement('div');
@@ -53,6 +53,11 @@ function renderVersions(main, payload, sig) {
   main.querySelector('[data-section="versions_drift"]').dataset.sig = sig;
 }
 
+function renderJournaux(main, payload, sig) {
+  afficherJournaux(main.querySelector('[data-journaux="blocs"]'), payload.blocs);
+  main.querySelector('[data-section="journal_serveur"]').dataset.sig = sig;
+}
+
 function renderAudit(main, payload, sig) {
   const ul = main.querySelector('[data-section="audit_trail"] [data-list="actes"]');
   fillList(ul, payload.actes || [], 'Aucun acte d’audit enregistré.', (a) => {
@@ -73,6 +78,7 @@ export function mount(main, store) {
   const unsubs = [
     store.subscribe('charte_metriques', (p, s) => renderCharte(main, p, s)),
     store.subscribe('versions_drift', (p, s) => renderVersions(main, p, s)),
+    store.subscribe('journal_serveur', (p, s) => renderJournaux(main, p, s)),
     store.subscribe('audit_trail', (p, s) => renderAudit(main, p, s)),
   ];
 
@@ -81,6 +87,8 @@ export function mount(main, store) {
       renderCharte(main, env.payload, env.sig);
     } else if (section === 'versions_drift') {
       renderVersions(main, env.payload, env.sig);
+    } else if (section === 'journal_serveur') {
+      renderJournaux(main, env.payload, env.sig);
     } else if (section === 'audit_trail') {
       renderAudit(main, env.payload, env.sig);
     }

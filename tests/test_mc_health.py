@@ -25,7 +25,13 @@ class HealthRegistryTests(unittest.TestCase):
         sections = PAGE_SECTIONS['p8']
         self.assertEqual(
             sections,
-            ['meta', 'charte_metriques', 'versions_drift', 'audit_trail'],
+            [
+                'meta',
+                'charte_metriques',
+                'versions_drift',
+                'journal_serveur',
+                'audit_trail',
+            ],
         )
         for section in sections:
             self.assertIn(section, PROJECTORS)
