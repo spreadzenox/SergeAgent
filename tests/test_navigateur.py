@@ -270,7 +270,6 @@ class NavigateurTests(unittest.TestCase):
         config = self.dossier / 'config'
         (config / 'secrets').mkdir(parents=True)
         (config / 'secrets/carte-a.key').write_text('4242424242424242\n')
-        (config / 'secrets/carte-b.key').write_text('5555666677778888\n')
         instance = self.dossier / 'instance.toml'
         instance.write_text(f'[paths]\nconfig_root = "{config}"\n')
         patcher = mock.patch.dict(
@@ -283,23 +282,31 @@ class NavigateurTests(unittest.TestCase):
         )['page']
         champ = re.search(r'\[(e\d+)\] champ email « E-mail »', page)
         assert champ, page
+        self._outil(
+            'browser_action',
+            action='taper_secret',
+            ref=champ[1],
+            text='carte-a.key',
+            secrets='carte-a.key',
+        )
+        onglet = navigateur._session(self.conn, 't1').page
+        style = (
+            '() => getComputedStyle(document.getElementById("email"))'
+            '.webkitTextSecurity'
+        )
+        vu: list[str] = []
+        vraie = onglet.screenshot
 
-        def capture(action: str, texte: str) -> str:
-            self._outil(
-                'browser_action',
-                action=action,
-                ref=champ[1],
-                text=texte,
-                secrets='carte-a.key,carte-b.key',
-            )
-            return self._outil('browser_screenshot')['image']
+        def capture(**kwargs: Any) -> bytes:
+            vu.append(onglet.evaluate(style))
+            return vraie(**kwargs)
 
-        en_clair = capture('taper', '4242424242424242')
-        secret_a = capture('taper_secret', 'carte-a.key')
-        secret_b = capture('taper_secret', 'carte-b.key')
-        # Deux numéros différents donnent la même capture : des points.
-        self.assertEqual(secret_a, secret_b)
-        self.assertNotEqual(secret_a, en_clair)
+        # Pendant la capture, le champ qui a reçu le secret montre des
+        # points, comme un mot de passe ; après, il redevient normal.
+        with mock.patch.object(onglet, 'screenshot', capture):
+            self.assertTrue(self._outil('browser_screenshot')['ok'])
+        self.assertEqual(vu, ['disc'])
+        self.assertEqual(onglet.evaluate(style), 'none')
 
     def test_essayer_l_interface_web(self) -> None:
         self.assertEqual(

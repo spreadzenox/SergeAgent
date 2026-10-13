@@ -203,8 +203,22 @@ def _vers_chantier(url: str, args: dict[str, Any]) -> str:
     return urlunsplit(parts._replace(netloc=f'{_chantier(args)}{port}'))
 
 
+def _releve(page: Any, lignes: int) -> dict[str, Any]:
+    """La page vue comme un lecteur d'écran. Une navigation en cours (un
+    clic qui charge une autre page) coupe la lecture : on attend que la
+    page se pose, puis on relit."""
+    for _ in range(2):
+        try:
+            return page.evaluate(SNAPSHOT_JS, {'maxLines': lignes})
+        except Exception as exc:  # noqa: BLE001 — Playwright, une navigation
+            if 'context was destroyed' not in str(exc):
+                raise
+            _attendre(page)
+    return page.evaluate(SNAPSHOT_JS, {'maxLines': lignes})
+
+
 def _lire(session: _Session, lignes: int, args: dict[str, Any]) -> str:
-    data = session.page.evaluate(SNAPSHOT_JS, {'maxLines': lignes})
+    data = _releve(session.page, lignes)
     texte = '\n'.join(
         [f'Page : {data["title"]} — {data["url"]}', *data['lines']]
     )
