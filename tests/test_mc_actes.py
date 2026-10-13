@@ -16,6 +16,7 @@ from serge.discord.interactions import route_interaction  # noqa: E402
 from serge.registry import load_ticket_types  # noqa: E402
 from serge.tickets import create_ticket, publish  # noqa: E402
 from serge.tickets.admins import add_admin  # noqa: E402
+from serge.tickets.lifecycle import reopen  # noqa: E402
 from tests.mc_server_case import McServerCase  # noqa: E402
 from tests.test_discord_interactions import OWNER  # noqa: E402
 
@@ -158,6 +159,30 @@ class TicketActeTests(McServerCase):
         finally:
             conn.close()
         self.assertEqual(tuple(reponse), ('reecrire', 'Plus court', 'owner'))
+        # « Ma réponse » porte aussi l'objet saisi (un e-mail).
+        conn = open_db(self.db_path)
+        reopen(conn, ticket_id, actor='serge')
+        conn.commit()
+        conn.close()
+        status, _, _ = self._api_post(
+            '/owner/api/ticket/acte',
+            {
+                'ticket_id': ticket_id,
+                'acte': 'ma_reponse',
+                'note': 'Oui.',
+                'objet': 'Vos devis',
+            },
+            cookie,
+        )
+        self.assertEqual(status, 200)
+        conn = open_db(self.db_path)
+        try:
+            objet = conn.execute(
+                "SELECT subject FROM ticket_answers WHERE acte='ma_reponse'"
+            ).fetchone()[0]
+        finally:
+            conn.close()
+        self.assertEqual(objet, 'Vos devis')
 
     def test_valider_chaque_brouillon_d_un_business(self) -> None:
         """L'interrupteur de la fiche d'un business (Q85)."""

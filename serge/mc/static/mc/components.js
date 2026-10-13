@@ -194,7 +194,12 @@ export function promptModal(
     for (const field of fields) {
       const label = document.createElement('label');
       label.textContent = field.label;
-      const input = document.createElement(field.options ? 'select' : 'input');
+      const input = document.createElement(
+        field.options ? 'select' : field.multiligne ? 'textarea' : 'input',
+      );
+      if (field.multiligne) {
+        input.rows = 10;
+      }
       if (field.options) {
         const empty = document.createElement('option'); empty.value = ''; empty.textContent = 'Choisir une réponse'; input.append(empty);
       }

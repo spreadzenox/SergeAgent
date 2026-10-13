@@ -1701,9 +1701,9 @@ invocations:
 
   - id: envoyer_reponse_de_julien
     title: Envoyer la réponse de Julien
-    role: >-
-      « Ma réponse » : le texte de Julien remplace le brouillon, et part tel
-      quel. Sans LLM.
+    role: &role_ma_reponse >-
+      « Ma réponse » : le texte et l'objet de Julien remplacent le
+      brouillon, et partent tels quels. Sans LLM.
     type: capability
     capability: echo
     queue: conversations
@@ -1717,6 +1717,7 @@ invocations:
         key: {column: id, source: task, value: touch_id}
         values:
           body: {source: task, value: texte}
+          subject: &objet_de_julien {source: task, value: objet}
           status: {source: fixed, value: pending}
           owner_ok_at: {source: now}
 
@@ -2565,6 +2566,7 @@ triggers:
     params:
       touch_id: {source: row, value: ref_id}
       texte: {source: row, value: text}
+      objet: &param_objet_de_julien {source: row, value: subject}
   - id: reponse_de_julien_en_question_frequente
     title: « Ma réponse » à une question sur le produit
     invocation: ajouter_question_frequente
@@ -2942,6 +2944,27 @@ changes:
     add_write_values:
       needs_owner: *valeur_besoin_julien
       owner_question: *valeur_question_produit
+  - id: ma_reponse_objet_parametre
+    why: >-
+      « Ma réponse » change aussi l'objet de l'e-mail : la réponse en porte
+      un, et le déclencheur le transmet.
+    trigger: julien_donne_sa_reponse
+    add_trigger_params:
+      objet: *param_objet_de_julien
+  - id: ma_reponse_objet_role
+    why: Le rôle dit que l'objet est repris aussi.
+    table: invocations
+    where: {id: envoyer_reponse_de_julien}
+    set:
+      role:
+        from: '« Ma réponse » : le texte de Julien remplace le brouillon, et part tel quel. Sans LLM.'
+        to: *role_ma_reponse
+  - id: ma_reponse_objet_ecrit
+    why: L'objet saisi avec « Ma réponse » remplace celui du brouillon.
+    invocation: envoyer_reponse_de_julien
+    write: 0
+    add_write_values:
+      subject: *objet_de_julien
   - id: essai_case_valider
     why: >-
       Le business d'essai peut naître en mode « Valider chaque brouillon » :

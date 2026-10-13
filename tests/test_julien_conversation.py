@@ -8,8 +8,9 @@ Scénarios :
 - Serge a besoin de Julien : sa réponse attend, un ticket « Conversation »
   s'ouvre (le business, le prospect, le fil, le brouillon, pourquoi, la
   question), rien ne part ; « Envoyer le brouillon » le fait partir ;
-- « Ma réponse » : le texte de Julien part tel quel, et rejoint les
-  questions fréquentes avec la question du contact ;
+- « Ma réponse » : la fenêtre s'ouvre avec le brouillon et son objet ;
+  le texte et l'objet de Julien partent tels quels, et le texte rejoint
+  les questions fréquentes avec la question du contact ;
 - « Réécrire » : Serge réécrit avec les consignes, et le nouveau brouillon
   revient dans le même ticket, rouvert ;
 - « Ne rien envoyer » : l'envoi est annulé ;
@@ -36,7 +37,10 @@ from serge.channels.adapters import ADAPTERS  # noqa: E402
 from serge.channels.base import Adapter  # noqa: E402
 from serge.coupe_circuit import set_heartbeat  # noqa: E402
 from serge.db.boot import init_schema  # noqa: E402
-from serge.discord.interactions import route_interaction  # noqa: E402
+from serge.discord.interactions import (  # noqa: E402
+    premiere_reponse,
+    route_interaction,
+)
 from serge.interpreter.flow import notify_rows_written  # noqa: E402
 from serge.interpreter.queue import expirer_tickets  # noqa: E402
 from serge.llm.client import ChatResult  # noqa: E402
@@ -235,10 +239,46 @@ class JulienDansLaConversationTests(unittest.TestCase):
         self,
     ) -> None:
         self._serge_attend_julien()
-        self._saisie('ma_reponse', 'Oui, en anglais et en espagnol.', '7002')
+        # « Ma réponse » s'ouvre avec le brouillon et son objet, à modifier.
+        ticket = self._ticket()['id']
+        objet_serge = self._un(
+            "SELECT subject FROM touches WHERE kind='reply'"
+        )[0]
+        fenetre = premiere_reponse(
+            self.conn,
+            _interaction(f't:{ticket}:ma_reponse', user_id=CLEM),
+        )
+        assert fenetre is not None
+        champs = {
+            c['components'][0]['custom_id']: c['components'][0].get('value')
+            for c in fenetre['data']['components']
+        }
         self.assertEqual(
-            [m.body for m in self.canal.envoyes],
-            ['Oui, en anglais et en espagnol.' + PIED],
+            champs, {'objet': objet_serge, 'texte': DOUTE['reply']}
+        )
+        saisie = _fenetre(
+            f'm:{ticket}:ma_reponse',
+            'Oui, en anglais et en espagnol.',
+            user_id=CLEM,
+            interaction_id='7002',
+        )
+        saisie['data']['components'].insert(
+            0,
+            {
+                'type': 1,
+                'components': [
+                    {'type': 4, 'custom_id': 'objet', 'value': 'Vos devis'}
+                ],
+            },
+        )
+        self.assertEqual(
+            route_interaction(self.conn, saisie)['status'], 'applied'
+        )
+        self.conn.commit()
+        self._vider()
+        self.assertEqual(
+            [(m.subject, m.body) for m in self.canal.envoyes],
+            [('Vos devis', 'Oui, en anglais et en espagnol.' + PIED)],
         )
         self.assertEqual(
             self._un('SELECT venture_id, question, answer FROM product_faq'),

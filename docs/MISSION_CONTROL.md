@@ -273,7 +273,11 @@ reçoit un refus. Les boutons ont le même effet que dans Mission Control ;
 un bouton qui demande un texte ouvre une fenêtre de saisie. Dès qu'un
 administrateur répond, ou qu'on répond dans Mission Control, le ticket
 est tranché : sa carte est mise à jour, boutons morts, avec qui l'a
-tranché (« Approuvé par Clem »), et le fil est archivé. Sans forum réglé,
+tranché (« Approuvé par Clem »), et le fil est archivé. « Ma réponse »
+s'ouvre avec le brouillon et son objet, à modifier (sur Discord comme dans
+Mission Control). Après « Réécrire », le nouveau brouillon revient dans le
+même fil, en bas, avec une nouvelle mention ; l'ancienne carte perd ses
+boutons. Sans forum réglé,
 les tickets restent dans Mission Control ; seuls les tickets ouverts
 après le réglage ont un fil. Le ticket est recopié tel qu'il est en base,
 sans résumé par un modèle. Un message libre n'est pas lu (décisions Q85,
