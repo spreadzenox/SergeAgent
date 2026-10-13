@@ -233,12 +233,15 @@ suit la même règle depuis le lot 10 : un chantier (un conteneur Docker par
 business et par livrable) et ses outils (lancer une commande, lire, écrire
 et modifier un fichier) sont des capacités générales ; le business, le
 livrable et le profil du chantier sont des paramètres figés en base sur
-l'invocation, et les chiffres du profil sont sur la page Policy. Plus
-tard, la navigation sur le web, les connecteurs vers des services et les
-canaux suivront la même règle : des capacités générales, réglées en
-base. Un connecteur, par exemple, n'est
-pas du code écrit par Serge, mais la description du service en base,
-utilisée par une seule capacité « Appeler une API ».
+l'invocation, et les chiffres du profil sont sur la page Policy. La
+navigation sur le web et les connecteurs vers des services suivent la
+même règle depuis le lot 10 ; les canaux la suivront. Un connecteur n'est
+pas du code écrit par Serge, mais la description du service en base
+(`api_services`, `api_endpoints` : son adresse, le nom de son secret, ses
+points d'entrée et leurs paramètres permis), utilisée par une seule
+capacité « Appeler une API ». Exemple : l'outil « Créer un prix Stripe »
+est le point d'entrée `POST /v1/prices` du service `stripe_test` ou
+`stripe_live`, et l'identifiant du business y est un paramètre figé.
 
 Le code, lui, est rangé par **capacité**, jamais par invocation : lire la
 base, écrire dans la base, appeler un modèle, chercher sur le web, agir

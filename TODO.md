@@ -121,7 +121,8 @@ conversation (lot 8 bis, décisions Q85 et Q86), la grille de points
   et sa fiche produit, on les fait critiquer, Julien les valide, puis
   Serge construit, essaie et met en ligne, d'abord le POC, ensuite le vrai
   produit. Ce sont les étapes 2 et 5 ; l'étape 2 est en base depuis la
-  PR 4 du lot, reste l'étape 5. Seulement des produits web, payants
+  PR 4 du lot, « Appeler une API » et les outils Stripe depuis la PR 5,
+  reste l'étape 5. Seulement des produits web, payants
   pour le produit fini (Q91). Le lot apporte trois capacités d'abord
   prévues au lot 12 : le bac à sable (un conteneur où le constructeur code
   et lance son produit), l'interface web des invocations (lire une page et
@@ -559,10 +560,12 @@ système complet (Q92, Q93).
   quand les vraies invocations de prospection (lot 11) écriront les
   premiers messages.
   Même chose pour les essais du lot 10 (Q91) : « Essayer le chantier »,
-  « Essayer l'interface web », « Publier le chantier d'essai » et
-  « Essayer l'étape 2 », avec leurs invocations temporaires
-  (essayer_chantier, essayer_navigateur, publier_essai,
-  creer_business_essai, choisir_business_essai).
+  « Essayer l'interface web », « Publier le chantier d'essai »,
+  « Essayer l'étape 2 » et « Essayer Stripe (mode test) », avec leurs
+  invocations temporaires (essayer_chantier, essayer_navigateur,
+  publier_essai, creer_business_essai, choisir_business_essai,
+  essayer_stripe). Les boutons « Supprimer de Stripe » restent : ils
+  nettoient après un business d'essai.
 
 - [ ] **La consolidation de la mémoire dans le pipeline.** Aujourd'hui,
   la consolidation (étape 7) relit chaque jour le journal et propose des

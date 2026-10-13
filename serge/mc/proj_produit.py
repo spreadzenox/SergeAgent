@@ -169,3 +169,32 @@ def _passages(
             }
         )
     return cadres
+
+
+def boutons_du_business(
+    conn: sqlite3.Connection, venture_id: str
+) -> list[dict[str, Any]]:
+    """Les boutons déclarés en base dont le formulaire attend un business.
+
+    Ils s'affichent sur la fiche de chaque business, son numéro déjà
+    rempli. Exemple : « Supprimer de Stripe (mode test) ».
+    """
+    return [
+        {
+            'libelle': str(titre),
+            'route': '/owner/api/bouton',
+            'charge': {
+                'trigger_id': str(ident),
+                'form': {'venture_id': venture_id},
+            },
+            'confirmer': str(confirmer or ''),
+        }
+        for ident, titre, confirmer in conn.execute(
+            'SELECT t.id, t.title, t.confirm_text FROM triggers t'
+            ' JOIN invocations i ON i.id=t.invocation_id'
+            " WHERE t.event='button' AND t.enabled=1 AND t.deleted_at=''"
+            " AND i.enabled=1 AND i.deleted_at=''"
+            ' AND t.id IN (SELECT trigger_id FROM trigger_params'
+            " WHERE source='form' AND value='venture_id') ORDER BY t.id"
+        ).fetchall()
+    ]

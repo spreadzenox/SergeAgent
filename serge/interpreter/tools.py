@@ -14,6 +14,7 @@ import sqlite3
 from collections.abc import Callable, Mapping
 from typing import Any
 
+from serge.connecteurs.appel import api_schema, call_api
 from serge.conversations.contact import (
     add_contact,
     add_contact_address,
@@ -249,6 +250,7 @@ RUNNERS: dict[str, Runner] = {
     'browser_read': browser_read,
     'browser_screenshot': browser_screenshot,
     'publish_version': publish_version,
+    'call_api': call_api,
 }
 
 
@@ -348,6 +350,8 @@ def tool_schema(
         from serge.db.query_builder import openai_schema_for_tool
 
         schema = openai_schema_for_tool(conn, tool_id)
+    elif capability == 'call_api':
+        schema = api_schema(conn, tool_id)
     else:
         doc = conn.execute(
             'SELECT titre, doc_md FROM tools WHERE id=?', (tool_id,)

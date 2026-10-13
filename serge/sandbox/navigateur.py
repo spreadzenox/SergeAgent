@@ -16,13 +16,17 @@ avec le livrable (``files/<business>/<livrable>/captures/``) et a sa fiche
 dans ``artifacts``.
 
 L'adresse ``http://chantier:<port>`` mène au chantier du business : le
-constructeur essaie ainsi le serveur qu'il vient de lancer.
+constructeur essaie ainsi le serveur qu'il vient de lancer. L'action
+« taper un secret » tape la valeur d'un secret de l'instance (un numéro de
+carte) dans un champ ; le modèle ne nomme que le secret, parmi ceux figés
+en base, et la page relue cache la valeur.
 """
 
 from __future__ import annotations
 
 import base64
 import hashlib
+import re
 import sqlite3
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -30,7 +34,7 @@ from typing import Any
 from urllib.parse import urlsplit, urlunsplit
 
 from serge.db.store import append_event, utcnow
-from serge.paths import files_root
+from serge.paths import config_root, files_root
 from serge.policy_store import policy_en_vigueur
 from serge.sandbox.chantier import (
     chantier_id,
@@ -38,6 +42,7 @@ from serge.sandbox.chantier import (
     ensure_network,
 )
 from serge.sandbox.docker import DockerError, docker, journal
+from serge.secrets import read_secret_file
 
 CONTAINER = 'serge-navigateur'
 CDP_PORT = '9222/tcp'
@@ -51,6 +56,10 @@ class _Session:
     page: Any
     errors: list[str] = field(default_factory=list)
     shots: int = 0
+    # Les secrets tapés dans cette session, et les champs qui les ont
+    # reçus : jamais rendus au modèle, ni en texte ni sur une capture.
+    masques: set[str] = field(default_factory=set)
+    champs_secrets: list[Any] = field(default_factory=list)
 
 
 @dataclass
@@ -144,7 +153,7 @@ def _session(conn: sqlite3.Connection, task_id: str) -> _Session:
     session = _Session(context, page)
 
     def erreur(texte: str) -> None:
-        session.errors.append(texte[:300])
+        session.errors.append(masquer(texte, session.masques)[:300])
         del session.errors[:-50]
 
     page.on(
@@ -194,15 +203,42 @@ def _vers_chantier(url: str, args: dict[str, Any]) -> str:
     return urlunsplit(parts._replace(netloc=f'{_chantier(args)}{port}'))
 
 
-def _lire(page: Any, lignes: int, args: dict[str, Any]) -> str:
-    data = page.evaluate(SNAPSHOT_JS, {'maxLines': lignes})
+def _lire(session: _Session, lignes: int, args: dict[str, Any]) -> str:
+    data = session.page.evaluate(SNAPSHOT_JS, {'maxLines': lignes})
     texte = '\n'.join(
         [f'Page : {data["title"]} — {data["url"]}', *data['lines']]
     )
     if data['truncated']:
         texte += f'\n(page coupée à {lignes} lignes : fais défiler)'
+    texte = masquer(texte, session.masques)
     # Le conteneur du chantier garde son nom court pour le modèle.
     return texte.replace(_chantier(args), 'chantier')
+
+
+def masquer(texte: str, secrets: set[str]) -> str:
+    """Remplace chaque secret par ``••••``, même remis en forme par la
+    page : ``4242 4242 4242 4242`` ou ``12 / 34``."""
+    for secret in secrets:
+        motif = r'[\s/.\-]*'.join(
+            re.escape(c) for c in secret if not c.isspace()
+        )
+        if motif:
+            texte = re.sub(motif, '••••', texte)
+    return texte
+
+
+def _cacher_secrets(session: _Session, cacher: bool) -> None:
+    """Le temps d'une capture, un champ qui a reçu un secret montre des
+    points, comme un mot de passe."""
+    for champ in session.champs_secrets:
+        try:
+            champ.evaluate(
+                '(e, c) => { e.style.webkitTextSecurity = c ? "disc" : ""; }',
+                cacher,
+                timeout=1000,
+            )
+        except Exception:  # noqa: BLE001 — le champ n'est plus sur la page
+            pass
 
 
 def _attendre(page: Any) -> None:
@@ -234,6 +270,21 @@ def _agir(session: _Session, args: dict[str, Any]) -> str:
         element.fill(texte, timeout=10000)
         if args.get('submit') in (True, 'true', '1', 'oui'):
             element.press('Enter')
+    elif action == 'taper_secret':
+        # Le modèle nomme le secret ; Serge tape sa valeur, que le modèle ne
+        # voit jamais. Seuls les secrets figés en base sont permis.
+        permis = {
+            n.strip() for n in str(args.get('secrets') or '').split(',')
+        } - {''}
+        if texte not in permis:
+            return f'secret non permis : {texte}'
+        valeur = read_secret_file(config_root() / 'secrets' / texte)
+        if not valeur:
+            return f'secret absent sur ce serveur : {texte}'
+        session.masques.add(valeur)
+        element = _element(page, args.get('ref'))
+        element.fill(valeur, timeout=10000)
+        session.champs_secrets.append(element)
     elif action == 'choisir':
         element = _element(page, args.get('ref'))
         try:
@@ -280,10 +331,10 @@ def browser_action(
     lignes = int(_reglages(conn)['browser_lines_after_action'])
     result: dict[str, Any] = {
         'ok': not refus,
-        'page': _lire(session.page, lignes, args),
+        'page': _lire(session, lignes, args),
     }
     if refus:
-        result['detail'] = refus
+        result['detail'] = masquer(refus, session.masques)
     nouvelles = session.errors[erreurs:]
     if nouvelles:
         result['nouvelles_erreurs'] = nouvelles[:10]
@@ -301,7 +352,7 @@ def browser_read(
     lignes = int(_reglages(conn)['browser_lines_read'])
     return {
         'ok': True,
-        'page': _lire(session.page, lignes, args),
+        'page': _lire(session, lignes, args),
         'erreurs': session.errors[-20:],
     }
 
@@ -320,7 +371,13 @@ def browser_screenshot(
     task_id = str(args.get('task_id') or '')
     session = _session(conn, task_id)
     entiere = args.get('full_page') in (True, 'true', '1', 'oui')
-    image = session.page.screenshot(type='jpeg', quality=70, full_page=entiere)
+    _cacher_secrets(session, True)
+    try:
+        image = session.page.screenshot(
+            type='jpeg', quality=70, full_page=entiere
+        )
+    finally:
+        _cacher_secrets(session, False)
     session.shots += 1
     result: dict[str, Any] = {
         'ok': True,

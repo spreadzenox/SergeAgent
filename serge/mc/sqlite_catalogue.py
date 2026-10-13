@@ -263,6 +263,24 @@ CATALOGUE: dict[str, tuple[str, str, str, str]] = {
         'La construction suivante ; le ticket « Tester le produit ».',
         'status : built, unfinished, reviewed ; verdict : bon, a_corriger.',
     ),
+    'api_services': (
+        'Les services qu’on sait appeler : Stripe (test, vrai mode)…',
+        'pipeline.yaml au départ.',
+        'La capacité « Appeler une API ».',
+        'secret_file : le nom du fichier de secret, jamais sa valeur.',
+    ),
+    'api_endpoints': (
+        'Un point d’entrée d’un service : un outil, sa méthode, son chemin.',
+        'pipeline.yaml au départ.',
+        'La capacité « Appeler une API ».',
+        'Le service se choisit par un paramètre figé (service).',
+    ),
+    'api_endpoint_params': (
+        'Les paramètres permis d’un point d’entrée.',
+        'pipeline.yaml au départ.',
+        'Le schéma de l’outil montré au modèle.',
+        'Un paramètre figé sur l’invocation n’est pas montré au modèle.',
+    ),
     'lessons': (
         'Ce que Serge croit avoir appris. Candidate d’abord.',
         'consolidate, owner (confirmer / infirmer).',

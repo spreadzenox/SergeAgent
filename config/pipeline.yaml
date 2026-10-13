@@ -170,6 +170,29 @@ serge_texts:
 # lit avant l'appel et met le résultat dans le prompt) ou en outil
 # appelable (le modèle décide). Un outil « everywhere » est appelable par
 # toutes les invocations LLM, quand il leur sert.
+# Les services qu'on sait appeler (lot 10, Q56 et Q91) : un connecteur
+# n'est pas du code, mais la description d'un service. Le secret est le
+# nom d'un fichier des secrets de l'instance, jamais sa valeur.
+api_services:
+  - id: stripe_test
+    title: Stripe, mode test
+    base_url: https://api.stripe.com
+    auth: bearer
+    secret_file: stripe-test.key
+    body: form
+    doc: >-
+      Stripe en mode test : des paiements avec la carte 4242 4242 4242 4242,
+      sans argent réel. Sert au staging et aux essais.
+  - id: stripe_live
+    title: Stripe, vrai mode
+    base_url: https://api.stripe.com
+    auth: bearer
+    secret_file: stripe-live.key
+    body: form
+    doc: >-
+      Stripe en vrai mode : de vrais paiements. Sert à la prod d'un produit
+      fini et au paiement test de 1 € (étape 5).
+
 tools:
   - id: web_search
     title: Chercher sur le web public
@@ -701,6 +724,108 @@ tools:
         - {id: staging, table: deployments, column: target, fixed: staging}
       params:
         - {name: venture_id, required: true, description: Le numéro du business.}
+
+  # Stripe, par « Appeler une API » (lot 10, Q91). Le mode (service) et
+  # l'identifiant du business sont figés sur l'invocation, jamais choisis
+  # par le modèle (Q76).
+  - id: stripe_creer_produit
+    title: Créer un produit Stripe
+    doc: Crée un produit dans Stripe ; rend son identifiant (prod_…).
+    capability: call_api
+    api:
+      service: stripe_test
+      method: POST
+      path: /v1/products
+      params:
+        - {name: name, required: true, description: Le nom du produit.}
+        - {name: description, description: "Ce que c'est, en une phrase."}
+        - {name: 'metadata[venture_id]', description: Le business (figé en base).}
+  - id: stripe_creer_prix
+    title: Créer un prix Stripe
+    doc: >-
+      Crée un prix pour un produit Stripe ; rend son identifiant (price_…).
+      L'identifiant du business est inscrit sur le prix (Q76).
+    capability: call_api
+    api:
+      service: stripe_test
+      method: POST
+      path: /v1/prices
+      params:
+        - {name: product, required: true, description: Le produit (prod_…).}
+        - {name: unit_amount, type: number, required: true, description: 'Le prix en centimes : 2900 pour 29 €.'}
+        - {name: currency, required: true, description: 'La monnaie : eur.'}
+        - {name: 'recurring[interval]', description: 'month ou year pour un abonnement ; rien pour un paiement unique.'}
+        - {name: nickname, description: Un nom court pour ce prix.}
+        - {name: 'metadata[venture_id]', description: Le business (figé en base).}
+  - id: stripe_creer_lien_paiement
+    title: Créer un lien de paiement Stripe
+    doc: Crée un lien de paiement pour un prix ; rend son adresse (url).
+    capability: call_api
+    api:
+      service: stripe_test
+      method: POST
+      path: /v1/payment_links
+      params:
+        - {name: 'line_items[0][price]', required: true, description: Le prix (price_…).}
+        - {name: 'line_items[0][quantity]', type: number, required: true, description: 'La quantité : 1.'}
+        - {name: 'metadata[venture_id]', description: Le business (figé en base).}
+  - id: stripe_chercher_produits
+    title: Chercher des produits Stripe
+    doc: >-
+      Cherche des produits Stripe. Exemple de recherche :
+      metadata['venture_id']:'ven_123' pour les produits d'un business.
+    capability: call_api
+    api:
+      service: stripe_test
+      method: GET
+      path: /v1/products/search
+      params:
+        - {name: query, required: true, description: La recherche Stripe.}
+        - {name: limit, type: number, description: Le nombre de produits (100 au plus).}
+  - id: stripe_lister_prix
+    title: Lister les prix d'un produit Stripe
+    doc: Les prix d'un produit Stripe, actifs ou archivés.
+    capability: call_api
+    api:
+      service: stripe_test
+      method: GET
+      path: /v1/prices
+      params:
+        - {name: product, required: true, description: Le produit (prod_…).}
+        - {name: limit, type: number, description: Le nombre de prix (100 au plus).}
+  - id: stripe_archiver_prix
+    title: Archiver un prix Stripe
+    doc: Archive un prix (Stripe ne permet pas de le supprimer) ; il ne peut plus être payé.
+    capability: call_api
+    api:
+      service: stripe_test
+      method: POST
+      path: /v1/prices/{id}
+      params:
+        - {name: id, required: true, description: Le prix (price_…).}
+        - {name: active, type: bool, description: 'false pour l''archiver (figé en base).'}
+  - id: stripe_archiver_produit
+    title: Archiver un produit Stripe
+    doc: Archive un produit Stripe ; il ne peut plus être vendu.
+    capability: call_api
+    api:
+      service: stripe_test
+      method: POST
+      path: /v1/products/{id}
+      params:
+        - {name: id, required: true, description: Le produit (prod_…).}
+        - {name: active, type: bool, description: 'false pour l''archiver (figé en base).'}
+  - id: stripe_rembourser
+    title: Rembourser un paiement Stripe
+    doc: Rembourse un paiement en entier.
+    capability: call_api
+    api:
+      service: stripe_test
+      method: POST
+      path: /v1/refunds
+      params:
+        - {name: payment_intent, required: true, description: Le paiement (pi_…).}
+        - {name: 'metadata[venture_id]', description: Le business (figé en base).}
 
 writable_tables:
   - table: listen_cycles
@@ -3561,6 +3686,95 @@ invocations:
           lifecycle: {source: fixed, value: POC_SELECTED}
           choice_reason: {source: fixed, value: Essai de l'étape 2 depuis Mission Control.}
 
+  # Stripe depuis la fiche d'un business (lot 10, Q91).
+  - id: essayer_stripe
+    title: Essayer Stripe en mode test (temporaire)
+    role: >-
+      Temporaire, pour essayer « Appeler une API » depuis la fiche d'un
+      business : crée dans Stripe, en mode test, un produit, un prix de 1 €
+      par mois portant l'identifiant du business, et un lien de paiement.
+    type: llm
+    model_tier: mid
+    queue: works
+    priority: 30
+    max_tool_turns: 6
+    prompt: |
+      Tu essaies Stripe, en mode test (aucun argent réel), pour le business
+      dont le numéro est dans les paramètres de la tâche. Crée un produit
+      nommé « Essai Serge », puis un prix de 1 € par mois pour ce produit
+      (100 centimes, eur, month), puis un lien de paiement pour ce prix,
+      quantité 1. Rends l'adresse du lien de paiement, et les identifiants
+      du produit et du prix.
+    tools:
+      - tool: stripe_creer_produit
+        mode: callable
+        params:
+          service: {source: fixed, value: stripe_test}
+          'metadata[venture_id]': {source: task, value: venture_id}
+          task_id: {source: task, value: task_id}
+      - tool: stripe_creer_prix
+        mode: callable
+        params:
+          service: {source: fixed, value: stripe_test}
+          'metadata[venture_id]': {source: task, value: venture_id}
+          task_id: {source: task, value: task_id}
+      - tool: stripe_creer_lien_paiement
+        mode: callable
+        params:
+          service: {source: fixed, value: stripe_test}
+          'metadata[venture_id]': {source: task, value: venture_id}
+          task_id: {source: task, value: task_id}
+    output:
+      - {path: lien, type: text, description: L'adresse du lien de paiement.}
+      - {path: compte_rendu, type: text, description: Les identifiants créés et ce qui a raté.}
+
+  - id: supprimer_de_stripe
+    title: Supprimer un business de Stripe
+    role: >-
+      Archive dans Stripe les prix et les produits d'un business (ceux qui
+      portent son identifiant), dans le mode donné : test ou vrai. Stripe ne
+      permet pas de supprimer un prix : archivé, il ne peut plus être payé.
+      Lancé depuis la fiche du business, pour nettoyer après un essai
+      (Q91).
+    type: llm
+    model_tier: fast
+    queue: works
+    priority: 30
+    max_tool_turns: 12
+    prompt: |
+      Tu nettoies Stripe pour un business : son numéro est dans les
+      paramètres de la tâche (venture_id). Cherche ses produits avec la
+      recherche metadata['venture_id']:'<son numéro>' ; pour chaque
+      produit, liste ses prix, archive chaque prix encore actif, puis
+      archive le produit. Ne touche à aucun produit qui ne porte pas ce
+      numéro. Rends le nombre de produits archivés et un compte rendu.
+    tools:
+      - tool: stripe_chercher_produits
+        mode: callable
+        params:
+          service: {source: task, value: service}
+          task_id: {source: task, value: task_id}
+      - tool: stripe_lister_prix
+        mode: callable
+        params:
+          service: {source: task, value: service}
+          task_id: {source: task, value: task_id}
+      - tool: stripe_archiver_prix
+        mode: callable
+        params:
+          service: {source: task, value: service}
+          task_id: {source: task, value: task_id}
+          active: {source: fixed, value: 'false'}
+      - tool: stripe_archiver_produit
+        mode: callable
+        params:
+          service: {source: task, value: service}
+          task_id: {source: task, value: task_id}
+          active: {source: fixed, value: 'false'}
+    output:
+      - {path: produits, type: number, description: Le nombre de produits archivés.}
+      - {path: compte_rendu, type: text, description: "Ce qui a été archivé, et ce qui a raté."}
+
 links:
   - id: cycle_ouvert_vers_exploration
     title: Le cycle ouvert part en exploration
@@ -4180,6 +4394,41 @@ triggers:
       nom: {source: form, value: nom}
       description: {source: form, value: description}
       offre: {source: form, value: offre}
+
+  # Les boutons de la fiche d'un business : leur formulaire attend le
+  # business, que Mission Control remplit (lot 10, Q91).
+  - id: bouton_essayer_stripe
+    title: Essayer Stripe (mode test)
+    invocation: essayer_stripe
+    event: button
+    confirm: >-
+      Serge crée dans Stripe, en mode test (aucun argent réel), un produit,
+      un prix de 1 € par mois et un lien de paiement pour ce business. Le
+      lien est sur la fiche de la tâche ; « Supprimer de Stripe (mode
+      test) » les archive ensuite.
+    params:
+      venture_id: {source: form, value: venture_id}
+  - id: bouton_supprimer_stripe_test
+    title: Supprimer de Stripe (mode test)
+    invocation: supprimer_de_stripe
+    event: button
+    confirm: >-
+      Serge archive dans Stripe, en mode test, les prix et les produits de
+      ce business : ils ne pourront plus être payés.
+    params:
+      venture_id: {source: form, value: venture_id}
+      service: {source: fixed, value: stripe_test}
+  - id: bouton_supprimer_stripe_live
+    title: Supprimer de Stripe (vrai mode)
+    invocation: supprimer_de_stripe
+    event: button
+    confirm: >-
+      Attention, vrai mode : Serge archive dans Stripe les prix et les
+      produits de ce business. Plus personne ne pourra les payer ; les
+      abonnements en cours ne sont pas résiliés.
+    params:
+      venture_id: {source: form, value: venture_id}
+      service: {source: fixed, value: stripe_live}
 
 # Les modifications d'objets déjà en base sur une instance existante (le
 # fichier ne les écrase jamais) : chacune n'est appliquée qu'une fois, et

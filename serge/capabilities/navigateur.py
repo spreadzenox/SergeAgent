@@ -34,19 +34,26 @@ NAVIGATEUR: tuple[Capability, ...] = (
                 'action',
                 'text',
                 True,
-                'ouvrir, cliquer, taper, choisir, touche, defiler, revenir,'
-                ' attendre ou ecran.',
+                'ouvrir, cliquer, taper, taper_secret, choisir, touche,'
+                ' defiler, revenir, attendre ou ecran.',
             ),
             Param('ref', 'text', False, 'Le repère de l’élément : e7.'),
             Param(
                 'text',
                 'text',
                 False,
-                'L’adresse (ouvrir), le texte (taper), l’option (choisir),'
+                'L’adresse (ouvrir), le texte (taper), le nom du secret'
+                ' (taper_secret), l’option (choisir),'
                 ' la touche (Enter, Escape, Tab), haut ou bas (defiler), le'
                 ' texte attendu (attendre), ordinateur ou mobile (ecran).',
             ),
             Param('submit', 'bool', False, 'Taper puis valider avec Entrée.'),
+            Param(
+                'secrets',
+                'text',
+                False,
+                'Les secrets permis pour taper_secret (figé en base).',
+            ),
         ),
     ),
     Capability(

@@ -86,6 +86,7 @@ def _seed_simple(conn: sqlite3.Connection, data: Mapping[str, Any]) -> None:
 
 def _seed_tools(conn: sqlite3.Connection, data: Mapping[str, Any]) -> None:
     """Les outils : une capacité réglée pour un usage précis."""
+    from serge.connecteurs.catalogue import seed_api
     from serge.db.query_catalogue import seed_read_catalogue
 
     for tool in list_of(data, 'tools'):
@@ -110,6 +111,27 @@ def _seed_tools(conn: sqlite3.Connection, data: Mapping[str, Any]) -> None:
         )
         if isinstance(read, Mapping):
             seed_read_catalogue(conn, ident, read)
+        api = tool.get('api')
+        if (api is not None) != (capability == 'call_api'):
+            raise PipelineSeedError(
+                f'outil {ident} : api est obligatoire pour call_api, et'
+                ' seulement pour lui'
+            )
+        if isinstance(api, Mapping):
+            seed_api(conn, ident, api)
+    for service in list_of(data, 'api_services'):
+        insert(
+            conn,
+            'api_services',
+            ignore=True,
+            id=str(service['id']),
+            title=str(service.get('title', '')),
+            base_url=str(service['base_url']),
+            auth=str(service.get('auth', 'bearer')),
+            secret_file=str(service.get('secret_file', '')),
+            body=str(service.get('body', 'json')),
+            doc_md=str(service.get('doc', '')).strip(),
+        )
 
 
 def _seed_rules(conn: sqlite3.Connection, data: Mapping[str, Any]) -> None:

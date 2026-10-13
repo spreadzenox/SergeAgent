@@ -15,6 +15,7 @@ import sqlite3
 
 from serge.capabilities.base import BASE
 from serge.capabilities.chantier import CHANTIER
+from serge.capabilities.connecteurs import CONNECTEURS
 from serge.capabilities.conversations import CONVERSATIONS
 from serge.capabilities.model import Capability
 from serge.capabilities.navigateur import NAVIGATEUR
@@ -26,6 +27,7 @@ CAPABILITIES: tuple[Capability, ...] = (
     *CHANTIER,
     *NAVIGATEUR,
     *PUBLIER,
+    *CONNECTEURS,
 )
 
 

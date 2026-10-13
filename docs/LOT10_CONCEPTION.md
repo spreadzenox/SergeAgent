@@ -22,7 +22,7 @@ web, payants pour le produit fini : on paie pour avoir un compte et
 utiliser le service. Les logiciels (application de bureau, extension de
 navigateur, bot) attendent le lot 14.
 
-Le lot se livre en cinq PR, l'une après l'autre ; chacune se fusionne dès
+Le lot se livre en six PR, l'une après l'autre ; chacune se fusionne dès
 que sa CI est verte, et Clem l'essaie dans Mission Control (décision Q91) :
 
 1. **Le chantier** (parties 1 et 3) : un conteneur par produit et ses
@@ -32,12 +32,17 @@ que sa CI est verte, et Clem l'essaie dans Mission Control (décision Q91) :
    envoyées au modèle, le niveau « code ». Essai : « Essayer l'interface
    web ».
 3. **Publier** (partie 5) : les versions, le staging et la prod, les
-   routes de Caddy en base. Essai : publier le chantier d'essai.
+   routes de Caddy. Essai : publier le chantier d'essai.
 4. **L'étape 2** (parties 7, 8 et 10) : concevoir, challenger,
-   construire, relire, les tickets, la prod du POC. Essai : le vrai
-   chemin, depuis un cycle d'écoute.
-5. **L'étape 5 et Stripe** (parties 6 et 9) : « Appeler une API », Stripe,
-   l'achat du domaine, le paiement test.
+   construire, relire, les tickets, la prod du POC. Essai : « Essayer
+   l'étape 2 », depuis un business d'essai.
+5. **Appeler une API, et Stripe** (partie 6) : les services décrits en
+   base, les outils Stripe, taper un secret dans le navigateur. Essai :
+   « Essayer Stripe (mode test) » puis « Supprimer de Stripe » sur la
+   fiche d'un business.
+6. **L'étape 5** (partie 9) : le vrai produit, l'achat du domaine, le
+   paiement test de 1 €. Essai : « Construire le vrai produit » sur la
+   fiche d'un business.
 
 Les parties de ce document, dans l'ordre où on les construit :
 
@@ -158,9 +163,13 @@ compte, qui garde ses cookies.
   `files/<business>/<livrable>/captures/`, avec sa fiche dans
   `artifacts` (sa taille, la tâche qui l'a prise).
 
-**Taper un secret** (le modèle désigne le champ et le nom du secret,
-Serge tape la valeur sans la lui montrer) arrive avec le paiement test de
-l'étape 5 (PR 5) : c'est là qu'il sert.
+**Taper un secret** (action `taper_secret`, PR 5) : le modèle désigne le
+champ et le nom du fichier de secret, parmi ceux figés en base sur
+l'invocation (paramètre `secrets`, exemple `carte-numero.key`) ; Serge
+tape la valeur sans la lui montrer. La page relue cache la valeur, même
+remise en forme par la page (`4242 4242 4242 4242`), comme les erreurs
+de la page ; le temps d'une capture, le champ qui l'a reçue montre des
+points, comme un mot de passe. Il sert au paiement test de l'étape 5.
 
 Le business, le livrable et la tâche sont des paramètres figés de ces
 outils. Une session (un onglet et ses cookies) par tâche, fermée à la fin
@@ -329,36 +338,50 @@ c'est la clé du vrai mode. Le POC, lui, est gratuit : il n'a pas de clé
 
 ## 6. « Appeler une API », et Stripe
 
-Cette capacité était prévue au lot 12 ; elle arrive au lot 10 (Q91). Un
-service est décrit en base (`api_services`) : son adresse, le nom du
-secret à utiliser (jamais sa valeur), ses points d'entrée et les
-paramètres permis de chacun (`api_endpoints`). Un outil, c'est un point
-d'entrée et des paramètres figés. Une seule capacité, « Appeler une API »,
-sait appeler n'importe quel service décrit ainsi. Au lot 10, deux services
-sont décrits : Stripe (en mode test et en vrai mode) et un bureau
-d'enregistrement de domaines.
+Cette capacité était prévue au lot 12 ; elle arrive au lot 10 (Q91, fait
+en PR 5). Un service est décrit en base (`api_services`) : son adresse,
+comment s'authentifier, le nom du fichier de secret à lire (jamais sa
+valeur) et le format du corps (`form` pour Stripe, `json` ailleurs). Un
+point d'entrée est un outil (`api_endpoints`) : sa méthode, son chemin et
+ses paramètres permis (`api_endpoint_params`). Une seule capacité,
+« Appeler une API » (`serge/connecteurs/appel.py`), sait appeler
+n'importe quel service décrit ainsi. Le modèle ne voit que les paramètres
+permis qui ne sont pas figés en base ; un paramètre inconnu est refusé
+sans rien envoyer.
+
+Le service vient du point d'entrée, ou d'un paramètre figé `service` sur
+l'invocation : le même outil sert en mode test (`stripe_test`, secret
+`stripe-test.key`) et en vrai mode (`stripe_live`, secret
+`stripe-live.key`). Ce sont les fichiers que pose déjà l'installeur
+([`installation/STRIPE.md`](installation/STRIPE.md)).
 
 Les outils Stripe du lot 10 :
 
 - **Créer un produit Stripe.**
 - **Créer un prix Stripe** : l'identifiant du business est inscrit sur le
-  prix (`metadata.venture_id`) par un paramètre figé, tiré de la tâche.
-  Le modèle ne peut pas l'oublier, et chaque abonnement est rattaché au
-  bon business (Q76).
-- **Créer un lien de paiement**, pour le paiement test (partie 9).
-- **Rembourser un paiement.**
-- **Archiver un prix** et **archiver ou supprimer un produit**, pour le
-  bouton de Mission Control (partie 12).
+  prix (`metadata[venture_id]`) par un paramètre figé, tiré de la tâche.
+  Le modèle ne peut pas l'oublier ni en mettre un autre, et chaque
+  abonnement est rattaché au bon business (Q76). Le produit et le lien de
+  paiement le portent aussi.
+- **Créer un lien de paiement Stripe**, pour le paiement test (partie 9).
+- **Rembourser un paiement Stripe.**
+- **Chercher des produits Stripe** (par le business inscrit dessus),
+  **lister les prix d'un produit**, **archiver un prix** et **archiver un
+  produit**, pour le bouton de Mission Control (partie 12). Stripe ne
+  permet pas de supprimer un prix, ni un produit qui a un prix : on
+  archive.
 
-Les outils du bureau d'enregistrement : **acheter un domaine** et **le
-faire pointer vers le VPS** (son enregistrement DNS). Le compte chez le
-bureau d'enregistrement est créé une fois, à l'installation, avec la
-carte de Serge (Q91).
+Le bureau d'enregistrement de domaines (acheter un domaine, le faire
+pointer vers le VPS) est décrit de la même façon en PR 6 (partie 15).
 
-Ces outils agissent hors de Serge : ils notent « en cours » avant
-d'appeler Stripe et « fait » après, comme l'envoi d'un message (Q51). Ils
-envoient aussi à Stripe une clé d'idempotence (le numéro de la tâche) :
-une requête répétée après un arrêt ne crée jamais deux fois le même prix.
+Une écriture envoie une clé d'idempotence tirée de la tâche, de l'outil
+et du contenu (`Idempotency-Key: serge-…`) : une requête répétée après un
+arrêt ne crée jamais deux fois le même prix (Stripe garde la clé
+24 heures). Une erreur du service revient au modèle avec sa raison, et la
+même raison est notée au journal (`connecteur : stripe_test POST
+/v1/prices : HTTP 400 …`, Q89). Un secret absent aussi. Chaque appel est
+un événement `api.call` (service, méthode, chemin, statut, jamais le
+secret ni le corps).
 
 ---
 
@@ -542,10 +565,15 @@ plus, 3 passages de construction au plus, les tours d'outils de
   passages de construction avec le compte rendu du constructeur, le
   verdict du relecteur et ses captures, ses versions (staging et prod,
   avec leur adresse), et ses demandes des clients avec leur état.
-- **Un bouton « Supprimer de Stripe »** sur la fiche du business (Q91) :
-  il archive les prix du business (Stripe ne permet pas de supprimer un
-  prix) et supprime ou archive son produit. Il sert à nettoyer après les
-  essais. Il demande une confirmation.
+- **Deux boutons « Supprimer de Stripe »** sur la fiche du business
+  (Q91, PR 5), un pour le mode test et un pour le vrai mode : ils
+  cherchent les produits qui portent le business, archivent leurs prix
+  puis les produits (Stripe ne permet pas de supprimer un prix). Ils
+  servent à nettoyer après les essais, et demandent une confirmation.
+  Avec eux, le bouton d'essai « Essayer Stripe (mode test) » crée un
+  produit, un prix de 1 € par mois et un lien de paiement pour ce
+  business. Un bouton qui attend un business (un champ `venture_id`) est
+  sur la fiche du business, rempli par elle, et pas sur la page Système.
 - **Un bouton « Construire le vrai produit »**, temporaire (partie 9).
 - **La fiche d'une tâche** montre ses captures gardées ; un clic ouvre
   l'image en grand. Mission Control sert un fichier rangé sous `files/`,

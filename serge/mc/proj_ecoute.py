@@ -30,7 +30,10 @@ def boutons_de_etape(
         'SELECT t.id, t.title, t.invocation_id, i.title, t.confirm_text'
         ' FROM triggers t JOIN invocations i ON i.id=t.invocation_id'
         " WHERE t.event='button' AND t.enabled=1 AND t.deleted_at=''"
-        " AND i.step_id=? AND i.deleted_at='' ORDER BY t.id",
+        " AND i.step_id=? AND i.deleted_at=''"
+        # Un bouton qui attend un business est sur la fiche du business.
+        ' AND t.id NOT IN (SELECT trigger_id FROM trigger_params'
+        " WHERE source='form' AND value='venture_id') ORDER BY t.id",
         (etape,),
     ).fetchall():
         champs = [
