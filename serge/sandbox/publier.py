@@ -171,7 +171,7 @@ def _hostname(args: dict[str, Any], target: str) -> str:
             "pas de domaine pour les produits : l'instance n'a pas de"
             ' public_hostname'
         )
-    produit = slug(str(args.get('slug') or args.get('venture_id') or ''))
+    produit = slug(str(args.get('slug') or args.get('nom') or ''))
     return (
         f'staging-{produit}.{base}'
         if target == 'staging'
@@ -193,6 +193,13 @@ def publish_version(
         return {'ok': False, 'code': 'cible_inconnue', 'detail': target}
     chantier = chantier_id(venture_id, deliverable)
     deployment = f'{target}-{chantier}'
+    if not str(args.get('slug') or ''):
+        # Sans nom court figé, celui du business : « Devis Vocal » donne
+        # devis-vocal.<domaine>.
+        row = conn.execute(
+            'SELECT name FROM ventures WHERE id=?', (venture_id,)
+        ).fetchone()
+        args = {**args, 'nom': str(row[0]) if row else venture_id}
     if target == 'staging':
         _c, name, _p = ensure_chantier(conn, {**args, 'profile': 'chantier'})
         version, dossier, artifact = _snapshot(

@@ -120,7 +120,8 @@ conversation (lot 8 bis, décisions Q85 et Q86) et la grille de points
 - [ ] **Lot 10 « Concevoir et construire ».** On écrit le plan d'un POC
   et sa fiche produit, on les fait critiquer, Julien les valide, puis
   Serge construit, essaie et met en ligne, d'abord le POC, ensuite le vrai
-  produit. Ce sont les étapes 2 et 5. Seulement des produits web, payants
+  produit. Ce sont les étapes 2 et 5 ; l'étape 2 est en base depuis la
+  PR 4 du lot, reste l'étape 5. Seulement des produits web, payants
   pour le produit fini (Q91). Le lot apporte trois capacités d'abord
   prévues au lot 12 : le bac à sable (un conteneur où le constructeur code
   et lance son produit), l'interface web des invocations (lire une page et
@@ -306,13 +307,12 @@ discutable, qui peut un jour changer, se règle depuis Mission Control.**
   et à mesure qu'on touche à ces fichiers, et en profiter pour passer en
   anglais les noms de fonctions et de variables.
 
-- [ ] **Brancher ou supprimer les invocations jamais appelées.** Quatorze
+- [ ] **Brancher ou supprimer les invocations jamais appelées.** Douze
   invocations LLM sont écrites, avec leur prompt, mais rien ne les lance :
   le script d'appel vocal, le dialogue vocal, le résumé d'un fil, le
   départage de deux prospects, le résumé d'un test, l'hypothèse de test
   lourd, les options de pivot, le plan de passage à l'échelle, l'arbitre
-  du budget, la construction d'un livrable, la relecture d'un livrable, le
-  résumé de la dette de construction, l'hypothèse de test léger, et la
+  du budget, le résumé de la dette de construction, l'hypothèse de test léger, et la
   découverte de contacts. Pour chacune, il faut soit la décrire en base
   dans le nouveau pipeline, soit la supprimer, et dans les deux cas
   supprimer le code qui lui était propre. On ne garde pas de code mort.
@@ -342,35 +342,6 @@ discutable, qui peut un jour changer, se règle depuis Mission Control.**
   déclencheurs et les protections des tables. Clem a prévenu que
   l'organisation actuelle des réglages pourra changer à ce moment-là
   (Q63) : la façon de tout régler reste à concevoir.
-
----
-
-## Étape 2 — Conception du POC
-
-- [ ] **Concevoir, faire critiquer, valider, construire.** Un POC doit
-  proposer quelque chose de concret à essayer, pas seulement une promesse.
-  Pour chaque business choisi, une invocation « Concevoir le POC » écrit
-  un plan de A à Z : le livrable d'essai, les prospects visés, les canaux,
-  le rythme des relances, et la fiche produit du POC (table
-  `product_sheets`, lot 8). Une
-  deuxième invocation, « Challenger le POC », relit ce plan et ne peut
-  répondre que deux choses par remarque : « à corriger » ou « il faut une
-  nouvelle capacité ». On fait au plus trois allers-retours, et le plan
-  final doit être réalisable avec ce que Serge sait faire. Julien valide
-  ensuite le plan et la fiche produit dans un ticket Discord ; sans
-  réponse sous 48 heures, le plan s'applique. Serge construit alors le
-  livrable avec un duo constructeur / relecteur qui l'essaie comme un
-  humain, et le met en ligne en staging. Un humain l'essaie à son tour
-  depuis le lien d'un ticket de test, qui n'expire jamais ; après sa
-  validation, le POC passe en prod sur un sous-domaine, gratuit pour les
-  prospects, et la campagne de test est prête (Q91). Le détail est dans
-  [`docs/etapes/2-conception-poc.md`](docs/etapes/2-conception-poc.md) et
-  [`docs/LOT10_CONCEPTION.md`](docs/LOT10_CONCEPTION.md). Cette tâche
-  partage avec l'étape 5 la construction, le bac à sable et la mise en
-  ligne. Le lien entre la conception et la construction peut être
-  réglé à la main : Julien donne son feu vert par le ticket « Passage »
-  qu'il reçoit dans le forum Discord, ou avec « Passer à la suite » sur la
-  fiche du lien dans MC (lot 8 bis, Q62).
 
 ---
 
@@ -548,6 +519,11 @@ discutable, qui peut un jour changer, se règle depuis Mission Control.**
   (lot 8, Q79). Les lister dans la section `deleted` de `pipeline.yaml`
   quand les vraies invocations de prospection (lot 11) écriront les
   premiers messages.
+  Même chose pour les essais du lot 10 (Q91) : « Essayer le chantier »,
+  « Essayer l'interface web », « Publier le chantier d'essai » et
+  « Essayer l'étape 2 », avec leurs invocations temporaires
+  (essayer_chantier, essayer_navigateur, publier_essai,
+  creer_business_essai, choisir_business_essai).
 
 - [ ] **La consolidation de la mémoire dans le pipeline.** Aujourd'hui,
   la consolidation (étape 7) relit chaque jour le journal et propose des

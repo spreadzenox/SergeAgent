@@ -5,7 +5,7 @@
   (``invocations.model_tier``) et dans ``llm_models``. Les deux colonnes
   avaient une liste fermée (``fast``, ``mid``, ``smart``) : on l'élargit
   dans le schéma enregistré, comme SQLite le permet pour une contrainte
-  qu'aucune ligne existante ne peut violer.
+  qu'aucune ligne existante ne peut violer (``serge.db.contrainte``).
 - ``llm_models.needs_image`` : le modèle du niveau doit lire les images
   (1 pour « code » : le constructeur et le relecteur voient des captures).
 - ``artifacts`` : la taille du fichier (``size_bytes``) et la tâche qui l'a
@@ -15,6 +15,8 @@
 from __future__ import annotations
 
 import sqlite3
+
+from serge.db.contrainte import widen_check
 
 _AVANT = "'mid', 'smart')"
 _APRES = "'mid', 'smart', 'code')"
@@ -26,28 +28,10 @@ def _colonnes(connection: sqlite3.Connection, table: str) -> set[str]:
     }
 
 
-def _elargir(connection: sqlite3.Connection, table: str) -> None:
-    row = connection.execute(
-        "SELECT sql FROM sqlite_master WHERE type='table' AND name=?",
-        (table,),
-    ).fetchone()
-    sql = str(row[0]) if row else ''
-    if _AVANT not in sql:
-        return
-    version = int(connection.execute('PRAGMA schema_version').fetchone()[0])
-    connection.execute('PRAGMA writable_schema=ON')
-    connection.execute(
-        "UPDATE sqlite_master SET sql=? WHERE type='table' AND name=?",
-        (sql.replace(_AVANT, _APRES), table),
-    )
-    connection.execute(f'PRAGMA schema_version={version + 1}')
-    connection.execute('PRAGMA writable_schema=OFF')
-
-
 def apply_v043(connection: sqlite3.Connection) -> None:
     """Permet le niveau « code » ; ajoute les colonnes des captures."""
-    _elargir(connection, 'invocations')
-    _elargir(connection, 'llm_models')
+    widen_check(connection, 'invocations', _AVANT, _APRES)
+    widen_check(connection, 'llm_models', _AVANT, _APRES)
     if 'needs_image' not in _colonnes(connection, 'llm_models'):
         connection.execute(
             'ALTER TABLE llm_models ADD COLUMN needs_image INTEGER NOT NULL'

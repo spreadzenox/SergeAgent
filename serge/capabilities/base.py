@@ -150,4 +150,17 @@ BASE: tuple[Capability, ...] = (
         'serge/interpreter/flow.py',
         (Param('passage', 'text', True, 'Le passage : « lien:source ».'),),
     ),
+    Capability(
+        'next_round',
+        'Compter les tours',
+        'Compte les tours d’une boucle entre invocations (critiquer puis'
+        ' corriger un plan, construire puis relire) : rend « encore » et le'
+        ' tour suivant tant que le tour est sous le maximum, sinon « fini ».'
+        ' Le tour vient de la tâche, le maximum d’un réglage.',
+        'serge/interpreter/tools.py',
+        (
+            Param('round', 'number', True, 'Le tour qui vient de finir.'),
+            Param('max', 'number', True, 'Le nombre de tours permis.'),
+        ),
+    ),
 )

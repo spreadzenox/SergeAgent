@@ -561,6 +561,147 @@ tools:
       elle sert de preuve et se voit dans Mission Control.
     capability: browser_screenshot
 
+  # --- L'étape 2 : concevoir, critiquer, construire, relire (lot 10, Q91) ---
+  - id: capacites_de_serge
+    title: Ce que Serge sait faire
+    doc: Les capacités du code de Serge, avec ce que chacune fait.
+    capability: db_read
+    read:
+      tables: [capabilities]
+      columns:
+        - {table: capabilities, name: title}
+        - {table: capabilities, name: doc_md, as: ce_qu_elle_fait}
+      filters:
+        - {id: disponibles, table: capabilities, column: available, fixed: '1'}
+  - id: preuves_du_business
+    title: Les preuves du business
+    doc: Les pages qui prouvent le besoin derrière un business.
+    capability: db_read
+    read:
+      tables: [venture_sources, listen_docs]
+      columns:
+        - {table: listen_docs, name: title}
+        - {table: listen_docs, name: url}
+        - {table: listen_docs, name: excerpt, as: apercu}
+      joins:
+        - {id: page, left: venture_sources.doc_id, right: listen_docs.id}
+      filters:
+        - {id: business, table: venture_sources, column: venture_id, param: venture_id}
+      params:
+        - {name: venture_id, required: true, description: Le numéro du business.}
+  - id: plan_par_numero
+    title: Un plan
+    doc: Un plan de POC ou de produit, par son numéro.
+    capability: db_read
+    read:
+      tables: [product_plans]
+      columns:
+        - {table: product_plans, name: id}
+        - {table: product_plans, name: round, as: tour}
+        - {table: product_plans, name: status, as: statut}
+        - {table: product_plans, name: hypothesis, as: hypothese}
+        - {table: product_plans, name: target, as: cible}
+        - {table: product_plans, name: channel, as: canal}
+        - {table: product_plans, name: prospects}
+        - {table: product_plans, name: duration_days, as: duree_jours}
+        - {table: product_plans, name: price, as: prix}
+        - {table: product_plans, name: followups, as: relances}
+        - {table: product_plans, name: deliverable, as: livrable}
+        - {table: product_plans, name: plan}
+        - {table: product_plans, name: scenarios}
+        - {table: product_plans, name: challenge, as: avis_du_critique}
+        - {table: product_plans, name: owner_notes, as: consignes_d_un_humain}
+      filters:
+        - {id: plan, table: product_plans, column: id, param: plan_id}
+      params:
+        - {name: plan_id, required: true, description: Le numéro du plan.}
+  - id: plan_valide_du_poc
+    title: Le plan validé du POC
+    doc: Le dernier plan validé du POC d'un business.
+    capability: db_read
+    read:
+      tables: [product_plans]
+      columns:
+        - {table: product_plans, name: id}
+        - {table: product_plans, name: round, as: tour}
+        - {table: product_plans, name: hypothesis, as: hypothese}
+        - {table: product_plans, name: target, as: cible}
+        - {table: product_plans, name: price, as: prix}
+        - {table: product_plans, name: deliverable, as: livrable}
+        - {table: product_plans, name: plan}
+        - {table: product_plans, name: scenarios}
+        - {table: product_plans, name: owner_notes, as: consignes_d_un_humain}
+      filters:
+        - {id: business, table: product_plans, column: venture_id, param: venture_id}
+        - {id: valide, table: product_plans, column: status, fixed: validated}
+        - {id: poc, table: product_plans, column: kind, fixed: poc}
+      params:
+        - {name: venture_id, required: true, description: Le numéro du business.}
+  - id: critiques_du_plan
+    title: Les remarques du critique
+    doc: Les remarques « à corriger » du critique sur un plan.
+    capability: db_read
+    read:
+      tables: [plan_critiques]
+      columns:
+        - {table: plan_critiques, name: round, as: tour}
+        - {table: plan_critiques, name: text, as: remarque}
+      filters:
+        - {id: plan, table: plan_critiques, column: plan_id, param: plan_id}
+      params:
+        - {name: plan_id, required: true, description: Le numéro du plan.}
+  - id: passages_du_livrable
+    title: Les passages de construction
+    doc: >-
+      Les passages de construction d'un livrable, du plus récent au plus
+      ancien : le compte rendu du constructeur, puis le verdict et les
+      remarques du relecteur.
+    capability: db_read
+    read:
+      tables: [builds]
+      columns: &colonnes_passage
+        - {table: builds, name: id}
+        - {table: builds, name: pass, as: passage}
+        - {table: builds, name: status, as: statut}
+        - {table: builds, name: report, as: compte_rendu_du_constructeur}
+        - {table: builds, name: verdict, as: verdict_du_relecteur}
+        - {table: builds, name: remarks, as: remarques_du_relecteur}
+        - {table: builds, name: review, as: ce_que_le_relecteur_a_essaye}
+        - {table: builds, name: owner_notes, as: consignes_d_un_humain}
+      filters:
+        - {id: business, table: builds, column: venture_id, param: venture_id}
+        - {id: livrable, table: builds, column: deliverable, param: deliverable}
+      params:
+        - {name: venture_id, required: true, description: Le numéro du business.}
+        - {name: deliverable, required: true, description: 'Le livrable : poc ou produit.'}
+  - id: passage_par_numero
+    title: Un passage de construction
+    doc: Un passage de construction, par son numéro.
+    capability: db_read
+    read:
+      tables: [builds]
+      columns: *colonnes_passage
+      filters:
+        - {id: passage, table: builds, column: id, param: build_id}
+      params:
+        - {name: build_id, required: true, description: Le numéro du passage.}
+  - id: staging_du_business
+    title: Le staging du business
+    doc: L'adresse du staging d'un business, sa version et son état.
+    capability: db_read
+    read:
+      tables: [deployments]
+      columns:
+        - {table: deployments, name: hostname, as: adresse}
+        - {table: deployments, name: version}
+        - {table: deployments, name: status, as: etat}
+        - {table: deployments, name: last_error, as: erreur}
+      filters:
+        - {id: business, table: deployments, column: venture_id, param: venture_id}
+        - {id: staging, table: deployments, column: target, fixed: staging}
+      params:
+        - {name: venture_id, required: true, description: Le numéro du business.}
+
 writable_tables:
   - table: listen_cycles
     insert: true
@@ -678,6 +819,7 @@ writable_tables:
       - {name: text, description: La demande.}
   - table: product_sheets
     insert: true
+    delete: true
     description: Les fiches produit des business.
     columns:
       - {name: venture_id, description: Le business.}
@@ -688,12 +830,68 @@ writable_tables:
       - {name: usage, description: Comment on l'utilise.}
   - table: product_faq
     insert: true
+    delete: true
     description: Les questions fréquentes sur un produit.
     columns:
       - {name: venture_id, description: Le business.}
       - {name: question, description: La question.}
       - {name: answer, description: Sa réponse.}
 
+  # --- L'étape 2 (lot 10, Q91) ---
+  - table: product_plans
+    insert: true
+    update: true
+    description: Les plans des produits.
+    columns:
+      - {name: venture_id, description: Le business.}
+      - {name: kind, description: 'poc ou product.'}
+      - {name: round, description: Le tour de critique.}
+      - {name: status, description: L'état du plan.}
+      - {name: hypothesis, description: L'hypothèse.}
+      - {name: target, description: La cible.}
+      - {name: channel, description: Le canal.}
+      - {name: prospects, description: Le nombre de prospects.}
+      - {name: duration_days, description: La durée du test.}
+      - {name: price, description: Le prix.}
+      - {name: followups, description: Le rythme des relances.}
+      - {name: deliverable, description: Le livrable.}
+      - {name: plan, description: Le plan de A à Z.}
+      - {name: scenarios, description: Les scénarios de test.}
+      - {name: challenge, description: L'avis du critique.}
+      - {name: owner_notes, description: Les consignes d'un humain.}
+  - table: plan_critiques
+    insert: true
+    description: Les remarques du critique.
+    columns:
+      - {name: plan_id, description: Le plan.}
+      - {name: venture_id, description: Le business.}
+      - {name: round, description: Le tour.}
+      - {name: text, description: La remarque.}
+  - table: builds
+    insert: true
+    update: true
+    description: Les passages de construction.
+    columns:
+      - {name: venture_id, description: Le business.}
+      - {name: deliverable, description: Le livrable.}
+      - {name: pass, description: Le numéro du passage.}
+      - {name: status, description: Son état.}
+      - {name: report, description: Le compte rendu du constructeur.}
+      - {name: verdict, description: Le verdict du relecteur.}
+      - {name: remarks, description: Les remarques du relecteur.}
+      - {name: review, description: Ce que le relecteur a essayé.}
+      - {name: owner_notes, description: Les consignes d'un humain.}
+  - table: campaigns
+    insert: true
+    update: true
+    delete: true
+    description: Les campagnes de test.
+    columns:
+      - {name: venture_id, description: Le business.}
+      - {name: family, description: La sorte de campagne.}
+      - {name: channel, description: Le canal.}
+      - {name: n_target, description: Le nombre de prospects visés.}
+      - {name: state, description: L'état de la campagne.}
 # Les changements d'étiquette et de statut permis. Un business naît
 # candidat, et seul un candidat peut être choisi : un business déjà en test
 # est refusé par le code d'écriture.
@@ -742,6 +940,22 @@ status_transitions:
   - {table: contacts, column: funnel_state, from: NEW, to: CONTACTING}
   - {table: contacts, column: funnel_state, from: QUALIFIED, to: CONTACTING}
 
+  # L'étape 2 (lot 10, Q91) : un POC validé, en ligne et sa campagne prête
+  # fait passer le business au test léger ; « Arrêter le business » sur
+  # un ticket l'arrête et libère sa place de test.
+  - {table: ventures, column: lifecycle, from: POC_SELECTED, to: SMOKE_READY}
+  - {table: ventures, column: lifecycle, from: POC_SELECTED, to: KILLED}
+  - {table: product_plans, column: status, from: '', to: draft}
+  - {table: product_plans, column: status, from: draft, to: challenged}
+  - {table: product_plans, column: status, from: challenged, to: validated}
+  - {table: product_plans, column: status, from: challenged, to: to_fix}
+  - {table: product_plans, column: status, from: challenged, to: refused}
+  - {table: builds, column: status, from: '', to: built}
+  - {table: builds, column: status, from: '', to: unfinished}
+  - {table: builds, column: status, from: built, to: reviewed}
+  - {table: builds, column: status, from: unfinished, to: reviewed}
+  - {table: campaigns, column: state, from: '', to: DRAFT}
+  - {table: campaigns, column: state, from: DRAFT, to: READY}
 # Les quotas : le code d'écriture refuse une ligne de trop, quelle que soit
 # l'invocation, et un bouton ne lance rien si son quota est plein. Les
 # chiffres se règlent sur la page Policy de Mission Control.
@@ -918,6 +1132,67 @@ table_views:
 # La veille lit les flux toutes les 6 heures. Le cycle se lance à la main
 # depuis la page Écoute : ouvrir → explorer → rattacher → trier → formuler
 # A → formuler B → choisir. Détail : docs/etapes/1-pre-prospection.md.
+  # --- L'étape 2 (lot 10, Q91) ---
+  - table: product_plans
+    title: Les plans des produits
+    description: Chaque version du plan d'un POC ou d'un produit fini.
+    order: created_at
+    columns:
+      - {name: id, short: true, description: Le numéro du plan.}
+      - {name: venture_id, short: true, description: Le business.}
+      - {name: kind, description: 'poc ou product.'}
+      - {name: round, description: Le tour de critique.}
+      - {name: status, short: true, description: L'état du plan.}
+      - {name: hypothesis, description: L'hypothèse à vérifier.}
+      - {name: target, description: La cible.}
+      - {name: channel, description: Le canal du test.}
+      - {name: prospects, description: Le nombre de prospects.}
+      - {name: duration_days, description: La durée du test.}
+      - {name: price, description: Le prix.}
+      - {name: followups, description: Le rythme des relances.}
+      - {name: deliverable, description: Ce que le prospect peut essayer.}
+      - {name: plan, description: Le plan de A à Z.}
+      - {name: scenarios, description: Les scénarios de test.}
+      - {name: challenge, description: L'avis du critique.}
+      - {name: owner_notes, description: Les consignes d'un humain.}
+      - {name: created_at, description: Sa date.}
+  - table: plan_critiques
+    title: Les remarques du critique
+    description: Les remarques « à corriger » sur un plan, par tour.
+    order: created_at
+    columns:
+      - {name: id, short: true, description: Le numéro de la remarque.}
+      - {name: plan_id, short: true, description: Le plan.}
+      - {name: round, description: Le tour.}
+      - {name: text, description: La remarque.}
+      - {name: created_at, description: Sa date.}
+  - table: builds
+    title: Les passages de construction
+    description: Chaque passage de construction, avec le verdict du relecteur.
+    order: created_at
+    columns:
+      - {name: id, short: true, description: Le numéro du passage.}
+      - {name: venture_id, short: true, description: Le business.}
+      - {name: deliverable, description: 'poc ou produit.'}
+      - {name: pass, short: true, description: Le numéro du passage.}
+      - {name: status, short: true, description: Son état.}
+      - {name: report, description: Le compte rendu du constructeur.}
+      - {name: verdict, description: Le verdict du relecteur.}
+      - {name: remarks, description: Les remarques du relecteur.}
+      - {name: review, description: Ce que le relecteur a essayé.}
+      - {name: owner_notes, description: Les consignes d'un humain.}
+      - {name: created_at, description: Sa date.}
+  - table: campaigns
+    title: Les campagnes de test
+    description: La campagne de test d'un business, prête après son POC.
+    order: created_at
+    columns:
+      - {name: id, short: true, description: Le numéro de la campagne.}
+      - {name: venture_id, short: true, description: Le business.}
+      - {name: channel, description: Le canal.}
+      - {name: n_target, description: Le nombre de prospects visés.}
+      - {name: state, short: true, description: 'DRAFT, puis READY.'}
+
 invocations:
   - id: ouvrir_cycle
     title: Ouvrir un cycle d'écoute
@@ -2514,6 +2789,751 @@ invocations:
       target: {source: task, value: cible}
       task_id: {source: task, value: task_id}
 
+  # --- L'étape 2 : concevoir, critiquer, construire, relire (lot 10, Q91) ---
+  # Un business choisi pour un POC est conçu, critiqué (3 tours au plus),
+  # validé par un humain (ticket « Plan », 48 heures), construit dans son
+  # chantier, publié en staging et relu (3 passages au plus), essayé par un
+  # humain (ticket « Tester le produit », sans délai), publié en prod, et sa
+  # campagne de test est prête. Les boucles sont bornées par « Compter les
+  # tours » ; rien n'est propre à une invocation dans le code.
+  - id: concevoir_poc
+    title: Concevoir le POC
+    role: >-
+      Écrit le plan de A à Z du POC d'un business (hypothèse, cible, canal,
+      prospects, durée, prix indicatif, relances, livrable, ce que le
+      constructeur doit faire, scénarios de test), sa fiche produit, ses
+      questions fréquentes et sa campagne de test. Au tour suivant, corrige
+      son plan d'après le critique ou les consignes d'un humain.
+    step: conception_poc
+    type: llm
+    model_tier: smart
+    queue: works
+    priority: 30
+    gets_serge_intro: true
+    max_tool_turns: 6
+    settings:
+      prospects_min: {value: 30, min: 5, max: 200, policy: true, description: "Le nombre de prospects d'un test léger, au moins."}
+      prospects_max: {value: 50, min: 5, max: 200, policy: true, description: "Le nombre de prospects d'un test léger, au plus."}
+      duree_max_jours: {value: 10, min: 1, max: 60, policy: true, description: "La durée d'un test léger, en jours, au plus."}
+    compare:
+      product_plans: false
+      product_sheets: false
+      product_faq: false
+      campaigns: false
+    prompt: |
+      Tu conçois le POC d'un business que Serge va tester auprès de vrais
+      prospects. Un POC est un petit produit web qu'on peut vraiment
+      essayer, pas une promesse. Exemple : « un générateur de devis en
+      ligne : on crée un compte et on fait trois devis gratuits ». Il est
+      gratuit pour les prospects : il mesure leur intérêt. Le vrai produit,
+      payant, viendra plus tard, pour le business retenu.
+
+      Tu reçois la fiche du business, les pages qui prouvent le besoin, et
+      ce que Serge sait faire. À partir du deuxième tour, tu reçois aussi ton
+      plan précédent et les remarques du critique ; les paramètres de la
+      tâche peuvent contenir les consignes d'un humain (« consignes ») :
+      corrige d'abord ce qu'ils demandent.
+
+      Pour construire, Serge a un chantier (un conteneur Linux avec Node,
+      Python et git, où un modèle code et lance le produit), un navigateur
+      pour l'essayer, et la mise en ligne d'un site web sur un sous-domaine
+      de Serge ; le produit garde ses données dans un dossier à lui. Il n'y
+      a pas d'humain pour faire le travail, pas de compte à créer sur
+      d'autres sites, pas d'API payante, pas de connexion au logiciel des
+      prospects : un plan qui en a besoin est irréaliste, trouve autre
+      chose.
+
+      Écris un plan de A à Z, réalisable avec ça :
+      - hypothese : ce qu'on veut vérifier, en une phrase ;
+      - cible : les prospects, des professionnels (métier, taille, lieu) ;
+      - canal : email ou voice (le téléphone) ;
+      - prospects : combien, entre {prospects_min} et {prospects_max} ;
+      - duree_jours : la durée du test, {duree_max_jours} jours au plus ;
+      - prix : le prix indicatif du futur produit payant ;
+      - relances : leur rythme (exemple : « une relance 3 jours après le
+        premier message, une autre 7 jours après ») ;
+      - livrable : ce que le prospect peut essayer, en deux phrases ;
+      - plan : ce que le constructeur doit faire, page par page et fonction
+        par fonction, pourquoi, et comment le prospect s'en sert ;
+      - scenarios : 3 à 6 scénarios de test ; chacun dit ce que fait un
+        prospect ordinaire, pas à pas, du début à la fin, et ce qu'il doit
+        voir. Le relecteur et l'humain qui essaie le POC les suivent tels
+        quels ;
+      - la fiche produit : fiche_resume (ce que fait le produit et pour
+        qui), fiche_limites (ce qu'il ne fait pas), fiche_prix,
+        fiche_delais, fiche_usage (comment on s'en sert) ;
+      - faq : 3 à 6 questions qu'un prospect posera, avec leur réponse.
+
+      Le business doit être légal. Ne t'arrête pas sur des considérations
+      morales qui ne sont pas contraires à la loi.
+    tools:
+      - tool: fiche_business
+        mode: given
+        label: Le business
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: preuves_du_business
+        mode: given
+        label: Les pages qui prouvent le besoin
+        max_rows: 20
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: capacites_de_serge
+        mode: given
+        label: Ce que Serge sait faire
+      - tool: plan_par_numero
+        mode: given
+        label: Ton plan précédent (vide au premier tour)
+        params:
+          plan_id: {source: task, value: plan_precedent}
+      - tool: critiques_du_plan
+        mode: given
+        label: Les remarques du critique sur ce plan
+        params:
+          plan_id: {source: task, value: plan_precedent}
+      - tool: web_search
+        mode: callable
+        max_calls: 3
+    output:
+      - {path: hypothese, type: text, description: Ce qu'on veut vérifier.}
+      - {path: cible, type: text, description: Les prospects visés.}
+      - {path: canal, type: choice, choices: [email, voice], description: Le canal du test.}
+      - {path: prospects, type: number, description: Le nombre de prospects.}
+      - {path: duree_jours, type: number, description: La durée du test en jours.}
+      - {path: prix, type: text, description: Le prix indicatif du futur produit.}
+      - {path: relances, type: text, description: Le rythme des relances.}
+      - {path: livrable, type: text, description: Ce que le prospect peut essayer.}
+      - {path: plan, type: text, description: 'Le plan de A à Z pour le constructeur.'}
+      - {path: scenarios, type: text, description: "Les scénarios de test, pas à pas."}
+      - {path: fiche_resume, type: text, description: Ce que fait le produit et pour qui.}
+      - {path: fiche_limites, type: text, description: Ce qu'il ne fait pas.}
+      - {path: fiche_prix, type: text, description: Son prix.}
+      - {path: fiche_delais, type: text, description: Ses délais habituels.}
+      - {path: fiche_usage, type: text, description: Comment on s'en sert.}
+      - {path: faq, type: list, min_items: 1, description: Les questions fréquentes.}
+      - {path: faq.question, type: text, description: La question.}
+      - {path: faq.reponse, type: text, description: Sa réponse.}
+    writes:
+      - table: product_plans
+        operation: insert
+        values:
+          venture_id: {source: task, value: venture_id}
+          kind: {source: fixed, value: poc}
+          round: {source: task, value: tour}
+          status: {source: fixed, value: draft}
+          hypothesis: {source: field, value: hypothese}
+          target: {source: field, value: cible}
+          channel: {source: field, value: canal}
+          prospects: {source: field, value: prospects}
+          duration_days: {source: field, value: duree_jours}
+          price: {source: field, value: prix}
+          followups: {source: field, value: relances}
+          deliverable: {source: field, value: livrable}
+          plan: {source: field, value: plan}
+          scenarios: {source: field, value: scenarios}
+          owner_notes: {source: task, value: consignes}
+      - table: product_sheets
+        operation: delete
+        key: {column: venture_id, source: task, value: venture_id}
+      - table: product_sheets
+        operation: insert
+        values:
+          venture_id: {source: task, value: venture_id}
+          summary: {source: field, value: fiche_resume}
+          limits: {source: field, value: fiche_limites}
+          price: {source: field, value: fiche_prix}
+          delays: {source: field, value: fiche_delais}
+          usage: {source: field, value: fiche_usage}
+      - table: product_faq
+        operation: delete
+        key: {column: venture_id, source: task, value: venture_id}
+      - table: product_faq
+        operation: insert
+        for_each: faq
+        values:
+          venture_id: {source: task, value: venture_id}
+          question: {source: field, value: faq.question}
+          answer: {source: field, value: faq.reponse}
+      - table: campaigns
+        operation: delete
+        key: {column: venture_id, source: task, value: venture_id}
+      - table: campaigns
+        operation: insert
+        values:
+          venture_id: {source: task, value: venture_id}
+          family: {source: fixed, value: test_leger}
+          channel: {source: field, value: canal}
+          n_target: {source: field, value: prospects}
+          state: {source: fixed, value: DRAFT}
+
+  - id: challenger_poc
+    title: Challenger le POC
+    role: >-
+      Critique le plan d'un POC avant qu'un humain le valide : faisabilité
+      technique, limites du produit, réalisme commercial, scénarios de
+      test. Rend « bon » ou « à corriger » avec ses remarques ; un manque de
+      Serge passe par « Demander une nouvelle capacité » (Q35).
+    step: conception_poc
+    type: llm
+    model_tier: smart
+    queue: works
+    priority: 30
+    gets_serge_intro: true
+    max_tool_turns: 4
+    compare:
+      plan_critiques: false
+      product_plans: false
+    prompt: |
+      Tu critiques le plan du POC d'un business, avant qu'un humain le
+      valide et qu'un modèle le construise. Tu reçois le plan, la fiche
+      produit, ses questions fréquentes, la fiche du business et ce que
+      Serge sait faire.
+
+      Cherche ce qui empêcherait le POC de marcher :
+      - la faisabilité technique : Serge code dans un conteneur Linux avec
+        Node, Python et git, essaie dans un navigateur et publie un site
+        web ; pas d'humain, pas de compte sur d'autres sites, pas d'API
+        payante, pas de connexion au logiciel des prospects ;
+      - les limites du produit : ce qui manque pour qu'un prospect en tire
+        quelque chose ;
+      - le réalisme commercial : des prospects contactés par e-mail ou par
+        téléphone vont-ils vraiment l'essayer ?
+      - les scénarios de test : chacun doit pouvoir être suivi pas à pas
+        par quelqu'un qui découvre le site.
+      Exemple de remarque attendue : « le plan commence par se connecter à
+      l'ERP d'une grande entreprise contactée par e-mail : c'est
+      irréaliste ».
+
+      Chaque remarque est « à corriger » : le plan est mal fait mais
+      faisable avec ce que Serge sait déjà faire ; dis précisément quoi
+      changer. S'il manque à Serge un outil ou un accès, n'en fais pas une
+      remarque : appelle l'outil « Demander une nouvelle capacité ».
+
+      Rends le verdict « bon » si le plan peut être construit tel quel,
+      sinon « a_corriger » avec tes remarques. Ne cherche pas la petite
+      bête : un plan réaliste et clair est bon.
+    tools:
+      - tool: plan_par_numero
+        mode: given
+        label: Le plan
+        params:
+          plan_id: {source: task, value: plan_id}
+      - tool: fiche_business
+        mode: given
+        label: Le business
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: fiche_produit
+        mode: given
+        label: La fiche produit
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: questions_produit
+        mode: given
+        label: Les questions fréquentes
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: capacites_de_serge
+        mode: given
+        label: Ce que Serge sait faire
+    output:
+      - {path: verdict, type: choice, choices: [bon, a_corriger], description: 'Le plan peut-il être construit tel quel ?'}
+      - {path: avis, type: text, description: 'Ton avis en deux phrases.'}
+      - {path: remarques, type: list, required: false, description: Les remarques à corriger.}
+      - {path: remarques.texte, type: text, description: 'La remarque : quoi changer, précisément.'}
+    writes:
+      - table: plan_critiques
+        operation: insert
+        for_each: remarques
+        values:
+          plan_id: {source: task, value: plan_id}
+          venture_id: {source: task, value: venture_id}
+          round: {source: task, value: tour}
+          text: {source: field, value: remarques.texte}
+      - table: product_plans
+        operation: update
+        key: {column: id, source: task, value: plan_id}
+        values:
+          status: {source: fixed, value: challenged}
+          challenge: {source: field, value: avis}
+
+  - id: compter_tours_plan
+    title: Compter les tours de critique
+    role: >-
+      Après une critique « à corriger » : renvoie le plan à la conception
+      tant qu'il reste des tours, sinon au ticket « Plan » tel qu'il est
+      (Q35). Sans LLM.
+    step: conception_poc
+    type: capability
+    capability: next_round
+    queue: works
+    priority: 30
+    settings:
+      tours_max: {value: 3, min: 1, max: 10, policy: true, description: "Les tours de critique d'un plan, au plus."}
+    params:
+      round: {source: task, value: tour}
+      max: {source: setting, value: tours_max}
+
+  - id: demander_validation_plan
+    title: Faire valider le plan du POC
+    role: >-
+      Ouvre le ticket « Plan » : le business, le plan, la critique, la
+      fiche produit. Valider lance la construction ; sans réponse sous 48
+      heures, le plan s'applique (Q34). Sans LLM.
+    step: conception_poc
+    type: capability
+    capability: ask_owners
+    queue: conversations
+    priority: 80
+    params:
+      ticket_type: {source: fixed, value: PLAN_POC}
+      ref_table: {source: fixed, value: product_plans}
+      ref_id: {source: task, value: plan_id}
+      raison: {source: fixed, value: 'Le plan de ce POC est prêt : le valider lance sa construction.'}
+      title: {source: fixed, value: Le plan d'un POC attend ton avis}
+
+  - id: suite_plan_poc
+    title: Suite du ticket « Plan »
+    role: >-
+      La réponse au ticket « Plan » : « Valider » lance la construction,
+      « À corriger » renvoie le plan à la conception avec les consignes,
+      « Arrêter le business » l'arrête et libère sa place de test. Sans
+      LLM.
+    step: conception_poc
+    type: capability
+    capability: echo
+    queue: conversations
+    priority: 80
+    params:
+      acte: {source: task, value: acte}
+      texte: {source: task, value: texte}
+      plan_id: {source: task, value: plan_id}
+      venture_id: {source: task, value: venture_id}
+    writes:
+      - table: product_plans
+        operation: update
+        key: {column: id, source: task, value: plan_id}
+        condition: {field: acte, op: '=', value: valider}
+        values:
+          status: {source: fixed, value: validated}
+      - table: product_plans
+        operation: update
+        key: {column: id, source: task, value: plan_id}
+        condition: {field: acte, op: '=', value: a_corriger}
+        values:
+          status: {source: fixed, value: to_fix}
+          owner_notes: {source: task, value: texte}
+      - table: product_plans
+        operation: update
+        key: {column: id, source: task, value: plan_id}
+        condition: {field: acte, op: '=', value: arreter_business}
+        values:
+          status: {source: fixed, value: refused}
+      - table: ventures
+        operation: update
+        key: {column: id, source: task, value: venture_id}
+        condition: {field: acte, op: '=', value: arreter_business}
+        values:
+          lifecycle: {source: fixed, value: KILLED}
+
+  - id: construire_poc
+    title: Construire le POC
+    role: >-
+      Construit le POC dans le chantier du business, l'essaie lui-même dans
+      le navigateur, sur ordinateur et sur mobile, et rend son compte rendu.
+      Il reprend le passage précédent : les remarques du relecteur, les
+      consignes d'un humain, ou une publication ratée.
+    step: conception_poc
+    type: llm
+    model_tier: code
+    queue: works
+    priority: 30
+    max_tool_turns: 200
+    compare:
+      builds: false
+    prompt: |
+      Tu construis le POC d'un business : un petit produit web que des
+      prospects vont vraiment essayer. Il doit marcher pour eux du premier
+      coup.
+
+      Tu reçois le plan validé (ce qu'il faut faire, et les scénarios de
+      test), la fiche produit et ses questions fréquentes, et les passages
+      de construction précédents : le compte rendu du constructeur d'avant,
+      le verdict et les remarques du relecteur, qui a essayé le produit en
+      ligne. Les paramètres de la tâche peuvent contenir les consignes d'un
+      humain (« consignes ») ou la raison d'une publication ratée
+      (« probleme », « journal ») : traite-les d'abord.
+
+      Tu travailles dans un chantier : un conteneur Linux (Debian, avec
+      git, Python 3 et Node), dossier /work, où tes fichiers restent d'une
+      tâche à l'autre. Tes outils : lancer une commande (au besoin en
+      arrière-plan, pour un serveur), lire, écrire et modifier un fichier,
+      et un navigateur pour essayer ton produit : l'adresse
+      http://chantier:<port> mène au serveur que tu as lancé dans le
+      chantier. Tu peux appeler plusieurs outils d'un coup.
+
+      Règles :
+      - choisis les langages et les outils que tu veux ; fais simple et
+        solide ;
+      - à la racine de /work, un Dockerfile qui construit et lance le
+        produit. Le produit écoute sur le port de la variable PORT (8080),
+        garde ses données dans le dossier de la variable DATA_DIR (/data),
+        et connaît son adresse publique par PUBLIC_URL ;
+      - le POC est gratuit : aucun paiement ;
+      - en français, propre et clair sur ordinateur comme sur mobile ;
+      - avant de rendre, essaie toi-même chaque scénario de test dans le
+        navigateur, sur ordinateur puis sur mobile, et corrige ce qui ne va
+        pas. Docker n'est pas dans le chantier : lance le produit comme le
+        ferait le Dockerfile ;
+      - s'il te manque un outil ou un accès, appelle « Demander une
+        nouvelle capacité ».
+
+      Rends fini « oui » si le produit est prêt à être publié, sinon
+      « non » ; ton compte rendu : ce que tu as fait, comment tu l'as
+      vérifié, ce qui reste.
+    tools:
+      - tool: plan_valide_du_poc
+        mode: given
+        label: Le plan validé
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: fiche_produit
+        mode: given
+        label: La fiche produit
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: questions_produit
+        mode: given
+        label: Les questions fréquentes
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: passages_du_livrable
+        mode: given
+        label: Les passages de construction précédents
+        max_rows: 3
+        params:
+          venture_id: {source: task, value: venture_id}
+          deliverable: {source: fixed, value: poc}
+      - tool: chantier_commande
+        mode: callable
+        params: &chantier_poc
+          venture_id: {source: task, value: venture_id}
+          deliverable: {source: fixed, value: poc}
+          profile: {source: fixed, value: chantier}
+      - tool: chantier_lire
+        mode: callable
+        params: *chantier_poc
+      - tool: chantier_ecrire
+        mode: callable
+        params: *chantier_poc
+      - tool: chantier_modifier
+        mode: callable
+        params: *chantier_poc
+      - tool: navigateur_agir
+        mode: callable
+        params: &navigateur_poc
+          venture_id: {source: task, value: venture_id}
+          deliverable: {source: fixed, value: poc}
+          task_id: {source: task, value: task_id}
+      - tool: navigateur_lire
+        mode: callable
+        params: *navigateur_poc
+      - tool: navigateur_capture
+        mode: callable
+        params: *navigateur_poc
+    output:
+      - {path: fini, type: choice, choices: [oui, non], description: 'Le produit est-il prêt à être publié ?'}
+      - {path: compte_rendu, type: text, description: 'Ce qui a été fait, vérifié, et ce qui reste.'}
+    writes:
+      - table: builds
+        operation: insert
+        condition: {field: fini, op: '=', value: oui}
+        values:
+          venture_id: {source: task, value: venture_id}
+          deliverable: {source: fixed, value: poc}
+          pass: {source: task, value: passage}
+          status: {source: fixed, value: built}
+          report: {source: field, value: compte_rendu}
+          owner_notes: {source: task, value: consignes}
+      - table: builds
+        operation: insert
+        condition: {field: fini, op: '=', value: non}
+        values:
+          venture_id: {source: task, value: venture_id}
+          deliverable: {source: fixed, value: poc}
+          pass: {source: task, value: passage}
+          status: {source: fixed, value: unfinished}
+          report: {source: field, value: compte_rendu}
+          owner_notes: {source: task, value: consignes}
+
+  - id: compter_reprises
+    title: Compter les reprises de la construction
+    role: >-
+      Une construction pas finie (plafond du jour atteint, travail trop
+      long) ou une publication ratée : la construction reprend, dans le même
+      passage, tant qu'il reste des reprises ; sinon le produit est publié
+      tel qu'il est. Sans LLM.
+    step: conception_poc
+    type: capability
+    capability: next_round
+    queue: works
+    priority: 30
+    settings:
+      reprises_max: {value: 3, min: 1, max: 10, policy: true, description: "Les reprises d'un même passage de construction, au plus."}
+    params:
+      round: {source: task, value: reprise}
+      max: {source: setting, value: reprises_max}
+
+  - id: publier_staging_poc
+    title: Publier le POC en staging
+    role: >-
+      Fige le chantier du POC en une version, la construit et la met en
+      ligne sur staging-<produit>.<domaine>, non indexé. Sans LLM.
+    step: conception_poc
+    type: capability
+    capability: publish_version
+    queue: works
+    priority: 30
+    params:
+      venture_id: {source: task, value: venture_id}
+      deliverable: {source: fixed, value: poc}
+      target: {source: fixed, value: staging}
+      task_id: {source: task, value: task_id}
+
+  - id: relire_poc
+    title: Relire le POC
+    role: >-
+      Essaie le POC en ligne comme un prospect ordinaire, sans voir son
+      code : suit chaque scénario de test sur ordinateur puis sur mobile,
+      garde ses captures, et rend « bon » ou « à corriger » avec ses
+      remarques.
+    step: conception_poc
+    type: llm
+    model_tier: code
+    queue: works
+    priority: 30
+    max_tool_turns: 60
+    compare:
+      builds: false
+    prompt: |
+      Tu essaies le POC d'un business comme le ferait un prospect ordinaire
+      qui le découvre : tu ne vois pas son code, seulement le site en ligne
+      (son adresse est dans les paramètres de la tâche, « url »). Tu
+      reçois le plan validé, avec ses scénarios de test, et la fiche
+      produit.
+
+      Suis chaque scénario pas à pas, d'abord sur ordinateur, puis sur
+      mobile : lis la page, clique, tape, comme une personne. Prends une
+      capture à chaque étape importante, garde-la (keep), et lis les
+      erreurs de la page. Regarde vraiment l'écran : un bouton qui sort de
+      l'écran, un texte illisible, un formulaire qui ne réagit pas, une
+      page blanche, un message d'erreur, ce qui manque par rapport à la
+      fiche produit.
+
+      Rends le verdict « bon » si un prospect peut faire chaque scénario
+      sans aide et sans tomber sur une erreur ; sinon « a_corriger ». Tes
+      remarques disent, pour chaque problème, le scénario, l'étape, ce que
+      tu as vu, ce qui était attendu, et le numéro de la capture. Ton
+      compte rendu dit ce que tu as essayé et ce qui marche.
+    tools:
+      - tool: plan_valide_du_poc
+        mode: given
+        label: Le plan validé et ses scénarios de test
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: fiche_produit
+        mode: given
+        label: La fiche produit
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: navigateur_agir
+        mode: callable
+        params: *navigateur_poc
+      - tool: navigateur_lire
+        mode: callable
+        params: *navigateur_poc
+      - tool: navigateur_capture
+        mode: callable
+        params: *navigateur_poc
+    output:
+      - {path: verdict, type: choice, choices: [bon, a_corriger], description: 'Un prospect peut-il faire chaque scénario ?'}
+      - {path: remarques, type: text, description: 'Les problèmes trouvés, un par ligne ; vide si tout va bien.'}
+      - {path: compte_rendu, type: text, description: Ce qui a été essayé et ce qui marche.}
+    writes:
+      - table: builds
+        operation: update
+        key: {column: id, source: task, value: build_id}
+        values:
+          status: {source: fixed, value: reviewed}
+          verdict: {source: field, value: verdict}
+          remarks: {source: field, value: remarques}
+          review: {source: field, value: compte_rendu}
+
+  - id: compter_passages
+    title: Compter les passages de construction
+    role: >-
+      Après une relecture « à corriger » : la construction reprend pour un
+      nouveau passage tant qu'il en reste, sinon le POC va au ticket
+      « Tester le produit » tel qu'il est (Q41). Sans LLM.
+    step: conception_poc
+    type: capability
+    capability: next_round
+    queue: works
+    priority: 30
+    settings:
+      passages_max: {value: 3, min: 1, max: 10, policy: true, description: "Les passages de construction et de relecture, au plus."}
+    params:
+      round: {source: task, value: passage}
+      max: {source: setting, value: passages_max}
+
+  - id: demander_test_poc
+    title: Faire essayer le POC
+    role: >-
+      Ouvre le ticket « Tester le produit » : le business, les scénarios de
+      test, l'adresse du staging et le verdict du relecteur. Il n'expire
+      jamais : rien ne part vers des prospects sans qu'un humain ait essayé
+      le produit (Q91). Sans LLM.
+    step: conception_poc
+    type: capability
+    capability: ask_owners
+    queue: conversations
+    priority: 80
+    params:
+      ticket_type: {source: fixed, value: TEST_POC}
+      ref_table: {source: fixed, value: builds}
+      ref_id: {source: task, value: build_id}
+      raison: {source: fixed, value: 'Le POC est en ligne en staging : essaie-le comme un prospect, avec les scénarios de test.'}
+      title: {source: fixed, value: Un POC attend que tu l'essaies}
+
+  - id: suite_test_poc
+    title: Suite du ticket « Tester le produit »
+    role: >-
+      La réponse au ticket « Tester le produit » : « Valider » met le POC
+      en prod, « À corriger » relance la construction avec les consignes,
+      « Arrêter le business » l'arrête et libère sa place de test. Sans
+      LLM.
+    step: conception_poc
+    type: capability
+    capability: echo
+    queue: conversations
+    priority: 80
+    params:
+      acte: {source: task, value: acte}
+      texte: {source: task, value: texte}
+      build_id: {source: task, value: build_id}
+      venture_id: {source: task, value: venture_id}
+    writes:
+      - table: builds
+        operation: update
+        key: {column: id, source: task, value: build_id}
+        condition: {field: acte, op: '=', value: a_corriger}
+        values:
+          owner_notes: {source: task, value: texte}
+      - table: ventures
+        operation: update
+        key: {column: id, source: task, value: venture_id}
+        condition: {field: acte, op: '=', value: arreter_business}
+        values:
+          lifecycle: {source: fixed, value: KILLED}
+
+  - id: publier_prod_poc
+    title: Publier le POC en prod
+    role: >-
+      Passe la version du staging en prod, sur <produit>.<domaine> : rien
+      n'est reconstruit. Sans LLM.
+    step: conception_poc
+    type: capability
+    capability: publish_version
+    queue: works
+    priority: 30
+    params:
+      venture_id: {source: task, value: venture_id}
+      deliverable: {source: fixed, value: poc}
+      target: {source: fixed, value: prod}
+      task_id: {source: task, value: task_id}
+
+  - id: poc_pret
+    title: POC prêt pour le test léger
+    role: >-
+      Le POC est en ligne et validé : sa campagne de test passe à prête, et
+      le business au test léger (étape 3). Sans LLM.
+    step: conception_poc
+    type: capability
+    capability: echo
+    queue: works
+    priority: 30
+    params:
+      venture_id: {source: task, value: venture_id}
+    writes:
+      - table: campaigns
+        operation: update
+        key: {column: venture_id, source: task, value: venture_id}
+        values:
+          state: {source: fixed, value: READY}
+      - table: ventures
+        operation: update
+        key: {column: id, source: task, value: venture_id}
+        values:
+          lifecycle: {source: fixed, value: SMOKE_READY}
+
+  - id: prevenir_prod_ratee
+    title: Prévenir d'une mise en prod ratée
+    role: >-
+      La version validée n'a pas pu passer en prod : un ticket
+      d'information prévient Julien et Clem, avec la raison. Sans LLM.
+    step: conception_poc
+    type: capability
+    capability: inform_owners
+    queue: conversations
+    priority: 80
+    params:
+      title: {source: fixed, value: Un POC validé n'a pas pu passer en prod}
+      text: {source: task, value: raison}
+
+  # L'essai de l'étape 2 (temporaire, Q91) : un business tapé dans Mission
+  # Control est choisi pour un POC, comme par « Choisir les business ».
+  - id: creer_business_essai
+    title: Créer le business d'un essai de l'étape 2 (temporaire)
+    role: >-
+      Temporaire : crée un business candidat à partir du formulaire du
+      bouton « Essayer l'étape 2 ». Sans LLM.
+    type: capability
+    capability: echo
+    queue: works
+    priority: 30
+    params:
+      nom: {source: task, value: nom}
+      description: {source: task, value: description}
+      offre: {source: task, value: offre}
+    writes:
+      - table: ventures
+        operation: insert
+        values:
+          name: {source: task, value: nom}
+          description: {source: task, value: description}
+          sellable_offer: {source: task, value: offre}
+          lifecycle: {source: fixed, value: CANDIDATE}
+          family: {source: fixed, value: autre}
+
+  - id: choisir_business_essai
+    title: Choisir le business d'un essai de l'étape 2 (temporaire)
+    role: >-
+      Temporaire : le business de l'essai est choisi pour un POC (il prend
+      une place de test), et sa conception commence. Sans LLM.
+    type: capability
+    capability: echo
+    queue: works
+    priority: 30
+    params:
+      venture_id: {source: task, value: venture_id}
+    writes:
+      - table: ventures
+        operation: update
+        key: {column: id, source: task, value: venture_id}
+        values:
+          lifecycle: {source: fixed, value: POC_SELECTED}
+          choice_reason: {source: fixed, value: Essai de l'étape 2 depuis Mission Control.}
+
 links:
   - id: cycle_ouvert_vers_exploration
     title: Le cycle ouvert part en exploration
@@ -2662,6 +3682,222 @@ links:
     to: envoyer_message
     params:
       touch_id: {source: task, value: touch_id}
+
+  # --- L'étape 2 : du choix d'un business à son test léger (lot 10, Q91) ---
+  - id: choix_vers_conception_poc
+    title: Un business choisi pour un POC part en conception
+    from: choisir_business
+    to: concevoir_poc
+    mode: per_row
+    write: 0
+    condition: {field: lifecycle, op: '=', value: POC_SELECTED}
+    params:
+      venture_id: {source: row, value: id}
+      tour: {source: fixed, value: '1'}
+  - id: essai_vers_choix_etape2
+    title: Le business de l'essai est choisi pour un POC
+    from: creer_business_essai
+    to: choisir_business_essai
+    mode: per_row
+    write: 0
+    params:
+      venture_id: {source: row, value: id}
+  - id: essai_choisi_vers_conception
+    title: Le business de l'essai part en conception
+    from: choisir_business_essai
+    to: concevoir_poc
+    mode: per_row
+    write: 0
+    condition: {field: lifecycle, op: '=', value: POC_SELECTED}
+    params:
+      venture_id: {source: row, value: id}
+      tour: {source: fixed, value: '1'}
+  - id: plan_vers_critique
+    title: Le plan part à la critique
+    from: concevoir_poc
+    to: challenger_poc
+    mode: per_row
+    write: 0
+    params:
+      plan_id: {source: row, value: id}
+      venture_id: {source: row, value: venture_id}
+      tour: {source: task, value: tour}
+  - id: critique_a_corriger_vers_compte
+    title: Un plan à corriger
+    from: challenger_poc
+    to: compter_tours_plan
+    condition: {field: verdict, op: '=', value: a_corriger}
+    params:
+      venture_id: {source: task, value: venture_id}
+      plan_id: {source: task, value: plan_id}
+      tour: {source: task, value: tour}
+  - id: critique_bonne_vers_ticket
+    title: Un plan bon part au ticket « Plan »
+    from: challenger_poc
+    to: demander_validation_plan
+    condition: {field: verdict, op: '=', value: bon}
+    params:
+      plan_id: {source: task, value: plan_id}
+  - id: tours_restants_vers_conception
+    title: Il reste des tours de critique
+    from: compter_tours_plan
+    to: concevoir_poc
+    condition: {field: suite, op: '=', value: encore}
+    params:
+      venture_id: {source: task, value: venture_id}
+      tour: {source: field, value: tour_suivant}
+      plan_precedent: {source: task, value: plan_id}
+  - id: tours_finis_vers_ticket
+    title: Plus de tours de critique
+    from: compter_tours_plan
+    to: demander_validation_plan
+    condition: {field: suite, op: '=', value: fini}
+    params:
+      plan_id: {source: task, value: plan_id}
+  - id: plan_valide_vers_construction
+    title: Le plan validé part en construction
+    from: suite_plan_poc
+    to: construire_poc
+    condition: {field: acte, op: '=', value: valider}
+    params:
+      venture_id: {source: task, value: venture_id}
+      passage: {source: fixed, value: '1'}
+      reprise: {source: fixed, value: '1'}
+  - id: plan_a_corriger_vers_conception
+    title: Le plan est à corriger d'après un humain
+    from: suite_plan_poc
+    to: concevoir_poc
+    condition: {field: acte, op: '=', value: a_corriger}
+    params:
+      venture_id: {source: task, value: venture_id}
+      tour: {source: fixed, value: '1'}
+      plan_precedent: {source: task, value: plan_id}
+      consignes: {source: task, value: texte}
+  - id: construction_finie_vers_staging
+    title: Le POC construit part en staging
+    from: construire_poc
+    to: publier_staging_poc
+    mode: per_row
+    write: 0
+    params:
+      venture_id: {source: row, value: venture_id}
+      build_id: {source: row, value: id}
+      passage: {source: task, value: passage}
+      reprise: {source: task, value: reprise}
+  - id: construction_pas_finie_vers_reprise
+    title: Une construction pas finie reprend
+    from: construire_poc
+    to: compter_reprises
+    mode: per_row
+    write: 1
+    params:
+      venture_id: {source: row, value: venture_id}
+      build_id: {source: row, value: id}
+      passage: {source: task, value: passage}
+      reprise: {source: task, value: reprise}
+  - id: reprise_vers_construction
+    title: La construction reprend, dans le même passage
+    from: compter_reprises
+    to: construire_poc
+    condition: {field: suite, op: '=', value: encore}
+    params:
+      venture_id: {source: task, value: venture_id}
+      passage: {source: task, value: passage}
+      reprise: {source: field, value: tour_suivant}
+      probleme: {source: task, value: probleme}
+      journal: {source: task, value: journal}
+  - id: reprises_finies_vers_test
+    title: "Plus de reprises : un humain essaie ce qu'il y a"
+    from: compter_reprises
+    to: demander_test_poc
+    condition: {field: suite, op: '=', value: fini}
+    params:
+      build_id: {source: task, value: build_id}
+  - id: staging_vers_relecture
+    title: Le POC en staging part à la relecture
+    from: publier_staging_poc
+    to: relire_poc
+    condition: {field: ok, op: '=', value: 'True'}
+    params:
+      venture_id: {source: task, value: venture_id}
+      build_id: {source: task, value: build_id}
+      passage: {source: task, value: passage}
+      url: {source: field, value: url}
+  - id: staging_rate_vers_reprise
+    title: Une publication ratée repart à la construction
+    from: publier_staging_poc
+    to: compter_reprises
+    condition: {field: ok, op: '!=', value: 'True'}
+    params:
+      venture_id: {source: task, value: venture_id}
+      build_id: {source: task, value: build_id}
+      passage: {source: task, value: passage}
+      reprise: {source: task, value: reprise}
+      probleme: {source: field, value: detail}
+      journal: {source: field, value: log}
+  - id: relecture_bonne_vers_test
+    title: Le relecteur trouve le POC bon
+    from: relire_poc
+    to: demander_test_poc
+    condition: {field: verdict, op: '=', value: bon}
+    params:
+      build_id: {source: task, value: build_id}
+  - id: relecture_a_corriger_vers_compte
+    title: Le relecteur trouve à corriger
+    from: relire_poc
+    to: compter_passages
+    condition: {field: verdict, op: '=', value: a_corriger}
+    params:
+      venture_id: {source: task, value: venture_id}
+      build_id: {source: task, value: build_id}
+      passage: {source: task, value: passage}
+  - id: passages_restants_vers_construction
+    title: Un nouveau passage de construction
+    from: compter_passages
+    to: construire_poc
+    condition: {field: suite, op: '=', value: encore}
+    params:
+      venture_id: {source: task, value: venture_id}
+      passage: {source: field, value: tour_suivant}
+      reprise: {source: fixed, value: '1'}
+  - id: passages_finis_vers_test
+    title: "Plus de passages : un humain essaie ce qu'il y a"
+    from: compter_passages
+    to: demander_test_poc
+    condition: {field: suite, op: '=', value: fini}
+    params:
+      build_id: {source: task, value: build_id}
+  - id: test_valide_vers_prod
+    title: Le POC essayé et validé passe en prod
+    from: suite_test_poc
+    to: publier_prod_poc
+    condition: {field: acte, op: '=', value: valider}
+    params:
+      venture_id: {source: task, value: venture_id}
+  - id: test_a_corriger_vers_construction
+    title: Le POC est à corriger d'après un humain
+    from: suite_test_poc
+    to: construire_poc
+    condition: {field: acte, op: '=', value: a_corriger}
+    params:
+      venture_id: {source: task, value: venture_id}
+      passage: {source: fixed, value: '1'}
+      reprise: {source: fixed, value: '1'}
+      consignes: {source: task, value: texte}
+  - id: prod_vers_test_leger
+    title: Le POC en prod est prêt pour le test léger
+    from: publier_prod_poc
+    to: poc_pret
+    condition: {field: ok, op: '=', value: 'True'}
+    params:
+      venture_id: {source: task, value: venture_id}
+  - id: prod_ratee_vers_ticket
+    title: Une mise en prod ratée
+    from: publier_prod_poc
+    to: prevenir_prod_ratee
+    condition: {field: ok, op: '!=', value: 'True'}
+    params:
+      raison: {source: field, value: detail}
 
 triggers:
   - id: lancer_cycle
@@ -2869,6 +4105,46 @@ triggers:
       résultat est dans l'îlot « Produits en ligne ».
     params:
       cible: {source: form, value: cible (staging ou prod)}
+
+  - id: reponse_au_ticket_plan_poc
+    title: Une réponse au ticket « Plan » d'un POC
+    invocation: suite_plan_poc
+    event: row_written
+    table: ticket_answers
+    filter_column: ticket_type
+    filter_value: PLAN_POC
+    params:
+      acte: {source: row, value: acte}
+      texte: {source: row, value: text}
+      plan_id: {source: row, value: ref_id}
+      venture_id: {source: row, value: venture_id}
+  - id: reponse_au_ticket_test_poc
+    title: Une réponse au ticket « Tester le produit » d'un POC
+    invocation: suite_test_poc
+    event: row_written
+    table: ticket_answers
+    filter_column: ticket_type
+    filter_value: TEST_POC
+    params:
+      acte: {source: row, value: acte}
+      texte: {source: row, value: text}
+      build_id: {source: row, value: ref_id}
+      venture_id: {source: row, value: venture_id}
+  - id: bouton_essayer_etape2
+    title: Essayer l'étape 2
+    invocation: creer_business_essai
+    event: button
+    only_if_room_in: [places_de_test]
+    confirm: >-
+      Serge crée ce business, le choisit pour un POC (il prend une place de
+      test) et lance l'étape 2 : concevoir, critiquer, puis le ticket
+      « Plan ». Après ta validation, il construit le POC (niveau « code »),
+      le relit, et ouvre le ticket « Tester le produit ». Compter quelques
+      euros de modèles.
+    params:
+      nom: {source: form, value: nom}
+      description: {source: form, value: description}
+      offre: {source: form, value: offre}
 
 # Les modifications d'objets déjà en base sur une instance existante (le
 # fichier ne les écrase jamais) : chacune n'est appliquée qu'une fois, et

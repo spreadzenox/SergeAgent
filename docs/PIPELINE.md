@@ -280,8 +280,10 @@ pipeline de départ (`config/pipeline.yaml`) contient les files, les
 modèles, la présentation de Serge, les outils, les protections des
 tables, et l'étape 1 entière (voir
 [`etapes/1-pre-prospection.md`](etapes/1-pre-prospection.md) et
-[`LOT7_CONCEPTION.md`](LOT7_CONCEPTION.md)). Les étapes suivantes sont
-l'objet des lots suivants. Serge ne peut
+[`LOT7_CONCEPTION.md`](LOT7_CONCEPTION.md)), puis les conversations (lot 8)
+et l'étape 2, de la conception d'un POC à son test léger (lot 10, voir
+[`etapes/2-conception-poc.md`](etapes/2-conception-poc.md)). Les étapes
+suivantes sont l'objet des lots suivants. Serge ne peut
 donc pas encore être allumé pour de vrai, et il est arrêté par défaut.
 
 ### Ce que le code met dans la base

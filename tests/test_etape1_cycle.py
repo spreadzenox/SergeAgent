@@ -182,6 +182,9 @@ class CycleEtape1Tests(unittest.TestCase):
             " WHERE invocation_id='explorer_web' AND name='recherches_max';"
             "UPDATE invocation_settings SET value='2'"
             " WHERE invocation_id='trier_pages' AND name='taille_paquet';"
+            # Le test s'arrête à la fin de l'étape 1 : la suite (concevoir
+            # le POC du business choisi) a son test, tests/test_etape2.py.
+            "UPDATE links SET enabled=0 WHERE id='choix_vers_conception_poc';"
         )
         self.conn.commit()
         for cible, faux in (

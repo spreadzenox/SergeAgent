@@ -112,26 +112,6 @@ points:
     enabled: true
 
   # ---- Builder ----
-  build_artifact:
-    verdict: LLM-L
-    tier: T3
-    output_mode: structured
-    external_info: true
-    context: {}
-    note: Coeur opérationnel - pas d'économie de modèle (validé).
-    garde_fou: sandbox (pas secret/mutation externe, réseau allowlist) ; sortie = artifact versionné ; 3 passes max partagées avec review_build
-    repli: ticket QNA (spec + tentatives + recommandation) - pas de repli dét pour créer
-    enabled: true
-  review_build:
-    verdict: LLM-1
-    tier: T2
-    output_mode: structured
-    external_info: false
-    context: {}
-    note: Multimodal obligatoire (screenshots + interaction sandboxée). Juge DISTINCT du builder.
-    garde_fou: verdict enum strict ; FIX <= 5 localisés ; passe 3 = binaire + dette ; FAIL-CLOSED
-    repli: aucun (fail-closed)
-    enabled: true
   summarize_build_debt:
     verdict: LLM-R
     tier: T1

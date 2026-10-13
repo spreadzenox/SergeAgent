@@ -34,6 +34,7 @@ SAISIES = {
     'discuter_fil': ('Discuter', 'Ton message'),
     'ma_reponse': ('Ta réponse au contact', 'Le message qui partira'),
     'reecrire': ('Réécrire le brouillon', 'Tes consignes à Serge'),
+    'a_corriger': ('À corriger', 'Ce qu’il faut corriger, tes consignes'),
 }
 # Les types d'interaction Discord : un composant, une fenêtre envoyée.
 COMPOSANT = frozenset({2, 3})

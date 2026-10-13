@@ -40,12 +40,13 @@ export async function agirTicket(main, store, ticketId, acte, options = [], mess
   let charge = {ticket_id: ticketId, acte};
   if (acte === 'discuter_fil') acte = 'discuter';
   charge.acte = acte;
-  if (['editer','discuter','reponse_libre','choix_qcm','ma_reponse','reecrire'].includes(acte)) {
+  if (['editer','discuter','reponse_libre','choix_qcm','ma_reponse','reecrire','a_corriger'].includes(acte)) {
     const estEdit = acte !== 'discuter';
     const consignes = {
       editer: ['Décris la modification.', 'Note : '],
       ma_reponse: ['Le message qui partira au contact, tel quel.', 'Réponse : '],
       reecrire: ['Tes consignes : Serge réécrit, et le brouillon revient ici.', 'Consignes : '],
+      a_corriger: ['Ce qu’il faut corriger : tes consignes repartent à Serge.', 'Consignes : '],
     }[acte];
     // « Ma réponse » et « Éditer » s'ouvrent avec le message dont parle le
     // ticket : son texte, et son objet s'il en a un.
@@ -97,7 +98,7 @@ export async function agirTicket(main, store, ticketId, acte, options = [], mess
       title: `${libelleActe(acte)} ?`,
       message: `Ticket ${ticketId} — acte irréversible côté état.`,
       confirm: libelleActe(acte),
-      danger: ['rejeter','abandonner','refuser','annuler','ne_rien_envoyer'].includes(acte),
+      danger: ['rejeter','abandonner','refuser','annuler','ne_rien_envoyer','arreter_business'].includes(acte),
     });
     if (!confirmer) {
       return;
@@ -177,6 +178,8 @@ export function libelleActe(acte) {
       envoyer_brouillon: 'Envoyer le brouillon', ma_reponse: 'Ma réponse',
       reecrire: 'Réécrire', ne_rien_envoyer: 'Ne rien envoyer',
       passer: 'Passer à la suite', ne_pas_passer: 'Ne pas passer',
+      valider: 'Valider', a_corriger: 'À corriger',
+      arreter_business: 'Arrêter le business',
     }[acte] || acte
   );
 }
