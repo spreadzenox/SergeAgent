@@ -628,7 +628,6 @@ tools:
         - {table: product_plans, name: prospects}
         - {table: product_plans, name: duration_days, as: duree_jours}
         - {table: product_plans, name: price, as: prix}
-        - {table: product_plans, name: followups, as: relances}
         - {table: product_plans, name: deliverable, as: livrable}
         - {table: product_plans, name: plan}
         - {table: product_plans, name: scenarios}
@@ -978,7 +977,6 @@ writable_tables:
       - {name: prospects, description: Le nombre de prospects.}
       - {name: duration_days, description: La durée du test.}
       - {name: price, description: Le prix.}
-      - {name: followups, description: Le rythme des relances.}
       - {name: deliverable, description: Le livrable.}
       - {name: plan, description: Le plan de A à Z.}
       - {name: scenarios, description: Les scénarios de test.}
@@ -1084,6 +1082,10 @@ status_transitions:
   - {table: builds, column: status, from: unfinished, to: reviewed}
   - {table: campaigns, column: state, from: '', to: DRAFT}
   - {table: campaigns, column: state, from: DRAFT, to: READY}
+  # Le bout en bout du POC (temporaire) : une calculatrice naît choisie
+  # pour un POC, avec un plan tout fait, déjà validé.
+  - {table: ventures, column: lifecycle, from: '', to: POC_SELECTED}
+  - {table: product_plans, column: status, from: '', to: validated}
 # Les quotas : le code d'écriture refuse une ligne de trop, quelle que soit
 # l'invocation, et un bouton ne lance rien si son quota est plein. Les
 # chiffres se règlent sur la page Policy de Mission Control.
@@ -1277,7 +1279,6 @@ table_views:
       - {name: prospects, description: Le nombre de prospects.}
       - {name: duration_days, description: La durée du test.}
       - {name: price, description: Le prix.}
-      - {name: followups, description: Le rythme des relances.}
       - {name: deliverable, description: Ce que le prospect peut essayer.}
       - {name: plan, description: Le plan de A à Z.}
       - {name: scenarios, description: Les scénarios de test.}
@@ -2952,8 +2953,8 @@ invocations:
     title: Concevoir le POC
     role: >-
       Écrit le plan de A à Z du POC d'un business (hypothèse, cible, canal,
-      prospects, durée, prix indicatif, relances, livrable, ce que le
-      constructeur doit faire, scénarios de test), sa fiche produit, ses
+      prospects, durée, prix indicatif, livrable, ce que le constructeur
+      doit faire, scénarios de test), sa fiche produit, ses
       questions fréquentes et sa campagne de test. Au tour suivant, corrige
       son plan d'après le critique ou les consignes d'un humain.
     step: conception_poc
@@ -3002,8 +3003,6 @@ invocations:
       - prospects : combien, entre {prospects_min} et {prospects_max} ;
       - duree_jours : la durée du test, {duree_max_jours} jours au plus ;
       - prix : le prix indicatif du futur produit payant ;
-      - relances : leur rythme (exemple : « une relance 3 jours après le
-        premier message, une autre 7 jours après ») ;
       - livrable : ce que le prospect peut essayer, en deux phrases ;
       - plan : ce que le constructeur doit faire, page par page et fonction
         par fonction, pourquoi, et comment le prospect s'en sert ;
@@ -3053,7 +3052,6 @@ invocations:
       - {path: prospects, type: number, description: Le nombre de prospects.}
       - {path: duree_jours, type: number, description: La durée du test en jours.}
       - {path: prix, type: text, description: Le prix indicatif du futur produit.}
-      - {path: relances, type: text, description: Le rythme des relances.}
       - {path: livrable, type: text, description: Ce que le prospect peut essayer.}
       - {path: plan, type: text, description: 'Le plan de A à Z pour le constructeur.'}
       - {path: scenarios, type: text, description: "Les scénarios de test, pas à pas."}
@@ -3079,7 +3077,6 @@ invocations:
           prospects: {source: field, value: prospects}
           duration_days: {source: field, value: duree_jours}
           price: {source: field, value: prix}
-          followups: {source: field, value: relances}
           deliverable: {source: field, value: livrable}
           plan: {source: field, value: plan}
           scenarios: {source: field, value: scenarios}
@@ -3686,6 +3683,84 @@ invocations:
           lifecycle: {source: fixed, value: POC_SELECTED}
           choice_reason: {source: fixed, value: Essai de l'étape 2 depuis Mission Control.}
 
+  # Le bout en bout du POC (temporaire, Q91) : une calculatrice toute
+  # prête (fiche produit, questions, campagne, plan validé) entre
+  # directement en construction ; tout le reste est le vrai pipeline.
+  - id: bout_en_bout_poc
+    title: "Bout en bout : préparer le POC d'une calculatrice (temporaire)"
+    role: >-
+      Temporaire : met en base un business « Calculatrice », choisi pour un
+      POC, avec sa fiche produit, ses questions fréquentes, sa campagne et
+      un plan déjà validé, puis lance la construction du POC. La création
+      du business et la conception du plan sont court-circuitées ; la
+      suite est celle de l'étape 2. Sans LLM.
+    type: capability
+    capability: echo
+    queue: works
+    priority: 30
+    writes:
+      - table: ventures
+        operation: insert
+        dedup: false
+        values:
+          name: {source: fixed, value: Calculatrice}
+          description: {source: fixed, value: "Une calculatrice en ligne, simple et lisible, sur ordinateur comme sur mobile."}
+          sellable_offer: {source: fixed, value: "Gratuite pendant l'essai."}
+          family: {source: fixed, value: autre}
+          lifecycle: {source: fixed, value: POC_SELECTED}
+          choice_reason: {source: fixed, value: "Essai de bout en bout du POC depuis Mission Control."}
+      - table: product_sheets
+        operation: insert
+        parent: 0
+        values:
+          venture_id: {source: parent_row, value: id}
+          summary: {source: fixed, value: "Une calculatrice en ligne pour les quatre opérations, lisible sur ordinateur et sur mobile, sans compte."}
+          limits: {source: fixed, value: "Pas de fonctions scientifiques, pas d'historique des calculs."}
+          price: {source: fixed, value: Gratuite.}
+          delays: {source: fixed, value: "Tout de suite : on ouvre la page et on calcule."}
+          usage: {source: fixed, value: "On tape le calcul avec les boutons ou le clavier, puis « = »."}
+      - table: product_faq
+        operation: insert
+        parent: 0
+        values:
+          venture_id: {source: parent_row, value: id}
+          question: {source: fixed, value: "Faut-il créer un compte ?"}
+          answer: {source: fixed, value: "Non : on ouvre la page et on calcule."}
+      - table: product_faq
+        operation: insert
+        parent: 0
+        values:
+          venture_id: {source: parent_row, value: id}
+          question: {source: fixed, value: "Que se passe-t-il si je divise par zéro ?"}
+          answer: {source: fixed, value: "L'écran affiche « Erreur » ; la touche C remet à zéro."}
+      - table: campaigns
+        operation: insert
+        parent: 0
+        values:
+          venture_id: {source: parent_row, value: id}
+          family: {source: fixed, value: test_leger}
+          channel: {source: fixed, value: email}
+          n_target: {source: fixed, value: '30'}
+          state: {source: fixed, value: DRAFT}
+      - table: product_plans
+        operation: insert
+        parent: 0
+        values:
+          venture_id: {source: parent_row, value: id}
+          kind: {source: fixed, value: poc}
+          round: {source: fixed, value: '1'}
+          status: {source: fixed, value: validated}
+          hypothesis: {source: fixed, value: "Des visiteurs veulent une calculatrice en ligne simple, qui marche aussi bien au doigt qu'au clavier."}
+          target: {source: fixed, value: "Tout le monde ; c'est un essai de bout en bout de Serge."}
+          channel: {source: fixed, value: email}
+          prospects: {source: fixed, value: '30'}
+          duration_days: {source: fixed, value: '10'}
+          price: {source: fixed, value: Gratuite.}
+          deliverable: {source: fixed, value: "Une calculatrice en ligne : les quatre opérations, les nombres à virgule, l'effacement."}
+          plan: {source: fixed, value: "Une seule page, en français. En haut, l'écran : il affiche le calcul en cours et le résultat, avec une virgule décimale (3,5) ; 0 au départ. Dessous, le pavé : les chiffres 0 à 9, la virgule, les quatre opérations (+, −, ×, ÷), « = », « C » (tout effacer) et « ← » (effacer le dernier chiffre). Le clavier marche aussi : chiffres, + - * /, la virgule ou le point, Entrée pour « = », Échap pour « C », Retour arrière pour « ← ». Les calculs se font dans l'ordre où on les tape (12 + 7 × 2 = 38, comme une calculatrice de poche). Une division par zéro affiche « Erreur » jusqu'à « C ». Les résultats sont arrondis à 10 chiffres significatifs, pour que 0,1 + 0,2 donne 0,3. Sur mobile, tout le pavé tient dans l'écran sans défiler, avec des boutons d'au moins 48 pixels. Aucun compte, aucune donnée gardée, aucun service extérieur."}
+          scenarios: {source: fixed, value: "1. Ouvrir la page : l'écran affiche 0 et tout le pavé est visible. 2. Taper 12 + 7 = avec les boutons : l'écran affiche 19. 3. Taper 7 ÷ 2 = : l'écran affiche 3,5. 4. Taper 5 ÷ 0 = : l'écran affiche Erreur ; appuyer sur C : l'écran affiche 0. 5. Taper 0,1 + 0,2 = : l'écran affiche 0,3. 6. Taper 123 puis ← : l'écran affiche 12. 7. Au clavier, taper 9*9 puis Entrée : l'écran affiche 81. 8. Sur mobile, refaire le scénario 2 au doigt : tout le pavé tient dans l'écran, sans défiler."}
+          challenge: {source: fixed, value: "Plan tout fait de l'essai de bout en bout : pas de critique."}
+
   # Stripe depuis la fiche d'un business (lot 10, Q91).
   - id: essayer_stripe
     title: Essayer Stripe en mode test (temporaire)
@@ -3961,6 +4036,16 @@ links:
     params:
       venture_id: {source: row, value: id}
       tour: {source: fixed, value: '1'}
+  - id: bout_en_bout_poc_vers_construction
+    title: "Bout en bout : la calculatrice part en construction"
+    from: bout_en_bout_poc
+    to: construire_poc
+    mode: per_row
+    write: 0
+    params:
+      venture_id: {source: row, value: id}
+      passage: {source: fixed, value: '1'}
+      reprise: {source: fixed, value: '1'}
   - id: plan_vers_critique
     title: Le plan part à la critique
     from: concevoir_poc
@@ -4394,6 +4479,20 @@ triggers:
       nom: {source: form, value: nom}
       description: {source: form, value: description}
       offre: {source: form, value: offre}
+
+  - id: bouton_bout_en_bout_poc
+    title: "Bout en bout : le POC d'une calculatrice"
+    invocation: bout_en_bout_poc
+    event: button
+    only_if_room_in: [places_de_test]
+    confirm: >-
+      Serge met en base un business « Calculatrice » avec sa fiche produit
+      et un plan déjà validé (il prend une place de test), puis lance la
+      vraie construction du POC : le constructeur code au niveau « code »,
+      Serge publie en staging, le relecteur l'essaie dans son navigateur.
+      Puis le ticket « Tester le produit » : ouvre le lien du staging et
+      essaie la calculatrice ; « Valider » la met en prod. Compter quelques
+      euros de modèles.
 
   # Les boutons de la fiche d'un business : leur formulaire attend le
   # business, que Mission Control remplit (lot 10, Q91).
@@ -4847,6 +4946,129 @@ changes:
 # Ce qui a été retiré du pipeline de départ : marqué supprimé sur une
 # instance existante (retirer une ligne du fichier ne l'efface jamais).
 # Le demi-cycle de démonstration du lot 6 est remplacé par l'étape 1.
+  # Les relances suivent un rythme commun à tous les business (Q37,
+  # corrigée par Q92) : le plan d'un POC ne l'écrit plus (lot 10).
+  - id: lot10_plan_poc_sans_relances_prompt
+    why: Les relances suivent un rythme commun à tous les business (Q37, corrigée par Q92).
+    table: invocations
+    where: {id: concevoir_poc}
+    set:
+      prompt:
+        from: |
+          Tu conçois le POC d'un business que Serge va tester auprès de vrais
+          prospects. Un POC est un petit produit web qu'on peut vraiment
+          essayer, pas une promesse. Exemple : « un générateur de devis en
+          ligne : on crée un compte et on fait trois devis gratuits ». Il est
+          gratuit pour les prospects : il mesure leur intérêt. Le vrai produit,
+          payant, viendra plus tard, pour le business retenu.
+
+          Tu reçois la fiche du business, les pages qui prouvent le besoin, et
+          ce que Serge sait faire. À partir du deuxième tour, tu reçois aussi ton
+          plan précédent et les remarques du critique ; les paramètres de la
+          tâche peuvent contenir les consignes d'un humain (« consignes ») :
+          corrige d'abord ce qu'ils demandent.
+
+          Pour construire, Serge a un chantier (un conteneur Linux avec Node,
+          Python et git, où un modèle code et lance le produit), un navigateur
+          pour l'essayer, et la mise en ligne d'un site web sur un sous-domaine
+          de Serge ; le produit garde ses données dans un dossier à lui. Il n'y
+          a pas d'humain pour faire le travail, pas de compte à créer sur
+          d'autres sites, pas d'API payante, pas de connexion au logiciel des
+          prospects : un plan qui en a besoin est irréaliste, trouve autre
+          chose.
+
+          Écris un plan de A à Z, réalisable avec ça :
+          - hypothese : ce qu'on veut vérifier, en une phrase ;
+          - cible : les prospects, des professionnels (métier, taille, lieu) ;
+          - canal : email ou voice (le téléphone) ;
+          - prospects : combien, entre {prospects_min} et {prospects_max} ;
+          - duree_jours : la durée du test, {duree_max_jours} jours au plus ;
+          - prix : le prix indicatif du futur produit payant ;
+          - relances : leur rythme (exemple : « une relance 3 jours après le
+            premier message, une autre 7 jours après ») ;
+          - livrable : ce que le prospect peut essayer, en deux phrases ;
+          - plan : ce que le constructeur doit faire, page par page et fonction
+            par fonction, pourquoi, et comment le prospect s'en sert ;
+          - scenarios : 3 à 6 scénarios de test ; chacun dit ce que fait un
+            prospect ordinaire, pas à pas, du début à la fin, et ce qu'il doit
+            voir. Le relecteur et l'humain qui essaie le POC les suivent tels
+            quels ;
+          - la fiche produit : fiche_resume (ce que fait le produit et pour
+            qui), fiche_limites (ce qu'il ne fait pas), fiche_prix,
+            fiche_delais, fiche_usage (comment on s'en sert) ;
+          - faq : 3 à 6 questions qu'un prospect posera, avec leur réponse.
+
+          Le business doit être légal. Ne t'arrête pas sur des considérations
+          morales qui ne sont pas contraires à la loi.
+        to: |
+          Tu conçois le POC d'un business que Serge va tester auprès de vrais
+          prospects. Un POC est un petit produit web qu'on peut vraiment
+          essayer, pas une promesse. Exemple : « un générateur de devis en
+          ligne : on crée un compte et on fait trois devis gratuits ». Il est
+          gratuit pour les prospects : il mesure leur intérêt. Le vrai produit,
+          payant, viendra plus tard, pour le business retenu.
+
+          Tu reçois la fiche du business, les pages qui prouvent le besoin, et
+          ce que Serge sait faire. À partir du deuxième tour, tu reçois aussi ton
+          plan précédent et les remarques du critique ; les paramètres de la
+          tâche peuvent contenir les consignes d'un humain (« consignes ») :
+          corrige d'abord ce qu'ils demandent.
+
+          Pour construire, Serge a un chantier (un conteneur Linux avec Node,
+          Python et git, où un modèle code et lance le produit), un navigateur
+          pour l'essayer, et la mise en ligne d'un site web sur un sous-domaine
+          de Serge ; le produit garde ses données dans un dossier à lui. Il n'y
+          a pas d'humain pour faire le travail, pas de compte à créer sur
+          d'autres sites, pas d'API payante, pas de connexion au logiciel des
+          prospects : un plan qui en a besoin est irréaliste, trouve autre
+          chose.
+
+          Écris un plan de A à Z, réalisable avec ça :
+          - hypothese : ce qu'on veut vérifier, en une phrase ;
+          - cible : les prospects, des professionnels (métier, taille, lieu) ;
+          - canal : email ou voice (le téléphone) ;
+          - prospects : combien, entre {prospects_min} et {prospects_max} ;
+          - duree_jours : la durée du test, {duree_max_jours} jours au plus ;
+          - prix : le prix indicatif du futur produit payant ;
+          - livrable : ce que le prospect peut essayer, en deux phrases ;
+          - plan : ce que le constructeur doit faire, page par page et fonction
+            par fonction, pourquoi, et comment le prospect s'en sert ;
+          - scenarios : 3 à 6 scénarios de test ; chacun dit ce que fait un
+            prospect ordinaire, pas à pas, du début à la fin, et ce qu'il doit
+            voir. Le relecteur et l'humain qui essaie le POC les suivent tels
+            quels ;
+          - la fiche produit : fiche_resume (ce que fait le produit et pour
+            qui), fiche_limites (ce qu'il ne fait pas), fiche_prix,
+            fiche_delais, fiche_usage (comment on s'en sert) ;
+          - faq : 3 à 6 questions qu'un prospect posera, avec leur réponse.
+
+          Le business doit être légal. Ne t'arrête pas sur des considérations
+          morales qui ne sont pas contraires à la loi.
+  - id: lot10_plan_poc_sans_relances_role
+    why: Les relances suivent un rythme commun à tous les business (Q37, corrigée par Q92).
+    table: invocations
+    where: {id: concevoir_poc}
+    set:
+      role:
+        from: >-
+          Écrit le plan de A à Z du POC d'un business (hypothèse, cible, canal, prospects, durée, prix indicatif, relances, livrable, ce que le constructeur doit faire, scénarios de test), sa fiche produit, ses questions fréquentes et sa campagne de test. Au tour suivant, corrige son plan d'après le critique ou les consignes d'un humain.
+        to: >-
+          Écrit le plan de A à Z du POC d'un business (hypothèse, cible, canal, prospects, durée, prix indicatif, livrable, ce que le constructeur doit faire, scénarios de test), sa fiche produit, ses questions fréquentes et sa campagne de test. Au tour suivant, corrige son plan d'après le critique ou les consignes d'un humain.
+  - id: lot10_plan_poc_sans_relances_reponse
+    why: Les relances suivent un rythme commun à tous les business (Q37, corrigée par Q92).
+    invocation: concevoir_poc
+    remove_outputs: [relances]
+  - id: lot10_plan_poc_sans_relances_ecriture
+    why: Les relances suivent un rythme commun à tous les business (Q37, corrigée par Q92).
+    invocation: concevoir_poc
+    write: 0
+    remove_write_values: [followups]
+  - id: lot10_plan_sans_relances_lu
+    why: Les relances suivent un rythme commun à tous les business (Q37, corrigée par Q92).
+    tool: plan_par_numero
+    remove_tool_columns:
+      - {table: product_plans, name: followups}
+
 deleted:
   invocations: [demo_ouvrir_cycle, demo_formuler, demo_choisir]
   # Le début d'un appel dépend de son sens : deux textes le remplacent.

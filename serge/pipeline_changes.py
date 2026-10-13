@@ -23,7 +23,12 @@ une seule fois, à la fin de ses outils (un outil retiré ensuite ne revient
 pas). De même pour un champ nouveau de sa réponse (``add_outputs``), une
 valeur nouvelle d'une de ses écritures (``add_write_values``, avec le rang
 ``write`` de l'écriture) et un paramètre nouveau d'un déclencheur
-(``add_trigger_params``, avec ``trigger``) :
+(``add_trigger_params``, avec ``trigger``). À l'inverse, un champ de la
+réponse (``remove_outputs``), une valeur d'une écriture
+(``remove_write_values``) ou une colonne lue par un outil de lecture
+(``remove_tool_columns``, avec ``tool``) se retirent une seule fois :
+exemple, le rythme des relances, sorti du plan d'un POC (Q37, corrigée
+par Q92).
 
     changes:
       - id: un_outil_de_plus
@@ -267,6 +272,85 @@ def _add_trigger_params(
     return ' ; '.join(parts)
 
 
+def _textes(raw: Any, quoi: str) -> list[str]:
+    if not isinstance(raw, list) or not all(
+        isinstance(x, str) and x for x in raw
+    ):
+        raise PipelineSeedError(f'changes : {quoi}, une liste de noms')
+    return list(raw)
+
+
+def _remove_outputs(
+    conn: sqlite3.Connection, invocation: str, raw: Any
+) -> str:
+    """Retire des champs de la réponse d'une invocation déjà en base, avec
+    leurs sous-champs (``faq`` retire aussi ``faq.question``)."""
+    paths = _textes(raw, 'remove_outputs')
+    if _invocation_absente(conn, invocation):
+        return 'objet absent'
+    parts = []
+    for path in paths:
+        retires = conn.execute(
+            'DELETE FROM invocation_output_fields WHERE invocation_id=?'
+            ' AND (path=? OR path LIKE ?)',
+            (invocation, path, f'{path}.%'),
+        ).rowcount
+        parts.append(f'{path} retiré' if retires else f'{path} déjà absent')
+    return ' ; '.join(parts)
+
+
+def _remove_write_values(
+    conn: sqlite3.Connection, invocation: str, write: Any, raw: Any
+) -> str:
+    """Retire des valeurs d'une écriture d'une invocation déjà en base (son
+    rang ``write``) : la colonne n'est plus écrite."""
+    columns = _textes(raw, 'remove_write_values')
+    if not isinstance(write, int):
+        raise PipelineSeedError('changes : remove_write_values, un rang write')
+    if _invocation_absente(conn, invocation):
+        return 'objet absent'
+    row = conn.execute(
+        'SELECT id FROM invocation_writes WHERE invocation_id=? AND position=?',
+        (invocation, write),
+    ).fetchone()
+    if row is None:
+        return 'écriture absente'
+    parts = []
+    for column in columns:
+        retires = conn.execute(
+            'DELETE FROM invocation_write_values WHERE write_id=?'
+            ' AND column_name=?',
+            (row[0], column),
+        ).rowcount
+        parts.append(
+            f'{column} retiré' if retires else f'{column} déjà absent'
+        )
+    return ' ; '.join(parts)
+
+
+def _remove_tool_columns(conn: sqlite3.Connection, tool: str, raw: Any) -> str:
+    """Retire des colonnes lues par un outil de lecture déjà en base."""
+    if not isinstance(raw, list) or not all(
+        isinstance(c, Mapping) and c.get('table') and c.get('name')
+        for c in raw
+    ):
+        raise PipelineSeedError(
+            'changes : remove_tool_columns, une liste de {table, name}'
+        )
+    if not conn.execute('SELECT 1 FROM tools WHERE id=?', (tool,)).fetchone():
+        return 'objet absent'
+    parts = []
+    for col in raw:
+        retires = conn.execute(
+            'DELETE FROM tool_db_columns WHERE tool_id=? AND table_name=?'
+            ' AND column_name=?',
+            (tool, str(col['table']), str(col['name'])),
+        ).rowcount
+        nom = f'{col["table"]}.{col["name"]}'
+        parts.append(f'{nom} retiré' if retires else f'{nom} déjà absent')
+    return ' ; '.join(parts)
+
+
 def apply_changes(conn: sqlite3.Connection, raw: Any) -> None:
     """Applique les modifications de ``pipeline.yaml`` pas encore passées.
 
@@ -299,6 +383,23 @@ def apply_changes(conn: sqlite3.Connection, raw: Any) -> None:
                 invocation,
                 change.get('write'),
                 change['add_write_values'],
+            )
+        elif 'remove_outputs' in change:
+            result = _remove_outputs(
+                conn, invocation, change['remove_outputs']
+            )
+        elif 'remove_write_values' in change:
+            result = _remove_write_values(
+                conn,
+                invocation,
+                change.get('write'),
+                change['remove_write_values'],
+            )
+        elif 'remove_tool_columns' in change:
+            result = _remove_tool_columns(
+                conn,
+                str(change.get('tool') or ''),
+                change['remove_tool_columns'],
             )
         else:
             table = str(change['table'])

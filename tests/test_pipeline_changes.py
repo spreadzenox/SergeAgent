@@ -13,7 +13,10 @@ Scénarios :
   déjà changé ;
 - un outil nouveau s'ajoute une seule fois à une invocation déjà en base,
   à la fin de ses outils, avec ses paramètres ;
-- une modification mal écrite est refusée.
+- une modification mal écrite est refusée ;
+- une instance de la PR 4 du lot 10 perd le rythme des relances dans le
+  plan d'un POC (Q37) : le champ de la réponse, sa colonne écrite et lue,
+  et son paragraphe du prompt ; une instance neuve n'a rien à retirer.
 """
 
 from __future__ import annotations
@@ -334,6 +337,117 @@ class NiveauxDeModeleTests(unittest.TestCase):
         # Rejouée, elle ne change plus rien.
         ensure_pipeline(conn)
         self.assertEqual(self._niveaux(conn)['smart'][0], 2.5)
+
+
+class PlanSansRelancesTests(unittest.TestCase):
+    """Une instance où « Concevoir le POC » écrit encore les relances."""
+
+    IDS = (
+        'lot10_plan_poc_sans_relances_prompt',
+        'lot10_plan_poc_sans_relances_role',
+        'lot10_plan_poc_sans_relances_reponse',
+        'lot10_plan_poc_sans_relances_ecriture',
+        'lot10_plan_sans_relances_lu',
+    )
+
+    def setUp(self) -> None:
+        self.conn = sqlite3.connect(':memory:')
+        self.addCleanup(self.conn.close)
+        init_schema(self.conn)
+        self.changes = [
+            c
+            for c in read_yaml_file(config_dir() / 'pipeline.yaml')['changes']
+            if c['id'] in self.IDS
+        ]
+
+    def _etat(self) -> tuple:
+        c = self.conn
+        return (
+            c.execute(
+                'SELECT COUNT(*) FROM invocation_output_fields'
+                " WHERE invocation_id='concevoir_poc' AND path='relances'"
+            ).fetchone()[0],
+            c.execute(
+                'SELECT COUNT(*) FROM invocation_write_values v'
+                ' JOIN invocation_writes w ON w.id=v.write_id'
+                " WHERE w.invocation_id='concevoir_poc'"
+                " AND v.column_name='followups'"
+            ).fetchone()[0],
+            c.execute(
+                "SELECT COUNT(*) FROM tool_db_columns WHERE tool_id='plan_par_numero'"
+                " AND column_name='followups'"
+            ).fetchone()[0],
+            'relances : leur rythme'
+            in c.execute(
+                "SELECT prompt FROM invocations WHERE id='concevoir_poc'"
+            ).fetchone()[0],
+        )
+
+    def test_une_instance_de_la_pr4_perd_les_relances(self) -> None:
+        c = self.conn
+        avant = {ch['id']: ch for ch in self.changes}
+        c.execute(
+            'UPDATE invocations SET prompt=?, role=? WHERE id=?',
+            (
+                avant['lot10_plan_poc_sans_relances_prompt']['set']['prompt'][
+                    'from'
+                ].strip(),
+                avant['lot10_plan_poc_sans_relances_role']['set']['role'][
+                    'from'
+                ].strip(),
+                'concevoir_poc',
+            ),
+        )
+        c.execute(
+            'INSERT INTO invocation_output_fields(invocation_id, path, type,'
+            " required, description, position) VALUES('concevoir_poc',"
+            " 'relances', 'text', 1, 'Le rythme des relances.', 99)"
+        )
+        ecriture = c.execute(
+            "SELECT id FROM invocation_writes WHERE invocation_id='concevoir_poc'"
+            ' AND position=0'
+        ).fetchone()[0]
+        c.execute(
+            'INSERT INTO invocation_write_values(write_id, column_name,'
+            " source, value) VALUES(?, 'followups', 'field', 'relances')",
+            (ecriture,),
+        )
+        c.execute(
+            'INSERT INTO tool_db_columns(tool_id, table_name, column_name,'
+            " output_name, position) VALUES('plan_par_numero', 'product_plans',"
+            " 'followups', 'relances', 99)"
+        )
+        c.executemany(
+            'DELETE FROM pipeline_changes WHERE id=?', [(i,) for i in self.IDS]
+        )
+        self.assertEqual(self._etat(), (1, 1, 1, True))
+        apply_changes(c, self.changes)
+        self.assertEqual(self._etat(), (0, 0, 0, False))
+        self.assertEqual(
+            c.execute(
+                'SELECT result FROM pipeline_changes'
+                " WHERE id='lot10_plan_poc_sans_relances_reponse'"
+            ).fetchone()[0],
+            'relances retiré',
+        )
+
+    def test_une_instance_neuve_n_a_rien_a_retirer(self) -> None:
+        self.assertEqual(self._etat(), (0, 0, 0, False))
+        resultats = dict(
+            self.conn.execute(
+                'SELECT id, result FROM pipeline_changes WHERE id IN'
+                f' ({",".join("?" * len(self.IDS))})',
+                self.IDS,
+            ).fetchall()
+        )
+        self.assertEqual(
+            resultats['lot10_plan_poc_sans_relances_ecriture'],
+            'followups déjà absent',
+        )
+        self.assertEqual(
+            resultats['lot10_plan_poc_sans_relances_prompt'],
+            'prompt déjà à jour',
+        )
 
 
 if __name__ == '__main__':

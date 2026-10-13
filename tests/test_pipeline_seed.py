@@ -175,13 +175,13 @@ class PipelineSeedTests(unittest.TestCase):
         )
         # Celles du pipeline de départ ('' → CANDIDATE, CANDIDATE →
         # POC_SELECTED, '' → TEST pour le business d'essai, POC_SELECTED →
-        # SMOKE_READY ou KILLED à l'étape 2), le fichier de test n'en
-        # ajoute pas de nouvelle.
+        # SMOKE_READY ou KILLED à l'étape 2, '' → POC_SELECTED pour le bout
+        # en bout), le fichier de test n'en ajoute pas de nouvelle.
         self.assertEqual(
             self._one(
                 "SELECT COUNT(*) FROM status_transitions WHERE table_name='ventures'"
             ),
-            (5,),
+            (6,),
         )
 
     def test_rien_n_est_ecrase(self) -> None:

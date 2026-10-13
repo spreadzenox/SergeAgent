@@ -19,6 +19,8 @@ elle n'est jamais modifiée (décision Q40). Publier en staging :
 Publier en prod reprend telle quelle l'image de la version passée en
 staging : rien n'est reconstruit. Adresses : ``staging-<produit>.<domaine>``,
 ``<produit>.<domaine>`` en prod, ou le domaine acheté pour le produit fini.
+Une adresse ne sert qu'un produit : publier sur une adresse déjà prise (un
+second essai au même nom) arrête l'ancien produit.
 """
 
 from __future__ import annotations
@@ -308,6 +310,7 @@ def _lancer(
             port=port,
             hostname=hostname,
         )
+    _remplacer(conn, deployment, hostname)
     caddy.upsert(
         hostname,
         f'127.0.0.1:{port}',
@@ -341,6 +344,26 @@ def _lancer(
     if rechargement:
         result['caddy'] = rechargement
     return result
+
+
+def _remplacer(
+    conn: sqlite3.Connection, deployment: str, hostname: str
+) -> None:
+    """Une adresse ne sert qu'un produit : une autre publication sur la même
+    adresse (un essai d'avant, au même nom) est arrêtée, et sa route passe
+    au nouveau produit."""
+    for ident, container in conn.execute(
+        'SELECT id, container FROM deployments WHERE hostname=? AND id<>?'
+        " AND status<>'stopped'",
+        (hostname, deployment),
+    ).fetchall():
+        docker(['rm', '-f', str(container)], timeout=120, check=False)
+        conn.execute(
+            "UPDATE deployments SET status='stopped', last_error=?,"
+            ' updated_at=? WHERE id=?',
+            (f'remplacé par {deployment} sur {hostname}', utcnow(), ident),
+        )
+        journal(f'{ident} arrêté : {hostname} passe à {deployment}')
 
 
 def _noter(

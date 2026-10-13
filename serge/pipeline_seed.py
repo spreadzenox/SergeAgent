@@ -270,6 +270,7 @@ def _seed_writes(
             condition_field=cond[0],
             condition_op=cond[1],
             condition_value=cond[2],
+            skip_dedup=int(write.get('dedup', True) is False),
         )
         write_ids.append(write_id)
         seed_params(
