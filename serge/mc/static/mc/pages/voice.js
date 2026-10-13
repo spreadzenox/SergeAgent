@@ -1,5 +1,5 @@
 // Page P7 Voix : CDR, audio signée (E7), pont, journaux du serveur.
-import {fillList, li, rel} from '../components.js';
+import {afficherJournaux, fillList, li, rel} from '../components.js';
 
 function libelleIssue(c) {
   if (c.decision === 'denied') {
@@ -64,25 +64,7 @@ function renderCdr(main, payload, sig) {
 }
 
 function renderJournaux(main, payload, sig) {
-  const conteneur = main.querySelector('[data-journaux="blocs"]');
-  conteneur.replaceChildren();
-  for (const bloc of payload.blocs || []) {
-    const titre = document.createElement('h3');
-    titre.textContent = bloc.titre;
-    conteneur.append(titre);
-    const lignes = bloc.lignes || [];
-    if (bloc.erreur || lignes.length === 0) {
-      const p = document.createElement('p');
-      p.textContent = bloc.erreur || 'Rien dans ce journal.';
-      conteneur.append(p);
-      continue;
-    }
-    const pre = document.createElement('pre');
-    pre.className = 'diff-bloc journal-serveur';
-    pre.textContent = lignes.join('\n');
-    conteneur.append(pre);
-    pre.scrollTop = pre.scrollHeight;
-  }
+  afficherJournaux(main.querySelector('[data-journaux="blocs"]'), payload.blocs);
   main.querySelector('[data-section="journal_voix"]').dataset.sig = sig;
 }
 

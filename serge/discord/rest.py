@@ -42,6 +42,20 @@ def bot_token(root: Path | None = None) -> str:
     return read_secret_file(base / 'secrets/discord-bot-token')
 
 
+def _detail(exc: urllib.error.HTTPError) -> str:
+    """Le message d'erreur que Discord renvoie, ou ``''``.
+
+    Exemple : `` (50013 Missing Permissions)``.
+    """
+    try:
+        body = json.loads(exc.read().decode('utf-8') if exc.fp else '{}')
+    except (ValueError, AttributeError, OSError):
+        return ''
+    if not isinstance(body, dict) or not body.get('message'):
+        return ''
+    return f' ({body.get("code", "")} {body.get("message")})'[:300]
+
+
 def _request(
     token: str,
     method: str,
@@ -86,17 +100,26 @@ def _request(
                 time.sleep(min(10.0, max(0.5, retry_after)))
                 attempt += 1
                 continue
+            # Ce que Discord dit de l'erreur (son code et son message, sans
+            # secret), pour le journal.
+            detail = _detail(exc)
             if exc.code == 401:
-                raise DiscordError('AUTH: token Discord rejeté') from exc
+                raise DiscordError(
+                    f'AUTH: token Discord rejeté{detail}'
+                ) from exc
             if exc.code == 403:
                 raise DiscordError(
-                    'FORBIDDEN: permissions bot insuffisantes'
+                    f'FORBIDDEN: permissions bot insuffisantes{detail}'
                 ) from exc
             if exc.code == 404:
-                raise DiscordError('NOT_FOUND: canal/message inconnu') from exc
+                raise DiscordError(
+                    f'NOT_FOUND: canal/message inconnu{detail}'
+                ) from exc
             if exc.code == 429:
                 raise DiscordError('RATE_LIMITED: retry épuisés') from exc
-            raise DiscordError(f'API: Discord HTTP {exc.code}') from exc
+            raise DiscordError(
+                f'API: Discord HTTP {exc.code}{detail}'
+            ) from exc
         except (urllib.error.URLError, TimeoutError, OSError) as exc:
             raise DiscordError(
                 f'NETWORK: Discord injoignable ({exc})'
@@ -269,7 +292,9 @@ def _post_interaction(
         with urllib.request.urlopen(request, timeout=timeout):
             pass
     except urllib.error.HTTPError as exc:
-        raise DiscordError(f'API: interaction HTTP {exc.code}') from exc
+        raise DiscordError(
+            f'API: interaction HTTP {exc.code}{_detail(exc)}'
+        ) from exc
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
         raise DiscordError(f'NETWORK: interaction ({exc})') from exc
 

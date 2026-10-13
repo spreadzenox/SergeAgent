@@ -27,6 +27,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from serge.db.store import append_event, utcnow
+from serge.discord.journal import journal
 from serge.discord.render import render_card
 from serge.discord.rest import (
     DiscordError,
@@ -190,7 +191,8 @@ def _ouvrir_fils(
         try:
             fil = create_forum_post(token, forum, nom, {**mentions, **carte})
             values = (fil, str(version))
-        except DiscordError:
+        except DiscordError as exc:
+            journal(f'fil du ticket {ticket_id} pas ouvert : {exc}')
             values = ('', ECHEC)
         conn.execute(
             'INSERT OR REPLACE INTO ticket_posts(ticket_id, thread_id,'
@@ -228,7 +230,8 @@ def _mettre_a_jour(conn: sqlite3.Connection, token: str, now: str) -> int:
             if tranche:
                 archive_thread(token, str(fil), True)
             values = (str(version), int(tranche))
-        except DiscordError:
+        except DiscordError as exc:
+            journal(f'carte du ticket {ticket_id} pas mise à jour : {exc}')
             values = (ECHEC_MODIF, int(archive))
         conn.execute(
             'UPDATE ticket_posts SET shown_state=?, archived=?, updated_at=?'

@@ -14,6 +14,7 @@ sys.path.insert(0, str(ROOT))
 from serge.voice.ws import (  # noqa: E402
     WsClient,
     WsError,
+    WsTimeout,
     accept_key,
     decode_frames,
     encode_frame,
@@ -43,6 +44,12 @@ class WsTests(unittest.TestCase):
     def test_close_et_masque_rejetes(self) -> None:
         with self.assertRaises(WsError):
             decode_frames(bytearray(b'\x88\x00'))
+        # La fermeture dit son code et sa raison.
+        fermeture = b'\x0f\xa6' + b'Disallowed intent(s).'
+        with self.assertRaisesRegex(WsError, '4006 Disallowed intent'):
+            decode_frames(
+                bytearray(b'\x88' + bytes([len(fermeture)]) + fermeture)
+            )
         with self.assertRaises(WsError):
             decode_frames(bytearray(b'\x81\x85xxxxxhello'))
 
@@ -56,6 +63,20 @@ class WsTests(unittest.TestCase):
             self.assertEqual(data[0] & 0x0F, 0x1)
             child.sendall(b'\x81\x02ok')
             self.assertEqual(client.recv(), [(0x1, b'ok')])
+        finally:
+            client.close()
+            child.close()
+
+    def test_un_message_deja_recu_est_rendu_sans_attendre(self) -> None:
+        """Le premier message du serveur, arrivé avec la réponse au
+        handshake, est rendu sans attendre la socket."""
+        parent, child = socket.socketpair()
+        client = WsClient(parent, timeout=0.2)
+        try:
+            client.buffer += b'\x81\x05hello'
+            self.assertEqual(client.recv(), [(0x1, b'hello')])
+            with self.assertRaises(WsTimeout):
+                client.recv()
         finally:
             client.close()
             child.close()

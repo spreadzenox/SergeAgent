@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Projecteurs P8 Santé : charte E6, audit trail, drift versions."""
+"""Projecteurs P8 Santé : charte E6, audit trail, drift versions, journaux."""
 
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ from typing import Any
 
 from serge.db.schema import SCHEMA_VERSION
 from serge.mc import MC_VERSION
+from serge.mc.proj_voice import journal_service
 
 
 def project_charte_metriques(
@@ -152,3 +153,31 @@ def project_versions_drift(
         'schema_ok': schema_db == SCHEMA_VERSION,
         'gog_version': gog_ver,
     }
+
+
+# Les services dont le journal se lit sur la page Health (ceux de la voix
+# sont sur la page Voix).
+JOURNAUX_SERVEUR = (
+    ('serge-discord-bot.service', 'Bot Discord'),
+    ('serge-queue@conversations.service', 'File des conversations'),
+    ('serge-queue@works.service', 'File des travaux'),
+)
+
+
+def project_journal_serveur(
+    conn: sqlite3.Connection, policy: Mapping[str, Any], now: str
+) -> dict[str, Any]:
+    """Les derniers journaux du bot Discord et des deux files, lus sur le
+    serveur : un clic Discord ou une tâche qui échoue se lit ici, sans
+    accès à la machine. Un journal illisible le dit, sans casser la page.
+
+    Returns:
+        Dict {blocs: [{titre, lignes, erreur}]}, les lignes les plus
+        récentes en dernier.
+    """
+    _ = (conn, policy, now)
+    blocs = []
+    for unit, titre in JOURNAUX_SERVEUR:
+        lignes, erreur = journal_service(unit)
+        blocs.append({'titre': titre, 'lignes': lignes, 'erreur': erreur})
+    return {'blocs': blocs}

@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from serge.discord.gateway import Gateway, GatewayError  # noqa: E402
-from serge.voice.ws import WsError  # noqa: E402
+from serge.voice.ws import WsError, WsTimeout  # noqa: E402
 
 
 def _frame(payload: dict) -> tuple[int, bytes]:
@@ -30,8 +30,11 @@ class FakeWs:
 
     def recv(self) -> list[tuple[int, bytes]]:
         if not self.inbound:
-            raise WsError('WS: lecture (timeout simulé)')
-        return self.inbound.pop(0)
+            raise WsTimeout('WS: lecture (timeout simulé)')
+        suivant = self.inbound.pop(0)
+        if isinstance(suivant, WsError):
+            raise suivant
+        return suivant
 
     def close(self) -> None:
         self.closed = True
@@ -162,6 +165,22 @@ class GatewayTests(unittest.TestCase):
         gateway.connect(factory=lambda _u, _h, _t: fake, timeout=2.0)
         with self.assertRaisesRegex(GatewayError, '^RECONNECT'):
             gateway.poll(now_ms=0)
+
+    def test_discord_ferme_la_connexion_et_dit_pourquoi(self) -> None:
+        """Une fermeture par Discord (ici 4014, une intention interdite)
+        fait reconnecter, avec son code pour le journal ; un simple délai
+        sans message ne fait rien."""
+        fake = FakeWs(
+            [
+                *HELLO,
+                WsError('WS: close serveur 4014 Disallowed intent(s).'),
+            ]
+        )
+        gateway = Gateway('tok-fake-35')
+        gateway.connect(factory=lambda _u, _h, _t: fake, timeout=2.0)
+        with self.assertRaisesRegex(GatewayError, '4014 Disallowed'):
+            gateway.poll(now_ms=0)
+        self.assertEqual(gateway.poll(now_ms=0), [])
 
     def test_token_manquant(self) -> None:
         gateway = Gateway('')

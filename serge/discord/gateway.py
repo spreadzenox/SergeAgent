@@ -15,7 +15,7 @@ from collections.abc import Callable, Mapping
 from typing import Any
 
 from serge.discord.rest import USER_AGENT
-from serge.voice.ws import WsClient, WsError
+from serge.voice.ws import WsClient, WsError, WsTimeout
 
 GATEWAY_URL = 'wss://gateway.discord.gg/?v=10&encoding=json'
 # Les boutons et les fenêtres de saisie arrivent sans intention
@@ -115,8 +115,10 @@ class Gateway:
         while _now_ms() < deadline:
             try:
                 frames = self.ws.recv()
-            except WsError:
+            except WsTimeout:
                 continue
+            except WsError as exc:
+                raise GatewayError(f'HELLO: {exc}') from exc
             for opcode, payload in frames:
                 if opcode != 0x1:
                     continue
@@ -159,8 +161,12 @@ class Gateway:
         dispatched: list[str] = []
         try:
             frames = self.ws.recv()
-        except WsError:
+        except WsTimeout:
             return dispatched
+        except WsError as exc:
+            # Discord a fermé la connexion (avec son code : 4004 token
+            # refusé, 4014 intention interdite…) ou la socket est rompue.
+            raise GatewayError(f'RECONNECT: {exc}') from exc
         for opcode, payload in frames:
             if opcode != 0x1:
                 continue

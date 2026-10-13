@@ -299,3 +299,26 @@ export function rememberDrafts(container) {
     }
   };
 }
+
+// Les journaux d'un service ({titre, lignes, erreur}), les plus récents en
+// bas : pages Voix et Health.
+export function afficherJournaux(conteneur, blocs) {
+  conteneur.replaceChildren();
+  for (const bloc of blocs || []) {
+    const titre = document.createElement('h3');
+    titre.textContent = bloc.titre;
+    conteneur.append(titre);
+    const lignes = bloc.lignes || [];
+    if (bloc.erreur || lignes.length === 0) {
+      const p = document.createElement('p');
+      p.textContent = bloc.erreur || 'Rien dans ce journal.';
+      conteneur.append(p);
+      continue;
+    }
+    const pre = document.createElement('pre');
+    pre.className = 'diff-bloc journal-serveur';
+    pre.textContent = lignes.join('\n');
+    conteneur.append(pre);
+    pre.scrollTop = pre.scrollHeight;
+  }
+}

@@ -35,6 +35,7 @@ from serge.mc.proj_graphe import project_business, project_graphe
 from serge.mc.proj_health import (
     project_audit_trail,
     project_charte_metriques,
+    project_journal_serveur,
     project_versions_drift,
 )
 from serge.mc.proj_identite import project_identite_page
@@ -91,6 +92,7 @@ SLOW_SECTIONS = frozenset(
         'charte_metriques',
         'audit_trail',
         'versions_drift',
+        'journal_serveur',
         'identite',
     }
 )
@@ -214,6 +216,7 @@ PROJECTORS: dict[str, Callable[..., dict[str, Any]]] = {
     'charte_metriques': project_charte_metriques,
     'audit_trail': project_audit_trail,
     'versions_drift': project_versions_drift,
+    'journal_serveur': project_journal_serveur,
     'identite': project_identite_page,
     'ecoute': project_ecoute,
     'pipeline': project_pipeline,
@@ -255,7 +258,13 @@ PAGE_SECTIONS: dict[str, list[str]] = {
         'audit_reponses',
     ],
     'p7': ['meta', 'bridge_statut', 'cdr_appels', 'journal_voix'],
-    'p8': ['meta', 'charte_metriques', 'versions_drift', 'audit_trail'],
+    'p8': [
+        'meta',
+        'charte_metriques',
+        'versions_drift',
+        'journal_serveur',
+        'audit_trail',
+    ],
     'p9': ['meta', 'identite'],
     'p10': ['meta', 'ecoute'],
     'p11': ['meta', 'pipeline'],

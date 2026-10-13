@@ -345,7 +345,7 @@
 </section>
 </template>
 <template id="page-health">
-<p class="page-intro">Santé du code : sa taille, ses versions, la piste d’audit. L’état des services est sur la page Système, dans leurs îlots.</p>
+<p class="page-intro">Santé du code : sa taille, ses versions, les journaux du serveur, la piste d’audit. L’état des services est sur la page Système, dans leurs îlots.</p>
 <section class="panneau" data-section="charte_metriques" data-sig="">
 <h2>Charte et métriques</h2>
 <div class="tuiles" data-tuiles="sante"></div>
@@ -356,6 +356,11 @@
 <section class="panneau" data-section="versions_drift" data-sig="">
 <h2>Versions</h2>
 <p id="health-versions">…</p>
+</section>
+<section class="panneau" data-section="journal_serveur" data-sig="">
+<h2>Journaux du serveur</h2>
+<p>Les dernières lignes du bot Discord et des deux files de tâches, lues sur le serveur, les plus récentes en bas. Un clic Discord ou une tâche qui échoue y laisse sa trace. Ceux de la voix sont sur la page Voix. Mis à jour toutes les 30 secondes.</p>
+<div data-journaux="blocs"></div>
 </section>
 <section class="panneau" data-section="audit_trail" data-sig="">
 <h2>Piste d’audit</h2>

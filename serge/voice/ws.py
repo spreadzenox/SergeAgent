@@ -23,6 +23,10 @@ class WsError(ValueError):
     pass
 
 
+class WsTimeout(WsError):
+    """Rien reçu dans le délai : la connexion est peut-être encore bonne."""
+
+
 def encode_frame(payload: bytes, opcode: int = 0x1) -> bytes:
     """Encode une frame client (FIN + masquée).
 
@@ -80,10 +84,16 @@ def decode_frames(buffer: bytearray) -> list[tuple[int, bytes]]:
             offset = 10
         if len(buffer) < offset + length:
             break
-        out.append((opcode, bytes(buffer[offset : offset + length])))
+        payload = bytes(buffer[offset : offset + length])
+        out.append((opcode, payload))
         del buffer[: offset + length]
         if opcode == 0x8:
-            raise WsError('WS: close serveur')
+            # Le serveur dit pourquoi il ferme : un code, puis une raison.
+            code = (
+                struct.unpack('!H', payload[:2])[0] if len(payload) >= 2 else 0
+            )
+            raison = payload[2:].decode('utf-8', 'replace')
+            raise WsError(f'WS: close serveur {code} {raison}'.rstrip())
     return out
 
 
@@ -166,7 +176,8 @@ class WsClient:
                 head += chunk
         except OSError as exc:
             raise WsError(f'WS: handshake ({exc})') from exc
-        text = head.decode('latin-1')
+        entete, _sep, reste = head.partition(b'\r\n\r\n')
+        text = entete.decode('latin-1')
         if ' 101 ' not in text.split('\r\n', 1)[0]:
             raise WsError('WS: handshake refusé (pas 101)')
         accepted = ''
@@ -175,7 +186,11 @@ class WsClient:
                 accepted = line.split(':', 1)[1].strip()
         if accepted != accept_key(key):
             raise WsError('WS: accept invalide')
-        return cls(sock, timeout)
+        client = cls(sock, timeout)
+        # Le premier message du serveur peut arriver avec la réponse au
+        # handshake (le HELLO de Discord, par exemple) : on le garde.
+        client.buffer += reste
+        return client
 
     def send_text(self, text: str) -> None:
         """Envoie une frame texte.
@@ -206,16 +221,21 @@ class WsClient:
             Frames (opcode, payload), sans les ping.
 
         Raises:
-            WsError: Timeout, close, socket.
+            WsTimeout: Rien reçu dans le délai.
+            WsError: Close (avec le code du serveur), socket rompue.
         """
-        try:
-            chunk = self.sock.recv(65536)
-        except (TimeoutError, OSError) as exc:
-            raise WsError(f'WS: lecture ({exc})') from exc
-        if not chunk:
-            raise WsError('WS: connexion fermée')
-        self.buffer += chunk
         frames = decode_frames(self.buffer)
+        if not frames:
+            try:
+                chunk = self.sock.recv(65536)
+            except TimeoutError as exc:
+                raise WsTimeout(f'WS: lecture ({exc})') from exc
+            except OSError as exc:
+                raise WsError(f'WS: lecture ({exc})') from exc
+            if not chunk:
+                raise WsError('WS: connexion fermée')
+            self.buffer += chunk
+            frames = decode_frames(self.buffer)
         out: list[tuple[int, bytes]] = []
         for opcode, payload in frames:
             if opcode == 0x9:

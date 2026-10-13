@@ -7,6 +7,7 @@ import sqlite3
 import sys
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -16,6 +17,7 @@ from serge.db.schema import SCHEMA_VERSION  # noqa: E402
 from serge.mc.proj_health import (  # noqa: E402
     project_audit_trail,
     project_charte_metriques,
+    project_journal_serveur,
     project_versions_drift,
 )
 
@@ -62,6 +64,37 @@ class ProjHealthTests(unittest.TestCase):
         self.assertEqual(data['schema_version'], SCHEMA_VERSION)
         self.assertTrue(data['schema_ok'])
         self.assertIn('mc_version', data)
+
+    def test_journaux_du_bot_et_des_files(self) -> None:
+        """Le journal du bot Discord et des deux files, lu par journalctl :
+        un clic qui échoue y laisse sa trace."""
+        lus = []
+
+        def journalctl(cmd, **_kwargs):
+            lus.append(cmd[cmd.index('--unit') + 1])
+            return mock.Mock(
+                returncode=0, stdout='discord : clic reçu\n', stderr=''
+            )
+
+        with (
+            mock.patch(
+                'serge.mc.proj_voice.shutil.which', return_value='/bin/x'
+            ),
+            mock.patch(
+                'serge.mc.proj_voice.subprocess.run', side_effect=journalctl
+            ),
+        ):
+            blocs = project_journal_serveur(self.conn, POLICY, NOW)['blocs']
+        self.assertEqual(
+            lus,
+            [
+                'serge-discord-bot.service',
+                'serge-queue@conversations.service',
+                'serge-queue@works.service',
+            ],
+        )
+        self.assertEqual(blocs[0]['titre'], 'Bot Discord')
+        self.assertEqual(blocs[0]['lignes'], ['discord : clic reçu'])
 
 
 if __name__ == '__main__':
