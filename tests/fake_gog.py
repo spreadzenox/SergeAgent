@@ -2,7 +2,8 @@
 """Un faux ``gog`` pour les tests : une boîte Gmail dans un fichier JSON.
 
 Il répond aux commandes dont le canal e-mail se sert (``gmail send``,
-``gmail search``, ``gmail get``), comme l'API Gmail : un message envoyé
+``gmail messages search``, ``gmail get``), comme le vrai ``gog`` : un
+message envoyé
 reçoit un identifiant et un ``Message-ID`` choisis par « Gmail ». La boîte
 est le fichier ``FAKE_GOG_STATE`` : ``{inbox: [...], sent: [...]}``, chaque
 message ``{id, from, to, subject, body, message_id, in_reply_to, date}``.
@@ -91,7 +92,12 @@ def main(args: list[str]) -> int:
         )
         output: dict = {'id': ident, 'threadId': 'fil'}
     elif command == 'search':
+        # Comme le vrai gog : « gmail search » cherche des fils, pas des
+        # messages.
         found = _search(state, args[2])[: int(_flag(args, '--max') or 50)]
+        output = {'threads': [{'id': m['id']} for m in found]}
+    elif command == 'messages' and args[2] == 'search':
+        found = _search(state, args[3])[: int(_flag(args, '--max') or 50)]
         output = {'messages': [{'id': m['id']} for m in found]}
     else:
         msg = next(
