@@ -911,6 +911,9 @@ status_transitions:
   # automatique) est ignorée : elle n'arrête pas les relances.
   - {table: inbound_events, column: status, from: '', to: attached}
   - {table: inbound_events, column: status, from: '', to: unattached}
+  # Une réponse automatique, ou le message d'un contact arrêté : rangé dans
+  # le fil sans être traité (lot 10 bis).
+  - {table: inbound_events, column: status, from: '', to: ignored}
   - {table: inbound_events, column: status, from: attached, to: ignored}
   # Un envoi naît à rédiger (une relance) ou à envoyer ; seul un envoi à
   # rédiger passe à envoyer : une relance annulée entre-temps ne repart pas.
@@ -1879,6 +1882,13 @@ invocations:
         à laquelle la fiche produit ne répond pas, cette question en une
         phrase ; sinon vide. La réponse de Julien rejoindra les questions
         fréquentes, et la fois suivante tu répondras seul.
+      - arreter : « oui » pour que Serge arrête avec ce contact, sinon
+        « non ». Réponds « oui » quand la conversation ne mène nulle part :
+        un robot qui répond à chaque message, un accusé de réception
+        automatique (« votre demande n° 1234 est bien reçue »), une liste
+        de diffusion, ou une conversation qui tourne en rond sans personne
+        en face. Laisse alors reply vide : Serge ne lui écrira plus, et ce
+        qu'il écrira ensuite ne sera plus traité.
 
       Règles :
       - Un refus : remercie poliment, sans insister.
@@ -1923,6 +1933,7 @@ invocations:
       - {path: requests.text, type: text, description: 'La demande, en une phrase.'}
       - &sortie_besoin_julien {path: besoin_julien, type: text, required: false, description: 'Vide si Serge répond seul ; sinon pourquoi un humain doit voir la réponse avant qu''elle parte.'}
       - &sortie_question_produit {path: question_produit, type: text, required: false, description: 'La question du contact sur le produit à laquelle la fiche ne répond pas, ou vide.'}
+      - &sortie_arreter {path: arreter, type: choice, choices: [non, oui], required: false, description: '« oui » pour que Serge arrête avec ce contact : la conversation ne mène nulle part (un robot qui répond à chaque message, un accusé de réception automatique, une liste de diffusion). Sinon « non ».'}
     writes:
       - table: inbound_events
         operation: update
@@ -2310,6 +2321,22 @@ invocations:
     priority: 100
     params:
       contact_id: {source: task, value: contact_id}
+
+  - id: arreter_contact
+    title: Arrêter avec un contact
+    role: >-
+      Une conversation ne mène nulle part (un robot qui répond à chaque
+      message, un accusé de réception automatique) : passe le contact à
+      « Arrêté » ; Serge ne lui écrit plus et ne lui répond plus, et ses
+      envois en attente sont annulés. Ce qu'il écrit ensuite reste dans son
+      fil, sans être traité. Sans LLM (lot 10 bis, Q93).
+    type: capability
+    capability: stop_contact
+    queue: conversations
+    priority: 100
+    params:
+      contact_id: {source: task, value: contact_id}
+      reason: {source: task, value: reason}
 
   - id: prevenir_julien_et_clem
     title: Prévenir Julien et Clem
@@ -3591,6 +3618,14 @@ links:
     condition: {field: reaction, op: '=', value: désinscription}
     params:
       contact_id: {source: task, value: contact_id}
+  - id: reponse_vers_arret
+    title: Une conversation sans issue s'arrête
+    from: traiter_reponse
+    to: arreter_contact
+    condition: {field: arreter, op: '=', value: oui}
+    params:
+      contact_id: {source: task, value: contact_id}
+      reason: {source: fixed, value: conversation sans issue (Traiter une réponse)}
   - id: desinscription_vers_ticket
     title: Julien et Clem sont prévenus
     from: desinscrire
@@ -4474,6 +4509,71 @@ changes:
     write: 0
     add_write_values:
       subject: *objet_de_julien
+  - id: reponse_decision_arreter
+    why: >-
+      « Traiter une réponse » peut décider d'arrêter avec un contact quand
+      la conversation ne mène nulle part (lot 10 bis, Q93).
+    invocation: traiter_reponse
+    add_outputs:
+      - *sortie_arreter
+  - id: reponse_consigne_arreter
+    why: La consigne de « Traiter une réponse » dit quand arrêter (lot 10 bis, Q93).
+    table: invocations
+    where: {id: traiter_reponse}
+    set:
+      prompt:
+        from: |
+          Tu réponds, au nom de Serge, à un contact qui vient d'écrire à propos
+          d'un business que Serge teste.
+
+          Tu reçois le fil du contact (tout ce qui s'est dit, tous canaux
+          confondus, du plus ancien au plus récent), sa fiche, la fiche du
+          business, la fiche produit et ses questions fréquentes. Tu réponds au
+          dernier message du fil ; si le contact a écrit plusieurs fois depuis
+          la dernière réponse de Serge, réponds à tout d'un coup.
+
+          Le dernier message peut être la transcription d'un appel (canal
+          voice). La suite part alors par e-mail si Serge a son adresse, sinon
+          Serge rappelle : écris-la comme un e-mail court qui reprend ce qui a
+          été promis (un document, un devis), ou laisse-la vide s'il n'y a
+          rien à ajouter après l'appel.
+
+          Rends :
+          - reaction : ce que fait le message, l'une de : intéressé, question,
+            objection, rendez-vous, refus, désinscription, absence, hors sujet.
+            « désinscription » : la personne demande à ne plus être contactée
+            (« STOP », « ne m'écrivez plus »). « absence » : une réponse
+            automatique (congés, absence).
+          - reply : le texte de ta réponse, prêt à partir, sans objet ni
+            signature d'humain. Laisse-le vide pour une désinscription, une
+            absence ou un message hors sujet : Serge ne répond rien.
+          - requests : les demandes sur le produit que contient le message, s'il
+            y en a : un bug, une insatisfaction, une idée (une fonctionnalité
+            qui manque).
+          - besoin_julien : vide si tu peux répondre seul. Sinon, en une phrase,
+            pourquoi un humain doit voir ta réponse avant qu'elle parte : une
+            question sur le produit à laquelle la fiche produit et les
+            questions fréquentes ne répondent pas, un prix, une date ou un
+            engagement que tu ne peux pas prendre, une proposition faite à
+            Serge (un partenariat, une offre), un échange tendu, ou un doute
+            réel. Écris quand même ton meilleur brouillon dans reply : Julien
+            l'enverra, le remplacera par sa réponse, ou te demandera de le
+            réécrire.
+          - question_produit : si le message pose une question sur le produit
+            à laquelle la fiche produit ne répond pas, cette question en une
+            phrase ; sinon vide. La réponse de Julien rejoindra les questions
+            fréquentes, et la fois suivante tu répondras seul.
+
+          Règles :
+          - Un refus : remercie poliment, sans insister.
+          - Un rendez-vous : confirme-le.
+          - Ne promets jamais une date, un prix ou une fonctionnalité absents de
+            la fiche produit. Une fonctionnalité qui manque devient une demande
+            « idée ». En cas de doute, réponds sans t'engager et remplis
+            besoin_julien.
+          - Écris dans la langue du contact, simplement et brièvement.
+          - Serge assume d'être un agent IA : ne prétends jamais être un humain.
+        to: *consigne_traiter_reponse
   - id: essai_case_valider
     why: >-
       Le business d'essai peut naître en mode « Valider chaque brouillon » :

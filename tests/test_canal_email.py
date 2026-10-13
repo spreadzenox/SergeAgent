@@ -202,6 +202,32 @@ class GmailTests(_Canal):
             ('sent', '<s2@gmail.test>'),
         )
 
+    def test_une_reponse_automatique_n_est_pas_traitee(self) -> None:
+        """Un message « X-Autoreply » est rangé dans le fil, sans
+        réponse (lot 10 bis)."""
+        self._envoi('t1', 'pending')
+        boite = self._gmail()
+        boite['inbox'].append(
+            {
+                'id': 'a1',
+                'from': f'Marc <{MARC}>',
+                'to': 'serge@gmail.test',
+                'subject': 'Absence',
+                'body': 'Je suis absent jusqu’au 20.',
+                'message_id': '<a1@marc>',
+                'in_reply_to': '<s1@gmail.test>',
+                'date': int(time.time()),
+                'headers': {'X-Autoreply': 'yes'},
+            }
+        )
+        self._ecrire_gmail(boite)
+        self._relever()
+        self.assertEqual(
+            self._un('SELECT native_type, status FROM inbound_events'),
+            ('auto_reply', 'ignored'),
+        )
+        self.assertEqual(len(self._gmail()['sent']), 1)
+
     def test_un_envoi_interrompu_est_retrouve(self) -> None:
         boite = self._gmail()
         boite['sent'].append(
@@ -337,6 +363,25 @@ class SmtpTests(_Canal):
         reponse = self.partis[1]
         self.assertEqual(reponse['In-Reply-To'], '<m1@marc>')
         self.assertEqual(reponse.get_content().strip(), f'{REPONSE}\n\n{STOP}')
+
+    def test_une_reponse_automatique_n_est_pas_traitee(self) -> None:
+        """Un message « Auto-Submitted » est rangé dans le fil, sans
+        réponse (lot 10 bis)."""
+        self._envoi('t1', 'pending')
+        recu = EmailMessage()
+        recu['From'] = f'Marc <{MARC}>'
+        recu['Subject'] = 'Absence : Re: Vos devis'
+        recu['Message-ID'] = '<a1@marc>'
+        recu['In-Reply-To'] = '<serge.t1@exemple.fr>'
+        recu['Auto-Submitted'] = 'auto-replied'
+        recu.set_content('Je suis absent jusqu’au 20.')
+        FauxImap.boites['INBOX'].append(recu.as_bytes())
+        self._relever()
+        self.assertEqual(
+            self._un('SELECT native_type, status FROM inbound_events'),
+            ('auto_reply', 'ignored'),
+        )
+        self.assertEqual(len(self.partis), 1)
 
     def test_un_envoi_interrompu_est_retrouve(self) -> None:
         copie = EmailMessage()

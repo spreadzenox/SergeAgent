@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Les capacités des conversations : relever, lire le fil, envoyer,
-relancer, les fiches des contacts, la désinscription et les tickets.
+relancer, les fiches des contacts, la désinscription, l'arrêt d'un
+contact et les tickets.
 """
 
 from __future__ import annotations
@@ -108,6 +109,19 @@ CONVERSATIONS: tuple[Capability, ...] = (
         ' annule ses envois en attente.',
         'serge/conversations/unsubscribe.py',
         (Param('contact_id', 'text', True, 'Le contact désinscrit.'),),
+    ),
+    Capability(
+        'stop_contact',
+        'Arrêter avec un contact',
+        'Passe la fiche à « Arrêté » : Serge ne lui écrit plus et ne lui'
+        ' répond plus, et ses envois en attente sont annulés. Ce qu’il écrit'
+        ' ensuite reste dans son fil, sans être traité. Ses adresses ne sont'
+        ' pas bloquées (ce n’est pas une désinscription).',
+        'serge/conversations/stop.py',
+        (
+            Param('contact_id', 'text', True, 'Le contact arrêté.'),
+            Param('reason', 'text', False, 'Pourquoi Serge arrête.'),
+        ),
     ),
     Capability(
         'inform_owners',

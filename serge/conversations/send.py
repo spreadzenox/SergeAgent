@@ -20,6 +20,9 @@ partir, dans cet ordre :
    Sinon il est envoyé ;
 3. devenu inutile, il est annulé :
    - la personne s'est désinscrite ;
+   - le contact est à une étape où Serge ne répond plus du tout
+     (``contacts.silent_states``, page Policy : « arrêté », quand une
+     conversation ne mène nulle part, lot 10 bis) ;
    - un premier message ou une relance à un contact à une étape où Serge
      n'écrit plus de lui-même (``contacts.stop_states``, page Policy :
      refus, client, injoignable…) ;
@@ -33,7 +36,9 @@ partir, dans cet ordre :
    par e-mail si Serge a l'adresse, sinon par un rappel (décision Q83) ;
 5. les garde-fous (``serge/guards``) : un envoi refusé est annulé, avec sa
    raison, et Julien et Clem en sont prévenus par un ticket
-   d'information (un garde-fou légal ne se contourne pas) ; un appel hors
+   d'information (un garde-fou légal ne se contourne pas) ; trop de
+   messages en 24 heures au même contact (une conversation qui tourne en
+   rond) fait aussi arrêter Serge avec ce contact ; un appel hors
    des heures d'appel attend le prochain créneau ;
    le plafond du jour du canal (``channels.<canal>.max_per_day``, page
    Policy) atteint, l'envoi attend le lendemain ; un canal qui ne peut pas
@@ -56,6 +61,7 @@ from typing import Any
 
 from serge.channels.adapters import ADAPTERS, adapter
 from serge.channels.base import ChannelError, ChannelLater, Outgoing
+from serge.conversations.stop import stop
 from serge.db.store import append_event, utcnow
 from serge.funnels.contacts import normalise_value
 from serge.guards import Reason, check
@@ -71,6 +77,14 @@ OPTED_OUT = 'OPTED_OUT'
 def stop_states(conn: sqlite3.Connection) -> list[str]:
     """Les étapes où Serge n'écrit plus de lui-même (page Policy)."""
     return [str(s) for s in setting_value(conn, 'contacts.stop_states') or []]
+
+
+def silent_states(conn: sqlite3.Connection) -> list[str]:
+    """Les étapes où Serge ne répond plus du tout (page Policy) : un
+    contact arrêté, par exemple (lot 10 bis)."""
+    return [
+        str(s) for s in setting_value(conn, 'contacts.silent_states') or []
+    ]
 
 
 def _touch(conn: sqlite3.Connection, touch_id: str) -> dict[str, Any] | None:
@@ -110,6 +124,10 @@ def _outdated(conn: sqlite3.Connection, touch: dict[str, Any]) -> str:
         return 'contact désinscrit'
     if touch.get('owner_ok_at'):
         return ''
+    # Un contact avec qui Serge a arrêté (une conversation sans issue) : ni
+    # premier message, ni relance, ni réponse (lot 10 bis).
+    if state in silent_states(conn):
+        return 'contact arrêté : Serge ne lui écrit plus'
     # Une étape où Serge n'écrit plus de lui-même (refus, client…, page
     # Policy) : plus de premier message ni de relance, mais on répond
     # encore à ce qu'il écrit.
@@ -181,17 +199,33 @@ def _besoin_humain(touch: dict[str, Any]) -> str:
 def _prevenir_blocage(
     conn: sqlite3.Connection, touch: dict[str, Any], reason: str, inv: str
 ) -> None:
-    """Un garde-fou a bloqué l'envoi : Julien et Clem sont prévenus."""
+    """Un garde-fou a bloqué l'envoi : Julien et Clem sont prévenus.
+
+    Trop de messages en 24 heures au même contact, c'est une conversation
+    qui tourne en rond (un robot qui répond à tout) : Serge arrête avec ce
+    contact (lot 10 bis).
+    """
+    if reason == Reason.QUOTA_CONTACT_24H.value:
+        stop(conn, str(touch['contact_id']), 'trop de messages en 24 heures')
+        text = (
+            f'Serge a déjà écrit à ce contact le nombre de messages permis en'
+            f' 24 heures (page Policy) : un envoi {touch["channel"]} n’est pas'
+            ' parti. La conversation tourne sans doute en rond (un robot qui'
+            ' répond à chaque message) : Serge arrête avec ce contact. Il ne'
+            ' lui écrit plus, et ce qu’il écrit reste dans son fil.'
+        )
+    else:
+        text = (
+            f'Un envoi {touch["channel"]} n’est pas parti : {reason}.'
+            ' Un garde-fou légal ne se contourne pas ; le contact reste'
+            ' dans son fil.'
+        )
     inform_owners(
         conn,
         '',
         {
             'title': f'Envoi bloqué par un garde-fou ({reason})',
-            'text': (
-                f'Un envoi {touch["channel"]} n’est pas parti : {reason}.'
-                ' Un garde-fou légal ne se contourne pas ; le contact reste'
-                ' dans son fil.'
-            ),
+            'text': text,
             'contact_id': str(touch['contact_id']),
         },
         inv,

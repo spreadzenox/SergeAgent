@@ -22,6 +22,7 @@ from serge.conversations.contact import (
 from serge.conversations.followups import due_followups
 from serge.conversations.receive import receive_messages
 from serge.conversations.send import send_message
+from serge.conversations.stop import stop_contact
 from serge.conversations.thread import contact_thread
 from serge.conversations.unsubscribe import unsubscribe_contact
 from serge.interpreter.seen import CHOICES, read_seen_table, row_history
@@ -224,6 +225,7 @@ RUNNERS: dict[str, Runner] = {
     'send_message': send_message,
     'due_followups': due_followups,
     'unsubscribe_contact': unsubscribe_contact,
+    'stop_contact': stop_contact,
     'contact_search': contact_search,
     'add_contact': add_contact,
     'add_contact_address': add_contact_address,

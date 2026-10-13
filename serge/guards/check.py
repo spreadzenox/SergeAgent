@@ -50,6 +50,17 @@ def _zone_cap(policy: Mapping[str, Any], zone: str) -> int:
     return int(cap)
 
 
+def _day_cap(policy: Mapping[str, Any]) -> int:
+    """Les messages de Serge au plus, par contact, sur 24 heures."""
+    try:
+        cap = policy['contacts']['max_messages_24h']
+    except (KeyError, TypeError) as exc:
+        raise PolicyError('policy.contacts.max_messages_24h requis') from exc
+    if isinstance(cap, bool) or not isinstance(cap, (int, float)) or cap < 1:
+        raise PolicyError('policy.contacts.max_messages_24h doit être >= 1')
+    return int(cap)
+
+
 def _opt_in_channels(policy: Mapping[str, Any]) -> list[str]:
     try:
         channels = policy['consent']['opt_in_channels']
@@ -142,6 +153,18 @@ def _decide(
     # Un accord « test » (le bouton d'essai) : un appel à toute heure (Q79).
     testing = bool(granted) and str(granted[0]) == 'test'
     contact_id = str(action.get('contact_id') or '')
+    # Une conversation qui tourne en rond (un robot qui répond à chaque
+    # message) : au-delà de N messages de Serge en 24 heures à un même
+    # contact, réponses comprises, plus rien ne part (Q93, lot 10 bis).
+    if contact_id:
+        since = (current - timedelta(hours=24)).isoformat()
+        sent = connection.execute(
+            "SELECT COUNT(*) FROM touches WHERE contact_id=? AND status='sent'"
+            ' AND sent_at>=?',
+            (contact_id, since),
+        ).fetchone()[0]
+        if int(sent) >= _day_cap(policy):
+            return Verdict(False, Reason.QUOTA_CONTACT_24H)
     if contact_id and action.get('kind') != 'reply':
         cap = _zone_cap(policy, str(action.get('zone') or ''))
         since = (current - timedelta(days=30)).isoformat()

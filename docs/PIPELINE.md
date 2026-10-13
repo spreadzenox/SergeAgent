@@ -379,7 +379,18 @@ Le circuit est décrit en base (lot 8, décision Q79) :
   répondu : une relance 3 jours après le premier message, une autre
   7 jours après, sur le même canal ;
 - une désinscription bloque la personne partout, sur tous les canaux et
-  pour tous les business, et un ticket prévient Julien et Clem.
+  pour tous les business, et un ticket prévient Julien et Clem ;
+- une réponse automatique (« je suis absent », un accusé de réception) ne
+  fait jamais répondre Serge sans fin (lot 10 bis, Q93). Reconnue à ses
+  en-têtes, elle est rangée dans le fil sans appeler le modèle, et les
+  relances continuent. « Traiter une réponse » peut aussi décider
+  d'arrêter avec un contact (un robot qui répond à tout, une conversation
+  qui tourne en rond) : la fiche passe « Arrêté », Serge ne lui écrit
+  plus, et ce qu'il écrit reste dans son fil sans être traité. Enfin, un
+  garde-fou : au plus 10 messages de Serge à un même contact en
+  24 heures, réponses comprises (page Policy) ; au-delà, l'envoi est
+  annulé, Serge arrête avec ce contact, et un ticket prévient Julien et
+  Clem.
 
 Julien dans la conversation (lot 8 bis, décisions Q50, Q85 et Q86) :
 

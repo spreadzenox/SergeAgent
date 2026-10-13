@@ -104,12 +104,12 @@ remplir la base, dans `config/pipeline.yaml` (le détail est dans
 On avance par lots. Un lot est un ensemble de tâches qui vont ensemble ;
 chaque lot se termine par des tests verts et un commit, puis Julien ou
 Clem regarde le résultat avant qu'on attaque le suivant. Les lots 1 à 9,
-et le 8 bis, sont faits (l'historique git en garde la trace) : le runner
-et le pipeline en base, l'étape 1, les conversations par e-mail et par
-téléphone (lot 8 : voir
+le 8 bis et le 10 bis sont faits (l'historique git en garde la trace) : le
+runner et le pipeline en base, l'étape 1, les conversations par e-mail et
+par téléphone (lot 8 : voir
 [`docs/LOT8_CONCEPTION.md`](docs/LOT8_CONCEPTION.md)), Julien dans la
-conversation (lot 8 bis, décisions Q85 et Q86) et la grille de points
-(lot 9, décision Q84).
+conversation (lot 8 bis, décisions Q85 et Q86), la grille de points
+(lot 9, décision Q84) et les réponses automatiques (lot 10 bis, Q93).
 
 - [ ] **Avant le lot 8 : les réglages en base.** Toute grandeur
   discutable se règle depuis Mission Control, sans réglage en double
@@ -128,10 +128,6 @@ conversation (lot 8 bis, décisions Q85 et Q86) et la grille de points
   cliquer comme un humain) et « Appeler une API » (pour Stripe et l'achat
   des domaines). Le détail est dans
   [`docs/LOT10_CONCEPTION.md`](docs/LOT10_CONCEPTION.md).
-- [ ] **Lot 10 bis « Les réponses automatiques ».** Une réponse
-  automatique ne doit jamais faire répondre Serge sans fin : une porte de
-  sortie, « arrêter avec ce contact », coupe la communication (Q93). Le
-  détail est dans la partie « Lot 10 bis » plus bas.
 - [ ] **Lot 11 « Jusqu'aux premières ventes ».** Mettre en base les
   tables, les liens et les invocations qui mènent un business de son POC
   en ligne jusqu'à ses premières ventes : les campagnes de prospection
@@ -349,30 +345,6 @@ discutable, qui peut un jour changer, se règle depuis Mission Control.**
   déclencheurs et les protections des tables. Clem a prévenu que
   l'organisation actuelle des réglages pourra changer à ce moment-là
   (Q63) : la façon de tout régler reste à concevoir.
-
----
-
-## Lot 10 bis — Les réponses automatiques
-
-- [ ] **Ne jamais répondre sans fin à une réponse automatique.** Un
-  e-mail de Serge peut recevoir une réponse automatique (« je suis absent
-  jusqu'au 20 », « votre demande n° 1234 est bien reçue »), et un robot
-  peut répondre à chaque message : Serge ne doit pas lui répondre à
-  l'infini. Ce qui existe (Q79) : « Traiter une réponse » classe une
-  réponse d'absence en « absence », Serge ne répond rien, et les relances
-  continuent, deux au plus. Ce qui manque (Q93) :
-  - **une porte de sortie** : « Traiter une réponse » peut rendre la
-    décision « arrêter avec ce contact » (un robot qui répond à tout, un
-    accusé de réception automatique, une liste de diffusion, une
-    conversation qui tourne en rond). Le contact passe à une étape où
-    Serge n'écrit plus (« arrêté », ajoutée à la liste de la page Policy,
-    Q82) : plus de réponse ni de relance, et c'est noté au journal ;
-  - **un garde-fou dans le code**, réglé en base : au plus 3 messages de
-    Serge à un même contact en 24 heures ; au-delà, l'envoi est annulé, le
-    contact arrêté, et un ticket d'information prévient Julien et Clem ;
-  - **les en-têtes des réponses automatiques** : la relève de l'e-mail
-    reconnaît `Auto-Submitted`, `X-Autoreply` et leurs cousins, et classe
-    le message « absence » sans appeler le modèle.
 
 ---
 

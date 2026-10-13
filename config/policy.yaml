@@ -627,7 +627,7 @@ sections:
 
   - id: contacts
     title: Contacts
-    why: À qui Serge n’écrit plus de lui-même.
+    why: À qui Serge n’écrit plus de lui-même, et à qui il ne répond plus.
     settings:
       - id: stop_states
         value: [REJECTED, UNREACHABLE, OPTED_OUT, BLOCKED, INVALID, CUSTOMER]
@@ -651,6 +651,33 @@ sections:
           - [OPTED_OUT, Désinscrit]
           - [BLOCKED, Bloqué]
           - [INVALID, Fiche invalide]
+      - id: silent_states
+        value: [STOPPED]
+        title: Étapes où Serge ne répond plus du tout
+        help: >-
+          À un contact à l’une de ces étapes, Serge n’écrit plus rien, pas
+          même une réponse ; ce qu’il écrit reste dans son fil, sans être
+          traité. « Arrêté » : une conversation qui ne mène nulle part (un
+          robot qui répond à chaque message), lot 10 bis.
+        kind: choix
+        choices:
+          - [STOPPED, Arrêté]
+          - [REJECTED, Écarté ou refus]
+          - [UNREACHABLE, Injoignable]
+          - [BLOCKED, Bloqué]
+          - [INVALID, Fiche invalide]
+      - id: max_messages_24h
+        value: 10
+        title: Messages de Serge au plus, par contact, sur 24 heures
+        help: >-
+          Réponses comprises. Au-delà, la conversation tourne sans doute en
+          rond (un robot qui répond à chaque message) : l’envoi est annulé,
+          Serge arrête avec ce contact, et un ticket prévient Julien et Clem.
+          Assez haut pour ne jamais couper un prospect qui écrit souvent.
+        kind: curseur
+        min: 1
+        max: 50
+        step: 1
 
   - id: points
     title: Grille de points

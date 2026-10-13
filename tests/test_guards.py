@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Guards: idempotence, blocklist, consent, quota 30j, fenêtres voix."""
+"""Guards: idempotence, blocklist, consent, quota 30j, messages sur 24 h,
+fenêtres voix."""
 
 from __future__ import annotations
 
@@ -23,6 +24,7 @@ SUNDAY = '2026-09-06T10:30:00+00:00'
 
 POLICY = {
     'consent': {'opt_in_channels': ['voice', 'sms']},
+    'contacts': {'max_messages_24h': 3},
     'calling_zones': {
         'default': 'FR',
         'FR': {
@@ -186,6 +188,40 @@ class GuardTests(unittest.TestCase):
             TUESDAY,
         )
         self.assertTrue(verdict.allowed)
+
+    def test_trop_de_messages_en_24h(self) -> None:
+        """Une conversation qui tourne en rond : au-delà de 3 messages de
+        Serge en 24 heures au même contact, réponses comprises, plus rien ne
+        part (lot 10 bis). Un message parti il y a plus de 24 heures ne
+        compte pas."""
+        for index, sent in enumerate(
+            (
+                '2026-09-08T09:00:00+00:00',
+                '2026-09-08T09:20:00+00:00',
+                '2026-09-06T09:40:00+00:00',
+            )
+        ):
+            self.connection.execute(
+                'INSERT INTO touches(id, campaign_id, contact_id, channel,'
+                ' kind, status, idempotency_key, sent_at, created_at,'
+                " updated_at) VALUES(?, 'c1', 'p7', 'email', 'reply', 'sent',"
+                ' ?, ?, ?, ?)',
+                (f'k-r{index}', f'k-r{index}', sent, sent, sent),
+            )
+        reply = {
+            'channel': 'email',
+            'subject': 'r@x.io',
+            'idempotency_key': 'k-r9',
+            'contact_id': 'p7',
+            'kind': 'reply',
+        }
+        self.assertTrue(check(self.connection, POLICY, reply, TUESDAY).allowed)
+        self.connection.execute(
+            "UPDATE touches SET sent_at='2026-09-08T10:00:00+00:00'"
+            " WHERE id='k-r2'"
+        )
+        verdict = check(self.connection, POLICY, reply, TUESDAY)
+        self.assertEqual(verdict.reason, Reason.QUOTA_CONTACT_24H)
 
     def test_fenetres_voix(self) -> None:
         self._consent('voice', '+33612345678')

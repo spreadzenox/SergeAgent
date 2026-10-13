@@ -31,6 +31,7 @@ from pathlib import Path
 from typing import Any
 
 from kit.mailbox_config import MailboxError, resolve_mailbox
+from serge.channels.auto_reply import AUTO_REPLY, is_auto_reply
 from serge.channels.base import Incoming, Outgoing
 from serge.channels.email_gog import POLL_MAX, MailError
 from serge.paths import config_root
@@ -264,7 +265,11 @@ def poll(since: str, config: dict[str, Any] | None = None) -> list[Incoming]:
                         body=_text(parsed),
                         message_ref=own,
                         refs=tuple(refs),
-                        native_type='email',
+                        native_type=AUTO_REPLY
+                        if is_auto_reply(
+                            {k.lower(): str(v) for k, v in parsed.items()}
+                        )
+                        else 'email',
                     )
                 )
     except imaplib.IMAP4.error as exc:

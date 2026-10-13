@@ -31,6 +31,8 @@ def _message(msg: dict) -> dict:
         'Message-ID': msg['message_id'],
         'In-Reply-To': msg.get('in_reply_to', ''),
         'References': msg.get('in_reply_to', ''),
+        # Des en-têtes en plus, ceux d'une réponse automatique par exemple.
+        **msg.get('headers', {}),
     }
     data = base64.urlsafe_b64encode(msg['body'].encode()).decode()
     return {
