@@ -38,6 +38,7 @@ from serge.sandbox.navigateur import (
     browser_read,
     browser_screenshot,
 )
+from serge.sandbox.publier import publish_version
 from serge.tickets.inform import inform_owners
 
 Runner = Callable[
@@ -230,6 +231,7 @@ RUNNERS: dict[str, Runner] = {
     'browser_action': browser_action,
     'browser_read': browser_read,
     'browser_screenshot': browser_screenshot,
+    'publish_version': publish_version,
 }
 
 

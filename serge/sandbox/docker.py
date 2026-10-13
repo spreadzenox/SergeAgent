@@ -96,3 +96,34 @@ def docker(
         journal(message)
         raise DockerError(message)
     return done
+
+
+def docker_bytes(args: list[str], *, timeout: float) -> bytes:
+    """Lance ``docker <args>`` et rend sa sortie brute (une archive tar).
+
+    Raises:
+        DockerError: Docker absent, muet ou qui refuse ; la raison est
+            notée au journal.
+    """
+    binary = shutil.which('docker')
+    if binary is None:
+        journal('docker absent de ce serveur')
+        raise DockerError('docker absent de ce serveur')
+    try:
+        done = subprocess.run(
+            [binary, *args],
+            capture_output=True,
+            timeout=timeout,
+            env=_env(),
+            check=False,
+        )
+    except (subprocess.TimeoutExpired, OSError) as exc:
+        message = f'docker {args[0]} : {exc}'
+        journal(message)
+        raise DockerError(message) from exc
+    if done.returncode != 0:
+        raison = done.stderr.decode('utf-8', 'replace').strip()[-500:]
+        message = f'docker {args[0]} : {raison or f"code {done.returncode}"}'
+        journal(message)
+        raise DockerError(message)
+    return done.stdout
