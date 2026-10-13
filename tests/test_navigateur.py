@@ -308,6 +308,17 @@ class NavigateurTests(unittest.TestCase):
         self.assertEqual(vu, ['disc'])
         self.assertEqual(onglet.evaluate(style), 'none')
 
+    def test_sans_son_paquet_le_navigateur_le_dit(self) -> None:
+        # Un serveur où le paquet Python manque : l'outil le dit clairement,
+        # et la raison va au journal.
+        with (
+            mock.patch.object(navigateur._ETAT, 'browser', None),
+            mock.patch.dict(sys.modules, {'playwright.sync_api': None}),
+            self.assertRaises(navigateur.NavigateurAbsent) as refus,
+        ):
+            navigateur._browser(self.conn)
+        self.assertIn('playwright manque sur ce serveur', str(refus.exception))
+
     def test_essayer_l_interface_web(self) -> None:
         self.assertEqual(
             set_setting(self.conn, 'llm_calls.screenshots_kept', 1, 'test'),
