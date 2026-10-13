@@ -52,8 +52,12 @@ Si `doctor` échoue (drift de format entre versions), passe en (b).
 ## 4. Tester
 
 ```sh
-gog gmail search 'newer_than:1d' --max 3 --json
+gog gmail messages search 'newer_than:1d' --max 3 --json
 ```
+
+C'est la commande que Serge utilise pour relever la boîte : elle rend des
+messages (`messages`). `gog gmail search`, elle, rend des fils
+(`threads`) : Serge ne s'en sert pas.
 
 Puis, dans Mission Control, la fiche du canal E-mail doit dire « branché »
 (page Pipeline) : Serge relève alors la boîte toutes les 2 minutes.

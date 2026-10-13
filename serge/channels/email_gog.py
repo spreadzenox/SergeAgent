@@ -85,11 +85,19 @@ def _run(args: list[str], timeout: float = 60.0) -> dict[str, Any]:
 
 
 def _search(query: str, limit: int) -> list[str]:
-    """Les identifiants Gmail des messages trouvés (syntaxe Gmail)."""
-    payload = _run(['gmail', 'search', query, '--max', str(limit)])
-    items = payload.get('messages') or payload.get('results') or []
+    """Les identifiants Gmail des messages trouvés (syntaxe Gmail).
+
+    ``gog gmail search`` cherche des fils (``threads``) ; seule ``gog gmail
+    messages search`` rend des messages. Une réponse sans liste
+    ``messages`` est une erreur : elle ne passe jamais pour une boîte vide.
+    """
+    payload = _run(['gmail', 'messages', 'search', query, '--max', str(limit)])
+    items = payload.get('messages')
     if not isinstance(items, list):
-        return []
+        raise MailError(
+            'API: gog, la recherche ne rend pas de messages'
+            f' (clés : {", ".join(sorted(payload)) or "aucune"})'
+        )
     return [
         str(item['id'])
         for item in items[:limit]
