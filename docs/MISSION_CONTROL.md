@@ -42,7 +42,7 @@ navigateur au fil de l'eau.
 | **Policy** | `#/policy` | Les réglages généraux, par famille : les limites de Serge face au monde (argent, plafonds par canal, horaires, pays et heures d'appel, accord des gens, taille des essais, santé des comptes, encaissement, mémoire, résumé du jour, lecture du web, canaux : le délai de réponse, la relève récente et le plafond du jour de chaque canal ; contacts : les étapes où Serge n'écrit plus de lui-même ; grille de points : ce que vaut chaque réaction d'un prospect, par canal), tels qu'ils sont en base avec leur titre, leur aide et leurs bornes ; puis les réglages des invocations et les quotas des tables marqués « policy », rangés par étape et par invocation. Chaque réglage affiché est lu par un programme : un test le vérifie. | Changer un réglage et l'enregistrer, seul ; « Remettre » sa valeur précédente (le bouton dit laquelle, et son titre qui l'a remplacée et quand). Une famille verrouillée dit pourquoi (un essai tourne). Chaque changement est noté au journal. |
 | **Économie** | `#/economy` | De l'envoi au paiement : messages partis, réponses, intéressés (réaction « intéressé » ou « rendez-vous »), points (grille de points) et points par euro dépensé (modèles et minutes d'appel), paiements ; les derniers envois (canal, contact, sorte, statut et raison d'un refus) ; abonnements, coût des invocations LLM (le coût réel facturé par OpenRouter, avec les jetons sans coût connu à part). | Lecture. |
 | **Voix** | `#/voice` | L'état du pont téléphonique, le journal des appels, et les journaux du serveur : les dernières lignes du pont vocal et d'Asterisk (le secours tour par tour compris) et la fin du fichier `messages` d'Asterisk, lues sur le serveur toutes les 30 secondes. Un appel qui échoue y laisse son erreur, sans accès à la machine. | Écouter un enregistrement. Pour couper les appels : page En direct. |
-| **Health** | `#/health` | Taille du code, versions, piste d'audit, et les journaux du serveur : les dernières lignes du bot Discord (chaque clic reçu, la réponse envoyée ou refusée par Discord, les reconnexions) et des deux files de tâches, lues sur le serveur toutes les 30 secondes. L'état des services est dans les îlots de la page Système ; les journaux de la voix sont sur la page Voix. | Lecture. |
+| **Health** | `#/health` | Taille du code, versions, piste d'audit, et les journaux du serveur : les dernières lignes du bot Discord (chaque clic reçu, la réponse envoyée ou refusée, un fil ou une carte qui n'a pas pu partir, les fermetures de connexion, toujours avec la raison donnée par Discord) et des deux files de tâches, lues sur le serveur toutes les 30 secondes. L'état des services est dans les îlots de la page Système ; les journaux de la voix sont sur la page Voix. | Lecture. |
 | **Identité** | `#/identite` | Qui est Serge sur cette instance : nom, e-mail, SIRET, IBAN… La source est le fichier d'instance, pas la base. | Lecture. La fonction d'écriture existe (`ecrire_identite`) mais aucun bouton ne l'appelle. |
 
 ### Les fiches
@@ -285,9 +285,13 @@ accusé de réception), puis tranche le ticket : une base occupée quelques
 secondes ne fait plus échouer le clic. Si l'acte est refusé ensuite (par
 exemple, un ticket déjà tranché par quelqu'un d'autre), un message que
 seul celui qui a cliqué voit le dit. Les envois et les mises à jour de
-cartes tournent à part : un envoi lent ne retarde jamais un clic. Chaque
-clic reçu, la réponse envoyée (ou refusée par Discord, avec sa raison) et
-chaque reconnexion sont notés au journal du service, lisible sur la page
-Health ; un clic en erreur n'arrête pas le bot.
+cartes tournent à part : un envoi lent ne retarde jamais un clic.
+
+Toute erreur de Discord est notée au journal du service, avec la raison
+que Discord donne (exemple : « 50013 Missing Permissions »), lisible sur
+la page Health : chaque clic reçu et la réponse envoyée ou refusée, un fil
+qui ne s'ouvre pas, une carte pas mise à jour, et chaque fermeture de la
+connexion temps réel par Discord, avec son code (exemple : « 4014 »), puis
+la reconnexion. Un clic en erreur n'arrête pas le bot.
 
 Installation : [`installation/DISCORD_SETUP.md`](installation/DISCORD_SETUP.md).

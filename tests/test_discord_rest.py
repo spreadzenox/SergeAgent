@@ -146,10 +146,16 @@ class DiscordRestTests(unittest.TestCase):
         ):
             with self.assertRaisesRegex(DiscordError, '^AUTH'):
                 verify_token('tok-fake-8')
+        # Ce que Discord dit de l'erreur part au journal avec elle.
         with mock.patch(
-            'urllib.request.urlopen', side_effect=_http_error(403)
+            'urllib.request.urlopen',
+            side_effect=_http_error(
+                403, '{"code": 50013, "message": "Missing Permissions"}'
+            ),
         ):
-            with self.assertRaisesRegex(DiscordError, '^FORBIDDEN'):
+            with self.assertRaisesRegex(
+                DiscordError, '^FORBIDDEN.*50013 Missing Permissions'
+            ):
                 send_message('tok-fake-9', 'c1', {})
         with mock.patch(
             'urllib.request.urlopen', side_effect=_http_error(404)

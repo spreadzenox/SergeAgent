@@ -31,6 +31,7 @@ from serge.discord.interactions import (  # noqa: E402
     premiere_reponse,
     route_interaction,
 )
+from serge.discord.journal import journal  # noqa: E402
 from serge.discord.rest import (  # noqa: E402
     DiscordError,
     interaction_callback,
@@ -92,9 +93,9 @@ class Bot:
                 str(interaction.get('token') or ''),
                 body,
             )
-            _journal(f'réponse envoyée (type {body.get("type")})')
+            journal(f'réponse envoyée (type {body.get("type")})')
         except DiscordError as exc:
-            _journal(f'réponse à un clic refusée par Discord : {exc}')
+            journal(f'réponse à un clic refusée par Discord : {exc}')
 
     def _suite(self, interaction: Mapping[str, Any], texte: str) -> None:
         """Un message éphémère après l'accusé de réception."""
@@ -105,7 +106,7 @@ class Bot:
                 ephemere(texte),
             )
         except DiscordError as exc:
-            _journal(f'message après un clic refusé par Discord : {exc}')
+            journal(f'message après un clic refusé par Discord : {exc}')
 
     def on_gateway_event(self, kind: str, data: dict[str, Any]) -> None:
         """Dispatch READY / INTERACTION_CREATE.
@@ -116,13 +117,15 @@ class Bot:
         if kind == 'READY':
             user = data.get('user') or {}
             self.bot_user_id = str(user.get('id') or '')
-            _journal('connecté à Discord')
+            journal('connecté à Discord')
+        elif kind == 'RESUMED':
+            journal('reconnecté à Discord (session reprise)')
         elif kind == 'INTERACTION_CREATE':
             try:
                 self.on_interaction(data)
             except Exception:  # noqa: BLE001 — un clic raté n'arrête pas le bot
                 self.conn.rollback()
-                _journal(f'clic en erreur :\n{traceback.format_exc()}')
+                journal(f'clic en erreur :\n{traceback.format_exc()}')
         self.conn.commit()
 
     def on_interaction(self, interaction: dict[str, Any]) -> None:
@@ -136,7 +139,7 @@ class Bot:
         kind = int(interaction.get('type') or 0)
         if kind not in COMPOSANT and kind != FENETRE:
             return
-        _journal(
+        journal(
             f'clic reçu : {(interaction.get("data") or {}).get("custom_id")}'
             f' par {actor_id(interaction)}'
         )
@@ -179,7 +182,7 @@ class Bot:
                 self.deliver_due(conn)
             except sqlite3.Error as exc:
                 conn.rollback()
-                _journal(f'envoi des tickets impossible : {exc}')
+                journal(f'envoi des tickets impossible : {exc}')
             self.reveil.wait(tick_seconds)
             self.reveil.clear()
 
@@ -197,12 +200,9 @@ class Bot:
                 gateway.poll()
                 backoff = 1.0
             except GatewayError as exc:
-                _journal(f'gateway : {exc} ; reconnexion dans {backoff:.0f} s')
+                journal(f'gateway : {exc} ; reconnexion dans {backoff:.0f} s')
+                if self.gateway is not None:
+                    self.gateway.close()
                 self.gateway = None
                 time.sleep(backoff)
                 backoff = min(60.0, backoff * 2.0)
-
-
-def _journal(texte: str) -> None:
-    """Une ligne dans le journal du service (lisible avec journalctl)."""
-    print(f'discord : {texte}', file=sys.stderr, flush=True)

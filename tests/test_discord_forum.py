@@ -187,9 +187,14 @@ class ForumTests(unittest.TestCase):
     def test_un_fil_refuse_est_reessaye_plus_tard(self) -> None:
         self._forum()
         self.discord.panne = True
-        self._ticket('2026-10-09T11:00:00+00:00')
-        self.assertEqual(
-            deliver(self.conn, 'tok', '2026-10-09T11:00:01+00:00'), 0
+        ticket_id = self._ticket('2026-10-09T11:00:00+00:00')
+        with mock.patch('serge.discord.forum.journal') as journal:
+            self.assertEqual(
+                deliver(self.conn, 'tok', '2026-10-09T11:00:01+00:00'), 0
+            )
+        # La raison donnée par Discord part au journal du bot.
+        journal.assert_called_once_with(
+            f'fil du ticket {ticket_id} pas ouvert : API: Discord HTTP 403'
         )
         self.discord.panne = False
         self.assertEqual(
