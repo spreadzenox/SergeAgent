@@ -225,6 +225,27 @@ def create_dm(token: str, user_id: str, *, base_url: str = DISCORD_API) -> str:
     return str(result['id'])
 
 
+def _post_interaction(
+    url: str, payload: dict[str, Any], timeout: float
+) -> None:
+    """POST sur une URL d'interaction (pas de token bot : celui de
+    l'interaction est dans l'URL)."""
+    data = json.dumps(payload, ensure_ascii=False).encode('utf-8')
+    request = urllib.request.Request(
+        url,
+        data=data,
+        headers={'Content-Type': 'application/json', 'User-Agent': USER_AGENT},
+        method='POST',
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=timeout):
+            pass
+    except urllib.error.HTTPError as exc:
+        raise DiscordError(f'API: interaction HTTP {exc.code}') from exc
+    except (urllib.error.URLError, TimeoutError, OSError) as exc:
+        raise DiscordError(f'NETWORK: interaction ({exc})') from exc
+
+
 def interaction_callback(
     interaction_id: str,
     interaction_token: str,
@@ -233,7 +254,7 @@ def interaction_callback(
     base_url: str = DISCORD_API,
     timeout: float = 10.0,
 ) -> None:
-    """Ack une interaction (pas de token bot : token d'interaction).
+    """Répond à une interaction, dans les 3 secondes.
 
     Types : 1 pong, 4 message, 5 deferred, 6 deferred update, 7 update,
     9 fenêtre de saisie.
@@ -241,23 +262,29 @@ def interaction_callback(
     Raises:
         DiscordError: NETWORK/API (jamais AUTH : pas de secret ici).
     """
-    url = (
+    _post_interaction(
         f'{base_url.rstrip("/")}/interactions/{interaction_id}/'
-        f'{interaction_token}/callback'
+        f'{interaction_token}/callback',
+        callback,
+        timeout,
     )
-    data = json.dumps(callback, ensure_ascii=False).encode('utf-8')
-    request = urllib.request.Request(
-        url,
-        data=data,
-        headers={'Content-Type': 'application/json'},
-        method='POST',
+
+
+def interaction_followup(
+    application_id: str,
+    interaction_token: str,
+    message: dict[str, Any],
+    *,
+    base_url: str = DISCORD_API,
+    timeout: float = 10.0,
+) -> None:
+    """Un message de suite, après la réponse (valable 15 minutes).
+
+    Raises:
+        DiscordError: NETWORK/API.
+    """
+    _post_interaction(
+        f'{base_url.rstrip("/")}/webhooks/{application_id}/{interaction_token}',
+        message,
+        timeout,
     )
-    try:
-        with urllib.request.urlopen(request, timeout=timeout):
-            pass
-    except urllib.error.HTTPError as exc:
-        raise DiscordError(
-            f'API: callback interaction HTTP {exc.code}'
-        ) from exc
-    except (urllib.error.URLError, TimeoutError, OSError) as exc:
-        raise DiscordError(f'NETWORK: callback ({exc})') from exc

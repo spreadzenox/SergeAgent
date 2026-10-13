@@ -39,8 +39,9 @@ forum, un salon des urgences ou un salon du résumé.
 - Les autres administrateurs s'ajoutent dans Mission Control, page
   Décisions, par leur identifiant Discord.
 - Vérifie : `serge/discord/cli.py verify` (token + username, rien d’autre).
-- Le service `serge-discord-bot` démarre avec l’instance (boucle gateway
-  + messages privés, reconnect backoff).
+- Le service `serge-discord-bot` démarre avec l’instance (la gateway,
+  qui répond aux clics, et les messages privés, envoyés à part ;
+  reconnexion avec attente croissante).
 
 ## 4. Tests live-prudents
 

@@ -274,4 +274,14 @@ chacun, boutons morts, avec qui l'a tranché (« Approuvé par Clem »). Le
 ticket est recopié tel qu'il est en base, sans résumé par un modèle. Un
 message libre n'est pas lu (décisions Q85 et Q86).
 
+Discord attend la réponse à un clic en moins de 3 secondes. Le bot répond
+donc d'abord (la fenêtre de saisie à ouvrir, un refus, ou un simple
+accusé de réception), puis tranche le ticket : une base occupée quelques
+secondes ne fait plus échouer le clic. Si l'acte est refusé ensuite (par
+exemple, un ticket déjà tranché par quelqu'un d'autre), un message que
+seul celui qui a cliqué voit le dit. Les envois et les mises à jour de
+cartes tournent à part : un envoi lent ne retarde jamais un clic. Une
+réponse que Discord refuse est notée au journal du service, sans arrêter
+le bot.
+
 Installation : [`installation/DISCORD_SETUP.md`](installation/DISCORD_SETUP.md).

@@ -4,10 +4,13 @@
 Scénarios :
 - l'administrateur du fichier d'instance devient, une fois, le premier
   administrateur en base ; retiré ensuite, il ne revient pas ;
-- un bouton tranche le ticket, est accusé, et les cartes sont mises à
-  jour tout de suite ;
+- un bouton est accusé avant que le ticket soit tranché (Discord attend
+  une réponse en moins de 3 secondes), puis le tranche et réveille l'envoi
+  des cartes ;
+- une réponse refusée par Discord (délai dépassé) n'arrête pas le bot, et
+  le ticket est quand même tranché ;
 - un bouton qui demande un texte ouvre une fenêtre ; la fenêtre envoyée
-  est confirmée ;
+  est confirmée par un message éphémère ;
 - une personne qui n'est pas administrateur est refusée ;
 - un message libre est ignoré.
 """
@@ -25,6 +28,7 @@ sys.path.insert(0, str(ROOT))
 
 from serge.db.boot import init_schema  # noqa: E402
 from serge.discord.bot import Bot  # noqa: E402
+from serge.discord.rest import DiscordError  # noqa: E402
 from serge.tickets import create_ticket, publish  # noqa: E402
 from serge.tickets.admins import admins, remove_admin  # noqa: E402
 from serge.tickets.types import ticket_types  # noqa: E402
@@ -73,24 +77,57 @@ class DiscordBotTests(unittest.TestCase):
         self._bot()
         self.assertEqual(admins(self.conn), [])
 
-    def test_un_bouton_tranche_et_met_a_jour_les_cartes(self) -> None:
-        bot = self._bot()
-        ticket_id = self._ticket()
-        interaction = {
+    def _clic(self, ticket_id: str) -> dict:
+        return {
             'id': '9001',
             'token': 'tok-ia-1',
+            'application_id': '42',
             'type': 3,
             'user': {'id': OWNER},
             'data': {'custom_id': f't:{ticket_id}:approuver'},
         }
+
+    def test_un_bouton_est_accuse_avant_d_etre_tranche(self) -> None:
+        bot = self._bot()
+        ticket_id = self._ticket()
+        etat_a_l_accuse = []
+        with mock.patch(
+            'serge.discord.bot.interaction_callback',
+            side_effect=lambda *a: etat_a_l_accuse.append(
+                (a[2], self._state(ticket_id))
+            ),
+        ):
+            bot.on_interaction(self._clic(ticket_id))
+        self.assertEqual(etat_a_l_accuse, [({'type': 6}, 'OPEN')])
+        self.assertEqual(self._state(ticket_id), 'APPROVED')
+        self.assertTrue(bot.reveil.is_set())
+
+    def test_une_reponse_trop_tardive_n_arrete_pas_le_bot(self) -> None:
+        bot = self._bot()
+        ticket_id = self._ticket()
+        with mock.patch(
+            'serge.discord.bot.interaction_callback',
+            side_effect=DiscordError('API: interaction HTTP 404'),
+        ):
+            bot.on_interaction(self._clic(ticket_id))
+        self.conn.rollback()
+        self.assertEqual(self._state(ticket_id), 'APPROVED')
+
+    def test_un_ticket_deja_tranche_est_dit_apres_l_accuse(self) -> None:
+        bot = self._bot()
+        ticket_id = self._ticket()
+        with mock.patch('serge.discord.bot.interaction_callback'):
+            bot.on_interaction(self._clic(ticket_id))
+        clic = {**self._clic(ticket_id), 'id': '9009'}
         with (
             mock.patch('serge.discord.bot.interaction_callback') as acked,
-            mock.patch('serge.discord.bot.deliver') as delivered,
+            mock.patch('serge.discord.bot.interaction_followup') as suite,
         ):
-            bot.on_interaction(interaction)
-        self.assertEqual(self._state(ticket_id), 'APPROVED')
+            bot.on_interaction(clic)
         self.assertEqual(acked.call_args[0][2], {'type': 6})
-        delivered.assert_called_once()
+        self.assertEqual(suite.call_args[0][0], '42')
+        self.assertIn('Impossible', suite.call_args[0][2]['content'])
+        self.assertEqual(suite.call_args[0][2]['flags'], 64)
 
     def test_un_texte_ouvre_une_fenetre_puis_est_confirme(self) -> None:
         bot = self._bot()
@@ -112,12 +149,13 @@ class DiscordBotTests(unittest.TestCase):
         )
         with (
             mock.patch('serge.discord.bot.interaction_callback') as acked,
-            mock.patch('serge.discord.bot.deliver'),
+            mock.patch('serge.discord.bot.interaction_followup') as suite,
         ):
             bot.on_interaction(
                 {
                     'id': '9003',
                     'token': 'tok-ia-3',
+                    'application_id': '42',
                     'type': 5,
                     'user': {'id': OWNER},
                     'data': {
@@ -138,9 +176,9 @@ class DiscordBotTests(unittest.TestCase):
                 }
             )
         self.assertEqual(self._state(ticket_id), 'APPROVED')
-        confirme = acked.call_args[0][2]
+        self.assertEqual(acked.call_args[0][2], {'type': 6})
         self.assertEqual(
-            (confirme['type'], confirme['data']['flags']), (4, 64)
+            suite.call_args[0][2], {'content': 'C’est noté.', 'flags': 64}
         )
 
     def test_une_personne_qui_n_est_pas_administrateur_est_refusee(

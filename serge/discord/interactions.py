@@ -191,6 +191,43 @@ def _bouton(
     return None
 
 
+def ephemere(texte: str) -> dict[str, Any]:
+    """Un message que seule la personne qui a cliqué voit."""
+    return {'content': texte[:2000], 'flags': 64}
+
+
+def premiere_reponse(
+    connection: sqlite3.Connection, interaction: Mapping[str, Any]
+) -> dict[str, Any] | None:
+    """La réponse à donner tout de suite à Discord, sans rien écrire.
+
+    Discord attend une réponse en moins de 3 secondes. Un refus (bouton
+    inconnu, personne qui n'est pas administrateur) et une fenêtre de
+    saisie à ouvrir se décident en lisant la base. Sinon ``None`` : le bot
+    accuse réception, puis tranche avec ``route_interaction``, même si la
+    base est occupée quelques secondes.
+    """
+    data = interaction.get('data') or {}
+    saisie = int(interaction.get('type') or 0) == FENETRE
+    parsed = parse_custom_id(
+        str(data.get('custom_id') or ''), 'm' if saisie else 't'
+    )
+    if parsed is None:
+        return {'type': 4, 'data': ephemere('Erreur : bouton inconnu.')}
+    user = actor_id(interaction)
+    if not user or not is_admin(connection, user):
+        return {
+            'type': 4,
+            'data': ephemere('Réservé aux administrateurs de Serge.'),
+        }
+    ticket_id, action, _item = parsed
+    choix = str((data.get('values') or [''])[0])
+    if not saisie and action in SAISIES:
+        if action != 'choix_qcm' or choix == '__autre__':
+            return {'type': 9, 'data': fenetre(ticket_id, action)}
+    return None
+
+
 def route_interaction(
     connection: sqlite3.Connection, interaction: Mapping[str, Any]
 ) -> dict[str, Any]:
