@@ -134,32 +134,42 @@ programme de Serge : une page inconnue ne peut pas l'atteindre. Une
 session de navigateur par tâche ; le lot 12 ajoutera une session par
 compte, qui garde ses cookies.
 
-**Les outils**, chacun une capacité générale :
+**Trois outils**, chacun une capacité générale (lot 10, PR 2) :
 
-- **Ouvrir une adresse.**
-- **Lire la page** : la page décrite comme la lit un lecteur d'écran,
-  ligne par ligne (titres, textes, champs, boutons, liens), chaque élément
-  avec un repère court qu'on cite pour agir. Exemple : `bouton « Créer un
-  compte » [e7]`, `champ « E-mail » [e9]`. C'est ce que fait Playwright
-  MCP, l'outil libre de Microsoft : bien moins cher qu'une capture, et
-  plus sûr que de viser des pixels.
-- **Cliquer** sur un repère.
-- **Taper** du texte dans un champ, en validant ou non avec Entrée.
-- **Taper un secret** : le modèle désigne le champ et le nom du secret
-  (« numéro de carte de Serge ») ; Serge tape la valeur. Le modèle ne la
-  voit jamais, et elle n'apparaît jamais au journal.
-- **Choisir** une option dans une liste.
-- **Appuyer sur une touche** (Échap, Tab…).
-- **Faire défiler** la page.
-- **Revenir** à la page précédente.
-- **Prendre une capture** : l'image est envoyée au modèle, et gardée comme
-  preuve si l'invocation le demande (partie 7).
-- **Changer la taille de l'écran** : ordinateur (1280 × 800) ou mobile
-  (390 × 844).
-- **Lire les erreurs de la page** : les erreurs JavaScript et les requêtes
-  qui ont échoué.
-- **Attendre** qu'un texte apparaisse, ou quelques secondes.
-- **Envoyer un fichier** dans un champ prévu pour ça.
+- **Agir dans une page** (`browser_action`), avec une action :
+  `ouvrir` une adresse, `cliquer` sur un repère, `taper` du texte dans un
+  champ (en validant ou non avec Entrée), `choisir` une option dans une
+  liste, appuyer sur une `touche` (Entrée, Échap, Tab), `defiler` vers le
+  haut ou le bas, `revenir` à la page précédente, `attendre` qu'un texte
+  apparaisse, passer l'`ecran` en ordinateur (1280 × 800) ou mobile
+  (390 × 844). Une seule capacité plutôt qu'une par action : chaque outil
+  proposé au modèle repart à chaque tour, et coûte à chaque fois.
+- **Lire la page** (`browser_read`) : la page entière décrite comme la lit
+  un lecteur d'écran (`serge/sandbox/page.js`), ligne par ligne (titres,
+  textes, champs, boutons, liens), chaque élément avec un repère court
+  qu'on cite pour agir. Exemple : `[e7] bouton « Créer un compte »`,
+  `[e9] champ email « E-mail » (vide)`. C'est l'idée de Playwright MCP,
+  l'outil libre de Microsoft : bien moins cher qu'une capture, et plus sûr
+  que de viser des pixels. Avec la page, les dernières erreurs : erreurs
+  JavaScript, requêtes ratées, réponses HTTP 400 et plus.
+- **Prendre une capture** (`browser_screenshot`) : l'écran, ou la page
+  entière ; l'image est envoyée au modèle (partie 3), et gardée comme
+  preuve si l'invocation le demande, sous
+  `files/<business>/<livrable>/captures/`, avec sa fiche dans
+  `artifacts` (sa taille, la tâche qui l'a prise).
+
+**Taper un secret** (le modèle désigne le champ et le nom du secret,
+Serge tape la valeur sans la lui montrer) arrive avec le paiement test de
+l'étape 5 (PR 5) : c'est là qu'il sert.
+
+Le business, le livrable et la tâche sont des paramètres figés de ces
+outils. Une session (un onglet et ses cookies) par tâche, fermée à la fin
+de la tâche. Le navigateur (profil « navigateur » de la page Policy :
+image `chromedp/headless-shell`, 2 Go de mémoire) et les chantiers sont
+sur un même réseau Docker, `serge-chantiers` : l'adresse
+`http://chantier:3000` mène au chantier du business de la tâche, pour que
+le constructeur essaie le serveur qu'il vient de lancer. Une connexion
+perdue au navigateur (conteneur relancé) est refaite une fois.
 
 Après chaque action, l'outil rend la page relue, en version courte : le
 modèle voit l'effet de son clic sans appel de plus.
@@ -193,8 +203,13 @@ apprendre trois choses :
    les modèles d'Anthropic rend cette relecture dix fois moins chère.
 3. **Ne renvoyer que les dernières captures.** Sinon, chaque tour renvoie
    toutes les anciennes images. Seules les 3 dernières captures restent
-   dans l'historique (réglage de la page Pipeline) ; les autres sont
-   remplacées par « [capture retirée] ».
+   dans l'historique (page Pipeline, « Captures gardées dans
+   l'historique ») ; les autres sont remplacées par un texte court,
+   modifiable sur la même page. Une capture part dans un message à part,
+   juste après les résultats des outils du tour : tous les fournisseurs
+   n'acceptent pas une image comme résultat d'outil. Le texte rendu par
+   l'outil dit seulement « montrée dans le message suivant » : l'image
+   n'est jamais envoyée en texte.
 
 **Le plafond du jour.** Il n'y a pas de budget par construction : tout
 compte dans le plafond du jour, comme les autres appels au modèle (Q91).
@@ -213,8 +228,9 @@ Le constructeur et le relecteur ont besoin du meilleur modèle disponible,
 à un prix raisonnable, qui sait lire une image (Q91). Un quatrième niveau
 s'ajoute aux trois de Q57 (rapide, moyen, intelligent) : **« code »**.
 C'est une ligne de plus dans `llm_models`, et un critère de plus pour la
-recommandation de modèle : **lit les images** (nouvelle colonne, cochée
-pour ce niveau).
+recommandation de modèle : **lit les images** (colonne `needs_image`,
+cochée pour ce niveau ; OpenRouter le dit par `input_modalities`). La
+liste fermée des niveaux permis en base est élargie (migration v43).
 
 Sa tolérance est de 100 % : la recommandation prend toujours le modèle à
 la meilleure note sous le prix maximum du niveau, au lieu du meilleur
@@ -530,6 +546,9 @@ plus, 3 passages de construction au plus, les tours d'outils de
   prix) et supprime ou archive son produit. Il sert à nettoyer après les
   essais. Il demande une confirmation.
 - **Un bouton « Construire le vrai produit »**, temporaire (partie 9).
+- **La fiche d'une tâche** montre ses captures gardées ; un clic ouvre
+  l'image en grand. Mission Control sert un fichier rangé sous `files/`,
+  et rien d'autre, à une session connectée (`/owner/api/fichier`).
 - **Un îlot « Chantiers »** sur la page Système : chaque chantier, allumé
   ou éteint, la place qu'il prend, les commandes lancées en 24 h, et
   pourquoi l'un a été arrêté. Les boutons d'essai du lot (« Essayer le

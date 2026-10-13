@@ -38,6 +38,14 @@ llm_models:
     max_price_usd: 1.50
   - tier: smart
     max_price_usd: 8.00
+  # Le niveau « code » (lot 10, Q91) : construire et relire un produit,
+  # voir des pages. Le meilleur modèle sous son prix maximum (tolérance
+  # 100 %), parmi ceux qui lisent les images.
+  - tier: code
+    model: anthropic/claude-opus-5.5
+    max_price_usd: 12.00
+    tolerance_pct: 100
+    needs_image: true
 
 # Les textes de Serge, modifiables sur la page Pipeline : ceux envoyés au
 # modèle, et la phrase de fin de chaque e-mail. Un repère entre accolades
@@ -86,6 +94,20 @@ serge_texts:
     body: >-
       (résultat tronqué : {reste} caractères de plus ; demande moins à la
       fois)
+  - id: captures_intro
+    title: Avant les captures d’écran
+    help: >-
+      Envoyé avec les captures qu’une invocation vient de prendre, juste
+      après les résultats de ses outils.
+    body: Les captures d'écran que tu viens de prendre, dans l'ordre.
+  - id: capture_retiree
+    title: À la place d’une ancienne capture
+    help: >-
+      Seules les dernières captures restent dans l’historique (page
+      Pipeline, « Captures gardées ») ; {n} est remplacé par leur nombre.
+    body: >-
+      (capture retirée : seules les {n} dernières restent ; reprends-en une
+      si tu as besoin de revoir l'écran)
   - id: footer_email
     title: Fin de chaque e-mail
     help: >-
@@ -514,6 +536,30 @@ tools:
       Remplace un passage exact d'un fichier du chantier, présent une seule
       fois, par un autre.
     capability: sandbox_edit_file
+
+  # L'interface web (lot 10, Q91) : voir une page et y agir comme un
+  # humain, dans un navigateur qui tourne dans son propre conteneur. Le
+  # business, le livrable et la tâche sont figés sur chaque invocation.
+  - id: navigateur_agir
+    title: Agir dans une page
+    doc: >-
+      Ouvrir une adresse, cliquer, taper, choisir, appuyer sur une touche,
+      faire défiler, revenir, attendre, passer en écran ordinateur ou
+      mobile. Rend la page relue en version courte, avec un repère par
+      élément ([e7]).
+    capability: browser_action
+  - id: navigateur_lire
+    title: Lire la page
+    doc: >-
+      La page entière, lue comme par un lecteur d'écran, et ses dernières
+      erreurs (JavaScript, requêtes ratées).
+    capability: browser_read
+  - id: navigateur_capture
+    title: Prendre une capture
+    doc: >-
+      Une capture de l'écran, montrée au modèle comme une image ; gardée,
+      elle sert de preuve et se voit dans Mission Control.
+    capability: browser_screenshot
 
 writable_tables:
   - table: listen_cycles
@@ -2397,6 +2443,58 @@ invocations:
       - {path: marche, type: choice, choices: [oui, non], description: 'La mission marche-t-elle, vérifiée dans le chantier ?'}
       - {path: compte_rendu, type: text, description: 'Ce qui a été fait, vérifié, et ce qui ne marche pas.'}
 
+  - id: essayer_navigateur
+    title: Essayer l'interface web (temporaire)
+    role: >-
+      Temporaire, pour essayer l'interface web depuis Mission Control (lot
+      10, Q91) : ouvre une adresse, y fait la mission comme le ferait une
+      personne (lire, cliquer, taper, sur ordinateur et sur mobile), garde
+      des captures, puis dit ce qu'elle a vu et ce qui ne marche pas.
+    type: llm
+    model_tier: code
+    queue: works
+    priority: 30
+    max_tool_turns: 40
+    prompt: |
+      Tu essaies un site web comme le ferait une personne ordinaire qui le
+      découvre. Tu as trois outils : agir dans la page (ouvrir une adresse,
+      cliquer sur un repère [e7], taper dans un champ, choisir dans une
+      liste, appuyer sur une touche, faire défiler, revenir, attendre un
+      texte, passer en écran ordinateur ou mobile), lire la page entière,
+      et prendre une capture. Après chaque action, tu reçois la page relue.
+
+      Commence par ouvrir l'adresse donnée dans les paramètres de la
+      tâche, puis fais la mission. L'adresse http://chantier:<port> mène au
+      chantier d'essai, si un serveur y tourne. Regarde vraiment l'écran :
+      prends au moins une capture sur ordinateur et une sur mobile, et
+      garde-les (keep). Lis les erreurs de la page.
+
+      Rends ce qui marche (oui ou non) et ton compte rendu : ce que tu as
+      fait, ce que tu as vu, ce qui ne marche pas ou gêne, avec le numéro
+      de la capture qui le montre.
+    tools:
+      - tool: navigateur_agir
+        mode: callable
+        params:
+          venture_id: {source: fixed, value: essai}
+          deliverable: {source: fixed, value: chantier}
+          task_id: {source: task, value: task_id}
+      - tool: navigateur_lire
+        mode: callable
+        params:
+          venture_id: {source: fixed, value: essai}
+          deliverable: {source: fixed, value: chantier}
+          task_id: {source: task, value: task_id}
+      - tool: navigateur_capture
+        mode: callable
+        params:
+          venture_id: {source: fixed, value: essai}
+          deliverable: {source: fixed, value: chantier}
+          task_id: {source: task, value: task_id}
+    output:
+      - {path: marche, type: choice, choices: [oui, non], description: 'Le site fait-il ce que demande la mission ?'}
+      - {path: compte_rendu, type: text, description: 'Ce qui a été fait, vu, et ce qui ne marche pas, captures à l''appui.'}
+
 links:
   - id: cycle_ouvert_vers_exploration
     title: Le cycle ouvert part en exploration
@@ -2724,6 +2822,19 @@ triggers:
       fait la mission, avec le modèle du niveau intelligent. Le compte
       rendu est sur la fiche de la tâche.
     params:
+      mission: {source: form, value: mission}
+
+  - id: bouton_essayer_navigateur
+    title: Essayer l'interface web
+    invocation: essayer_navigateur
+    event: button
+    confirm: >-
+      Serge ouvre l'adresse dans son navigateur (un conteneur sur le
+      serveur) et y fait la mission comme une personne, avec le modèle du
+      niveau « code ». Le compte rendu et les captures sont sur la fiche de
+      la tâche.
+    params:
+      adresse: {source: form, value: adresse}
       mission: {source: form, value: mission}
 
 # Les modifications d'objets déjà en base sur une instance existante (le

@@ -387,6 +387,24 @@ def fiche_tache(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
         except ValueError:
             reponse = str(row['answer_json'])
         cadres.append({'titre': 'Ce que le modèle a rendu', 'pre': reponse})
+    captures = conn.execute(
+        'SELECT id, path_or_url FROM artifacts WHERE task_id=?'
+        " AND kind='capture' ORDER BY created_at, path_or_url",
+        (ident,),
+    ).fetchall()
+    if captures:
+        cadres.append(
+            {
+                'titre': 'Captures gardées',
+                'images': [
+                    {
+                        'src': f'/owner/api/fichier?id={c[0]}',
+                        'legende': f'Capture {n}',
+                    }
+                    for n, c in enumerate(captures, 1)
+                ],
+            }
+        )
     return {
         'type': 'task',
         'id': ident,

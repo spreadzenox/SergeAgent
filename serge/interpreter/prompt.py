@@ -275,6 +275,7 @@ def converse(
     reglages = policy_en_vigueur(conn)['llm_calls']
     pauses = [float(p) for p in reglages['retry_pauses_s']]
     max_result_chars = int(reglages['tool_result_max_chars'])
+    captures_gardees = int(reglages['screenshots_kept'])
     fin_des_outils = serge_text(conn, 'tools_exhausted')
     note_coupure = serge_text(conn, 'result_truncated')
     schemas, links = callable_tools(conn, inv, task)
@@ -293,6 +294,11 @@ def converse(
             # Certains modèles rendent une réponse vide quand on leur
             # interdit les outils sans rien dire : on le leur dit.
             history.append({'role': 'user', 'content': fin_des_outils})
+        _drop_old_images(
+            history,
+            captures_gardees,
+            serge_text(conn, 'capture_retiree', n=str(captures_gardees)),
+        )
         result = _call_model(
             caller,
             record,
@@ -326,29 +332,69 @@ def converse(
                 ],
             }
         )
+        images: list[str] = []
         for call in result.tool_calls:
+            outcome = _limited_call(
+                conn, inv, links, limits, calls, call, task
+            )
+            image = outcome.pop('image', None)
+            if isinstance(image, str) and image.startswith('data:image/'):
+                outcome['image'] = 'montrée dans le message suivant'
+                images.append(image)
             history.append(
                 {
                     'role': 'tool',
                     'tool_call_id': call.id,
                     'content': _borne(
-                        json.dumps(
-                            _limited_call(
-                                conn, inv, links, limits, calls, call, task
-                            ),
-                            ensure_ascii=False,
-                            default=str,
-                        ),
+                        json.dumps(outcome, ensure_ascii=False, default=str),
                         max_result_chars,
                         note_coupure,
                     ),
                 }
             )
+        if images:
+            # Une image ne peut pas être le résultat d'un outil chez tous
+            # les fournisseurs : elle part dans un message à part, juste
+            # après les résultats du tour.
+            intro = serge_text(conn, 'captures_intro')
+            parts: list[dict[str, Any]] = (
+                [{'type': 'text', 'text': intro}] if intro else []
+            )
+            parts += [
+                {'type': 'image_url', 'image_url': {'url': image}}
+                for image in images
+            ]
+            history.append({'role': 'user', 'content': parts})
         turns += 1
         # Les outils ont pu écrire (un ticket, une demande) : on enregistre
         # avant de rappeler le modèle, pour ne pas bloquer la base pendant
         # l'appel.
         conn.commit()
+
+
+def _drop_old_images(
+    history: list[dict[str, Any]], kept: int, note: str
+) -> None:
+    """Ne garde dans l'historique que les ``kept`` dernières images.
+
+    Tout l'historique repart au modèle à chaque tour : sans cela, chaque
+    capture serait payée à chaque tour suivant. Une image retirée devient
+    un texte court (``note``). Exemple : avec 3, la quatrième capture fait
+    retirer la première.
+    """
+    seen = 0
+    for message in reversed(history):
+        content = message.get('content')
+        if not isinstance(content, list):
+            continue
+        for index in range(len(content) - 1, -1, -1):
+            part = content[index]
+            if not isinstance(part, dict) or part.get('type') != 'image_url':
+                continue
+            seen += 1
+            if seen > kept:
+                # Un texte vidé sur la page Pipeline n'est pas envoyé.
+                content[index] = {'type': 'text', 'text': note or '…'}
 
 
 def _borne(texte: str, limite: int, note: str) -> str:

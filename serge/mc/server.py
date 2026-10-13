@@ -53,6 +53,22 @@ SECURITY_HEADERS = {
 REQUIRED_TEMPLATES = ('login.html', 'shell.html', 'error.html', 'public.html')
 
 
+# Les lectures de l'API : une adresse, la méthode du handler qui répond.
+GET_API = {
+    '/owner/api/state': '_api_state',
+    '/api/state': '_api_public_state',
+    '/owner/api/stream': '_api_stream',
+    '/owner/api/trace': '_api_trace',
+    '/owner/api/objet': '_api_objet',
+    '/owner/api/ticket/carte': '_api_ticket_carte',
+    '/owner/api/memory/items': '_api_memory_items',
+    '/owner/api/memory/search': '_api_memory_search',
+    '/owner/api/voice/audio': '_api_voice_audio',
+    '/owner/api/fichier': '_api_fichier',
+    '/owner/api/pipeline/modeles': '_api_pipeline_modeles',
+}
+
+
 @dataclass(frozen=True)
 class McConfig:
     """Config serveur MC (immuable, construite au boot)."""
@@ -224,35 +240,9 @@ class McHandler(
             html = self._template('shell.html').replace('<!--BOOT-->', blob)
             self._send_html(200, html)
             return
-        if path == '/owner/api/state':
-            self._api_state()
-            return
-        if path == '/api/state':
-            self._api_public_state()
-            return
-        if path == '/owner/api/stream':
-            self._api_stream()
-            return
-        if path == '/owner/api/trace':
-            self._api_trace()
-            return
-        if path == '/owner/api/objet':
-            self._api_objet()
-            return
-        if path == '/owner/api/ticket/carte':
-            self._api_ticket_carte()
-            return
-        if path == '/owner/api/memory/items':
-            self._api_memory_items()
-            return
-        if path == '/owner/api/memory/search':
-            self._api_memory_search()
-            return
-        if path == '/owner/api/voice/audio':
-            self._api_voice_audio()
-            return
-        if path == '/owner/api/pipeline/modeles':
-            self._api_pipeline_modeles()
+        api = GET_API.get(path)
+        if api is not None:
+            getattr(self, api)()
             return
         if path == '/static/' or path.startswith('/static/'):
             self._serve_static(path[len('/static/') :])

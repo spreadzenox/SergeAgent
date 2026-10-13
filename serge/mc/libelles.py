@@ -202,5 +202,7 @@ def phrase_recit(
 NIVEAUX = {
     'fast': 'Rapide — un réflexe (classer, extraire). Le moins cher.',
     'mid': 'Moyen — assez malin pour rédiger ou comparer.',
-    'smart': 'Intelligent — plans, arbitrages. Le plus cher.',
+    'smart': 'Intelligent — plans, arbitrages.',
+    'code': 'Code — construire et relire un produit, voir des pages. Le'
+    ' meilleur modèle, qui lit les images ; le plus cher (décision Q91).',
 }

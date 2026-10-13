@@ -68,6 +68,7 @@ def _seed_simple(conn: sqlite3.Connection, data: Mapping[str, Any]) -> None:
             model=str(model.get('model', '')),
             max_price_usd=float(model.get('max_price_usd', 0)),
             tolerance_pct=int(model.get('tolerance_pct', 95)),
+            needs_image=int(bool(model.get('needs_image', False))),
         )
     for text in list_of(data, 'serge_texts'):
         insert(

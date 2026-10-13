@@ -110,9 +110,26 @@ class TierSettingsTests(unittest.TestCase):
         self.assertEqual(
             catalog.tier_settings(conn),
             {
-                'fast': {'max_price': 0.30, 'tolerance': 0.85},
-                'mid': {'max_price': 1.50, 'tolerance': 0.95},
-                'smart': {'max_price': 8.00, 'tolerance': 0.95},
+                'fast': {
+                    'max_price': 0.30,
+                    'tolerance': 0.85,
+                    'needs_image': 0,
+                },
+                'mid': {
+                    'max_price': 1.50,
+                    'tolerance': 0.95,
+                    'needs_image': 0,
+                },
+                'smart': {
+                    'max_price': 8.00,
+                    'tolerance': 0.95,
+                    'needs_image': 0,
+                },
+                'code': {
+                    'max_price': 12.0,
+                    'tolerance': 1.0,
+                    'needs_image': 1,
+                },
             },
         )
         conn.execute(
@@ -121,8 +138,46 @@ class TierSettingsTests(unittest.TestCase):
         )
         self.assertEqual(
             catalog.tier_settings(conn)['smart'],
-            {'max_price': 2.5, 'tolerance': 0.7},
+            {'max_price': 2.5, 'tolerance': 0.7, 'needs_image': 0},
         )
+
+
+class NiveauCodeTests(unittest.TestCase):
+    """Le niveau « code » (décision Q91) : la meilleure note sous son prix
+    maximum, parmi les modèles qui lisent les images."""
+
+    def test_le_niveau_code_est_permis_en_base(self) -> None:
+        conn = seeded_db()
+        self.addCleanup(conn.close)
+        conn.execute("UPDATE invocations SET model_tier='code'")
+        self.assertEqual(
+            conn.execute('PRAGMA integrity_check').fetchone()[0], 'ok'
+        )
+        with self.assertRaises(sqlite3.IntegrityError):
+            conn.execute("UPDATE invocations SET model_tier='inconnu'")
+        self.assertEqual(
+            conn.execute(
+                "SELECT model, needs_image FROM llm_models WHERE tier='code'"
+            ).fetchone(),
+            ('anthropic/claude-opus-5.5', 1),
+        )
+
+    def test_la_meilleure_note_parmi_ceux_qui_voient(self) -> None:
+        models = [
+            # Meilleure note, mais ne lit pas les images : écarté.
+            model('a/aveugle', 6.0, intelligence=60.0, image_in=False),
+            # Lit les images, meilleure note restante : choisi, même plus
+            # cher que b (tolérance 100 %).
+            model('b/moins-bon', 2.0, intelligence=56.0, image_in=True),
+            model('c/meilleur', 8.0, intelligence=57.6, image_in=True),
+            # Trop cher pour le niveau.
+            model('d/trop-cher', 30.0, intelligence=70.0, image_in=True),
+        ]
+        tiers = seeded_tiers()
+        reco = recommend(models, tiers, SHARE, choice=CHOICE, now=NOW)
+        self.assertEqual(reco['code']['id'], 'c/meilleur')
+        # Les autres niveaux ne demandent pas les images.
+        self.assertEqual(reco['smart']['id'], 'a/aveugle')
 
 
 class RecommendationTests(unittest.TestCase):
@@ -520,6 +575,9 @@ class RealCatalogTests(unittest.TestCase):
                 'fast': 'deepseek/deepseek-v4.1-flash',
                 'mid': 'xiaomi/mimo-v2.6-pro',
                 'smart': 'anthropic/claude-sonnet-5.5',
+                # L'échantillon (30 septembre) ne dit pas quels modèles
+                # lisent les images : le niveau « code » ne recommande rien.
+                'code': '',
             },
         )
         self.assertEqual(page['scored'], 5)

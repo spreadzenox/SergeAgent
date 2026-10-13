@@ -81,11 +81,17 @@ def _read_openrouter(api_key: str) -> list[dict[str, Any]]:
 
 
 def tier_settings(conn: sqlite3.Connection) -> dict[str, dict[str, float]]:
-    """Le prix maximum et la tolérance de chaque niveau, lus en base."""
+    """Le prix maximum, la tolérance de chaque niveau, et s'il doit lire
+    les images (le niveau « code », décision Q91), lus en base."""
     return {
-        str(tier): {'max_price': float(price), 'tolerance': int(pct) / 100}
-        for tier, price, pct in conn.execute(
-            'SELECT tier, max_price_usd, tolerance_pct FROM llm_models'
+        str(tier): {
+            'max_price': float(price),
+            'tolerance': int(pct) / 100,
+            'needs_image': float(image),
+        }
+        for tier, price, pct, image in conn.execute(
+            'SELECT tier, max_price_usd, tolerance_pct, needs_image'
+            ' FROM llm_models'
         )
     }
 

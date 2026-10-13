@@ -357,6 +357,18 @@ sections:
         min: 1000
         max: 100000
         step: 1000
+      - id: screenshots_kept
+        value: 3
+        title: Captures gardées dans l’historique
+        help: >-
+          Tout l’historique repart au modèle à chaque tour : seules ces
+          dernières captures d’écran y restent, les plus anciennes sont
+          remplacées par un texte court. Une capture coûte autant qu’un
+          millier de jetons environ à chaque tour.
+        kind: curseur
+        min: 1
+        max: 10
+        step: 1
 
   - id: tools
     page: pipeline
@@ -397,6 +409,25 @@ sections:
         min: 1
         max: 50
         step: 1
+      - id: browser_lines_after_action
+        value: 150
+        title: Agir dans une page, lignes de la page relue
+        help: >-
+          Après chaque clic ou saisie, la page revient au modèle en version
+          courte : au plus ces lignes (une ligne par titre, texte, champ,
+          bouton ou lien).
+        kind: curseur
+        min: 20
+        max: 600
+        step: 10
+      - id: browser_lines_read
+        value: 600
+        title: Lire la page, lignes
+        help: Quand le modèle lit une page en entier.
+        kind: curseur
+        min: 50
+        max: 2000
+        step: 50
 
   - id: model_choice
     page: pipeline
@@ -820,6 +851,22 @@ sections:
           ne joint rien.
         kind: liste
         choices: [internet, aucun]
+      - id: navigateur.image
+        value: chromedp/headless-shell:stable
+        title: Navigateur, image
+        help: >-
+          Le Chrome qui ouvre les pages pour les invocations, dans son propre
+          conteneur.
+        kind: liste
+        choices: [chromedp/headless-shell:stable]
+      - id: navigateur.memory_mb
+        value: 2048
+        title: Navigateur, mémoire en Mo
+        help: Ce que le navigateur peut prendre de la mémoire du serveur.
+        kind: curseur
+        min: 512
+        max: 8192
+        step: 256
 
 # « tel réglage ≤ tel autre » (« < » : strictement plus petit).
 relations:

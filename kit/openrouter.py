@@ -95,6 +95,7 @@ def _capabilities(item: dict[str, Any]) -> dict[str, Any]:
     """What a model can do, as far as OpenRouter says (None = not told)."""
     params = item.get('supported_parameters')
     outputs = (item.get('architecture') or {}).get('output_modalities')
+    inputs = (item.get('architecture') or {}).get('input_modalities')
     pricing = item.get('pricing') or {}
     try:
         created = int(item.get('created') or 0)
@@ -103,6 +104,7 @@ def _capabilities(item: dict[str, Any]) -> dict[str, Any]:
     return {
         'tools': 'tools' in params if isinstance(params, list) else None,
         'text_out': 'text' in outputs if isinstance(outputs, list) else None,
+        'image_in': 'image' in inputs if isinstance(inputs, list) else None,
         'created': created,
         'expires': str(item.get('expiration_date') or ''),
         'intelligence': _intelligence(item),
@@ -125,8 +127,9 @@ def fetch_models(
 
     Returns:
         List of {id, name, context_length, prompt_usd, completion_usd,
-        tools, text_out, created, expires, intelligence, cache_read_usd,
-        cache_write_usd}; tools/text_out are None when OpenRouter does not
+        tools, text_out, image_in, created, expires, intelligence,
+        cache_read_usd, cache_write_usd}; tools/text_out/image_in are None
+        when OpenRouter does not
         say, intelligence is None when it has no Artificial Analysis score
         for the model, cache prices are None when the model has none.
 

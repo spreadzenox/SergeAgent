@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""MC API vues (GET) : trace, carte, memory items, memory search — mixin McHandler."""
+"""MC API vues (GET) : trace, carte, mémoire, audio, fichiers des livrables."""
 
 from __future__ import annotations
 
@@ -196,3 +196,40 @@ class ApiViewsMixin(_Base):
             return
 
         self._send(200, audio_bytes, 'audio/wav')
+
+    def _api_fichier(self) -> None:
+        """Un fichier d'un livrable (une capture gardée), par sa fiche.
+
+        Réservé à une session owner. Seul un fichier rangé sous
+        ``files/`` (``serge.paths.files_root``) est servi : la fiche ne
+        peut pas faire lire un autre fichier du serveur.
+        """
+        if not self._require_owner():
+            return
+        ident = self._query().get('id', '').strip()
+        with self._db() as conn:
+            row = conn.execute(
+                'SELECT path_or_url FROM artifacts WHERE id=?', (ident,)
+            ).fetchone()
+        from serge.paths import files_root
+
+        racine = files_root().resolve()
+        chemin = Path(str(row[0])).resolve() if row else None
+        if (
+            chemin is None
+            or not chemin.is_relative_to(racine)
+            or not chemin.is_file()
+        ):
+            self._refus(
+                404,
+                'Fichier introuvable.',
+                'fichier_404',
+                'Aucun fichier rangé sous files/ pour cette fiche.',
+            )
+            return
+        sortes = {'.jpg': 'image/jpeg', '.png': 'image/png'}
+        self._send(
+            200,
+            chemin.read_bytes(),
+            sortes.get(chemin.suffix.lower(), 'application/octet-stream'),
+        )
