@@ -30,6 +30,9 @@ from serge.policy_store import policy_en_vigueur
 from serge.sandbox.docker import DockerError, docker, journal
 
 WORK = '/work'
+# Le réseau des chantiers et du navigateur : le navigateur y ouvre
+# ``http://<conteneur du chantier>:3000``. Il mène aussi à Internet.
+NETWORK = 'serge-chantiers'
 # Ce qu'on lit d'un fichier au plus : au-delà, il est coupé.
 MAX_FILE_BYTES = 2_000_000
 
@@ -40,6 +43,31 @@ def _profile(conn: sqlite3.Connection, name: str) -> dict[str, Any]:
     if not isinstance(profile, dict):
         raise DockerError(f'profil de bac à sable inconnu : {name}')
     return profile
+
+
+def ensure_network() -> None:
+    """Crée le réseau des chantiers s'il n'existe pas encore."""
+    found = docker(
+        ['network', 'ls', '--filter', f'name=^{NETWORK}$', '-q'], timeout=30
+    ).stdout.strip()
+    if not found:
+        docker(['network', 'create', NETWORK], timeout=60)
+
+
+def _join_network(name: str) -> None:
+    """Branche sur le réseau des chantiers un conteneur créé sans lui."""
+    networks = docker(
+        [
+            'inspect',
+            '-f',
+            '{{range $k, $v := .NetworkSettings.Networks}}{{$k}} {{end}}',
+            name,
+        ],
+        timeout=30,
+    ).stdout.split()
+    if NETWORK not in networks:
+        ensure_network()
+        docker(['network', 'connect', NETWORK, name], timeout=60)
 
 
 def chantier_id(venture_id: str, deliverable: str) -> str:
@@ -117,12 +145,18 @@ def _ready(
         ]
         if profile.get('network') == 'aucun':
             flags += ['--network', 'none']
+        else:
+            ensure_network()
+            flags += ['--network', NETWORK]
         # La première fois, Docker télécharge l'image : ça peut être long.
         docker(
             [*flags, str(profile['image']), 'sleep', 'infinity'], timeout=900
         )
-    elif state != 'running':
-        docker(['start', name], timeout=120)
+    else:
+        if state != 'running':
+            docker(['start', name], timeout=120)
+        if profile.get('network') != 'aucun':
+            _join_network(name)
     now = utcnow()
     conn.execute(
         'INSERT INTO sandboxes(id, venture_id, deliverable, profile,'

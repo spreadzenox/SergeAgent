@@ -65,7 +65,9 @@ def _run(args: list[str]) -> int:
         flags[args[i]] = args[i + 1]
         i += 2
     image, command = args[i], args[i + 1 :]
-    volume, _, _target = flags['-v'].partition(':')
+    volume, _, _target = flags.get('-v', f'{flags["--name"]}:/x').partition(
+        ':'
+    )
     (ROOT / 'volumes' / volume).mkdir(parents=True, exist_ok=True)
     _save(
         flags['--name'],
@@ -75,6 +77,7 @@ def _run(args: list[str]) -> int:
             'volume': volume,
             'flags': flags,
             'command': command,
+            'networks': [flags['--network']] if '--network' in flags else [],
         },
     )
     print(f'id-{flags["--name"]}')
@@ -128,6 +131,47 @@ def _exec(args: list[str]) -> int:
     return done.returncode
 
 
+def _network(args: list[str]) -> int:
+    """``network ls/create/connect`` : un fichier par réseau."""
+    folder = ROOT / 'networks'
+    folder.mkdir(parents=True, exist_ok=True)
+    if args[0] == 'ls':
+        wanted = args[args.index('--filter') + 1]
+        wanted = wanted.removeprefix('name=^').removesuffix('$')
+        if (folder / wanted).exists():
+            print(f'net-{wanted}')
+        return 0
+    if args[0] == 'create':
+        (folder / args[1]).write_text('', encoding='utf-8')
+        return 0
+    if args[0] == 'connect':
+        state = _state(args[2])
+        if state is None:
+            return _refuse(f'No such container: {args[2]}', 1)
+        state.setdefault('networks', []).append(args[1])
+        _save(args[2], state)
+        return 0
+    return _refuse(f'network {args[0]} inconnu du faux docker')
+
+
+def _inspect(args: list[str]) -> int:
+    """``inspect -f <réseaux> NAME`` : les réseaux du conteneur."""
+    state = _state(args[-1])
+    if state is None:
+        print(f'Error: No such object: {args[-1]}', file=sys.stderr)
+        return 1
+    print(' '.join(state.get('networks', [])))
+    return 0
+
+
+def _port(args: list[str]) -> int:
+    state = _state(args[0])
+    if state is None:
+        return _refuse(f'No such container: {args[0]}', 1)
+    print(state.get('port', '127.0.0.1:49222'))
+    return 0
+
+
 def main(args: list[str]) -> int:
     ROOT.mkdir(parents=True, exist_ok=True)
     with (ROOT / 'calls.jsonl').open('a', encoding='utf-8') as log:
@@ -143,6 +187,12 @@ def main(args: list[str]) -> int:
         return _set(rest[-1], 'exited')
     if command == 'exec':
         return _exec(rest)
+    if command == 'network':
+        return _network(rest)
+    if command == 'inspect':
+        return _inspect(rest)
+    if command == 'port':
+        return _port(rest)
     return _refuse(f'commande inconnue du faux docker : {command}')
 
 

@@ -24,6 +24,7 @@ from serge.interpreter.run import fail_task, run_task
 from serge.interpreter.tasks import next_task
 from serge.llm.runtime import budget_reached
 from serge.policy_store import policy_en_vigueur
+from serge.sandbox.navigateur import close_sessions
 from serge.tickets import expire_due
 from serge.tickets.reponses import noter_reponse
 from serge.tickets.types import ticket_types
@@ -70,6 +71,9 @@ def process_one(
         conn.rollback()
         fail_task(conn, task_id, f'{type(exc).__name__}: {exc}')
         conn.commit()
+    finally:
+        # Une session de navigateur ne survit pas à sa tâche.
+        close_sessions()
     return task_id
 
 

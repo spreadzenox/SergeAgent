@@ -120,7 +120,8 @@ def recommend(
     Args:
         models: Le catalogue OpenRouter (``kit.openrouter.fetch_models``).
         tiers: Les réglages de chaque niveau, ``{tier: {max_price,
-            tolerance}}`` (prix maximum en $/M, tolérance entre 0 et 1).
+            tolerance, needs_image}}`` (prix maximum en $/M, tolérance
+            entre 0 et 1, 1 si le modèle doit lire les images).
         input_share: La part de jetons lus (voir ``catalog.usage_mix``).
         choice: Les réglages « Recommandation de modèle » (voir ``usable``).
         now: Heure en secondes (défaut : maintenant).
@@ -133,10 +134,14 @@ def recommend(
     pool = [m for m in models if usable(m, moment, choice)]
     out = {}
     for tier, settings in tiers.items():
+        # Un niveau qui doit voir des captures (« code ») ne recommande
+        # qu'un modèle qui lit les images.
+        image = bool(settings.get('needs_image'))
         under = [
             m
             for m in pool
             if effective_price(m, input_share) <= float(settings['max_price'])
+            and (not image or m.get('image_in') is True)
         ]
         out[tier] = {
             **_pick(under, settings, input_share),

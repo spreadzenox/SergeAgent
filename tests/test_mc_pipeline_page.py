@@ -61,7 +61,8 @@ class ProjectionPipelineTests(unittest.TestCase):
         tables = {t['table']: t for t in data['tables']}
         self.assertEqual(tables['ventures']['courte'], 'id, name')
         self.assertEqual(
-            [m['tier'] for m in data['modeles']], ['fast', 'mid', 'smart']
+            [m['tier'] for m in data['modeles']],
+            ['fast', 'mid', 'smart', 'code'],
         )
         textes = {t['id']: t for t in data['textes']}
         self.assertIn(
