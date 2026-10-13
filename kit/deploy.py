@@ -12,6 +12,7 @@ from typing import Any
 
 from kit.builder.guards import BuilderError
 from kit.builder.seed import dest_is_empty
+from kit.dependances import installer_dependances
 from kit.units import (
     OBSOLETE_UNIT_FILES,
     REPLACED_UNITS,
@@ -259,17 +260,29 @@ def deploy_instance(
     python: str | None = None,
     uid: int | None = None,
 ) -> dict[str, Any]:
-    """Racine vide → install + enable tout. Sinon update + restart des actives."""
+    """Racine vide → install + enable tout. Sinon update + restart des actives.
+
+    Avant tout, les dépendances du serveur (``pyproject.toml``) sont
+    installées dans le Python des services (``kit/dependances.py``).
+    """
     root = kit_root or source_repo
     run = runner or subprocess.run
-    exe = python or sys.executable
     loaded = loaded_from_instance(instance_file)
+    # Les dépendances du serveur d'abord : les units prennent le Python où
+    # elles sont installées (au besoin, un environnement à Serge).
+    deps = installer_dependances(
+        python=python or sys.executable,
+        pyproject=source_repo / 'pyproject.toml',
+        home=Path(str(loaded['paths']['home'])),
+        runner=run,
+    )
+    exe = str(deps['python'])
     system_root = Path(str(loaded['paths']['system_root']))
     listen = _listen(loaded)
     names = units_to_enable(loaded['features'], listen)
     system_names = system_units_to_enable(loaded['features'], listen)
     if dest_is_empty(system_root):
-        return _install_fresh(
+        receipt = _install_fresh(
             instance_file=instance_file,
             mandate=mandate,
             source_repo=source_repo,
@@ -279,6 +292,8 @@ def deploy_instance(
             python=exe,
             kit_root=root,
         )
+        receipt['dependances'] = deps
+        return receipt
     receipt = update_instance(
         instance_file=instance_file,
         source_repo=source_repo,
@@ -286,7 +301,9 @@ def deploy_instance(
         confirm_live_id=confirm_live_id,
         kit_root=root,
         uid=uid,
+        python=exe,
     )
+    receipt['dependances'] = deps
     install_system_units(run, system_names, _system_unit_dir(loaded))
     user_dir = Path(str(loaded['paths']['home'])) / '.config/systemd/user'
     receipt['units_replaced'] = replace_obsolete_units(run, user_dir)

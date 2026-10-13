@@ -13,6 +13,7 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from kit.builder.guards import BuilderError  # noqa: E402
 from kit.deploy import deploy_instance  # noqa: E402
 
 
@@ -401,6 +402,93 @@ class SergeDeployTests(unittest.TestCase):
             self.assertFalse(
                 any('serge-install.py' in ' '.join(cmd) for cmd in seen)
             )
+
+
+class DependancesTests(unittest.TestCase):
+    """Les dépendances du serveur, installées à chaque déploiement."""
+
+    def _deployer(self, venv: str, pip_code: int = 0):
+        raw = tempfile.TemporaryDirectory()
+        self.addCleanup(raw.cleanup)
+        tmp = Path(raw.name)
+        dest = tmp / 'dest'
+        (dest / 'state').mkdir(parents=True)
+        (dest / 'state/keep').write_text('1\n', encoding='utf-8')
+        self.home = tmp / 'home'
+        instance = tmp / 'serge.instance.toml'
+        instance.write_text(_toml(self.home, dest), encoding='utf-8')
+        mandate = tmp / 'mandate.yaml'
+        mandate.write_text('schema_version: 1\n', encoding='utf-8')
+        self.seen: list[list[str]] = []
+
+        def runner(argv, **_kwargs):
+            self.seen.append(list(argv))
+            if argv[1:2] == ['-c']:
+                return subprocess.CompletedProcess(argv, 0, f'{venv}\n', '')
+            if argv[1:4] == ['-m', 'pip', 'install']:
+                return subprocess.CompletedProcess(
+                    argv, pip_code, '', 'ERROR: No matching distribution'
+                )
+            return _ok()
+
+        self.update = mock.patch(
+            'kit.deploy.update_instance',
+            return_value={'status': 'updated', 'canon_recreated': False},
+        ).start()
+        self.addCleanup(mock.patch.stopall)
+        return deploy_instance(
+            instance_file=instance,
+            mandate=mandate,
+            source_repo=ROOT,
+            git_sha='HEAD',
+            kit_root=ROOT,
+            runner=runner,
+            python='/usr/bin/python3',
+        )
+
+    def _pip(self) -> list[str]:
+        return next(c for c in self.seen if c[1:4] == ['-m', 'pip', 'install'])
+
+    def test_un_venv_recoit_les_dependances(self) -> None:
+        receipt = self._deployer(venv='1')
+        pip = self._pip()
+        self.assertEqual(pip[0], '/usr/bin/python3')
+        self.assertIn('pyyaml', pip)
+        self.assertTrue(any(p.startswith('playwright') for p in pip))
+        self.assertFalse(any('venv' in c for c in self.seen))
+        self.assertEqual(
+            self.update.call_args.kwargs['python'], '/usr/bin/python3'
+        )
+        self.assertFalse(receipt['dependances']['venv_cree'])
+
+    def test_un_python_du_systeme_passe_a_l_environnement_de_serge(
+        self,
+    ) -> None:
+        receipt = self._deployer(venv='0')
+        venv = self.home / '.local/share/serge/venv'
+        self.assertIn(
+            [
+                '/usr/bin/python3',
+                '-m',
+                'venv',
+                '--system-site-packages',
+                str(venv),
+            ],
+            self.seen,
+        )
+        self.assertEqual(self._pip()[0], str(venv / 'bin/python'))
+        # Les units passent au Python de l'environnement.
+        self.assertEqual(
+            self.update.call_args.kwargs['python'], str(venv / 'bin/python')
+        )
+        self.assertTrue(receipt['dependances']['venv_cree'])
+
+    def test_un_pip_qui_echoue_arrete_le_deploiement(self) -> None:
+        with self.assertRaises(BuilderError) as refus:
+            self._deployer(venv='1', pip_code=1)
+        self.assertIn('No matching distribution', str(refus.exception))
+        self.update.assert_not_called()
+        self.assertFalse(any(c[:1] == ['systemctl'] for c in self.seen))
 
 
 if __name__ == '__main__':

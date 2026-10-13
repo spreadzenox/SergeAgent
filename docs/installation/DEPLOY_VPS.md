@@ -17,6 +17,15 @@ Workflow : [`.github/workflows/deploy.yml`](../../.github/workflows/deploy.yml).
 - `runs-on: [self-hosted, linux, julien-vps]`.
 - `permissions: contents: read`. Aucun secret Actions.
 - Script : `python3 scripts/serge-deploy.py`.
+- D'abord, **les dépendances du serveur** (`[project] dependencies` dans
+  `pyproject.toml` : PyYAML, playwright…) sont installées dans le Python
+  des services (`kit/dependances.py`), à chaque déploiement : pip ne fait
+  rien pour celles qui sont déjà là. Si ce Python est celui du système
+  (pip y est refusé), le déploiement crée un environnement à Serge,
+  `~/.local/share/serge/venv`, qui voit aussi les paquets du système, y
+  installe les dépendances, et les units passent à son Python. Il faut
+  alors `python3-venv` sur la machine. Une installation ratée arrête le
+  déploiement, avec la raison, avant tout redémarrage.
 
 Racine `system_root` **vide** →
 `scripts/serge-install.py --non-interactive --no-enable-units
@@ -72,8 +81,8 @@ Rien de tout ça dans Settings → Secrets du dépôt.
 
 À faire **ensemble** sur le VPS (après merge du code, pas avant) :
 
-1. User `serge`, Python ≥ 3.12, deps du repo (`PyYAML`, `playwright`,
-   …) : celles de `[project] dependencies` dans `pyproject.toml`.
+1. User `serge`, Python ≥ 3.12 (et `python3-venv`) ; les dépendances du
+   repo s'installent seules à chaque déploiement.
 2. Télécharger l’archive runner GitHub, `./config.sh` avec un token
    repo (Settings → Actions → Runners), labels **`linux`** et
    **`julien-vps`**.
@@ -115,14 +124,11 @@ couple. Après le merge, on le fait à deux :
 - [ ] couple live + age + mandat
 - [ ] `system_root` vide
 - [ ] venv Python ≥ 3.12
-- [ ] `playwright` dans le Python des services (lot 10) : le navigateur
-      des invocations s'en sert pour piloter le conteneur Chromium du
-      serveur. Le Python des services est celui des units
-      (`systemctl --user cat serge-queue@works | grep ExecStart`) :
-      `<ce python> -m pip install 'playwright>=1.62'`, puis
-      `systemctl --user restart 'serge-queue@*'`. Pas de
-      `playwright install` : aucun navigateur n'est téléchargé. Sans lui,
-      l'îlot « Chantiers » de la page Système est en erreur et le dit.
+- [x] `playwright` dans le Python des services (lot 10) : installé à
+      chaque déploiement avec les autres dépendances. Il pilote le
+      conteneur Chromium du serveur : pas de `playwright install`, aucun
+      navigateur n'est téléchargé. S'il manque, l'îlot « Chantiers » de la
+      page Système est en erreur et le dit.
 - [ ] Asterisk / Caddy selon features
 - [ ] linger user (`loginctl enable-linger serge`) pour les units
       `--user` après logout
