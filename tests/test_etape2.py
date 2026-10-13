@@ -63,7 +63,6 @@ def _plan(tour: int) -> dict[str, Any]:
         'prospects': 40,
         'duree_jours': 10,
         'prix': '29 € par mois',
-        'relances': 'Une relance à J+3, une autre à J+7.',
         'livrable': 'Un générateur de devis : trois devis gratuits.',
         'plan': 'Une page d’accueil, un formulaire de devis, un PDF.',
         'scenarios': '1. Ouvrir la page, remplir un devis, le télécharger.',

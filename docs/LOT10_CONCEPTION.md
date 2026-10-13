@@ -22,7 +22,7 @@ web, payants pour le produit fini : on paie pour avoir un compte et
 utiliser le service. Les logiciels (application de bureau, extension de
 navigateur, bot) attendent le lot 14.
 
-Le lot se livre en six PR, l'une après l'autre ; chacune se fusionne dès
+Le lot se livre en sept PR, l'une après l'autre ; chacune se fusionne dès
 que sa CI est verte, et Clem l'essaie dans Mission Control (décision Q91) :
 
 1. **Le chantier** (parties 1 et 3) : un conteneur par produit et ses
@@ -40,9 +40,14 @@ que sa CI est verte, et Clem l'essaie dans Mission Control (décision Q91) :
    base, les outils Stripe, taper un secret dans le navigateur. Essai :
    « Essayer Stripe (mode test) » puis « Supprimer de Stripe » sur la
    fiche d'un business.
-6. **L'étape 5** (partie 9) : le vrai produit, l'achat du domaine, le
-   paiement test de 1 €. Essai : « Construire le vrai produit » sur la
-   fiche d'un business.
+6. **Le bout en bout du POC** (demandé par Clem le 13 octobre 2026) : un
+   business et un plan tout faits, une calculatrice, entrent directement
+   en construction ; tout le reste est le vrai pipeline. Essai : « Bout
+   en bout : le POC d'une calculatrice ».
+7. **L'étape 5** (partie 9) : le vrai produit, l'achat du domaine, le
+   paiement test de 1 €. Essais : « Bout en bout : le produit fini d'une
+   calculatrice », et « Construire le vrai produit » sur la fiche d'un
+   business.
 
 Les parties de ce document, dans l'ordre où on les construit :
 
@@ -393,9 +398,10 @@ ses quotas en base, comme le demande la règle de tous les lots.
 - **`product_plans`** : une ligne par version d'un plan, pour un POC
   comme pour un produit fini (`kind` = `poc` ou `product`). Le plan de A à
   Z (Q34) : hypothèse, cible, canaux, nombre de prospects, durée, prix
-  (indicatif pour un POC, définitif pour le produit), rythme des
-  relances, livrable, ce que le constructeur doit faire, et **les
-  scénarios de test**. Un scénario, c'est ce que fait un prospect
+  (indicatif pour un POC, définitif pour le produit), livrable, ce que
+  le constructeur doit faire, et **les scénarios de test**. Pas le
+  rythme des relances : il est commun à tous les business (Q37,
+  corrigée par Q92). Un scénario, c'est ce que fait un prospect
   ordinaire, pas à pas ; c'est ce que suivent le relecteur et l'humain du
   ticket de test. Exemple : « Arriver sur la page d'accueil, créer un
   compte, faire un premier devis, le télécharger en PDF ». Pour le
@@ -460,7 +466,11 @@ ticket ; ses liens, conditionnés sur le bouton, lancent la suite. Exemple :
 
 Pour l'essayer sans cycle d'écoute, le bouton « Essayer l'étape 2 » de la
 page Système crée un business, le choisit pour un POC (il prend une place
-de test) et lance l'étape.
+de test) et lance l'étape. Le bouton « Bout en bout : le POC d'une
+calculatrice » saute aussi la conception : un business et un plan tout
+faits (une calculatrice) entrent directement en construction, puis tout
+est réel jusqu'à la prod
+([`etapes/2-conception-poc.md`](etapes/2-conception-poc.md)).
 
 ## 9. L'étape 5 dans le pipeline
 
@@ -525,7 +535,7 @@ Q85), réglables sur la page Décisions. Leurs boutons : « Valider »,
   l'adresse du staging, les scénarios de test, le verdict du relecteur.
   Il **n'expire jamais** : rien ne part vers des prospects sans qu'un
   humain ait essayé le produit (Q91).
-- **« Plan » et « Tester le produit » du produit fini** (PR 5) : le
+- **« Plan » et « Tester le produit » du produit fini** (PR 7) : le
   ticket du plan n'expire pas non plus, puisqu'il fixe le prix définitif
   et le nom de domaine (Q91).
 

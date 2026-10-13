@@ -196,7 +196,7 @@ def write_answer(
     writes = conn.execute(
         'SELECT id, table_name, operation, for_each, parent_write_id,'
         ' key_column, key_source, key_value, max_rows, condition_field,'
-        ' condition_op, condition_value FROM invocation_writes'
+        ' condition_op, condition_value, skip_dedup FROM invocation_writes'
         ' WHERE invocation_id=? ORDER BY position',
         (invocation_id,),
     ).fetchall()
@@ -213,6 +213,7 @@ def write_answer(
         cond_field,
         cond_op,
         cond_value,
+        skip_dedup,
     ) in writes:
         table = safe_name(str(table))
         limite = resolve_count(str(max_rows), settings)
@@ -267,7 +268,14 @@ def write_answer(
                 else str(key_val)
             )
             if operation == 'insert':
-                row = _insert(conn, invocation_id, task_id, table, values)
+                row = _insert(
+                    conn,
+                    invocation_id,
+                    task_id,
+                    table,
+                    values,
+                    dedup=not skip_dedup,
+                )
             elif operation == 'delete':
                 row = _delete(conn, table, str(key_col), key)
             else:
@@ -321,6 +329,8 @@ def _insert(
     task_id: str,
     table: str,
     values: dict[str, Any],
+    *,
+    dedup: bool = True,
 ) -> dict[str, Any] | None:
     refusal = transition_refusal(conn, table, values, None) or quota_refusal(
         conn, table, values, None
@@ -334,7 +344,9 @@ def _insert(
             {'table': table, 'reason': refusal},
         )
         return None
-    duplicate = find_duplicate(conn, table, values)
+    # Un essai de bout en bout passe outre les doublons (skip_dedup) : il
+    # crée un business neuf à chaque fois.
+    duplicate = find_duplicate(conn, table, values) if dedup else None
     if duplicate is not None:
         rule, existing, action = duplicate
         payload = {

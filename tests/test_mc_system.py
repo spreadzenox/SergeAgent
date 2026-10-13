@@ -131,11 +131,12 @@ class McSystemTests(McBrowserCase):
             'Pas branché sur ce serveur.'
         )
         # Les boutons d'essai, déclarés en base, par l'identifiant de leur
-        # déclencheur : le chantier et l'interface web (lot 10), puis les
-        # canaux.
+        # déclencheur : le bout en bout, le chantier et l'interface web
+        # (lot 10), puis les canaux.
         essais = page.locator('[data-section="essais"]')
         expect(essais.locator('[data-bouton-base]')).to_have_text(
             [
+                "Bout en bout : le POC d'une calculatrice",
                 'Essayer le chantier',
                 "Essayer l'étape 2",
                 "Essayer l'interface web",

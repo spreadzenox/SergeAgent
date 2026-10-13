@@ -561,10 +561,12 @@ système complet (Q92, Q93).
   premiers messages.
   Même chose pour les essais du lot 10 (Q91) : « Essayer le chantier »,
   « Essayer l'interface web », « Publier le chantier d'essai »,
-  « Essayer l'étape 2 » et « Essayer Stripe (mode test) », avec leurs
-  invocations temporaires (essayer_chantier, essayer_navigateur,
-  publier_essai, creer_business_essai, choisir_business_essai,
-  essayer_stripe). Les boutons « Supprimer de Stripe » restent : ils
+  « Essayer l'étape 2 », « Bout en bout : le POC d'une calculatrice » et
+  « Essayer Stripe (mode test) », avec leurs invocations temporaires
+  (essayer_chantier, essayer_navigateur, publier_essai,
+  creer_business_essai, choisir_business_essai, bout_en_bout_poc,
+  essayer_stripe), et les deux changements de statut qu'il permet
+  (un business qui naît choisi pour un POC, un plan qui naît validé). Les boutons « Supprimer de Stripe » restent : ils
   nettoient après un business d'essai.
 
 - [ ] **La consolidation de la mémoire dans le pipeline.** Aujourd'hui,
