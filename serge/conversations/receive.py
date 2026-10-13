@@ -11,6 +11,15 @@ Un message reçu est rattaché, dans cet ordre (décision Q37) :
 
 Sinon il est ``unattached`` : il n'est pas traité et apparaît dans Mission
 Control, dans les messages non rattachés.
+
+Un message rattaché n'est pas traité non plus (``ignored``), mais reste
+dans le fil du contact, quand (lot 10 bis, Q93) :
+
+- c'est une réponse automatique, reconnue à ses en-têtes par le canal
+  (« je suis absent », un accusé de réception) : Serge n'y répond pas, sans
+  même appeler le modèle, et les relances continuent ;
+- le contact est à une étape où Serge ne répond plus du tout (« arrêté »,
+  page Policy).
 """
 
 from __future__ import annotations
@@ -19,7 +28,9 @@ import sqlite3
 from typing import Any
 
 from serge.channels.adapters import adapter
+from serge.channels.auto_reply import AUTO_REPLY
 from serge.channels.base import Incoming
+from serge.conversations.send import silent_states
 from serge.funnels.contacts import normalise_value
 
 
@@ -52,6 +63,19 @@ def _by_address(
     ).fetchone()
 
 
+def _status(conn: sqlite3.Connection, message: Incoming, found: Any) -> str:
+    if found is None:
+        return 'unattached'
+    if message.native_type == AUTO_REPLY:
+        return 'ignored'
+    row = conn.execute(
+        'SELECT funnel_state FROM contacts WHERE id=?', (str(found[0]),)
+    ).fetchone()
+    if row is not None and str(row[0]) in silent_states(conn):
+        return 'ignored'
+    return 'attached'
+
+
 def attach(
     conn: sqlite3.Connection, channel: str, message: Incoming
 ) -> dict[str, Any]:
@@ -71,7 +95,7 @@ def attach(
         'native_type': message.native_type,
         'contact_id': str(found[0]) if found else '',
         'venture_id': str(found[1]) if found else '',
-        'status': 'attached' if found else 'unattached',
+        'status': _status(conn, message, found),
     }
 
 

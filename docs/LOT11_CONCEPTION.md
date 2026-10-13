@@ -535,13 +535,14 @@ invocation.
 
 ## 14. Le lot 10 bis : les réponses automatiques
 
-À part, avant le lot 11 (Q93). Une réponse automatique (« je suis absent
-jusqu'au 20 », « votre demande n° 1234 est bien reçue ») ne doit jamais
-faire répondre Serge sans fin. Ce qui existe : « Traiter une réponse »
-classe une réponse d'absence en « absence », ne répond rien, et les
-relances continuent (deux au plus) (Q79). Ce qui manque : une porte de
-sortie quand une conversation tourne en rond. Le détail est dans le TODO,
-lot 10 bis.
+Fait avant le lot 11 (Q93). Une réponse automatique (« je suis absent
+jusqu'au 20 », « votre demande n° 1234 est bien reçue ») ne fait jamais
+répondre Serge sans fin : reconnue à ses en-têtes, elle est rangée dans le
+fil sans appeler le modèle ; « Traiter une réponse » peut décider
+d'arrêter avec un contact (« Arrêté ») ; et un garde-fou annule tout
+message au-delà de 10 en 24 heures au même contact, arrête avec lui et
+prévient Julien et Clem. Le détail est dans
+[`PIPELINE.md`](PIPELINE.md), « Parler aux prospects et aux clients ».
 
 ---
 

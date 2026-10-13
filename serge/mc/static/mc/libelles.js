@@ -101,6 +101,7 @@ export const FUNNEL = {
   REJECTED: 'Écarté',
   UNREACHABLE: 'Injoignable',
   OPTED_OUT: 'Désinscrit',
+  STOPPED: 'Arrêté',
   BLOCKED: 'Bloqué',
   INVALID: 'Fiche invalide',
 };

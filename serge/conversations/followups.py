@@ -27,7 +27,7 @@ import sqlite3
 from datetime import datetime, timedelta
 from typing import Any
 
-from serge.conversations.send import stop_states
+from serge.conversations.send import silent_states, stop_states
 from serge.db.store import utcnow
 from serge.policy_store import setting_value
 
@@ -111,7 +111,7 @@ def due_followups(
     ]
     now = datetime.fromisoformat(utcnow())
     rows = []
-    stopped = set(stop_states(conn))
+    stopped = set(stop_states(conn)) | set(silent_states(conn))
     for contact, venture, state in conn.execute(
         'SELECT DISTINCT c.id, c.venture_id, c.funnel_state FROM contacts c'
         " JOIN touches t ON t.contact_id=c.id AND t.kind='first'"
