@@ -95,23 +95,34 @@ def enqueue_task(
     # pareil (les appels « appel:cdr_20261008T16… » et
     # « appel:cdr_20261008T17… ») ne donnent jamais le même id.
     task_id = f't_{hashlib.sha256(idem.encode("utf-8")).hexdigest()[:20]}'
-    conn.execute(
-        'INSERT INTO tasks(id, invocation_id, queue_id, priority, status,'
-        ' not_before, origin, origin_ref, idempotency_key, created_at)'
-        ' VALUES(?,?,?,?,?,?,?,?,?,?)',
-        (
-            task_id,
-            invocation_id,
-            str(row[0]),
-            int(row[1]),
-            'ready',
-            not_before,
-            origin,
-            origin_ref,
-            idem,
-            utcnow(),
-        ),
-    )
+    try:
+        conn.execute(
+            'INSERT INTO tasks(id, invocation_id, queue_id, priority, status,'
+            ' not_before, origin, origin_ref, idempotency_key, created_at)'
+            ' VALUES(?,?,?,?,?,?,?,?,?,?)',
+            (
+                task_id,
+                invocation_id,
+                str(row[0]),
+                int(row[1]),
+                'ready',
+                not_before,
+                origin,
+                origin_ref,
+                idem,
+                utcnow(),
+            ),
+        )
+    except sqlite3.IntegrityError:
+        # Les deux files lancent les mêmes déclencheurs horaires : l'autre
+        # vient d'écrire la même tâche, entre notre lecture et notre
+        # écriture. C'est la même tâche.
+        found = conn.execute(
+            'SELECT id FROM tasks WHERE idempotency_key=?', (idem,)
+        ).fetchone()
+        if found is None:
+            raise
+        return str(found[0])
     for name, value in values.items():
         conn.execute(
             'INSERT INTO task_params(task_id, name, value) VALUES(?,?,?)',

@@ -144,6 +144,39 @@ def verify_token(token: str, *, base_url: str = DISCORD_API) -> dict[str, Any]:
     return result
 
 
+def get_application(
+    token: str, *, base_url: str = DISCORD_API
+) -> dict[str, Any]:
+    """L'application du bot (``GET /applications/@me``) : on y lit son
+    « Interactions Endpoint URL ».
+
+    Raises:
+        DiscordError: Voir _request.
+    """
+    result = _request(token, 'GET', '/applications/@me', base_url=base_url)
+    if not isinstance(result, dict):
+        raise DiscordError('API: réponse application invalide')
+    return result
+
+
+def clear_interactions_endpoint(
+    token: str, *, base_url: str = DISCORD_API
+) -> None:
+    """Vide l'« Interactions Endpoint URL » de l'application : Discord
+    envoie alors les clics à la gateway, donc au bot.
+
+    Raises:
+        DiscordError: Voir _request.
+    """
+    _request(
+        token,
+        'PATCH',
+        '/applications/@me',
+        {'interactions_endpoint_url': None},
+        base_url=base_url,
+    )
+
+
 def get_channel(
     token: str, channel_id: str, *, base_url: str = DISCORD_API
 ) -> dict[str, Any]:

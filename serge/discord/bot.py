@@ -34,6 +34,8 @@ from serge.discord.interactions import (  # noqa: E402
 from serge.discord.journal import journal  # noqa: E402
 from serge.discord.rest import (  # noqa: E402
     DiscordError,
+    clear_interactions_endpoint,
+    get_application,
     interaction_callback,
     interaction_followup,
     verify_token,
@@ -165,6 +167,34 @@ class Bot:
             # Le ticket tranché est mis à jour tout de suite chez tous.
             self.reveil.set()
 
+    def verifier_endpoint(self) -> None:
+        """Que les clics arrivent bien au bot (décision Q90).
+
+        Discord n'envoie les clics à la gateway que si l'application n'a
+        pas d'« Interactions Endpoint URL » : sinon ils partent à cette
+        adresse, le bot ne les voit jamais, et chaque clic finit par
+        « L'application n'a pas répondu à temps ». Le bot vide ce champ, et
+        note au journal l'ancienne valeur (Julien peut la remettre dans le
+        portail).
+        """
+        try:
+            url = str(
+                get_application(self.token).get('interactions_endpoint_url')
+                or ''
+            )
+            if not url:
+                journal(
+                    'les clics arrivent au bot (pas d’Interactions Endpoint URL)'
+                )
+                return
+            clear_interactions_endpoint(self.token)
+            journal(
+                f'Interactions Endpoint URL vidée (elle valait {url}) :'
+                ' Discord envoie maintenant les clics au bot'
+            )
+        except DiscordError as exc:
+            journal(f'Interactions Endpoint URL pas vérifiée : {exc}')
+
     def deliver_due(self, conn: sqlite3.Connection | None = None) -> int:
         """Envoie les tickets dus et met à jour les cartes (voir prive)."""
         try:
@@ -190,6 +220,7 @@ class Bot:
         """Boucle : gateway ici, envois dans un fil à part (bloquant)."""
         me = verify_token(self.token)
         self.bot_user_id = str(me.get('id') or '')
+        self.verifier_endpoint()
         threading.Thread(
             target=self._livrer_en_boucle, args=(tick_seconds,), daemon=True
         ).start()

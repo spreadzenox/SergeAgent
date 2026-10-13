@@ -1749,3 +1749,14 @@ Décidé :
 2. **La règle entre dans la charte** (partie 2). Clem a autorisé l'agent à
    l'y écrire, cette fois, alors que la charte réserve ses changements à
    Julien : Julien la relira dans la PR.
+
+### Q90 — Le bot vide lui-même l'« Interactions Endpoint URL » de son application (validé par Clem, 13 octobre 2026)
+Constat : le bot est connecté à Discord, ouvre les fils et mentionne les
+administrateurs, mais aucun clic ne lui arrive (aucune ligne « clic reçu »
+dans son journal) et Discord affiche « L'application n'a pas répondu à
+temps ». La cause la plus probable : le champ « Interactions Endpoint URL »
+de l'application est rempli ; Discord envoie alors les clics à cette
+adresse au lieu de la gateway. Seul Julien a accès au portail.
+Décidé : **au démarrage, le bot lit ce champ avec son token ; s'il est
+rempli, il le vide** et note au journal l'ancienne valeur (Julien peut la
+remettre dans le portail). Vide, il ne touche à rien.
