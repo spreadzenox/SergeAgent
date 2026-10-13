@@ -63,8 +63,9 @@ web. Elle cherche **et** qualifie. Exemple de sources : sites
 d'entreprises, annuaires professionnels, fiches Google Maps.
 
 - Elle vise des prospects **pertinents** et des adresses qui **ne
-  rebondissent pas**. Pas d'adresses de contact génériques de mauvaise
-  qualité.
+  rebondissent pas**. **Jamais d'adresse générique** (`contact@`,
+  `info@`…) : une personne nommée, avec son rôle et son adresse directe.
+  Un contact précis paie toujours, et beaucoup se trouvent en ligne (Q93).
 - Elle enregistre pour chaque adresse la page où elle l'a trouvée.
 - Sa sortie exacte (champs, format) reste à définir.
 - Elle ne sert qu'aux canaux qui ont besoin d'une liste de personnes
@@ -94,7 +95,20 @@ Le but numéro un : **ne jamais relancer quelqu'un qui a déjà répondu.**
    été relevées récemment (exemple : boîte mail non lue depuis plus d'une
    heure), aucune relance ne part sur ce canal, et Mission Control affiche
    une alerte.
-5. **Le rythme** vient du plan du POC validé par Julien.
+5. **Le rythme** est un réglage commun à tous les business, sur la page
+   Policy (Q92) : la première relance 3 jours après le premier message, la
+   seconde 7 jours après, deux au plus.
+
+### Les campagnes, du début à la fin
+
+Le détail est dans [`LOT11_CONCEPTION.md`](../LOT11_CONCEPTION.md) : une
+campagne démarre quand le POC est en ligne ; son nombre de prospects est
+un réglage par canal (40 e-mails, 20 appels au départ, Q93) ; « Trouver
+des prospects » cherche par paquets de 10, au rythme des envois ; le test
+se termine au
+plus tôt (relances parties depuis 7 jours, ou durée du plan, 30 jours au
+plus) ; « Mesurer le test » le juge avec des seuils chiffrés, et un test
+sous les seuils est arrêté, avec une leçon (Q92).
 
 ### Répondre aux prospects
 

@@ -75,7 +75,8 @@ prêt pour le test léger, en test léger, test léger fini, prêt pour le test
 lourd, en test lourd, passage à l'échelle, pivot, extension, arrêté, et
 invalide.
 
-Julien a décidé le parcours suivant, qui reste à construire en entier :
+Julien a décidé le parcours suivant ; le lot 11 en fixe les statuts
+(décision Q92, détail dans [`LOT11_CONCEPTION.md`](LOT11_CONCEPTION.md)) :
 
 ```text
 CANDIDATE        trouvé par l'étape 1
@@ -83,22 +84,25 @@ CANDIDATE        trouvé par l'étape 1
 POC_SELECTED     choisi pour être testé (prend une place de test léger)
    ↓
 SMOKE_READY → SMOKE_RUNNING → SMOKE_DONE     test léger (étapes 2 et 3)
-   ↓
+   ↓                                   sous les seuils ──→ KILLED
 choisi comme business principal (étape 4)  ──→  sinon PARKED
    ↓
-construction (étape 5), puis prospection lourde (étape 6)
+PRODUCT_BUILDING → PRODUCT_READY     construction (étape 5)
+   ↓
+FULL_RUNNING     prospection lourde et ventes (étape 6)
    ↓
 MAINTENANCE      plus de nouveaux prospects, mais on livre, on répond,
-   ↓             on corrige et on encaisse
-CLOSED           plus rien à faire : fermé et archivé
+   ↓             on corrige et on encaisse (lot 15)
+CLOSED           plus rien à faire : fermé et archivé (lot 15)
 ```
 
 Un business mis de côté (`PARKED`) a été testé mais pas choisi. Il libère
 sa place, et il peut être repris si le business principal s'arrête, tant
 que son test date de moins de 60 jours. Un business arrêté (`KILLED`)
-n'avait aucun client. Chaque changement de statut est écrit au journal,
-avec qui l'a décidé, quand et pourquoi. Les noms exacts des statuts entre
-le choix du principal et la maintenance seront fixés pendant le chantier.
+n'avait aucun client, ou un test sous les seuils (Q92). Chaque changement
+de statut est écrit au journal, avec qui l'a décidé, quand et pourquoi.
+La vie d'un business qui a des clients (`MAINTENANCE`, `CLOSED`) sera
+imaginée au lot 15.
 
 ### Les places de test
 
@@ -107,9 +111,11 @@ légère et une seule en prospection lourde, et ces deux nombres se règlent
 dans Mission Control. Un business prend une place de prospection légère dès
 qu'il est choisi à l'étape 1, et la garde pendant les étapes 2 et 3. Il n'y
 a pas de file d'attente : quand les trois places sont prises, rien de
-nouveau n'entre, et l'étape 1 ne cherche plus de business. Le business
-principal n'est choisi que lorsque les trois tests légers sont finis, et
-son passage en maintenance libère la place de prospection lourde.
+nouveau n'entre, et l'étape 1 ne cherche plus de business. Dès qu'une
+place se libère, l'étape 1 repart toute seule (Q92). Le business
+principal n'est choisi que lorsqu'aucun test léger ne tourne plus, et son
+arrêt ou son passage en maintenance libère la place de prospection
+lourde.
 
 Aujourd'hui, le code impose seulement « un seul business actif à la
 fois ». Les places sont à construire.

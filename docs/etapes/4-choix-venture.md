@@ -28,9 +28,10 @@ passent en `PARKED`.
 
 ## Décidé
 
-1. **Déclenchement** : seulement quand les 3 business en prospection
-   légère ont tous fini leur test, et que la place de prospection lourde
-   est libre.
+1. **Déclenchement** : seulement quand aucun test léger ne tourne plus,
+   et que la place de prospection lourde est libre. Un test sous les seuils
+   chiffrés est arrêté (`KILLED`) et n'est pas comparé (Q92). Le détail
+   est dans [`LOT11_CONCEPTION.md`](../LOT11_CONCEPTION.md), partie 6.
 2. **Une invocation LLM propose un choix motivé.** Elle reçoit, pour chaque
    business : le total de points, les points par euro, et le détail des
    signaux et des réponses.
