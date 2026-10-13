@@ -276,6 +276,14 @@ class ProjIlotsTests(ProjSystemFixtures):
                         ' chantier », plus bas.',
                         'details': [],
                     },
+                    {
+                        'id': 'produits',
+                        'label': 'Produits en ligne',
+                        'sante': 'inconnu',
+                        'activite': 0.0,
+                        'resume': 'Aucun produit publié encore.',
+                        'details': [],
+                    },
                 ]
             },
         )

@@ -100,7 +100,7 @@ def _stop_others(conn: sqlite3.Connection, chantier: str) -> None:
         )
 
 
-def _ready(
+def ensure_chantier(
     conn: sqlite3.Connection, args: Mapping[str, Any]
 ) -> tuple[str, str, dict[str, Any]]:
     """Allume le chantier de la tâche (le crée au besoin).
@@ -262,7 +262,7 @@ def sandbox_command(
     command = str(args.get('command') or '').strip()
     if not command:
         return {'ok': False, 'code': 'commande_vide'}
-    chantier, name, profile = _ready(conn, args)
+    chantier, name, profile = ensure_chantier(conn, args)
     limit = int(profile['command_timeout_s'])
     if _true(args.get('background')):
         log = f'{WORK}/.serge/{uuid.uuid4().hex[:8]}.log'
@@ -341,7 +341,7 @@ def sandbox_read_file(
     _invocation_id: str,
 ) -> dict[str, Any]:
     """Rend des lignes d'un fichier du chantier."""
-    _chantier, name, _profile_ = _ready(conn, args)
+    _chantier, name, _profile_ = ensure_chantier(conn, args)
     path = _path(args.get('path'))
     ok, text = _read_text(name, path)
     if not ok:
@@ -379,7 +379,7 @@ def sandbox_write_file(
     _invocation_id: str,
 ) -> dict[str, Any]:
     """Écrit un fichier entier dans le chantier."""
-    _chantier, name, _profile_ = _ready(conn, args)
+    _chantier, name, _profile_ = ensure_chantier(conn, args)
     path = _path(args.get('path'))
     content = str(args.get('content') or '')
     ok, detail = _write_text(name, path, content)
@@ -395,7 +395,7 @@ def sandbox_edit_file(
     _invocation_id: str,
 ) -> dict[str, Any]:
     """Remplace un passage exact, présent une seule fois, par un autre."""
-    _chantier, name, _profile_ = _ready(conn, args)
+    _chantier, name, _profile_ = ensure_chantier(conn, args)
     path = _path(args.get('path'))
     old = str(args.get('old') or '')
     if not old:

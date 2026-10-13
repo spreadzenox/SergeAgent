@@ -1,11 +1,23 @@
 #!/usr/bin/env python3
-"""Inventaire de routes + Caddyfile (chemins optionnels sur le même hôte)."""
+"""Inventaire de routes + Caddyfile (chemins optionnels sur le même hôte).
+
+Les routes restent dans un fichier (``state/web-ingress/inventory.json``),
+pas en base : le service Caddy, dans son bac à sable systemd, relit
+l'inventaire à son démarrage et ne peut écrire que dans
+``state/web-ingress`` ; il ne peut pas ouvrir la base de façon sûre. C'est
+la contrainte technique dure qui justifie l'exception à « la base fait
+foi » (charte, partie 5). Une route peut demander que les moteurs de
+recherche ne l'indexent pas (``noindex``) : le staging d'un produit.
+"""
 
 from __future__ import annotations
 
 import argparse
 import json
 import os
+import shutil
+import subprocess
+import sys
 import tomllib
 from collections import defaultdict
 from pathlib import Path
@@ -46,6 +58,7 @@ def _load_inventory(path: Path) -> list[dict[str, str]]:
                     'upstream': str(item.get('upstream') or ''),
                     'venture_id': str(item.get('venture_id') or ''),
                     'path': str(item.get('path') or ''),
+                    **({'noindex': '1'} if item.get('noindex') else {}),
                 }
             )
     return out
@@ -60,12 +73,17 @@ def _caddyfile(routes: list[dict[str, str]]) -> str:
     for host, items in grouped.items():
         paths = [item for item in items if item.get('path')]
         roots = [item for item in items if not item.get('path')]
-        if not paths and len(roots) == 1:
+        entetes = (
+            ['\theader X-Robots-Tag "noindex, nofollow"']
+            if any(item.get('noindex') for item in items)
+            else []
+        )
+        if not paths and len(roots) == 1 and not entetes:
             blocks.append(
                 f'{host} {{\n\treverse_proxy {roots[0]["upstream"]}\n}}\n'
             )
             continue
-        lines = [f'{host} {{']
+        lines = [f'{host} {{', *entetes]
         for item in paths:
             lines.append(f'\thandle {item["path"]}* {{')
             lines.append(f'\t\treverse_proxy {item["upstream"]}')
@@ -88,15 +106,24 @@ def _save(inventory: Path, caddy: Path, routes: list[dict[str, str]]) -> None:
     caddy.write_text(_caddyfile(routes), encoding='utf-8')
 
 
-def _mc_route() -> dict[str, str] | None:
+def public_hostname() -> str:
+    """Le domaine de l'instance (``identity.public_hostname``), ou ``''``.
+
+    C'est celui de Mission Control, et celui des produits de Serge : un
+    POC est publié sur ``<produit>.<domaine>``.
+    """
     raw = os.environ.get('SERGE_INSTANCE_FILE', '').strip()
     if not raw:
-        return None
+        return ''
     try:
         data = tomllib.loads(Path(raw).read_text(encoding='utf-8'))
     except (OSError, tomllib.TOMLDecodeError):
-        return None
-    host = str((data.get('identity') or {}).get('public_hostname') or '')
+        return ''
+    return str((data.get('identity') or {}).get('public_hostname') or '')
+
+
+def _mc_route() -> dict[str, str] | None:
+    host = public_hostname()
     if not host:
         return None
     return {
@@ -116,6 +143,8 @@ def upsert(
     upstream: str,
     venture_id: str,
     path: str = '',
+    *,
+    noindex: bool = False,
 ) -> dict[str, Any]:
     """Ajoute ou remplace une route (hôte + chemin), puis réécrit Caddyfile."""
     inventory, caddy = _paths(_root())
@@ -131,11 +160,57 @@ def upsert(
             'upstream': upstream,
             'venture_id': venture_id,
             'path': path,
+            **({'noindex': '1'} if noindex else {}),
         }
         routes = [r for r in routes if _key(r) != _key(entry)]
         routes.append(entry)
     _save(inventory, caddy, routes)
     return {'status': 'ok', 'routes': len(routes)}
+
+
+def reload() -> str:
+    """Fait relire le Caddyfile à Caddy, sans coupure ; rend ``''`` si
+    c'est fait, sinon la raison (notée au journal du service).
+
+    ``caddy reload`` envoie la configuration à l'API d'administration de
+    Caddy (``localhost:2019``) : le compte de Serge n'a pas besoin des
+    droits du service. Sans Caddy sur cette machine (un poste de
+    développement), rien n'est fait.
+    """
+    caddy = os.environ.get('SERGE_CADDY_BIN', '').strip() or shutil.which(
+        'caddy'
+    )
+    if not caddy:
+        local = Path.home() / '.local/bin/caddy'
+        caddy = str(local) if local.is_file() else ''
+    if not caddy or not Path(caddy).is_file():
+        return 'caddy absent de cette machine'
+    _inventory, caddyfile = _paths(_root())
+    try:
+        done = subprocess.run(
+            [
+                caddy,
+                'reload',
+                '--config',
+                str(caddyfile),
+                '--adapter',
+                'caddyfile',
+            ],
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        raison = f'caddy reload : {exc}'
+    else:
+        if done.returncode == 0:
+            return ''
+        raison = (
+            f'caddy reload : {(done.stderr or done.stdout).strip()[-500:]}'
+        )
+    print(f'ingress : {raison}', file=sys.stderr, flush=True)
+    return raison
 
 
 def render() -> dict[str, Any]:

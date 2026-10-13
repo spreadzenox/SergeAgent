@@ -254,16 +254,33 @@ Une **version** est une copie figée du dossier du chantier, rangée dans
 (Q40). Une version n'est jamais modifiée : une correction crée la version
 suivante.
 
-**« Publier »** est une capacité sans LLM, avec trois paramètres : le
-business, la version et la cible (staging ou prod). Elle :
+**« Publier »** (`publish_version`, lot 10, PR 3) est une capacité sans
+LLM. Ses paramètres sont figés en base : le business, le livrable, la
+cible (staging ou prod), le nom court du produit, et pour la prod d'un
+produit fini son domaine. En staging, elle :
 
-1. construit l'image du produit à partir du `Dockerfile` de la version ;
-2. lance le conteneur, avec sa mémoire et ses processeurs (512 Mo et un
-   demi-processeur au départ, page Policy) et son propre volume de
-   données ;
-3. attend que le produit réponde ;
-4. ajoute la route dans Caddy ;
-5. note en base la version publiée, son adresse et son conteneur.
+1. fige le chantier en version N : une archive de `/work` sans ce qui se
+   reconstruit (`node_modules`, `.git`, `.venv`, `__pycache__`), rangée
+   dans `files/<business>/<livrable>/v<N>/` ;
+2. construit l'image du produit à partir du `Dockerfile` de la version
+   (`serge-produit-<chantier>:v<N>`) ;
+3. remplace le conteneur du staging par un neuf : les limites du profil
+   « produit » de la page Policy (512 Mo et un demi-processeur au départ),
+   le volume de données `/data` (gardé d'une version à l'autre), les
+   variables `PORT` (8080, où le produit doit écouter), `DATA_DIR` et
+   `PUBLIC_URL`, un redémarrage automatique avec le serveur, et un port
+   fixe sur `127.0.0.1` (18000 et suivants, gardé d'une version à
+   l'autre pour que la route de Caddy reste juste après un redémarrage) ;
+4. attend que le produit réponde, une minute au plus ;
+5. ajoute la route dans Caddy et lui fait relire sa configuration, sans
+   coupure, par son API d'administration ;
+6. note la publication dans `deployments`.
+
+En prod, elle reprend l'image de la version passée en staging : rien
+n'est reconstruit. Une construction ratée, un produit qui ne répond pas
+ou un chantier sans `Dockerfile` ne mettent rien en ligne : la
+publication est notée ratée avec sa raison, et la fin du journal de
+construction ou du produit est rendue, pour que le constructeur corrige.
 
 **Les adresses** (Q91) :
 
@@ -288,13 +305,17 @@ de certificat et ne montre rien. Le
 staging s'écrit `staging-<business>` et non `<business>.staging` pour
 qu'un seul enregistrement DNS couvre tout.
 
-**La liste des routes passe en base.** `serge/ingress/caddy.py` tient
-déjà une liste de routes (une adresse vers un programme du VPS, chacune
-rattachée à un business) et en tire la configuration de Caddy, qui se
-recharge sans coupure. Mission Control et le webhook Stripe y passent.
-Mais cette liste est un fichier JSON (`state/web-ingress/inventory.json`),
-alors que la base est la seule source de vérité (charte, partie 5). Elle
-devient une table, `web_routes`, et le fichier disparaît.
+**La liste des routes reste dans son fichier.** `serge/ingress/caddy.py`
+tient une liste de routes (une adresse vers un programme du VPS, chacune
+rattachée à un business) et en tire la configuration de Caddy. Mission
+Control, le webhook Stripe et les produits y passent. Elle reste un
+fichier (`state/web-ingress/inventory.json`), et pas une table : le
+service Caddy relit cette liste à son démarrage, dans un bac à sable
+systemd où il ne peut écrire que dans `state/web-ingress` ; il ne peut
+pas ouvrir la base de façon sûre, et un démarrage raté de Caddy couperait
+Mission Control. C'est la contrainte technique dure que demande la charte
+pour une exception à « la base fait foi » (partie 5). Ce que Serge publie
+est, lui, en base (`deployments`).
 
 **Le paiement dans un produit.** Pour savoir qui a payé, un produit fini a
 besoin d'une clé Stripe. Il reçoit une **clé restreinte**, aux droits
@@ -522,7 +543,8 @@ Sur la page **Policy** :
 - le profil « chantier » : image, processeurs, mémoire, disque, durée
   maximale d'une commande, réseau (partie 1) ;
 - un produit en ligne : mémoire et processeurs (partie 5) ;
-- le domaine des produits, par défaut celui de Mission Control ;
+- le profil « produit » : processeurs et mémoire de chaque produit en
+  ligne (partie 5) ;
 - le prix maximum d'un domaine acheté pour un produit fini : 30 € par an
   au départ.
 
@@ -549,6 +571,11 @@ plus, 3 passages de construction au plus, les tours d'outils de
 - **La fiche d'une tâche** montre ses captures gardées ; un clic ouvre
   l'image en grand. Mission Control sert un fichier rangé sous `files/`,
   et rien d'autre, à une session connectée (`/owner/api/fichier`).
+- **La fiche du business** montre ses publications (staging et prod :
+  version, adresse, état, raison d'un échec) et ses versions.
+- **Un îlot « Produits en ligne »** sur la page Système, et le bouton
+  « Publier le chantier d'essai » (cible staging ou prod) avec les autres
+  essais.
 - **Un îlot « Chantiers »** sur la page Système : chaque chantier, allumé
   ou éteint, la place qu'il prend, les commandes lancées en 24 h, et
   pourquoi l'un a été arrêté. Les boutons d'essai du lot (« Essayer le

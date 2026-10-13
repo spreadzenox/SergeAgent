@@ -463,8 +463,7 @@ discutable, qui peut un jour changer, se règle depuis Mission Control.**
   de version), et n'est plus jamais modifiée une fois publiée. Chaque
   fichier a sa fiche dans la base. Publier est une capacité générale
   (« publier cette version en staging ou en prod »), réglée par ses
-  paramètres, qui sert à tous les livrables. La liste des routes de Caddy,
-  aujourd'hui dans un fichier, passe en base.
+  paramètres, qui sert à tous les livrables (lot 10, PR 3).
 
 ---
 

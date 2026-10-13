@@ -25,6 +25,7 @@ from serge.mc.libelles import (
     REGIMES,
 )
 from serge.mc.proj_objet_base import _champs, _liens, _row
+from serge.mc.proj_produit import cadres_produit
 
 
 def _venture(conn: sqlite3.Connection, ident: str) -> dict | None:
@@ -117,6 +118,7 @@ def _venture(conn: sqlite3.Connection, ident: str) -> dict | None:
         'titre': row['name'] or ident,
         'pourquoi': 'Une idée de business, de sa formulation à ses clients.',
         'actions': [bascule],
+        'cadres': cadres_produit(conn, ident),
         'champs': _champs(
             [
                 (

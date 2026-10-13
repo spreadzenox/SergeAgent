@@ -18,12 +18,14 @@ from serge.capabilities.chantier import CHANTIER
 from serge.capabilities.conversations import CONVERSATIONS
 from serge.capabilities.model import Capability
 from serge.capabilities.navigateur import NAVIGATEUR
+from serge.capabilities.publier import PUBLIER
 
 CAPABILITIES: tuple[Capability, ...] = (
     *BASE,
     *CONVERSATIONS,
     *CHANTIER,
     *NAVIGATEUR,
+    *PUBLIER,
 )
 
 

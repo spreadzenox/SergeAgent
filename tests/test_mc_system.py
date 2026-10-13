@@ -139,6 +139,7 @@ class McSystemTests(McBrowserCase):
                 'Essayer le chantier',
                 "Essayer l'interface web",
                 'Lancer un essai',
+                "Publier le chantier d'essai",
             ]
         )
         # Le message d'un inconnu : pas traité, mais visible.

@@ -2495,6 +2495,24 @@ invocations:
       - {path: marche, type: choice, choices: [oui, non], description: 'Le site fait-il ce que demande la mission ?'}
       - {path: compte_rendu, type: text, description: 'Ce qui a été fait, vu, et ce qui ne marche pas, captures à l''appui.'}
 
+  - id: publier_essai
+    title: Publier le chantier d'essai (temporaire)
+    role: >-
+      Temporaire, pour essayer la publication depuis Mission Control (lot
+      10, Q91) : fige le chantier d'essai en une version, la construit et
+      la met en ligne en staging, ou passe la version du staging en prod.
+      Sans LLM.
+    type: capability
+    capability: publish_version
+    queue: works
+    priority: 30
+    params:
+      venture_id: {source: fixed, value: essai}
+      deliverable: {source: fixed, value: chantier}
+      slug: {source: fixed, value: essai}
+      target: {source: task, value: cible}
+      task_id: {source: task, value: task_id}
+
 links:
   - id: cycle_ouvert_vers_exploration
     title: Le cycle ouvert part en exploration
@@ -2836,6 +2854,19 @@ triggers:
     params:
       adresse: {source: form, value: adresse}
       mission: {source: form, value: mission}
+
+  - id: bouton_publier_essai
+    title: Publier le chantier d'essai
+    invocation: publier_essai
+    event: button
+    confirm: >-
+      Serge fige le chantier d'essai, construit son image (il lui faut un
+      Dockerfile qui écoute sur le port de la variable PORT) et le met en
+      ligne en staging (staging-essai.<domaine>, non indexé) ; avec
+      « prod », il passe la version du staging sur essai.<domaine>. Le
+      résultat est dans l'îlot « Produits en ligne ».
+    params:
+      cible: {source: form, value: cible (staging ou prod)}
 
 # Les modifications d'objets déjà en base sur une instance existante (le
 # fichier ne les écrase jamais) : chacune n'est appliquée qu'une fois, et
