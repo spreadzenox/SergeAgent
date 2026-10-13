@@ -12,6 +12,7 @@ from serge.mc.proj_outils import apres_iso
 from serge.text_ids import strip_ids
 from serge.tickets import champs_carte, get_ticket
 from serge.tickets.lifecycle import OPENISH
+from serge.tickets.reponses import message_du_ticket
 from serge.tickets.shared import TicketError
 from serge.tickets.types import ticket_types
 
@@ -126,6 +127,8 @@ def project_carte(
         'options': json.loads(ticket.get('payload_json') or '{}').get(
             'options_qcm', []
         ),
+        # Le message dont parle le ticket : « Ma réponse » s'ouvre avec.
+        'message': message_du_ticket(conn, ticket_id),
         'champs': [
             {'titre': cle, 'texte': strip_ids(texte)}
             for cle, texte in champs_carte(ticket, spec)

@@ -34,6 +34,7 @@ from serge.discord.rest import (
     archive_thread,
     create_forum_post,
     edit_message,
+    send_message,
 )
 from serge.text_ids import strip_ids
 from serge.tickets import get_ticket
@@ -162,6 +163,15 @@ def _carte(
     return carte, strip_ids(nom)
 
 
+def _mentions(conn: sqlite3.Connection) -> dict[str, Any]:
+    """Le texte qui mentionne les administrateurs : ils sont prévenus."""
+    ids = [a['user_id'] for a in admins(conn)]
+    return {
+        'content': ' '.join(f'<@{i}>' for i in ids),
+        'allowed_mentions': {'parse': [], 'users': ids[:100]},
+    }
+
+
 def _ouvrir_fils(
     conn: sqlite3.Connection, token: str, forum: str, depuis: str, now: str
 ) -> int:
@@ -170,11 +180,7 @@ def _ouvrir_fils(
     retry = (
         datetime.fromisoformat(now) - timedelta(minutes=RETRY_MINUTES)
     ).isoformat()
-    ids = [a['user_id'] for a in admins(conn)]
-    mentions = {
-        'content': ' '.join(f'<@{i}>' for i in ids),
-        'allowed_mentions': {'parse': [], 'users': ids[:100]},
-    }
+    mentions = _mentions(conn)
     count = 0
     for ticket_id, version in conn.execute(
         f'SELECT t.id, {VERSION} FROM tickets t'
@@ -204,15 +210,58 @@ def _ouvrir_fils(
     return count
 
 
+# Un ticket rouvert (de « en discussion » à « ouvert ») depuis la dernière
+# mise à jour de sa carte : après « Réécrire », le nouveau brouillon.
+_ROUVERT = (
+    'EXISTS (SELECT 1 FROM ticket_events e WHERE e.ticket_id=p.ticket_id'
+    " AND e.kind='transition.open'"
+    " AND json_extract(e.payload_json, '$.from')='DISCUSSING'"
+    ' AND e.ts>p.updated_at)'
+)
+
+
+def _nouvelle_version(
+    conn: sqlite3.Connection, token: str, fil: str, ancienne: str, carte: dict
+) -> str:
+    """Poste la nouvelle version en bas du fil, avec une mention, et ôte
+    ses boutons à l'ancienne carte ; rend l'id du nouveau message."""
+    nouveau = send_message(token, fil, {**_mentions(conn), **carte})
+    try:
+        edit_message(
+            token,
+            fil,
+            ancienne,
+            {
+                'content': 'Remplacée par la nouvelle version, plus bas.',
+                'components': [],
+            },
+        )
+    except DiscordError as exc:
+        journal(f'ancienne carte du fil {fil} pas désactivée : {exc}')
+    return str(nouveau.get('id') or ancienne)
+
+
 def _mettre_a_jour(conn: sqlite3.Connection, token: str, now: str) -> int:
     """Met à jour la carte de chaque ticket qui a changé ; un ticket
-    tranché voit son fil archivé. Rend le nombre de cartes mises à jour."""
+    tranché voit son fil archivé. Un ticket rouvert (le nouveau brouillon
+    après « Réécrire ») repart en bas du fil, avec une mention : les
+    administrateurs sont prévenus qu'il attend un dernier clic. Rend le
+    nombre de cartes mises à jour."""
     retry = (
         datetime.fromisoformat(now) - timedelta(minutes=RETRY_MINUTES)
     ).isoformat()
     count = 0
-    for ticket_id, fil, version, archive, state in conn.execute(
-        f'SELECT p.ticket_id, p.thread_id, {VERSION}, p.archived, t.state'
+    for (
+        ticket_id,
+        fil,
+        message,
+        version,
+        archive,
+        state,
+        rouvert,
+    ) in conn.execute(
+        f'SELECT p.ticket_id, p.thread_id, p.message_id, {VERSION},'
+        f' p.archived, t.state, {_ROUVERT}'
         ' FROM ticket_posts p JOIN tickets t ON t.id=p.ticket_id'
         f" WHERE p.thread_id<>'' AND p.shown_state<>{VERSION}"
         ' AND (t.updated_at>p.updated_at OR p.updated_at<=?)',
@@ -222,20 +271,26 @@ def _mettre_a_jour(conn: sqlite3.Connection, token: str, now: str) -> int:
         if rendu is None:
             continue
         tranche = str(state) not in ('OPEN', 'DISCUSSING')
+        carte_id = str(message or fil)
         try:
             # Un fil archivé se rouvre le temps de modifier sa carte.
             if archive:
                 archive_thread(token, str(fil), False)
-            edit_message(token, str(fil), str(fil), rendu[0])
+            if rouvert and not tranche:
+                carte_id = _nouvelle_version(
+                    conn, token, str(fil), carte_id, rendu[0]
+                )
+            else:
+                edit_message(token, str(fil), carte_id, rendu[0])
             if tranche:
                 archive_thread(token, str(fil), True)
-            values = (str(version), int(tranche))
+            values = (str(version), int(tranche), carte_id)
         except DiscordError as exc:
             journal(f'carte du ticket {ticket_id} pas mise à jour : {exc}')
-            values = (ECHEC_MODIF, int(archive))
+            values = (ECHEC_MODIF, int(archive), carte_id)
         conn.execute(
-            'UPDATE ticket_posts SET shown_state=?, archived=?, updated_at=?'
-            ' WHERE ticket_id=?',
+            'UPDATE ticket_posts SET shown_state=?, archived=?, message_id=?,'
+            ' updated_at=? WHERE ticket_id=?',
             (*values, now, ticket_id),
         )
         conn.commit()

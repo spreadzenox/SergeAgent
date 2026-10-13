@@ -36,7 +36,7 @@ export async function rafraichir(main, store) {
   }
 }
 
-export async function agirTicket(main, store, ticketId, acte, options = []) {
+export async function agirTicket(main, store, ticketId, acte, options = [], message = {}) {
   let charge = {ticket_id: ticketId, acte};
   if (acte === 'discuter_fil') acte = 'discuter';
   charge.acte = acte;
@@ -47,17 +47,24 @@ export async function agirTicket(main, store, ticketId, acte, options = []) {
       ma_reponse: ['Le message qui partira au contact, tel quel.', 'Réponse : '],
       reecrire: ['Tes consignes : Serge réécrit, et le brouillon revient ici.', 'Consignes : '],
     }[acte];
+    // « Ma réponse » et « Éditer » s'ouvrent avec le message dont parle le
+    // ticket : son texte, et son objet s'il en a un.
+    const reprend = ['ma_reponse', 'editer'].includes(acte) && message.texte !== undefined;
     const valeurs = await promptModal(document.body, {
       title: libelleActe(acte),
       message: consignes ? consignes[0] :
         (estEdit ? 'Choisis ou saisis ta réponse.' : 'Écris ton message.'),
       fields: [
+        ...(reprend && message.objet
+          ? [{nom: 'objet', label: 'Objet : ', defaut: message.objet, requis: true}]
+          : []),
         {
           nom: estEdit ? 'note' : 'message',
           label: consignes ? consignes[1] :
             (estEdit ? 'Réponse : ' : 'Message : '),
-          defaut: '',
+          defaut: reprend ? message.texte : '',
           requis: true,
+          multiligne: reprend,
           ...(acte === 'choix_qcm' ? {options} : {}),
         },
       ],
@@ -66,7 +73,11 @@ export async function agirTicket(main, store, ticketId, acte, options = []) {
     if (!valeurs) {
       return;
     }
-    charge = {...charge, ...(estEdit ? {note: valeurs.note} : {})};
+    charge = {
+      ...charge,
+      ...(estEdit ? {note: valeurs.note} : {}),
+      ...(valeurs.objet ? {objet: valeurs.objet} : {}),
+    };
     if (!estEdit) {
       const {ok, data} = await poster('/owner/api/ticket/discuter', {
         ticket_id: ticketId,
@@ -204,7 +215,7 @@ export function renderCarte(main, store, carte) {
     bouton.addEventListener('click', async () => {
       if (bouton.disabled) return;
       bouton.disabled = true;
-      try { await agirTicket(main, store, carte.ticket.id, acte, carte.options); }
+      try { await agirTicket(main, store, carte.ticket.id, acte, carte.options, carte.message); }
       catch { toast(document.body, 'Acte injoignable.', 'erreur'); }
       finally { bouton.disabled = false; }
     });

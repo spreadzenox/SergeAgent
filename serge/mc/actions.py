@@ -118,6 +118,7 @@ class ActionsMixin(_Base):
         ticket_id = str(body.get('ticket_id') or '')
         acte = str(body.get('acte') or '')
         note = str(body.get('note') or '')
+        objet = str(body.get('objet') or '')
         decision = str(body.get('decision_id') or '')
         if not ticket_id:
             self._refus(
@@ -190,7 +191,7 @@ class ActionsMixin(_Base):
                 self._refus_ticket(exc, 'Ticket')
                 return
             # La réponse réveille les invocations réglées en base (Q85).
-            noter_reponse(conn, ticket_id, acte, note, 'owner')
+            noter_reponse(conn, ticket_id, acte, note, 'owner', objet)
             if decision:
                 record_event(
                     conn,

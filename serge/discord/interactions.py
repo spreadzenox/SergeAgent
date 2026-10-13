@@ -20,7 +20,7 @@ from serge.tickets.acts import APPROVE, DISCUTER, EDITER, REJECT, REPONDRE
 from serge.tickets.admins import is_admin
 from serge.tickets.items import set_item, tout_approuver
 from serge.tickets.lifecycle import decide, discuss
-from serge.tickets.reponses import noter_reponse
+from serge.tickets.reponses import message_du_ticket, noter_reponse
 from serge.tickets.shared import TicketError, already_applied, record_event
 
 ITEM_STATES = {'garder': 'keep', 'modifier': 'edit', 'jeter': 'drop'}
@@ -75,35 +75,57 @@ def actor_id(interaction: Mapping[str, Any]) -> str:
     return str(user.get('id') or '')
 
 
-def fenetre(ticket_id: str, action: str) -> dict[str, Any]:
-    """La fenêtre de saisie d'un bouton qui demande un texte."""
+def _ligne(champ: dict[str, Any]) -> dict[str, Any]:
+    return {'type': 1, 'components': [champ]}
+
+
+def fenetre(
+    ticket_id: str, action: str, message: dict[str, str] | None = None
+) -> dict[str, Any]:
+    """La fenêtre de saisie d'un bouton qui demande un texte.
+
+    ``message`` : le message dont parle le ticket (``{texte, objet}``),
+    pour un bouton qui le modifie (« Ma réponse », « Éditer ») : le texte
+    est déjà rempli, et l'objet, s'il y en a un, se modifie aussi.
+    """
     titre, champ = SAISIES[action]
+    texte = {
+        'type': 4,
+        'custom_id': 'texte',
+        'style': 2,
+        'label': champ,
+        'required': True,
+        'max_length': 4000,
+    }
+    lignes = []
+    if message:
+        texte['value'] = message.get('texte', '')[:4000]
+        if message.get('objet'):
+            lignes.append(
+                _ligne(
+                    {
+                        'type': 4,
+                        'custom_id': 'objet',
+                        'style': 1,
+                        'label': 'Objet',
+                        'required': True,
+                        'max_length': 200,
+                        'value': message['objet'][:200],
+                    }
+                )
+            )
     return {
         'custom_id': f'm:{ticket_id}:{action}',
         'title': titre,
-        'components': [
-            {
-                'type': 1,
-                'components': [
-                    {
-                        'type': 4,
-                        'custom_id': 'texte',
-                        'style': 2,
-                        'label': champ,
-                        'required': True,
-                        'max_length': 2000,
-                    }
-                ],
-            }
-        ],
+        'components': [*lignes, _ligne(texte)],
     }
 
 
-def _texte(data: Mapping[str, Any]) -> str:
-    """Le texte saisi dans une fenêtre."""
+def _texte(data: Mapping[str, Any], champ: str = 'texte') -> str:
+    """Un champ saisi dans une fenêtre (le texte, ou l'objet)."""
     for row in data.get('components') or []:
         for field in row.get('components') or []:
-            if field.get('custom_id') == 'texte':
+            if field.get('custom_id') == champ:
                 return str(field.get('value') or '').strip()
     return ''
 
@@ -224,7 +246,12 @@ def premiere_reponse(
     choix = str((data.get('values') or [''])[0])
     if not saisie and action in SAISIES:
         if action != 'choix_qcm' or choix == '__autre__':
-            return {'type': 9, 'data': fenetre(ticket_id, action)}
+            message = (
+                message_du_ticket(connection, ticket_id)
+                if action in EDITER
+                else None
+            )
+            return {'type': 9, 'data': fenetre(ticket_id, action, message)}
     return None
 
 
@@ -274,7 +301,8 @@ def route_interaction(
     texte = _texte(data) if saisie else ''
     if not saisie and action == 'choix_qcm':
         texte = str((data.get('values') or [''])[0])
-    noter_reponse(connection, ticket_id, action, texte, actor)
+    objet = _texte(data, 'objet') if saisie else ''
+    noter_reponse(connection, ticket_id, action, texte, actor, objet)
     if decision_id:
         _stamp(
             connection,

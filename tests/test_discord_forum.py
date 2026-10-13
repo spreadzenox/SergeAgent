@@ -10,6 +10,8 @@ Scénarios :
 - tranché sur Discord ou dans Mission Control, sa carte est mise à jour
   (boutons morts, qui l'a tranché) et son fil archivé ; un fil archivé se
   rouvre le temps d'une nouvelle mise à jour ;
+- rouvert après « Réécrire », sa carte repart en bas du fil avec une
+  mention, et l'ancienne perd ses boutons ;
 - un fil qui ne s'ouvre pas est réessayé après 10 minutes, pas avant ;
 - un identifiant de forum mal écrit est refusé.
 """
@@ -30,7 +32,7 @@ from serge.discord.forum import deliver, regler_forum  # noqa: E402
 from serge.discord.rest import DiscordError  # noqa: E402
 from serge.tickets import create_ticket, decide, publish  # noqa: E402
 from serge.tickets.admins import add_admin  # noqa: E402
-from serge.tickets.lifecycle import execute  # noqa: E402
+from serge.tickets.lifecycle import discuss, execute, reopen  # noqa: E402
 from serge.tickets.types import ticket_types  # noqa: E402
 
 JULIEN = '999988887777666555'
@@ -46,6 +48,7 @@ class Discord:
         self.fils: list[tuple[str, str, dict]] = []
         self.edites: list[tuple[str, dict]] = []
         self.archives: list[tuple[str, bool]] = []
+        self.postes: list[tuple[str, dict]] = []
         self.panne = False
 
     def create_forum_post(
@@ -59,9 +62,12 @@ class Discord:
     def edit_message(
         self, _token: str, fil: str, message: str, carte: dict
     ) -> dict:
-        assert fil == message  # la carte est le premier message du fil
-        self.edites.append((fil, carte))
+        self.edites.append((message, carte))
         return {'id': message}
+
+    def send_message(self, _token: str, fil: str, message: dict) -> dict:
+        self.postes.append((fil, message))
+        return {'id': f'msg-{len(self.postes)}'}
 
     def archive_thread(self, _token: str, fil: str, archived: bool) -> None:
         self.archives.append((fil, archived))
@@ -74,7 +80,12 @@ class ForumTests(unittest.TestCase):
         self.conn.row_factory = sqlite3.Row
         init_schema(self.conn)
         self.discord = Discord()
-        for nom in ('create_forum_post', 'edit_message', 'archive_thread'):
+        for nom in (
+            'create_forum_post',
+            'edit_message',
+            'archive_thread',
+            'send_message',
+        ):
             patch = mock.patch(
                 f'serge.discord.forum.{nom}', getattr(self.discord, nom)
             )
@@ -172,6 +183,31 @@ class ForumTests(unittest.TestCase):
             self.discord.archives,
             [('fil-1', True), ('fil-1', False), ('fil-1', True)],
         )
+
+    def test_rouvert_apres_reecrire_il_repart_en_bas_du_fil(self) -> None:
+        """« Réécrire » : le ticket passe en discussion, puis rouvre avec
+        le nouveau brouillon. Sa carte repart en bas du fil, avec une
+        mention ; l'ancienne perd ses boutons. Les mises à jour suivantes
+        visent la nouvelle carte."""
+        self._forum()
+        ticket_id = self._ticket('2026-10-09T11:00:00+00:00')
+        deliver(self.conn, 'tok')
+        discuss(self.conn, ticket_id, actor=f'discord:{CLEM}')
+        deliver(self.conn, 'tok')
+        self.assertEqual(self.discord.postes, [])
+        reopen(self.conn, ticket_id, actor='serge')
+        self.assertEqual(deliver(self.conn, 'tok'), 1)
+        fil, message = self.discord.postes[0]
+        self.assertEqual(fil, 'fil-1')
+        self.assertEqual(message['content'], f'<@{JULIEN}> <@{CLEM}>')
+        boutons = message['components'][0]['components']
+        self.assertFalse(any(b['disabled'] for b in boutons))
+        ancienne, desactivee = self.discord.edites[-1]
+        self.assertEqual((ancienne, desactivee['components']), ('fil-1', []))
+        decide(self.conn, ticket_id, 'APPROVED', actor=f'discord:{CLEM}')
+        deliver(self.conn, 'tok')
+        self.assertEqual(self.discord.edites[-1][0], 'msg-1')
+        self.assertEqual(len(self.discord.postes), 1)
 
     def test_tranche_dans_mission_control(self) -> None:
         self._forum()

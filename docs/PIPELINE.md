@@ -380,13 +380,15 @@ Julien dans la conversation (lot 8 bis, décisions Q50, Q85 et Q86) :
   couvre pas, un prix ou une date qu'il ne peut pas promettre, une
   proposition faite à Serge, un doute. Un business peut aussi demander
   qu'on valide chaque brouillon (interrupteur sur sa fiche). L'envoi
-  attend alors un humain, et un ticket « Conversation » part à chaque
-  administrateur ;
-- quatre boutons : « Envoyer le brouillon » ; « Ma réponse », qui part
-  telle quelle et rejoint les questions fréquentes de la fiche produit
-  quand le contact avait posé une question sur le produit (la fois
-  suivante, Serge répond seul) ; « Réécrire », avec des consignes : le
-  nouveau brouillon revient dans le même ticket ; « Ne rien envoyer » ;
+  attend alors un humain, et un ticket « Conversation » ouvre un fil dans
+  le forum « tickets » du serveur Discord ;
+- quatre boutons : « Envoyer le brouillon » ; « Ma réponse », qui s'ouvre
+  avec le brouillon et son objet, à modifier, part tel quel et rejoint
+  les questions fréquentes de la fiche produit quand le contact avait
+  posé une question sur le produit (la fois suivante, Serge répond seul) ;
+  « Réécrire », avec des consignes : le nouveau brouillon revient dans le
+  même ticket, en bas de son fil, avec une mention des administrateurs
+  (rien ne part avant un dernier clic) ; « Ne rien envoyer » ;
 - sans réponse dans le délai du type de ticket (24 heures au départ,
   réglable sur la page Décisions), une réponse d'attente prudente part
   au contact, et le ticket reste ouvert ;
