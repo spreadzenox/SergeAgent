@@ -33,6 +33,16 @@ def message_du_ticket(
     ).fetchone()
     if ref is None or not ref[0]:
         return {}
+    colonnes = {
+        str(r[0])
+        for r in conn.execute(
+            'SELECT name FROM pragma_table_info(?)', (str(ref[0]),)
+        ).fetchall()
+    }
+    # Une ligne sans identifiant ni texte n'est pas un message (le passage
+    # d'un lien, par exemple).
+    if not {'id', 'body'} <= colonnes:
+        return {}
     cursor = conn.execute(
         f'SELECT * FROM "{safe_name(str(ref[0]))}" WHERE id=?', (ref[1],)
     )
@@ -40,8 +50,6 @@ def message_du_ticket(
     if found is None:
         return {}
     ligne = dict(zip([d[0] for d in cursor.description], found, strict=True))
-    if 'body' not in ligne:
-        return {}
     return {
         'texte': str(ligne.get('body') or ''),
         'objet': str(ligne.get('subject') or ''),
