@@ -119,8 +119,14 @@ conversation (lot 8 bis, décisions Q85 et Q86) et la grille de points
   lot 8 » plus bas.
 - [ ] **Lot 10 « Concevoir et construire ».** On écrit le plan d'un POC
   et sa fiche produit, on les fait critiquer, Julien les valide, puis
-  Serge construit et met en ligne, d'abord le POC, ensuite le vrai
-  produit. Ce sont les étapes 2 et 5.
+  Serge construit, essaie et met en ligne, d'abord le POC, ensuite le vrai
+  produit. Ce sont les étapes 2 et 5. Seulement des produits web, payants
+  pour le produit fini (Q91). Le lot apporte trois capacités d'abord
+  prévues au lot 12 : le bac à sable (un conteneur où le constructeur code
+  et lance son produit), l'interface web des invocations (lire une page et
+  cliquer comme un humain) et « Appeler une API » (pour Stripe et l'achat
+  des domaines). Le détail est dans
+  [`docs/LOT10_CONCEPTION.md`](docs/LOT10_CONCEPTION.md).
 - [ ] **Lot 11 « Le reste des étapes ».** Trouver des prospects (étape 3),
   choisir le business principal (étape 4), la prospection lourde et la vie
   du business (étape 6), des leçons plus précises (étape 7) et une caisse
@@ -128,18 +134,25 @@ conversation (lot 8 bis, décisions Q85 et Q86) et la grille de points
 - [ ] **Lot 12 « Web ».** On donne à Serge de quoi chercher, lire des
   pages et agir sur n'importe quel site : créer un compte, publier,
   écrire. On le met tard parce que c'est un gros chantier, mais plusieurs
-  tâches des étapes 3 et 6 en dépendent. Le bac à sable, l'agent web et
-  les connecteurs y sont des capacités générales réglées en base, jamais
-  du code écrit pour une invocation. C'est aussi ce qui ouvre les canaux de
-  conversation par machine virtuelle : un LLM qui se connecte à LinkedIn,
-  Instagram, Facebook ou n'importe quel site, avec une invocation
-  temporaire « Envoyer le premier LinkedIn » pour le tester (Q79).
+  tâches des étapes 3 et 6 en dépendent. Il part du bac à sable, de
+  l'interface web et de « Appeler une API », construits au lot 10 (Q91).
+  L'agent web et les connecteurs y sont des capacités générales réglées en
+  base, jamais du code écrit pour une invocation. C'est aussi ce qui ouvre
+  les canaux de conversation par machine virtuelle : un LLM qui se connecte
+  à LinkedIn, Instagram, Facebook ou n'importe quel site, avec une
+  invocation temporaire « Envoyer le premier LinkedIn » pour le tester
+  (Q79).
 - [ ] **Lot 13 « L'éditeur sans code ».** Une page de Mission Control
   pour modifier le pipeline en direct et créer une invocation de toutes
   pièces : ajouter ou retirer des invocations, changer leur ordre, leur
   rôle, leur modèle, ce qu'elles voient et où elles écrivent, sans
   toucher au code. Il n'est possible qu'une fois le lot 6
   fait.
+- [ ] **Lot 14 « Les logiciels ».** Construire et essayer des produits
+  qui ne sont pas des services web : une application de bureau, une
+  extension de navigateur, un bot. Il faudra un bac à sable avec un vrai
+  bureau, où une invocation lance le logiciel, voit son écran et clique
+  dedans, comme l'interface web du lot 10 le fait pour une page (Q91).
 
 ---
 
@@ -161,7 +174,9 @@ discutable, qui peut un jour changer, se règle depuis Mission Control.**
     récente de la boîte et les délais des relances (PR 1 du lot 8, sans
     heures ouvrées : Serge répond à toute heure, Q79) ; les jours et
     heures d'appel, la durée et les tours de parole d'un appel (PR 3) ;
-  - lot 10 (construire) : les bornes de la construction ;
+  - lot 10 (construire) : les bornes de la construction, qui deviennent
+    les ressources d'un chantier, les tours d'outils et les passages
+    (partie 11 de [`docs/LOT10_CONCEPTION.md`](docs/LOT10_CONCEPTION.md)) ;
   - lot 11 (étapes 3, 4, 6, 7 et 8) : la répartition du budget, les invitations
     LinkedIn par mois, les devis et les essais de caisse, la consolidation
     de la mémoire (dont la leçon retirée après plusieurs démentis :
@@ -211,18 +226,20 @@ discutable, qui peut un jour changer, se règle depuis Mission Control.**
   base (`status_transitions`, `table_quotas`) et le module disparaître.
 
 - [ ] **Les livraisons et les demandes des clients.** Serge ne sait pas
-  aujourd'hui ce qui reste à livrer à un client, ni ce que les clients lui
-  ont demandé. Il faut une table des livraisons, avec une ligne par chose
+  aujourd'hui ce qui reste à livrer à un client. Il faut une table des
+  livraisons, avec une ligne par chose
   vendue à livrer : le business, le client, le paiement, ce qu'il faut
   livrer, la date promise, l'état (à faire, en cours, livrée, problème) et
   le fichier livré. Une ligne est créée à chaque paiement d'un produit qui
   n'est pas livré instantanément, et une livraison en retard apparaît dans
-  MC et passe en priorité haute. Il faut aussi une table des demandes
-  clients : les bugs, les insatisfactions et les idées d'amélioration. Ces
-  deux tables sont créées en même temps que le code qui les remplit (le
-  traitement des réponses et l'encaissement), pour ne pas laisser dans la
-  base une table vide que personne n'écrit. Sans elles, on ne peut pas
-  savoir quand un business peut être fermé.
+  MC et passe en priorité haute. Cette table est créée en même temps que
+  le code qui la remplit (l'encaissement), pour ne pas laisser dans la
+  base une table vide que personne n'écrit. Les demandes des clients (les
+  bugs, les insatisfactions et les idées d'amélioration) ont déjà leur
+  table depuis le lot 8 (`customer_requests`), remplie par « Traiter une
+  réponse » ; le lot 10 lui ajoute son état : nouvelle, retenue, livrée
+  dans telle version, refusée avec sa raison (Q91). Sans ces deux tables,
+  on ne peut pas savoir quand un business peut être fermé.
 
 - [ ] **Remplir l'index de recherche dans la mémoire.** Le tool qui
   permet à une invocation de chercher dans la mémoire de Serge (leçons,
@@ -244,19 +261,16 @@ discutable, qui peut un jour changer, se règle depuis Mission Control.**
   capacité « Lire une page » qui monte d'un cran seulement si nécessaire :
   une simple requête, puis un vrai navigateur Chrome piloté si la page a
   besoin de JavaScript, puis un service de navigateur distant si le site
-  bloque ; chaque montée est écrite au journal. **Le bac à sable est une
-  capacité générique, réglée en base.** Un bac à sable est un espace isolé
-  où Serge peut naviguer, écrire des fichiers et lancer des commandes. La
-  base décrit chaque profil de bac à sable : ce qui y est installé, les
-  sites qu'il peut joindre, le temps et la mémoire permis, les secrets et
-  les comptes auxquels il a accès. Une invocation dit en base quel profil
-  elle utilise ; les tools du bac à sable (ouvrir une page, cliquer,
-  remplir un formulaire, lire un fichier, lancer une commande) sont des
-  capacités comme les autres, qu'on lui donne ou non. **L'« Agent web »
-  n'est donc pas du code** : c'est une invocation LLM réglée en base, qui
-  reçoit une mission en paramètre (par exemple « crée un compte sur ce
-  forum ») et les tools du navigateur dans son bac à sable, avec une
-  session par compte qui garde ses cookies. Créer un compte de bout en
+  bloque ; chaque montée est écrite au journal. **Le bac à sable et
+  l'interface web viennent du lot 10** (Q91) : des profils de bac à sable
+  en base (ce qui y est installé, la mémoire, le temps et le réseau
+  permis), et des outils pour lire une page comme un lecteur d'écran,
+  cliquer, taper, taper un secret sans le montrer au modèle, prendre une
+  capture. Ce lot y ajoute les secrets et les comptes auxquels un profil a
+  accès, et une session de navigateur par compte, qui garde ses cookies.
+  **L'« Agent web » n'est donc pas du code** : c'est une invocation LLM
+  réglée en base, qui reçoit une mission en paramètre (par exemple « crée
+  un compte sur ce forum ») et l'interface web. Créer un compte de bout en
   bout est un enchaînement d'invocations en base : l'agent web remplit le
   formulaire, une invocation lit le code de confirmation dans la boîte
   mail ou les SMS, un ticket demande à un humain de résoudre un captcha
@@ -266,15 +280,13 @@ discutable, qui peut un jour changer, se règle depuis Mission Control.**
   leur vue de table. **Un connecteur n'est pas du
   code non plus** : quand un site a une API gratuite, le service est
   décrit en base (son adresse, le secret à utiliser, ses points d'entrée
-  et leurs paramètres), et une seule capacité « Appeler une API » sait
-  appeler n'importe quel service décrit ainsi. L'invocation « Construire
-  un connecteur » lit la documentation du service et écrit cette
-  description en base ; Julien la valide par ticket avant qu'elle soit
-  utilisable, grâce à une règle d'écriture « validation par Julien »,
-  qui sera ajoutée au catalogue d'écriture à ce moment-là. Le choix d'un
-  profil de bac à sable par invocation sera aussi une colonne ajoutée par
-  ce lot. Le
-  tool « navigateur » prévu jusqu'ici disparaît au profit de tout ça.
+  et leurs paramètres), et une seule capacité « Appeler une API »,
+  construite au lot 10 pour Stripe et l'achat des domaines, sait appeler
+  n'importe quel service décrit ainsi. L'invocation « Construire un
+  connecteur » lit la documentation du service et écrit cette description
+  en base ; Julien la valide par ticket avant qu'elle soit utilisable,
+  grâce à une règle d'écriture « validation par Julien », qui sera
+  ajoutée au catalogue d'écriture à ce moment-là.
 
 - [ ] **Brancher la garde de santé des comptes.** Un compte web trop
   sollicité se fait bannir. Le code d'une garde existe déjà : avant chaque
@@ -347,11 +359,15 @@ discutable, qui peut un jour changer, se règle depuis Mission Control.**
   final doit être réalisable avec ce que Serge sait faire. Julien valide
   ensuite le plan et la fiche produit dans un ticket Discord ; sans
   réponse sous 48 heures, le plan s'applique. Serge construit alors le
-  livrable, le met en ligne sur un sous-domaine, et crée la campagne de
-  test. Le détail est dans
-  [`docs/etapes/2-conception-poc.md`](docs/etapes/2-conception-poc.md).
-  Cette tâche a besoin des liens entre invocations et de la construction
-  de l'étape 5. Le lien entre la conception et la construction peut être
+  livrable avec un duo constructeur / relecteur qui l'essaie comme un
+  humain, et le met en ligne en staging. Un humain l'essaie à son tour
+  depuis le lien d'un ticket de test, qui n'expire jamais ; après sa
+  validation, le POC passe en prod sur un sous-domaine, gratuit pour les
+  prospects, et la campagne de test est prête (Q91). Le détail est dans
+  [`docs/etapes/2-conception-poc.md`](docs/etapes/2-conception-poc.md) et
+  [`docs/LOT10_CONCEPTION.md`](docs/LOT10_CONCEPTION.md). Cette tâche
+  partage avec l'étape 5 la construction, le bac à sable et la mise en
+  ligne. Le lien entre la conception et la construction peut être
   réglé à la main : Julien donne son feu vert par le ticket « Passage »
   qu'il reçoit dans le forum Discord, ou avec « Passer à la suite » sur la
   fiche du lien dans MC (lot 8 bis, Q62).
@@ -416,29 +432,39 @@ discutable, qui peut un jour changer, se règle depuis Mission Control.**
 
 - [ ] **Construire le vrai produit.** Pas de prospection lourde sans
   pouvoir encaisser. Une invocation conçoit le produit et écrit sa fiche
-  produit (table `product_sheets`, lot 8), une autre les critique, puis
-  Julien valide dans un ticket, en fixant le prix définitif. Serge construit ensuite le
-  produit avec un duo : un constructeur qui écrit, un relecteur qui répond
-  « bon », « à corriger » ou « il faut une nouvelle capacité ». Ce duo est
-  fait de deux invocations LLM réglées en base, qui travaillent dans un bac
-  à sable avec ses tools génériques (écrire un fichier, lancer les tests,
-  ouvrir la page) ; aucune ligne de code ne leur est propre. Le produit
-  est mis en ligne sur un domaine acheté pour lui. Serge crée le produit
-  et son prix dans Stripe, par la capacité « Appeler une API » et la
-  description de Stripe en base, en inscrivant sur le prix l'identifiant
-  du business, pour que chaque abonnement soit rattaché au bon business. Il
-  fait enfin un paiement de test de 1 € qu'il se rembourse, pour vérifier
-  que tout marche.
+  produit (table `product_sheets`, lot 8), en partant du POC et de toutes
+  les demandes des clients du business (`customer_requests`) ; une autre
+  les critique, puis Julien valide dans un ticket, en fixant le prix
+  définitif. Le produit est payant : on paie pour avoir un compte et
+  utiliser le service (Q91). Serge le construit ensuite avec un duo de
+  deux invocations LLM du niveau « code », réglées en base : un
+  constructeur qui écrit et lance le produit dans un chantier (un
+  conteneur), et un relecteur qui ne voit jamais le code, l'essaie comme
+  un prospect dans un navigateur, puis répond « bon », « à corriger » ou
+  « il faut une nouvelle capacité ». Aucune ligne de code ne leur est
+  propre. Le produit est essayé en staging, avec Stripe en mode test, puis
+  par un humain, depuis le lien d'un ticket de test qui n'expire jamais.
+  Après sa validation, Serge crée le produit et son prix dans Stripe par
+  l'outil « Créer un prix Stripe », qui inscrit sur le prix l'identifiant
+  du business, pour que chaque abonnement soit rattaché au bon business
+  (Q76). Le produit est mis en ligne sur un domaine que Serge achète seul,
+  une fois son nom validé dans le ticket du plan (Q91). Serge
+  fait enfin, seul et avec sa carte, un paiement de test de 1 € qu'il se
+  rembourse, pour vérifier que tout marche. Le détail est dans
+  [`docs/LOT10_CONCEPTION.md`](docs/LOT10_CONCEPTION.md).
 
 - [ ] **Mettre en ligne et ranger les fichiers.** Les livrables doivent
   être en ligne et faciles à retrouver. Serge les publie sur son serveur,
-  sur un sous-domaine pour un POC et sur un domaine acheté pour le
-  business principal. Chaque version d'un livrable est rangée dans son
-  propre dossier (le business, le livrable, puis le numéro de version), et
-  n'est plus jamais modifiée une fois publiée. Chaque fichier a sa fiche
-  dans la base. Publier est une capacité générale (« publier ce dossier à
-  cette adresse »), réglée par ses paramètres, qui sert à tous les
-  livrables.
+  chacun dans son propre conteneur, avec ses propres données, sans accès
+  à la base de Serge : en staging sur `staging-<business>.<domaine>`,
+  puis en prod, sur un sous-domaine pour un POC et sur un domaine acheté
+  pour le business principal (Q91). Chaque version d'un livrable est
+  rangée dans son propre dossier (le business, le livrable, puis le numéro
+  de version), et n'est plus jamais modifiée une fois publiée. Chaque
+  fichier a sa fiche dans la base. Publier est une capacité générale
+  (« publier cette version en staging ou en prod »), réglée par ses
+  paramètres, qui sert à tous les livrables. La liste des routes de Caddy,
+  aujourd'hui dans un fichier, passe en base.
 
 ---
 

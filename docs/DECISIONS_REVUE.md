@@ -522,8 +522,12 @@ Les autres sont supprimés dès qu'un scénario couvre le même comportement.
    qui a été corrigé, ce qui reste. Julien valide, refuse ou discute.
    Si après 3 tours il reste « nouvelle capacité nécessaire », le ticket
    arrive dans cet état : c'est à Julien de créer la capacité.
-5. Construction + mise en ligne après accord.
-6. Lancement du test automatique + ticket d'information avec le lien.
+5. Construction + mise en ligne en staging après accord.
+6. Ticket de test avec le lien du staging : un humain essaie le POC avant
+   tout prospect, et le ticket n'expire jamais (Q91). Après sa validation,
+   mise en ligne en prod et lancement du test.
+   Corrigé le 13 octobre 2026 (Q91) : ce point disait « Lancement du test
+   automatique + ticket d'information avec le lien. »
 
 ### Q36 — Étape 3 : trouver les prospects (validé)
 - Invocation « Trouver des prospects » (LLM + recherche web) : cherche ET
@@ -625,10 +629,15 @@ Le séquenceur fixe (supprimé par Clem, jamais branché) n'est pas recréé.
    review_build, 3 passages max), réponses alignées : « bon » / « à
    corriger » / « nouvelle capacité nécessaire ». Même mécanique aux
    étapes 2 et 5.
-5. Mise en ligne sur un nom de domaine dédié.
-6. Encaissement : produit + prix dans Stripe, paiement test de 1 € fait et
-   remboursé automatiquement.
-7. Ticket d'information, puis étape 6.
+5. Mise en ligne en staging, puis ticket de test : un humain essaie le
+   produit fini, et le ticket n'expire jamais (Q91). Après sa validation,
+   mise en ligne sur un nom de domaine dédié.
+6. Encaissement : produit + prix dans Stripe, paiement test de 1 € fait par
+   Serge seul et remboursé automatiquement (Q91).
+7. Étape 6.
+   Corrigé le 13 octobre 2026 (Q91) : le point 5 disait « Mise en ligne sur
+   un nom de domaine dédié », et le point 7 « Ticket d'information, puis
+   étape 6 ».
 Versions suivantes : publication automatique si la relecture est bonne,
 ticket d'information seulement.
 
@@ -647,9 +656,12 @@ ticket d'information seulement.
 ### Q43 — Retours clients → nouvelle version (validé)
 1. « Traiter une réponse » rend aussi, s'il y en a une, une demande sur le
    produit : bug / insatisfaction / demande. Chaque demande → une ligne
-   dans une nouvelle table product_requests (business, personne, message
+   dans la table customer_requests (business, personne, message
    d'origine, type, texte, état : nouvelle / retenue / livrée dans la
    version N / refusée + raison).
+   Corrigé le 13 octobre 2026 (Q74) : ce point parlait d'une nouvelle
+   table product_requests ; la table s'appelle customer_requests, créée au
+   lot 8, et son état arrive au lot 10 (Q91).
 2. Urgent (bug touchant un client qui a payé) : correction lancée tout de
    suite, priorité haute. Le reste : invocation hebdomadaire « Préparer la
    prochaine version » (regroupe les doublons, choisit, explique, refuse
@@ -665,7 +677,7 @@ Le point hebdomadaire (Q42) lit aussi ces demandes.
 ### Q44–Q45 — Maintenance, fermeture, suivi technique (validé)
 - Fin de la prospection lourde ≠ fin du business. Nouveaux statuts :
   - MAINTENANCE : plus aucun nouveau prospect contacté ; on livre ce qui
-    est vendu, répond aux clients, corrige (product_requests), encaisse les
+    est vendu, répond aux clients, corrige (customer_requests), encaisse les
     abonnements, relance les impayés ; un client qui revient seul est servi.
     Entrée : quotas de prospection lourde épuisés, ou « arrêter » validé
     alors que le business a des clients (sans client → KILLED).
@@ -691,7 +703,9 @@ Le point hebdomadaire (Q42) lit aussi ces demandes.
      livraison, fichier livré). Créée automatiquement à chaque paiement d'un
      produit non instantané ; produit instantané = livré tout de suite.
      Livraison en retard → MC + correction en priorité haute.
-  3. product_requests (Q43).
+  3. customer_requests (Q43).
+     Corrigé le 13 octobre 2026 (Q74) : cette entrée disait
+     product_requests, ici et pour MAINTENANCE.
 
 ### Q46 — Étape 7 : consolidation, leçons, contexte Serge (validé)
 - Consolidation gardée telle quelle (tous les 3 jours, ticket Mémoire,
@@ -736,22 +750,30 @@ Le point hebdomadaire (Q42) lit aussi ces demandes.
   Chromium de test), une session par compte ; (3) Browserbase (clé déjà là)
   seulement si un site bloque le niveau 2, avec l'identité d'agent vérifiée.
   Chaque montée de niveau est écrite au journal.
-- Invocation « Agent web » (Browser Use, open source) : reçoit une mission
+- Invocation « Agent web » : une invocation de l'interpréteur de Serge,
+  avec l'interface web construite au lot 10 (Q91). Elle reçoit une mission
   (créer un compte, publier, réserver un humain…). Création de compte :
   identité de Serge, codes lus dans sa boîte mail / SMS, captcha résolu par
   un humain (ticket + écran en direct dans MC), compte enregistré dans
   accounts_standing.
 - Serge assume d'être un agent IA partout où ça suffit.
 - Connecteurs : quand une API gratuite existe, l'invocation « Construire un
-  connecteur » lit la doc, crée le compte et la clé via l'agent web, écrit
-  et teste le code en bac à sable, le déclare comme tool. Julien valide par
-  ticket avant activation (code exécuté sur le VPS avec les secrets).
+  connecteur » lit la doc, crée le compte et la clé via l'agent web, et
+  écrit la description du service en base (adresse, secret à utiliser,
+  points d'entrée), exécutée par la capacité « Appeler une API » (Q56).
+  Julien valide par ticket avant activation.
 - LinkedIn : utilisé via le compte de Serge, volume modéré, AVEC validation
   humaine de chaque message et publication. Claude ne construit pas de
   mécanisme destiné à échapper à la détection de robots (déguisement,
   rotation d'IP, empreinte falsifiée) ; Julien fera ses propres recherches.
 - Selenium vs Playwright : même détectabilité par défaut ; on garde
   Playwright (déjà installé) avec Chrome.
+Corrigé le 13 octobre 2026 (Q91) : l'agent web était « Browser Use, open
+source » ; c'est une invocation de l'interpréteur de Serge, avec
+l'interface web du lot 10.
+Corrigé le 13 octobre 2026 (Q71) : un connecteur était du code écrit et
+testé en bac à sable, déclaré comme tool ; Q56 en a fait une description
+du service en base.
 
 ### Q49 — Ordre des lots (validé, lots 1 à 4 en une passe)
 1. Fusionner main dans Clem. 2. Corriger les deux bugs graves. 3. Supprimer
@@ -934,7 +956,10 @@ Lots 1 à 5 faits. Ensuite :
 ### Q57 — Réponses de Clem sur la conception du lot 6 (validé)
 1. Une seule table pour toutes les invocations, avec ou sans LLM.
 2. Le modèle se choisit seulement par niveau (rapide, moyen,
-   intelligent), jamais un modèle précis par invocation.
+   intelligent, et « code » depuis Q91), jamais un modèle précis par
+   invocation.
+   Corrigé le 13 octobre 2026 (Q91) : le niveau « code » s'ajoute aux
+   trois premiers, pour construire et relire les produits.
 3. Le pipeline de départ est dans `config/pipeline.yaml`. Il remplit la
    base à l'initialisation ; ensuite, la base est la seule source de
    vérité.
@@ -1760,3 +1785,102 @@ adresse au lieu de la gateway. Seul Julien a accès au portail.
 Décidé : **au démarrage, le bot lit ce champ avec son token ; s'il est
 rempli, il le vide** et note au journal l'ancienne valeur (Julien peut la
 remettre dans le portail). Vide, il ne touche à rien.
+
+### Q91 — Lot 10 : construire des produits web, les essayer comme un humain, puis les faire essayer par un humain (validé par Clem, 13 octobre 2026)
+Constat : avant le lot 10 (étapes 2 et 5), Clem a demandé comment donner
+aux invocations de quoi coder un produit, le lancer, regarder son
+interface et cliquer dedans, sans réinventer ce qui existe. Claude a
+résumé les décisions déjà prises (Q34, Q35, Q39 à Q41, Q43, Q76), comparé
+les outils libres (bacs à sable en conteneur, agents de code comme
+OpenHands ou OpenCode, Playwright MCP) et posé ses questions. Le détail
+est dans [`LOT10_CONCEPTION.md`](LOT10_CONCEPTION.md).
+Décidé :
+1. **Seulement des produits web au lot 10.** Les logiciels (application
+   de bureau, extension de navigateur, bot) passent à un nouveau lot 14.
+2. **Une seule façon de gagner de l'argent : l'accès payant.** Le client
+   paie pour avoir un compte et utiliser le service. Pas de service gratuit
+   financé par la publicité. Le constructeur code lui-même le blocage de
+   l'accès : on lui fait confiance. Le POC reste gratuit pour les
+   prospects : il mesure l'intérêt, et Stripe n'arrive qu'avec le produit
+   fini.
+3. **Les invocations restent dans l'interpréteur de Serge**, décrites en
+   base comme les autres. Pas d'agent tout fait qui tournerait dans le
+   conteneur avec sa propre boucle. On ajoute des capacités générales :
+   créer un conteneur, y lancer des commandes, y lire et y écrire des
+   fichiers, publier un produit en staging et en prod. L'interpréteur
+   apprend à envoyer des images au modèle, à tenir de longues sessions et
+   à ne renvoyer que les dernières captures d'écran.
+4. **Aucune façon de coder imposée** : le constructeur choisit ses langages
+   et ses outils. Seule règle, pour que Serge sache démarrer le produit :
+   le dossier du produit contient un `Dockerfile`.
+5. **Les produits sont hébergés à part** : leurs propres conteneurs et
+   leurs propres données, sans accès à `serge.db`, à Mission Control ni
+   aux secrets de Serge.
+6. **Une interface web complète pour les invocations, construite dès ce
+   lot** : lire une page comme un lecteur d'écran, cliquer, taper,
+   choisir, faire défiler, prendre une capture, passer en taille ordinateur
+   ou mobile, lire les erreurs de la page. Le lot 12 la réutilisera pour
+   créer des comptes.
+7. **Le relecteur se comporte en humain** : il ne voit pas le code, suit
+   les scénarios d'un prospect ordinaire, clique comme tout le monde et
+   garde ses captures comme preuves. Trois passages au plus (Q41).
+8. **Un quatrième niveau de modèle, « code »**, pour le constructeur et le
+   relecteur : le modèle le plus intelligent accessible, à un prix
+   raisonnable, qui lit les images. Au 13 octobre 2026, c'est
+   `anthropic/claude-opus-5.5` (note 57,6 ; 4 $ par million de jetons lus
+   et 20 $ par million écrits), au-dessus de `anthropic/claude-sonnet-5.5`
+   (note 56,0), recommandé au niveau intelligent.
+9. **Deux tickets de test**, avec un lien qu'on ouvre depuis n'importe
+   où : entre la construction du POC et la prospection légère, puis entre
+   la construction du produit fini et la prospection lourde. Ils
+   n'expirent jamais : rien ne part vers des prospects sans qu'un humain
+   ait essayé le produit. Boutons : « Valider », « À corriger » (les
+   consignes repartent au constructeur), « Arrêter le business ».
+10. **Staging et prod séparés**, tous deux sur le VPS, ouverts à tous sans
+    mot de passe, le staging invisible des moteurs de recherche. Adresses :
+    `staging-<business>.<domaine de Serge>` pour le staging,
+    `<business>.<domaine de Serge>` pour la prod d'un POC, le domaine
+    acheté pour le produit fini (Q39). Une version validée en staging
+    passe telle quelle en prod.
+11. **Pas de budget par construction** : tout compte dans le plafond du
+    jour, comme les autres appels au modèle. Une construction qui
+    l'atteint s'arrête et reprend le lendemain.
+12. **Un seul chantier à la fois sur le VPS.** Le VPS a 4 processeurs,
+    15 Go de mémoire et 155 Go de disque libre (relevé par Clem le 13
+    octobre 2026) ; les valeurs de départ d'un chantier (2 processeurs,
+    4 Go de mémoire, 20 Go de disque) y tiennent, et se règlent dans
+    Mission Control.
+13. **Le bac à sable et « Appeler une API » passent du lot 12 au lot 10.**
+    Au lot 10, seuls Stripe et un bureau d'enregistrement de domaines sont
+    décrits en base. Un outil « Créer un prix
+    Stripe » inscrit l'identifiant du business sur le prix par un
+    paramètre figé en base : le modèle ne peut pas l'oublier (Q76). Mission
+    Control permet de supprimer de Stripe les produits d'un business, pour
+    nettoyer après les essais.
+14. **Serge est autonome avec sa carte.** Il fait lui-même le paiement test
+    de 1 € (Q41), même si cela revient à donner sa carte à un LLM. Les
+    tickets sont réservés aux achats importants et aux étapes importantes
+    du pipeline.
+15. **Les demandes des clients** : `customer_requests` reçoit son état
+    (nouvelle, retenue, livrée dans la version N, refusée avec sa raison),
+    et ces demandes sont données d'office aux invocations qui conçoivent et
+    construisent le produit. Rien n'est recopié sur la fiche produit.
+16. **Le domaine du produit fini** : Julien valide son nom dans le ticket du
+    plan, avec le prix ; Serge l'achète ensuite seul, par l'API d'un bureau
+    d'enregistrement, sur un compte créé une fois à l'installation.
+17. **Le ticket du plan du produit fini n'expire jamais** : il fixe le prix
+    définitif et le nom de domaine. Le plan d'un POC s'applique toujours
+    après 48 heures sans réponse (Q34).
+Arguments de Clem : un produit fini sera utilisé par des humains qui
+cliquent et regardent l'écran, on ne peut pas se contenter d'une IA qui
+écrit du code et dit « t'inquiète, ça marche ». Se limiter au web est un
+peu limitant, mais acceptable pour commencer ; les logiciels viendront
+plus tard. Le service gratuit financé par la publicité n'est pas l'esprit
+du pipeline. Les invocations savent déjà recevoir des capacités : pas
+besoin d'un service tiers pour coder un produit web. Ce seront de gros
+modèles : on leur donne une machine et on les laisse coder comme ils
+veulent ; ce qui est fixé, c'est le relecteur qui repasse plusieurs fois,
+et l'essai par un humain avant de parler du produit à des prospects. Il
+n'y a pas de notion de coût par projet pour l'instant. Pouvoir supprimer
+les produits Stripe depuis Mission Control évite des galères pendant les
+essais. La carte de Serge est faite pour être à sa disposition.

@@ -310,9 +310,13 @@ décisions suivantes :
 
 - le plan d'un POC et sa fiche produit, à l'étape 2 ; sans réponse sous
   48 heures, le plan s'applique ;
+- le POC lui-même, avant la prospection légère : Julien l'essaie depuis un
+  lien, comme le ferait un prospect ; ce ticket n'expire jamais (Q91) ;
 - le choix du business principal, à l'étape 4 ; sans réponse sous
   48 heures, le choix proposé s'applique ;
-- le prix définitif, le plan et la fiche du vrai produit, à l'étape 5 ;
+- le prix définitif, le plan, la fiche et le nom de domaine du vrai
+  produit, à l'étape 5 ; ce ticket n'expire jamais ;
+- le produit fini, avant la prospection lourde, essayé de la même façon ;
 - pivoter ou arrêter le business principal, une nouvelle fonctionnalité
   importante ou un changement de prix, à l'étape 6 ;
 - chaque message et chaque publication sur LinkedIn ;

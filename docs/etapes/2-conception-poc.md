@@ -25,6 +25,11 @@ campagne de test (`serge/funnels/essai.py`) existe, mais rien ne l'appelle.
 
 ## Décidé
 
+Seulement des produits web, et le POC est gratuit pour les prospects
+(Q91). Le détail technique (le chantier, l'interface web, la mise en
+ligne, les tables) est dans
+[`LOT10_CONCEPTION.md`](../LOT10_CONCEPTION.md).
+
 1. **Concevoir le POC** (invocation LLM). Elle écrit :
    - l'hypothèse, la cible, le ou les canaux, le nombre de prospects, la
      durée, le prix indicatif ;
@@ -34,6 +39,10 @@ campagne de test (`serge/funnels/essai.py`) existe, mais rien ne l'appelle.
      en ligne, 3 devis gratuits, puis 39 €/mois ») ;
    - **un plan de A à Z** : de quoi le produit a besoin, ce que le builder
      doit faire, pourquoi et comment ça va marcher ;
+   - **les scénarios de test** : ce que fait un prospect ordinaire, pas à
+     pas (exemple : « créer un compte, faire un premier devis, le
+     télécharger en PDF »). Le relecteur et l'humain du ticket de test les
+     suivent ;
    - **la fiche produit du POC**, qui servira à répondre aux prospects :
      ce que fait le livrable et pour qui, ce qu'il ne fait pas, le prix,
      les délais, comment on l'utilise, et les questions fréquentes qu'on
@@ -58,12 +67,19 @@ campagne de test (`serge/funnels/essai.py`) existe, mais rien ne l'appelle.
    valide, refuse ou discute. Sans réponse sous 48 h, le plan s'applique.
    S'il reste une « nouvelle capacité nécessaire » après 3 tours, le ticket
    arrive dans cet état : c'est à Julien de créer la capacité.
-5. **Construire le livrable** avec le même couple builder / reviewer que
-   l'étape 5 (voir [`5-construction.md`](5-construction.md)).
-6. **Mettre en ligne** sur un sous-domaine du domaine de Serge, via Caddy
-   sur le VPS.
-7. **Créer la campagne** de test léger, puis ticket d'information à
-   Julien avec le lien. Le business passe à l'étape 3.
+5. **Construire le livrable** avec le même duo que l'étape 5 (voir
+   [`5-construction.md`](5-construction.md)) : un constructeur qui écrit
+   et lance le POC dans un chantier, et un relecteur qui l'essaie comme un
+   prospect, sans voir le code. Trois passages au plus. Chaque version
+   est mise en ligne en staging, sur `staging-<business>.<domaine de
+   Serge>`.
+6. **Ticket de test** (Q91) : un humain essaie le POC depuis le lien du
+   staging, avant qu'aucun prospect ne le voie. Le ticket n'expire jamais.
+   « À corriger » renvoie ses consignes au constructeur ; « Arrêter le
+   business » arrête tout.
+7. **Mettre en ligne en prod** sur un sous-domaine du domaine de Serge,
+   via Caddy sur le VPS. La campagne de test léger est prête, et le
+   business passe à l'étape 3.
 
 Les types de business possibles, et ce qu'on construit pour chacun, sont
 dans [`DECISIONS_REVUE.md`](../DECISIONS_REVUE.md) (question 32).
