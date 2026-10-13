@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from typing import Any
@@ -23,6 +24,7 @@ sys.path.insert(0, str(ROOT))
 
 from serge.coupe_circuit import set_heartbeat  # noqa: E402
 from serge.db.boot import init_schema  # noqa: E402
+from serge.db.store import open_db  # noqa: E402
 from serge.interpreter import tools as tools_mod  # noqa: E402
 from serge.interpreter.flow import fire_button, fire_due_triggers  # noqa: E402
 from serge.interpreter.queue import (  # noqa: E402
@@ -32,7 +34,10 @@ from serge.interpreter.queue import (  # noqa: E402
 from serge.interpreter.tasks import enqueue_task, start_task  # noqa: E402
 from serge.llm.client import ChatResult, ToolCall  # noqa: E402
 from serge.pipeline_seed import seed_pipeline  # noqa: E402
-from tests.taches_fixtures import sans_pipeline_de_depart  # noqa: E402
+from tests.taches_fixtures import (  # noqa: E402
+    invocations,
+    sans_pipeline_de_depart,
+)
 
 NOW = '2026-09-28T10:00:00+00:00'
 
@@ -354,6 +359,40 @@ class InterpreterTests(unittest.TestCase):
             ),
             premiere,
         )
+
+    def test_deux_files_qui_ecrivent_la_meme_tache_ne_plantent_pas(
+        self,
+    ) -> None:
+        """Les deux files lancent les mêmes déclencheurs horaires. Si
+        l'autre file écrit la même tâche entre notre lecture et notre
+        écriture, c'est la même tâche, et la file ne plante pas (elle
+        plantait sur la clé unique, puis redémarrait)."""
+        with tempfile.TemporaryDirectory() as dossier:
+            chemin = Path(dossier) / 'serge.db'
+            autre, file = open_db(chemin), open_db(chemin)
+            try:
+                invocations(autre, ('envoyer', 'Envoyer', 'prospection_light'))
+                autre.commit()
+                ecrite: list[str | None] = []
+
+                def entre_lecture_et_ecriture(sql: str) -> None:
+                    if sql.startswith('INSERT INTO tasks(') and not ecrite:
+                        ecrite.append(
+                            enqueue_task(autre, 'envoyer', {}, key='horaire:1')
+                        )
+                        autre.commit()
+
+                file.set_trace_callback(entre_lecture_et_ecriture)
+                tache = enqueue_task(file, 'envoyer', {}, key='horaire:1')
+                file.set_trace_callback(None)
+                file.commit()
+                self.assertEqual(tache, ecrite[0])
+                self.assertEqual(
+                    file.execute('SELECT COUNT(*) FROM tasks').fetchone()[0], 1
+                )
+            finally:
+                autre.close()
+                file.close()
 
     def test_un_business_deja_en_test_est_refuse(self) -> None:
         task = enqueue_task(self.conn, 'choisir', {'venture_id': 'v_old'})

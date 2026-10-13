@@ -1735,3 +1735,28 @@ Décidé :
    identifiant), en base. Tant qu'il est vide, les tickets restent dans
    Mission Control ; seuls les tickets ouverts après le réglage ont un
    fil.
+
+### Q89 — Toute erreur d'une interface qu'on ne contrôle pas remonte jusqu'à Mission Control (décidé par Clem, 13 octobre 2026)
+Constat : un clic Discord échouait (« L'application n'a pas répondu à
+temps ») sans qu'on puisse savoir pourquoi : le bot ne notait rien, et ni
+Clem ni l'agent n'ont accès à la machine ni au portail Discord.
+Décidé :
+1. **Toute erreur d'une interface externe est notée au journal du
+   service, avec la raison donnée en face**, et ce journal se lit dans
+   Mission Control. Rien n'est avalé en silence. Clem : « tu devrais
+   toujours te faire remonter les erreurs, surtout avec les interfaces que
+   tu ne contrôles pas ».
+2. **La règle entre dans la charte** (partie 2). Clem a autorisé l'agent à
+   l'y écrire, cette fois, alors que la charte réserve ses changements à
+   Julien : Julien la relira dans la PR.
+
+### Q90 — Le bot vide lui-même l'« Interactions Endpoint URL » de son application (validé par Clem, 13 octobre 2026)
+Constat : le bot est connecté à Discord, ouvre les fils et mentionne les
+administrateurs, mais aucun clic ne lui arrive (aucune ligne « clic reçu »
+dans son journal) et Discord affiche « L'application n'a pas répondu à
+temps ». La cause la plus probable : le champ « Interactions Endpoint URL »
+de l'application est rempli ; Discord envoie alors les clics à cette
+adresse au lieu de la gateway. Seul Julien a accès au portail.
+Décidé : **au démarrage, le bot lit ce champ avec son token ; s'il est
+rempli, il le vide** et note au journal l'ancienne valeur (Julien peut la
+remettre dans le portail). Vide, il ne touche à rien.

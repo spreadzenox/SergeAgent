@@ -19,9 +19,11 @@ from serge.discord.rest import (  # noqa: E402
     DiscordError,
     archive_thread,
     bot_token,
+    clear_interactions_endpoint,
     create_forum_post,
     delete_message,
     edit_message,
+    get_application,
     get_channel,
     send_message,
     verify_token,
@@ -121,6 +123,25 @@ class DiscordRestTests(unittest.TestCase):
         self.assertEqual(request.get_method(), 'PATCH')
         self.assertEqual(
             json.loads(request.data.decode('utf-8')), {'archived': True}
+        )
+
+    def test_l_interactions_endpoint_url_se_lit_et_se_vide(self) -> None:
+        with mock.patch(
+            'urllib.request.urlopen',
+            return_value=_response({'interactions_endpoint_url': 'https://x'}),
+        ) as mocked:
+            app = get_application('tok-fake-7')
+        self.assertEqual(app['interactions_endpoint_url'], 'https://x')
+        self.assertIn('/applications/@me', mocked.call_args[0][0].full_url)
+        with mock.patch(
+            'urllib.request.urlopen', return_value=_response({})
+        ) as mocked:
+            clear_interactions_endpoint('tok-fake-7')
+        request = mocked.call_args[0][0]
+        self.assertEqual(request.get_method(), 'PATCH')
+        self.assertEqual(
+            json.loads(request.data.decode('utf-8')),
+            {'interactions_endpoint_url': None},
         )
 
     def test_429_puis_succes(self) -> None:

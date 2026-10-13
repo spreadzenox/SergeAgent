@@ -26,7 +26,11 @@ décide.
 2. Aucune **Privileged Gateway Intent** n'est nécessaire : le bot ne lit
    ni les messages ni les réactions, seulement les clics sur ses boutons
    et les fenêtres de saisie.
-3. Onglet **OAuth2 → URL Generator** : scope `bot`, permissions Send
+3. Le champ **Interactions Endpoint URL** (General Information) doit
+   rester vide : rempli, Discord envoie les clics à cette adresse et le
+   bot ne les voit jamais. Le bot le vide lui-même à chaque démarrage, et
+   note l'ancienne valeur dans son journal (décision Q90).
+4. Onglet **OAuth2 → URL Generator** : scope `bot`, permissions Send
    Messages, Send Messages in Threads, Create Public Threads et Manage
    Threads → ouvre l’URL → ajoute au serveur.
 

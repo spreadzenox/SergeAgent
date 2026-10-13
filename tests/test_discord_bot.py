@@ -201,6 +201,36 @@ class DiscordBotTests(unittest.TestCase):
             'administrateurs', acked.call_args[0][2]['data']['content']
         )
 
+    def test_le_bot_vide_l_interactions_endpoint_url(self) -> None:
+        """Avec une « Interactions Endpoint URL », Discord envoie les clics
+        ailleurs qu'au bot : le bot la vide et note l'ancienne valeur
+        (décision Q90) ; sans elle, il ne touche à rien."""
+        bot = self._bot()
+        with (
+            mock.patch(
+                'serge.discord.bot.get_application',
+                return_value={'interactions_endpoint_url': 'https://x.test/i'},
+            ),
+            mock.patch(
+                'serge.discord.bot.clear_interactions_endpoint'
+            ) as vide,
+            mock.patch('serge.discord.bot.journal') as journal,
+        ):
+            bot.verifier_endpoint()
+        vide.assert_called_once_with('tok-fake-40')
+        self.assertIn('elle valait https://x.test/i', journal.call_args[0][0])
+        with (
+            mock.patch(
+                'serge.discord.bot.get_application',
+                return_value={'interactions_endpoint_url': None},
+            ),
+            mock.patch(
+                'serge.discord.bot.clear_interactions_endpoint'
+            ) as vide,
+        ):
+            bot.verifier_endpoint()
+        vide.assert_not_called()
+
     def test_un_message_libre_est_ignore(self) -> None:
         bot = self._bot()
         with mock.patch('serge.discord.bot.route_interaction') as routed:

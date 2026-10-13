@@ -292,6 +292,10 @@ que Discord donne (exemple : « 50013 Missing Permissions »), lisible sur
 la page Health : chaque clic reçu et la réponse envoyée ou refusée, un fil
 qui ne s'ouvre pas, une carte pas mise à jour, et chaque fermeture de la
 connexion temps réel par Discord, avec son code (exemple : « 4014 »), puis
-la reconnexion. Un clic en erreur n'arrête pas le bot.
+la reconnexion. Un clic en erreur n'arrête pas le bot. À chaque démarrage,
+le bot vérifie que les clics lui arrivent : si l'application Discord a une
+« Interactions Endpoint URL », Discord envoie les clics à cette adresse et
+pas au bot ; le bot la vide et note l'ancienne valeur au journal (décision
+Q90).
 
 Installation : [`installation/DISCORD_SETUP.md`](installation/DISCORD_SETUP.md).

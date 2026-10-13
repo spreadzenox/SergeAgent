@@ -57,6 +57,18 @@ tous les appelants utilisent, pas seulement à l'endroit signalé.
 l'extérieur, la gestion d'erreur qui évite de perdre des données, la
 sécurité.
 
+**Toute erreur d'une interface qu'on ne contrôle pas remonte jusqu'à
+Mission Control.** Discord, la boîte e-mail, le téléphone, OpenRouter… :
+une erreur est notée au journal du service avec la raison donnée en face
+(son code et son message, jamais un secret), et ce journal se lit dans
+Mission Control (page Health, ou Voix pour les appels). On n'avale jamais
+une erreur en silence, et un service qui tourne en continu ne s'arrête pas
+sur une erreur avant de l'avoir notée. Exemple : un clic Discord qui
+échoue laisse « réponse refusée par Discord : 404 (10062 Unknown
+interaction) » sur la page Health. La raison : personne n'a accès à la
+machine ni aux portails de ces services ; sans ces journaux, une panne
+chez eux ne se diagnostique qu'en devinant.
+
 ## 3. Nommer les choses
 
 - **Les noms sont en anglais** : fonctions, variables, modules, tables,
