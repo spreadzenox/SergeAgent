@@ -271,6 +271,11 @@ def run_task(
         answer = _llm_answer(
             conn, inv, task_id, task, caller=caller, root=root
         )
+        # La réponse du modèle reste lisible sur la fiche de la tâche.
+        conn.execute(
+            'UPDATE tasks SET answer_json=? WHERE id=?',
+            (json.dumps(answer, ensure_ascii=False, default=str), task_id),
+        )
     else:
         answer = _capability_answer(conn, inv, task)
     written = write_answer(conn, inv.id, task_id, task, answer)

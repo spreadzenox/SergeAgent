@@ -490,6 +490,31 @@ tools:
 # Ces règles valent pour toutes les invocations : elles sont réglées sur la
 # table, pas sur l'invocation. Sur une instance existante, une colonne ou
 # une opération nouvelle s'ajoute ; rien n'est jamais retiré.
+  # Le chantier (lot 10, Q91) : un conteneur par business et par
+  # livrable. Le business, le livrable et le profil sont figés sur chaque
+  # invocation qui s'en sert : le modèle ne choisit pas son chantier.
+  - id: chantier_commande
+    title: Lancer une commande dans le chantier
+    doc: >-
+      Lance une commande shell dans le chantier (dossier /work) : installer,
+      compiler, lancer les tests, démarrer un serveur en arrière-plan. Rend
+      la sortie et le code de retour.
+    capability: sandbox_command
+  - id: chantier_lire
+    title: Lire un fichier du chantier
+    doc: Rend des lignes d'un fichier du chantier, à partir d'une ligne.
+    capability: sandbox_read_file
+  - id: chantier_ecrire
+    title: Écrire un fichier du chantier
+    doc: Écrit un fichier entier dans le chantier.
+    capability: sandbox_write_file
+  - id: chantier_modifier
+    title: Modifier un fichier du chantier
+    doc: >-
+      Remplace un passage exact d'un fichier du chantier, présent une seule
+      fois, par un autre.
+    capability: sandbox_edit_file
+
 writable_tables:
   - table: listen_cycles
     insert: true
@@ -2317,6 +2342,61 @@ invocations:
         values:
           funnel_state: {source: fixed, value: CONTACTING}
 
+  - id: essayer_chantier
+    title: Essayer le chantier (temporaire)
+    role: >-
+      Temporaire, pour essayer le chantier depuis Mission Control (lot 10,
+      Q91) : reçoit une mission, travaille dans le chantier d'essai avec
+      ses quatre outils (commande, lire, écrire, modifier), vérifie que ça
+      marche, puis rend un compte rendu.
+    type: llm
+    model_tier: smart
+    queue: works
+    priority: 30
+    max_tool_turns: 40
+    prompt: |
+      Tu travailles dans un chantier : un conteneur Linux (Debian, avec git,
+      Python 3 et Node), dans le dossier /work. Il est à toi : tu peux y
+      installer ce qu'il te faut. Tu as quatre outils : lancer une
+      commande, lire un fichier, écrire un fichier, modifier un passage
+      d'un fichier. Tu peux en appeler plusieurs d'un coup.
+
+      Fais la mission donnée dans les paramètres de la tâche. Avant de
+      répondre, vérifie que ce que tu as fait marche vraiment : lance-le,
+      lis ce qu'il rend. Un serveur se lance en arrière-plan ; interroge-le
+      ensuite avec curl.
+
+      Rends ton compte rendu : ce que tu as fait, les commandes qui l'ont
+      vérifié et ce qu'elles ont rendu, et ce qui ne marche pas encore.
+    tools:
+      - tool: chantier_commande
+        mode: callable
+        params:
+          venture_id: {source: fixed, value: essai}
+          deliverable: {source: fixed, value: chantier}
+          profile: {source: fixed, value: chantier}
+      - tool: chantier_lire
+        mode: callable
+        params:
+          venture_id: {source: fixed, value: essai}
+          deliverable: {source: fixed, value: chantier}
+          profile: {source: fixed, value: chantier}
+      - tool: chantier_ecrire
+        mode: callable
+        params:
+          venture_id: {source: fixed, value: essai}
+          deliverable: {source: fixed, value: chantier}
+          profile: {source: fixed, value: chantier}
+      - tool: chantier_modifier
+        mode: callable
+        params:
+          venture_id: {source: fixed, value: essai}
+          deliverable: {source: fixed, value: chantier}
+          profile: {source: fixed, value: chantier}
+    output:
+      - {path: marche, type: choice, choices: [oui, non], description: 'La mission marche-t-elle, vérifiée dans le chantier ?'}
+      - {path: compte_rendu, type: text, description: 'Ce qui a été fait, vérifié, et ce qui ne marche pas.'}
+
 links:
   - id: cycle_ouvert_vers_exploration
     title: Le cycle ouvert part en exploration
@@ -2634,6 +2714,17 @@ triggers:
       email: {source: form, value: e-mail}
       phone: {source: form, value: 'téléphone (+33…)'}
       valider: &case_essai_valider {source: form_case, value: Valider chaque brouillon}
+
+  - id: bouton_essayer_chantier
+    title: Essayer le chantier
+    invocation: essayer_chantier
+    event: button
+    confirm: >-
+      Serge ouvre le chantier d'essai (un conteneur sur le serveur) et y
+      fait la mission, avec le modèle du niveau intelligent. Le compte
+      rendu est sur la fiche de la tâche.
+    params:
+      mission: {source: form, value: mission}
 
 # Les modifications d'objets déjà en base sur une instance existante (le
 # fichier ne les écrase jamais) : chacune n'est appliquée qu'une fois, et

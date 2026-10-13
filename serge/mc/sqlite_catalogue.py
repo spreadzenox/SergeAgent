@@ -231,6 +231,13 @@ CATALOGUE: dict[str, tuple[str, str, str, str]] = {
         'Les déclencheurs « une ligne est écrite » réveillent le pipeline.',
         'acte : le bouton. Recopie ce dont parle le ticket (ref_id…).',
     ),
+    'sandboxes': (
+        'Les chantiers : un conteneur par business et par livrable.',
+        'Les outils du chantier, à chaque commande.',
+        'Mission Control (îlot « Chantiers » de la page Système).',
+        'status stopped : éteint (un seul tourne à la fois) ou arrêté pour'
+        ' disque plein (last_error dit pourquoi).',
+    ),
     'lessons': (
         'Ce que Serge croit avoir appris. Candidate d’abord.',
         'consolidate, owner (confirmer / infirmer).',

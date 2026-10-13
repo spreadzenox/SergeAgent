@@ -117,6 +117,11 @@ couple. Après le merge, on le fait à deux :
 - [ ] Asterisk / Caddy selon features
 - [ ] linger user (`loginctl enable-linger serge`) pour les units
       `--user` après logout
+- [x] Docker rootless pour l'utilisateur `serge` (service
+      `docker.service` en `--user`, vérifié le 13 octobre 2026) : les
+      chantiers du lot 10 tournent dedans. Serge trouve sa socket par
+      `DOCKER_HOST`, sinon `$XDG_RUNTIME_DIR/docker.sock`. Une erreur de
+      Docker est au journal de `serge-queue@works` (page Health).
 - [ ] premier job deploy après merge (suivre le check `deploy julien-vps`)
 
 Arrêt d'urgence : le bouton « Serge » de la page En direct de Mission
