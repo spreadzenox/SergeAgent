@@ -291,6 +291,7 @@ class NiveauxDeModeleTests(unittest.TestCase):
                 'fast': (0.3, 85, ''),
                 'mid': (1.5, 95, ''),
                 'smart': (8.0, 95, ''),
+                'code': (12.0, 100, 'anthropic/claude-opus-5.5'),
             },
         )
 
@@ -301,8 +302,10 @@ class NiveauxDeModeleTests(unittest.TestCase):
         self.addCleanup(conn.close)
         init_schema(conn)
         # L'instance telle qu'elle était avant : niveaux sans réglage, un
-        # modèle choisi sur le niveau moyen, un prix déjà changé à la main.
+        # modèle choisi sur le niveau moyen, un prix déjà changé à la main,
+        # et pas encore de niveau « code » (lot 10).
         conn.executescript(
+            "DELETE FROM llm_models WHERE tier='code';"
             'UPDATE llm_models SET max_price_usd=0, tolerance_pct=95;'
             "UPDATE llm_models SET model='a/choisi' WHERE tier='mid';"
             "UPDATE llm_models SET max_price_usd=2.5 WHERE tier='smart';"
@@ -315,6 +318,7 @@ class NiveauxDeModeleTests(unittest.TestCase):
                 'fast': (0.3, 85, ''),
                 'mid': (1.5, 95, 'a/choisi'),
                 'smart': (2.5, 95, ''),
+                'code': (12.0, 100, 'anthropic/claude-opus-5.5'),
             },
         )
         resultats = dict(

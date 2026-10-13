@@ -33,6 +33,11 @@ from serge.sandbox.chantier import (
     sandbox_read_file,
     sandbox_write_file,
 )
+from serge.sandbox.navigateur import (
+    browser_action,
+    browser_read,
+    browser_screenshot,
+)
 from serge.tickets.inform import inform_owners
 
 Runner = Callable[
@@ -222,6 +227,9 @@ RUNNERS: dict[str, Runner] = {
     'sandbox_read_file': sandbox_read_file,
     'sandbox_write_file': sandbox_write_file,
     'sandbox_edit_file': sandbox_edit_file,
+    'browser_action': browser_action,
+    'browser_read': browser_read,
+    'browser_screenshot': browser_screenshot,
 }
 
 

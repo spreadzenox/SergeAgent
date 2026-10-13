@@ -14,8 +14,6 @@ from typing import TYPE_CHECKING, Protocol
 
 from serge.db.store import append_event, utcnow
 
-TIERS = frozenset({'fast', 'mid', 'smart'})
-
 
 class _Handler(Protocol):
     def _require_owner(self) -> bool: ...
@@ -39,7 +37,7 @@ def _changements(body: dict) -> tuple[dict[str, object], str]:
             return {}, 'prompt'
         updates['prompt'] = body['prompt']
     if 'model_tier' in body:
-        if body['model_tier'] not in TIERS:
+        if not isinstance(body['model_tier'], str) or not body['model_tier']:
             return {}, 'model_tier'
         updates['model_tier'] = body['model_tier']
     if 'priority' in body:
@@ -64,7 +62,7 @@ def _changements(body: dict) -> tuple[dict[str, object], str]:
 
 AIDES = {
     'prompt': 'Texte attendu.',
-    'model_tier': 'Valeurs : fast, mid ou smart.',
+    'model_tier': 'Un niveau de la page Pipeline : fast, mid, smart, code…',
     'priority': 'Entier de 0 à 100.',
     'enabled': 'Booléen attendu.',
     'queue_id': 'Une file en base : conversations ou works.',
@@ -120,6 +118,20 @@ class LlmActionsMixin(_Base):
                     'Invocation introuvable.',
                     'invocation',
                     'Identifiant absent de la table invocations.',
+                )
+                return
+            if (
+                'model_tier' in updates
+                and not conn.execute(
+                    'SELECT 1 FROM llm_models WHERE tier=?',
+                    (updates['model_tier'],),
+                ).fetchone()
+            ):
+                self._refus(
+                    400,
+                    'model_tier invalide.',
+                    'model_tier',
+                    AIDES['model_tier'],
                 )
                 return
             if (

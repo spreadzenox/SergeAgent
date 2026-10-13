@@ -292,7 +292,12 @@ class PipelineActionsMixin(_Base):
                 (tier,),
             ).fetchone()
         if row is None:
-            self._refus(409, 'Niveau inconnu.', 'modele', 'fast, mid, smart.')
+            self._refus(
+                409,
+                'Niveau inconnu.',
+                'modele',
+                'Un niveau de la page Pipeline.',
+            )
             return
         # Hors de la base : la vérification peut appeler OpenRouter.
         status, message = check_model(model) if model else ('ok', '')

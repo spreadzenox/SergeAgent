@@ -20,6 +20,16 @@ def system_root() -> Path:
     )
 
 
+def files_root() -> Path:
+    """Le dossier des livrables : ``<system_root>/files`` (décision Q40).
+
+    Rangé par business, livrable, puis version ou captures. Exemple :
+    ``files/ven_3f2a/poc/v2/``. Une mise à jour du code n'y touche pas : elle
+    copie par-dessus la racine sans rien effacer.
+    """
+    return system_root() / 'files'
+
+
 def config_root(data: dict[str, Any] | None = None) -> Path:
     """Racine config lue depuis le TOML d'instance (paths.config_root).
 

@@ -39,6 +39,25 @@ function renderCadre(cadre, apres) {
   if (cadre.pre) {
     bloc.append(el('pre', 'preuve', cadre.pre));
   }
+  if ((cadre.images || []).length) {
+    // Des captures gardées (lot 10) : un clic ouvre l’image en grand.
+    const galerie = el('div', 'galerie-fiche');
+    for (const image of cadre.images) {
+      const lien = el('a');
+      lien.href = image.src;
+      lien.target = '_blank';
+      lien.rel = 'noopener';
+      const img = el('img');
+      img.src = image.src;
+      img.alt = image.legende || '';
+      img.loading = 'lazy';
+      lien.append(img);
+      const figure = el('figure');
+      figure.append(lien, el('figcaption', '', image.legende || ''));
+      galerie.append(figure);
+    }
+    bloc.append(galerie);
+  }
   if (cadre.todo) {
     const note = el('p', 'todo-mc', cadre.todo);
     bloc.append(note);

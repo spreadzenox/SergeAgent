@@ -171,7 +171,8 @@ class ChantierTests(unittest.TestCase):
         self.assertEqual(run[run.index('--memory') + 1], '4096m')
         self.assertEqual(run[run.index('--cpus') + 1], '2')
         self.assertIn('node:22-bookworm', run)
-        self.assertNotIn('--network', run)
+        # Le réseau des chantiers et du navigateur (PR 2).
+        self.assertEqual(run[run.index('--network') + 1], 'serge-chantiers')
         self.assertEqual(
             tuple(
                 self.conn.execute(
@@ -210,6 +211,27 @@ class ChantierTests(unittest.TestCase):
         self.assertEqual(relu['text'], 'A')
         self.assertIn(
             ['start', 'serge-chantier-essai-chantier'], self._appels_docker()
+        )
+
+    def test_un_ancien_chantier_rejoint_le_reseau(self) -> None:
+        """Un chantier créé sans le réseau des chantiers (avant la PR 2) y
+        est branché : le navigateur doit pouvoir l'ouvrir."""
+        self._outil('sandbox_command', command='true')
+        etat = self.dossier / (
+            'docker/containers/serge-chantier-essai-chantier/state.json'
+        )
+        data = json.loads(etat.read_text())
+        data['networks'] = []
+        etat.write_text(json.dumps(data))
+        self._outil('sandbox_command', command='true')
+        self.assertIn(
+            [
+                'network',
+                'connect',
+                'serge-chantiers',
+                'serge-chantier-essai-chantier',
+            ],
+            self._appels_docker(),
         )
 
     def test_un_chantier_trop_gros_est_arrete(self) -> None:

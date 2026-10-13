@@ -40,7 +40,7 @@ from serge.llm.client import ChatResult
 from serge.llm.runtime import budget_reached
 from serge.policy_store import policy_en_vigueur
 
-TIER_TO_OLD = {'fast': 'T1', 'mid': 'T2', 'smart': 'T3'}
+TIER_TO_OLD = {'fast': 'T1', 'mid': 'T2', 'smart': 'T3', 'code': 'T3'}
 
 
 class AnswerError(ValueError):
@@ -266,7 +266,9 @@ def run_task(
         'SELECT invocation_id FROM tasks WHERE id=?', (task_id,)
     ).fetchone()
     inv = load_invocation(conn, str(row[0]))
-    task = task_params(conn, task_id)
+    # Chaque tâche connaît son numéro : un outil peut le recevoir figé
+    # (une session de navigateur par tâche, une capture rangée par tâche).
+    task = {**task_params(conn, task_id), 'task_id': task_id}
     if inv.type == 'llm':
         answer = _llm_answer(
             conn, inv, task_id, task, caller=caller, root=root
