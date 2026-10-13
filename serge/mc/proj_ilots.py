@@ -4,7 +4,8 @@
 Chaque îlot dit sa santé, son activité, un résumé et ses détails : les
 files de tâches (avec leurs deux services), l'e-mail, la voix (avec le
 pont vocal), Discord (le bot, le forum des tickets, les administrateurs),
-l'écoute du web, les garde-fous et les chantiers. Fenêtre de 24 h ; une
+l'écoute du web, les garde-fous, les chantiers et les produits en ligne.
+Fenêtre de 24 h ; une
 tâche en cours depuis plus de 30 min est suspecte. L'état d'un service se lit avec
 ``systemctl --user`` (Mission Control tourne sous le même compte).
 """
@@ -333,6 +334,39 @@ def _ilot_chantiers(conn: sqlite3.Connection, depuis: str) -> dict[str, Any]:
     )
 
 
+def _ilot_produits(conn: sqlite3.Connection) -> dict[str, Any]:
+    """Les produits publiés (lot 10) : leur adresse, leur version, et la
+    raison d'une publication ratée."""
+    rows = conn.execute(
+        'SELECT target, version, hostname, status, last_error'
+        ' FROM deployments ORDER BY updated_at DESC'
+    ).fetchall()
+    if not rows:
+        return _ilot(
+            'produits',
+            'Produits en ligne',
+            'inconnu',
+            0.0,
+            'Aucun produit publié encore.',
+            [],
+        )
+    details = [
+        f'https://{h} : v{v} en {t}'
+        + (f', ratée ({e}).' if s == 'failed' else '.')
+        for t, v, h, s, e in rows[:8]
+    ]
+    rates = sum(1 for r in rows if r[3] == 'failed')
+    en_ligne = sum(1 for r in rows if r[3] == 'running')
+    return _ilot(
+        'produits',
+        'Produits en ligne',
+        'degrade' if rates else 'ok',
+        en_ligne / 5,
+        f'{en_ligne} en ligne' + (f', {rates} ratée(s)' if rates else ''),
+        details,
+    )
+
+
 def project_ilots(
     conn: sqlite3.Connection, policy: Mapping[str, Any], now: str
 ) -> dict[str, Any]:
@@ -363,5 +397,6 @@ def project_ilots(
             _ilot_ecoute(conn, depuis),
             _ilot_garde_fous(conn, depuis),
             _ilot_chantiers(conn, depuis),
+            _ilot_produits(conn),
         ]
     }

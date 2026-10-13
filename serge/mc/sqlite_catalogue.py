@@ -238,6 +238,13 @@ CATALOGUE: dict[str, tuple[str, str, str, str]] = {
         'status stopped : éteint (un seul tourne à la fois) ou arrêté pour'
         ' disque plein (last_error dit pourquoi).',
     ),
+    'deployments': (
+        'Ce qui tourne : un produit publié en staging ou en prod.',
+        'La capacité « Publier », à chaque publication.',
+        'Mission Control (îlot « Produits en ligne », fiche du business).',
+        'host_port : le port fixe sur 127.0.0.1, que vise la route de'
+        ' Caddy. status failed : last_error dit pourquoi.',
+    ),
     'lessons': (
         'Ce que Serge croit avoir appris. Candidate d’abord.',
         'consolidate, owner (confirmer / infirmer).',

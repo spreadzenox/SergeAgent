@@ -851,6 +851,26 @@ sections:
           ne joint rien.
         kind: liste
         choices: [internet, aucun]
+      - id: produit.cpus
+        value: 0.5
+        title: Produit en ligne, processeurs
+        help: >-
+          Ce que chaque produit publié (staging ou prod) peut prendre des
+          processeurs du serveur.
+        kind: nombre
+        min: 0.25
+        max: 2
+        step: 0.25
+      - id: produit.memory_mb
+        value: 512
+        title: Produit en ligne, mémoire en Mo
+        help: >-
+          Au-delà, le programme du produit qui dépasse est arrêté, puis
+          relancé par Docker.
+        kind: curseur
+        min: 128
+        max: 4096
+        step: 128
       - id: navigateur.image
         value: chromedp/headless-shell:stable
         title: Navigateur, image

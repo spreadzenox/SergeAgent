@@ -57,12 +57,16 @@ def _run(args: list[str]) -> int:
             'pull access denied for image, repository does not exist'
         )
     flags: dict[str, str] = {}
+    env: list[str] = []
     i = 0
     while i < len(args) and args[i].startswith('-'):
         if args[i] in ('-d', '--init'):
             i += 1
             continue
-        flags[args[i]] = args[i + 1]
+        if args[i] == '-e':
+            env.append(args[i + 1])
+        else:
+            flags[args[i]] = args[i + 1]
         i += 2
     image, command = args[i], args[i + 1 :]
     volume, _, _target = flags.get('-v', f'{flags["--name"]}:/x').partition(
@@ -78,6 +82,7 @@ def _run(args: list[str]) -> int:
             'flags': flags,
             'command': command,
             'networks': [flags['--network']] if '--network' in flags else [],
+            'env': env,
         },
     )
     print(f'id-{flags["--name"]}')
@@ -121,13 +126,12 @@ def _exec(args: list[str]) -> int:
     done = subprocess.run(
         argv,
         cwd=work,
-        input=sys.stdin.read() if stdin else None,
+        input=sys.stdin.buffer.read() if stdin else None,
         capture_output=True,
-        text=True,
         check=False,
     )
-    sys.stdout.write(done.stdout)
-    sys.stderr.write(done.stderr)
+    sys.stdout.buffer.write(done.stdout)
+    sys.stderr.buffer.write(done.stderr)
     return done.returncode
 
 
@@ -172,6 +176,31 @@ def _port(args: list[str]) -> int:
     return 0
 
 
+def _build(args: list[str]) -> int:
+    """``build -t IMAGE DOSSIER`` : il faut un Dockerfile ; un fichier
+    ECHEC_BUILD dans le dossier fait rater la construction."""
+    image, dossier = args[args.index('-t') + 1], Path(args[-1])
+    if (dossier / 'ECHEC_BUILD').exists():
+        print('ERROR: failed to solve: npm install a échoué', file=sys.stderr)
+        return 1
+    if not (dossier / 'Dockerfile').is_file():
+        print('ERROR: Dockerfile introuvable', file=sys.stderr)
+        return 1
+    images = ROOT / 'images'
+    images.mkdir(parents=True, exist_ok=True)
+    (images / image.replace('/', '_')).write_text(
+        str(dossier), encoding='utf-8'
+    )
+    return 0
+
+
+def _rm(args: list[str]) -> int:
+    folder = ROOT / 'containers' / args[-1]
+    if (folder / 'state.json').is_file():
+        (folder / 'state.json').unlink()
+    return 0
+
+
 def main(args: list[str]) -> int:
     ROOT.mkdir(parents=True, exist_ok=True)
     with (ROOT / 'calls.jsonl').open('a', encoding='utf-8') as log:
@@ -193,6 +222,13 @@ def main(args: list[str]) -> int:
         return _inspect(rest)
     if command == 'port':
         return _port(rest)
+    if command == 'build':
+        return _build(rest)
+    if command == 'rm':
+        return _rm(rest)
+    if command == 'logs':
+        print('Error: listen EADDRINUSE: le produit ne démarre pas')
+        return 0
     return _refuse(f'commande inconnue du faux docker : {command}')
 
 
