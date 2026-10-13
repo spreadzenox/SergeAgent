@@ -35,10 +35,18 @@ l'utilise. Aucune mise en ligne, aucune capture d'écran n'est codée.
 
 ## Décidé
 
+Seulement des produits web, payants : on paie pour avoir un compte et
+utiliser le service (Q91). Le détail technique (le chantier, l'interface
+web, la mise en ligne, Stripe, les tables) est dans
+[`LOT10_CONCEPTION.md`](../LOT10_CONCEPTION.md).
+
 ### Le déroulé
 
 1. **Concevoir le produit** (invocation LLM). Elle part du livrable
-   d'essai, du plan du POC et de ce que les prospects ont dit. Elle écrit
+   d'essai, du plan du POC et de ce que les prospects ont dit : toutes les
+   demandes des clients du business (`customer_requests`), qu'elle marque
+   retenues ou refusées avec leur raison, leurs objections et leurs
+   questions. Elle écrit
    le plan du vrai produit : ce qu'on ajoute, ce qu'on corrige, le prix
    définitif, la page de vente. Elle écrit aussi la **fiche produit** :
    ce que fait le produit et pour qui, ce qu'il ne fait pas, le prix, les
@@ -48,30 +56,44 @@ l'utilise. Aucune mise en ligne, aucune capture d'écran n'est codée.
 2. **Challenger le produit** : même boucle qu'à l'étape 2 (3 tours,
    remarques « à corriger » ou « nouvelle capacité nécessaire »).
 3. **Ticket Discord pour Julien** avant de construire. Julien valide
-   notamment **le prix définitif** et la fiche produit ; il y en aura peu,
-   donc c'est une relecture rapide.
-4. **Construire** avec le couple builder / reviewer ci-dessus. Les réponses
-   du reviewer sont alignées sur la critique : « bon », « à corriger » ou
-   « nouvelle capacité nécessaire ». La même mécanique sert aux étapes 2
-   et 5.
-5. **Mettre en ligne** sur un nom de domaine dédié, acheté avec la carte
-   de Serge (exemple : `devisvocal.fr`).
-6. **Brancher l'encaissement** : produit et prix créés dans Stripe, puis un
-   paiement test de 1 € fait et remboursé automatiquement.
-7. **Ticket d'information** (« produit en ligne, paiement vérifié »), puis
-   passage à l'étape 6.
+   notamment **le prix définitif**, la fiche produit et le nom de domaine ;
+   il y en aura peu, donc c'est une relecture rapide. Ce ticket n'expire
+   jamais (Q91).
+4. **Construire** avec un duo de deux invocations du niveau de modèle
+   « code » (Q91). Le constructeur écrit et lance le produit dans un
+   chantier (un conteneur), et l'essaie dans un navigateur. Le relecteur
+   ne voit jamais le code : il suit les scénarios de test comme un
+   prospect ordinaire, sur ordinateur et sur mobile, garde ses captures
+   comme preuves, et répond « bon », « à corriger » ou « nouvelle capacité
+   nécessaire ». Trois passages au plus. Chaque version est mise en ligne
+   en staging, avec Stripe en mode test. La même mécanique sert aux
+   étapes 2 et 5.
+5. **Ticket de test** (Q91) : un humain essaie le produit fini depuis le
+   lien du staging, avant la prospection lourde. Le ticket n'expire
+   jamais.
+6. **Mettre en ligne** sur un nom de domaine dédié (exemple :
+   `devisvocal.fr`), acheté par Serge seul une fois son nom validé dans le
+   ticket du plan (Q91), avec le produit et son prix créés dans Stripe par
+   l'outil « Créer un prix Stripe », qui inscrit l'identifiant du business
+   sur le prix (Q76).
+7. **Vérifier l'encaissement** : Serge fait seul, avec sa carte, un
+   paiement test de 1 €, vérifie qu'il est rattaché au business, puis se
+   rembourse (Q91). Le business passe ensuite à l'étape 6.
 
-Les **versions suivantes** (corrections, améliorations) sont publiées
-automatiquement dès que la relecture est bonne, avec un ticket
-d'information. À chaque nouvelle version, la fiche produit est mise à
-jour, pour que Serge ne réponde jamais aux clients sur une ancienne
-version.
+Les **versions suivantes** (corrections, améliorations) passent par la
+même boucle en staging, et sont publiées en prod automatiquement dès que
+la relecture est bonne, avec un ticket d'information. À chaque nouvelle
+version, la fiche produit est mise à jour, pour que Serge ne réponde
+jamais aux clients sur une ancienne version.
 
 ### Mise en ligne
 
 - Par défaut sur le VPS de Serge, via **Caddy**, qui publie déjà Mission
-  Control. Le POC utilise un sous-domaine du domaine de Serge ; le
-  business principal, son propre domaine.
+  Control. Chaque produit tourne dans son propre conteneur, avec ses
+  propres données, sans accès à la base de Serge (Q91). Le staging est
+  sur `staging-<business>.<domaine de Serge>` ; en prod, le POC utilise
+  un sous-domaine du domaine de Serge, le business principal son propre
+  domaine.
 - Une plateforme externe seulement quand le type de business l'exige
   (exemples : Chrome Web Store pour une extension, Telegram pour un bot).
 
