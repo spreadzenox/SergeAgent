@@ -115,6 +115,19 @@ class SergeUpdateTests(unittest.TestCase):
                 (dest / 'scripts/marker.txt').read_text(), 'new\n'
             )
             self.assertTrue((units / 'serge-queue@.service').is_file())
+            # Les dossiers où écrivent les services existent, même ceux
+            # d'une version récente (files/, lot 10), et la file des
+            # travaux a le droit d'y écrire.
+            self.assertTrue((dest / 'files').is_dir())
+            self.assertTrue((home / '.docker').is_dir())
+            unit = (units / 'serge-queue@.service').read_text()
+            ecriture = next(
+                ligne
+                for ligne in unit.splitlines()
+                if ligne.startswith('ReadWritePaths=')
+            )
+            self.assertIn(f'-{dest}/files', ecriture.split())
+            self.assertIn(f'-{home}/.docker', ecriture.split())
             empty = tmp / 'empty'
             instance2 = tmp / 'empty.toml'
             instance2.write_text(_toml(home, empty), encoding='utf-8')
