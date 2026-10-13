@@ -22,6 +22,7 @@ from typing import Any
 from serge.discord.forum import ECHEC, ECHEC_MODIF, forum_tickets
 from serge.mc.proj_outils import avant_iso
 from serge.mc.proj_taches import compte_taches, plafond_atteint, prochaines
+from serge.sandbox.navigateur import MANQUE, navigateur_installe
 
 ETATS_SERVICE = {
     'active': 'en marche',
@@ -303,14 +304,16 @@ def _ilot_chantiers(conn: sqlite3.Connection, depuis: str) -> dict[str, Any]:
         'SELECT id, status, disk_mb, last_error FROM sandboxes'
         ' ORDER BY updated_at DESC'
     ).fetchall()
+    # Sans son paquet Python, aucune invocation ne peut voir ni cliquer.
+    manque = [] if navigateur_installe() else [f'Navigateur : {MANQUE}.']
     if not rows:
         return _ilot(
             'sandbox',
             'Chantiers',
-            'inconnu',
+            'erreur' if manque else 'inconnu',
             0.0,
             'Aucun chantier encore : « Essayer le chantier », plus bas.',
-            [],
+            manque,
         )
     commandes = _compte(
         conn,
@@ -318,7 +321,7 @@ def _ilot_chantiers(conn: sqlite3.Connection, depuis: str) -> dict[str, Any]:
         (depuis,),
     )
     etats = {'running': 'allumé', 'stopped': 'éteint', 'removed': 'supprimé'}
-    details = []
+    details = list(manque)
     for ident, status, disk, erreur in rows[:6]:
         ligne = f'{ident} : {etats.get(str(status), status)}, {disk} Mo'
         details.append(f'{ligne} ({erreur}).' if erreur else f'{ligne}.')
@@ -326,7 +329,7 @@ def _ilot_chantiers(conn: sqlite3.Connection, depuis: str) -> dict[str, Any]:
     return _ilot(
         'sandbox',
         'Chantiers',
-        'degrade' if any(r[3] for r in rows) else 'ok',
+        'erreur' if manque else 'degrade' if any(r[3] for r in rows) else 'ok',
         commandes / 20,
         f'{len(rows)} chantiers, {allumes} allumé, {commandes} commandes'
         ' (24 h)',

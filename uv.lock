@@ -258,23 +258,25 @@ name = "serge-kit"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "playwright" },
     { name = "pyyaml" },
 ]
 
 [package.dev-dependencies]
 dev = [
-    { name = "playwright" },
     { name = "pre-commit" },
     { name = "ruff" },
     { name = "ty" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "pyyaml" }]
+requires-dist = [
+    { name = "playwright", specifier = ">=1.62.0" },
+    { name = "pyyaml" },
+]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "playwright", specifier = ">=1.62.0" },
     { name = "pre-commit" },
     { name = "ruff" },
     { name = "ty" },

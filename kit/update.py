@@ -103,8 +103,13 @@ def update_instance(
     kit_root: Path | None = None,
     systemd_user_dir: Path | None = None,
     uid: int | None = None,
+    python: str | None = None,
 ) -> dict[str, Any]:
-    """Overlay le SHA, réécrit les units, laisse le canon intact."""
+    """Overlay le SHA, réécrit les units, laisse le canon intact.
+
+    ``python`` : l'interpréteur des units (celui où le déploiement a
+    installé les dépendances) ; par défaut, celui qui fait la mise à jour.
+    """
     loaded = loaded_from_instance(instance_file)
     assert_instance_paths_safe(loaded, confirm_live_id=confirm_live_id)
     system_root = Path(str(loaded['paths']['system_root']))
@@ -115,7 +120,7 @@ def update_instance(
     copied = overlay_git_archive(source_repo, git_sha, system_root)
     home = Path(str(loaded['paths']['home']))
     user_systemd = systemd_user_dir or (home / '.config/systemd/user')
-    facts = host_facts_from_instance(loaded, uid=uid)
+    facts = host_facts_from_instance(loaded, uid=uid, python=python)
     units = write_units(
         loaded,
         user_systemd,

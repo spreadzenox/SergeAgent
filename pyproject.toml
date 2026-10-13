@@ -5,12 +5,14 @@ description = "Serge instance kit: contract, wizards, builder, telephony"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    # Le navigateur des invocations (lot 10) : il pilote le conteneur
+    # Chromium du serveur, sans télécharger de navigateur.
+    "playwright>=1.62.0",
     "pyyaml",
 ]
 
 [dependency-groups]
 dev = [
-    "playwright>=1.62.0",
     "pre-commit",
     "ruff",
     "ty",

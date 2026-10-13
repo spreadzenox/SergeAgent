@@ -288,6 +288,16 @@ class ProjIlotsTests(ProjSystemFixtures):
             },
         )
 
+    def test_sans_son_paquet_le_navigateur_met_les_chantiers_en_erreur(
+        self,
+    ) -> None:
+        with mock.patch(
+            'serge.mc.proj_ilots.navigateur_installe', return_value=False
+        ):
+            ilot = self._ilot('sandbox')
+        self.assertEqual(ilot['sante'], 'erreur')
+        self.assertIn('playwright manque sur ce serveur', ilot['details'][0])
+
     def test_un_canal_branche_dit_ce_qui_part_et_arrive(self) -> None:
         """L'e-mail branché : partis et reçus sur 24 h, sa dernière relève ;
         une boîte pas relevée depuis plus d'une heure est « dégradée »."""

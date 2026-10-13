@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import importlib.util
 import re
 import sqlite3
 from dataclasses import dataclass, field
@@ -118,10 +119,32 @@ def _endpoint(conn: sqlite3.Connection) -> str:
     return f'http://{adresse}'
 
 
+# Ce qu'il faut faire quand le paquet qui pilote le navigateur manque.
+MANQUE = (
+    'le paquet Python playwright manque sur ce serveur : l’installer dans le'
+    ' Python des services (docs/installation/DEPLOY_VPS.md), puis'
+    ' redémarrer les files'
+)
+
+
+class NavigateurAbsent(RuntimeError):
+    """Le paquet Python qui pilote le navigateur n'est pas installé."""
+
+
+def navigateur_installe() -> bool:
+    """Le paquet Python qui pilote le navigateur est-il installé ? Il ne
+    télécharge aucun navigateur : il se connecte au conteneur Chromium."""
+    return importlib.util.find_spec('playwright') is not None
+
+
 def _browser(conn: sqlite3.Connection) -> Any:
     if _ETAT.browser is not None and _ETAT.browser.is_connected():
         return _ETAT.browser
-    from playwright.sync_api import sync_playwright
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError as exc:
+        journal(MANQUE)
+        raise NavigateurAbsent(MANQUE) from exc
 
     if _ETAT.playwright is None:
         _ETAT.playwright = sync_playwright().start()
