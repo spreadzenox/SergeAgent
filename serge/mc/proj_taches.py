@@ -378,10 +378,20 @@ def fiche_tache(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
                 ' prochain tour, si Serge est démarré.',
             }
         )
+    cadres = []
+    if row['answer_json']:
+        try:
+            reponse = json.dumps(
+                json.loads(row['answer_json']), ensure_ascii=False, indent=2
+            )
+        except ValueError:
+            reponse = str(row['answer_json'])
+        cadres.append({'titre': 'Ce que le modèle a rendu', 'pre': reponse})
     return {
         'type': 'task',
         'id': ident,
         'titre': titre,
+        'cadres': cadres,
         'actions': actions,
         'pourquoi': (
             'Une tâche lance une invocation avec ses paramètres. Elle est'

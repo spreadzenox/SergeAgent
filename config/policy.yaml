@@ -758,6 +758,69 @@ sections:
         max: 10
         step: 0.5
 
+  - id: sandbox
+    title: Bac à sable
+    why: >-
+      Les chantiers, les conteneurs où Serge code ses produits : ce qu’ils
+      ont le droit de prendre sur le serveur (4 processeurs, 15 Go de
+      mémoire et 155 Go de disque libre le 13 octobre 2026). Un seul
+      chantier tourne à la fois (décision Q91).
+    settings:
+      - id: chantier.image
+        value: node:22-bookworm
+        title: Chantier, image de départ
+        help: >-
+          Le Linux du chantier, avec git, Python et Node. Docker la
+          télécharge au premier chantier.
+        kind: liste
+        choices: [node:22-bookworm]
+      - id: chantier.cpus
+        value: 2
+        title: Chantier, processeurs
+        help: Ce qu’un chantier peut prendre des processeurs du serveur.
+        kind: nombre
+        min: 0.5
+        max: 4
+        step: 0.5
+      - id: chantier.memory_mb
+        value: 4096
+        title: Chantier, mémoire en Mo
+        help: >-
+          Au-delà, le programme du chantier qui dépasse est arrêté, sans
+          ralentir le reste du serveur.
+        kind: curseur
+        min: 512
+        max: 12288
+        step: 256
+      - id: chantier.disk_mb
+        value: 20480
+        title: Chantier, disque en Mo
+        help: >-
+          Serge mesure le chantier après chaque commande et l’arrête s’il
+          prend plus que cette place.
+        kind: curseur
+        min: 1024
+        max: 102400
+        step: 1024
+      - id: chantier.command_timeout_s
+        value: 600
+        title: Chantier, durée d’une commande en secondes
+        help: >-
+          Une commande qui dure plus longtemps est arrêtée. Un serveur lancé
+          en arrière-plan n’est pas concerné.
+        kind: curseur
+        min: 10
+        max: 3600
+        step: 10
+      - id: chantier.network
+        value: internet
+        title: Chantier, réseau
+        help: >-
+          internet : le chantier peut télécharger des paquets ; aucun : il
+          ne joint rien.
+        kind: liste
+        choices: [internet, aucun]
+
 # « tel réglage ≤ tel autre » (« < » : strictement plus petit).
 relations:
   - [standing.capital_min, '<=', standing.capital_max]

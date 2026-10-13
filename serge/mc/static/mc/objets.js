@@ -36,6 +36,9 @@ function renderCadre(cadre, apres) {
     }
     bloc.append(ul);
   }
+  if (cadre.pre) {
+    bloc.append(el('pre', 'preuve', cadre.pre));
+  }
   if (cadre.todo) {
     const note = el('p', 'todo-mc', cadre.todo);
     bloc.append(note);

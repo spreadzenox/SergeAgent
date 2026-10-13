@@ -222,10 +222,15 @@ peut avoir une condition (« seulement si la réaction est
 `désinscription` ») et un délai tiré entre deux réglages (la réponse à un
 e-mail part entre 5 et 20 minutes plus tard). Les
 **déclencheurs** sont en base eux aussi : « quand un message arrive d'un
-prospect, lance "Traiter une réponse" pour ce prospect ». Plus tard, le bac
-à sable (pour tester du code, naviguer sur le web, créer des comptes), les
-connecteurs vers des services et les canaux suivront la même règle : des
-capacités générales, réglées en base. Un connecteur, par exemple, n'est
+prospect, lance "Traiter une réponse" pour ce prospect ». Le bac à sable
+suit la même règle depuis le lot 10 : un chantier (un conteneur Docker par
+business et par livrable) et ses outils (lancer une commande, lire, écrire
+et modifier un fichier) sont des capacités générales ; le business, le
+livrable et le profil du chantier sont des paramètres figés en base sur
+l'invocation, et les chiffres du profil sont sur la page Policy. Plus
+tard, la navigation sur le web, les connecteurs vers des services et les
+canaux suivront la même règle : des capacités générales, réglées en
+base. Un connecteur, par exemple, n'est
 pas du code écrit par Serge, mais la description du service en base,
 utilisée par une seule capacité « Appeler une API ».
 

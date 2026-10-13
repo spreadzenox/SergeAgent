@@ -22,8 +22,24 @@ web, payants pour le produit fini : on paie pour avoir un compte et
 utiliser le service. Les logiciels (application de bureau, extension de
 navigateur, bot) attendent le lot 14.
 
-Le lot se livre dans une seule PR. Ses parties, dans l'ordre où on les
-construit :
+Le lot se livre en cinq PR, l'une après l'autre ; chacune se fusionne dès
+que sa CI est verte, et Clem l'essaie dans Mission Control (décision Q91) :
+
+1. **Le chantier** (parties 1 et 3) : un conteneur par produit et ses
+   quatre outils. Essai : le bouton « Essayer le chantier » de la page
+   Système.
+2. **Voir et cliquer** (parties 2, 3 et 4) : le navigateur, les captures
+   envoyées au modèle, le niveau « code ». Essai : « Essayer l'interface
+   web ».
+3. **Publier** (partie 5) : les versions, le staging et la prod, les
+   routes de Caddy en base. Essai : publier le chantier d'essai.
+4. **L'étape 2** (parties 7, 8 et 10) : concevoir, challenger,
+   construire, relire, les tickets, la prod du POC. Essai : le vrai
+   chemin, depuis un cycle d'écoute.
+5. **L'étape 5 et Stripe** (parties 6 et 9) : « Appeler une API », Stripe,
+   l'achat du domaine, le paiement test.
+
+Les parties de ce document, dans l'ordre où on les construit :
 
 1. Le bac à sable : un chantier par produit (partie 1).
 2. L'interface web des invocations (partie 2).
@@ -58,15 +74,16 @@ ses fichiers restent sur un volume à lui. Exemple : le constructeur
 s'arrête le soir parce que le plafond du jour est atteint ; le lendemain,
 la tâche suivante retrouve ses fichiers et reprend.
 
-**Un seul chantier allumé à la fois** sur le VPS (Q91). C'est un quota en
-base, comme les places de test : une construction qui trouve un autre
-chantier allumé attend.
+**Un seul chantier allumé à la fois** sur le VPS (Q91) : allumer un
+chantier éteint les autres, qui gardent leurs fichiers. La file des
+travaux ne lance qu'une tâche à la fois : rien n'attend.
 
-**Les profils de bac à sable sont en base** (table `sandbox_profiles`) :
-l'image de départ (un Linux avec git, Python, Node et les outils
-courants), les processeurs, la mémoire, le disque, la durée maximale d'une
-commande, et si le conteneur peut joindre Internet. Une invocation dit en
-base quel profil elle utilise. Le profil « chantier » de départ : 2
+**Les profils de bac à sable sont des réglages de la page Policy**
+(famille « Bac à sable ») : l'image de départ (un Linux avec git, Python,
+Node et les outils courants), les processeurs, la mémoire, le disque, la
+durée maximale d'une commande, et si le conteneur peut joindre Internet.
+Une invocation dit quel profil elle utilise par un paramètre figé de ses
+outils (`profile: chantier`). Le profil « chantier » de départ : 2
 processeurs, 4 Go de mémoire, 20 Go de disque, 10 minutes au plus par
 commande, Internet permis (pour installer des paquets). Ces chiffres se
 règlent sur la page Policy. Le VPS a 4 processeurs, 15 Go de mémoire, pas
@@ -339,9 +356,9 @@ ses quotas en base, comme le demande la règle de tous les lots.
 - **`deployments`** : ce qui tourne : le business, la version, la cible
   (staging ou prod), le conteneur, l'adresse, l'état.
 - **`web_routes`** : les routes de Caddy (partie 5).
-- **`sandbox_profiles`** et **`sandboxes`** : les profils, et les
-  chantiers avec leur business, leur livrable et leur état (allumé,
-  éteint, supprimé).
+- **`sandboxes`** : les chantiers, avec leur business, leur livrable, leur
+  état (allumé, éteint, supprimé), la place qu'ils prennent et pourquoi
+  l'un a été arrêté (lot 10, PR 1).
 - **`api_services`** et **`api_endpoints`** : les services qu'on sait
   appeler (partie 6).
 - **`customer_requests`** (existe depuis le lot 8) : reçoit son état,
@@ -486,9 +503,8 @@ livrable) ne servent plus : le constructeur écrit dans un chantier.
 
 Sur la page **Policy** :
 
-- le profil « chantier » : processeurs, mémoire, disque, durée maximale
-  d'une commande, accès à Internet (partie 1) ;
-- au plus 1 chantier allumé (quota) ;
+- le profil « chantier » : image, processeurs, mémoire, disque, durée
+  maximale d'une commande, réseau (partie 1) ;
 - un produit en ligne : mémoire et processeurs (partie 5) ;
 - le domaine des produits, par défaut celui de Mission Control ;
 - le prix maximum d'un domaine acheté pour un produit fini : 30 € par an
@@ -514,6 +530,11 @@ plus, 3 passages de construction au plus, les tours d'outils de
   prix) et supprime ou archive son produit. Il sert à nettoyer après les
   essais. Il demande une confirmation.
 - **Un bouton « Construire le vrai produit »**, temporaire (partie 9).
+- **Un îlot « Chantiers »** sur la page Système : chaque chantier, allumé
+  ou éteint, la place qu'il prend, les commandes lancées en 24 h, et
+  pourquoi l'un a été arrêté. Les boutons d'essai du lot (« Essayer le
+  chantier », puis ceux des PR suivantes) sont avec « Lancer un essai »,
+  plus bas sur la même page.
 - La page Policy et la page Pipeline montrent les réglages de la
   partie 11.
 

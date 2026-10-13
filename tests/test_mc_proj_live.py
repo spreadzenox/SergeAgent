@@ -239,10 +239,24 @@ class ProjLiveTests(unittest.TestCase):
             'INSERT INTO inbound_events(id, contact_id, channel, address,'
             ' status, reaction, received_at) VALUES(?,?,?,?,?,?,?)',
             [
-                ('i1', 'p1', 'email', 'ada@example.org', 'attached',
-                 'question', '2026-09-10T11:58:00+00:00'),
-                ('i2', '', 'email', 'x@example.org', 'unattached', '',
-                 '2026-09-10T11:59:00+00:00'),
+                (
+                    'i1',
+                    'p1',
+                    'email',
+                    'ada@example.org',
+                    'attached',
+                    'question',
+                    '2026-09-10T11:58:00+00:00',
+                ),
+                (
+                    'i2',
+                    '',
+                    'email',
+                    'x@example.org',
+                    'unattached',
+                    '',
+                    '2026-09-10T11:59:00+00:00',
+                ),
             ],
         )
         items = project_feed(self.conn, POLICY, NOW)['items']

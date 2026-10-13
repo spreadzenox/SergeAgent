@@ -130,10 +130,11 @@ class McSystemTests(McBrowserCase):
         expect(page.locator('[data-ilot="resume"]')).to_have_text(
             'Pas branché sur ce serveur.'
         )
-        # Le bouton d'essai, déclaré en base, avec sa case à cocher.
+        # Les boutons d'essai, déclarés en base, par l'identifiant de leur
+        # déclencheur : le chantier (lot 10), puis les canaux.
         essais = page.locator('[data-section="essais"]')
         expect(essais.locator('[data-bouton-base]')).to_have_text(
-            'Lancer un essai'
+            ['Essayer le chantier', 'Lancer un essai']
         )
         # Le message d'un inconnu : pas traité, mais visible.
         expect(page.locator('[data-section="non_rattaches"]')).to_contain_text(
