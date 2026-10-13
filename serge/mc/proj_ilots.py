@@ -3,7 +3,7 @@
 
 Chaque îlot dit sa santé, son activité, un résumé et ses détails : les
 files de tâches (avec leurs deux services), l'e-mail, la voix (avec le
-pont vocal), Discord (le bot, les administrateurs, les messages privés),
+pont vocal), Discord (le bot, le forum des tickets, les administrateurs),
 l'écoute du web et les garde-fous. Fenêtre de 24 h ; une tâche en cours
 depuis plus de 30 min est suspecte. L'état d'un service se lit avec
 ``systemctl --user`` (Mission Control tourne sous le même compte).
@@ -18,7 +18,7 @@ import subprocess
 from collections.abc import Mapping
 from typing import Any
 
-from serge.discord.prive import ECHEC, ECHEC_MODIF
+from serge.discord.forum import ECHEC, ECHEC_MODIF, forum_tickets
 from serge.mc.proj_outils import avant_iso
 from serge.mc.proj_taches import compte_taches, plafond_atteint, prochaines
 
@@ -192,9 +192,10 @@ def _ilot_canal(
 
 
 def _ilot_discord(conn: sqlite3.Connection, depuis: str) -> dict[str, Any]:
-    """Le bot Discord : son service, les administrateurs, les tickets
-    ouverts et leurs messages privés (partis, ou pas partis)."""
+    """Le bot Discord : son service, le forum des tickets, les
+    administrateurs, les tickets ouverts et leurs fils (ouverts, ou pas)."""
     etat = etat_service('serge-discord-bot.service')
+    forum, _regle = forum_tickets(conn)
     noms = [
         str(r[0] or r[1])
         for r in conn.execute(
@@ -205,52 +206,57 @@ def _ilot_discord(conn: sqlite3.Connection, depuis: str) -> dict[str, Any]:
         conn,
         "SELECT COUNT(*) FROM tickets WHERE state IN ('OPEN', 'DISCUSSING')",
     )
-    envoyes = _compte(
+    cartes = _compte(
         conn,
-        "SELECT COUNT(*) FROM ticket_messages WHERE message_id<>''"
+        "SELECT COUNT(*) FROM ticket_posts WHERE thread_id<>''"
         ' AND updated_at>?',
         (depuis,),
     )
     rates = _compte(
         conn,
-        'SELECT COUNT(*) FROM ticket_messages WHERE shown_state IN (?, ?)',
+        'SELECT COUNT(*) FROM ticket_posts WHERE shown_state IN (?, ?)',
         (ECHEC, ECHEC_MODIF),
     )
-    if etat == 'inconnu' and not noms:
+    if etat == 'inconnu' and not forum and not noms:
         return _ilot(
             'discord',
             'Discord',
             'inconnu',
             0.0,
-            'Pas branché : pas de bot sur ce serveur, aucun administrateur.',
+            'Pas branché : pas de bot sur ce serveur, ni forum, ni'
+            ' administrateur.',
             [],
         )
-    details = [_service('Bot', etat)]
-    details.append(
+    details = [
+        _service('Bot', etat),
+        f'Forum des tickets : {forum}.'
+        if forum
+        else 'Pas de forum réglé : les tickets restent dans Mission Control'
+        ' (page Décisions).',
         f'Administrateurs : {", ".join(noms)}.'
         if noms
-        else 'Aucun administrateur : les tickets restent dans Mission'
-        ' Control (page Décisions).'
-    )
+        else 'Aucun administrateur : personne n’est mentionné, et personne'
+        ' ne peut trancher sur Discord (page Décisions).',
+    ]
     if rates:
         details.append(
-            f'{rates} messages privés pas partis : la personne n’est pas sur'
-            ' le serveur de Serge ou refuse les messages privés. Nouvel'
+            f'{rates} fils pas ouverts ou cartes pas mises à jour : le forum'
+            ' n’existe pas, ou le bot n’a pas le droit d’y écrire. Nouvel'
             ' essai toutes les 10 minutes.'
         )
     if _arrete(etat):
         sante = 'erreur'
-    elif rates or not noms:
+    elif rates or not forum or not noms:
         sante = 'degrade'
     else:
         sante = 'ok'
     resume = (
         f'{len(noms)} administrateurs, {ouverts} tickets ouverts,'
-        f' {envoyes} messages privés (24 h)'
+        f' {cartes} cartes envoyées ou mises à jour (24 h)'
     )
-    resume += f', {rates} pas partis' if rates else ''
+    resume += f', {rates} en échec' if rates else ''
     return _ilot(
-        'discord', 'Discord', sante, (ouverts + envoyes) / 10, resume, details
+        'discord', 'Discord', sante, (ouverts + cartes) / 10, resume, details
     )
 
 

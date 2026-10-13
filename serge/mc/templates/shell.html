@@ -237,8 +237,15 @@
 <div data-metriques="contenu"></div>
 </section>
 <section class="panneau" data-section="admins_discord" data-sig="">
-<h2>Administrateurs Discord</h2>
-<p>Chaque ticket leur est envoyé en message privé ; la première réponse, sur Discord ou ici, le tranche pour tous. Pour ajouter quelqu’un : son identifiant Discord (en mode développeur, clic droit sur la personne, « Copier l’identifiant »). Il doit être sur le serveur Discord de Serge, et reçoit les tickets ouverts après son ajout.</p>
+<h2>Discord</h2>
+<p>Chaque ticket ouvre un fil dans le forum des tickets du serveur de Serge et mentionne les administrateurs. Eux seuls peuvent y répondre ; la première réponse, sur Discord ou ici, le tranche pour tous, et le fil est archivé. Pour un identifiant : mode développeur de Discord, clic droit sur le salon ou la personne, « Copier l’identifiant ».</p>
+<h3>Forum des tickets</h3>
+<p data-forum="etat">…</p>
+<form data-forum="reglage">
+<label>Identifiant du forum <input name="forum_id" inputmode="numeric"></label>
+<button type="submit">Enregistrer</button>
+</form>
+<h3>Administrateurs</h3>
 <ul data-list="admins"></ul>
 <form data-admins="ajout">
 <label>Identifiant Discord <input name="user_id" inputmode="numeric" required></label>

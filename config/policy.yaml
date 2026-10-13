@@ -818,8 +818,8 @@ changes:
 
 # Les réglages retirés de ce fichier, effacés aussi de la base.
 deleted:
-  # Les tickets partent en message privé, à toute heure, sans résumé du
-  # jour (Q86) : plus rien ne lit ces deux réglages (Q78).
+  # Les tickets partent tout de suite, à toute heure, sans résumé du jour
+  # (Q86) : plus rien ne lit ces deux réglages (Q78).
   - tickets.digest_hour
   - windows.quiet_hours
   # Rien ne s'en servait : ils ne bornaient que d'autres réglages (Q78).

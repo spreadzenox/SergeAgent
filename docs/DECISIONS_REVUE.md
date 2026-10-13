@@ -1679,7 +1679,8 @@ Décidé :
    décision par défaut), réglables dans Mission Control.
 5. **Les administrateurs Discord de Serge sont en base**, et on en ajoute
    depuis Mission Control. Chaque ticket est envoyé à tous les
-   administrateurs, pour l'instant en message privé.
+   administrateurs, pour l'instant en message privé (remplacé par Q88 :
+   un fil par ticket dans le forum « tickets », qui les mentionne).
 6. **La première réponse ferme le ticket pour tous** : dès qu'un
    administrateur répond, le ticket est fermé instantanément chez tous les
    autres, et une ou plusieurs invocations sont réveillées pour réagir à
@@ -1700,9 +1701,11 @@ Décidé :
    ouvrent une fenêtre Discord, rattachée au ticket.
 3. **Les messages privés remplacent les salons** : le forum, le salon des
    urgences et le salon du résumé ne reçoivent plus rien, et leur code est
-   retiré.
+   retiré. (Remplacé par Q88 : les tickets reviennent dans le forum
+   « tickets », un fil par ticket ; plus de message privé.)
 4. **La nuit, un ticket part tout de suite, avec notification** : aucune
-   heure calme pour les messages privés.
+   heure calme pour les messages privés (avec Q88, la notification vient
+   de la mention des administrateurs).
 
 ### Q87 — L'essai peut naître en mode « Valider chaque brouillon » (validé par Clem, 12 octobre 2026)
 Constat : Clem allume « Valider chaque brouillon » sur la fiche du
@@ -1714,3 +1717,21 @@ Décidé : **pas de contournement, on corrige.** Le formulaire « Lancer un
 essai » a une case « Valider chaque brouillon ». Cochée, le business
 d'essai naît en mode validation : le premier e-mail et le premier appel
 attendent un administrateur sur Discord, comme chaque brouillon après.
+
+### Q88 — Les tickets dans le forum « tickets » du serveur, plus en message privé (demandé par Julien, validé par Clem, 13 octobre 2026)
+Constat : depuis Q86, chaque ticket part en message privé à chaque
+administrateur. Julien préfère les voir sur le serveur de Serge, dans le
+salon forum « tickets ».
+Décidé :
+1. **Un fil par ticket dans le forum « tickets »** : le premier message
+   est la carte du ticket, avec ses boutons. Une fois le ticket tranché,
+   la carte dit qui l'a tranché, les boutons sont morts et le fil est
+   archivé. Plus de message privé.
+2. **Chaque ticket mentionne les administrateurs en base** : ils reçoivent
+   une notification, à toute heure, comme avec les messages privés.
+3. **Seuls les administrateurs en base peuvent trancher** ; un autre
+   membre du serveur reçoit un refus.
+4. **Le forum se règle dans Mission Control** (page Décisions, par son
+   identifiant), en base. Tant qu'il est vide, les tickets restent dans
+   Mission Control ; seuls les tickets ouverts après le réglage ont un
+   fil.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Client REST Discord v10 (stdlib) : messages privés, messages, callbacks.
+"""Client REST Discord v10 (stdlib) : fils de forum, messages, callbacks.
 
 Token en header uniquement, jamais logué. 429 = backoff borné puis erreur
 typée. Toutes les erreurs sont DiscordError à code routable.
@@ -206,9 +206,16 @@ def delete_message(
     )
 
 
-def create_dm(token: str, user_id: str, *, base_url: str = DISCORD_API) -> str:
-    """Ouvre (ou retrouve) le message privé avec une personne ; rend l'id
-    du canal. La personne doit partager un serveur avec le bot.
+def create_forum_post(
+    token: str,
+    forum_id: str,
+    name: str,
+    message: dict[str, Any],
+    *,
+    base_url: str = DISCORD_API,
+) -> str:
+    """Ouvre un fil dans un forum, avec son premier message ; rend l'id du
+    fil, qui est aussi celui de ce premier message.
 
     Raises:
         DiscordError: Voir _request.
@@ -216,13 +223,55 @@ def create_dm(token: str, user_id: str, *, base_url: str = DISCORD_API) -> str:
     result = _request(
         token,
         'POST',
-        '/users/@me/channels',
-        {'recipient_id': user_id},
+        f'/channels/{forum_id}/threads',
+        {'name': name[:100] or 'Ticket', 'message': message},
         base_url=base_url,
     )
     if not isinstance(result, dict) or not result.get('id'):
-        raise DiscordError('API: ouverture du message privé invalide')
+        raise DiscordError('API: ouverture du fil invalide')
     return str(result['id'])
+
+
+def archive_thread(
+    token: str,
+    thread_id: str,
+    archived: bool,
+    *,
+    base_url: str = DISCORD_API,
+) -> None:
+    """Archive un fil, ou le rouvre (pour modifier sa carte).
+
+    Raises:
+        DiscordError: Voir _request.
+    """
+    _request(
+        token,
+        'PATCH',
+        f'/channels/{thread_id}',
+        {'archived': archived},
+        base_url=base_url,
+    )
+
+
+def _post_interaction(
+    url: str, payload: dict[str, Any], timeout: float
+) -> None:
+    """POST sur une URL d'interaction (pas de token bot : celui de
+    l'interaction est dans l'URL)."""
+    data = json.dumps(payload, ensure_ascii=False).encode('utf-8')
+    request = urllib.request.Request(
+        url,
+        data=data,
+        headers={'Content-Type': 'application/json', 'User-Agent': USER_AGENT},
+        method='POST',
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=timeout):
+            pass
+    except urllib.error.HTTPError as exc:
+        raise DiscordError(f'API: interaction HTTP {exc.code}') from exc
+    except (urllib.error.URLError, TimeoutError, OSError) as exc:
+        raise DiscordError(f'NETWORK: interaction ({exc})') from exc
 
 
 def interaction_callback(
@@ -233,7 +282,7 @@ def interaction_callback(
     base_url: str = DISCORD_API,
     timeout: float = 10.0,
 ) -> None:
-    """Ack une interaction (pas de token bot : token d'interaction).
+    """Répond à une interaction, dans les 3 secondes.
 
     Types : 1 pong, 4 message, 5 deferred, 6 deferred update, 7 update,
     9 fenêtre de saisie.
@@ -241,23 +290,29 @@ def interaction_callback(
     Raises:
         DiscordError: NETWORK/API (jamais AUTH : pas de secret ici).
     """
-    url = (
+    _post_interaction(
         f'{base_url.rstrip("/")}/interactions/{interaction_id}/'
-        f'{interaction_token}/callback'
+        f'{interaction_token}/callback',
+        callback,
+        timeout,
     )
-    data = json.dumps(callback, ensure_ascii=False).encode('utf-8')
-    request = urllib.request.Request(
-        url,
-        data=data,
-        headers={'Content-Type': 'application/json'},
-        method='POST',
+
+
+def interaction_followup(
+    application_id: str,
+    interaction_token: str,
+    message: dict[str, Any],
+    *,
+    base_url: str = DISCORD_API,
+    timeout: float = 10.0,
+) -> None:
+    """Un message de suite, après la réponse (valable 15 minutes).
+
+    Raises:
+        DiscordError: NETWORK/API.
+    """
+    _post_interaction(
+        f'{base_url.rstrip("/")}/webhooks/{application_id}/{interaction_token}',
+        message,
+        timeout,
     )
-    try:
-        with urllib.request.urlopen(request, timeout=timeout):
-            pass
-    except urllib.error.HTTPError as exc:
-        raise DiscordError(
-            f'API: callback interaction HTTP {exc.code}'
-        ) from exc
-    except (urllib.error.URLError, TimeoutError, OSError) as exc:
-        raise DiscordError(f'NETWORK: callback ({exc})') from exc

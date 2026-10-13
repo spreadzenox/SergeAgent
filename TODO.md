@@ -353,7 +353,7 @@ discutable, qui peut un jour changer, se règle depuis Mission Control.**
   Cette tâche a besoin des liens entre invocations et de la construction
   de l'étape 5. Le lien entre la conception et la construction peut être
   réglé à la main : Julien donne son feu vert par le ticket « Passage »
-  qu'il reçoit en message privé, ou avec « Passer à la suite » sur la
+  qu'il reçoit dans le forum Discord, ou avec « Passer à la suite » sur la
   fiche du lien dans MC (lot 8 bis, Q62).
 
 ---

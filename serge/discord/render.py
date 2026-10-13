@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Rendu tickets → carte Discord FR + boutons, envoyée en message privé.
+"""Rendu tickets → carte Discord FR + boutons, dans le fil du ticket.
 
 Déterministe : embed + boutons depuis le type du ticket en base (boutons,
 couleur, emoji). IDs backend strippés du visible (custom_id uniquement).

@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-"""Projecteurs P3 Décisions : administrateurs Discord, types de tickets.
+"""Projecteurs P3 Décisions : Discord (forum et administrateurs), types de
+tickets.
 
-Décisions Q85 et Q86 : chaque ticket part en message privé à chaque
-administrateur ; les délais, décisions par défaut et boutons des types de
-tickets se règlent ici.
+Décisions Q85, Q86 et Q88 : chaque ticket ouvre un fil dans le forum
+« tickets » du serveur de Serge et mentionne les administrateurs ; les
+délais, décisions par défaut et boutons des types de tickets se règlent
+ici.
 """
 
 from __future__ import annotations
@@ -12,6 +14,7 @@ import sqlite3
 from collections.abc import Mapping
 from typing import Any
 
+from serge.discord.forum import forum_tickets
 from serge.tickets.acts import BOUTONS
 from serge.tickets.admins import admins
 from serge.tickets.types import ticket_types
@@ -20,17 +23,20 @@ from serge.tickets.types import ticket_types
 def project_admins_discord(
     conn: sqlite3.Connection, policy: Mapping[str, Any], now: str
 ) -> dict[str, Any]:
-    """Les administrateurs Discord de Serge.
+    """Le forum des tickets et les administrateurs Discord de Serge.
 
     Returns:
-        Dict {admins: [{user_id, name, added_at}]}.
+        Dict {forum: {id, depuis} ('' sans forum), admins: [{user_id, name,
+        added_at}]}.
     """
     _ = (policy, now)
+    forum, depuis = forum_tickets(conn)
     return {
+        'forum': {'id': forum, 'depuis': depuis},
         'admins': [
             {k: a[k] for k in ('user_id', 'name', 'added_at')}
             for a in admins(conn)
-        ]
+        ],
     }
 
 

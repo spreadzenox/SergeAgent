@@ -1,7 +1,8 @@
-// Page Décisions : les administrateurs Discord et les types de tickets
-// (décisions Q85 et Q86). Chaque ticket part en message privé à chaque
-// administrateur ; la première réponse le tranche pour tous.
-import {confirmModal, fillList, li, toast} from '../components.js';
+// Page Décisions : Discord (le forum des tickets, les administrateurs) et
+// les types de tickets (décisions Q85, Q86 et Q88). Chaque ticket ouvre un
+// fil dans le forum et mentionne les administrateurs ; la première réponse
+// le tranche pour tous.
+import {confirmModal, fillList, li, rel, toast} from '../components.js';
 import {libelleActe, poster, rafraichir} from './tickets_actes.js';
 
 // « 2880 » → « 2 j » ; vide : jamais.
@@ -34,10 +35,18 @@ async function agir(main, store, chemin, charge, succes) {
 
 export function renderAdmins(main, payload, sig, store) {
   const section = main.querySelector('[data-section="admins_discord"]');
+  const forum = payload.forum || {};
+  section.querySelector('[data-forum="etat"]').textContent = forum.id
+    ? `Forum ${forum.id}, réglé ${rel(forum.depuis)} : les tickets ouverts depuis y ont leur fil.`
+    : 'Pas de forum réglé : les tickets restent ici, dans Mission Control.';
+  const champ = section.querySelector('[data-forum="reglage"]').elements.forum_id;
+  if (document.activeElement !== champ) {
+    champ.value = forum.id || '';
+  }
   fillList(
     section.querySelector('[data-list="admins"]'),
     payload.admins || [],
-    'Aucun administrateur : aucun ticket ne part sur Discord.',
+    'Aucun administrateur : personne n’est mentionné, et personne ne peut trancher sur Discord.',
     (admin) => {
       const node = li(`${admin.name || 'Sans nom'} — ${admin.user_id}`);
       const retirer = document.createElement('button');
@@ -47,7 +56,7 @@ export function renderAdmins(main, payload, sig, store) {
       retirer.addEventListener('click', async () => {
         const oui = await confirmModal(document.body, {
           title: 'Retirer cet administrateur ?',
-          message: `${admin.name || admin.user_id} ne recevra plus les tickets.`,
+          message: `${admin.name || admin.user_id} ne sera plus mentionné, et ne pourra plus trancher sur Discord.`,
           confirm: 'Retirer',
           danger: true,
         });
@@ -81,11 +90,25 @@ export function brancherAjoutAdmin(main, store) {
         user_id: form.elements.user_id.value.trim(),
         name: form.elements.name.value.trim(),
       },
-      'Administrateur ajouté : il recevra les prochains tickets.',
+      'Administrateur ajouté : il sera mentionné dans les prochains tickets.',
     );
     if (ok) {
       form.reset();
     }
+  });
+  const reglage = main.querySelector('[data-forum="reglage"]');
+  reglage.addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const forumId = reglage.elements.forum_id.value.trim();
+    await agir(
+      main,
+      store,
+      '/owner/api/discord/forum',
+      {forum_id: forumId},
+      forumId
+        ? 'Forum réglé : les prochains tickets y ouvriront leur fil.'
+        : 'Plus de forum : les tickets restent dans Mission Control.',
+    );
   });
 }
 

@@ -3,6 +3,8 @@
 
 - POST /owner/api/discord/admin : ajouter un administrateur (identifiant
   Discord et nom) ou le retirer ;
+- POST /owner/api/discord/forum : régler le forum des tickets (son
+  identifiant ; vide, les tickets restent dans Mission Control) ;
 - POST /owner/api/ticket/type : changer le délai, la décision par défaut
   annoncée ou les boutons d'un type de ticket ;
 - POST /owner/api/business/validation : chaque brouillon d'un business
@@ -14,6 +16,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Protocol
 
 from serge.db.store import append_event
+from serge.discord.forum import regler_forum
 from serge.tickets.admins import add_admin, remove_admin
 from serge.tickets.types import set_ticket_type
 
@@ -35,7 +38,7 @@ else:
 
 
 class DiscordActionsMixin(_Base):
-    """POST /owner/api/discord/admin et /owner/api/ticket/type."""
+    """POST /owner/api/discord/admin, /discord/forum et /ticket/type."""
 
     def _api_discord_admin(self) -> None:
         if not self._require_owner():
@@ -61,6 +64,27 @@ class DiscordActionsMixin(_Base):
                 erreur = remove_admin(conn, user_id, 'owner')
             if erreur:
                 self._refus(400, erreur, 'user_id', erreur)
+                return
+        self._send_json(200, {'ok': True})
+
+    def _api_discord_forum(self) -> None:
+        if not self._require_owner():
+            return
+        body = self._json_body()
+        if body is None or not isinstance(body.get('forum_id', ''), str):
+            self._refus(
+                400,
+                'Identifiant du forum requis.',
+                'forum_id',
+                'Envoie {"forum_id": "…"} (vide : plus de forum).',
+            )
+            return
+        with self._db() as conn:
+            erreur = regler_forum(
+                conn, str(body.get('forum_id') or ''), 'owner'
+            )
+            if erreur:
+                self._refus(400, erreur, 'forum_id', erreur)
                 return
         self._send_json(200, {'ok': True})
 

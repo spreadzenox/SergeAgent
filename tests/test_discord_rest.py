@@ -17,8 +17,9 @@ sys.path.insert(0, str(ROOT))
 
 from serge.discord.rest import (  # noqa: E402
     DiscordError,
+    archive_thread,
     bot_token,
-    create_dm,
+    create_forum_post,
     delete_message,
     edit_message,
     get_channel,
@@ -97,17 +98,30 @@ class DiscordRestTests(unittest.TestCase):
             delete_message('tok-fake-5', 'c1', 'm1')
         self.assertEqual(mocked.call_args[0][0].get_method(), 'DELETE')
 
-    def test_message_prive(self) -> None:
+    def test_un_fil_dans_le_forum(self) -> None:
         with mock.patch(
             'urllib.request.urlopen',
-            return_value=_response({'id': 'dm1'}),
+            return_value=_response({'id': 'fil1'}),
         ) as mocked:
-            canal = create_dm('tok-fake-6', '999988887777666555')
-        self.assertEqual(canal, 'dm1')
+            fil = create_forum_post(
+                'tok-fake-6', 'forum1', 'Un ticket', {'content': 'x'}
+            )
+        self.assertEqual(fil, 'fil1')
         request = mocked.call_args[0][0]
-        self.assertIn('/users/@me/channels', request.full_url)
+        self.assertIn('/channels/forum1/threads', request.full_url)
         body = json.loads(request.data.decode('utf-8'))
-        self.assertEqual(body, {'recipient_id': '999988887777666555'})
+        self.assertEqual(
+            body, {'name': 'Un ticket', 'message': {'content': 'x'}}
+        )
+        with mock.patch(
+            'urllib.request.urlopen', return_value=_response({'id': 'fil1'})
+        ) as mocked:
+            archive_thread('tok-fake-6', 'fil1', True)
+        request = mocked.call_args[0][0]
+        self.assertEqual(request.get_method(), 'PATCH')
+        self.assertEqual(
+            json.loads(request.data.decode('utf-8')), {'archived': True}
+        )
 
     def test_429_puis_succes(self) -> None:
         with (

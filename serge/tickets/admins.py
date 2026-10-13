@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Les administrateurs Discord de Serge (décision Q86).
 
-Chaque administrateur reçoit chaque ticket en message privé, et n'importe
-lequel peut y répondre : la première réponse tranche le ticket pour tous.
-On les ajoute dans Mission Control par leur identifiant Discord (mode
-développeur de Discord, « Copier l'identifiant »). Pour que le bot puisse
-lui écrire, la personne doit être sur le serveur Discord de Serge.
+Chaque ticket ouvre un fil dans le forum « tickets » du serveur de Serge
+et mentionne les administrateurs (décision Q88). Seuls eux peuvent y
+répondre : la première réponse tranche le ticket pour tous. On les ajoute
+dans Mission Control par leur identifiant Discord (mode développeur de
+Discord, « Copier l'identifiant ») ; ils doivent être sur le serveur.
 """
 
 from __future__ import annotations
@@ -57,8 +57,7 @@ def add_admin(
 ) -> str:
     """Ajoute un administrateur ; rend ce qui ne va pas, ou ``''``.
 
-    Il reçoit les tickets ouverts après son ajout ; les plus anciens restent
-    dans Mission Control (page Décisions).
+    Il est mentionné dans les tickets ouverts après son ajout.
     """
     user_id = user_id.strip()
     if not _SNOWFLAKE.fullmatch(user_id):
@@ -85,15 +84,12 @@ def add_admin(
 def remove_admin(conn: sqlite3.Connection, user_id: str, by: str) -> str:
     """Retire un administrateur ; rend ce qui ne va pas, ou ``''``.
 
-    Il ne reçoit plus de ticket ; ses anciens messages restent chez lui.
+    Il n'est plus mentionné, et ne peut plus trancher un ticket sur
+    Discord.
     """
     if not is_admin(conn, user_id):
         return 'pas administrateur'
     conn.execute('DELETE FROM discord_admins WHERE user_id=?', (user_id,))
-    conn.execute(
-        "DELETE FROM ticket_messages WHERE user_id=? AND message_id=''",
-        (user_id,),
-    )
     append_event(
         conn,
         actor=by,

@@ -225,14 +225,25 @@ class McTicketsTests(McBrowserCase):
         expect(metriques).to_contain_text('Taux d’approbation :')
 
     def test_administrateurs_et_types_de_tickets(self) -> None:
-        """Ajouter puis retirer un administrateur Discord ; changer le délai
-        d'un type de ticket (décisions Q85 et Q86)."""
+        """Régler le forum des tickets ; ajouter puis retirer un
+        administrateur Discord ; changer le délai d'un type de ticket
+        (décisions Q85, Q86 et Q88)."""
         import sqlite3
 
         from playwright.sync_api import expect
 
         page = self._page_tickets()
         admins = page.locator('[data-section="admins_discord"]')
+        expect(admins).to_contain_text('Pas de forum réglé')
+        reglage = admins.locator('[data-forum="reglage"]')
+        reglage.locator('input[name="forum_id"]').fill('tickets')
+        reglage.locator('button[type="submit"]').click()
+        expect(page.locator('.toast').last).to_contain_text('17 à 20 chiffres')
+        reglage.locator('input[name="forum_id"]').fill('222233334444555566')
+        reglage.locator('button[type="submit"]').click()
+        expect(admins.locator('[data-forum="etat"]')).to_contain_text(
+            'Forum 222233334444555566'
+        )
         expect(admins).to_contain_text('Aucun administrateur')
         form = admins.locator('[data-admins="ajout"]')
         form.locator('input[name="user_id"]').fill('123')

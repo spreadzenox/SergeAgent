@@ -215,14 +215,15 @@ CATALOGUE: dict[str, tuple[str, str, str, str]] = {
     'discord_admins': (
         'Les administrateurs Discord de Serge (décision Q86).',
         'Mission Control (page Décisions), Julien au premier démarrage.',
-        'Le bot Discord : chaque ticket part en message privé à chacun.',
+        'Le bot Discord : chaque ticket les mentionne ; eux seuls tranchent.',
         'user_id : l’identifiant Discord, copié en mode développeur.',
     ),
-    'ticket_messages': (
-        'Le message privé de chaque ticket, chez chaque administrateur.',
-        'Le bot Discord, à l’envoi.',
-        'Le bot Discord : un ticket tranché est mis à jour chez tous.',
-        'shown_state : l’état du ticket que montre le message.',
+    'ticket_posts': (
+        'Le fil de chaque ticket dans le forum Discord « tickets ».',
+        'Le bot Discord, à l’ouverture du fil.',
+        'Le bot Discord : la carte suit le ticket ; tranché, le fil est'
+        ' archivé.',
+        'shown_state : l’état du ticket que montre la carte.',
     ),
     'ticket_answers': (
         'Chaque réponse à un ticket : le bouton, le texte, qui a répondu.',
