@@ -333,6 +333,8 @@ décisions suivantes :
 - le prix définitif, le plan, la fiche et le nom de domaine du vrai
   produit, à l'étape 5 ; ce ticket n'expire jamais ;
 - le produit fini, avant la prospection lourde, essayé de la même façon ;
+- un nom de domaine qui n'a pas pu être acheté (pris, trop cher) : Serge
+  propose des noms libres ; ce ticket n'expire jamais ;
 - pivoter ou arrêter le business principal, une nouvelle fonctionnalité
   importante ou un changement de prix, à l'étape 6 ;
 - chaque message et chaque publication sur LinkedIn ;

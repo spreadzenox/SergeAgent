@@ -15,7 +15,11 @@ import os
 import shutil
 import subprocess
 import sys
+from collections.abc import Mapping
 from pathlib import Path
+
+from serge.paths import config_root
+from serge.secrets import read_secret_file
 
 
 class DockerError(RuntimeError):
@@ -27,8 +31,42 @@ def journal(texte: str) -> None:
     print(f'bac à sable : {texte}', file=sys.stderr, flush=True)
 
 
-def _env() -> dict[str, str]:
+def secret_env(spec: str) -> dict[str, str]:
+    """Les secrets à donner à un conteneur, d'après leur réglage en base.
+
+    ``spec`` liste des paires ``VARIABLE=fichier`` séparées par des
+    virgules, par exemple ``STRIPE_SECRET_KEY=stripe-test.key`` : la
+    valeur est lue dans les secrets de l'instance. Elle passe au conteneur
+    par l'environnement de la commande ``docker`` (``-e VARIABLE``), jamais
+    sur sa ligne de commande.
+
+    Raises:
+        DockerError: Un fichier de secret est absent ; la raison est notée
+            au journal.
+    """
+    values: dict[str, str] = {}
+    for pair in spec.split(','):
+        name, _, fichier = pair.strip().partition('=')
+        if not name:
+            continue
+        valeur = read_secret_file(config_root() / 'secrets' / fichier.strip())
+        if not valeur:
+            message = f'secret absent sur ce serveur : {fichier.strip()}'
+            journal(message)
+            raise DockerError(message)
+        values[name.strip()] = valeur
+    return values
+
+
+def env_flags(values: Mapping[str, str]) -> list[str]:
+    """``-e VARIABLE`` pour chaque secret : Docker lit la valeur dans son
+    propre environnement."""
+    return [flag for name in values for flag in ('-e', name)]
+
+
+def _env(extra: Mapping[str, str] | None = None) -> dict[str, str]:
     env = dict(os.environ)
+    env.update(extra or {})
     if not env.get('DOCKER_HOST'):
         runtime = env.get('XDG_RUNTIME_DIR') or f'/run/user/{os.getuid()}'
         socket = Path(runtime) / 'docker.sock'
@@ -54,12 +92,14 @@ def docker(
     timeout: float,
     stdin: str | None = None,
     check: bool = True,
+    secrets: Mapping[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
     """Lance ``docker <args>`` et rend son résultat.
 
     Avec ``check``, tout code de retour non nul est une panne ; sans, seul
     un refus de Docker lui-même en est une (voir ``_refus_du_service``) :
     le résultat d'une commande lancée dans un conteneur est rendu tel quel.
+    ``secrets`` : des variables pour ``-e VARIABLE`` (voir ``secret_env``).
 
     Raises:
         DockerError: Docker absent, muet ou qui refuse ; la raison est
@@ -79,7 +119,7 @@ def docker(
             encoding='utf-8',
             errors='replace',
             timeout=timeout,
-            env=_env(),
+            env=_env(secrets),
             check=False,
         )
     except subprocess.TimeoutExpired as exc:

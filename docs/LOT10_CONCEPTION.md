@@ -435,10 +435,10 @@ ses quotas en base, comme le demande la règle de tous les lots.
 - **`product_sheets`** et **`product_faq`** (lot 8) : écrites par la
   conception, mises à jour à chaque nouvelle version (Q50).
 - **`ventures`** : un business passe de `POC_SELECTED` à `SMOKE_READY`
-  quand son POC est validé, en ligne et sa campagne prête. Pour l'étape 5,
-  deux statuts proposés : `PRODUCT_BUILDING` puis `PRODUCT_READY`. Le
-  statut d'un business choisi comme principal sera fixé au lot 11, avec
-  l'étape 4.
+  quand son POC est validé, en ligne et sa campagne prête. À l'étape 5
+  (PR 7) : `PRODUCT_BUILDING` (son produit fini est en construction) puis
+  `PRODUCT_READY` (en vente sur son domaine, le paiement test arrivé),
+  d'où part la prospection lourde du lot 11 (`LOT11_CONCEPTION.md`).
 
 ---
 
@@ -474,50 +474,57 @@ est réel jusqu'à la prod
 
 ## 9. L'étape 5 dans le pipeline
 
+Fait au lot 10, PR 7 : le détail, invocation par invocation, est dans
+[`etapes/5-construction.md`](etapes/5-construction.md). Tout est en
+base : invocations, liens, tickets ; aucune ligne de code ne leur est
+propre. Le code a seulement appris des choses générales : donner à un
+conteneur des secrets réglés en base (`env_secrets` : la clé Stripe d'un
+produit, lue dans les secrets de l'instance et passée par
+l'environnement), dire l'adresse publique du serveur (capacité « Adresse
+du serveur »), et l'état des demandes des clients (migration v49).
+
 L'étape 5 part du business principal choisi à l'étape 4, qui arrive au
 lot 11. En attendant, elle se lance par un bouton sur la fiche d'un
-business, « Construire le vrai produit », réservé aux essais. Le lot 11
-le remplacera par un lien depuis l'étape 4.
+business, « Construire le vrai produit » (pour un business au test
+léger), ou par « Bout en bout : le produit fini d'une calculatrice » sur
+la page Système. Le lot 11 les remplacera par un lien depuis l'étape 4.
 
-1. **Concevoir le produit** (LLM, niveau intelligent). Elle part du plan
-   du POC et de la fiche produit, et reçoit d'office toutes les demandes
-   des clients du business, les objections et les questions des prospects
-   (avec leur texte), et les points du business. Elle écrit le plan du
-   vrai produit (`kind` = `product`), le prix définitif proposé, le nom de
-   domaine proposé, la fiche produit mise à jour, et marque chaque demande
-   retenue ou refusée avec sa raison.
-2. **Challenger le produit** : même boucle qu'à l'étape 2, 3 tours au
-   plus (Q41).
-3. **Ticket « Plan »** : Julien valide le plan, le prix, la fiche produit
-   et le nom de domaine, et voit quelles demandes des clients sont
-   retenues. Ce ticket n'expire jamais (Q91).
-4. **Acheter le domaine** : Serge achète seul le nom validé dans le
-   ticket, et le fait pointer vers le VPS, par les outils du bureau
-   d'enregistrement (partie 6). Un domaine plus cher que le prix maximum
-   (partie 11) n'est pas acheté : Serge en propose un autre dans un
-   nouveau ticket.
-5. **Construire, publier en staging, relire** : la même boucle qu'à
-   l'étape 2. Le produit et son prix sont créés dans Stripe en mode test
-   par les outils de la partie 6. Les scénarios de test vont jusqu'au
-   paiement, avec la carte de test.
-6. **Ticket « Tester le produit »**, avec le lien du staging.
-7. **Mettre en vente** : le produit et son prix sont créés dans Stripe en
-   vrai mode, puis la version validée est publiée en prod sur le domaine
-   du produit.
-8. **Le paiement test de 1 €** (Q41), fait par Serge seul (Q91) : Serge
-   crée un prix de 1 € sur le produit et un lien de paiement. Une
-   invocation (LLM, avec l'interface web) ouvre le lien et paie avec la
-   carte de Serge, par l'outil « Taper un secret ». Serge vérifie que le
-   paiement est arrivé par le webhook et qu'il est rattaché au business,
-   puis se rembourse. Le parcours de paiement du produit lui-même a été
-   essayé en staging, en mode test.
-9. Le business passe à `PRODUCT_READY` ; l'étape 6 (lot 11) prend la
-   suite.
+Le déroulé : concevoir le produit (avec les demandes des clients et les
+réponses des prospects), le challenger (3 tours), le ticket « Plan » (prix
+et domaine, sans expiration), le produit et son prix dans Stripe en mode
+test, construire, publier en staging, relire jusqu'au paiement (carte de
+test), le ticket « Tester le produit », acheter le domaine, mettre en
+vente dans Stripe en vrai mode, publier en prod sur le domaine, le
+paiement test de 1 € remboursé, et le business passe à la prospection
+lourde.
+
+**Ce qui s'écarte du plan d'origine, à valider par Clem :**
+
+- **Le domaine est acheté après le ticket de test**, pas juste après le
+  ticket « Plan » : son nom est toujours validé dans le ticket « Plan »,
+  mais rien n'est dépensé pour un produit qu'un humain arrête à l'essai.
+  Le staging n'a pas besoin du domaine.
+- **Le paiement test est vérifié par l'API de Stripe** (la session du
+  lien de paiement est payée, son montant, son paiement), pas par le
+  webhook : un paiement par lien n'a pas d'intention connue d'avance dans
+  `transactions`, que le webhook saurait rattacher. Serge l'y note ensuite
+  (`kind` = `canary`, l'identifiant du business porté par le prix). Le
+  rattachement des paiements par le webhook vient avec la caisse
+  (étape 8, lot 11).
+- **Le produit n'a jamais la clé Stripe complète de Serge** : la clé du
+  mode test en staging, une clé restreinte du vrai mode en prod
+  (`stripe-produits-live.key`, à créer une fois, voir
+  [`installation/STRIPE.md`](installation/STRIPE.md)). Il retrouve son
+  prix par sa clé de recherche (`lookup_key` : le numéro du business),
+  sans rien changer à son code entre le staging et la prod.
+- **Le domaine pointe vers le serveur par un seul enregistrement A**
+  (`@`) : `www.` n'est pas servi pour le moment.
 
 **Les versions suivantes** (Q41, Q43) passent par la même boucle
 « construire, publier en staging, relire ». Une version que le relecteur
-juge bonne part seule en prod, avec un ticket d'information. Cette boucle
-servira à l'étape 6, au lot 11.
+juge bonne partira seule en prod, avec un ticket d'information. Cette
+boucle viendra avec l'étape 6, au lot 11, comme le passage d'une demande
+des clients à « livrée ».
 
 ---
 
@@ -535,9 +542,13 @@ Q85), réglables sur la page Décisions. Leurs boutons : « Valider »,
   l'adresse du staging, les scénarios de test, le verdict du relecteur.
   Il **n'expire jamais** : rien ne part vers des prospects sans qu'un
   humain ait essayé le produit (Q91).
-- **« Plan » et « Tester le produit » du produit fini** (PR 7) : le
-  ticket du plan n'expire pas non plus, puisqu'il fixe le prix définitif
-  et le nom de domaine (Q91).
+- **« Plan » et « Tester le produit » du produit fini** (`PLAN_PRODUIT`,
+  `TEST_PRODUIT`, PR 7) : le ticket du plan n'expire pas non plus,
+  puisqu'il fixe le prix définitif et le nom de domaine (Q91).
+- **« Domaine »** (`DOMAINE_PRODUIT`, PR 7) : le domaine validé n'a pas
+  pu être acheté (pris, trop cher, refusé) ; Serge propose des noms
+  libres. « À corriger » avec un nom achète ce nom ; « Valider » réessaie.
+  Il n'expire pas.
 
 Ils remplacent les tickets d'information prévus aux étapes 2 et 5 (Q35,
 Q41). Les tickets restent pour les achats importants et les étapes
@@ -558,7 +569,9 @@ Sur la page **Policy** :
 - le profil « produit » : processeurs et mémoire de chaque produit en
   ligne (partie 5) ;
 - le prix maximum d'un domaine acheté pour un produit fini : 30 € par an
-  au départ.
+  au départ, la première année comme le renouvellement (réglage
+  « prix_max_eur » de l'invocation « Acheter le domaine du produit »,
+  PR 7).
 
 Sur la page **Pipeline** : le niveau « code » (prix maximum, tolérance,
 lecture des images) et le nombre de captures gardées dans l'historique.
@@ -584,7 +597,12 @@ plus, 3 passages de construction au plus, les tours d'outils de
   produit, un prix de 1 € par mois et un lien de paiement pour ce
   business. Un bouton qui attend un business (un champ `venture_id`) est
   sur la fiche du business, rempli par elle, et pas sur la page Système.
-- **Un bouton « Construire le vrai produit »**, temporaire (partie 9).
+- **Un bouton « Construire le vrai produit »** sur la fiche d'un
+  business au test léger, temporaire (partie 9, PR 7), et l'essai « Bout
+  en bout : le produit fini d'une calculatrice » sur la page Système. La
+  fiche du business montre le domaine du plan d'un produit et un cadre
+  « Les demandes des clients » : chacune, son état (nouvelle, retenue,
+  refusée, livrée) et sa raison.
 - **La fiche d'une tâche** montre ses captures gardées ; un clic ouvre
   l'image en grand. Mission Control sert un fichier rangé sous `files/`,
   et rien d'autre, à une session connectée (`/owner/api/fichier`).
@@ -653,6 +671,11 @@ le vrai modèle, sur une machine avec Docker.
 
 ## 15. Ce qui reste ouvert
 
-- **Le bureau d'enregistrement** : à choisir à l'installation, avec Julien.
-  Il doit savoir acheter un domaine et régler son DNS par son API
-  (partie 6).
+- **Le bureau d'enregistrement** : Hostinger, celui du domaine de Serge
+  (PR 7). Son jeton d'API, un moyen de paiement par défaut et un profil
+  WHOIS par extension sont à poser une fois
+  ([`installation/DOMAINES.md`](installation/DOMAINES.md)).
+- **Les écarts de l'étape 5** à valider (partie 9) : le domaine acheté
+  après l'essai, le paiement test vérifié par l'API de Stripe.
+- **Une banque qui exige 3-D Secure** pour le paiement test de 1 € : Serge
+  s'arrête et un ticket le dit. Le faire à la main une fois.

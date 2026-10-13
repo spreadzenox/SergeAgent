@@ -15,6 +15,13 @@ _OU = (
     Param('venture_id', 'text', True, 'Le business du chantier.'),
     Param('deliverable', 'text', True, 'Le livrable : poc, produit…'),
     Param('profile', 'text', True, 'Le profil du bac à sable (Policy).'),
+    Param(
+        'env_secrets',
+        'text',
+        False,
+        'Les secrets du conteneur, à sa création :'
+        ' STRIPE_SECRET_KEY=stripe-test.key.',
+    ),
 )
 
 CHANTIER: tuple[Capability, ...] = (

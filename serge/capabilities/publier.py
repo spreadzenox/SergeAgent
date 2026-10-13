@@ -29,6 +29,22 @@ PUBLIER: tuple[Capability, ...] = (
             Param('slug', 'text', False, 'Le nom court du produit.'),
             Param('domain', 'text', False, 'Le domaine du produit fini.'),
             Param('task_id', 'text', False, 'La tâche qui publie.'),
+            Param(
+                'env_secrets',
+                'text',
+                False,
+                'Les secrets du produit, figés en base :'
+                ' STRIPE_SECRET_KEY=stripe-test.key.',
+            ),
         ),
+    ),
+    Capability(
+        'server_address',
+        'Adresse du serveur',
+        'Rend le domaine de l’instance et l’adresse IPv4 publique du'
+        ' serveur de Serge, pour faire pointer le domaine d’un produit vers'
+        ' lui (un enregistrement DNS de type A).',
+        'serge/ingress/adresse.py',
+        (),
     ),
 )

@@ -122,7 +122,9 @@ conversation (lot 8 bis, décisions Q85 et Q86), la grille de points
   Serge construit, essaie et met en ligne, d'abord le POC, ensuite le vrai
   produit. Ce sont les étapes 2 et 5 ; l'étape 2 est en base depuis la
   PR 4 du lot, « Appeler une API » et les outils Stripe depuis la PR 5,
-  reste l'étape 5. Seulement des produits web, payants
+  l'étape 5 depuis la PR 7 (avec l'achat des domaines chez Hostinger et le
+  paiement test de 1 €) ; restent les versions suivantes d'un produit,
+  avec l'étape 6. Seulement des produits web, payants
   pour le produit fini (Q91). Le lot apporte trois capacités d'abord
   prévues au lot 12 : le bac à sable (un conteneur où le constructeur code
   et lance son produit), l'interface web des invocations (lire une page et
@@ -561,12 +563,16 @@ système complet (Q92, Q93).
   premiers messages.
   Même chose pour les essais du lot 10 (Q91) : « Essayer le chantier »,
   « Essayer l'interface web », « Publier le chantier d'essai »,
-  « Essayer l'étape 2 », « Bout en bout : le POC d'une calculatrice » et
-  « Essayer Stripe (mode test) », avec leurs invocations temporaires
+  « Essayer l'étape 2 », « Bout en bout : le POC d'une calculatrice »,
+  « Bout en bout : le produit fini d'une calculatrice » et « Essayer
+  Stripe (mode test) », avec leurs invocations temporaires
   (essayer_chantier, essayer_navigateur, publier_essai,
   creer_business_essai, choisir_business_essai, bout_en_bout_poc,
-  essayer_stripe), et les deux changements de statut qu'il permet
-  (un business qui naît choisi pour un POC, un plan qui naît validé). Les boutons « Supprimer de Stripe » restent : ils
+  bout_en_bout_produit, essayer_stripe), et les changements de statut
+  qu'ils permettent (un business qui naît choisi pour un POC ou en
+  construction de son produit, un plan qui naît validé). Le bouton
+  « Construire le vrai produit » (lancer_produit) part quand l'étape 4
+  (lot 11) choisira le business principal. Les boutons « Supprimer de Stripe » restent : ils
   nettoient après un business d'essai.
 
 - [ ] **La consolidation de la mémoire dans le pipeline.** Aujourd'hui,

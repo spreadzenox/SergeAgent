@@ -27,7 +27,13 @@ from typing import Any
 
 from serge.db.store import append_event, utcnow
 from serge.policy_store import policy_en_vigueur
-from serge.sandbox.docker import DockerError, docker, journal
+from serge.sandbox.docker import (
+    DockerError,
+    docker,
+    env_flags,
+    journal,
+    secret_env,
+)
 
 WORK = '/work'
 # Le réseau des chantiers et du navigateur : le navigateur y ouvre
@@ -124,6 +130,9 @@ def ensure_chantier(
         timeout=30,
     ).stdout.strip()
     if not state:
+        # Un secret réglé en base (la clé Stripe du mode test, pour essayer
+        # un paiement) entre dans le conteneur à sa création.
+        secrets = secret_env(str(args.get('env_secrets') or ''))
         flags = [
             'run',
             '-d',
@@ -142,6 +151,7 @@ def ensure_chantier(
             f'{name}:{WORK}',
             '-w',
             WORK,
+            *env_flags(secrets),
         ]
         if profile.get('network') == 'aucun':
             flags += ['--network', 'none']
@@ -150,7 +160,9 @@ def ensure_chantier(
             flags += ['--network', NETWORK]
         # La première fois, Docker télécharge l'image : ça peut être long.
         docker(
-            [*flags, str(profile['image']), 'sleep', 'infinity'], timeout=900
+            [*flags, str(profile['image']), 'sleep', 'infinity'],
+            timeout=900,
+            secrets=secrets,
         )
     else:
         if state != 'running':
