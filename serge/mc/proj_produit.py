@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Ce que la fiche d'un business montre de son produit (lot 10, Q91).
 
-Son dernier plan (POC ou produit fini) et les remarques du critique, ses
-passages de construction avec le verdict du relecteur, les captures du
-relecteur, ses publications (staging et prod : la version, l'adresse,
+Son dernier plan (POC ou produit fini) et les remarques du critique, les
+demandes de ses clients et ce que le plan en a fait, ses passages de
+construction avec le verdict du relecteur, les captures du relecteur, ses
+publications (staging et prod : la version, l'adresse,
 l'état, et pourquoi la dernière a raté) et ses versions figées.
 """
 
@@ -23,13 +24,23 @@ PLANS = {
 PASSAGES = {'built': 'construit', 'unfinished': 'pas fini', 'reviewed': 'relu'}
 VERDICTS = {'bon': 'bon', 'a_corriger': 'à corriger'}
 ETATS = {'running': 'en ligne', 'failed': 'ratée', 'stopped': 'arrêtée'}
+DEMANDES = {
+    'new': 'nouvelle',
+    'kept': 'retenue',
+    'refused': 'refusée',
+    'delivered': 'livrée',
+}
 
 
 def cadres_produit(
     conn: sqlite3.Connection, venture_id: str
 ) -> list[dict[str, Any]]:
     """Les cadres du produit d'un business, ceux qui ont quelque chose."""
-    cadres = _plan(conn, venture_id) + _passages(conn, venture_id)
+    cadres = (
+        _plan(conn, venture_id)
+        + _demandes(conn, venture_id)
+        + _passages(conn, venture_id)
+    )
     publications = conn.execute(
         'SELECT target, version, hostname, status, last_error, updated_at'
         ' FROM deployments WHERE venture_id=? ORDER BY target DESC',
@@ -77,8 +88,8 @@ def _plan(conn: sqlite3.Connection, venture_id: str) -> list[dict[str, Any]]:
     """Le dernier plan et les remarques du critique sur ce plan."""
     plan = conn.execute(
         'SELECT id, kind, round, status, hypothesis, deliverable, price,'
-        ' channel, prospects, plan, scenarios, challenge, owner_notes'
-        ' FROM product_plans WHERE venture_id=?'
+        ' channel, prospects, plan, scenarios, challenge, owner_notes,'
+        ' domain FROM product_plans WHERE venture_id=?'
         ' ORDER BY created_at DESC, rowid DESC LIMIT 1',
         (venture_id,),
     ).fetchone()
@@ -91,7 +102,11 @@ def _plan(conn: sqlite3.Connection, venture_id: str) -> list[dict[str, Any]]:
         ('Hypothèse', plan[4]),
         ('Ce qu’on peut essayer', plan[5]),
         ('Prix', plan[6]),
-        ('Test', f'{plan[8]} prospects par {plan[7]}'),
+        (
+            ('Domaine', plan[13] or '—')
+            if plan[1] == 'product'
+            else ('Test', f'{plan[8]} prospects par {plan[7]}')
+        ),
         ('Avis du critique', plan[11] or '—'),
     ]
     if plan[12]:
@@ -118,6 +133,33 @@ def _plan(conn: sqlite3.Connection, venture_id: str) -> list[dict[str, Any]]:
             }
         )
     return cadres
+
+
+def _demandes(
+    conn: sqlite3.Connection, venture_id: str
+) -> list[dict[str, Any]]:
+    """Les demandes des clients et ce que le plan du produit en a fait."""
+    demandes = conn.execute(
+        'SELECT kind, text, status, reason, delivered_version'
+        ' FROM customer_requests WHERE venture_id=?'
+        ' ORDER BY created_at DESC LIMIT 30',
+        (venture_id,),
+    ).fetchall()
+    if not demandes:
+        return []
+    return [
+        {
+            'titre': 'Les demandes des clients',
+            'champs': [
+                {
+                    'k': f'{d[0]} — {DEMANDES.get(str(d[2]), d[2])}'
+                    + (f' en v{d[4]}' if d[4] else ''),
+                    'v': str(d[1]) + (f' (raison : {d[3]})' if d[3] else ''),
+                }
+                for d in demandes
+            ],
+        }
+    ]
 
 
 def _passages(

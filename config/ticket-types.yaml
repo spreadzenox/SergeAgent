@@ -188,6 +188,66 @@ types:
       - {label: Le relecteur, tool: passage_par_numero, params: {build_id: id}}
     fields: [Le business, Le staging, Les scénarios de test, Le relecteur, Pourquoi]
     buttons: [valider, a_corriger, arreter_business, discuter]
+  PLAN_PRODUIT:
+    role: >-
+      Le plan du produit fini, payant, d'un business : son prix définitif,
+      son nom de domaine, sa fiche produit et ce qu'il fait des demandes
+      des clients (lot 10, Q41 et Q91). « Valider » lance la construction ;
+      le domaine sera acheté après ton essai du produit. « À corriger »
+      renvoie le plan à la conception avec tes consignes.
+    render: {color: 3066993, emoji: "🧭"}
+    urgency: normale
+    expiry_hours: null
+    default: attend
+    default_detail: >-
+      Le plan attend un humain, sans limite de temps : il fixe le prix et
+      le nom de domaine (Q91).
+    contenu:
+      - {label: Le business, tool: fiche_business, params: {venture_id: venture_id}}
+      - {label: Le plan, tool: plan_produit_par_numero, params: {plan_id: id}}
+      - {label: La critique, tool: critiques_du_plan, params: {plan_id: id}}
+      - {label: La fiche produit, tool: fiche_produit, params: {venture_id: venture_id}}
+      - {label: Les demandes des clients, tool: demandes_des_clients, params: {venture_id: venture_id}}
+    fields: [Le business, Le plan, La critique, La fiche produit, Les demandes des clients, Pourquoi]
+    buttons: [valider, a_corriger, arreter_business, discuter]
+  TEST_PRODUIT:
+    role: >-
+      Le produit fini en ligne en staging, avec Stripe en mode test, à
+      essayer comme un client, paiement compris, avant sa mise en vente
+      (lot 10, Q91). « Valider » achète son domaine, le met en vente et le
+      publie en prod ; « À corriger » relance la construction avec tes
+      consignes.
+    render: {color: 15105570, emoji: "🧪"}
+    urgency: normale
+    expiry_hours: null
+    default: attend
+    default_detail: >-
+      Le produit attend qu'un humain l'essaie, sans limite de temps : rien
+      n'est mis en vente avant.
+    contenu:
+      - {label: Le business, tool: fiche_business, params: {venture_id: venture_id}}
+      - {label: Le staging, tool: staging_du_produit, params: {venture_id: venture_id}}
+      - {label: Les scénarios de test, tool: plan_valide_du_produit, params: {venture_id: venture_id}}
+      - {label: Le relecteur, tool: passage_par_numero, params: {build_id: id}}
+    fields: [Le business, Le staging, Les scénarios de test, Le relecteur, Pourquoi]
+    buttons: [valider, a_corriger, arreter_business, discuter]
+  DOMAINE_PRODUIT:
+    role: >-
+      Le domaine d'un produit fini n'a pas pu être acheté : pris, trop
+      cher, ou refusé par le bureau d'enregistrement (lot 10, Q91).
+      « À corriger » avec un nom (exemple : devis-artisan.fr) achète ce
+      nom ; « Valider » réessaie le domaine du plan, par exemple après
+      avoir relevé le prix maximum sur la page Policy.
+    render: {color: 15844367, emoji: "🌐"}
+    urgency: normale
+    expiry_hours: null
+    default: attend
+    default_detail: Le produit attend un nom de domaine, sans limite de temps.
+    contenu:
+      - {label: Le business, tool: fiche_business, params: {venture_id: venture_id}}
+      - {label: Le plan validé, tool: plan_valide_du_produit, params: {venture_id: venture_id}}
+    fields: [Le business, Le plan validé, Pourquoi]
+    buttons: [valider, a_corriger, arreter_business, discuter]
   PASSAGE:
     role: >-
       Un lien réglé à la main attend un feu vert : passer à l'invocation

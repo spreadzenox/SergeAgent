@@ -56,6 +56,8 @@ LIFECYCLE = {
     'SMOKE_READY': 'Smoke prêt',
     'SMOKE_RUNNING': 'Smoke en cours',
     'SMOKE_DONE': 'Smoke terminé',
+    'PRODUCT_BUILDING': 'Produit en construction',
+    'PRODUCT_READY': 'Produit en vente',
     'FULL_READY': 'Full prêt',
     'FULL_RUNNING': 'Full en cours',
     'SCALE': 'Passage à l’échelle',

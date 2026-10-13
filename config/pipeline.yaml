@@ -192,6 +192,18 @@ api_services:
     doc: >-
       Stripe en vrai mode : de vrais paiements. Sert à la prod d'un produit
       fini et au paiement test de 1 € (étape 5).
+  - id: hostinger
+    title: Hostinger, le bureau d'enregistrement
+    base_url: https://developers.hostinger.com
+    auth: bearer
+    secret_file: hostinger-api.key
+    body: json
+    doc: >-
+      Le bureau d'enregistrement de domaines de Serge (lot 10, Q91) : la
+      disponibilité d'un nom, le catalogue des prix (en centimes), l'achat
+      avec le moyen de paiement par défaut du compte, et la zone DNS. Un
+      jeton d'API se crée dans hPanel (compte, API) ; un profil WHOIS doit
+      exister pour chaque extension achetée.
 
 tools:
   - id: web_search
@@ -826,6 +838,226 @@ tools:
         - {name: payment_intent, required: true, description: Le paiement (pi_…).}
         - {name: 'metadata[venture_id]', description: Le business (figé en base).}
 
+  # --- L'étape 5 : le vrai produit (lot 10, Q41, Q43 et Q91) ---
+  - id: plan_valide_du_produit
+    title: Le plan validé du produit
+    doc: Le dernier plan validé du produit fini d'un business, avec son domaine.
+    capability: db_read
+    read:
+      tables: [product_plans]
+      columns: &colonnes_plan_produit
+        - {table: product_plans, name: id}
+        - {table: product_plans, name: round, as: tour}
+        - {table: product_plans, name: status, as: statut}
+        - {table: product_plans, name: hypothesis, as: hypothese}
+        - {table: product_plans, name: target, as: cible}
+        - {table: product_plans, name: price, as: prix}
+        - {table: product_plans, name: domain, as: domaine}
+        - {table: product_plans, name: deliverable, as: livrable}
+        - {table: product_plans, name: plan}
+        - {table: product_plans, name: scenarios}
+        - {table: product_plans, name: challenge, as: avis_du_critique}
+        - {table: product_plans, name: owner_notes, as: consignes_d_un_humain}
+      filters:
+        - {id: business, table: product_plans, column: venture_id, param: venture_id}
+        - {id: valide, table: product_plans, column: status, fixed: validated}
+        - {id: produit, table: product_plans, column: kind, fixed: product}
+      params:
+        - {name: venture_id, required: true, description: Le numéro du business.}
+  - id: plan_produit_par_numero
+    title: Un plan de produit
+    doc: Un plan de produit fini, par son numéro, avec son prix et son domaine.
+    capability: db_read
+    read:
+      tables: [product_plans]
+      columns: *colonnes_plan_produit
+      filters:
+        - {id: plan, table: product_plans, column: id, param: plan_id}
+      params:
+        - {name: plan_id, required: true, description: Le numéro du plan.}
+  - id: demandes_des_clients
+    title: Les demandes des clients
+    doc: >-
+      Les bugs, insatisfactions et idées des clients d'un business, avec ce
+      que le plan du produit en a fait (nouvelle, retenue, refusée, livrée).
+    capability: db_read
+    read:
+      tables: [customer_requests]
+      columns:
+        - {table: customer_requests, name: id, as: numero}
+        - {table: customer_requests, name: kind, as: sorte}
+        - {table: customer_requests, name: text, as: demande}
+        - {table: customer_requests, name: status, as: etat}
+        - {table: customer_requests, name: reason, as: raison}
+      filters:
+        - {id: business, table: customer_requests, column: venture_id, param: venture_id}
+      params:
+        - {name: venture_id, required: true, description: Le numéro du business.}
+  - id: reponses_des_prospects
+    title: Ce qu'ont répondu les prospects
+    doc: >-
+      Les messages reçus des contacts d'un business, avec leur réaction :
+      les objections, les questions, l'intérêt.
+    capability: db_read
+    read:
+      tables: [inbound_events, contacts]
+      columns:
+        - {table: inbound_events, name: reaction}
+        - {table: inbound_events, name: subject, as: objet}
+        - {table: inbound_events, name: body, as: texte}
+      joins:
+        - {id: contact, left: inbound_events.contact_id, right: contacts.id}
+      filters:
+        - {id: business, table: contacts, column: venture_id, param: venture_id}
+      params:
+        - {name: venture_id, required: true, description: Le numéro du business.}
+  - id: staging_du_produit
+    title: Le staging du produit
+    doc: L'adresse du staging du produit fini d'un business, sa version et son état.
+    capability: db_read
+    read:
+      tables: [deployments]
+      columns:
+        - {table: deployments, name: hostname, as: adresse}
+        - {table: deployments, name: version}
+        - {table: deployments, name: status, as: etat}
+        - {table: deployments, name: last_error, as: erreur}
+      filters:
+        - {id: business, table: deployments, column: venture_id, param: venture_id}
+        - {id: staging, table: deployments, column: target, fixed: staging}
+        - {id: produit, table: deployments, column: deliverable, fixed: produit}
+      params:
+        - {name: venture_id, required: true, description: Le numéro du business.}
+  - id: adresse_du_serveur
+    title: L'adresse du serveur de Serge
+    doc: >-
+      Le domaine de l'instance et l'adresse IPv4 publique du serveur, pour
+      faire pointer le domaine d'un produit vers lui.
+    capability: server_address
+  - id: stripe_creer_prix_du_produit
+    title: Créer le prix d'un produit Stripe
+    doc: >-
+      Crée le prix de vente d'un produit fini ; rend son identifiant
+      (price_…). Le prix porte l'identifiant du business et une clé de
+      recherche (lookup_key) égale au numéro du business, figées en base :
+      le produit retrouve son prix par cette clé, en mode test comme en vrai
+      mode. Un nouveau prix reprend la clé de l'ancien.
+    capability: call_api
+    api:
+      service: stripe_test
+      method: POST
+      path: /v1/prices
+      params:
+        - {name: product, required: true, description: Le produit (prod_…).}
+        - {name: unit_amount, type: number, required: true, description: 'Le prix en centimes : 1900 pour 19 €.'}
+        - {name: currency, required: true, description: 'La monnaie : eur.'}
+        - {name: 'recurring[interval]', description: 'month ou year pour un abonnement ; rien pour un paiement unique.'}
+        - {name: nickname, description: Un nom court pour ce prix.}
+        - {name: lookup_key, description: La clé de recherche (figée en base).}
+        - {name: transfer_lookup_key, type: bool, description: Reprendre la clé d'un ancien prix (figé en base).}
+        - {name: 'metadata[venture_id]', description: Le business (figé en base).}
+  - id: stripe_sessions_du_lien
+    title: Les paiements d'un lien de paiement Stripe
+    doc: >-
+      Les sessions de paiement ouvertes par un lien de paiement (plink_…),
+      les plus récentes d'abord : leur état (status : complete), leur
+      paiement (payment_status : paid), leur montant et leur paiement
+      (payment_intent : pi_…).
+    capability: call_api
+    api:
+      service: stripe_test
+      method: GET
+      path: /v1/checkout/sessions
+      params:
+        - {name: payment_link, required: true, description: Le lien de paiement (plink_…).}
+        - {name: limit, type: number, description: Le nombre de sessions (10).}
+  - id: stripe_desactiver_lien
+    title: Désactiver un lien de paiement Stripe
+    doc: Désactive un lien de paiement ; il ne peut plus être payé.
+    capability: call_api
+    api:
+      service: stripe_test
+      method: POST
+      path: /v1/payment_links/{id}
+      params:
+        - {name: id, required: true, description: Le lien de paiement (plink_…).}
+        - {name: active, type: bool, description: 'false pour le désactiver (figé en base).'}
+
+  # Le bureau d'enregistrement : Hostinger (lot 10, Q91). Les prix du
+  # catalogue sont en centimes ; l'achat paie avec le moyen de paiement par
+  # défaut du compte.
+  - id: hostinger_disponibilite
+    title: Un nom de domaine est-il libre ?
+    doc: >-
+      Dit si un nom est libre, pour une ou plusieurs extensions. Exemple :
+      domain = devis-artisan, tlds = ["fr", "com"].
+    capability: call_api
+    api:
+      service: hostinger
+      method: POST
+      path: /api/domains/v1/availability
+      params:
+        - {name: domain, required: true, description: 'Le nom, sans extension : devis-artisan.'}
+        - {name: tlds, type: json, required: true, description: 'Les extensions, sans point : ["fr", "com"].'}
+        - {name: with_alternatives, type: bool, description: Proposer des noms proches (une seule extension).}
+  - id: hostinger_catalogue
+    title: Le prix d'un nom de domaine
+    doc: >-
+      Le catalogue de Hostinger : pour une extension, ses prix en centimes
+      (first_period_price : la première année ; price : le renouvellement)
+      et l'identifiant à donner à l'achat (prices[].id). Exemple :
+      category = DOMAIN, name = .FR*.
+    capability: call_api
+    api:
+      service: hostinger
+      method: GET
+      path: /api/billing/v1/catalog
+      params:
+        - {name: category, description: 'DOMAIN pour les noms de domaine.'}
+        - {name: name, description: "L'extension, avec * : .FR* ou .COM*."}
+  - id: hostinger_acheter_domaine
+    title: Acheter un nom de domaine
+    doc: >-
+      Achète un nom de domaine, payé avec le moyen de paiement par défaut du
+      compte. item_id : l'identifiant du prix dans le catalogue. Une réponse
+      202 veut dire que le paiement est en cours et que le domaine n'est pas
+      encore enregistré.
+    capability: call_api
+    api:
+      service: hostinger
+      method: POST
+      path: /api/domains/v1/portfolio
+      params:
+        - {name: domain, required: true, description: 'Le nom complet : devis-artisan.fr.'}
+        - {name: item_id, required: true, description: "L'identifiant du prix dans le catalogue."}
+  - id: hostinger_domaine
+    title: Un nom de domaine du compte
+    doc: >-
+      L'état d'un nom de domaine déjà au compte (active, pending_setup…) et
+      ses serveurs de noms. Une erreur 404 : il n'est pas au compte.
+    capability: call_api
+    api:
+      service: hostinger
+      method: GET
+      path: /api/domains/v1/portfolio/{domain}
+      params:
+        - {name: domain, required: true, description: 'Le nom complet : devis-artisan.fr.'}
+  - id: hostinger_zone_dns
+    title: Faire pointer un domaine vers le serveur
+    doc: >-
+      Remplace des enregistrements DNS d'un domaine du compte. Exemple, pour
+      le faire pointer vers le serveur : zone = [{"name": "@", "type": "A",
+      "ttl": 300, "records": [{"content": "203.0.113.7"}]}].
+    capability: call_api
+    api:
+      service: hostinger
+      method: PUT
+      path: /api/dns/v1/zones/{domain}
+      params:
+        - {name: domain, required: true, description: 'Le nom complet : devis-artisan.fr.'}
+        - {name: overwrite, type: bool, description: Remplacer les enregistrements de même nom et de même type (oui).}
+        - {name: zone, type: json, required: true, description: Les enregistrements.}
+
 writable_tables:
   - table: listen_cycles
     insert: true
@@ -934,6 +1166,7 @@ writable_tables:
       - {name: funnel_state, description: L'étape du contact.}
   - table: customer_requests
     insert: true
+    update: true
     description: Les demandes des contacts sur le produit.
     columns:
       - {name: venture_id, description: Le business.}
@@ -941,6 +1174,10 @@ writable_tables:
       - {name: inbound_id, description: Le message d'où elle vient.}
       - {name: kind, description: 'Bug, insatisfaction ou idée.'}
       - {name: text, description: La demande.}
+      - {name: status, description: 'Nouvelle, retenue, refusée ou livrée.'}
+      - {name: reason, description: Pourquoi le plan du produit la retient ou la refuse.}
+      - {name: plan_id, description: Le plan du produit qui en a décidé.}
+      - {name: delivered_version, description: La version qui l'a livrée.}
   - table: product_sheets
     insert: true
     delete: true
@@ -982,6 +1219,7 @@ writable_tables:
       - {name: scenarios, description: Les scénarios de test.}
       - {name: challenge, description: L'avis du critique.}
       - {name: owner_notes, description: Les consignes d'un humain.}
+      - {name: domain, description: Le nom de domaine du produit fini.}
   - table: plan_critiques
     insert: true
     description: Les remarques du critique.
@@ -1018,6 +1256,17 @@ writable_tables:
 # Les changements d'étiquette et de statut permis. Un business naît
 # candidat, et seul un candidat peut être choisi : un business déjà en test
 # est refusé par le code d'écriture.
+  - table: transactions
+    insert: true
+    description: L'argent qui entre et qui sort.
+    columns:
+      - {name: venture_id, description: Le business.}
+      - {name: kind, description: 'La sorte : canary pour le paiement test de 1 €.'}
+      - {name: amount_eur, description: Le montant en euros.}
+      - {name: intent_id, description: Le paiement chez Stripe (pi_…).}
+      - {name: status, description: Son état.}
+      - {name: doc_ref, description: Ce que c'est.}
+
 status_transitions:
   - {table: ventures, column: lifecycle, from: '', to: CANDIDATE}
   - {table: ventures, column: lifecycle, from: CANDIDATE, to: POC_SELECTED}
@@ -1086,6 +1335,27 @@ status_transitions:
   # pour un POC, avec un plan tout fait, déjà validé.
   - {table: ventures, column: lifecycle, from: '', to: POC_SELECTED}
   - {table: product_plans, column: status, from: '', to: validated}
+
+  # L'étape 5 (lot 10, Q91) : un business passe en construction de son
+  # produit fini depuis le test léger (bouton de sa fiche, en attendant
+  # l'étape 4), puis « produit en vente » quand il est en ligne sur son
+  # domaine et que le paiement test est arrivé ; la prospection lourde
+  # (lot 11) part de là. Le bout en bout du produit fait naître une
+  # calculatrice déjà en construction.
+  - {table: ventures, column: lifecycle, from: SMOKE_READY, to: PRODUCT_BUILDING}
+  - {table: ventures, column: lifecycle, from: SMOKE_DONE, to: PRODUCT_BUILDING}
+  - {table: ventures, column: lifecycle, from: '', to: PRODUCT_BUILDING}
+  - {table: ventures, column: lifecycle, from: PRODUCT_BUILDING, to: PRODUCT_READY}
+  - {table: ventures, column: lifecycle, from: PRODUCT_BUILDING, to: KILLED}
+  # Ce que le plan du produit fait d'une demande des clients ; un tour de
+  # critique peut changer d'avis.
+  - {table: customer_requests, column: status, from: new, to: kept}
+  - {table: customer_requests, column: status, from: new, to: refused}
+  - {table: customer_requests, column: status, from: kept, to: refused}
+  - {table: customer_requests, column: status, from: refused, to: kept}
+  - {table: customer_requests, column: status, from: kept, to: delivered}
+  - {table: transactions, column: status, from: '', to: succeeded}
+
 # Les quotas : le code d'écriture refuse une ligne de trop, quelle que soit
 # l'invocation, et un bouton ne lance rien si son quota est plein. Les
 # chiffres se règlent sur la page Policy de Mission Control.
@@ -1254,6 +1524,8 @@ table_views:
       - {name: id, description: Le numéro de la demande.}
       - {name: kind, short: true, description: 'Bug, insatisfaction ou idée.'}
       - {name: text, short: true, description: La demande.}
+      - {name: status, short: true, description: 'Nouvelle, retenue, refusée ou livrée.'}
+      - {name: reason, description: Pourquoi le plan du produit la retient ou la refuse.}
       - {name: contact_id, description: Le contact.}
       - {name: venture_id, description: Le business.}
       - {name: created_at, description: Sa date.}
@@ -1284,6 +1556,7 @@ table_views:
       - {name: scenarios, description: Les scénarios de test.}
       - {name: challenge, description: L'avis du critique.}
       - {name: owner_notes, description: Les consignes d'un humain.}
+      - {name: domain, description: Le nom de domaine du produit fini.}
       - {name: created_at, description: Sa date.}
   - table: plan_critiques
     title: Les remarques du critique
@@ -3850,6 +4123,1239 @@ invocations:
       - {path: produits, type: number, description: Le nombre de produits archivés.}
       - {path: compte_rendu, type: text, description: "Ce qui a été archivé, et ce qui a raté."}
 
+  # --- L'étape 5 : le vrai produit (lot 10, Q41, Q43 et Q91) ---
+  # Détail : docs/etapes/5-construction.md. En attendant l'étape 4 (lot 11),
+  # elle part du bouton « Construire le vrai produit » de la fiche d'un
+  # business, ou de « Bout en bout : le produit fini d'une calculatrice ».
+  - id: lancer_produit
+    title: Lancer le vrai produit d'un business
+    role: >-
+      Le business passe en construction de son produit fini, et la
+      conception commence. Lancé par le bouton « Construire le vrai
+      produit » de la fiche du business (temporaire, jusqu'à l'étape 4 du
+      lot 11). Sans LLM.
+    step: build_venture
+    type: capability
+    capability: echo
+    queue: works
+    priority: 30
+    params:
+      venture_id: {source: task, value: venture_id}
+    writes:
+      - table: ventures
+        operation: update
+        key: {column: id, source: task, value: venture_id}
+        values:
+          lifecycle: {source: fixed, value: PRODUCT_BUILDING}
+
+  - id: concevoir_produit
+    title: Concevoir le produit
+    role: >-
+      Écrit le plan de A à Z du produit fini, payant, d'un business : à
+      partir du POC, des demandes de ses clients et des réponses de ses
+      prospects ; son prix définitif, son nom de domaine (libre), sa fiche
+      produit, et ce qu'il fait de chaque demande des clients. Au tour
+      suivant, corrige son plan d'après le critique ou un humain.
+    step: build_venture
+    type: llm
+    model_tier: smart
+    queue: works
+    priority: 30
+    gets_serge_intro: true
+    max_tool_turns: 8
+    compare:
+      product_plans: false
+      product_sheets: false
+      product_faq: false
+      customer_requests: false
+    prompt: |
+      Tu conçois le vrai produit d'un business : un service web payant, que
+      ses clients vont utiliser et payer chaque mois. On paie pour avoir un
+      compte et utiliser le service ; c'est le seul modèle de paiement.
+
+      Tu reçois la fiche du business, le plan de son POC (le petit produit
+      gratuit qui a servi au test léger), la fiche produit, ses questions
+      fréquentes, les demandes de ses clients (bugs, insatisfactions,
+      idées), ce qu'ont répondu ses prospects, et ce que Serge sait faire.
+      À partir du deuxième tour, tu reçois aussi ton plan précédent et les
+      remarques du critique ; les paramètres de la tâche peuvent contenir
+      les consignes d'un humain (« consignes ») : corrige d'abord ce
+      qu'elles demandent.
+
+      Pour construire, Serge a un chantier (un conteneur Linux avec Node,
+      Python et git, où un modèle code et lance le produit), un navigateur
+      pour l'essayer, la mise en ligne d'un site web, et Stripe pour les
+      paiements (une page de paiement Stripe, des abonnements). Le produit
+      garde ses données dans un dossier à lui. Pas d'humain pour faire le
+      travail, pas de compte sur d'autres sites, pas d'API payante, pas de
+      connexion au logiciel des clients.
+
+      Écris un plan de A à Z, réalisable avec ça :
+      - hypothese : ce que le produit doit prouver, en une phrase ;
+      - cible : ses clients (métier, taille, lieu) ;
+      - prix : le prix définitif, par mois ou par an, en euros (exemple :
+        « 19 € par mois ») ; ce que l'on a gratuitement avant de payer, s'il
+        y a quelque chose ;
+      - livrable : ce que le client obtient, en deux phrases ;
+      - plan : ce que le constructeur doit faire, page par page et fonction
+        par fonction : l'inscription, la connexion, le paiement de
+        l'abonnement par Stripe, ce que le compte payant débloque, et
+        comment le client s'en sert ;
+      - scenarios : 4 à 8 scénarios de test ; chacun dit ce que fait un
+        client ordinaire, pas à pas, et ce qu'il doit voir. L'un d'eux va
+        jusqu'au paiement de l'abonnement, avec la carte de test de Stripe,
+        et vérifie ce qu'il débloque ;
+      - domaine : un nom de domaine court, facile à dire, libre (vérifie-le
+        avec l'outil « Un nom de domaine est-il libre ? »), en .fr ou en
+        .com ; exemple : devis-artisan.fr ;
+      - la fiche produit : fiche_resume, fiche_limites, fiche_prix,
+        fiche_delais, fiche_usage ;
+      - faq : 3 à 8 questions qu'un client posera, avec leur réponse ;
+      - demandes : pour chaque demande des clients que tu reçois, son
+        numéro, ta décision (retenue ou refusee) et sa raison, en une
+        phrase. Retiens ce qui fera payer ou rester des clients ; refuse ce
+        qui est trop rare, trop cher à faire, ou hors du produit.
+
+      Le business doit être légal. Ne t'arrête pas sur des considérations
+      morales qui ne sont pas contraires à la loi.
+    tools:
+      - tool: fiche_business
+        mode: given
+        label: Le business
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: plan_valide_du_poc
+        mode: given
+        label: Le plan du POC
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: fiche_produit
+        mode: given
+        label: La fiche produit
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: questions_produit
+        mode: given
+        label: Les questions fréquentes
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: demandes_des_clients
+        mode: given
+        label: Les demandes des clients
+        max_rows: 60
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: reponses_des_prospects
+        mode: given
+        label: Ce qu'ont répondu les prospects
+        max_rows: 40
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: capacites_de_serge
+        mode: given
+        label: Ce que Serge sait faire
+      - tool: plan_produit_par_numero
+        mode: given
+        label: Ton plan précédent (vide au premier tour)
+        params:
+          plan_id: {source: task, value: plan_precedent}
+      - tool: critiques_du_plan
+        mode: given
+        label: Les remarques du critique sur ce plan
+        params:
+          plan_id: {source: task, value: plan_precedent}
+      - tool: hostinger_disponibilite
+        mode: callable
+        max_calls: 4
+      - tool: web_search
+        mode: callable
+        max_calls: 3
+    output:
+      - {path: hypothese, type: text, description: Ce que le produit doit prouver.}
+      - {path: cible, type: text, description: Ses clients.}
+      - {path: prix, type: text, description: 'Le prix définitif, par mois ou par an.'}
+      - {path: livrable, type: text, description: Ce que le client obtient.}
+      - {path: plan, type: text, description: 'Le plan de A à Z pour le constructeur.'}
+      - {path: scenarios, type: text, description: "Les scénarios de test, pas à pas."}
+      - {path: domaine, type: text, description: 'Le nom de domaine proposé, libre : devis-artisan.fr.'}
+      - {path: fiche_resume, type: text, description: Ce que fait le produit et pour qui.}
+      - {path: fiche_limites, type: text, description: Ce qu'il ne fait pas.}
+      - {path: fiche_prix, type: text, description: Son prix.}
+      - {path: fiche_delais, type: text, description: Ses délais habituels.}
+      - {path: fiche_usage, type: text, description: Comment on s'en sert.}
+      - {path: faq, type: list, min_items: 1, description: Les questions fréquentes.}
+      - {path: faq.question, type: text, description: La question.}
+      - {path: faq.reponse, type: text, description: Sa réponse.}
+      - {path: demandes, type: list, required: false, description: Ce que le plan fait de chaque demande des clients.}
+      - {path: demandes.numero, type: text, description: Le numéro de la demande.}
+      - {path: demandes.decision, type: choice, choices: [retenue, refusee], description: Retenue ou refusée.}
+      - {path: demandes.raison, type: text, description: 'Pourquoi, en une phrase.'}
+    writes:
+      - table: product_plans
+        operation: insert
+        values:
+          venture_id: {source: task, value: venture_id}
+          kind: {source: fixed, value: product}
+          round: {source: task, value: tour}
+          status: {source: fixed, value: draft}
+          hypothesis: {source: field, value: hypothese}
+          target: {source: field, value: cible}
+          price: {source: field, value: prix}
+          deliverable: {source: field, value: livrable}
+          plan: {source: field, value: plan}
+          scenarios: {source: field, value: scenarios}
+          domain: {source: field, value: domaine}
+          owner_notes: {source: task, value: consignes}
+      - table: product_sheets
+        operation: delete
+        key: {column: venture_id, source: task, value: venture_id}
+      - table: product_sheets
+        operation: insert
+        values:
+          venture_id: {source: task, value: venture_id}
+          summary: {source: field, value: fiche_resume}
+          limits: {source: field, value: fiche_limites}
+          price: {source: field, value: fiche_prix}
+          delays: {source: field, value: fiche_delais}
+          usage: {source: field, value: fiche_usage}
+      - table: product_faq
+        operation: delete
+        key: {column: venture_id, source: task, value: venture_id}
+      - table: product_faq
+        operation: insert
+        for_each: faq
+        values:
+          venture_id: {source: task, value: venture_id}
+          question: {source: field, value: faq.question}
+          answer: {source: field, value: faq.reponse}
+      - table: customer_requests
+        operation: update
+        for_each: demandes
+        parent: 0
+        key: {column: id, source: field, value: demandes.numero}
+        condition: {field: demandes.decision, op: '=', value: retenue}
+        values:
+          status: {source: fixed, value: kept}
+          reason: {source: field, value: demandes.raison}
+          plan_id: {source: parent_row, value: id}
+      - table: customer_requests
+        operation: update
+        for_each: demandes
+        parent: 0
+        key: {column: id, source: field, value: demandes.numero}
+        condition: {field: demandes.decision, op: '=', value: refusee}
+        values:
+          status: {source: fixed, value: refused}
+          reason: {source: field, value: demandes.raison}
+          plan_id: {source: parent_row, value: id}
+
+  - id: challenger_produit
+    title: Challenger le produit
+    role: >-
+      Critique le plan du produit fini avant qu'un humain le valide :
+      faisabilité technique, paiement, prix, nom de domaine, demandes des
+      clients retenues, scénarios de test. Rend « bon » ou « à corriger »
+      avec ses remarques.
+    step: build_venture
+    type: llm
+    model_tier: smart
+    queue: works
+    priority: 30
+    gets_serge_intro: true
+    max_tool_turns: 4
+    compare:
+      plan_critiques: false
+      product_plans: false
+    prompt: |
+      Tu critiques le plan du produit fini d'un business, avant qu'un
+      humain le valide et qu'un modèle le construise. C'est un service web
+      payant : on paie un abonnement par Stripe pour avoir un compte. Tu
+      reçois le plan, la fiche produit, ses questions fréquentes, les
+      demandes des clients avec ce que le plan en a fait, la fiche du
+      business et ce que Serge sait faire.
+
+      Cherche ce qui empêcherait le produit de marcher ou de se vendre :
+      - la faisabilité technique : Serge code dans un conteneur Linux avec
+        Node, Python et git, essaie dans un navigateur, publie un site web
+        et encaisse par Stripe ; pas d'humain, pas de compte sur d'autres
+        sites, pas d'API payante ;
+      - le paiement : l'inscription, le paiement de l'abonnement, ce qu'il
+        débloque, ce qui se passe quand il s'arrête ;
+      - le prix : réaliste pour ces clients ?
+      - le nom de domaine : court, facile à dire, en rapport avec le
+        produit ;
+      - les demandes des clients : ce qui est retenu est-il faisable, et
+        ce qui est refusé l'est-il pour une bonne raison ?
+      - les scénarios de test : chacun doit pouvoir être suivi pas à pas
+        par quelqu'un qui découvre le site, et l'un va jusqu'au paiement.
+
+      Chaque remarque est « à corriger » : dis précisément quoi changer.
+      S'il manque à Serge un outil ou un accès, n'en fais pas une
+      remarque : appelle l'outil « Demander une nouvelle capacité ».
+
+      Rends le verdict « bon » si le plan peut être construit et vendu tel
+      quel, sinon « a_corriger » avec tes remarques. Ne cherche pas la
+      petite bête : un plan réaliste et clair est bon.
+    tools:
+      - tool: plan_produit_par_numero
+        mode: given
+        label: Le plan
+        params:
+          plan_id: {source: task, value: plan_id}
+      - tool: fiche_business
+        mode: given
+        label: Le business
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: fiche_produit
+        mode: given
+        label: La fiche produit
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: questions_produit
+        mode: given
+        label: Les questions fréquentes
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: demandes_des_clients
+        mode: given
+        label: Les demandes des clients
+        max_rows: 60
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: capacites_de_serge
+        mode: given
+        label: Ce que Serge sait faire
+    output:
+      - {path: verdict, type: choice, choices: [bon, a_corriger], description: 'Le plan peut-il être construit et vendu tel quel ?'}
+      - {path: avis, type: text, description: 'Ton avis en deux phrases.'}
+      - {path: remarques, type: list, required: false, description: Les remarques à corriger.}
+      - {path: remarques.texte, type: text, description: 'La remarque : quoi changer, précisément.'}
+    writes:
+      - table: plan_critiques
+        operation: insert
+        for_each: remarques
+        values:
+          plan_id: {source: task, value: plan_id}
+          venture_id: {source: task, value: venture_id}
+          round: {source: task, value: tour}
+          text: {source: field, value: remarques.texte}
+      - table: product_plans
+        operation: update
+        key: {column: id, source: task, value: plan_id}
+        values:
+          status: {source: fixed, value: challenged}
+          challenge: {source: field, value: avis}
+
+  - id: compter_tours_produit
+    title: Compter les tours de critique du produit
+    role: >-
+      Après une critique « à corriger » : renvoie le plan du produit à la
+      conception tant qu'il reste des tours, sinon au ticket « Plan » tel
+      qu'il est (Q41). Sans LLM.
+    step: build_venture
+    type: capability
+    capability: next_round
+    queue: works
+    priority: 30
+    settings:
+      tours_max: {value: 3, min: 1, max: 10, policy: true, description: "Les tours de critique du plan d'un produit, au plus."}
+    params:
+      round: {source: task, value: tour}
+      max: {source: setting, value: tours_max}
+
+  - id: demander_validation_produit
+    title: Faire valider le plan du produit
+    role: >-
+      Ouvre le ticket « Plan » du produit fini : le plan, le prix définitif,
+      le nom de domaine, la critique, la fiche produit et les demandes des
+      clients. Il n'expire jamais : il fixe le prix et le domaine (Q91).
+      Sans LLM.
+    step: build_venture
+    type: capability
+    capability: ask_owners
+    queue: conversations
+    priority: 80
+    params:
+      ticket_type: {source: fixed, value: PLAN_PRODUIT}
+      ref_table: {source: fixed, value: product_plans}
+      ref_id: {source: task, value: plan_id}
+      raison: {source: fixed, value: "Le plan du produit fini est prêt : son prix et son nom de domaine aussi. Le valider lance sa construction ; le domaine sera acheté après ton essai du produit."}
+      title: {source: fixed, value: Le plan d'un produit attend ton avis}
+
+  - id: suite_plan_produit
+    title: Suite du ticket « Plan » du produit
+    role: >-
+      La réponse au ticket « Plan » du produit : « Valider » lance la
+      construction (d'abord le produit dans Stripe, en mode test), « À
+      corriger » renvoie le plan à la conception avec les consignes,
+      « Arrêter le business » l'arrête. Sans LLM.
+    step: build_venture
+    type: capability
+    capability: echo
+    queue: conversations
+    priority: 80
+    params:
+      acte: {source: task, value: acte}
+      texte: {source: task, value: texte}
+      plan_id: {source: task, value: plan_id}
+      venture_id: {source: task, value: venture_id}
+    writes:
+      - table: product_plans
+        operation: update
+        key: {column: id, source: task, value: plan_id}
+        condition: {field: acte, op: '=', value: valider}
+        values:
+          status: {source: fixed, value: validated}
+      - table: product_plans
+        operation: update
+        key: {column: id, source: task, value: plan_id}
+        condition: {field: acte, op: '=', value: a_corriger}
+        values:
+          status: {source: fixed, value: to_fix}
+          owner_notes: {source: task, value: texte}
+      - table: product_plans
+        operation: update
+        key: {column: id, source: task, value: plan_id}
+        condition: {field: acte, op: '=', value: arreter_business}
+        values:
+          status: {source: fixed, value: refused}
+      - table: ventures
+        operation: update
+        key: {column: id, source: task, value: venture_id}
+        condition: {field: acte, op: '=', value: arreter_business}
+        values:
+          lifecycle: {source: fixed, value: KILLED}
+
+  - id: vendre_en_mode_test
+    title: Créer le produit dans Stripe, en mode test
+    role: >-
+      Avant la construction : crée dans Stripe, en mode test, le produit du
+      business et son prix (l'abonnement du plan validé), avec la clé de
+      recherche que le produit utilisera. Le staging encaisse ainsi avec la
+      carte de test de Stripe, comme la prod encaissera en vrai.
+    step: build_venture
+    type: llm
+    model_tier: mid
+    queue: works
+    priority: 30
+    max_tool_turns: 6
+    prompt: &prompt_vendre |
+      Tu mets en vente dans Stripe le produit d'un business, pour le mode
+      de Stripe réglé sur tes outils. Tu reçois le plan validé, avec son
+      prix (exemple : « 19 € par mois »), et la fiche du business.
+
+      1. Cherche d'abord si le produit existe déjà dans Stripe pour ce
+         business (recherche : metadata['venture_id']:'<numéro du
+         business>', le numéro est dans les paramètres de la tâche). S'il
+         existe, garde-le ; sinon, crée-le avec le nom du business et une
+         phrase qui dit ce qu'il fait.
+      2. Crée son prix : le montant en centimes (19 € : 1900), eur, et
+         l'intervalle de l'abonnement (month ou year). L'identifiant du
+         business et la clé de recherche sont ajoutés tout seuls.
+
+      Rends ok « oui » si le produit et son prix existent, avec leurs
+      identifiants ; sinon « non », et la raison donnée par Stripe.
+    tools:
+      - tool: plan_valide_du_produit
+        mode: given
+        label: Le plan validé
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: fiche_business
+        mode: given
+        label: Le business
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: stripe_chercher_produits
+        mode: callable
+        params:
+          service: {source: fixed, value: stripe_test}
+          task_id: {source: task, value: task_id}
+      - tool: stripe_creer_produit
+        mode: callable
+        max_calls: 1
+        params:
+          service: {source: fixed, value: stripe_test}
+          'metadata[venture_id]': {source: task, value: venture_id}
+          task_id: {source: task, value: task_id}
+      - tool: stripe_creer_prix_du_produit
+        mode: callable
+        max_calls: 1
+        params:
+          service: {source: fixed, value: stripe_test}
+          'metadata[venture_id]': {source: task, value: venture_id}
+          lookup_key: {source: task, value: venture_id}
+          transfer_lookup_key: {source: fixed, value: 'true'}
+          task_id: {source: task, value: task_id}
+    output: &sortie_vendre
+      - {path: ok, type: choice, choices: [oui, non], description: 'Le produit et son prix existent-ils dans Stripe ?'}
+      - {path: produit, type: text, required: false, description: Le produit (prod_…).}
+      - {path: prix, type: text, required: false, description: Le prix (price_…).}
+      - {path: raison, type: text, required: false, description: "Ce que Stripe a répondu, si ça n'a pas marché."}
+
+  - id: construire_produit
+    title: Construire le produit
+    role: >-
+      Construit le produit fini, payant, dans son chantier : comptes,
+      abonnement par Stripe (en mode test dans le chantier et en staging),
+      le service lui-même ; l'essaie dans le navigateur, sur ordinateur et
+      sur mobile, jusqu'au paiement. Reprend le passage précédent : les
+      remarques du relecteur, les consignes d'un humain, ou une
+      publication ratée.
+    step: build_venture
+    type: llm
+    model_tier: code
+    queue: works
+    priority: 30
+    max_tool_turns: 200
+    compare:
+      builds: false
+    prompt: |
+      Tu construis le produit fini d'un business : un service web payant,
+      que de vrais clients vont utiliser et payer. Il doit marcher pour eux
+      du premier coup, paiement compris.
+
+      Tu reçois le plan validé (ce qu'il faut faire, le prix, et les
+      scénarios de test), la fiche produit, ses questions fréquentes, les
+      demandes des clients (fais celles qui sont retenues), et les
+      passages de construction précédents : le compte rendu du
+      constructeur d'avant, le verdict et les remarques du relecteur, qui a
+      essayé le produit en ligne. Les paramètres de la tâche contiennent le
+      numéro du business (venture_id), et parfois les consignes d'un
+      humain (« consignes ») ou la raison d'une publication ratée
+      (« probleme », « journal ») : traite-les d'abord.
+
+      Tu travailles dans un chantier : un conteneur Linux (Debian, avec
+      git, Python 3 et Node), dossier /work, où tes fichiers restent d'une
+      tâche à l'autre. Tes outils : lancer une commande (au besoin en
+      arrière-plan, pour un serveur), lire, écrire et modifier un fichier,
+      et un navigateur pour essayer ton produit : l'adresse
+      http://chantier:<port> mène au serveur que tu as lancé dans le
+      chantier. Tu peux appeler plusieurs outils d'un coup.
+
+      Le paiement, par Stripe :
+      - la clé secrète de Stripe est dans la variable d'environnement
+        STRIPE_SECRET_KEY (en mode test dans le chantier et en staging, en
+        vrai mode en prod) ; ne l'écris jamais dans un fichier ni dans une
+        page ;
+      - le prix de l'abonnement existe déjà dans Stripe ; retrouve-le par
+        sa clé de recherche, le numéro du business : GET /v1/prices avec
+        lookup_keys[]=<venture_id> et active=true ;
+      - le client paie sur la page de paiement de Stripe : crée une
+        session Checkout en mode subscription pour ce prix, avec
+        success_url (qui revient sur le produit avec {CHECKOUT_SESSION_ID})
+        et cancel_url, et l'identifiant du compte du client dans
+        client_reference_id ;
+      - au retour, relis la session et l'abonnement auprès de Stripe pour
+        débloquer le compte ; avant chaque accès payant, vérifie que
+        l'abonnement est actif (pas de webhook : le produit n'en reçoit
+        pas) ;
+      - la clé du vrai mode n'a droit qu'à ça : créer et lire des sessions
+        Checkout, lire les prix et les produits, créer et lire des clients,
+        lire les abonnements, ouvrir le portail client ; n'utilise rien
+        d'autre ;
+      - pour essayer : la carte 4242 4242 4242 4242, une date future, un
+        code à 3 chiffres.
+
+      Règles :
+      - choisis les langages et les outils que tu veux ; fais simple et
+        solide ;
+      - à la racine de /work, un Dockerfile qui construit et lance le
+        produit. Le produit écoute sur le port de la variable PORT (8080),
+        garde ses données dans le dossier de la variable DATA_DIR (/data),
+        et connaît son adresse publique par PUBLIC_URL ;
+      - des comptes : inscription par e-mail et mot de passe (gardé haché),
+        connexion, déconnexion ;
+      - en français, propre et clair sur ordinateur comme sur mobile ;
+      - avant de rendre, essaie toi-même chaque scénario de test dans le
+        navigateur, sur ordinateur puis sur mobile, paiement compris, et
+        corrige ce qui ne va pas. Docker n'est pas dans le chantier : lance
+        le produit comme le ferait le Dockerfile ;
+      - s'il te manque un outil ou un accès, appelle « Demander une
+        nouvelle capacité ».
+
+      Rends fini « oui » si le produit est prêt à être publié, sinon
+      « non » ; ton compte rendu : ce que tu as fait, comment tu l'as
+      vérifié, ce qui reste.
+    tools:
+      - tool: plan_valide_du_produit
+        mode: given
+        label: Le plan validé
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: fiche_produit
+        mode: given
+        label: La fiche produit
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: questions_produit
+        mode: given
+        label: Les questions fréquentes
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: demandes_des_clients
+        mode: given
+        label: Les demandes des clients
+        max_rows: 60
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: passages_du_livrable
+        mode: given
+        label: Les passages de construction précédents
+        max_rows: 3
+        params:
+          venture_id: {source: task, value: venture_id}
+          deliverable: {source: fixed, value: produit}
+      - tool: chantier_commande
+        mode: callable
+        params: &chantier_produit
+          venture_id: {source: task, value: venture_id}
+          deliverable: {source: fixed, value: produit}
+          profile: {source: fixed, value: chantier}
+          env_secrets: {source: fixed, value: STRIPE_SECRET_KEY=stripe-test.key}
+      - tool: chantier_lire
+        mode: callable
+        params: *chantier_produit
+      - tool: chantier_ecrire
+        mode: callable
+        params: *chantier_produit
+      - tool: chantier_modifier
+        mode: callable
+        params: *chantier_produit
+      - tool: navigateur_agir
+        mode: callable
+        params: &navigateur_produit
+          venture_id: {source: task, value: venture_id}
+          deliverable: {source: fixed, value: produit}
+          task_id: {source: task, value: task_id}
+      - tool: navigateur_lire
+        mode: callable
+        params: *navigateur_produit
+      - tool: navigateur_capture
+        mode: callable
+        params: *navigateur_produit
+    output:
+      - {path: fini, type: choice, choices: [oui, non], description: 'Le produit est-il prêt à être publié ?'}
+      - {path: compte_rendu, type: text, description: 'Ce qui a été fait, vérifié, et ce qui reste.'}
+    writes:
+      - table: builds
+        operation: insert
+        condition: {field: fini, op: '=', value: oui}
+        values:
+          venture_id: {source: task, value: venture_id}
+          deliverable: {source: fixed, value: produit}
+          pass: {source: task, value: passage}
+          status: {source: fixed, value: built}
+          report: {source: field, value: compte_rendu}
+          owner_notes: {source: task, value: consignes}
+      - table: builds
+        operation: insert
+        condition: {field: fini, op: '=', value: non}
+        values:
+          venture_id: {source: task, value: venture_id}
+          deliverable: {source: fixed, value: produit}
+          pass: {source: task, value: passage}
+          status: {source: fixed, value: unfinished}
+          report: {source: field, value: compte_rendu}
+          owner_notes: {source: task, value: consignes}
+
+  - id: compter_reprises_produit
+    title: Compter les reprises de la construction du produit
+    role: >-
+      Une construction du produit pas finie, ou une publication ratée : la
+      construction reprend, dans le même passage, tant qu'il reste des
+      reprises ; sinon le produit va tel qu'il est au ticket « Tester le
+      produit ». Sans LLM.
+    step: build_venture
+    type: capability
+    capability: next_round
+    queue: works
+    priority: 30
+    settings:
+      reprises_max: {value: 3, min: 1, max: 10, policy: true, description: "Les reprises d'un même passage de construction du produit, au plus."}
+    params:
+      round: {source: task, value: reprise}
+      max: {source: setting, value: reprises_max}
+
+  - id: publier_staging_produit
+    title: Publier le produit en staging
+    role: >-
+      Fige le chantier du produit en une version, la construit et la met en
+      ligne sur staging-<produit>.<domaine>, non indexé, avec la clé Stripe
+      du mode test. Sans LLM.
+    step: build_venture
+    type: capability
+    capability: publish_version
+    queue: works
+    priority: 30
+    params:
+      venture_id: {source: task, value: venture_id}
+      deliverable: {source: fixed, value: produit}
+      target: {source: fixed, value: staging}
+      env_secrets: {source: fixed, value: STRIPE_SECRET_KEY=stripe-test.key}
+      task_id: {source: task, value: task_id}
+
+  - id: relire_produit
+    title: Relire le produit
+    role: >-
+      Essaie le produit en ligne comme un client ordinaire, sans voir son
+      code : suit chaque scénario de test sur ordinateur puis sur mobile,
+      jusqu'au paiement avec la carte de test de Stripe, garde ses
+      captures, et rend « bon » ou « à corriger ».
+    step: build_venture
+    type: llm
+    model_tier: code
+    queue: works
+    priority: 30
+    max_tool_turns: 80
+    compare:
+      builds: false
+    prompt: |
+      Tu essaies le produit fini d'un business comme le ferait un client
+      ordinaire qui le découvre : tu ne vois pas son code, seulement le
+      site en ligne (son adresse est dans les paramètres de la tâche,
+      « url »). Tu reçois le plan validé, avec ses scénarios de test, et la
+      fiche produit.
+
+      Suis chaque scénario pas à pas, d'abord sur ordinateur, puis sur
+      mobile : lis la page, clique, tape, comme une personne. Crée un
+      compte avec une adresse inventée. Va jusqu'au paiement : la page de
+      paiement de Stripe est en mode test, paie avec la carte 4242 4242
+      4242 4242, une date future (12/34) et le code 123, puis vérifie ce
+      que le paiement débloque. Prends une capture à chaque étape
+      importante, garde-la (keep), et lis les erreurs de la page. Regarde
+      vraiment l'écran : un bouton qui sort de l'écran, un texte illisible,
+      un formulaire qui ne réagit pas, une page blanche, un message
+      d'erreur, un paiement qui ne débloque rien, ce qui manque par rapport
+      à la fiche produit.
+
+      Rends le verdict « bon » si un client peut faire chaque scénario sans
+      aide et sans tomber sur une erreur ; sinon « a_corriger ». Tes
+      remarques disent, pour chaque problème, le scénario, l'étape, ce que
+      tu as vu, ce qui était attendu, et le numéro de la capture. Ton
+      compte rendu dit ce que tu as essayé et ce qui marche.
+    tools:
+      - tool: plan_valide_du_produit
+        mode: given
+        label: Le plan validé et ses scénarios de test
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: fiche_produit
+        mode: given
+        label: La fiche produit
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: navigateur_agir
+        mode: callable
+        params: *navigateur_produit
+      - tool: navigateur_lire
+        mode: callable
+        params: *navigateur_produit
+      - tool: navigateur_capture
+        mode: callable
+        params: *navigateur_produit
+    output:
+      - {path: verdict, type: choice, choices: [bon, a_corriger], description: 'Un client peut-il faire chaque scénario ?'}
+      - {path: remarques, type: text, description: 'Les problèmes trouvés, un par ligne ; vide si tout va bien.'}
+      - {path: compte_rendu, type: text, description: Ce qui a été essayé et ce qui marche.}
+    writes:
+      - table: builds
+        operation: update
+        key: {column: id, source: task, value: build_id}
+        values:
+          status: {source: fixed, value: reviewed}
+          verdict: {source: field, value: verdict}
+          remarks: {source: field, value: remarques}
+          review: {source: field, value: compte_rendu}
+
+  - id: compter_passages_produit
+    title: Compter les passages de construction du produit
+    role: >-
+      Après une relecture « à corriger » : la construction du produit
+      reprend pour un nouveau passage tant qu'il en reste, sinon il va tel
+      qu'il est au ticket « Tester le produit » (Q41). Sans LLM.
+    step: build_venture
+    type: capability
+    capability: next_round
+    queue: works
+    priority: 30
+    settings:
+      passages_max: {value: 3, min: 1, max: 10, policy: true, description: "Les passages de construction et de relecture du produit, au plus."}
+    params:
+      round: {source: task, value: passage}
+      max: {source: setting, value: passages_max}
+
+  - id: demander_test_produit
+    title: Faire essayer le produit
+    role: >-
+      Ouvre le ticket « Tester le produit » du produit fini : l'adresse du
+      staging, les scénarios de test et le verdict du relecteur. Il
+      n'expire jamais : rien n'est mis en vente sans qu'un humain ait
+      essayé le produit, paiement compris (Q91). Sans LLM.
+    step: build_venture
+    type: capability
+    capability: ask_owners
+    queue: conversations
+    priority: 80
+    params:
+      ticket_type: {source: fixed, value: TEST_PRODUIT}
+      ref_table: {source: fixed, value: builds}
+      ref_id: {source: task, value: build_id}
+      raison: {source: fixed, value: "Le produit est en ligne en staging, avec Stripe en mode test : essaie-le comme un client, jusqu'au paiement avec la carte 4242 4242 4242 4242. Le valider achète son domaine et le met en vente."}
+      title: {source: fixed, value: Un produit attend que tu l'essaies}
+
+  - id: suite_test_produit
+    title: Suite du ticket « Tester le produit » du produit
+    role: >-
+      La réponse au ticket « Tester le produit » du produit fini :
+      « Valider » achète son domaine puis le met en vente, « À corriger »
+      relance la construction avec les consignes, « Arrêter le business »
+      l'arrête. Sans LLM.
+    step: build_venture
+    type: capability
+    capability: echo
+    queue: conversations
+    priority: 80
+    params:
+      acte: {source: task, value: acte}
+      texte: {source: task, value: texte}
+      build_id: {source: task, value: build_id}
+      venture_id: {source: task, value: venture_id}
+    writes:
+      - table: builds
+        operation: update
+        key: {column: id, source: task, value: build_id}
+        condition: {field: acte, op: '=', value: a_corriger}
+        values:
+          owner_notes: {source: task, value: texte}
+      - table: ventures
+        operation: update
+        key: {column: id, source: task, value: venture_id}
+        condition: {field: acte, op: '=', value: arreter_business}
+        values:
+          lifecycle: {source: fixed, value: KILLED}
+
+  - id: acheter_domaine
+    title: Acheter le domaine du produit
+    role: >-
+      Après l'essai d'un humain : achète le nom de domaine validé dans le
+      ticket « Plan » (ou celui qu'un humain a donné depuis), s'il est libre
+      et sous le prix maximum, et le fait pointer vers le serveur. Sinon,
+      dit pourquoi et propose d'autres noms libres.
+    step: build_venture
+    type: llm
+    model_tier: smart
+    queue: works
+    priority: 30
+    max_tool_turns: 10
+    settings:
+      prix_max_eur: {value: 30, min: 1, max: 500, policy: true, description: "Le prix maximum d'un domaine acheté pour un produit, en euros par an (la première année comme le renouvellement)."}
+    prompt: |
+      Tu achètes le nom de domaine du produit fini d'un business et tu le
+      fais pointer vers le serveur de Serge. C'est un vrai achat, payé avec
+      la carte de Serge : sois exact.
+
+      Le nom à acheter est le paramètre « domaine » de la tâche s'il est
+      donné (un humain l'a choisi), sinon le domaine du plan validé.
+
+      1. Regarde s'il est déjà au compte (« Un nom de domaine du
+         compte ») : s'il y est, ne l'achète pas, passe au point 4.
+      2. Vérifie qu'il est libre, puis lis son prix dans le catalogue
+         (catégorie DOMAIN, nom .FR* pour un .fr). Les prix sont en
+         centimes : la première année (first_period_price) et le
+         renouvellement (price) doivent tous deux être sous {prix_max_eur} €
+         par an. Prends le prix d'un an.
+      3. S'il est libre et sous ce prix, achète-le avec l'identifiant de ce
+         prix (item_id). Une réponse 202 : le paiement est en cours et le
+         domaine n'est pas enregistré, l'achat n'a pas abouti.
+      4. Fais-le pointer vers le serveur : un enregistrement A pour « @ »,
+         vers l'adresse IPv4 du serveur, ttl 300, en remplaçant l'ancien.
+
+      Rends achete « oui » si le domaine est au compte et pointe vers le
+      serveur, avec son nom et son prix ; sinon « non », la raison
+      (pris, trop cher, refusé par Hostinger : dis ce qu'il a répondu), et
+      deux ou trois noms libres sous le prix maximum, avec leur prix.
+    tools:
+      - tool: plan_valide_du_produit
+        mode: given
+        label: Le plan validé, avec son domaine
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: adresse_du_serveur
+        mode: given
+        label: Le serveur de Serge
+      - tool: hostinger_domaine
+        mode: callable
+        max_calls: 4
+      - tool: hostinger_disponibilite
+        mode: callable
+        max_calls: 4
+      - tool: hostinger_catalogue
+        mode: callable
+        max_calls: 3
+      - tool: hostinger_acheter_domaine
+        mode: callable
+        max_calls: 1
+        params:
+          task_id: {source: task, value: task_id}
+      - tool: hostinger_zone_dns
+        mode: callable
+        max_calls: 2
+        params:
+          task_id: {source: task, value: task_id}
+    output:
+      - {path: achete, type: choice, choices: [oui, non], description: 'Le domaine est-il au compte et pointe-t-il vers le serveur ?'}
+      - {path: domaine, type: text, description: 'Le nom complet : devis-artisan.fr.'}
+      - {path: prix, type: text, required: false, description: "Son prix, la première année et au renouvellement."}
+      - {path: raison, type: text, required: false, description: "Pourquoi il n'est pas acheté, et les noms libres proposés avec leur prix."}
+
+  - id: demander_domaine
+    title: Demander un autre domaine
+    role: >-
+      Le domaine du produit n'a pas pu être acheté (pris, trop cher,
+      refusé) : le ticket « Domaine » le dit, avec les noms libres que
+      Serge propose. Il n'expire jamais. Sans LLM.
+    step: build_venture
+    type: capability
+    capability: ask_owners
+    queue: conversations
+    priority: 80
+    params:
+      ticket_type: {source: fixed, value: DOMAINE_PRODUIT}
+      ref_table: {source: fixed, value: builds}
+      ref_id: {source: task, value: build_id}
+      raison: {source: task, value: raison}
+      title: {source: fixed, value: Le domaine d'un produit n'a pas pu être acheté}
+
+  - id: suite_domaine
+    title: Suite du ticket « Domaine »
+    role: >-
+      La réponse au ticket « Domaine » : « À corriger » avec un nom achète
+      ce nom ; « Valider » réessaie le domaine du plan (par exemple après
+      avoir relevé le prix maximum sur la page Policy) ; « Arrêter le
+      business » l'arrête. Sans LLM.
+    step: build_venture
+    type: capability
+    capability: echo
+    queue: conversations
+    priority: 80
+    params:
+      acte: {source: task, value: acte}
+      texte: {source: task, value: texte}
+      build_id: {source: task, value: build_id}
+      venture_id: {source: task, value: venture_id}
+    writes:
+      - table: ventures
+        operation: update
+        key: {column: id, source: task, value: venture_id}
+        condition: {field: acte, op: '=', value: arreter_business}
+        values:
+          lifecycle: {source: fixed, value: KILLED}
+
+  - id: mettre_en_vente
+    title: Mettre le produit en vente dans Stripe
+    role: >-
+      Crée dans Stripe, en vrai mode, le produit du business et son prix
+      (l'abonnement du plan validé), avec la clé de recherche que le
+      produit utilise ; la prod encaisse alors pour de vrai.
+    step: build_venture
+    type: llm
+    model_tier: mid
+    queue: works
+    priority: 30
+    max_tool_turns: 6
+    prompt: *prompt_vendre
+    tools:
+      - tool: plan_valide_du_produit
+        mode: given
+        label: Le plan validé
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: fiche_business
+        mode: given
+        label: Le business
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: stripe_chercher_produits
+        mode: callable
+        params:
+          service: {source: fixed, value: stripe_live}
+          task_id: {source: task, value: task_id}
+      - tool: stripe_creer_produit
+        mode: callable
+        max_calls: 1
+        params:
+          service: {source: fixed, value: stripe_live}
+          'metadata[venture_id]': {source: task, value: venture_id}
+          task_id: {source: task, value: task_id}
+      - tool: stripe_creer_prix_du_produit
+        mode: callable
+        max_calls: 1
+        params:
+          service: {source: fixed, value: stripe_live}
+          'metadata[venture_id]': {source: task, value: venture_id}
+          lookup_key: {source: task, value: venture_id}
+          transfer_lookup_key: {source: fixed, value: 'true'}
+          task_id: {source: task, value: task_id}
+    output: *sortie_vendre
+
+  - id: publier_prod_produit
+    title: Publier le produit en prod
+    role: >-
+      Passe la version du staging en prod, sur le domaine du produit, avec
+      la clé Stripe restreinte du vrai mode : rien n'est reconstruit. Sans
+      LLM.
+    step: build_venture
+    type: capability
+    capability: publish_version
+    queue: works
+    priority: 30
+    params:
+      venture_id: {source: task, value: venture_id}
+      deliverable: {source: fixed, value: produit}
+      target: {source: fixed, value: prod}
+      domain: {source: task, value: domaine}
+      env_secrets: {source: fixed, value: STRIPE_SECRET_KEY=stripe-produits-live.key}
+      task_id: {source: task, value: task_id}
+
+  - id: paiement_test
+    title: Le paiement test de 1 €
+    role: >-
+      Vérifie que l'argent arrive : crée un prix de 1 € et un lien de
+      paiement pour le produit, paie avec la carte de Serge dans le
+      navigateur (sans jamais voir ses numéros), vérifie dans Stripe que le
+      paiement est arrivé et porte le business, se rembourse, puis
+      désactive le lien et archive le prix (Q41, Q91).
+    step: build_venture
+    type: llm
+    model_tier: code
+    queue: works
+    priority: 30
+    max_tool_turns: 60
+    prompt: |
+      Tu fais le paiement test de 1 € d'un produit qui vient d'être mis en
+      vente (Stripe en vrai mode : c'est de l'argent réel, rendu à la fin).
+      Le numéro du business est dans les paramètres de la tâche
+      (venture_id), son adresse aussi (« url »).
+
+      1. Retrouve le produit du business dans Stripe (recherche :
+         metadata['venture_id']:'<numéro du business>').
+      2. Crée un prix de 1 € (100 centimes, eur, un paiement unique, sans
+         intervalle) pour ce produit, avec le nom court « paiement test »,
+         puis un lien de paiement pour ce prix, quantité 1.
+      3. Ouvre le lien dans le navigateur et paie comme une personne :
+         une adresse e-mail (paiement-test@ suivi du domaine du produit),
+         puis la carte de Serge avec l'action taper_secret, sans jamais
+         écrire ses numéros toi-même : carte-numero.key pour le numéro,
+         carte-expiration.key pour la date (MM/AA), carte-cvc.key pour le
+         code, carte-titulaire.key pour le nom. Valide, et attends la page
+         qui confirme le paiement. Si la banque demande une confirmation
+         (3-D Secure) que tu ne peux pas donner, arrête-toi : paye « non ».
+      4. Vérifie dans Stripe, par les sessions du lien de paiement, qu'une
+         session est payée (payment_status : paid), de 100 centimes, et
+         note son paiement (payment_intent, pi_…).
+      5. Rembourse ce paiement en entier.
+      6. Désactive le lien de paiement et archive le prix de 1 €.
+
+      Rends paye « oui » si le paiement est arrivé, avec son identifiant
+      (pi_…), et rembourse « oui » s'il est remboursé ; ton compte rendu
+      dit, en deux phrases, l'adresse du produit, ce qui s'est passé et ce
+      qui a raté.
+    tools:
+      - tool: stripe_chercher_produits
+        mode: callable
+        params:
+          service: {source: fixed, value: stripe_live}
+          task_id: {source: task, value: task_id}
+      - tool: stripe_creer_prix
+        mode: callable
+        max_calls: 1
+        params:
+          service: {source: fixed, value: stripe_live}
+          'metadata[venture_id]': {source: task, value: venture_id}
+          task_id: {source: task, value: task_id}
+      - tool: stripe_creer_lien_paiement
+        mode: callable
+        max_calls: 1
+        params:
+          service: {source: fixed, value: stripe_live}
+          'metadata[venture_id]': {source: task, value: venture_id}
+          task_id: {source: task, value: task_id}
+      - tool: stripe_sessions_du_lien
+        mode: callable
+        params:
+          service: {source: fixed, value: stripe_live}
+          task_id: {source: task, value: task_id}
+      - tool: stripe_rembourser
+        mode: callable
+        max_calls: 1
+        params:
+          service: {source: fixed, value: stripe_live}
+          'metadata[venture_id]': {source: task, value: venture_id}
+          task_id: {source: task, value: task_id}
+      - tool: stripe_desactiver_lien
+        mode: callable
+        params:
+          service: {source: fixed, value: stripe_live}
+          active: {source: fixed, value: 'false'}
+          task_id: {source: task, value: task_id}
+      - tool: stripe_archiver_prix
+        mode: callable
+        params:
+          service: {source: fixed, value: stripe_live}
+          active: {source: fixed, value: 'false'}
+          task_id: {source: task, value: task_id}
+      - tool: navigateur_agir
+        mode: callable
+        params:
+          venture_id: {source: task, value: venture_id}
+          deliverable: {source: fixed, value: produit}
+          task_id: {source: task, value: task_id}
+          secrets: {source: fixed, value: 'carte-numero.key,carte-expiration.key,carte-cvc.key,carte-titulaire.key'}
+      - tool: navigateur_lire
+        mode: callable
+        params: *navigateur_produit
+      - tool: navigateur_capture
+        mode: callable
+        params: *navigateur_produit
+    output:
+      - {path: paye, type: choice, choices: [oui, non], description: 'Le paiement de 1 € est-il arrivé ?'}
+      - {path: paiement, type: text, required: false, description: Le paiement (pi_…).}
+      - {path: rembourse, type: choice, choices: [oui, non], description: 'Est-il remboursé ?'}
+      - {path: compte_rendu, type: text, description: "L'adresse du produit, ce qui s'est passé, ce qui a raté."}
+    writes:
+      - table: transactions
+        operation: insert
+        condition: {field: paye, op: '=', value: oui}
+        values:
+          venture_id: {source: task, value: venture_id}
+          kind: {source: fixed, value: canary}
+          amount_eur: {source: fixed, value: '1'}
+          intent_id: {source: field, value: paiement}
+          status: {source: fixed, value: succeeded}
+          doc_ref: {source: fixed, value: Paiement test de 1 € de l'étape 5.}
+
+  - id: produit_pret
+    title: Produit en vente
+    role: >-
+      Le produit est en ligne sur son domaine et le paiement test est
+      arrivé : le business passe à « produit en vente », d'où part la
+      prospection lourde (étape 6, lot 11). Sans LLM.
+    step: build_venture
+    type: capability
+    capability: echo
+    queue: works
+    priority: 30
+    params:
+      venture_id: {source: task, value: venture_id}
+      compte_rendu: {source: task, value: compte_rendu}
+    writes:
+      - table: ventures
+        operation: update
+        key: {column: id, source: task, value: venture_id}
+        values:
+          lifecycle: {source: fixed, value: PRODUCT_READY}
+
+  - id: prevenir_produit
+    title: Prévenir d'une étape du produit
+    role: >-
+      Un ticket d'information à Julien et Clem pendant l'étape 5 : le
+      produit est en vente, ou une étape a raté (Stripe, la prod, le
+      paiement test), avec la raison. Sans LLM.
+    step: build_venture
+    type: capability
+    capability: inform_owners
+    queue: conversations
+    priority: 80
+    params:
+      title: {source: task, value: titre}
+      text: {source: task, value: raison}
+
+  # Le bout en bout du produit fini (temporaire, Q91) : une calculatrice
+  # dont le POC est déjà fait (sa fiche, son plan validé) et que des clients
+  # ont déjà commentée entre directement dans l'étape 5 ; tout le reste est
+  # le vrai pipeline, Stripe, domaine et paiement test compris.
+  - id: bout_en_bout_produit
+    title: "Bout en bout : préparer le produit fini d'une calculatrice (temporaire)"
+    role: >-
+      Temporaire : met en base un business « Calculatrice » en construction
+      de son produit fini, avec la fiche produit et le plan validé de son
+      POC, et trois demandes de clients, puis lance la conception du
+      produit. La création du business, l'étape 2 et la prospection sont
+      court-circuitées ; la suite est celle de l'étape 5. Sans LLM.
+    type: capability
+    capability: echo
+    queue: works
+    priority: 30
+    writes:
+      - table: ventures
+        operation: insert
+        dedup: false
+        values:
+          name: {source: fixed, value: Calculatrice}
+          description: {source: fixed, value: "Une calculatrice en ligne, simple et lisible, sur ordinateur comme sur mobile."}
+          sellable_offer: {source: fixed, value: "Un abonnement à la calculatrice, avec ce que les clients ont demandé."}
+          family: {source: fixed, value: autre}
+          lifecycle: {source: fixed, value: PRODUCT_BUILDING}
+          choice_reason: {source: fixed, value: "Essai de bout en bout du produit fini depuis Mission Control."}
+      - table: product_sheets
+        operation: insert
+        parent: 0
+        values:
+          venture_id: {source: parent_row, value: id}
+          summary: {source: fixed, value: "Une calculatrice en ligne pour les quatre opérations, lisible sur ordinateur et sur mobile, sans compte."}
+          limits: {source: fixed, value: "Pas de fonctions scientifiques, pas d'historique des calculs."}
+          price: {source: fixed, value: Gratuite pendant le test.}
+          delays: {source: fixed, value: "Tout de suite : on ouvre la page et on calcule."}
+          usage: {source: fixed, value: "On tape le calcul avec les boutons ou le clavier, puis « = »."}
+      - table: product_faq
+        operation: insert
+        parent: 0
+        values:
+          venture_id: {source: parent_row, value: id}
+          question: {source: fixed, value: "Faut-il créer un compte ?"}
+          answer: {source: fixed, value: "Non : on ouvre la page et on calcule."}
+      - table: product_plans
+        operation: insert
+        parent: 0
+        values:
+          venture_id: {source: parent_row, value: id}
+          kind: {source: fixed, value: poc}
+          round: {source: fixed, value: '1'}
+          status: {source: fixed, value: validated}
+          hypothesis: {source: fixed, value: "Des visiteurs veulent une calculatrice en ligne simple, qui marche aussi bien au doigt qu'au clavier."}
+          target: {source: fixed, value: "Tout le monde ; c'est un essai de bout en bout de Serge."}
+          channel: {source: fixed, value: email}
+          prospects: {source: fixed, value: '30'}
+          duration_days: {source: fixed, value: '10'}
+          price: {source: fixed, value: Gratuite.}
+          deliverable: {source: fixed, value: "Une calculatrice en ligne : les quatre opérations, les nombres à virgule, l'effacement."}
+          plan: {source: fixed, value: "Une seule page : l'écran, le pavé (0 à 9, virgule, + − × ÷, =, C, ←), le clavier, « Erreur » pour une division par zéro, des résultats arrondis à 10 chiffres significatifs, un pavé qui tient sur mobile."}
+          scenarios: {source: fixed, value: "1. Taper 12 + 7 = : 19. 2. Taper 7 ÷ 2 = : 3,5. 3. Taper 5 ÷ 0 = : Erreur, puis C : 0. 4. Sur mobile, tout le pavé tient dans l'écran."}
+          challenge: {source: fixed, value: "Plan tout fait de l'essai de bout en bout : pas de critique."}
+      - table: customer_requests
+        operation: insert
+        parent: 0
+        values:
+          venture_id: {source: parent_row, value: id}
+          kind: {source: fixed, value: idée}
+          text: {source: fixed, value: "J'aimerais retrouver mes derniers calculs quand je reviens sur la page, même le lendemain."}
+      - table: customer_requests
+        operation: insert
+        parent: 0
+        values:
+          venture_id: {source: parent_row, value: id}
+          kind: {source: fixed, value: idée}
+          text: {source: fixed, value: "Il manque le pourcentage et la racine carrée pour mes devis."}
+      - table: customer_requests
+        operation: insert
+        parent: 0
+        values:
+          venture_id: {source: parent_row, value: id}
+          kind: {source: fixed, value: insatisfaction}
+          text: {source: fixed, value: "1 ÷ 3 affiche une ligne de chiffres qui dépasse de l'écran sur mon téléphone."}
+
 links:
   - id: cycle_ouvert_vers_exploration
     title: Le cycle ouvert part en exploration
@@ -4233,6 +5739,302 @@ links:
     params:
       raison: {source: field, value: detail}
 
+  # --- L'étape 5 : le vrai produit (lot 10, Q41, Q43 et Q91) ---
+  - id: lancement_vers_conception_produit
+    title: Le business part en conception de son produit
+    from: lancer_produit
+    to: concevoir_produit
+    mode: per_row
+    write: 0
+    params:
+      venture_id: {source: row, value: id}
+      tour: {source: fixed, value: '1'}
+  - id: bout_en_bout_produit_vers_conception
+    title: "Bout en bout : la calculatrice part en conception de son produit"
+    from: bout_en_bout_produit
+    to: concevoir_produit
+    mode: per_row
+    write: 0
+    params:
+      venture_id: {source: row, value: id}
+      tour: {source: fixed, value: '1'}
+  - id: plan_produit_vers_critique
+    title: Le plan du produit part à la critique
+    from: concevoir_produit
+    to: challenger_produit
+    mode: per_row
+    write: 0
+    params:
+      plan_id: {source: row, value: id}
+      venture_id: {source: row, value: venture_id}
+      tour: {source: task, value: tour}
+  - id: critique_produit_a_corriger_vers_compte
+    title: Un plan de produit à corriger
+    from: challenger_produit
+    to: compter_tours_produit
+    condition: {field: verdict, op: '=', value: a_corriger}
+    params:
+      venture_id: {source: task, value: venture_id}
+      plan_id: {source: task, value: plan_id}
+      tour: {source: task, value: tour}
+  - id: critique_produit_bonne_vers_ticket
+    title: Un plan de produit bon part au ticket « Plan »
+    from: challenger_produit
+    to: demander_validation_produit
+    condition: {field: verdict, op: '=', value: bon}
+    params:
+      plan_id: {source: task, value: plan_id}
+  - id: tours_produit_restants_vers_conception
+    title: Il reste des tours de critique du produit
+    from: compter_tours_produit
+    to: concevoir_produit
+    condition: {field: suite, op: '=', value: encore}
+    params:
+      venture_id: {source: task, value: venture_id}
+      tour: {source: field, value: tour_suivant}
+      plan_precedent: {source: task, value: plan_id}
+  - id: tours_produit_finis_vers_ticket
+    title: Plus de tours de critique du produit
+    from: compter_tours_produit
+    to: demander_validation_produit
+    condition: {field: suite, op: '=', value: fini}
+    params:
+      plan_id: {source: task, value: plan_id}
+  - id: plan_produit_valide_vers_stripe_test
+    title: Le plan du produit validé, Stripe d'abord (mode test)
+    from: suite_plan_produit
+    to: vendre_en_mode_test
+    condition: {field: acte, op: '=', value: valider}
+    params:
+      venture_id: {source: task, value: venture_id}
+  - id: plan_produit_a_corriger_vers_conception
+    title: Le plan du produit est à corriger d'après un humain
+    from: suite_plan_produit
+    to: concevoir_produit
+    condition: {field: acte, op: '=', value: a_corriger}
+    params:
+      venture_id: {source: task, value: venture_id}
+      tour: {source: fixed, value: '1'}
+      plan_precedent: {source: task, value: plan_id}
+      consignes: {source: task, value: texte}
+  - id: stripe_test_vers_construction
+    title: Le produit existe dans Stripe (mode test) ; la construction commence
+    from: vendre_en_mode_test
+    to: construire_produit
+    condition: {field: ok, op: '=', value: oui}
+    params:
+      venture_id: {source: task, value: venture_id}
+      passage: {source: fixed, value: '1'}
+      reprise: {source: fixed, value: '1'}
+  - id: stripe_test_rate_vers_ticket
+    title: Stripe (mode test) n'a pas créé le produit
+    from: vendre_en_mode_test
+    to: prevenir_produit
+    condition: {field: ok, op: '!=', value: oui}
+    params:
+      titre: {source: fixed, value: "Stripe (mode test) n'a pas pu créer un produit"}
+      raison: {source: field, value: raison}
+  - id: produit_construit_vers_staging
+    title: Le produit construit part en staging
+    from: construire_produit
+    to: publier_staging_produit
+    mode: per_row
+    write: 0
+    params:
+      venture_id: {source: row, value: venture_id}
+      build_id: {source: row, value: id}
+      passage: {source: task, value: passage}
+      reprise: {source: task, value: reprise}
+  - id: produit_pas_fini_vers_reprise
+    title: Une construction du produit pas finie reprend
+    from: construire_produit
+    to: compter_reprises_produit
+    mode: per_row
+    write: 1
+    params:
+      venture_id: {source: row, value: venture_id}
+      build_id: {source: row, value: id}
+      passage: {source: task, value: passage}
+      reprise: {source: task, value: reprise}
+  - id: reprise_produit_vers_construction
+    title: La construction du produit reprend, dans le même passage
+    from: compter_reprises_produit
+    to: construire_produit
+    condition: {field: suite, op: '=', value: encore}
+    params:
+      venture_id: {source: task, value: venture_id}
+      passage: {source: task, value: passage}
+      reprise: {source: field, value: tour_suivant}
+      probleme: {source: task, value: probleme}
+      journal: {source: task, value: journal}
+  - id: reprises_produit_finies_vers_test
+    title: "Plus de reprises : un humain essaie le produit tel qu'il est"
+    from: compter_reprises_produit
+    to: demander_test_produit
+    condition: {field: suite, op: '=', value: fini}
+    params:
+      build_id: {source: task, value: build_id}
+  - id: staging_produit_vers_relecture
+    title: Le produit en staging part à la relecture
+    from: publier_staging_produit
+    to: relire_produit
+    condition: {field: ok, op: '=', value: 'True'}
+    params:
+      venture_id: {source: task, value: venture_id}
+      build_id: {source: task, value: build_id}
+      passage: {source: task, value: passage}
+      url: {source: field, value: url}
+  - id: staging_produit_rate_vers_reprise
+    title: Une publication du produit ratée repart à la construction
+    from: publier_staging_produit
+    to: compter_reprises_produit
+    condition: {field: ok, op: '!=', value: 'True'}
+    params:
+      venture_id: {source: task, value: venture_id}
+      build_id: {source: task, value: build_id}
+      passage: {source: task, value: passage}
+      reprise: {source: task, value: reprise}
+      probleme: {source: field, value: detail}
+      journal: {source: field, value: log}
+  - id: relecture_produit_bonne_vers_test
+    title: Le relecteur trouve le produit bon
+    from: relire_produit
+    to: demander_test_produit
+    condition: {field: verdict, op: '=', value: bon}
+    params:
+      build_id: {source: task, value: build_id}
+  - id: relecture_produit_a_corriger_vers_compte
+    title: Le relecteur trouve à corriger dans le produit
+    from: relire_produit
+    to: compter_passages_produit
+    condition: {field: verdict, op: '=', value: a_corriger}
+    params:
+      venture_id: {source: task, value: venture_id}
+      build_id: {source: task, value: build_id}
+      passage: {source: task, value: passage}
+  - id: passages_produit_restants_vers_construction
+    title: Un nouveau passage de construction du produit
+    from: compter_passages_produit
+    to: construire_produit
+    condition: {field: suite, op: '=', value: encore}
+    params:
+      venture_id: {source: task, value: venture_id}
+      passage: {source: field, value: tour_suivant}
+      reprise: {source: fixed, value: '1'}
+  - id: passages_produit_finis_vers_test
+    title: "Plus de passages : un humain essaie le produit tel qu'il est"
+    from: compter_passages_produit
+    to: demander_test_produit
+    condition: {field: suite, op: '=', value: fini}
+    params:
+      build_id: {source: task, value: build_id}
+  - id: test_produit_valide_vers_domaine
+    title: Le produit essayé et validé ; Serge achète son domaine
+    from: suite_test_produit
+    to: acheter_domaine
+    condition: {field: acte, op: '=', value: valider}
+    params:
+      venture_id: {source: task, value: venture_id}
+      build_id: {source: task, value: build_id}
+  - id: test_produit_a_corriger_vers_construction
+    title: Le produit est à corriger d'après un humain
+    from: suite_test_produit
+    to: construire_produit
+    condition: {field: acte, op: '=', value: a_corriger}
+    params:
+      venture_id: {source: task, value: venture_id}
+      passage: {source: fixed, value: '1'}
+      reprise: {source: fixed, value: '1'}
+      consignes: {source: task, value: texte}
+  - id: domaine_achete_vers_vente
+    title: Le domaine est acheté ; le produit est mis en vente
+    from: acheter_domaine
+    to: mettre_en_vente
+    condition: {field: achete, op: '=', value: oui}
+    params:
+      venture_id: {source: task, value: venture_id}
+      domaine: {source: field, value: domaine}
+  - id: domaine_pas_achete_vers_ticket
+    title: Le domaine n'a pas pu être acheté
+    from: acheter_domaine
+    to: demander_domaine
+    condition: {field: achete, op: '!=', value: oui}
+    params:
+      build_id: {source: task, value: build_id}
+      raison: {source: field, value: raison}
+  - id: domaine_valide_vers_achat
+    title: Réessayer le domaine du plan
+    from: suite_domaine
+    to: acheter_domaine
+    condition: {field: acte, op: '=', value: valider}
+    params:
+      venture_id: {source: task, value: venture_id}
+      build_id: {source: task, value: build_id}
+  - id: domaine_donne_vers_achat
+    title: Acheter le domaine donné par un humain
+    from: suite_domaine
+    to: acheter_domaine
+    condition: {field: acte, op: '=', value: a_corriger}
+    params:
+      venture_id: {source: task, value: venture_id}
+      build_id: {source: task, value: build_id}
+      domaine: {source: task, value: texte}
+  - id: vente_vers_prod
+    title: Le produit est en vente dans Stripe ; il passe en prod sur son domaine
+    from: mettre_en_vente
+    to: publier_prod_produit
+    condition: {field: ok, op: '=', value: oui}
+    params:
+      venture_id: {source: task, value: venture_id}
+      domaine: {source: task, value: domaine}
+  - id: vente_ratee_vers_ticket
+    title: Stripe (vrai mode) n'a pas mis le produit en vente
+    from: mettre_en_vente
+    to: prevenir_produit
+    condition: {field: ok, op: '!=', value: oui}
+    params:
+      titre: {source: fixed, value: "Stripe (vrai mode) n'a pas pu mettre un produit en vente"}
+      raison: {source: field, value: raison}
+  - id: prod_produit_vers_paiement_test
+    title: Le produit en prod ; le paiement test de 1 €
+    from: publier_prod_produit
+    to: paiement_test
+    condition: {field: ok, op: '=', value: 'True'}
+    params:
+      venture_id: {source: task, value: venture_id}
+      url: {source: field, value: url}
+  - id: prod_produit_ratee_vers_ticket
+    title: Une mise en prod du produit ratée
+    from: publier_prod_produit
+    to: prevenir_produit
+    condition: {field: ok, op: '!=', value: 'True'}
+    params:
+      titre: {source: fixed, value: "Un produit validé n'a pas pu passer en prod"}
+      raison: {source: field, value: detail}
+  - id: paiement_test_vers_produit_pret
+    title: Le paiement test est arrivé ; le produit est en vente
+    from: paiement_test
+    to: produit_pret
+    condition: {field: paye, op: '=', value: oui}
+    params:
+      venture_id: {source: task, value: venture_id}
+      compte_rendu: {source: field, value: compte_rendu}
+  - id: paiement_test_rate_vers_ticket
+    title: Le paiement test n'a pas abouti
+    from: paiement_test
+    to: prevenir_produit
+    condition: {field: paye, op: '!=', value: oui}
+    params:
+      titre: {source: fixed, value: "Le paiement test de 1 € d'un produit n'a pas abouti"}
+      raison: {source: field, value: compte_rendu}
+  - id: produit_pret_vers_ticket
+    title: Prévenir qu'un produit est en vente
+    from: produit_pret
+    to: prevenir_produit
+    params:
+      titre: {source: fixed, value: Un produit est en vente}
+      raison: {source: task, value: compte_rendu}
+
 triggers:
   - id: lancer_cycle
     title: Lancer un cycle d'écoute
@@ -4493,6 +6295,56 @@ triggers:
       Puis le ticket « Tester le produit » : ouvre le lien du staging et
       essaie la calculatrice ; « Valider » la met en prod. Compter quelques
       euros de modèles.
+  - id: reponse_au_ticket_plan_produit
+    title: Une réponse au ticket « Plan » d'un produit
+    invocation: suite_plan_produit
+    event: row_written
+    table: ticket_answers
+    filter_column: ticket_type
+    filter_value: PLAN_PRODUIT
+    params:
+      acte: {source: row, value: acte}
+      texte: {source: row, value: text}
+      plan_id: {source: row, value: ref_id}
+      venture_id: {source: row, value: venture_id}
+  - id: reponse_au_ticket_test_produit
+    title: Une réponse au ticket « Tester le produit » d'un produit fini
+    invocation: suite_test_produit
+    event: row_written
+    table: ticket_answers
+    filter_column: ticket_type
+    filter_value: TEST_PRODUIT
+    params:
+      acte: {source: row, value: acte}
+      texte: {source: row, value: text}
+      build_id: {source: row, value: ref_id}
+      venture_id: {source: row, value: venture_id}
+  - id: reponse_au_ticket_domaine_produit
+    title: Une réponse au ticket « Domaine » d'un produit
+    invocation: suite_domaine
+    event: row_written
+    table: ticket_answers
+    filter_column: ticket_type
+    filter_value: DOMAINE_PRODUIT
+    params:
+      acte: {source: row, value: acte}
+      texte: {source: row, value: text}
+      build_id: {source: row, value: ref_id}
+      venture_id: {source: row, value: venture_id}
+  - id: bouton_bout_en_bout_produit
+    title: "Bout en bout : le produit fini d'une calculatrice"
+    invocation: bout_en_bout_produit
+    event: button
+    confirm: >-
+      Serge met en base une calculatrice dont le POC est fait, avec trois
+      demandes de clients, puis lance la vraie étape 5 : plan du produit
+      payant, critique, ticket « Plan » (tu valides le prix et le nom de
+      domaine), Stripe en mode test, construction et relecture jusqu'au
+      paiement avec la carte de test, ticket « Tester le produit ». Après ta
+      validation, c'est réel : Serge achète le domaine (sous le prix maximum
+      de la page Policy), met le produit en vente dans Stripe, le publie sur
+      son domaine et paie 1 € avec sa carte, puis se rembourse. Compter
+      quelques euros de modèles, plus le domaine.
 
   # Les boutons de la fiche d'un business : leur formulaire attend le
   # business, que Mission Control remplit (lot 10, Q91).
@@ -4534,6 +6386,19 @@ triggers:
 # seulement si la valeur en base est encore celle d'origine (`from`) ; une
 # valeur changée dans Mission Control est gardée. Résultat : table
 # pipeline_changes.
+  - id: bouton_construire_produit
+    title: Construire le vrai produit
+    invocation: lancer_produit
+    event: button
+    confirm: >-
+      Temporaire, en attendant l'étape 4 : pour un business au test léger
+      (Smoke prêt ou terminé). Serge conçoit son produit fini, payant, à
+      partir de son POC et des demandes de ses clients, puis le ticket
+      « Plan » (prix et nom de domaine), la construction, l'essai, l'achat
+      du domaine, la mise en vente et le paiement test de 1 €.
+    params:
+      venture_id: {source: form, value: venture_id}
+
 changes:
   - id: titre_qui_est_serge
     why: Les textes envoyés au modèle ont un titre et une aide (page Pipeline).

@@ -137,6 +137,7 @@ class McSystemTests(McBrowserCase):
         expect(essais.locator('[data-bouton-base]')).to_have_text(
             [
                 "Bout en bout : le POC d'une calculatrice",
+                "Bout en bout : le produit fini d'une calculatrice",
                 'Essayer le chantier',
                 "Essayer l'étape 2",
                 "Essayer l'interface web",

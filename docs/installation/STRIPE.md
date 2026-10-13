@@ -79,5 +79,41 @@ Pour essayer : sur la fiche d'un business, « Essayer Stripe (mode
 test) », puis vérifier le produit dans le Dashboard Stripe (mode test),
 puis « Supprimer de Stripe (mode test) ».
 
+## Le produit fini : une clé restreinte, et la carte de Serge
+
+À l'étape 5 (lot 10), le produit d'un business encaisse lui-même ses
+abonnements, par une page de paiement Stripe. Il ne reçoit jamais la clé
+complète de Serge :
+
+- en staging (et dans son chantier), la clé du mode test,
+  `stripe-test.key` ;
+- en prod, une **clé restreinte du vrai mode**, à créer une fois dans le
+  Dashboard Stripe (Developers → API keys → « Create restricted key ») et
+  à poser dans `~/.config/serge/secrets/stripe-produits-live.key`. Ses
+  droits : Checkout Sessions (écriture), Customers (écriture), Prices
+  (lecture), Products (lecture), Subscriptions (lecture), Customer portal
+  (écriture). Rien d'autre. Sans ce fichier, la mise en prod rate et un
+  ticket le dit.
+
+Le produit retrouve son prix par sa clé de recherche (`lookup_key`), le
+numéro du business, en mode test comme en vrai mode.
+
+**Le paiement test de 1 €** se fait avec la carte de Serge, tapée dans la
+page de paiement par l'action « taper un secret » du navigateur : le
+modèle ne voit jamais ses numéros, ni dans la page relue ni sur une
+capture. Quatre fichiers, une ligne chacun, droits 0600, dans
+`~/.config/serge/secrets/` :
+
+| Fichier | Contenu |
+| --- | --- |
+| `carte-numero.key` | Le numéro de la carte. |
+| `carte-expiration.key` | La date d'expiration, `MM/AA`. |
+| `carte-cvc.key` | Le code à 3 chiffres. |
+| `carte-titulaire.key` | Le nom sur la carte. |
+
+Si la banque demande une confirmation (3-D Secure) que Serge ne peut pas
+donner, le paiement test s'arrête et un ticket le dit : le faire à la main
+une fois, depuis le lien de paiement.
+
 Détail contrat : [`INSTANCE_CONTRACT.md`](INSTANCE_CONTRACT.md).
 Install : [`INSTALL.md`](INSTALL.md).

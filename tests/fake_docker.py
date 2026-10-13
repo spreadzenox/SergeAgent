@@ -64,7 +64,11 @@ def _run(args: list[str]) -> int:
             i += 1
             continue
         if args[i] == '-e':
-            env.append(args[i + 1])
+            # « -e NOM » sans valeur : Docker la prend dans son environnement.
+            nom = args[i + 1]
+            env.append(
+                nom if '=' in nom else f'{nom}={os.environ.get(nom, "")}'
+            )
         else:
             flags[args[i]] = args[i + 1]
         i += 2

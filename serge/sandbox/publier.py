@@ -10,7 +10,9 @@ elle n'est jamais modifiée (décision Q40). Publier en staging :
    ``Dockerfile`` (la seule règle imposée au constructeur, Q91) ;
 2. remplace le conteneur du staging par un neuf, avec les limites du
    profil « produit » (page Policy), son volume de données (``/data``,
-   gardé d'une version à l'autre) et un port fixe sur ``127.0.0.1`` ;
+   gardé d'une version à l'autre), un port fixe sur ``127.0.0.1`` et les
+   secrets réglés en base (``env_secrets`` : la clé Stripe du produit),
+   par son environnement ;
 3. attend que le produit réponde sur ce port ;
 4. ajoute la route dans Caddy (le staging n'est pas indexé par les
    moteurs de recherche) et fait relire Caddy, sans coupure ;
@@ -42,7 +44,14 @@ from serge.ingress import caddy
 from serge.paths import files_root
 from serge.policy_store import policy_en_vigueur
 from serge.sandbox.chantier import chantier_id, ensure_chantier
-from serge.sandbox.docker import DockerError, docker, docker_bytes, journal
+from serge.sandbox.docker import (
+    DockerError,
+    docker,
+    docker_bytes,
+    env_flags,
+    journal,
+    secret_env,
+)
 
 PORT = 8080
 # Les ports des produits sur 127.0.0.1 : un par publication, gardé d'une
@@ -263,6 +272,14 @@ def _lancer(
     url = f'https://{hostname}'
     port = _port(conn, deployment)
     container = f'serge-{deployment}'
+    try:
+        # La clé Stripe du produit : celle du mode test en staging, une clé
+        # restreinte du vrai mode en prod (réglées en base, env_secrets).
+        secrets = secret_env(str(args.get('env_secrets') or ''))
+    except DockerError as exc:
+        return _rate(
+            conn, deployment, args, version, 'secret_absent', str(exc), ''
+        )
     docker(['rm', '-f', container], timeout=120, check=False)
     docker(
         [
@@ -284,6 +301,7 @@ def _lancer(
             'DATA_DIR=/data',
             '-e',
             f'PUBLIC_URL={url}',
+            *env_flags(secrets),
             '-p',
             f'127.0.0.1:{port}:{PORT}',
             '-v',
@@ -293,6 +311,7 @@ def _lancer(
             image,
         ],
         timeout=300,
+        secrets=secrets,
     )
     if not _attendre(port):
         logs = docker(
