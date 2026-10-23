@@ -383,6 +383,9 @@ Le circuit est décrit en base (lot 8, décision Q79) :
 - toutes les 15 minutes, « Préparer les relances » cherche qui n'a pas
   répondu : une relance 3 jours après le premier message, une autre
   7 jours après, sur le même canal ;
+- un contact qui a refusé n'est plus démarché (ni premier message ni
+  relance), mais s'il revient de lui-même, intéressé, son étape suit sa
+  réponse (Q94) ;
 - une désinscription bloque la personne partout, sur tous les canaux et
   pour tous les business, et un ticket prévient Julien et Clem ;
 - une réponse automatique (« je suis absent », un accusé de réception) ne
