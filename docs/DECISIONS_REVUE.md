@@ -1943,3 +1943,16 @@ Décidé :
    ce prospect », qui coupe la communication. Clem n'était plus sûr de ce
    qui existe déjà : « Traiter une réponse » classe une absence sans y
    répondre (Q79), mais rien n'arrête une conversation qui tourne en rond.
+
+### Q94 — Un contact qui a refusé peut revenir (validé par Clem, 23 octobre 2026)
+Constat : Clem avait refusé au téléphone, puis répondu par e-mail qu'il
+était intéressé. Serge lui a bien répondu, mais son étape est restée
+« Écarté ou refus » : aucun passage ne sortait de cette étape (passage de
+`REJECTED` à `INTENT` refusé par le code d'écriture). Claude a demandé si
+c'était voulu.
+Décidé : **quelqu'un qui a refusé n'est plus démarché, mais il doit
+pouvoir passer « intéressé » s'il revient.** « Refus » reste une étape où
+Serge n'envoie plus de premier message ni de relance (page Policy) ; s'il
+écrit, son étape suit sa réponse (engagé, intéressé, rendez-vous). Même
+chose pour un contact qu'on croyait injoignable. Une étape ne redescend
+jamais : une question après « intéressé » le laisse « intéressé ».

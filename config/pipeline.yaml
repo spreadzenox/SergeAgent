@@ -1308,6 +1308,17 @@ status_transitions:
   - {table: contacts, column: funnel_state, from: INTENT, to: MEETING}
   - {table: contacts, column: funnel_state, from: INTENT, to: REJECTED}
   - {table: contacts, column: funnel_state, from: MEETING, to: REJECTED}
+  # Un contact qui avait refusé (au téléphone, par exemple) ou qu'on croyait
+  # injoignable peut revenir : s'il écrit qu'il est intéressé, son étape
+  # suit sa réponse. Une étape plus basse ne remplace jamais une plus haute
+  # (une question après « intéressé » le laisse « intéressé »).
+  - {table: contacts, column: funnel_state, from: REJECTED, to: ENGAGED}
+  - {table: contacts, column: funnel_state, from: REJECTED, to: INTENT}
+  - {table: contacts, column: funnel_state, from: REJECTED, to: MEETING}
+  - {table: contacts, column: funnel_state, from: UNREACHABLE, to: ENGAGED}
+  - {table: contacts, column: funnel_state, from: UNREACHABLE, to: INTENT}
+  - {table: contacts, column: funnel_state, from: UNREACHABLE, to: MEETING}
+  - {table: contacts, column: funnel_state, from: UNREACHABLE, to: REJECTED}
   # Le business d'essai (bouton « Lancer un essai ») n'entre jamais dans
   # la chaîne des étapes ; un contact à qui Serge écrit passe « en prise de
   # contact ».

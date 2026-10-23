@@ -6,6 +6,8 @@ répondent ce qu'on leur a dit ; tout le reste est réel : le pipeline en
 base, l'interpréteur, les garde-fous.
 
 Scénarios :
+- Marc avait refusé, puis écrit qu'il est intéressé : son étape suit sa
+  réponse ;
 - Marc répond au premier message de Serge : son message est relevé,
   rattaché à Marc par le fil, « Traiter une réponse » rend une question et
   une idée de produit, la réponse part dans le même fil ; relever de
@@ -290,6 +292,26 @@ class ConversationsTests(unittest.TestCase):
         # Relever de nouveau : le message n'est pas réécrit, rien ne repart.
         self._relever()
         self.assertEqual(self._un('SELECT COUNT(*) FROM inbound_events'), (1,))
+        self.assertEqual(len(self.canal.envoyes), 1)
+
+    def test_un_contact_qui_avait_refuse_peut_revenir(self) -> None:
+        """Marc avait refusé au téléphone, puis écrit qu'il est intéressé :
+        son étape suit sa réponse, et une question ensuite ne la fait pas
+        redescendre."""
+        self.conn.execute(
+            "UPDATE contacts SET funnel_state='REJECTED' WHERE id='c1'"
+        )
+        self.conn.commit()
+        self.modele.reponse = {
+            'reaction': 'intéressé',
+            'reply': 'Avec plaisir, voici le lien.',
+        }
+        self._recu('m1', 'Finalement, ça m’intéresse.')
+        self._relever()
+        self.assertEqual(
+            self._un("SELECT funnel_state FROM contacts WHERE id='c1'"),
+            ('INTENT',),
+        )
         self.assertEqual(len(self.canal.envoyes), 1)
 
     def test_un_inconnu_n_est_pas_traite(self) -> None:
