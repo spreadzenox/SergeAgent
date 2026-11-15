@@ -1,4 +1,4 @@
-# Lot 11 — Conception : du business imaginé à la vente du produit fini
+# Lot 12 — Conception : du business imaginé à la vente du produit fini
 
 Ce document décrit la suite du pipeline après le lot 10 : comment Serge
 trouve des prospects, mène le test léger d'un business, le juge, choisit le
@@ -6,6 +6,11 @@ business principal, puis vend en masse le produit fini, tel qu'il sort de
 la construction. **Rien n'est codé ici** : c'est la liste des invocations,
 des tables, des liens, des déclencheurs et des réglages à mettre en base,
 pour que Clem et Julien les valident avant le code.
+
+Ce lot s'appelait le lot 11 jusqu'au 15 novembre 2026 : un lot 11 pour les
+e-mails des produits s'est placé avant lui, et les lots suivants ont pris
+un cran (décision Q95). Les décisions Q92 et Q93 gardent les numéros
+d'alors : leur lot 11 est ce lot 12, et leur lot 15 est le lot 16.
 
 Il suit les réponses de Clem du 13 octobre 2026 (décisions Q92 et Q93 de
 [`DECISIONS_REVUE.md`](DECISIONS_REVUE.md)) et les décisions déjà prises :
@@ -16,7 +21,7 @@ principal (Q16 bis), la caisse (Q47), le web (Q48) et le lot 10 (Q91). Et
 la règle de tous les lots : le code n'est qu'un interpréteur de la base,
 jamais de code propre à une invocation.
 
-**Ce que le lot 11 couvre** : d'un business dont le POC est en ligne (fin
+**Ce que le lot 12 couvre** : d'un business dont le POC est en ligne (fin
 de l'étape 2, lot 10) jusqu'à la vente en masse du produit fini (étape 6),
 en passant par le choix du principal (étape 4) et la construction du vrai
 produit (étape 5, lot 10). La prospection lourde, c'est seulement vendre
@@ -26,7 +31,7 @@ en masse ce qui existe déjà.
 pendant qu'il se vend. Le point de la semaine (continuer, accélérer,
 pivoter, arrêter), les retours des clients et les nouvelles versions, les
 livraisons, les impayés, les remboursements, la maintenance et la
-fermeture d'un business partent au lot 15, « Faire vivre les produits »,
+fermeture d'un business partent au lot 16, « Faire vivre les produits »,
 placé tout à la fin (partie 15). Pour l'instant, le pipeline a un début et
 une fin.
 
@@ -66,7 +71,7 @@ PRODUCT_BUILDING   le principal ; les autres retenus  ──→ PARKED
 PRODUCT_READY      produit en vente sur son domaine, Stripe branché
    ↓  « Préparer la prospection lourde », puis « Démarrer une campagne »
 FULL_RUNNING       vente en masse du produit fini, tel quel
-   ↓  la suite (le point de la semaine, la maintenance…) : lot 15
+   ↓  la suite (le point de la semaine, la maintenance…) : lot 16
 ```
 
 Un business `PARKED` testé il y a plus de 60 jours redevient `CANDIDATE`
@@ -75,7 +80,7 @@ test qui se libère relance l'étape 1, sans clic (Q92).
 
 ---
 
-## 1. Ce que le lot 11 réutilise
+## 1. Ce que le lot 12 réutilise
 
 - **L'étape 1** : « Choisir les business » écrit des business
   `POC_SELECTED`, au plus autant que de places libres (Q65).
@@ -88,7 +93,7 @@ test qui se libère relance l'étape 1, sans clic (Q92).
 - **L'étape 5 (lot 10)** : « Concevoir le produit », le ticket du plan, la
   construction, le ticket de test et la mise en vente amènent le business
   à `PRODUCT_READY`. Au lot 10, elle se lance par un bouton d'essai ; le
-  lot 11 la lance par un lien depuis le choix du principal.
+  lot 12 la lance par un lien depuis le choix du principal.
 - **Les conversations (lots 8 et 8 bis)** : « Envoyer un message » (garde-
   fous, plafonds du jour, heures d'appel), « Préparer les relances » et
   « Écrire une relance » (3 jours, puis 7 jours, 2 au plus), « Traiter une
@@ -118,7 +123,7 @@ permis en base (`status_transitions`) :
 `PRODUCT_BUILDING` et `PRODUCT_READY` viennent du lot 10. Il n'y a pas de
 statut « choisi comme principal » à part : le choix lance tout de suite
 la conception du vrai produit. Ce qui suit `FULL_RUNNING` (`MAINTENANCE`,
-`CLOSED`, un arrêt décidé par Julien) est au lot 15. Les anciens statuts
+`CLOSED`, un arrêt décidé par Julien) est au lot 16. Les anciens statuts
 jamais utilisés (`FULL_READY`, `SCALE`, `PIVOT`, `EXTEND`, `INVALID_RETRY`)
 disparaissent.
 
@@ -133,8 +138,8 @@ la page Policy :
 Un business `KILLED` ou `PARKED` libère sa place de test : l'étape 1 peut
 en choisir un autre. Tant que la place lourde est prise, les tests finis
 attendent en `SMOKE_DONE` et gardent leur place (Q14 : quand les places
-sont prises, tout est figé). Au lot 11, rien ne libère la place lourde :
-c'est le lot 15 qui dira quand un business principal laisse sa place.
+sont prises, tout est figé). Au lot 12, rien ne libère la place lourde :
+c'est le lot 16 qui dira quand un business principal laisse sa place.
 
 ---
 
@@ -182,7 +187,7 @@ plan prévoyait 30 jours. Un test rapide ne garde pas sa place pour rien.
 semaine, jusqu'à son total (1 000 e-mails), puis elle se termine. Le
 business reste en `FULL_RUNNING` : Serge répond toujours et vend à ceux
 qui écrivent. Ce qui vient ensuite (prolonger, arrêter, libérer la place)
-est au lot 15.
+est au lot 16.
 
 **Après la fin d'une campagne**, Serge répond toujours aux contacts qui
 écrivent : seuls les premiers messages et les relances s'arrêtent.
@@ -303,7 +308,7 @@ aussi à la prospection lourde sont marquées *(3 et 6)*.
 
 11. **Choisir le business principal** — LLM, niveau intelligent, file des
     travaux. Deux déclencheurs : un bilan de test est écrit, ou la place
-    lourde se libère (au lot 15). **Trois conditions** : aucun test léger
+    lourde se libère (au lot 16). **Trois conditions** : aucun test léger
     ne tourne encore (aucun business `POC_SELECTED`, `SMOKE_READY` ou
     `SMOKE_RUNNING`), au moins un business retenu attend (`SMOKE_DONE`
     retenu, ou `PARKED` testé il y a moins de 60 jours), et la place
@@ -347,7 +352,7 @@ L'étape 5 (lot 10) amène le business à `PRODUCT_READY` : le produit est en
 ligne sur son domaine, payant, et Stripe est branché. La prospection
 lourde vend ce produit **tel qu'il est sorti de la construction** : pas de
 nouvelle version, pas de changement de prix ni de cible en cours de route
-(Q93). Le suivi et le raffinement pendant la vente viendront au lot 15.
+(Q93). Le suivi et le raffinement pendant la vente viendront au lot 16.
 
 16. **Préparer la prospection lourde** — LLM, niveau intelligent.
     Déclencheur : un business passe à `PRODUCT_READY`. Elle lit le plan du
@@ -380,7 +385,7 @@ nouvelle version, pas de changement de prix ni de cible en cours de route
 
 19. **Clore les campagnes finies** termine une campagne lourde quand son
     total est atteint (partie 3). Le business reste en `FULL_RUNNING`, et
-    le lot 11 s'arrête là.
+    le lot 12 s'arrête là.
 
 ---
 
@@ -439,7 +444,7 @@ personnes touchées » et « Grand essai, personnes touchées » par les
 volumes par canal, et les seuils qui comptaient des réponses positives
 (« Arrêt, réponses positives au plus », « Élargir, réponses positives au
 moins », « Élargir, rendez-vous au moins », « Prolongations au plus ») sont
-retirés : les points les remplacent, et prolonger est au lot 15 (Q78,
+retirés : les points les remplacent, et prolonger est au lot 16 (Q78,
 Q84).
 
 ---
@@ -505,7 +510,7 @@ invocation.
 
 ---
 
-## 13. Ce que le lot 11 retire
+## 13. Ce que le lot 12 retire
 
 - Les invocations temporaires du kit d'essai des canaux (« Lancer un
   essai », « Créer le contact d'essai », « Écrire le premier message
@@ -529,13 +534,13 @@ invocation.
   (→ « Préparer la prospection lourde ») et le résumé d'un fil
   (« Traiter une réponse » lit déjà le fil entier). Leur code propre est
   supprimé. Les options de pivot, le plan de passage à l'échelle et
-  l'arbitre du budget attendent le point de la semaine, au lot 15.
+  l'arbitre du budget attendent le point de la semaine, au lot 16.
 
 ---
 
 ## 14. Le lot 10 bis : les réponses automatiques
 
-Fait avant le lot 11 (Q93). Une réponse automatique (« je suis absent
+Fait avant le lot 12 (Q93). Une réponse automatique (« je suis absent
 jusqu'au 20 », « votre demande n° 1234 est bien reçue ») ne fait jamais
 répondre Serge sans fin : reconnue à ses en-têtes, elle est rangée dans le
 fil sans appeler le modèle ; « Traiter une réponse » peut décider
@@ -546,10 +551,10 @@ prévient Julien et Clem. Le détail est dans
 
 ---
 
-## 15. Le lot 15 : faire vivre les produits
+## 15. Le lot 16 : faire vivre les produits
 
 Un produit qui a des clients doit être entretenu : ce n'est plus un
-pipeline avec un début et une fin. Le lot 15, placé tout à la fin,
+pipeline avec un début et une fin. Le lot 16, placé tout à la fin,
 servira à clarifier et à imaginer ce système. Il part des décisions déjà
 prises, à revoir :
 
@@ -564,7 +569,7 @@ prises, à revoir :
   business (Q44–Q45), **les impayés et les remboursements** (Q47), **les
   leçons de la consolidation** (Q46).
 
-Au lot 11, un business en `FULL_RUNNING` garde sa place : Serge continue
+Au lot 12, un business en `FULL_RUNNING` garde sa place : Serge continue
 de répondre aux messages (le circuit des conversations ne dépend pas du
 statut), et Stripe continue d'encaisser les abonnements.
 
@@ -577,7 +582,7 @@ tôt), un test sous les seuils (arrêté, avec une leçon), l'étape 1 en
 automatique (dans ce lot), le rythme des relances (un réglage commun)
 (Q92) ; des volumes en chiffres absolus par canal, jamais d'adresse
 générique, la prospection lourde qui vend le produit tel quel, le point de
-la semaine au lot 15 (Q93).
+la semaine au lot 16 (Q93).
 
 Encore à valider, avec les valeurs de départ proposées (toutes
 réglables) :

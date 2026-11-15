@@ -3,7 +3,7 @@
 
 Le changement est écrit dans ``invocations`` et noté au journal ; la
 prochaine tâche de l'invocation en tient compte, sans redémarrage. Créer
-une invocation ou changer le reste de ses réglages viendra au lot 13.
+une invocation ou changer le reste de ses réglages viendra au lot 14.
 """
 
 from __future__ import annotations

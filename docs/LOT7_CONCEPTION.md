@@ -219,7 +219,7 @@ changes:
 
 ## 6. Ce qui reste pour plus tard
 
-- La recherche passe par DuckDuckGo ; SearXNG viendra au lot 12, avec le
+- La recherche passe par DuckDuckGo ; SearXNG viendra au lot 13, avec le
   navigateur pour les pages qui en ont besoin.
 - Couper automatiquement un flux qui ne ramène que du bruit (après 5
   cycles) : à la main pour l'instant, depuis la page Écoute.

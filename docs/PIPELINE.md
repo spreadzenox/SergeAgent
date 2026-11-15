@@ -75,8 +75,8 @@ prêt pour le test léger, en test léger, test léger fini, prêt pour le test
 lourd, en test lourd, passage à l'échelle, pivot, extension, arrêté, et
 invalide.
 
-Julien a décidé le parcours suivant ; le lot 11 en fixe les statuts
-(décision Q92, détail dans [`LOT11_CONCEPTION.md`](LOT11_CONCEPTION.md)) :
+Julien a décidé le parcours suivant ; le lot 12 en fixe les statuts
+(décision Q92, détail dans [`LOT12_CONCEPTION.md`](LOT12_CONCEPTION.md)) :
 
 ```text
 CANDIDATE        trouvé par l'étape 1
@@ -92,8 +92,8 @@ PRODUCT_BUILDING → PRODUCT_READY     construction (étape 5)
 FULL_RUNNING     prospection lourde et ventes (étape 6)
    ↓
 MAINTENANCE      plus de nouveaux prospects, mais on livre, on répond,
-   ↓             on corrige et on encaisse (lot 15)
-CLOSED           plus rien à faire : fermé et archivé (lot 15)
+   ↓             on corrige et on encaisse (lot 16)
+CLOSED           plus rien à faire : fermé et archivé (lot 16)
 ```
 
 Un business mis de côté (`PARKED`) a été testé mais pas choisi. Il libère
@@ -102,7 +102,7 @@ que son test date de moins de 60 jours. Un business arrêté (`KILLED`)
 n'avait aucun client, ou un test sous les seuils (Q92). Chaque changement
 de statut est écrit au journal, avec qui l'a décidé, quand et pourquoi.
 La vie d'un business qui a des clients (`MAINTENANCE`, `CLOSED`) sera
-imaginée au lot 15.
+imaginée au lot 16.
 
 ### Les places de test
 

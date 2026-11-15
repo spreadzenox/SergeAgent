@@ -101,7 +101,7 @@ Le but numéro un : **ne jamais relancer quelqu'un qui a déjà répondu.**
 
 ### Les campagnes, du début à la fin
 
-Le détail est dans [`LOT11_CONCEPTION.md`](../LOT11_CONCEPTION.md) : une
+Le détail est dans [`LOT12_CONCEPTION.md`](../LOT12_CONCEPTION.md) : une
 campagne démarre quand le POC est en ligne ; son nombre de prospects est
 un réglage par canal (40 e-mails, 20 appels au départ, Q93) ; « Trouver
 des prospects » cherche par paquets de 10, au rythme des envois ; le test

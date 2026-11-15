@@ -41,7 +41,7 @@ que Serge n'a pas été démarré dans Mission Control.
 ### Ce qui manque
 
 - **La recherche web lit la page de résultats de DuckDuckGo** (quelques
-  résultats, un extrait) et peut être bloquée. SearXNG viendra au lot 12.
+  résultats, un extrait) et peut être bloquée. SearXNG viendra au lot 13.
 - **Une page qui a besoin d'un navigateur** (JavaScript, protection) ne se
   lit pas : seule une simple requête est faite.
 - **Un flux qui ne ramène que du bruit** se coupe à la main.
@@ -125,7 +125,7 @@ Autres décisions :
   montre, pour chaque flux, les pages ramenées et les pages utiles ; on
   peut le couper à la main.
 - **Recherche web** : DuckDuckGo au lot 7, SearXNG (un moteur open source
-  hébergé sur le serveur) au lot 12.
+  hébergé sur le serveur) au lot 13.
 - **Garde-fous de volume** (réglages des invocations marqués « policy »,
   modifiables sur la page Policy) : 60 pages triées au plus par cycle ;
   une page « bruit » ou jamais triée est supprimée après 30 jours, une

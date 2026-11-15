@@ -21,7 +21,7 @@ Elle reprend la mécanique de l'étape 2 (« Compter les tours », les
 paramètres de lien tirés de la réponse, les trois boutons de ticket), et
 s'appuie sur « Appeler une API » pour Stripe et Cloudflare.
 
-En attendant l'étape 4 (lot 11), elle part du bouton « Construire le vrai
+En attendant l'étape 4 (lot 12), elle part du bouton « Construire le vrai
 produit » de la fiche d'un business au test léger (`SMOKE_READY` ou
 `SMOKE_DONE`), qui le fait passer « en construction de son produit »
 (`PRODUCT_BUILDING`), ou du bouton « Bout en bout : le produit fini d'une
@@ -78,7 +78,7 @@ calculatrice » de la page Système (plus bas).
    désactivé et le prix archivé. Le paiement est noté dans `transactions`
    (`kind` = `canary`).
 10. **Produit en vente** : le business passe à `PRODUCT_READY`, d'où
-    part la prospection lourde (étape 6, lot 11), et un ticket
+    part la prospection lourde (étape 6, lot 12), et un ticket
     d'information le dit. Une étape ratée
     (Stripe, la prod, le paiement test) ouvre un ticket d'information
     avec la raison.
@@ -100,7 +100,7 @@ remboursé. Il faut, sur le serveur, les secrets décrits dans
 [`installation/DOMAINES.md`](../installation/DOMAINES.md).
 
 **Pas encore fait** : les versions suivantes, publiées en prod quand la
-relecture est bonne (elles viennent avec l'étape 6, au lot 11), et le
+relecture est bonne (elles viennent avec l'étape 6, au lot 12), et le
 passage d'une demande des clients à « livrée ».
 
 ---

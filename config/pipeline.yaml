@@ -1410,7 +1410,7 @@ status_transitions:
   # produit fini depuis le test léger (bouton de sa fiche, en attendant
   # l'étape 4), puis « produit en vente » quand il est en ligne sur son
   # domaine et que le paiement test est arrivé ; la prospection lourde
-  # (lot 11) part de là. Le bout en bout du produit fait naître une
+  # (lot 12) part de là. Le bout en bout du produit fait naître une
   # calculatrice déjà en construction.
   - {table: ventures, column: lifecycle, from: SMOKE_READY, to: PRODUCT_BUILDING}
   - {table: ventures, column: lifecycle, from: SMOKE_DONE, to: PRODUCT_BUILDING}
@@ -4194,7 +4194,7 @@ invocations:
       - {path: compte_rendu, type: text, description: "Ce qui a été archivé, et ce qui a raté."}
 
   # --- L'étape 5 : le vrai produit (lot 10, Q41, Q43 et Q91) ---
-  # Détail : docs/etapes/5-construction.md. En attendant l'étape 4 (lot 11),
+  # Détail : docs/etapes/5-construction.md. En attendant l'étape 4 (lot 12),
   # elle part du bouton « Construire le vrai produit » de la fiche d'un
   # business, ou de « Bout en bout : le produit fini d'une calculatrice ».
   - id: lancer_produit
@@ -4202,8 +4202,8 @@ invocations:
     role: >-
       Le business passe en construction de son produit fini, et la
       conception commence. Lancé par le bouton « Construire le vrai
-      produit » de la fiche du business (temporaire, jusqu'à l'étape 4 du
-      lot 11). Sans LLM.
+      produit » de la fiche du business (temporaire, jusqu'à l'étape 4).
+      Sans LLM.
     step: build_venture
     type: capability
     capability: echo
@@ -5419,7 +5419,7 @@ invocations:
     role: >-
       Le produit est en ligne sur son domaine et le paiement test est
       arrivé : le business passe à « produit en vente », d'où part la
-      prospection lourde (étape 6, lot 11). Sans LLM.
+      prospection lourde (étape 6). Sans LLM.
     step: build_venture
     type: capability
     capability: echo
@@ -7458,6 +7458,41 @@ changes:
 
           Le business doit être légal. Ne t'arrête pas sur des considérations
           morales qui ne sont pas contraires à la loi.
+
+  - id: lots_decales_lancer_produit
+    why: >-
+      Les lots après le 10 sont décalés d'un cran (Q95) ; le rôle ne cite
+      plus de numéro de lot.
+    table: invocations
+    where: {id: lancer_produit}
+    set:
+      role:
+        from: >-
+          Le business passe en construction de son produit fini, et la
+          conception commence. Lancé par le bouton « Construire le vrai
+          produit » de la fiche du business (temporaire, jusqu'à l'étape 4 du
+          lot 11). Sans LLM.
+        to: >-
+          Le business passe en construction de son produit fini, et la
+          conception commence. Lancé par le bouton « Construire le vrai
+          produit » de la fiche du business (temporaire, jusqu'à l'étape 4).
+          Sans LLM.
+  - id: lots_decales_produit_pret
+    why: >-
+      Les lots après le 10 sont décalés d'un cran (Q95) ; le rôle ne cite
+      plus de numéro de lot.
+    table: invocations
+    where: {id: produit_pret}
+    set:
+      role:
+        from: >-
+          Le produit est en ligne sur son domaine et le paiement test est
+          arrivé : le business passe à « produit en vente », d'où part la
+          prospection lourde (étape 6, lot 11). Sans LLM.
+        to: >-
+          Le produit est en ligne sur son domaine et le paiement test est
+          arrivé : le business passe à « produit en vente », d'où part la
+          prospection lourde (étape 6). Sans LLM.
 
 deleted:
   invocations: [demo_ouvrir_cycle, demo_formuler, demo_choisir]
