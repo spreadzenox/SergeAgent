@@ -25,26 +25,30 @@ JOURNAL_MAX = 300
 def drop_old_images(
     history: list[dict[str, Any]], kept: int, note: str
 ) -> None:
-    """Ne garde dans l'historique que les ``kept`` dernières images.
+    """Retire de l'historique les vieilles images, par paquets.
 
-    Tout l'historique repart au modèle à chaque tour : sans cela, chaque
-    capture serait payée à chaque tour suivant. Une image retirée devient
-    un texte court (``note``). Exemple : avec 3, la quatrième capture fait
-    retirer la première.
+    Tout l'historique repart au modèle à chaque tour ; une image gardée y
+    coûte peu, car elle est relue dans le cache du fournisseur. Mais
+    retirer une vieille image change le début de l'historique : le cache ne
+    sert plus, et tout est réécrit au prix fort (0,35 $ pour 138 000 jetons
+    avec Sonnet, le 15 novembre 2026, à chaque capture). On les retire donc
+    d'un coup, seulement quand il y en a plus du double de ``kept`` : il en
+    reste alors ``kept``, et une image retirée devient un texte court
+    (``note``). Exemple : avec 10, la 21e capture fait retirer les 11 plus
+    anciennes ; les suivantes restent jusqu'à la 31e.
     """
-    seen = 0
-    for message in reversed(history):
-        content = message.get('content')
-        if not isinstance(content, list):
-            continue
-        for index in range(len(content) - 1, -1, -1):
-            part = content[index]
-            if not isinstance(part, dict) or part.get('type') != 'image_url':
-                continue
-            seen += 1
-            if seen > kept:
-                # Un texte vidé sur la page Pipeline n'est pas envoyé.
-                content[index] = {'type': 'text', 'text': note or '…'}
+    images = [
+        (content, index)
+        for message in history
+        if isinstance(content := message.get('content'), list)
+        for index, part in enumerate(content)
+        if isinstance(part, dict) and part.get('type') == 'image_url'
+    ]
+    if len(images) <= 2 * kept:
+        return
+    for content, index in images[: len(images) - kept]:
+        # Un texte vidé sur la page Pipeline n'est pas envoyé.
+        content[index] = {'type': 'text', 'text': note or '…'}
 
 
 def bounded(texte: str, limite: int, note: str) -> str:

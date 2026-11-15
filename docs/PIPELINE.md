@@ -173,7 +173,11 @@ Le runner tourne en continu, en deux copies, une par file
   répond pas (le 15 novembre 2026, un appel sur deux partait chez un autre,
   sans cache, et coûtait dix fois plus). Chaque appel note chez qui il est
   parti et combien de jetons il a lus et écrits en cache
-  (`llm_usage.provider`, `cached_tokens`, `cache_write_tokens`).
+  (`llm_usage.provider`, `cached_tokens`, `cache_write_tokens`). Retirer
+  une vieille capture d'écran change le début de l'historique, et tout
+  est réécrit au prix fort : les captures sortent donc par paquets,
+  seulement au-delà du double du réglage « Captures gardées » (10 au
+  départ, page Pipeline).
 - Une tâche s'arrête en plein travail, avant son appel au modèle ou son
   outil suivant : si Serge est coupé (elle repart du début au
   redémarrage) ; si elle a dépensé son plafond (« Dépense maximale d'une

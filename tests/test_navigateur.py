@@ -122,7 +122,7 @@ def appel(ident: str, nom: str, **args: Any) -> ToolCall:
 
 
 class FauxTesteur:
-    """Ouvre la page, prend deux captures gardées, puis répond."""
+    """Ouvre la page, prend trois captures gardées, puis répond."""
 
     def __init__(self, adresse: str) -> None:
         self.adresse = adresse
@@ -137,10 +137,10 @@ class FauxTesteur:
                     'a', 'navigateur_agir', action='ouvrir', text=self.adresse
                 ),
             )
-        elif tour in (2, 3):
+        elif tour in (2, 3, 4):
             calls = (appel(f'c{tour}', 'navigateur_capture', keep=True),)
         else:
-            reponse = {'marche': 'oui', 'compte_rendu': 'Vu, deux captures.'}
+            reponse = {'marche': 'oui', 'compte_rendu': 'Vu, trois captures.'}
             return ChatResult(json.dumps(reponse), 10, 10, 'faux', 1)
         return ChatResult('', 10, 10, 'faux', 1, tool_calls=calls)
 
@@ -407,25 +407,29 @@ class NavigateurTests(unittest.TestCase):
         self.assertNotIn('base64', resultat['content'])
         self.assertIn('montrée', resultat['content'])
         self.assertEqual(_images(apres_une).count('image_url'), 1)
-        # Deux captures, une seule gardée dans l'historique.
+        # Avec 1 capture gardée : deux restent (le double), rien ne change
+        # dans l'historique, et le cache sert ; la troisième fait retirer
+        # les deux plus anciennes d'un coup.
         apres_deux = testeur.messages[3]
-        self.assertEqual(_images(apres_deux).count('image_url'), 1)
-        self.assertTrue(
-            any(
-                'capture retirée' in p.get('text', '')
-                for m in apres_deux
-                if isinstance(m.get('content'), list)
-                for p in m['content']
-            )
-        )
+        self.assertEqual(_images(apres_deux).count('image_url'), 2)
+        apres_trois = testeur.messages[4]
+        self.assertEqual(_images(apres_trois).count('image_url'), 1)
+        retirees = [
+            p
+            for m in apres_trois
+            if isinstance(m.get('content'), list)
+            for p in m['content']
+            if 'capture retirée' in p.get('text', '')
+        ]
+        self.assertEqual(len(retirees), 2)
         fiche = fiche_tache(self.conn, str(tache))
         assert fiche is not None
         cadres = {c['titre']: c for c in fiche['cadres']}
         self.assertIn(
-            'Vu, deux captures.', cadres['Ce que le modèle a rendu']['pre']
+            'Vu, trois captures.', cadres['Ce que le modèle a rendu']['pre']
         )
         images = cadres['Captures gardées']['images']
-        self.assertEqual(len(images), 2)
+        self.assertEqual(len(images), 3)
         self.assertTrue(
             images[0]['src'].startswith('/owner/api/fichier?id=art_')
         )
