@@ -371,16 +371,17 @@ sections:
         max: 100000
         step: 1000
       - id: screenshots_kept
-        value: 3
+        value: 10
         title: Captures gardées dans l’historique
-        help: >-
-          Tout l’historique repart au modèle à chaque tour : seules ces
-          dernières captures d’écran y restent, les plus anciennes sont
-          remplacées par un texte court. Une capture coûte autant qu’un
-          millier de jetons environ à chaque tour.
+        help: &aide_captures >-
+          Tout l’historique repart au modèle à chaque tour. Au-delà du double
+          de ce nombre de captures d’écran, les plus anciennes sont remplacées
+          d’un coup par un texte court, et il en reste ce nombre. Une capture
+          gardée coûte peu (relue dans le cache) ; en retirer une fait tout
+          réécrire au prix fort, d’où les retraits par paquets.
         kind: curseur
         min: 1
-        max: 10
+        max: 20
         step: 1
 
   - id: tools
@@ -1002,6 +1003,22 @@ renamed:
 # Changer un réglage déjà en base : même format que dans pipeline.yaml, sur
 # la table policy_settings (une valeur s'écrit en JSON, par exemple 25.0).
 changes:
+  - id: captures_retirees_par_paquets
+    why: >-
+      Retirer une capture à chaque nouvelle faisait rater le cache à chaque
+      fois (17 réécritures complètes pour 20 captures, le 15 novembre 2026).
+    table: policy_settings
+    where: {id: llm_calls.screenshots_kept}
+    set:
+      value_json: {from: '3', to: '10'}
+      max_value: {from: '10.0', to: '20.0'}
+      help:
+        from: >-
+          Tout l’historique repart au modèle à chaque tour : seules ces
+          dernières captures d’écran y restent, les plus anciennes sont
+          remplacées par un texte court. Une capture coûte autant qu’un
+          millier de jetons environ à chaque tour.
+        to: *aide_captures
   - id: plafonds_par_canal_sans_le_modele
     why: Les réglages des appels au modèle ont leur propre famille.
     table: policy_sections
