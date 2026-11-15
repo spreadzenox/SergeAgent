@@ -131,32 +131,22 @@ conversation (lot 8 bis, décisions Q85 et Q86), la grille de points
   cliquer comme un humain) et « Appeler une API » (pour Stripe et l'achat
   des domaines). Le détail est dans
   [`docs/LOT10_CONCEPTION.md`](docs/LOT10_CONCEPTION.md).
-- [ ] **Lot 11 « Les e-mails des produits ».** Un produit que Serge
-  construit envoie des e-mails à ses clients : valider une inscription,
-  changer un mot de passe oublié, un reçu. Aujourd'hui, rien ne les
-  envoie, et le relecteur qui essaie un produit ne peut pas valider une
-  inscription qui demande de cliquer sur un lien reçu par e-mail (Q95).
-  Le lot donne :
-  - en essai, une boîte qui garde tous les e-mails d'un produit sans les
-    envoyer (par exemple Mailpit, sur le serveur), où le relecteur lit le
-    lien de validation ;
-  - en prod, un service d'envoi (par exemple Resend ou Brevo) et un
-    domaine d'envoi vérifié : ses enregistrements SPF et DKIM passent par
-    l'API de Cloudflare, comme ceux de l'adresse du produit ; la clé du
-    service arrive au produit comme ses autres secrets (`env_secrets`) ;
-  - un outil du relecteur, « Lire le dernier e-mail reçu à cette
-    adresse », qui rend le lien de validation ; un e-mail qui n'arrive pas
-    va au journal avec sa raison.
-
-  L'ancien Serge le faisait déjà pour lui-même, pas pour ses produits :
-  pour s'inscrire sur un site, il lisait la boîte Gmail de Serge (par
-  gog, la recherche `in:anywhere to:"<adresse>" newer_than:2d`), gardait
-  le premier lien https du même site qui ressemble à une validation, et
-  réessayait 12 fois, toutes les 5 secondes ; les codes reçus par SMS
-  venaient d'une base locale. Il n'avait aucun service d'envoi, et ses
-  produits n'envoyaient pas d'e-mail. Restent à choisir avec Clem avant le
-  code : la boîte d'essai (Mailpit ou la vraie boîte de Serge), le
-  service d'envoi en prod, et la consigne au constructeur en attendant.
+- [ ] **Lot 11 « Les e-mails des produits ».** Ce que le premier essai
+  du produit fini a montré (15 novembre 2026, Q95) :
+  - un produit envoie et reçoit ses e-mails : la validation d'une
+    inscription, le mot de passe oublié, l'adresse de contact des
+    mentions légales ; le relecteur lit l'e-mail de validation (l'ancien
+    Serge lisait la boîte Gmail de Serge par gog et gardait le lien du
+    même site) ;
+  - une demande d'une invocation à Julien (ticket REQUESTED) bloque
+    l'invocation tant qu'elle n'est pas remplie, et Julien en discute
+    avec elle dans le fil du ticket ;
+  - un ticket Discord se lit d'un coup d'œil : un en-tête court (pour un
+    plan, le nom, le domaine et le prix ; pour une demande, un résumé
+    simple), puis le texte entier, jamais coupé, à ouvrir ou fermer ;
+  - le relecteur peut faire tout ce que demande un scénario de test (le
+    scénario 8 de la calculatrice lui demandait d'annuler un abonnement
+    par un script).
 - [ ] **Lot 12 « Jusqu'aux premières ventes ».** Mettre en base les
   tables, les liens et les invocations qui mènent un business de son POC
   en ligne jusqu'à ses premières ventes : les campagnes de prospection
