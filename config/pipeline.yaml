@@ -4276,8 +4276,9 @@ invocations:
         jusqu'au paiement de l'abonnement, avec la carte de test de Stripe,
         et vérifie ce qu'il débloque ;
       - domaine : un nom de domaine court, facile à dire, libre (vérifie-le
-        avec l'outil « Un nom de domaine est-il libre ? »), en .fr ou en
-        .com ; exemple : devis-artisan.fr ;
+        avec l'outil « Un nom de domaine est-il libre ? ») ; un .com est
+        mieux, mais une autre extension convient ; exemple :
+        devis-artisan.com ;
       - la fiche produit : fiche_resume, fiche_limites, fiche_prix,
         fiche_delais, fiche_usage ;
       - faq : 3 à 8 questions qu'un client posera, avec leur réponse ;
@@ -7348,6 +7349,115 @@ changes:
     invocation: publier_prod_produit
     add_params:
       base_domain: {source: task, value: domaine_commun}
+  # Cloudflare ne vend pas les .fr : la conception préfère un .com, sans
+  # exclure d'autres extensions (lot 10, demandé par Clem).
+  - id: lot10_conception_domaine_com
+    why: Un .com est mieux ; Cloudflare ne vend pas les .fr.
+    table: invocations
+    where: {id: concevoir_produit}
+    set:
+      prompt:
+        from: |
+          Tu conçois le vrai produit d'un business : un service web payant, que
+          ses clients vont utiliser et payer chaque mois. On paie pour avoir un
+          compte et utiliser le service ; c'est le seul modèle de paiement.
+
+          Tu reçois la fiche du business, le plan de son POC (le petit produit
+          gratuit qui a servi au test léger), la fiche produit, ses questions
+          fréquentes, les demandes de ses clients (bugs, insatisfactions,
+          idées), ce qu'ont répondu ses prospects, et ce que Serge sait faire.
+          À partir du deuxième tour, tu reçois aussi ton plan précédent et les
+          remarques du critique ; les paramètres de la tâche peuvent contenir
+          les consignes d'un humain (« consignes ») : corrige d'abord ce
+          qu'elles demandent.
+
+          Pour construire, Serge a un chantier (un conteneur Linux avec Node,
+          Python et git, où un modèle code et lance le produit), un navigateur
+          pour l'essayer, la mise en ligne d'un site web, et Stripe pour les
+          paiements (une page de paiement Stripe, des abonnements). Le produit
+          garde ses données dans un dossier à lui. Pas d'humain pour faire le
+          travail, pas de compte sur d'autres sites, pas d'API payante, pas de
+          connexion au logiciel des clients.
+
+          Écris un plan de A à Z, réalisable avec ça :
+          - hypothese : ce que le produit doit prouver, en une phrase ;
+          - cible : ses clients (métier, taille, lieu) ;
+          - prix : le prix définitif, par mois ou par an, en euros (exemple :
+            « 19 € par mois ») ; ce que l'on a gratuitement avant de payer, s'il
+            y a quelque chose ;
+          - livrable : ce que le client obtient, en deux phrases ;
+          - plan : ce que le constructeur doit faire, page par page et fonction
+            par fonction : l'inscription, la connexion, le paiement de
+            l'abonnement par Stripe, ce que le compte payant débloque, et
+            comment le client s'en sert ;
+          - scenarios : 4 à 8 scénarios de test ; chacun dit ce que fait un
+            client ordinaire, pas à pas, et ce qu'il doit voir. L'un d'eux va
+            jusqu'au paiement de l'abonnement, avec la carte de test de Stripe,
+            et vérifie ce qu'il débloque ;
+          - domaine : un nom de domaine court, facile à dire, libre (vérifie-le
+            avec l'outil « Un nom de domaine est-il libre ? »), en .fr ou en
+            .com ; exemple : devis-artisan.fr ;
+          - la fiche produit : fiche_resume, fiche_limites, fiche_prix,
+            fiche_delais, fiche_usage ;
+          - faq : 3 à 8 questions qu'un client posera, avec leur réponse ;
+          - demandes : pour chaque demande des clients que tu reçois, son
+            numéro, ta décision (retenue ou refusee) et sa raison, en une
+            phrase. Retiens ce qui fera payer ou rester des clients ; refuse ce
+            qui est trop rare, trop cher à faire, ou hors du produit.
+
+          Le business doit être légal. Ne t'arrête pas sur des considérations
+          morales qui ne sont pas contraires à la loi.
+        to: |
+          Tu conçois le vrai produit d'un business : un service web payant, que
+          ses clients vont utiliser et payer chaque mois. On paie pour avoir un
+          compte et utiliser le service ; c'est le seul modèle de paiement.
+
+          Tu reçois la fiche du business, le plan de son POC (le petit produit
+          gratuit qui a servi au test léger), la fiche produit, ses questions
+          fréquentes, les demandes de ses clients (bugs, insatisfactions,
+          idées), ce qu'ont répondu ses prospects, et ce que Serge sait faire.
+          À partir du deuxième tour, tu reçois aussi ton plan précédent et les
+          remarques du critique ; les paramètres de la tâche peuvent contenir
+          les consignes d'un humain (« consignes ») : corrige d'abord ce
+          qu'elles demandent.
+
+          Pour construire, Serge a un chantier (un conteneur Linux avec Node,
+          Python et git, où un modèle code et lance le produit), un navigateur
+          pour l'essayer, la mise en ligne d'un site web, et Stripe pour les
+          paiements (une page de paiement Stripe, des abonnements). Le produit
+          garde ses données dans un dossier à lui. Pas d'humain pour faire le
+          travail, pas de compte sur d'autres sites, pas d'API payante, pas de
+          connexion au logiciel des clients.
+
+          Écris un plan de A à Z, réalisable avec ça :
+          - hypothese : ce que le produit doit prouver, en une phrase ;
+          - cible : ses clients (métier, taille, lieu) ;
+          - prix : le prix définitif, par mois ou par an, en euros (exemple :
+            « 19 € par mois ») ; ce que l'on a gratuitement avant de payer, s'il
+            y a quelque chose ;
+          - livrable : ce que le client obtient, en deux phrases ;
+          - plan : ce que le constructeur doit faire, page par page et fonction
+            par fonction : l'inscription, la connexion, le paiement de
+            l'abonnement par Stripe, ce que le compte payant débloque, et
+            comment le client s'en sert ;
+          - scenarios : 4 à 8 scénarios de test ; chacun dit ce que fait un
+            client ordinaire, pas à pas, et ce qu'il doit voir. L'un d'eux va
+            jusqu'au paiement de l'abonnement, avec la carte de test de Stripe,
+            et vérifie ce qu'il débloque ;
+          - domaine : un nom de domaine court, facile à dire, libre (vérifie-le
+            avec l'outil « Un nom de domaine est-il libre ? ») ; un .com est
+            mieux, mais une autre extension convient ; exemple :
+            devis-artisan.com ;
+          - la fiche produit : fiche_resume, fiche_limites, fiche_prix,
+            fiche_delais, fiche_usage ;
+          - faq : 3 à 8 questions qu'un client posera, avec leur réponse ;
+          - demandes : pour chaque demande des clients que tu reçois, son
+            numéro, ta décision (retenue ou refusee) et sa raison, en une
+            phrase. Retiens ce qui fera payer ou rester des clients ; refuse ce
+            qui est trop rare, trop cher à faire, ou hors du produit.
+
+          Le business doit être légal. Ne t'arrête pas sur des considérations
+          morales qui ne sont pas contraires à la loi.
 
 deleted:
   invocations: [demo_ouvrir_cycle, demo_formuler, demo_choisir]
