@@ -20,7 +20,8 @@ elle n'est jamais modifiée (décision Q40). Publier en staging :
 
 Publier en prod reprend telle quelle l'image de la version passée en
 staging : rien n'est reconstruit. Adresses : ``staging-<produit>.<domaine>``,
-``<produit>.<domaine>`` en prod, ou le domaine acheté pour le produit fini.
+``<produit>.<domaine>`` en prod, ou, pour le produit fini, le domaine acheté
+ou un sous-domaine du domaine commun des produits (``base_domain``).
 Une adresse ne sert qu'un produit : publier sur une adresse déjà prise (un
 second essai au même nom) arrête l'ancien produit.
 """
@@ -176,7 +177,10 @@ def _hostname(args: dict[str, Any], target: str) -> str:
     domaine = str(args.get('domain') or '').strip().lower()
     if domaine and target == 'prod':
         return domaine
-    base = caddy.public_hostname()
+    # Un domaine commun des produits finis (base_domain) : la prod sur un
+    # sous-domaine, calculatrice.<domaine commun>, sans domaine acheté.
+    commun = str(args.get('base_domain') or '').strip().lower().strip('.')
+    base = commun if commun and target == 'prod' else caddy.public_hostname()
     if not base:
         raise DockerError(
             "pas de domaine pour les produits : l'instance n'a pas de"

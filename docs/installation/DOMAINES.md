@@ -5,7 +5,25 @@ d'un business (étape 5), une fois son nom validé dans le ticket « Plan »
 et le produit essayé dans le ticket « Tester le produit » (décision Q91).
 Il l'achète chez **Cloudflare**, avec **sa propre carte**, enregistrée
 sur son compte Cloudflare : jamais une carte personnelle. C'est là que
-l'ancien Serge a acheté `serge-ops.com`, en août 2026.
+l'ancien Serge a déjà acheté un domaine, en août 2026.
+
+## Le domaine commun des produits finis (au début)
+
+Pour ne pas dépenser un domaine par produit, un réglage les publie tous
+sous un domaine que Serge possède déjà : page Policy, invocation
+« Choisir le domaine du produit », réglage `domaine_commun`.
+
+- **Rempli** (exemple : `exemple-serge.com`) : après ton essai du produit,
+  Serge n'achète rien ; la prod va sur `<produit>.exemple-serge.com`
+  (exemple : `calculatrice.exemple-serge.com`). Le nom de domaine que
+  propose le plan est alors ignoré.
+- **Vide** : Serge achète un domaine par produit, comme décrit plus bas.
+
+Il faut une fois, dans la zone Cloudflare de ce domaine, un
+enregistrement `*` de type A vers l'adresse IPv4 du serveur, sans le
+proxy de Cloudflare : chaque sous-domaine mène alors au serveur, et Caddy
+obtient son certificat HTTPS. Le réglage se change à tout moment ; il
+vaut pour les produits qui n'ont pas encore passé l'essai.
 
 Serge passe par la capacité « Appeler une API ». Deux services sont
 décrits en base (table `api_services`, page SQLite) :

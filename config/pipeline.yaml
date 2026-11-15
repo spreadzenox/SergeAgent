@@ -193,7 +193,7 @@ api_services:
       Stripe en vrai mode : de vrais paiements. Sert à la prod d'un produit
       fini et au paiement test de 1 € (étape 5).
   # Le bureau d'enregistrement de Serge : Cloudflare (lot 10, Q91). Serge
-  # y a acheté serge-ops.com en août 2026, avec sa carte, enregistrée sur
+  # y a déjà acheté un domaine en août 2026, avec sa carte, enregistrée sur
   # son compte Cloudflare. Deux jetons : l'un pour le registrar (vérifier,
   # acheter), l'autre pour le DNS des zones du compte.
   - id: cloudflare_registrar
@@ -4987,6 +4987,25 @@ invocations:
         values:
           lifecycle: {source: fixed, value: KILLED}
 
+  - id: choisir_domaine
+    title: Choisir le domaine du produit
+    role: >-
+      Après l'essai d'un humain : avec un domaine commun des produits finis
+      (réglage, page Policy), le produit sera publié sur un sous-domaine de
+      ce domaine et rien n'est acheté ; sans lui, Serge achète un domaine
+      pour le produit. Sans LLM.
+    step: build_venture
+    type: capability
+    capability: echo
+    queue: works
+    priority: 30
+    settings:
+      domaine_commun: {type: text, value: '', policy: true, description: "Le domaine commun des produits finis : chacun y est publié sur un sous-domaine (calculatrice.<ce domaine>) et Serge n'achète aucun domaine. Vide : Serge achète un domaine par produit. Le domaine doit être au compte Cloudflare de Serge, avec un enregistrement * vers le serveur."}
+    params:
+      venture_id: {source: task, value: venture_id}
+      build_id: {source: task, value: build_id}
+      domaine_commun: {source: setting, value: domaine_commun}
+
   - id: acheter_domaine
     title: Acheter le domaine du produit
     role: >-
@@ -5189,6 +5208,7 @@ invocations:
       deliverable: {source: fixed, value: produit}
       target: {source: fixed, value: prod}
       domain: {source: task, value: domaine}
+      base_domain: {source: task, value: domaine_commun}
       env_secrets: {source: fixed, value: STRIPE_SECRET_KEY=stripe-produits-live.key}
       task_id: {source: task, value: task_id}
 
@@ -6003,13 +6023,29 @@ links:
     params:
       build_id: {source: task, value: build_id}
   - id: test_produit_valide_vers_domaine
-    title: Le produit essayé et validé ; Serge achète son domaine
+    title: Le produit essayé et validé ; Serge choisit son domaine
     from: suite_test_produit
-    to: acheter_domaine
+    to: choisir_domaine
     condition: {field: acte, op: '=', value: valider}
     params:
       venture_id: {source: task, value: venture_id}
       build_id: {source: task, value: build_id}
+  - id: domaine_a_acheter
+    title: Pas de domaine commun ; Serge achète un domaine
+    from: choisir_domaine
+    to: acheter_domaine
+    condition: {field: domaine_commun, op: '=', value: ''}
+    params:
+      venture_id: {source: task, value: venture_id}
+      build_id: {source: task, value: build_id}
+  - id: domaine_commun_vers_vente
+    title: Un domaine commun ; le produit est mis en vente sans achat
+    from: choisir_domaine
+    to: mettre_en_vente
+    condition: {field: domaine_commun, op: non_vide}
+    params:
+      venture_id: {source: task, value: venture_id}
+      domaine_commun: {source: field, value: domaine_commun}
   - id: test_produit_a_corriger_vers_construction
     title: Le produit est à corriger d'après un humain
     from: suite_test_produit
@@ -6061,6 +6097,7 @@ links:
     params:
       venture_id: {source: task, value: venture_id}
       domaine: {source: task, value: domaine}
+      domaine_commun: {source: task, value: domaine_commun}
   - id: vente_ratee_vers_ticket
     title: Stripe (vrai mode) n'a pas mis le produit en vente
     from: mettre_en_vente
@@ -7189,6 +7226,29 @@ changes:
     tool: navigateur_agir
     set_tool_params:
       secrets: {from: 'carte-numero.key,carte-expiration.key,carte-cvc.key,carte-titulaire.key', to: 'payment-card.enc#pan,payment-card.enc#expiration,payment-card.enc#cvc,payment-card.enc#cardholder_name'}
+  # Un domaine commun des produits finis (lot 10, demandé par Clem) : au
+  # début, Serge n'achète pas de domaine ; chaque produit fini est publié
+  # sur un sous-domaine d'un domaine qu'il possède déjà. Réglage de
+  # « Choisir le domaine du produit », page Policy.
+  - id: lot10_domaine_commun_lien
+    why: Avant d'acheter, Serge regarde s'il y a un domaine commun des produits.
+    table: links
+    where: {id: test_produit_valide_vers_domaine}
+    set:
+      to_invocation_id: {from: acheter_domaine, to: choisir_domaine}
+      title:
+        from: Le produit essayé et validé ; Serge achète son domaine
+        to: Le produit essayé et validé ; Serge choisit son domaine
+  - id: lot10_domaine_commun_vente
+    why: Le domaine commun passe de la mise en vente à la prod.
+    link: vente_vers_prod
+    add_link_params:
+      domaine_commun: {source: task, value: domaine_commun}
+  - id: lot10_domaine_commun_prod
+    why: La prod d'un produit fini peut être un sous-domaine du domaine commun.
+    invocation: publier_prod_produit
+    add_params:
+      base_domain: {source: task, value: domaine_commun}
 
 deleted:
   invocations: [demo_ouvrir_cycle, demo_formuler, demo_choisir]

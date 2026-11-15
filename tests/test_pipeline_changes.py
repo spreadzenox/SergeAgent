@@ -464,6 +464,9 @@ class RegistrarCloudflareTests(unittest.TestCase):
         'lot10_conception_cloudflare',
         'lot10_paiement_carte_du_coffre_prompt',
         'lot10_paiement_carte_du_coffre_secrets',
+        'lot10_domaine_commun_lien',
+        'lot10_domaine_commun_vente',
+        'lot10_domaine_commun_prod',
     )
 
     def setUp(self) -> None:
@@ -527,6 +530,20 @@ class RegistrarCloudflareTests(unittest.TestCase):
             " position) VALUES('acheter_domaine', 'hostinger_acheter_domaine',"
             " 'callable', 99)"
         )
+        # Avant le domaine commun : l'essai validé menait droit à l'achat.
+        c.execute(
+            "UPDATE links SET to_invocation_id='acheter_domaine', title=?"
+            " WHERE id='test_produit_valide_vers_domaine'",
+            ('Le produit essayé et validé ; Serge achète son domaine',),
+        )
+        c.execute(
+            "DELETE FROM link_params WHERE link_id='vente_vers_prod'"
+            " AND param_name='domaine_commun'"
+        )
+        c.execute(
+            'DELETE FROM invocation_tool_params WHERE invocation_id='
+            "'publier_prod_produit' AND param_name='base_domain'"
+        )
         c.executemany(
             'DELETE FROM pipeline_changes WHERE id=?', [(i,) for i in self.IDS]
         )
@@ -566,6 +583,27 @@ class RegistrarCloudflareTests(unittest.TestCase):
             ).fetchone()[0],
         )
         self.assertEqual(self._secrets(), anciens['to'])
+        # L'essai validé passe d'abord par le choix du domaine, et le
+        # domaine commun va jusqu'à la prod.
+        self.assertEqual(
+            self.conn.execute(
+                'SELECT to_invocation_id FROM links'
+                " WHERE id='test_produit_valide_vers_domaine'"
+            ).fetchone()[0],
+            'choisir_domaine',
+        )
+        self.assertTrue(
+            self.conn.execute(
+                "SELECT 1 FROM link_params WHERE link_id='vente_vers_prod'"
+                " AND param_name='domaine_commun'"
+            ).fetchone()
+        )
+        self.assertTrue(
+            self.conn.execute(
+                'SELECT 1 FROM invocation_tool_params WHERE invocation_id='
+                "'publier_prod_produit' AND param_name='base_domain'"
+            ).fetchone()
+        )
         # Hostinger disparaît, sa description d'API comprise.
         for table, colonne in (
             ('api_services', 'id'),

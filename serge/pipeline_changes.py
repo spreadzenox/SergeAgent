@@ -30,7 +30,9 @@ réponse (``remove_outputs``), une valeur d'une écriture
 exemple, le rythme des relances, sorti du plan d'un POC (Q37, corrigée
 par Q92). Un paramètre figé d'un outil d'une invocation
 (``set_tool_params``, avec ``tool``) change comme une valeur : seulement
-s'il vaut encore celle d'origine.
+s'il vaut encore celle d'origine. Un paramètre de plus d'un lien
+(``add_link_params``) ou d'une invocation sans LLM (``add_params``)
+s'ajoute aussi une seule fois (``serge/pipeline_changes_params.py``).
 
     changes:
       - id: un_outil_de_plus
@@ -47,6 +49,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from serge.interpreter.rules import safe_name, table_columns
+from serge.pipeline_changes_params import add_link_params, add_params
 from serge.seed_base import PipelineSeedError, seed_tool_link
 
 # Les tables du pipeline qu'une modification peut viser.
@@ -438,6 +441,12 @@ def apply_changes(conn: sqlite3.Connection, raw: Any) -> None:
                 change.get('write'),
                 change['remove_write_values'],
             )
+        elif 'add_link_params' in change:
+            result = add_link_params(
+                conn, str(change.get('link') or ''), change['add_link_params']
+            )
+        elif 'add_params' in change:
+            result = add_params(conn, invocation, change['add_params'])
         elif 'set_tool_params' in change:
             result = _set_tool_params(
                 conn,

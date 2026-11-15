@@ -53,8 +53,11 @@ calculatrice » de la page Système (plus bas).
    3 passages au plus.
 6. **Le ticket « Tester le produit »** (`TEST_PRODUIT`) : un humain essaie
    le staging, paiement compris. Il n'expire jamais.
-7. **Acheter le domaine** (niveau intelligent), une fois le produit
-   essayé et validé : chez Cloudflare, avec la carte de Serge enregistrée
+7. **Choisir le domaine** (sans LLM), une fois le produit essayé et
+   validé : avec un domaine commun des produits finis (réglage, page
+   Policy), rien n'est acheté et la prod ira sur
+   `<produit>.<domaine commun>` ; passer directement à l'étape 8. Sinon,
+   **acheter le domaine** (niveau intelligent) : chez Cloudflare, avec la carte de Serge enregistrée
    sur son compte, s'il est libre et sous le prix maximum (30 € par an, la
    première année comme le renouvellement, page Policy), pour un an sans
    renouvellement automatique, puis un enregistrement DNS vers le

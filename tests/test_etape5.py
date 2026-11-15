@@ -17,6 +17,8 @@ Scénarios :
   prospection lourde ;
 - un domaine qui n'a pas pu être acheté ouvre le ticket « Domaine » ; le
   nom donné par un humain est acheté ;
+- avec un domaine commun des produits finis (réglage), rien n'est acheté :
+  la prod va sur un sous-domaine de ce domaine ;
 - « Construire le vrai produit » sur la fiche d'un business au test léger
   lance la conception ; sur un business candidat, rien ne part ;
 - sans la clé restreinte du vrai mode, la mise en prod rate et un ticket
@@ -613,6 +615,42 @@ class Etape5Tests(unittest.TestCase):
         self.assertEqual(
             self._un("SELECT hostname FROM deployments WHERE target='prod'"),
             ('calc-simple.fr',),
+        )
+
+    def test_un_domaine_commun_evite_l_achat(self) -> None:
+        # Le réglage « domaine commun des produits finis » (page Policy) :
+        # pas d'achat, la prod sur un sous-domaine de ce domaine.
+        self.conn.execute(
+            "UPDATE invocation_settings SET value='produits.exemple.fr'"
+            " WHERE invocation_id='choisir_domaine' AND name='domaine_commun'"
+        )
+        self.conn.commit()
+        modeles = FauxModeles(['calculatrice-pro.fr'])
+        venture = self._calculatrice(modeles)
+        self._repondre('PLAN_PRODUIT', 'valider')
+        self._vider(modeles)
+        self._repondre('TEST_PRODUIT', 'valider')
+        self._vider(modeles)
+        self.assertEqual(self._echecs(), [])
+        self.assertNotIn('acheter', modeles.par_role)
+        self.assertFalse(
+            [
+                r
+                for r in _Services.requetes
+                if r['chemin'].startswith('/accounts')
+            ]
+        )
+        self.assertEqual(
+            self._un(
+                'SELECT hostname, status FROM deployments'
+                " WHERE venture_id=? AND target='prod'",
+                venture,
+            ),
+            ('calculatrice.produits.exemple.fr', 'running'),
+        )
+        self.assertEqual(
+            self._un('SELECT lifecycle FROM ventures WHERE id=?', venture),
+            ('PRODUCT_READY',),
         )
 
     def test_construire_le_vrai_produit_depuis_la_fiche(self) -> None:

@@ -28,6 +28,13 @@ PUBLIER: tuple[Capability, ...] = (
             Param('target', 'text', True, 'staging ou prod.'),
             Param('slug', 'text', False, 'Le nom court du produit.'),
             Param('domain', 'text', False, 'Le domaine du produit fini.'),
+            Param(
+                'base_domain',
+                'text',
+                False,
+                'Le domaine commun des produits finis : la prod sur'
+                ' <produit>.<ce domaine>.',
+            ),
             Param('task_id', 'text', False, 'La tâche qui publie.'),
             Param(
                 'env_secrets',

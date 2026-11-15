@@ -527,6 +527,12 @@ lourde.
   sans rien changer à son code entre le staging et la prod.
 - **Le domaine pointe vers le serveur par un seul enregistrement A**
   (`@`) : `www.` n'est pas servi pour le moment.
+- **Un domaine commun des produits finis**, demandé par Clem pour ne pas
+  acheter un domaine par produit au début : un réglage de « Choisir le
+  domaine du produit » (page Policy). Rempli, la prod va sur
+  `<produit>.<domaine commun>` sans rien acheter ; vide, Serge achète.
+  « Choisir le domaine du produit » est une étape sans LLM entre l'essai
+  validé et l'achat : le choix ne dépend jamais d'un modèle.
 
 **Les versions suivantes** (Q41, Q43) passent par la même boucle
 « construire, publier en staging, relire ». Une version que le relecteur
@@ -680,7 +686,7 @@ le vrai modèle, sur une machine avec Docker.
 ## 15. Ce qui reste ouvert
 
 - **Le bureau d'enregistrement** : Cloudflare, où Serge achète avec sa
-  propre carte (il y a acheté `serge-ops.com` en août 2026). Deux jetons
+  propre carte (il y a déjà acheté un domaine en août 2026). Deux jetons
   (registrar, DNS) et l'identifiant du compte, déjà sur le serveur
   ([`installation/DOMAINES.md`](installation/DOMAINES.md)). Hostinger,
   essayé en PR 7, payait avec la carte du compte du VPS : il est retiré.
