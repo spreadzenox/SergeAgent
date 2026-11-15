@@ -6,6 +6,10 @@ son adresse IPv4 (un enregistrement DNS de type A). Serge la tire du
 domaine de l'instance (``identity.public_hostname``), qui pointe déjà vers
 lui : exemple, ``serge.exemple.fr`` → ``203.0.113.7``. Une adresse locale
 ou privée est refusée : elle ne servirait à rien sur Internet.
+
+L'adresse d'un produit est celle que la publication lui donnera, calculée
+par le même code : exemple, ``calculatrice.<domaine commun>``. Elle sert à
+faire pointer ce nom vers le serveur avant de publier.
 """
 
 from __future__ import annotations
@@ -17,6 +21,8 @@ import sys
 from typing import Any
 
 from serge.ingress.caddy import public_hostname
+from serge.sandbox.docker import DockerError
+from serge.sandbox.publier import avec_le_nom, product_hostname
 
 
 def server_address(
@@ -45,3 +51,19 @@ def server_address(
             'detail': f'{nom} mène à {ipv4}, une adresse qui n’est pas publique',
         }
     return {'ok': True, 'hostname': nom, 'ipv4': ipv4}
+
+
+def product_address(
+    conn: sqlite3.Connection,
+    _tool: str,
+    args: dict[str, Any],
+    _invocation_id: str,
+) -> dict[str, Any]:
+    """L'adresse où un produit est, ou sera, publié (``target`` : prod par
+    défaut), exactement comme la publication la calcule."""
+    target = str(args.get('target') or 'prod')
+    try:
+        nom = product_hostname(avec_le_nom(conn, args), target)
+    except DockerError as exc:
+        return {'ok': False, 'code': 'pas_de_domaine', 'detail': str(exc)}
+    return {'ok': True, 'hostname': nom, 'url': f'https://{nom}'}

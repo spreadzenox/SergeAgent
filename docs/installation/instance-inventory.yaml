@@ -295,21 +295,21 @@ entries:
     current_location: /home/serge/.config/serge/secrets/cloudflare-infra.key
     required_for: ingress
     portable: "yes"
-    notes: Cloudflare infra API token for DNS/deploy brokers.
+    notes: Cloudflare infra API token for DNS/deploy brokers; lot 10 step 5 points a bought domain to the VPS with it (service cloudflare_dns, all zones).
 
   - id: cloudflare_registrar
     kind: secret
     current_location: /home/serge/.config/serge/secrets/cloudflare-registrar.key
     required_for: ingress
     portable: "yes"
-    notes: Cloudflare registrar API token for domain operations.
+    notes: Cloudflare registrar API token for domain operations; lot 10 step 5 checks and buys product domains with it (service cloudflare_registrar), billed to Serge's card on the Cloudflare account.
 
   - id: path.cloudflare_account_id
     kind: path
     current_location: /home/serge/.config/serge/cloudflare-account-id
     required_for: ingress
     portable: "yes"
-    notes: Cloudflare account id file; non-secret companion to Cloudflare tokens.
+    notes: Cloudflare account id file; non-secret companion to Cloudflare tokens, read at call time as {config:cloudflare-account-id}.
 
   - id: secret.credential_vault
     kind: secret
@@ -323,7 +323,7 @@ entries:
     current_location: /home/serge/.config/serge/secrets/payment-card.enc
     required_for: payments
     portable: "yes"
-    notes: Encrypted payment card blob; ciphertext not a token string.
+    notes: Encrypted payment card blob (Fernet, key secret.credential_vault); lot 10 step 5 types its fields for the 1 EUR payment test (payment-card.enc#pan…), never written in clear.
 
   - id: path.payment_card_meta
     kind: path

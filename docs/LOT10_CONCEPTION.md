@@ -169,9 +169,11 @@ compte, qui garde ses cookies.
   `artifacts` (sa taille, la tâche qui l'a prise).
 
 **Taper un secret** (action `taper_secret`, PR 5) : le modèle désigne le
-champ et le nom du fichier de secret, parmi ceux figés en base sur
-l'invocation (paramètre `secrets`, exemple `carte-numero.key`) ; Serge
-tape la valeur sans la lui montrer. La page relue cache la valeur, même
+champ et le nom du secret, parmi ceux figés en base sur l'invocation
+(paramètre `secrets`) : un fichier de secret, ou un champ de la carte
+chiffrée de Serge (`payment-card.enc#pan`, déchiffrée avec la clé du
+coffre au moment de taper, jamais écrite en clair). Serge tape la valeur
+sans la lui montrer. La page relue cache la valeur, même
 remise en forme par la page (`4242 4242 4242 4242`), comme les erreurs
 de la page ; le temps d'une capture, le champ qui l'a reçue montre des
 points, comme un mot de passe. Il sert au paiement test de l'étape 5.
@@ -376,8 +378,19 @@ Les outils Stripe du lot 10 :
   permet pas de supprimer un prix, ni un produit qui a un prix : on
   archive.
 
-Le bureau d'enregistrement de domaines (acheter un domaine, le faire
-pointer vers le VPS) est décrit de la même façon en PR 6 (partie 15).
+Le bureau d'enregistrement de domaines est décrit de la même façon :
+Cloudflare, deux services (`cloudflare_registrar` pour vérifier et
+acheter, `cloudflare_dns` pour faire pointer le domaine vers le VPS) et
+leurs outils (partie 15). L'identifiant du compte, propre à l'instance,
+n'est pas dans le dépôt : un chemin d'outil le nomme
+`{config:cloudflare-account-id}`, et « Appeler une API » le lit sur le
+serveur au moment de l'appel. Une valeur figée en base part avec son
+type (`years: 1`, `auto_renew: false`) dans un corps JSON. L'achat porte
+un verrou de prix décrit en base (`api_endpoints.guard`) : juste avant,
+« Appeler une API » redemande le prix à Cloudflare et refuse un nom pris,
+premium, ou au-dessus du réglage « prix_max_eur » (page Policy), ou sans
+réponse sûre. La consigne du modèle dit la même chose, mais c'est le code
+qui tient.
 
 Une écriture envoie une clé d'idempotence tirée de la tâche, de l'outil
 et du contenu (`Idempotency-Key: serge-…`) : une requête répétée après un
@@ -519,6 +532,16 @@ lourde.
   sans rien changer à son code entre le staging et la prod.
 - **Le domaine pointe vers le serveur par un seul enregistrement A**
   (`@`) : `www.` n'est pas servi pour le moment.
+- **Un domaine commun des produits finis**, demandé par Clem pour ne pas
+  acheter un domaine par produit au début : un réglage de « Choisir le
+  domaine du produit » (page Policy). Rempli, la prod va sur
+  `<produit>.<domaine commun>` sans rien acheter ; vide, Serge achète.
+  « Choisir le domaine du produit » est une étape sans LLM entre l'essai
+  validé et l'achat : le choix ne dépend jamais d'un modèle. Avec le
+  domaine commun, « Faire pointer le sous-domaine du produit » crée chez
+  Cloudflare l'enregistrement de ce seul nom, calculé par la capacité
+  « Adresse d'un produit » exactement comme la publication le calcule ;
+  elle n'a aucun outil d'achat.
 
 **Les versions suivantes** (Q41, Q43) passent par la même boucle
 « construire, publier en staging, relire ». Une version que le relecteur
@@ -671,10 +694,11 @@ le vrai modèle, sur une machine avec Docker.
 
 ## 15. Ce qui reste ouvert
 
-- **Le bureau d'enregistrement** : Hostinger, celui du domaine de Serge
-  (PR 7). Son jeton d'API, un moyen de paiement par défaut et un profil
-  WHOIS par extension sont à poser une fois
-  ([`installation/DOMAINES.md`](installation/DOMAINES.md)).
+- **Le bureau d'enregistrement** : Cloudflare, où Serge achète avec sa
+  propre carte (il y a déjà acheté un domaine en août 2026). Deux jetons
+  (registrar, DNS) et l'identifiant du compte, déjà sur le serveur
+  ([`installation/DOMAINES.md`](installation/DOMAINES.md)). Hostinger,
+  essayé en PR 7, payait avec la carte du compte du VPS : il est retiré.
 - **Les écarts de l'étape 5** à valider (partie 9) : le domaine acheté
   après l'essai, le paiement test vérifié par l'API de Stripe.
 - **Une banque qui exige 3-D Secure** pour le paiement test de 1 € : Serge

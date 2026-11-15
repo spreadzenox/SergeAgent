@@ -263,6 +263,32 @@ class ConnecteursTests(unittest.TestCase):
         self.assertEqual(absent['code'], 'secret_absent')
         self.assertIn('absent.key', journal.getvalue())
 
+    def test_un_reglage_d_instance_absent_est_dit(self) -> None:
+        # L'identifiant du compte Cloudflare est lu sur le serveur
+        # (config_root/cloudflare-account-id), jamais écrit dans le dépôt.
+        (Path(os.environ['SERGE_SYSTEM_ROOT']) / 'config/secrets').joinpath(
+            'cloudflare-registrar.key'
+        ).write_text('cf_faux\n')
+        lien = self.conn.execute(
+            "SELECT id FROM invocation_tools WHERE invocation_id='acheter_domaine'"
+            " AND tool_id='cloudflare_disponibilite'"
+        ).fetchone()[0]
+        with redirect_stderr(io.StringIO()) as journal:
+            refus = run_tool(
+                self.conn,
+                'acheter_domaine',
+                lien,
+                'cloudflare_disponibilite',
+                {'domains': ['devis-artisan.com']},
+                {'task_id': 't1'},
+            )
+        self.assertEqual(
+            (refus['code'], refus['detail']),
+            ('config_absente', 'cloudflare-account-id'),
+        )
+        self.assertIn('cloudflare-account-id absent', journal.getvalue())
+        self.assertEqual(_FauxStripe.requetes, [])
+
     def test_supprimer_de_stripe(self) -> None:
         modele = FauxModele(
             [

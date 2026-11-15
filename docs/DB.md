@@ -72,10 +72,14 @@ Trois exceptions, toutes décrites dans `config/pipeline.yaml` :
   de la réponse (`remove_outputs`), une valeur d'une écriture
   (`remove_write_values`) ou une colonne lue par un outil
   (`remove_tool_columns`) se retirent une seule fois : exemple, le rythme
-  des relances, sorti du plan d'un POC (Q37, corrigée par Q92) ;
+  des relances, sorti du plan d'un POC (Q37, corrigée par Q92). Un
+  paramètre figé d'un outil d'une invocation (`set_tool_params`) change
+  comme une valeur, seulement s'il vaut encore celle d'origine : exemple,
+  les secrets que tape le paiement test ;
 - ce qui est **retiré** du fichier est listé dans la section `deleted` :
   marqué supprimé en base (invocations, liens, déclencheurs), ou effacé
-  (outils, quotas, textes de Serge).
+  (outils avec leur description d'API, quotas, textes de Serge, services
+  d'API). Exemple : Hostinger, remplacé par Cloudflare (lot 10).
 
 Rien d'autre n'est effacé au démarrage : une invocation supprimée dans
 Mission Control (`deleted_at` rempli) ne revient pas. Seule une capacité retirée du
@@ -174,7 +178,7 @@ est déjà en base. Chaque table est expliquée dans
 | `queues`, `tasks`, `task_params`, `task_inputs`, `task_seen_tables` | Les files (conversations, travaux, et « Appels » : chaque appel téléphonique est une tâche de l'agent vocal, menée en direct par le pont téléphonique, lot 8), leurs tâches, et ce que chaque tâche a reçu : ses lectures d'office, les tables à comparer et ses leçons (lignes données, lignes laissées de côté). La réponse d'une tâche LLM, après vérification de son format, est gardée dans `tasks.answer_json` et se lit sur la fiche de la tâche (version 42). |
 | `llm_models` | Chaque niveau (rapide, moyen, intelligent, et « code » depuis la version 43, décision Q91) : le modèle derrière lui, et pour la recommandation de la page Pipeline son prix maximum (`max_price_usd`, $ par million de jetons), sa tolérance (`tolerance_pct`, % de la meilleure note sous ce prix) et s'il doit lire les images (`needs_image`, 1 pour « code »). |
 | `serge_texts` | Les textes de Serge, modifiables sur la page Pipeline : la présentation de Serge (« Qui est Serge »), le message quand ses outils sont épuisés, le début de la consigne de format, la redemande d'une réponse mal formée, la note d'un résultat d'outil coupé, et la phrase de fin de chaque e-mail (`footer_email` : « …répondez STOP »). Chacun a un titre, une aide, et sa valeur précédente (qui l'a remplacée, quand) pour « Remettre » (version 34). |
-| `api_services`, `api_endpoints`, `api_endpoint_params` | Les services qu'appelle la capacité « Appeler une API » (version 47, lot 10, Q56 et Q91). Un service : son adresse, son authentification (`bearer` ou `none`), le nom du fichier de secret sous `config_root/secrets/` (jamais sa valeur) et le format du corps (`form` pour Stripe, `json` ailleurs). Un point d'entrée est un outil (`tool_id`) : son service, sa méthode et son chemin (`/v1/prices/{id}`). Ses paramètres permis : nom, type (`text`, `number`, `bool`, `json`), obligatoire ou non, description pour le modèle. Exemple : `stripe_test` et `stripe_live`, et l'outil « Créer un prix Stripe » (`POST /v1/prices`). |
+| `api_services`, `api_endpoints`, `api_endpoint_params` | Les services qu'appelle la capacité « Appeler une API » (version 47, lot 10, Q56 et Q91). Un service : son adresse, son authentification (`bearer` ou `none`), le nom du fichier de secret sous `config_root/secrets/` (jamais sa valeur) et le format du corps (`form` pour Stripe, `json` ailleurs). Un point d'entrée est un outil (`tool_id`) : son service, sa méthode et son chemin (`/v1/prices/{id}`). Ses paramètres permis : nom, type (`text`, `number`, `bool`, `json`), obligatoire ou non, description pour le modèle. Exemple : `stripe_test` et `stripe_live`, et l'outil « Créer un prix Stripe » (`POST /v1/prices`). Un point d'entrée payant peut porter un verrou de prix (`guard`, un objet JSON, version 50) : l'outil qui vérifie le prix, ses paramètres tirés de l'appel, ce qui doit être vrai ou refusé dans sa réponse, les prix à comparer, un taux de prudence et le réglage de l'invocation qui fixe le plafond. Exemple : l'achat d'un domaine chez Cloudflare, plafonné par `prix_max_eur`. |
 | `canaux` | Les canaux par lesquels Serge parle à un tiers (e-mail, voix), remplis au démarrage : `connected` = 1 si son adaptateur existe dans le code (`serge/channels/`) et que le canal est configuré sur ce serveur (l'e-mail : une boîte Gmail ou SMTP/IMAP dans le fichier d'instance ; la voix : `features.phone_voice`), la sorte d'adresse qu'il utilise (`address_channel` : `email`, `phone`), s'il se relève (`polls`) et sa dernière relève (`polled_at`, version 35). |
 
 ### La mécanique

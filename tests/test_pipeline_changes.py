@@ -16,7 +16,10 @@ Scénarios :
 - une modification mal écrite est refusée ;
 - une instance de la PR 4 du lot 10 perd le rythme des relances dans le
   plan d'un POC (Q37) : le champ de la réponse, sa colonne écrite et lue,
-  et son paragraphe du prompt ; une instance neuve n'a rien à retirer.
+  et son paragraphe du prompt ; une instance neuve n'a rien à retirer ;
+- une instance de la PR 7 passe de Hostinger à Cloudflare et à la carte
+  chiffrée du coffre ; des secrets changés dans Mission Control sont
+  gardés.
 """
 
 from __future__ import annotations
@@ -31,7 +34,7 @@ sys.path.insert(0, str(ROOT))
 
 from serge.db.boot import init_schema  # noqa: E402
 from serge.pipeline_changes import apply_changes  # noqa: E402
-from serge.pipeline_seed import ensure_pipeline  # noqa: E402
+from serge.pipeline_seed import ensure_pipeline, seed_pipeline  # noqa: E402
 from serge.policy import config_dir, read_yaml_file  # noqa: E402
 from serge.seed_base import PipelineSeedError  # noqa: E402
 
@@ -447,6 +450,183 @@ class PlanSansRelancesTests(unittest.TestCase):
         self.assertEqual(
             resultats['lot10_plan_poc_sans_relances_prompt'],
             'prompt déjà à jour',
+        )
+
+
+class RegistrarCloudflareTests(unittest.TestCase):
+    """Une instance de la PR 7 du lot 10 : Hostinger, et la carte en
+    fichiers en clair. Au démarrage, elle passe à Cloudflare et à la carte
+    chiffrée du coffre."""
+
+    IDS = (
+        'lot10_achat_cloudflare_prompt',
+        'lot10_achat_cloudflare_outils',
+        'lot10_conception_cloudflare',
+        'lot10_paiement_carte_du_coffre_prompt',
+        'lot10_paiement_carte_du_coffre_secrets',
+        'lot10_domaine_commun_lien',
+        'lot10_domaine_commun_vente',
+        'lot10_domaine_commun_prod',
+    )
+
+    def setUp(self) -> None:
+        self.conn = sqlite3.connect(':memory:')
+        self.addCleanup(self.conn.close)
+        init_schema(self.conn)
+        self.data = read_yaml_file(config_dir() / 'pipeline.yaml')
+        self.changes = {c['id']: c for c in self.data['changes']}
+
+    def _secrets(self) -> str:
+        return str(
+            self.conn.execute(
+                'SELECT p.value FROM invocation_tool_params p'
+                ' JOIN invocation_tools t ON t.id=p.invocation_tool_id'
+                " WHERE t.invocation_id='paiement_test'"
+                " AND t.tool_id='navigateur_agir' AND p.param_name='secrets'"
+            ).fetchone()[0]
+        )
+
+    def _comme_la_pr7(self, secrets: str) -> None:
+        c = self.conn
+        avant = self.changes
+        c.execute(
+            "UPDATE invocations SET prompt=? WHERE id='acheter_domaine'",
+            (avant['lot10_achat_cloudflare_prompt']['set']['prompt']['from'],),
+        )
+        c.execute(
+            "UPDATE invocations SET prompt=? WHERE id='paiement_test'",
+            (
+                avant['lot10_paiement_carte_du_coffre_prompt']['set'][
+                    'prompt'
+                ]['from'],
+            ),
+        )
+        c.execute(
+            'DELETE FROM invocation_tools WHERE tool_id LIKE ?'
+            " AND invocation_id IN ('acheter_domaine', 'concevoir_produit')",
+            ('cloudflare%',),
+        )
+        c.execute(
+            'UPDATE invocation_tool_params SET value=? WHERE param_name='
+            "'secrets' AND invocation_tool_id IN (SELECT id FROM"
+            " invocation_tools WHERE invocation_id='paiement_test')",
+            (secrets,),
+        )
+        c.execute(
+            "INSERT INTO api_services(id, base_url) VALUES('hostinger',"
+            " 'https://developers.hostinger.com')"
+        )
+        c.execute(
+            'INSERT INTO tools(id, capability_id, titre) VALUES('
+            "'hostinger_acheter_domaine', 'call_api', 'Acheter')"
+        )
+        c.execute(
+            'INSERT INTO api_endpoints(tool_id, service_id, method, path)'
+            " VALUES('hostinger_acheter_domaine', 'hostinger', 'POST',"
+            " '/api/domains/v1/portfolio')"
+        )
+        c.execute(
+            'INSERT INTO invocation_tools(invocation_id, tool_id, mode,'
+            " position) VALUES('acheter_domaine', 'hostinger_acheter_domaine',"
+            " 'callable', 99)"
+        )
+        # Avant le domaine commun : l'essai validé menait droit à l'achat.
+        c.execute(
+            "UPDATE links SET to_invocation_id='acheter_domaine', title=?"
+            " WHERE id='test_produit_valide_vers_domaine'",
+            ('Le produit essayé et validé ; Serge achète son domaine',),
+        )
+        c.execute(
+            "DELETE FROM link_params WHERE link_id='vente_vers_prod'"
+            " AND param_name='domaine_commun'"
+        )
+        c.execute(
+            'DELETE FROM invocation_tool_params WHERE invocation_id='
+            "'publier_prod_produit' AND param_name='base_domain'"
+        )
+        c.executemany(
+            'DELETE FROM pipeline_changes WHERE id=?', [(i,) for i in self.IDS]
+        )
+
+    def test_une_instance_de_la_pr7_passe_a_cloudflare(self) -> None:
+        anciens = self.changes['lot10_paiement_carte_du_coffre_secrets'][
+            'set_tool_params'
+        ]['secrets']
+        self._comme_la_pr7(anciens['from'])
+        seed_pipeline(self.conn, self.data)
+        outils = [
+            r[0]
+            for r in self.conn.execute(
+                'SELECT tool_id FROM invocation_tools'
+                " WHERE invocation_id='acheter_domaine' ORDER BY position"
+            )
+        ]
+        self.assertNotIn('hostinger_acheter_domaine', outils)
+        self.assertIn('cloudflare_acheter_domaine', outils)
+        self.assertIn('cloudflare_dns_creer', outils)
+        self.assertTrue(
+            self.conn.execute(
+                'SELECT 1 FROM invocation_tools WHERE invocation_id='
+                "'concevoir_produit' AND tool_id='cloudflare_disponibilite'"
+            ).fetchone()
+        )
+        self.assertIn(
+            'Cloudflare',
+            self.conn.execute(
+                "SELECT prompt FROM invocations WHERE id='acheter_domaine'"
+            ).fetchone()[0],
+        )
+        self.assertIn(
+            'payment-card.enc#pan',
+            self.conn.execute(
+                "SELECT prompt FROM invocations WHERE id='paiement_test'"
+            ).fetchone()[0],
+        )
+        self.assertEqual(self._secrets(), anciens['to'])
+        # L'essai validé passe d'abord par le choix du domaine, et le
+        # domaine commun va jusqu'à la prod.
+        self.assertEqual(
+            self.conn.execute(
+                'SELECT to_invocation_id FROM links'
+                " WHERE id='test_produit_valide_vers_domaine'"
+            ).fetchone()[0],
+            'choisir_domaine',
+        )
+        self.assertTrue(
+            self.conn.execute(
+                "SELECT 1 FROM link_params WHERE link_id='vente_vers_prod'"
+                " AND param_name='domaine_commun'"
+            ).fetchone()
+        )
+        self.assertTrue(
+            self.conn.execute(
+                'SELECT 1 FROM invocation_tool_params WHERE invocation_id='
+                "'publier_prod_produit' AND param_name='base_domain'"
+            ).fetchone()
+        )
+        # Hostinger disparaît, sa description d'API comprise.
+        for table, colonne in (
+            ('api_services', 'id'),
+            ('api_endpoints', 'service_id'),
+        ):
+            self.assertIsNone(
+                self.conn.execute(
+                    f"SELECT 1 FROM {table} WHERE {colonne}='hostinger'"
+                ).fetchone()
+            )
+
+    def test_des_secrets_changes_dans_mission_control_sont_gardes(
+        self,
+    ) -> None:
+        self._comme_la_pr7('mon-secret.key')
+        seed_pipeline(self.conn, self.data)
+        self.assertEqual(self._secrets(), 'mon-secret.key')
+        self.assertIn(
+            'gardé',
+            self.conn.execute(
+                'SELECT result FROM pipeline_changes WHERE id='
+                "'lot10_paiement_carte_du_coffre_secrets'"
+            ).fetchone()[0],
         )
 
 

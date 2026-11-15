@@ -122,7 +122,7 @@ conversation (lot 8 bis, décisions Q85 et Q86), la grille de points
   Serge construit, essaie et met en ligne, d'abord le POC, ensuite le vrai
   produit. Ce sont les étapes 2 et 5 ; l'étape 2 est en base depuis la
   PR 4 du lot, « Appeler une API » et les outils Stripe depuis la PR 5,
-  l'étape 5 depuis la PR 7 (avec l'achat des domaines chez Hostinger et le
+  l'étape 5 depuis la PR 7 (avec l'achat des domaines chez Cloudflare et le
   paiement test de 1 €) ; restent les versions suivantes d'un produit,
   avec l'étape 6. Seulement des produits web, payants
   pour le produit fini (Q91). Le lot apporte trois capacités d'abord

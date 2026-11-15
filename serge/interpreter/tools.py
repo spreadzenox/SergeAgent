@@ -26,7 +26,7 @@ from serge.conversations.send import send_message
 from serge.conversations.stop import stop_contact
 from serge.conversations.thread import contact_thread
 from serge.conversations.unsubscribe import unsubscribe_contact
-from serge.ingress.adresse import server_address
+from serge.ingress.adresse import product_address, server_address
 from serge.interpreter.seen import CHOICES, read_seen_table, row_history
 from serge.interpreter.settings import load_settings
 from serge.policy_store import policy_en_vigueur
@@ -252,6 +252,7 @@ RUNNERS: dict[str, Runner] = {
     'browser_screenshot': browser_screenshot,
     'publish_version': publish_version,
     'server_address': server_address,
+    'product_address': product_address,
     'call_api': call_api,
 }
 

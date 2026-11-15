@@ -19,7 +19,7 @@ ligne de code ne lui est propre : ses invocations, ses liens et ses
 tickets sont dans `config/pipeline.yaml` et `config/ticket-types.yaml`.
 Elle reprend la mécanique de l'étape 2 (« Compter les tours », les
 paramètres de lien tirés de la réponse, les trois boutons de ticket), et
-s'appuie sur « Appeler une API » pour Stripe et Hostinger.
+s'appuie sur « Appeler une API » pour Stripe et Cloudflare.
 
 En attendant l'étape 4 (lot 11), elle part du bouton « Construire le vrai
 produit » de la fiche d'un business au test léger (`SMOKE_READY` ou
@@ -33,7 +33,7 @@ calculatrice » de la page Système (plus bas).
    Elle écrit le plan du produit (`product_plans`, `kind` = `product`) :
    le prix définitif, le plan de A à Z (inscription, abonnement Stripe, ce
    que le compte débloque), les scénarios de test (l'un va jusqu'au
-   paiement) et un nom de domaine libre (elle le vérifie chez Hostinger).
+   paiement) et un nom de domaine libre (elle le vérifie chez Cloudflare).
    Elle réécrit la fiche produit et ses questions fréquentes, et marque
    chaque demande des clients retenue ou refusée, avec sa raison.
 2. **Challenger le produit** (niveau intelligent), 3 tours au plus.
@@ -53,10 +53,16 @@ calculatrice » de la page Système (plus bas).
    3 passages au plus.
 6. **Le ticket « Tester le produit »** (`TEST_PRODUIT`) : un humain essaie
    le staging, paiement compris. Il n'expire jamais.
-7. **Acheter le domaine** (niveau intelligent), une fois le produit
-   essayé et validé : chez Hostinger, s'il est libre et sous le prix
-   maximum (30 € par an, la première année comme le renouvellement, page
-   Policy), puis un enregistrement DNS vers le serveur. Sinon, le ticket
+7. **Choisir le domaine** (sans LLM), une fois le produit essayé et
+   validé : avec un domaine commun des produits finis (réglage, page
+   Policy), rien n'est acheté : Serge fait pointer
+   `<produit>.<domaine commun>` vers le serveur (un enregistrement DNS chez
+   Cloudflare, pour ce seul nom) et passe à l'étape 8. Sinon,
+   **acheter le domaine** (niveau intelligent) : chez Cloudflare, avec la carte de Serge enregistrée
+   sur son compte, s'il est libre et sous le prix maximum (30 € par an, la
+   première année comme le renouvellement, page Policy), pour un an sans
+   renouvellement automatique, puis un enregistrement DNS vers le
+   serveur. Sinon, le ticket
    « Domaine » (`DOMAINE_PRODUIT`) dit pourquoi et propose des noms libres
    ; « À corriger » avec un nom achète ce nom.
 8. **Mettre en vente** (niveau moyen) : le produit et son prix dans
@@ -65,8 +71,9 @@ calculatrice » de la page Système (plus bas).
    (`stripe-produits-live.key`) : le produit n'a jamais la clé complète de
    Serge.
 9. **Le paiement test de 1 €** (niveau « code ») : un prix de 1 € et un
-   lien de paiement, payé dans le navigateur avec la carte de Serge
-   (« taper un secret » : le modèle ne voit jamais ses numéros), vérifié
+   lien de paiement, payé dans le navigateur avec la carte de Serge,
+   déchiffrée de `payment-card.enc` au moment de taper (« taper un
+   secret » : le modèle ne voit jamais ses numéros), vérifié
    dans Stripe (la session du lien est payée), remboursé ; le lien est
    désactivé et le prix archivé. Le paiement est noté dans `transactions`
    (`kind` = `canary`).

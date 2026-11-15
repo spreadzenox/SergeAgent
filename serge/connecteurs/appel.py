@@ -12,7 +12,14 @@ dans le corps, ou dans l'adresse pour une lecture (GET). Exemple : l'outil
 ``currency`` et ``metadata[venture_id]``, ce dernier figé en base.
 
 Le service vient du point d'entrée, ou d'un paramètre figé ``service`` sur
-l'invocation : le même outil sert en mode test et en vrai mode. Une
+l'invocation : le même outil sert en mode test et en vrai mode. Un point
+d'entrée payant peut porter un verrou de prix (``api_endpoints.guard``) :
+avant de l'appeler, « Appeler une API » vérifie le prix par un autre point
+d'entrée et refuse au-dessus d'un plafond, un réglage de l'invocation qui
+appelle (page Policy) ; un modèle ne peut pas passer outre. Un chemin
+peut porter une valeur propre à l'instance, lue sur le serveur et jamais
+écrite dans le dépôt : ``{config:cloudflare-account-id}`` est la première
+ligne du fichier ``config_root/cloudflare-account-id``. Une
 écriture porte une clé d'idempotence tirée de la tâche et de son contenu :
 reprise après un arrêt, elle n'agit jamais deux fois. Toute erreur du
 service est notée au journal avec la raison qu'il donne (Q89).
@@ -22,6 +29,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import sqlite3
 import sys
 import urllib.error
@@ -31,10 +39,13 @@ from collections.abc import Mapping
 from typing import Any
 
 from serge.db.store import append_event
+from serge.interpreter.settings import load_settings
 from serge.paths import config_root
 from serge.secrets import read_secret_file
 
 TIMEOUT_S = 30
+# Une valeur propre à l'instance, dans un chemin : {config:<fichier>}.
+_CONFIG = re.compile(r'\{config:([A-Za-z0-9_.-]+)\}')
 # Les paramètres que l'appelant fige, sans les envoyer au service.
 _REGLAGES = {'service', 'task_id'}
 
@@ -44,14 +55,94 @@ def journal(texte: str) -> None:
     print(f'connecteur : {texte}', file=sys.stderr, flush=True)
 
 
-def _endpoint(conn: sqlite3.Connection, tool_id: str) -> tuple[str, str, str]:
+def _endpoint(
+    conn: sqlite3.Connection, tool_id: str
+) -> tuple[str, str, str, str]:
     row = conn.execute(
-        'SELECT service_id, method, path FROM api_endpoints WHERE tool_id=?',
+        'SELECT service_id, method, path, guard FROM api_endpoints'
+        ' WHERE tool_id=?',
         (tool_id,),
     ).fetchone()
     if row is None:
         raise ValueError(f'point d’entrée inconnu : {tool_id}')
-    return str(row[0]), str(row[1]), str(row[2])
+    return str(row[0]), str(row[1]), str(row[2]), str(row[3] or '')
+
+
+def _chemin(data: Any, chemin: str) -> Any:
+    """Une valeur d'une réponse JSON : ``result.domains.0.registrable``."""
+    for part in chemin.split('.'):
+        if isinstance(data, list) and part.isdigit() and int(part) < len(data):
+            data = data[int(part)]
+        elif isinstance(data, dict):
+            data = data.get(part)
+        else:
+            return None
+    return data
+
+
+def _remplir(modele: Any, args: Mapping[str, Any]) -> Any:
+    """Les paramètres de la vérification, tirés de ceux de l'appel :
+    ``{domain_name}`` devient la valeur de ``domain_name``."""
+    if isinstance(modele, str):
+        nom = re.fullmatch(r'\{([A-Za-z0-9_\[\].-]+)\}', modele)
+        return args.get(nom.group(1), '') if nom else modele
+    if isinstance(modele, list):
+        return [_remplir(x, args) for x in modele]
+    if isinstance(modele, Mapping):
+        return {k: _remplir(v, args) for k, v in modele.items()}
+    return modele
+
+
+def _verrou(
+    conn: sqlite3.Connection,
+    garde: Mapping[str, Any],
+    args: Mapping[str, Any],
+    invocation_id: str,
+) -> str:
+    """Pourquoi le verrou de prix refuse l'appel, ou ``''``. Sans réponse
+    sûre (vérification ratée, prix introuvable, plafond absent), il refuse.
+
+    Exemple, pour l'achat d'un domaine : la vérification de Cloudflare doit
+    dire le nom libre et pas premium, et ses deux prix, en dollars fois
+    1,10, ne pas dépasser le réglage « prix_max_eur » de l'invocation.
+    """
+    nom_plafond = str(garde.get('plafond') or '')
+    try:
+        plafond = float(load_settings(conn, invocation_id)[nom_plafond])
+    except (KeyError, ValueError):
+        return f'plafond {nom_plafond} absent de {invocation_id}'
+    verification = call_api(
+        conn,
+        str(garde.get('verifier') or ''),
+        {
+            **_remplir(garde.get('avec') or {}, args),
+            'task_id': args.get('task_id', ''),
+        },
+        invocation_id,
+    )
+    if not verification.get('ok'):
+        return 'vérification impossible : ' + str(
+            verification.get('code') or f'HTTP {verification.get("status")}'
+        )
+    data = verification.get('data')
+    for chemin, attendu in (garde.get('exiger') or {}).items():
+        if _chemin(data, chemin) != attendu:
+            return f'{chemin} vaut {_chemin(data, chemin)!r}, pas {attendu!r}'
+    for chemin, refuse in (garde.get('refuser') or {}).items():
+        if _chemin(data, chemin) == refuse:
+            return f'{chemin} vaut {refuse!r}'
+    taux = float(garde.get('taux') or 1)
+    for chemin in garde.get('prix') or []:
+        try:
+            prix = float(_chemin(data, chemin)) * taux
+        except (TypeError, ValueError):
+            return f'prix introuvable ({chemin})'
+        if prix > plafond + 1e-9:
+            return (
+                f'{prix:.2f} € dépasse le plafond de {plafond:g} €'
+                f' ({nom_plafond})'
+            )
+    return ''
 
 
 def _params(conn: sqlite3.Connection, tool_id: str) -> dict[str, str]:
@@ -99,6 +190,39 @@ def api_schema(conn: sqlite3.Connection, tool_id: str) -> dict[str, Any]:
     }
 
 
+def _typer(kind: str, value: Any) -> Any:
+    """Une valeur à son type : un paramètre figé en base arrive en texte
+    (« false », « 1 ») et doit partir en booléen ou en nombre dans un corps
+    JSON."""
+    if not isinstance(value, str):
+        return value
+    if kind == 'json':
+        return json.loads(value)
+    if kind == 'bool':
+        return value.strip().lower() in ('true', '1', 'oui')
+    if kind == 'number':
+        try:
+            return int(value)
+        except ValueError:
+            return float(value)
+    return value
+
+
+def _valeurs_d_instance(path: str) -> tuple[str, str]:
+    """Remplace ``{config:<fichier>}`` par sa valeur ; rend ``(chemin,
+    fichier manquant)``."""
+    for fichier in _CONFIG.findall(path):
+        try:
+            lignes = (config_root() / fichier).read_text().splitlines()
+        except OSError:
+            lignes = []
+        valeur = lignes[0].strip() if lignes else ''
+        if not valeur:
+            return path, fichier
+        path = path.replace('{config:' + fichier + '}', valeur)
+    return path, ''
+
+
 def _form(values: Mapping[str, Any]) -> bytes:
     """Le corps « form » de Stripe : un booléen s'écrit true ou false."""
     pairs = []
@@ -116,7 +240,7 @@ def call_api(
     invocation_id: str,
 ) -> dict[str, Any]:
     """Appelle le point d'entrée ``tool_id`` avec les paramètres permis."""
-    default_service, method, path = _endpoint(conn, tool_id)
+    default_service, method, path, garde = _endpoint(conn, tool_id)
     service_id = str(args.get('service') or default_service)
     service = conn.execute(
         'SELECT base_url, auth, secret_file, body FROM api_services'
@@ -133,15 +257,34 @@ def call_api(
             continue
         if name not in permis:
             return {'ok': False, 'code': 'parametre_inconnu', 'detail': name}
-        if permis[name] == 'json' and isinstance(value, str):
-            value = json.loads(value)
+        value = _typer(permis[name], value)
         if '{' + name + '}' in path:
             path = path.replace(
                 '{' + name + '}', urllib.parse.quote(str(value), safe='')
             )
         else:
             values[name] = value
+    path, manquant = _valeurs_d_instance(path)
+    if manquant:
+        journal(f'{service_id} : réglage {manquant} absent de config_root')
+        return {'ok': False, 'code': 'config_absente', 'detail': manquant}
     url = base_url.rstrip('/') + path
+    if garde:
+        refus = _verrou(conn, json.loads(garde), args, invocation_id)
+        if refus:
+            journal(f'{service_id} {method} {path} : verrou de prix, {refus}')
+            append_event(
+                conn,
+                actor=f'invocation:{invocation_id}',
+                type='api.refused',
+                payload={
+                    'service': service_id,
+                    'method': method,
+                    'path': path,
+                    'raison': refus,
+                },
+            )
+            return {'ok': False, 'code': 'verrou', 'detail': refus}
     headers = {'Accept': 'application/json'}
     if auth == 'bearer':
         secret = read_secret_file(config_root() / 'secrets' / secret_file)
@@ -156,7 +299,11 @@ def call_api(
     data = None
     if method == 'GET':
         if values:
-            url += '?' + urllib.parse.urlencode(values, doseq=True)
+            query = {
+                k: ('true' if v else 'false') if isinstance(v, bool) else v
+                for k, v in values.items()
+            }
+            url += '?' + urllib.parse.urlencode(query, doseq=True)
     else:
         if body_kind == 'form':
             data = _form(values)
