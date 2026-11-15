@@ -40,7 +40,13 @@ from serge.llm.client import ChatResult
 from serge.llm.runtime import budget_reached
 from serge.policy_store import policy_en_vigueur
 
-TIER_TO_OLD = {'fast': 'T1', 'mid': 'T2', 'smart': 'T3', 'code': 'T3'}
+TIER_TO_OLD = {
+    'fast': 'T1',
+    'mid': 'T2',
+    'smart': 'T3',
+    'code': 'T3',
+    'web': 'T3',
+}
 
 
 class AnswerError(ValueError):
@@ -73,12 +79,14 @@ def _record_usage(
 
     ``result`` vaut ``None`` pour un appel raté : il n'a ni jetons ni coût.
     Le coût est celui qu'OpenRouter a facturé, quand il le donne. La tâche
-    rattache le coût à son business (points par euro dépensé).
+    rattache le coût à son business (points par euro dépensé). Le
+    fournisseur et les jetons lus ou écrits en cache disent pourquoi un
+    appel a coûté ce qu'il a coûté.
     """
     conn.execute(
         'INSERT INTO llm_usage(point, tier, model, tokens_in, tokens_out,'
-        ' latency_ms, verdict, cost_usd, task_id, created_at)'
-        ' VALUES(?,?,?,?,?,?,?,?,?,?)',
+        ' latency_ms, verdict, cost_usd, task_id, created_at, provider,'
+        ' cached_tokens, cache_write_tokens) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)',
         (
             inv.id,
             inv.model_tier,
@@ -90,6 +98,9 @@ def _record_usage(
             result.cost_usd if result else None,
             task_id,
             utcnow(),
+            result.provider if result else '',
+            result.cached_tokens if result else 0,
+            result.cache_write_tokens if result else 0,
         ),
     )
     conn.commit()

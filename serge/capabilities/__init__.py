@@ -17,6 +17,7 @@ from serge.capabilities.base import BASE
 from serge.capabilities.chantier import CHANTIER
 from serge.capabilities.connecteurs import CONNECTEURS
 from serge.capabilities.conversations import CONVERSATIONS
+from serge.capabilities.courriel import COURRIEL
 from serge.capabilities.model import Capability
 from serge.capabilities.navigateur import NAVIGATEUR
 from serge.capabilities.publier import PUBLIER
@@ -28,6 +29,7 @@ CAPABILITIES: tuple[Capability, ...] = (
     *NAVIGATEUR,
     *PUBLIER,
     *CONNECTEURS,
+    *COURRIEL,
 )
 
 

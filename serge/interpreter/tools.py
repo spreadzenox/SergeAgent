@@ -36,6 +36,7 @@ from serge.sandbox.chantier import (
     sandbox_read_file,
     sandbox_write_file,
 )
+from serge.sandbox.courriel import boite_relecteur
 from serge.sandbox.navigateur import (
     browser_action,
     browser_read,
@@ -106,6 +107,8 @@ def _request_capability(
         str(args.get('need') or ''),
         point=inv,
         contexte=str(args.get('context') or ''),
+        resume=str(args.get('summary') or ''),
+        task_id=str(args.get('task_id') or ''),
     )
 
 
@@ -254,6 +257,7 @@ RUNNERS: dict[str, Runner] = {
     'server_address': server_address,
     'product_address': product_address,
     'call_api': call_api,
+    'mail_read': boite_relecteur,
 }
 
 
@@ -321,11 +325,17 @@ def run_tool(
     model_args: Mapping[str, Any],
     task: Mapping[str, str],
 ) -> dict[str, Any]:
-    """Exécute un outil : les paramètres figés passent devant ceux du modèle."""
+    """Exécute un outil : les paramètres figés passent devant ceux du modèle.
+
+    Un outil donné partout (sans lien, donc sans paramètre figé) reçoit le
+    numéro de la tâche : « Demander une nouvelle capacité » gèle sa tâche.
+    """
     args = {
         **dict(model_args),
         **fixed_params(conn, invocation_id, invocation_tool_id, task),
     }
+    if invocation_tool_id is None and task.get('task_id'):
+        args['task_id'] = task['task_id']
     return run_capability(
         conn, tool_capability(conn, tool_id), tool_id, args, invocation_id
     )

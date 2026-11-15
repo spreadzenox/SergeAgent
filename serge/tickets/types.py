@@ -6,6 +6,12 @@ nouveau s'ajoute, un type déjà en base n'est jamais touché. Le délai
 d'expiration, la décision par défaut annoncée et les boutons se règlent
 dans Mission Control ; le reste de la déclaration (rôle, champs, couleur
 et emoji de la carte…) est gardé tel quel.
+
+Changer un type déjà en base passe par la section ``changes`` du fichier,
+comme dans ``pipeline.yaml`` : une seule fois par instance, et seulement
+si la valeur en base est encore celle d'origine (``from``). Exemple : les
+boutons du ticket d'une demande, de « Discuter » à « Répondre » et « Faire
+sans ».
 """
 
 from __future__ import annotations
@@ -66,6 +72,59 @@ def ensure_ticket_types(
                 'ticket-types.yaml',
                 iso_utc(),
             ),
+        )
+
+    _apply_changes(conn, directory)
+
+
+def _apply_changes(conn: sqlite3.Connection, directory: Path | None) -> None:
+    """Applique les modifications des types pas encore passées.
+
+    Le résultat est noté dans ``pipeline_changes`` (id ``ticket-types.<id>``),
+    lisible dans Mission Control.
+    """
+    from serge.registry import load_ticket_type_changes
+
+    for change in load_ticket_type_changes(directory):
+        ident = f'ticket-types.{change["id"]}'
+        if conn.execute(
+            'SELECT 1 FROM pipeline_changes WHERE id=?', (ident,)
+        ).fetchone():
+            continue
+        row = conn.execute(
+            'SELECT buttons_json, spec_json FROM ticket_types WHERE id=?',
+            (str(change['type']),),
+        ).fetchone()
+        parts = []
+        if row is None:
+            parts.append('type absent')
+        else:
+            buttons = json.loads(row[0] or '[]')
+            spec = json.loads(row[1] or '{}')
+            for key, value in change['set'].items():
+                actuel = buttons if key == 'buttons' else spec.get(key)
+                if actuel != value.get('from'):
+                    parts.append(f'{key} gardé (changé à la main)')
+                    continue
+                if key == 'buttons':
+                    buttons = list(value.get('to') or [])
+                else:
+                    spec[key] = value.get('to')
+                parts.append(f'{key} changé')
+            conn.execute(
+                'UPDATE ticket_types SET buttons_json=?, spec_json=?,'
+                " updated_by='ticket-types.yaml', updated_at=? WHERE id=?",
+                (
+                    json.dumps(buttons),
+                    json.dumps(spec, ensure_ascii=False),
+                    iso_utc(),
+                    str(change['type']),
+                ),
+            )
+        conn.execute(
+            'INSERT INTO pipeline_changes(id, applied_at, result)'
+            ' VALUES(?,?,?)',
+            (ident, iso_utc(), ' ; '.join(parts)),
         )
 
 

@@ -59,3 +59,23 @@ def load_ticket_types(directory: Path | None = None) -> dict[str, dict]:
             ):
                 raise PolicyError(f'ticket-types.{name}.render.emoji invalide')
     return types
+
+
+def load_ticket_type_changes(directory: Path | None = None) -> list[dict]:
+    """Les modifications des types déjà en base (section ``changes``).
+
+    Raises:
+        PolicyError: Une modification mal écrite.
+    """
+    changes = _load_registry('ticket-types.yaml', directory).get('changes')
+    if changes is None:
+        return []
+    if not isinstance(changes, list) or not all(
+        isinstance(c, dict)
+        and c.get('id')
+        and c.get('type')
+        and isinstance(c.get('set'), dict)
+        for c in changes
+    ):
+        raise PolicyError('ticket-types.changes : {id, type, set} attendus')
+    return changes

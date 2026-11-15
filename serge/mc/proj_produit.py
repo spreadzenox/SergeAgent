@@ -5,7 +5,9 @@ Son dernier plan (POC ou produit fini) et les remarques du critique, les
 demandes de ses clients et ce que le plan en a fait, ses passages de
 construction avec le verdict du relecteur, les captures du relecteur, ses
 publications (staging et prod : la version, l'adresse,
-l'état, et pourquoi la dernière a raté) et ses versions figées.
+l'état, et pourquoi la dernière a raté), les e-mails que son staging a
+envoyés (gardés par la boîte d'essai : on y lit un lien de validation
+pour essayer le produit soi-même) et ses versions figées.
 """
 
 from __future__ import annotations
@@ -61,6 +63,8 @@ def cadres_produit(
                 ],
             }
         )
+    if any(p[0] == 'staging' for p in publications):
+        cadres.append(_emails_essai(conn, venture_id))
     versions = conn.execute(
         'SELECT deliverable, version, path_or_url, size_bytes, created_at'
         " FROM artifacts WHERE venture_id=? AND kind='version'"
@@ -240,3 +244,42 @@ def boutons_du_business(
             " WHERE source='form' AND value='venture_id') ORDER BY t.id"
         ).fetchall()
     ]
+
+
+def _emails_essai(conn: sqlite3.Connection, venture_id: str) -> dict[str, Any]:
+    """Les derniers e-mails envoyés par le staging du business, lus dans la
+    boîte d'essai (son expéditeur : son nom court, @, le domaine d'envoi)."""
+    from serge.sandbox.courriel import lire_essai
+    from serge.sandbox.publier import slug
+
+    row = conn.execute(
+        'SELECT name FROM ventures WHERE id=?', (venture_id,)
+    ).fetchone()
+    titre = 'E-mails d’essai (staging)'
+    try:
+        messages = lire_essai(
+            conn, f'from:{slug(str(row[0] if row else ""))}@'
+        )
+    except (OSError, ValueError) as exc:
+        return {
+            'titre': titre,
+            'champs': [{'k': 'Boîte d’essai', 'v': f'injoignable : {exc}'}],
+        }
+    if not messages:
+        return {
+            'titre': titre,
+            'champs': [{'k': 'Boîte d’essai', 'v': 'aucun e-mail'}],
+        }
+    return {
+        'titre': titre,
+        'champs': [
+            {
+                'k': f'{m["date"][:16]} → {m["a"]}',
+                'v': ' '.join([m['objet'], *m['liens'][:3]]),
+            }
+            for m in messages
+        ],
+        'pre': '\n\n'.join(
+            f'{m["objet"]} → {m["a"]}\n{m["texte"]}' for m in messages
+        ),
+    }

@@ -131,22 +131,24 @@ conversation (lot 8 bis, décisions Q85 et Q86), la grille de points
   cliquer comme un humain) et « Appeler une API » (pour Stripe et l'achat
   des domaines). Le détail est dans
   [`docs/LOT10_CONCEPTION.md`](docs/LOT10_CONCEPTION.md).
-- [ ] **Lot 11 « Les e-mails des produits ».** Ce que le premier essai
-  du produit fini a montré (15 novembre 2026, Q95) :
-  - un produit envoie et reçoit ses e-mails : la validation d'une
-    inscription, le mot de passe oublié, l'adresse de contact des
-    mentions légales ; le relecteur lit l'e-mail de validation (l'ancien
-    Serge lisait la boîte Gmail de Serge par gog et gardait le lien du
-    même site) ;
-  - une demande d'une invocation à Julien (ticket REQUESTED) bloque
-    l'invocation tant qu'elle n'est pas remplie, et Julien en discute
-    avec elle dans le fil du ticket ;
-  - un ticket Discord se lit d'un coup d'œil : un en-tête court (pour un
-    plan, le nom, le domaine et le prix ; pour une demande, un résumé
-    simple), puis le texte entier, jamais coupé, à ouvrir ou fermer ;
-  - le relecteur peut faire tout ce que demande un scénario de test (le
-    scénario 8 de la calculatrice lui demandait d'annuler un abonnement
-    par un script).
+- [ ] **Lot 11 « Les e-mails des produits ».** Fait dans la même PR que
+  les correctifs du lot 10 (décision Q96), à essayer sur le serveur :
+  - un produit envoie ses e-mails par SMTP : en chantier et en staging,
+    la boîte d'essai (Mailpit) les garde, et la fiche du business les
+    montre ; en prod, Resend, avec une clé par produit, depuis un
+    sous-domaine de Serge ;
+  - le relecteur a sa propre boîte, une adresse par essai (la réception
+    de Resend), et les outils Stripe du mode test pour finir un
+    abonnement ;
+  - une demande à Julien gèle la tâche jusqu'à sa réponse (« Répondre »
+    ou « Faire sans ») ;
+  - un ticket Discord commence par « En bref » et se lit en entier par
+    « Voir en entier » ;
+  - pas d'adresse de contact (lot 16) ; l'éditeur des mentions légales
+    est Julien Pesquet.
+  Reste à faire par Clem : le compte Resend, son domaine d'envoi et sa
+  réception, la clé `resend.key`, et les deux réglages de la page Policy
+  ([`docs/installation/DOMAINES.md`](docs/installation/DOMAINES.md)).
 - [ ] **Lot 12 « Jusqu'aux premières ventes ».** Mettre en base les
   tables, les liens et les invocations qui mènent un business de son POC
   en ligne jusqu'à ses premières ventes : les campagnes de prospection
@@ -503,6 +505,12 @@ système complet (Q92, Q93).
   et arrêter passent par Julien. Cette invocation remplace trois
   invocations qui existent aujourd'hui sans être appelées (plan de passage
   à l'échelle, options de pivot, arbitre du budget).
+
+- [ ] **L'adresse de contact des produits.** Un client écrit au produit
+  (une question, un mot de passe, la suppression de son compte) : ses
+  e-mails arrivent dans la boîte de Serge, rattachés au produit et au
+  client, et Serge y répond. D'ici là, aucun produit n'a d'adresse ni de
+  formulaire de contact, et les prompts le disent (Q96).
 
 - [ ] **Un service sur mesure.** Proposer à un client d'ajouter à un
   produit existant les fonctionnalités qu'il demande, en rappelant le

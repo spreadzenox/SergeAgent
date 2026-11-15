@@ -37,6 +37,11 @@ class ChatResult:
     tool_calls: tuple[ToolCall, ...] = ()
     # Ce qu'OpenRouter a facturé, en dollars ; None s'il ne le dit pas.
     cost_usd: float | None = None
+    # Chez qui l'appel est parti (Anthropic, Google Vertex…), et combien de
+    # jetons ont été lus ou écrits dans le cache.
+    provider: str = ''
+    cached_tokens: int = 0
+    cache_write_tokens: int = 0
 
 
 def _usage(payload: dict[str, Any]) -> tuple[int, int]:
@@ -44,6 +49,23 @@ def _usage(payload: dict[str, Any]) -> tuple[int, int]:
     try:
         return int(usage.get('prompt_tokens') or 0), int(
             usage.get('completion_tokens') or 0
+        )
+    except (TypeError, ValueError):
+        return 0, 0
+
+
+def _cache(payload: Mapping[str, Any]) -> tuple[int, int]:
+    """Les jetons lus et écrits dans le cache, d'après OpenRouter
+    (``usage.prompt_tokens_details``) ; ``(0, 0)`` s'il ne le dit pas."""
+    usage = payload.get('usage') or {}
+    details = (
+        usage.get('prompt_tokens_details') if isinstance(usage, dict) else {}
+    )
+    if not isinstance(details, dict):
+        return 0, 0
+    try:
+        return int(details.get('cached_tokens') or 0), int(
+            details.get('cache_write_tokens') or 0
         )
     except (TypeError, ValueError):
         return 0, 0
@@ -139,6 +161,13 @@ def chat(
             payload['tool_choice'] = tool_choice
     if _keeps_cache(model, messages, tool_choice):
         payload['cache_control'] = {'type': 'ephemeral'}
+    if model.lstrip('~').startswith('anthropic/'):
+        # Le cache est propre à chaque fournisseur : réparti entre Anthropic,
+        # Google Vertex et Amazon Bedrock, un appel sur deux le ratait et
+        # coûtait dix fois plus (une construction à 17 $ au lieu de 4 $, le
+        # 15 novembre 2026). Anthropic d'abord, les autres seulement s'il
+        # ne répond pas.
+        payload['provider'] = {'order': ['anthropic'], 'allow_fallbacks': True}
     body = json.dumps(payload).encode('utf-8')
     headers = {'Content-Type': 'application/json'}
     headers['Authorization'] = f'Bearer {api_key}'
@@ -158,7 +187,13 @@ def chat(
     except urllib.error.HTTPError as exc:
         if exc.code == 401:
             raise LlmError('AUTH: OpenRouter key rejected') from exc
-        raise LlmError(f'API: OpenRouter HTTP {exc.code}') from exc
+        raison = _raison_http(exc)
+        if exc.code == 402:
+            raise LlmError(
+                'CREDIT: OpenRouter HTTP 402, plus de crédit sur le compte ou'
+                f' la clé{raison}'
+            ) from exc
+        raise LlmError(f'API: OpenRouter HTTP {exc.code}{raison}') from exc
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
         raise LlmError(f'NETWORK: OpenRouter unreachable ({exc})') from exc
     latency_ms = int((time.monotonic() - started) * 1000)
@@ -182,6 +217,7 @@ def chat(
     if not text and not calls:
         raise LlmError(f'EMPTY: OpenRouter empty reply{_why_empty(payload)}')
     tokens_in, tokens_out = _usage(payload)
+    lus, ecrits = _cache(payload)
     used_model = str(payload.get('model') or model)
     return ChatResult(
         text=text,
@@ -191,7 +227,23 @@ def chat(
         latency_ms=latency_ms,
         tool_calls=calls,
         cost_usd=_cost(payload),
+        provider=str(payload.get('provider') or ''),
+        cached_tokens=lus,
+        cache_write_tokens=ecrits,
     )
+
+
+def _raison_http(exc: urllib.error.HTTPError) -> str:
+    """Ce qu'OpenRouter dit d'une erreur (``error.message``), en clair :
+    `` : Insufficient credits…``, ou ``''``. Jamais de secret : la clé
+    n'est que dans l'en-tête de la requête."""
+    try:
+        corps = json.loads(exc.read().decode('utf-8', 'replace') or '{}')
+    except (OSError, ValueError, AttributeError):
+        return ''
+    erreur = corps.get('error') if isinstance(corps, dict) else None
+    message = erreur.get('message') if isinstance(erreur, dict) else erreur
+    return f' : {str(message)[:200]}' if message else ''
 
 
 def _keeps_cache(

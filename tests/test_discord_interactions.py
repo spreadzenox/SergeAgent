@@ -280,6 +280,34 @@ class DiscordInteractionsTests(unittest.TestCase):
         )
         self.assertEqual(self._state(qna_id), 'APPROVED')
 
+    def test_voir_en_entier_ne_tranche_rien(self) -> None:
+        ticket_id = create_ticket(
+            self.conn,
+            self.types,
+            'REQUESTED',
+            'Une adresse de contact',
+            {
+                'en_bref': 'Une adresse de contact',
+                'demande': 'Le détail. ' * 400,
+                'contexte': 'Le critique la demande.',
+                'point_llm': 'concevoir_produit',
+            },
+            now=NOW,
+        )
+        publish(self.conn, ticket_id)
+        result = route_interaction(
+            self.conn, _interaction(f't:{ticket_id}:voir_en_entier')
+        )
+        self.assertEqual(result['status'], 'tout')
+        self.assertEqual('\n'.join(result['textes']).count('détail.'), 400)
+        self.assertEqual(self._state(ticket_id), 'OPEN')
+        self.assertEqual(
+            self.conn.execute(
+                'SELECT COUNT(*) FROM ticket_answers'
+            ).fetchone()[0],
+            0,
+        )
+
     def test_action_inconnue(self) -> None:
         ticket_id = self._ticket()
         result = route_interaction(

@@ -12,6 +12,7 @@ APPROVE = frozenset(
         'envoyer_brouillon',
         'passer',
         'valider',
+        'faire_sans',
     }
 )
 REJECT = frozenset(

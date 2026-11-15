@@ -1,4 +1,4 @@
-# Les domaines des produits (Cloudflare)
+# Les domaines et les e-mails des produits (Cloudflare, Resend)
 
 Depuis le lot 10, Serge achète seul le nom de domaine du produit fini
 d'un business (étape 5), une fois son nom validé dans le ticket « Plan »
@@ -76,6 +76,42 @@ noms libres proposés. « À corriger » avec un nom (exemple :
 `devis-artisan.com`) achète ce nom ; « Valider » réessaie celui du plan,
 par exemple après avoir relevé le prix maximum.
 
+## Les e-mails des produits (Resend, lot 11)
+
+Un produit envoie ses e-mails (valider une inscription, un mot de passe
+oublié, un reçu) depuis un **sous-domaine de Serge**, même s'il a son
+propre domaine : un seul domaine d'envoi pour tous, gratuit (décision
+Q96). En chantier et en staging, rien ne part : la boîte d'essai
+(Mailpit, conteneur `serge-boite`, lancé tout seul par Serge) garde tout.
+En prod, ils partent par **Resend** (gratuit jusqu'à 100 e-mails par jour
+et 3 000 par mois, réception comprise).
+
+À faire une fois :
+
+1. Créer le compte Resend avec l'adresse de Serge.
+2. **Domains → Add domain** : le sous-domaine d'envoi, par exemple
+   `envoi.<domaine de Serge>`. Resend propose de poser lui-même ses
+   enregistrements (SPF, DKIM) chez Cloudflare ; sinon, les recopier dans
+   la zone. Attendre « Verified ».
+3. **Receiving** : noter le domaine en `.resend.app` du compte (ou
+   activer la réception sur un autre sous-domaine de Serge). C'est la
+   boîte du relecteur : chaque essai y a son adresse,
+   `relecteur-<essai>@<ce domaine>`, jamais celle de Serge.
+4. **API Keys → Create** : une clé « Full access », posée sur le serveur
+   sans passer par le chat :
+
+   ```bash
+   install -m 600 /dev/null ~/.config/serge/secrets/resend.key && nano ~/.config/serge/secrets/resend.key
+   ```
+
+5. Dans Mission Control, page Policy, famille « E-mails des produits » :
+   le **domaine d'envoi** (étape 2) et le **domaine de la boîte du
+   relecteur** (étape 3).
+
+Serge crée ensuite seul, pour chaque produit qui passe en prod, une clé
+qui ne sait qu'envoyer (`resend-<business>.key`, droits 0600) : elle se
+révoque dans Resend sans toucher aux autres produits.
+
 ## Pièges
 
 | Symptôme | Cause typique |
@@ -85,3 +121,7 @@ par exemple après avoir relevé le prix maximum.
 | HTTP 403 sur le DNS d'un domaine neuf | Le jeton DNS ne couvre qu'une zone : lui donner « toutes les zones » du compte. |
 | `registrable: false` | Le nom est pris, ou l'extension n'est pas vendue par Cloudflare. |
 | Le produit ne répond pas sur son domaine | Le DNS n'a pas encore propagé (quelques minutes), ou l'enregistrement A ne vise pas le serveur. |
+| La mise en prod rate : « pas de domaine d’envoi des e-mails » | Le domaine d'envoi n'est pas réglé (page Policy, « E-mails des produits »). |
+| La mise en prod rate : « clé d’envoi du produit pas créée : HTTP 401 » | `resend.key` manque, ou ce n'est pas une clé « Full access ». |
+| Le relecteur ne reçoit rien en prod | Le domaine de la boîte du relecteur n'est pas réglé, ou la réception n'est pas activée chez Resend. |
+| « boîte d’essai injoignable » sur la fiche d'un business | Le conteneur `serge-boite` est arrêté, ou son port (page Policy, « Bac à sable ») est pris par un autre programme. |

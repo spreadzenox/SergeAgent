@@ -179,7 +179,7 @@ export function libelleActe(acte) {
       reecrire: 'Réécrire', ne_rien_envoyer: 'Ne rien envoyer',
       passer: 'Passer à la suite', ne_pas_passer: 'Ne pas passer',
       valider: 'Valider', a_corriger: 'À corriger',
-      arreter_business: 'Arrêter le business',
+      arreter_business: 'Arrêter le business', faire_sans: 'Faire sans',
     }[acte] || acte
   );
 }

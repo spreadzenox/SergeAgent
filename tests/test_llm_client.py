@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import io
 import json
 import sys
 import unittest
@@ -103,6 +104,56 @@ class LlmClientTests(unittest.TestCase):
             result = chat('k', 'm', [{'role': 'user', 'content': 'hi'}])
         self.assertEqual((result.tokens_in, result.tokens_out), (0, 0))
         self.assertEqual(result.model, 'm')
+
+    def test_claude_reste_chez_anthropic_et_le_cache_est_compte(self) -> None:
+        """Le cache est propre à chaque fournisseur : un modèle d'Anthropic
+        part d'abord chez Anthropic ; ce qu'il a lu ou écrit en cache, et
+        chez qui, est rendu (le 15 novembre 2026, un appel sur deux partait
+        ailleurs et coûtait dix fois plus)."""
+        payload = {
+            'model': 'anthropic/claude-opus-5.5',
+            'provider': 'Anthropic',
+            'choices': [{'message': {'content': 'ok'}}],
+            'usage': {
+                'prompt_tokens': 168000,
+                'completion_tokens': 200,
+                'prompt_tokens_details': {
+                    'cached_tokens': 160000,
+                    'cache_write_tokens': 7000,
+                },
+            },
+        }
+        with mock.patch(
+            'urllib.request.urlopen', return_value=_response(payload)
+        ) as mocked:
+            result = chat('k', 'anthropic/claude-opus-5.5', [])
+        sent = json.loads(mocked.call_args[0][0].data.decode('utf-8'))
+        self.assertEqual(
+            sent['provider'], {'order': ['anthropic'], 'allow_fallbacks': True}
+        )
+        self.assertEqual(
+            (result.provider, result.cached_tokens, result.cache_write_tokens),
+            ('Anthropic', 160000, 7000),
+        )
+        with mock.patch(
+            'urllib.request.urlopen', return_value=_response(payload)
+        ) as mocked:
+            chat('k', 'deepseek/deepseek-v4.1-flash', [])
+        sent = json.loads(mocked.call_args[0][0].data.decode('utf-8'))
+        self.assertNotIn('provider', sent)
+
+    def test_plus_de_credit_le_dit_en_clair(self) -> None:
+        corps = io.BytesIO(
+            json.dumps(
+                {'error': {'code': 402, 'message': 'Insufficient credits'}}
+            ).encode()
+        )
+        error = urllib.error.HTTPError('https://x', 402, 'Payment', {}, corps)
+        with mock.patch('urllib.request.urlopen', side_effect=error):
+            with self.assertRaisesRegex(
+                LlmError, '^CREDIT: .*402.*Insufficient credits'
+            ):
+                chat('k', 'm', [])
 
     def test_erreurs_typees(self) -> None:
         with self.assertRaisesRegex(LlmError, '^AUTH'):

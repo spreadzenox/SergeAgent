@@ -27,23 +27,30 @@ from serge.tickets.lifecycle import OPENISH, create_ticket, publish, reopen
 from serge.tickets.shared import TicketError
 from serge.tickets.types import ticket_types
 
-# Ce qu'un bloc du ticket montre au plus, en caractères : la fin d'un bloc
-# trop long est gardée (les derniers messages d'un fil).
-BLOC_MAX = 3000
-
 
 def _texte(result: dict[str, Any]) -> str:
-    """Le résultat d'un outil en lignes lisibles, sans JSON."""
+    """Le résultat d'un outil en lignes lisibles, sans JSON, en entier.
+
+    Une ligne d'une seule colonne donne sa valeur ; sinon chaque colonne a
+    son nom devant : « prix : 2 € par mois ». Rien n'est coupé ici : la
+    carte Discord montre le début d'un long bloc, et « Voir en entier »
+    le reste.
+    """
     rows = result.get('rows')
     if not isinstance(rows, list):
         return ''
-    lignes = []
+    blocs = []
     for row in rows:
-        if isinstance(row, dict):
-            valeurs = [str(v) for v in row.values() if v not in ('', None)]
-            lignes.append(' · '.join(valeurs))
-    texte = '\n'.join(lignes)
-    return texte if len(texte) <= BLOC_MAX else '…' + texte[-BLOC_MAX:]
+        if not isinstance(row, dict):
+            continue
+        valeurs = [(k, v) for k, v in row.items() if v not in ('', None)]
+        if len(valeurs) == 1:
+            blocs.append(str(valeurs[0][1]))
+        elif valeurs:
+            blocs.append(
+                '\n'.join(f'{k.replace("_", " ")} : {v}' for k, v in valeurs)
+            )
+    return '\n\n'.join(blocs)
 
 
 # Exécute un outil en base : ``(outil, arguments)`` → son résultat. Le

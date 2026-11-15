@@ -207,7 +207,7 @@ class InstanceDuLot7Tests(unittest.TestCase):
         anciens = {
             c['where']['id']: c['set']['prompt']['from']
             for c in data['changes']
-            if 'prompt' in c.get('set', {})
+            if 'from' in c.get('set', {}).get('prompt', {})
         }
         for ident, tours in (
             ('explorer_web', 25),
@@ -298,6 +298,7 @@ class NiveauxDeModeleTests(unittest.TestCase):
                 'mid': (1.5, 95, ''),
                 'smart': (8.0, 95, ''),
                 'code': (12.0, 100, 'anthropic/claude-opus-5.5'),
+                'web': (3.0, 95, 'anthropic/claude-sonnet-5.5'),
             },
         )
 
@@ -309,9 +310,9 @@ class NiveauxDeModeleTests(unittest.TestCase):
         init_schema(conn)
         # L'instance telle qu'elle était avant : niveaux sans réglage, un
         # modèle choisi sur le niveau moyen, un prix déjà changé à la main,
-        # et pas encore de niveau « code » (lot 10).
+        # et pas encore de niveau « code » (lot 10) ni « web » (lot 11).
         conn.executescript(
-            "DELETE FROM llm_models WHERE tier='code';"
+            "DELETE FROM llm_models WHERE tier IN ('code', 'web');"
             'UPDATE llm_models SET max_price_usd=0, tolerance_pct=95;'
             "UPDATE llm_models SET model='a/choisi' WHERE tier='mid';"
             "UPDATE llm_models SET max_price_usd=2.5 WHERE tier='smart';"
@@ -325,6 +326,7 @@ class NiveauxDeModeleTests(unittest.TestCase):
                 'mid': (1.5, 95, 'a/choisi'),
                 'smart': (2.5, 95, ''),
                 'code': (12.0, 100, 'anthropic/claude-opus-5.5'),
+                'web': (3.0, 95, 'anthropic/claude-sonnet-5.5'),
             },
         )
         resultats = dict(
@@ -447,9 +449,10 @@ class PlanSansRelancesTests(unittest.TestCase):
             resultats['lot10_plan_poc_sans_relances_ecriture'],
             'followups déjà absent',
         )
-        self.assertEqual(
-            resultats['lot10_plan_poc_sans_relances_prompt'],
-            'prompt déjà à jour',
+        # Le lot 11 a changé ce prompt depuis : une instance neuve a déjà le
+        # dernier, et le changement du lot 10 n'y touche pas.
+        self.assertNotIn(
+            'modifié', resultats['lot10_plan_poc_sans_relances_prompt']
         )
 
 
@@ -632,3 +635,123 @@ class RegistrarCloudflareTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class InstanceDuLot10Tests(unittest.TestCase):
+    """Le serveur tel que le lot 10 l'a laissé : les constructeurs essaient
+    dans le navigateur avec Opus, les relecteurs n'ont pas de boîte e-mail.
+    Au démarrage, il reçoit les changements du lot 11 (Q96)."""
+
+    def setUp(self) -> None:
+        self.conn = sqlite3.connect(':memory:')
+        self.addCleanup(self.conn.close)
+        init_schema(self.conn)
+        data = read_yaml_file(config_dir() / 'pipeline.yaml')
+        self.lot11 = [
+            c for c in data['changes'] if c['id'].startswith('lot11_')
+        ]
+        self.yaml = {i['id']: i for i in data['invocations']}
+        c = self.conn
+        for change in self.lot11:
+            regles = change.get('set') or {}
+            inv = (change.get('where') or {}).get('id')
+            if 'prompt' in regles:
+                texte = c.execute(
+                    'SELECT prompt FROM invocations WHERE id=?', (inv,)
+                ).fetchone()[0]
+                for pair in regles['prompt']['replace']:
+                    texte = texte.replace(
+                        pair['new'].strip(), pair['old'].strip(), 1
+                    )
+                c.execute(
+                    'UPDATE invocations SET prompt=? WHERE id=?', (texte, inv)
+                )
+            if 'role' in regles:
+                c.execute(
+                    'UPDATE invocations SET role=? WHERE id=?',
+                    (regles['role']['from'], inv),
+                )
+            if 'model_tier' in regles:
+                c.execute(
+                    "UPDATE invocations SET model_tier='code' WHERE id=?",
+                    (inv,),
+                )
+        for inv in ('construire_poc', 'construire_produit'):
+            for position, outil in enumerate(
+                ('navigateur_agir', 'navigateur_lire', 'navigateur_capture'),
+                50,
+            ):
+                c.execute(
+                    'INSERT INTO invocation_tools(invocation_id, tool_id,'
+                    " mode, position) VALUES(?, ?, 'callable', ?)",
+                    (inv, outil, position),
+                )
+        c.execute(
+            'DELETE FROM invocation_tools WHERE tool_id IN (?,?,?,?)',
+            (
+                'boite_mail',
+                'stripe_chercher_clients',
+                'stripe_abonnements',
+                'stripe_annuler_abonnement',
+            ),
+        )
+        c.execute("DELETE FROM pipeline_changes WHERE id LIKE 'lot11_%'")
+
+    def _outils(self, inv: str) -> list[str]:
+        return [
+            str(r[0])
+            for r in self.conn.execute(
+                'SELECT tool_id FROM invocation_tools WHERE invocation_id=?'
+                ' ORDER BY position',
+                (inv,),
+            )
+        ]
+
+    def test_elle_recoit_le_lot_11(self) -> None:
+        ensure_pipeline(self.conn)
+        for change in self.lot11:
+            inv = (change.get('where') or {}).get('id')
+            if not inv:
+                continue
+            prompt, tier = self.conn.execute(
+                'SELECT prompt, model_tier FROM invocations WHERE id=?',
+                (inv,),
+            ).fetchone()
+            self.assertEqual(prompt, self.yaml[inv]['prompt'].strip(), inv)
+            self.assertEqual(tier, self.yaml[inv]['model_tier'], inv)
+        for inv in ('construire_poc', 'construire_produit'):
+            self.assertFalse(
+                [o for o in self._outils(inv) if o.startswith('navigateur')]
+            )
+        self.assertIn('boite_mail', self._outils('relire_poc'))
+        self.assertIn(
+            'stripe_annuler_abonnement', self._outils('relire_produit')
+        )
+        self.assertIn('boite_mail', self._outils('paiement_test'))
+        self.assertEqual(
+            self.conn.execute(
+                "SELECT model FROM llm_models WHERE tier='web'"
+            ).fetchone()[0],
+            'anthropic/claude-sonnet-5.5',
+        )
+
+    def test_un_prompt_change_a_la_main_garde_ses_changements(self) -> None:
+        self.conn.execute(
+            'UPDATE invocations SET prompt=prompt || ? WHERE id=?',
+            ('\nJulien : sois bref.', 'construire_produit'),
+        )
+        self.conn.execute(
+            "UPDATE invocations SET prompt=replace(prompt, 'Règles :',"
+            " 'Les règles :') WHERE id='construire_produit'"
+        )
+        ensure_pipeline(self.conn)
+        prompt = self.conn.execute(
+            "SELECT prompt FROM invocations WHERE id='construire_produit'"
+        ).fetchone()[0]
+        self.assertIn('Julien : sois bref.', prompt)
+        self.assertIn('n’essaie pas le produit'.replace('’', "'"), prompt)
+        self.assertNotIn('SMTP_HOST', prompt)
+        resultat = self.conn.execute(
+            "SELECT result FROM pipeline_changes WHERE id='lot11_construire_produit'"
+        ).fetchone()[0]
+        self.assertIn('2 passage(s) remplacé(s), 1 gardé(s)', resultat)

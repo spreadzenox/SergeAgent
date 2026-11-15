@@ -8,26 +8,47 @@ enregistre en base. Si la tâche échoue, ses écritures sont annulées et
 elle est marquée en échec, avec la raison ; la file continue. Quand le
 plafond de dépense LLM du jour est atteint (réglé dans la policy), les
 tâches LLM attendent le lendemain ; les autres continuent.
+
+Une tâche en plein travail s'arrête (``serge/interpreter/halt.py``) :
+coupée par le coupe-circuit, elle revient dans la file et repartira du
+début au redémarrage ; au-delà de son plafond de dépense, elle échoue et
+Julien et Clem sont prévenus ; une demande à Julien la gèle jusqu'à sa
+réponse. Sans crédit chez OpenRouter, elle attend une demi-heure au lieu
+d'échouer, et ils sont prévenus.
 """
 
 from __future__ import annotations
 
 import sqlite3
 import time
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from serge.coupe_circuit import heartbeat_marche
 from serge.db.store import append_event, utcnow
 from serge.interpreter.flow import fire_due_triggers
+from serge.interpreter.halt import (
+    TaskCut,
+    TaskFrozen,
+    TaskOverBudget,
+    task_spend_eur,
+    watchdog,
+)
 from serge.interpreter.prompt import Caller
 from serge.interpreter.run import fail_task, run_task
-from serge.interpreter.tasks import next_task
+from serge.interpreter.tasks import freeze_task, next_task
 from serge.llm.runtime import budget_reached
 from serge.policy_store import policy_en_vigueur
 from serge.sandbox.navigateur import close_sessions
 from serge.tickets import expire_due
 from serge.tickets.reponses import noter_reponse
 from serge.tickets.types import ticket_types
+
+# La tâche en cours dans ce programme, pour le chien de garde.
+EN_COURS = {'tache': ''}
+# Sans crédit chez OpenRouter, une tâche LLM attend ce temps avant de
+# réessayer.
+ATTENTE_CREDIT = timedelta(minutes=30)
 
 
 def _queue_enabled(conn: sqlite3.Connection, queue_id: str) -> bool:
@@ -64,17 +85,101 @@ def process_one(
     task_id = next_task(conn, queue_id, moment, llm=not spent)
     if task_id is None:
         return None
+    EN_COURS['tache'] = task_id
     try:
         run_task(conn, task_id, caller=caller, root=root)
         conn.commit()
+    except TaskCut:
+        conn.rollback()
+        _remettre(conn, task_id, 'task.cut', '')
+    except TaskFrozen as exc:
+        conn.rollback()
+        freeze_task(conn, task_id, exc.ticket_id)
+        _noter(conn, task_id, 'task.frozen', {'ticket': exc.ticket_id})
     except Exception as exc:  # noqa: BLE001 — une tâche en échec ne tue pas la file
         conn.rollback()
-        fail_task(conn, task_id, f'{type(exc).__name__}: {exc}')
-        conn.commit()
+        raison = f'{type(exc).__name__}: {exc}'
+        if raison.startswith('LlmError: CREDIT'):
+            plus_tard = datetime.now(UTC) + ATTENTE_CREDIT
+            _remettre(conn, task_id, 'task.no_credit', plus_tard.isoformat())
+            _prevenir(conn, 'OpenRouter n’a plus de crédit', raison)
+        else:
+            fail_task(conn, task_id, raison)
+            if isinstance(exc, TaskOverBudget):
+                _prevenir(
+                    conn,
+                    'Une tâche a atteint son plafond de dépense',
+                    f'{_titre(conn, task_id)} : {exc}',
+                )
     finally:
+        conn.commit()
+        EN_COURS['tache'] = ''
         # Une session de navigateur ne survit pas à sa tâche.
         close_sessions()
     return task_id
+
+
+def _noter(
+    conn: sqlite3.Connection, task_id: str, kind: str, extra: dict
+) -> None:
+    row = conn.execute(
+        'SELECT invocation_id FROM tasks WHERE id=?', (task_id,)
+    ).fetchone()
+    append_event(
+        conn,
+        actor=f'invocation:{row[0] if row else "?"}',
+        type=kind,
+        payload={
+            'task': task_id,
+            'spent_eur': round(task_spend_eur(conn, task_id), 4),
+            **extra,
+        },
+    )
+
+
+def _remettre(
+    conn: sqlite3.Connection, task_id: str, kind: str, not_before: str
+) -> None:
+    """Remet une tâche arrêtée dans la file, sans rien écrire : elle
+    repartira du début (après ``not_before``)."""
+    conn.execute(
+        "UPDATE tasks SET status='ready', started_at='', not_before=?"
+        ' WHERE id=?',
+        (not_before, task_id),
+    )
+    _noter(conn, task_id, kind, {'not_before': not_before})
+
+
+def _titre(conn: sqlite3.Connection, task_id: str) -> str:
+    row = conn.execute(
+        'SELECT i.title FROM tasks t JOIN invocations i'
+        ' ON i.id=t.invocation_id WHERE t.id=?',
+        (task_id,),
+    ).fetchone()
+    return f'« {row[0]} »' if row else task_id
+
+
+def _prevenir(conn: sqlite3.Connection, titre: str, texte: str) -> None:
+    """Un ticket d'information pour Julien et Clem, sauf s'il y en a déjà
+    un ouvert avec ce titre (une panne ne l'ouvre pas à chaque tâche)."""
+    from serge.tickets.lifecycle import OPENISH, create_ticket, publish
+
+    trous = ','.join('?' * len(OPENISH))
+    if conn.execute(
+        f"SELECT 1 FROM tickets WHERE type='FYI' AND title=?"
+        f' AND state IN ({trous})',
+        (titre, *sorted(OPENISH)),
+    ).fetchone():
+        return
+    ticket_id = create_ticket(
+        conn,
+        ticket_types(conn),
+        'FYI',
+        titre,
+        {'contenu': texte[:2000]},
+        creator='serge',
+    )
+    publish(conn, ticket_id)
 
 
 def resume_interrupted(conn: sqlite3.Connection, queue_id: str) -> list[str]:
@@ -143,6 +248,9 @@ def run_forever(
     file n'a rien à faire.
     """
     resume_interrupted(conn, queue_id)
+    from serge.db.store import default_canon_path
+
+    watchdog(default_canon_path(), lambda: EN_COURS['tache'])
     while True:
         expirer_tickets(conn)
         conn.commit()

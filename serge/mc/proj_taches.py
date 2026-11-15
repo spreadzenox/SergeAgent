@@ -26,6 +26,7 @@ ETATS_TACHE = {
     'done': 'Terminée',
     'failed': 'Échouée',
     'cancelled': 'Annulée',
+    'blocked': 'Attend Julien',
 }
 
 # id, titre, business, depuis, file, état, priorité, pas avant, créée,

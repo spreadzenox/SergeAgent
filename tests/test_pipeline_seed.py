@@ -138,7 +138,7 @@ class PipelineSeedTests(unittest.TestCase):
         tiers = {
             r[0] for r in self.conn.execute('SELECT tier FROM llm_models')
         }
-        self.assertEqual(tiers, {'fast', 'mid', 'smart', 'code'})
+        self.assertEqual(tiers, {'fast', 'mid', 'smart', 'code', 'web'})
         body = self._one(
             "SELECT body FROM serge_texts WHERE id='presentation'"
         )

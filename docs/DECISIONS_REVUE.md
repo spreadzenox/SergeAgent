@@ -1974,3 +1974,46 @@ La charte (« un nouvel ordre avec un lot 13 ») parle de l'éditeur sans
 code, devenu le lot 14 ; seul Julien peut la corriger. Le contenu du
 lot 11 est dans [`TODO.md`](../TODO.md) ; ses choix (la boîte d'essai, le
 service d'envoi) se feront avec Clem avant le code.
+
+### Q96 — Lot 11 : les e-mails des produits, des tâches qui s'arrêtent, une construction moins chère (validé par Clem, 15 novembre 2026)
+Constat : au premier essai du produit fini, la construction d'une
+calculatrice a coûté 16,9 $ en 94 appels à Opus : le constructeur a écrit
+le produit en 11 appels (1 $), puis l'a essayé lui-même dans le
+navigateur, scénario par scénario, chaque clic renvoyant tout
+l'historique ; 19 appels ont raté le cache (13,3 $). Le bouton rouge n'a
+pas arrêté la tâche en cours. Le concepteur a demandé une adresse de
+contact à Julien, puis a continué sans attendre ; le ticket du plan ne
+montrait que la fin du plan, ni son prix ni son domaine.
+Décidé :
+1. **Le constructeur ne navigue plus** : il vérifie par des commandes.
+   Seul le relecteur essaie le produit dans le navigateur, avec un niveau
+   de modèle à lui, « web », moins cher que « code ». Le relecteur reçoit
+   ce qu'il faut pour faire chaque scénario : sa boîte e-mail, et les
+   outils Stripe du mode test pour finir un abonnement comme si le temps
+   avait passé. On ne dit pas au concepteur que le relecteur n'a qu'un
+   navigateur : on lui donne ce qui manque.
+2. **Le cache** : un modèle d'Anthropic part d'abord chez Anthropic, et
+   chaque appel note son fournisseur et ses jetons en cache.
+3. **Un plafond de dépense par tâche** (page Policy) ; au-delà, elle
+   échoue et un ticket prévient.
+4. **Le bouton rouge arrête tout**, y compris la tâche en cours.
+5. **Une demande gèle sa tâche** jusqu'à la réponse de Julien, sans
+   limite de temps ; il répond par un texte libre, ou « Faire sans ».
+6. **Des tickets lisibles** : un en-tête court (le nom, le domaine et le
+   prix d'un plan ; ce qu'une demande veut, en une phrase), puis le
+   texte entier, jamais coupé : la carte en montre le début, et « Voir en
+   entier » poste tout dans le fil.
+7. **Les e-mails des produits** : pas de Gmail dédié. En chantier et en
+   staging, une boîte d'essai (Mailpit) garde tout, et Julien et Clem
+   lisent ces e-mails dans Mission Control pour essayer eux-mêmes. En
+   prod, Resend, gratuit pour un nombre d'inscrits limité ; le domaine
+   d'envoi est toujours un sous-domaine de Serge, même pour un produit
+   qui a son domaine. La boîte du relecteur est séparée de celle de
+   Serge : la réception de Resend, une adresse par essai.
+8. **L'adresse de contact d'un produit attend le lot 16** (Faire vivre
+   les produits) : les e-mails des clients arriveront dans la boîte de
+   Serge. D'ici là, aucun produit n'a d'adresse ni de formulaire de
+   contact, et les prompts le disent.
+9. **L'éditeur des mentions légales est Julien Pesquet** : un humain
+   répond de chaque produit, une IA ne peut rien porter légalement ; le
+   service est tenu par Serge, un agent IA.

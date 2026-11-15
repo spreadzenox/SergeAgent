@@ -51,6 +51,60 @@ class TicketTypesTests(unittest.TestCase):
         ensure_ticket_types(self.conn)
         self.assertEqual(ticket_types(self.conn)['QNA']['expiry_minutes'], 120)
 
+    def test_une_instance_en_place_recoit_les_changements_des_types(
+        self,
+    ) -> None:
+        """Une instance du lot 10 : la demande sans en-tête ni réponse, le
+        plan sans « En bref ». Au démarrage, les types changent, une seule
+        fois ; des boutons changés dans Mission Control sont gardés."""
+        import json
+
+        c = self.conn
+        c.execute(
+            'UPDATE ticket_types SET buttons_json=\'["discuter_fil"]\','
+            " spec_json=json_set(spec_json, '$.fields',"
+            ' json(\'["demande","contexte","point_llm"]\'))'
+            " WHERE id='REQUESTED'"
+        )
+        c.execute(
+            'UPDATE ticket_types SET buttons_json=\'["valider"]\''
+            " WHERE id='PLAN_PRODUIT'"
+        )
+        c.execute(
+            "DELETE FROM pipeline_changes WHERE id LIKE 'ticket-types.%'"
+        )
+        ensure_ticket_types(c)
+        types = ticket_types(c)
+        self.assertEqual(
+            types['REQUESTED']['buttons'],
+            ['reponse_libre', 'faire_sans', 'discuter_fil'],
+        )
+        self.assertEqual(types['REQUESTED']['fields'][0], 'en_bref')
+        self.assertEqual(types['PLAN_PRODUIT']['buttons'], ['valider'])
+        self.assertEqual(types['PLAN_PRODUIT']['fields'][0], 'En bref')
+        resultat = dict(
+            c.execute(
+                'SELECT id, result FROM pipeline_changes'
+                " WHERE id='ticket-types.demande_bloquante'"
+            ).fetchall()
+        )
+        self.assertIn(
+            'buttons changé', resultat['ticket-types.demande_bloquante']
+        )
+        # Une seule fois : un bouton retiré ensuite ne revient pas.
+        set_ticket_type(c, 'REQUESTED', 'clem', buttons=['faire_sans'])
+        ensure_ticket_types(c)
+        self.assertEqual(
+            ticket_types(c)['REQUESTED']['buttons'], ['faire_sans']
+        )
+        self.assertTrue(
+            json.loads(
+                c.execute(
+                    "SELECT spec_json FROM ticket_types WHERE id='CONVERSATION'"
+                ).fetchone()[0]
+            )['contenu'][2]['fin']
+        )
+
     def test_un_ticket_prend_le_delai_de_son_type(self) -> None:
         set_ticket_type(self.conn, 'QNA', 'clem', expiry_minutes=120)
         ticket_id = create_ticket(

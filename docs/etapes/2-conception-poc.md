@@ -35,13 +35,16 @@ tickets sont dans `config/pipeline.yaml` et `config/ticket-types.yaml`.
    libère sa place de test). Sans réponse sous 48 heures, le plan
    s'applique.
 4. **Construire le POC** (niveau « code ») travaille dans le chantier du
-   business et essaie son produit dans le navigateur. Son compte rendu va
-   dans `builds`. Une construction pas finie (plafond du jour atteint)
+   business et vérifie son produit par des commandes (tests, requêtes au
+   serveur), sans navigateur : seul le relecteur navigue, avec un modèle
+   moins cher (Q96). Son compte rendu va dans `builds`. Une construction pas finie (plafond du jour atteint)
    ou une publication ratée reprend, 3 reprises au plus.
 5. **Publier le POC en staging** : `staging-<nom du business>.<domaine>`,
    non indexé.
-6. **Relire le POC** (niveau « code ») l'essaie comme un prospect, sans
-   voir le code, garde ses captures, et rend « bon » ou « a_corriger ».
+6. **Relire le POC** (niveau « web », Q96) l'essaie comme un prospect,
+   sans voir le code, garde ses captures, et rend « bon » ou
+   « a_corriger ». S'il faut une adresse e-mail, il prend la sienne (« Ma
+   boîte e-mail », une par essai) et y lit les e-mails du POC.
    « Compter les passages » relance la construction, 3 passages au plus.
 7. **Le ticket « Tester le produit »** (`TEST_POC`) n'expire jamais :
    « Valider » met le POC en prod sur `<nom du business>.<domaine>`, sa

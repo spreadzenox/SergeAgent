@@ -200,15 +200,61 @@ def relaunch_task(conn: sqlite3.Connection, task_id: str) -> bool:
 
 
 def cancel_task(conn: sqlite3.Connection, task_id: str, reason: str) -> bool:
-    """Annule une tâche en attente. Faux si elle n'était pas en attente.
+    """Annule une tâche en attente, ou gelée. Faux sinon.
 
-    Une tâche en cours ne s'annule pas : elle finit ce qu'elle a commencé.
+    Une tâche en cours ne s'annule pas : elle finit ce qu'elle a commencé
+    (ou s'arrête par le coupe-circuit).
     """
     from serge.horloge import iso_utc
 
     cursor = conn.execute(
         "UPDATE tasks SET status='cancelled', finished_at=?, last_error=?"
-        " WHERE id=? AND status='ready'",
+        " WHERE id=? AND status IN ('ready', 'blocked')",
         (iso_utc(), reason, task_id),
     )
     return cursor.rowcount == 1
+
+
+# Le paramètre d'une tâche qui porte les réponses de Julien à ses demandes :
+# le modèle le lit dans « Paramètres de la tâche » quand elle repart.
+REPONSES = 'reponses_de_julien'
+
+
+def freeze_task(
+    conn: sqlite3.Connection, task_id: str, ticket_id: str
+) -> None:
+    """Gèle une tâche : elle attend la réponse de Julien au ticket.
+
+    Elle n'a rien écrit (ses écritures ne partent qu'à la fin) ; elle
+    repartira du début, avec la réponse (``thaw_task``).
+    """
+    conn.execute(
+        "UPDATE tasks SET status='blocked', started_at='', last_error=?"
+        ' WHERE id=?',
+        (f'en attente de la réponse de Julien (ticket {ticket_id})', task_id),
+    )
+
+
+def thaw_task(conn: sqlite3.Connection, task_id: str, reponse: str) -> bool:
+    """Fait repartir une tâche gelée, avec la réponse de Julien.
+
+    La réponse s'ajoute à celles déjà reçues (paramètre
+    ``reponses_de_julien``). Faux si la tâche n'était pas gelée.
+    """
+    cursor = conn.execute(
+        "UPDATE tasks SET status='ready', last_error='', not_before=''"
+        " WHERE id=? AND status='blocked'",
+        (task_id,),
+    )
+    if cursor.rowcount != 1:
+        return False
+    avant = task_params(conn, task_id).get(REPONSES, '')
+    conn.execute(
+        'DELETE FROM task_params WHERE task_id=? AND name=?',
+        (task_id, REPONSES),
+    )
+    conn.execute(
+        'INSERT INTO task_params(task_id, name, value) VALUES(?,?,?)',
+        (task_id, REPONSES, '\n\n'.join(r for r in (avant, reponse) if r)),
+    )
+    return True

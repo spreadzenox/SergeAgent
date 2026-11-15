@@ -183,8 +183,10 @@ outils. Une session (un onglet et ses cookies) par tâche, fermée à la fin
 de la tâche. Le navigateur (profil « navigateur » de la page Policy :
 image `chromedp/headless-shell`, 2 Go de mémoire) et les chantiers sont
 sur un même réseau Docker, `serge-chantiers` : l'adresse
-`http://chantier:3000` mène au chantier du business de la tâche, pour que
-le constructeur essaie le serveur qu'il vient de lancer. Une connexion
+`http://chantier:3000` mène au chantier du business de la tâche, pour
+essayer un serveur lancé dans un chantier (« Essayer l'interface web »).
+Depuis Q96, le constructeur ne navigue plus : il vérifie par des
+commandes, et seul le relecteur essaie le produit en ligne. Une connexion
 perdue au navigateur (conteneur relancé) est refaite une fois.
 
 Après chaque action, l'outil rend la page relue, en version courte : le
@@ -260,6 +262,12 @@ million de jetons écrits, deux fois le prix de Sonnet 5.5.
 
 « Concevoir » et « Challenger » restent au niveau intelligent : ils
 écrivent un plan, ils ne codent pas.
+
+Depuis Q96 (15 novembre 2026), le relecteur et le paiement test passent
+à un cinquième niveau, **« web »** (voir et cliquer des pages, un modèle
+qui lit les images, 3 $ le million de jetons au plus ; au départ
+`anthropic/claude-sonnet-5.5`) : chaque clic est un appel au modèle, et le
+meilleur modèle y coûtait trop. « Code » ne sert plus qu'à construire.
 
 ---
 

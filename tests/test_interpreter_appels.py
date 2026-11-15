@@ -44,6 +44,7 @@ from serge.llm.runtime import (  # noqa: E402
     llm_spend,
 )
 from serge.pipeline_seed import seed_pipeline  # noqa: E402
+from serge.policy_store import set_setting  # noqa: E402
 from tests.taches_fixtures import sans_pipeline_de_depart  # noqa: E402
 
 NOW = '2026-09-29T10:00:00+00:00'
@@ -201,7 +202,11 @@ class AppelsTests(unittest.TestCase):
 
     def test_le_plafond_atteint_arrete_les_outils(self) -> None:
         """Un tour d'outils à 10 $ (9 €) dépasse le plafond de 5 € : le
-        tour suivant, le modèle doit répondre, sans outil."""
+        tour suivant, le modèle doit répondre, sans outil. (Le plafond d'une
+        tâche, qui l'arrêterait en échec, est coupé ici.)"""
+        self.assertEqual(
+            set_setting(self.conn, 'budget.task_max_eur', 0, 'test'), ''
+        )
         cher = ChatResult('', 7, 3, 'faux', 1, _outil(1).tool_calls, 10.0)
         script = Script(cher, REPONSE)
         statut, _ = self._tourner(script)

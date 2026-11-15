@@ -58,6 +58,21 @@ def secret_env(spec: str) -> dict[str, str]:
     return values
 
 
+# Le réseau des chantiers, du navigateur et de la boîte d'essai : le
+# navigateur y ouvre ``http://<conteneur du chantier>:3000``, un produit en
+# staging y envoie ses e-mails. Il mène aussi à Internet.
+NETWORK = 'serge-chantiers'
+
+
+def ensure_network() -> None:
+    """Crée le réseau des chantiers s'il n'existe pas encore."""
+    found = docker(
+        ['network', 'ls', '--filter', f'name=^{NETWORK}$', '-q'], timeout=30
+    ).stdout.strip()
+    if not found:
+        docker(['network', 'create', NETWORK], timeout=60)
+
+
 def env_flags(values: Mapping[str, str]) -> list[str]:
     """``-e VARIABLE`` pour chaque secret : Docker lit la valeur dans son
     propre environnement."""
