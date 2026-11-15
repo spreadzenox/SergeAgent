@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """L'étape 5 de bout en bout : le vrai produit (lot 10, Q41, Q43, Q91).
 
-Le modèle, Docker, Stripe et Hostinger sont des faux (un serveur local qui
+Le modèle, Docker, Stripe et Cloudflare sont des faux (un serveur local qui
 note chaque requête) ; le pipeline en base, l'interpréteur, les liens, les
 tickets, « Appeler une API », la publication et Caddy sont réels.
 
@@ -11,7 +11,7 @@ Scénarios :
   domaine ; validé, le produit est créé dans Stripe en mode test (avec sa
   clé de recherche), construit dans un chantier qui a la clé du mode test,
   publié en staging, relu ; essayé et validé, Serge achète le domaine chez
-  Hostinger et le fait pointer vers le serveur, met le produit en vente en
+  Cloudflare et le fait pointer vers le serveur, met le produit en vente en
   vrai mode, le publie sur son domaine avec la clé restreinte, fait le
   paiement test de 1 € et se rembourse ; le business est prêt pour la
   prospection lourde ;
@@ -61,7 +61,7 @@ IP = '93.184.216.34'
 
 
 class _Services(http.server.BaseHTTPRequestHandler):
-    """Stripe et Hostinger, à une seule adresse."""
+    """Stripe et Cloudflare, à une seule adresse."""
 
     requetes: list[dict[str, Any]] = []
     pris: set[str] = set()
@@ -93,31 +93,44 @@ class _Services(http.server.BaseHTTPRequestHandler):
 
     def _reponse(self, r: dict[str, Any]) -> tuple[int, Any]:
         chemin = r['chemin']
-        if chemin.startswith('/api/domains/v1/portfolio/'):
-            return 404, {'message': 'Domain not found'}
-        if chemin == '/api/domains/v1/availability':
-            nom = f'{r["corps"]["domain"]}.{r["corps"]["tlds"][0]}'
-            return 200, [{'domain': nom, 'is_available': nom not in self.pris}]
-        if chemin == '/api/domains/v1/portfolio':
-            if r['corps']['domain'] in self.pris:
-                return 422, {'message': 'Domain is not available'}
-            return 200, {'id': 7, 'status': 'completed', 'total': 899}
-        if chemin == '/api/billing/v1/catalog':
-            return 200, [
-                {
-                    'id': 'domaine-fr',
-                    'prices': [
+        compte = '/accounts/acct_test/registrar'
+        if chemin == f'{compte}/domain-check':
+            return 200, {
+                'success': True,
+                'result': {
+                    'domains': [
                         {
-                            'id': 'domaine-fr-1y',
-                            'price': 1099,
-                            'first_period_price': 899,
-                            'period_unit': 'year',
+                            'name': nom,
+                            'registrable': nom not in self.pris,
+                            'tier': 'standard',
+                            'pricing': {
+                                'currency': 'USD',
+                                'registration_cost': '10.46',
+                                'renewal_cost': '10.46',
+                            },
                         }
-                    ],
+                        for nom in r['corps']['domains']
+                    ]
+                },
+            }
+        if chemin == f'{compte}/registrations':
+            if r['corps']['domain_name'] in self.pris:
+                return 400, {
+                    'success': False,
+                    'errors': [{'code': 1, 'message': 'Domain unavailable'}],
                 }
-            ]
-        if chemin.startswith('/api/dns/v1/zones/'):
-            return 200, {'message': 'ok'}
+            return 201, {'success': True, 'result': {'state': 'succeeded'}}
+        if chemin == f'{compte}/domains':
+            return 200, {'success': True, 'result': []}
+        if chemin == '/zones':
+            return 200, {
+                'success': True,
+                'result': [{'id': 'zone_1', 'name': r['query']['name']}],
+            }
+        if chemin == '/zones/zone_1/dns_records':
+            if r['methode'] == 'GET':
+                return 200, {'success': True, 'result': []}
+            return 200, {'success': True, 'result': {'id': 'rec_1'}}
         return 200, {
             '/v1/products': {'id': 'prod_1'},
             '/v1/prices': {'id': 'price_1'},
@@ -258,60 +271,35 @@ class FauxModeles:
         domaine = self.domaines[0]
         if outils == 0:
             return self._outils(
-                appel(
-                    'v',
-                    'hostinger_disponibilite',
-                    domain=domaine.split('.')[0],
-                    tlds=['fr'],
-                ),
-                appel(
-                    'c', 'hostinger_catalogue', category='DOMAIN', name='.FR*'
-                ),
+                appel('v', 'cloudflare_disponibilite', domains=[domaine])
             )
-        if outils == 2:
-            libre = any(
-                isinstance(d, dict) and d.get('is_available')
-                for m in messages
-                if m.get('role') == 'tool'
-                for d in json.loads(m['content']).get('data') or []
-            )
-            if not libre:
+        if outils == 1:
+            resultat = json.loads(messages[-1]['content'])
+            if not resultat['data']['result']['domains'][0]['registrable']:
                 self.domaines.pop(0)
                 return self._json(
                     {
                         'achete': 'non',
                         'domaine': domaine,
-                        'raison': f'{domaine} est pris ; libre : calc-simple.fr (8,99 €).',
+                        'raison': f'{domaine} est pris ; libre : calc-simple.fr (11,51 €).',
                     }
                 )
             return self._outils(
+                appel('a', 'cloudflare_acheter_domaine', domain_name=domaine),
+                appel('z', 'cloudflare_zone', name=domaine),
+            )
+        if outils == 3:
+            return self._outils(
                 appel(
-                    'a',
-                    'hostinger_acheter_domaine',
-                    domain=domaine,
-                    item_id='domaine-fr-1y',
-                ),
-                appel(
-                    'z',
-                    'hostinger_zone_dns',
-                    domain=domaine,
-                    overwrite=True,
-                    zone=[
-                        {
-                            'name': '@',
-                            'type': 'A',
-                            'ttl': 300,
-                            'records': [{'content': IP}],
-                        }
-                    ],
-                ),
+                    'd',
+                    'cloudflare_dns_creer',
+                    zone_id='zone_1',
+                    name=domaine,
+                    content=IP,
+                )
             )
         return self._json(
-            {
-                'achete': 'oui',
-                'domaine': domaine,
-                'prix': '8,99 € puis 10,99 €',
-            }
+            {'achete': 'oui', 'domaine': domaine, 'prix': '11,51 € par an'}
         )
 
     def _payer(self, _messages, outils) -> ChatResult:
@@ -357,9 +345,11 @@ class Etape5Tests(unittest.TestCase):
             ('stripe-test.key', 'sk_test_faux'),
             ('stripe-live.key', 'sk_live_faux'),
             ('stripe-produits-live.key', 'rk_live_faux'),
-            ('hostinger-api.key', 'hk_faux'),
+            ('cloudflare-registrar.key', 'cf_registrar_faux'),
+            ('cloudflare-infra.key', 'cf_infra_faux'),
         ):
             (secrets / nom).write_text(valeur + '\n')
+        (secrets.parent / 'cloudflare-account-id').write_text('acct_test\n')
         instance = self.dossier / 'instance.toml'
         instance.write_text(
             '[identity]\npublic_hostname = "serge.exemple.fr"\n'
@@ -527,16 +517,31 @@ class Etape5Tests(unittest.TestCase):
         self.assertEqual(self._echecs(), [])
         # L'acheteur reçoit d'office l'adresse du serveur.
         self.assertIn(IP, json.dumps(modeles.par_role['acheter'][0]))
-        achat = self._requetes('/api/domains/v1/portfolio')[0]
-        self.assertEqual(achat['auth'], 'Bearer hk_faux')
+        # Acheté chez Cloudflare, un an, sans renouvellement automatique :
+        # les valeurs figées partent avec leur type.
+        achat = self._requetes('/accounts/acct_test/registrar/registrations')[
+            0
+        ]
+        self.assertEqual(achat['auth'], 'Bearer cf_registrar_faux')
         self.assertEqual(
             achat['corps'],
-            {'domain': 'calculatrice-pro.fr', 'item_id': 'domaine-fr-1y'},
+            {
+                'domain_name': 'calculatrice-pro.fr',
+                'years': 1,
+                'auto_renew': False,
+            },
         )
-        zone = self._requetes('/api/dns/v1/zones/calculatrice-pro.fr')[0]
-        self.assertEqual(zone['methode'], 'PUT')
+        dns = self._requetes('/zones/zone_1/dns_records')[0]
+        self.assertEqual(dns['auth'], 'Bearer cf_infra_faux')
         self.assertEqual(
-            zone['corps']['zone'][0]['records'], [{'content': IP}]
+            dns['corps'],
+            {
+                'name': 'calculatrice-pro.fr',
+                'content': IP,
+                'type': 'A',
+                'ttl': 300,
+                'proxied': False,
+            },
         )
         prix_vrais = [
             r for r in self._requetes('/v1/prices') if 'live' in r['auth']
@@ -589,7 +594,9 @@ class Etape5Tests(unittest.TestCase):
         self._repondre('TEST_PRODUIT', 'valider')
         self._vider(modeles)
         self.assertEqual(self._echecs(), [])
-        self.assertEqual(self._requetes('/api/domains/v1/portfolio'), [])
+        self.assertEqual(
+            self._requetes('/accounts/acct_test/registrar/registrations'), []
+        )
         self._repondre('DOMAINE_PRODUIT', 'a_corriger', 'calc-simple.fr')
         self._vider(modeles)
         self.assertEqual(self._echecs(), [])
@@ -598,7 +605,9 @@ class Etape5Tests(unittest.TestCase):
             json.dumps(modeles.par_role['acheter'][-1]),
         )
         self.assertEqual(
-            self._requetes('/api/domains/v1/portfolio')[0]['corps']['domain'],
+            self._requetes('/accounts/acct_test/registrar/registrations')[0][
+                'corps'
+            ]['domain_name'],
             'calc-simple.fr',
         )
         self.assertEqual(

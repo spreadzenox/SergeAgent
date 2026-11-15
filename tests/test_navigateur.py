@@ -266,6 +266,64 @@ class NavigateurTests(unittest.TestCase):
             'n° ••••, exp. 12 / 34',
         )
 
+    def test_taper_un_champ_de_la_carte_chiffree(self) -> None:
+        # La carte de Serge reste chiffrée sur le serveur (payment-card.enc,
+        # clé du coffre) : Serge la déchiffre au moment de taper.
+        from cryptography.fernet import Fernet
+
+        secrets = self.dossier / 'config/secrets'
+        secrets.mkdir(parents=True)
+        cle = Fernet.generate_key()
+        (secrets / 'credential-vault.key').write_bytes(cle + b'\n')
+        carte = {
+            'pan': '4000002500003155',
+            'exp_month': '8',
+            'exp_year': '2029',
+            'cvc': '123',
+            'cardholder_name': 'Serge Work',
+        }
+        (secrets / 'payment-card.enc').write_bytes(
+            Fernet(cle).encrypt(json.dumps(carte).encode())
+        )
+        instance = self.dossier / 'instance.toml'
+        instance.write_text(
+            f'[paths]\nconfig_root = "{self.dossier / "config"}"\n'
+        )
+        patcher = mock.patch.dict(
+            os.environ, {'SERGE_INSTANCE_FILE': str(instance)}
+        )
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        page = self._outil(
+            'browser_action', action='ouvrir', text=f'{self.site}/'
+        )['page']
+        champ = re.search(r'\[(e\d+)\] champ email « E-mail »', page)
+        assert champ, page
+        permis = 'payment-card.enc#pan,payment-card.enc#expiration'
+        onglet = navigateur._session(self.conn, 't1').page
+        for nom, attendu in (
+            ('payment-card.enc#pan', '4000002500003155'),
+            ('payment-card.enc#expiration', '08/29'),
+        ):
+            tape = self._outil(
+                'browser_action',
+                action='taper_secret',
+                ref=champ[1],
+                text=nom,
+                secrets=permis,
+            )
+            self.assertTrue(tape['ok'], tape)
+            self.assertNotIn(attendu, json.dumps(tape))
+            self.assertEqual(onglet.input_value('#email'), attendu)
+        refus = self._outil(
+            'browser_action',
+            action='taper_secret',
+            ref=champ[1],
+            text='payment-card.enc#cvc',
+            secrets=permis,
+        )
+        self.assertIn('secret non permis', refus['detail'])
+
     def test_une_capture_ne_montre_pas_un_secret(self) -> None:
         config = self.dossier / 'config'
         (config / 'secrets').mkdir(parents=True)

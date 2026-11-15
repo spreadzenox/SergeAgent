@@ -140,6 +140,9 @@ def _delete_tool(conn: sqlite3.Connection, tool_id: str) -> None:
         'tool_db_joins',
         'tool_db_params',
         'tool_db_param_enums',
+        # Un point d'entrée d'une API décrite en base (lot 10).
+        'api_endpoint_params',
+        'api_endpoints',
     ):
         conn.execute(f'DELETE FROM {table} WHERE tool_id=?', (tool_id,))
     conn.execute(
@@ -155,10 +158,10 @@ def seed_deleted(conn: sqlite3.Connection, data: Mapping[str, Any]) -> None:
     """Ce qui a été retiré du pipeline de départ, retiré aussi de la base.
 
     Format : ``{invocations: [...], links: [...], triggers: [...],
-    tools: [...], quotas: [...], serge_texts: [...]}``. Les invocations,
-    liens et déclencheurs sont marqués supprimés (``deleted_at``) ; les
-    outils, les quotas et les textes de Serge, qui n'ont pas cette
-    colonne, sont effacés.
+    tools: [...], quotas: [...], serge_texts: [...], api_services: [...]}``.
+    Les invocations, liens et déclencheurs sont marqués supprimés
+    (``deleted_at``) ; les outils, les quotas, les textes de Serge et les
+    services d'API, qui n'ont pas cette colonne, sont effacés.
     """
     from serge.horloge import iso_utc
 
@@ -195,3 +198,5 @@ def seed_deleted(conn: sqlite3.Connection, data: Mapping[str, Any]) -> None:
         conn.execute('DELETE FROM table_quotas WHERE id=?', (str(ident),))
     for ident in raw.get('serge_texts') or []:
         conn.execute('DELETE FROM serge_texts WHERE id=?', (str(ident),))
+    for ident in raw.get('api_services') or []:
+        conn.execute('DELETE FROM api_services WHERE id=?', (str(ident),))

@@ -169,9 +169,11 @@ compte, qui garde ses cookies.
   `artifacts` (sa taille, la tâche qui l'a prise).
 
 **Taper un secret** (action `taper_secret`, PR 5) : le modèle désigne le
-champ et le nom du fichier de secret, parmi ceux figés en base sur
-l'invocation (paramètre `secrets`, exemple `carte-numero.key`) ; Serge
-tape la valeur sans la lui montrer. La page relue cache la valeur, même
+champ et le nom du secret, parmi ceux figés en base sur l'invocation
+(paramètre `secrets`) : un fichier de secret, ou un champ de la carte
+chiffrée de Serge (`payment-card.enc#pan`, déchiffrée avec la clé du
+coffre au moment de taper, jamais écrite en clair). Serge tape la valeur
+sans la lui montrer. La page relue cache la valeur, même
 remise en forme par la page (`4242 4242 4242 4242`), comme les erreurs
 de la page ; le temps d'une capture, le champ qui l'a reçue montre des
 points, comme un mot de passe. Il sert au paiement test de l'étape 5.
@@ -376,8 +378,14 @@ Les outils Stripe du lot 10 :
   permet pas de supprimer un prix, ni un produit qui a un prix : on
   archive.
 
-Le bureau d'enregistrement de domaines (acheter un domaine, le faire
-pointer vers le VPS) est décrit de la même façon en PR 6 (partie 15).
+Le bureau d'enregistrement de domaines est décrit de la même façon :
+Cloudflare, deux services (`cloudflare_registrar` pour vérifier et
+acheter, `cloudflare_dns` pour faire pointer le domaine vers le VPS) et
+leurs outils (partie 15). L'identifiant du compte, propre à l'instance,
+n'est pas dans le dépôt : un chemin d'outil le nomme
+`{config:cloudflare-account-id}`, et « Appeler une API » le lit sur le
+serveur au moment de l'appel. Une valeur figée en base part avec son
+type (`years: 1`, `auto_renew: false`) dans un corps JSON.
 
 Une écriture envoie une clé d'idempotence tirée de la tâche, de l'outil
 et du contenu (`Idempotency-Key: serge-…`) : une requête répétée après un
@@ -671,10 +679,11 @@ le vrai modèle, sur une machine avec Docker.
 
 ## 15. Ce qui reste ouvert
 
-- **Le bureau d'enregistrement** : Hostinger, celui du domaine de Serge
-  (PR 7). Son jeton d'API, un moyen de paiement par défaut et un profil
-  WHOIS par extension sont à poser une fois
-  ([`installation/DOMAINES.md`](installation/DOMAINES.md)).
+- **Le bureau d'enregistrement** : Cloudflare, où Serge achète avec sa
+  propre carte (il y a acheté `serge-ops.com` en août 2026). Deux jetons
+  (registrar, DNS) et l'identifiant du compte, déjà sur le serveur
+  ([`installation/DOMAINES.md`](installation/DOMAINES.md)). Hostinger,
+  essayé en PR 7, payait avec la carte du compte du VPS : il est retiré.
 - **Les écarts de l'étape 5** à valider (partie 9) : le domaine acheté
   après l'essai, le paiement test vérifié par l'API de Stripe.
 - **Une banque qui exige 3-D Secure** pour le paiement test de 1 € : Serge

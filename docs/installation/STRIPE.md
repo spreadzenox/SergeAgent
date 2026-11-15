@@ -101,15 +101,17 @@ numéro du business, en mode test comme en vrai mode.
 **Le paiement test de 1 €** se fait avec la carte de Serge, tapée dans la
 page de paiement par l'action « taper un secret » du navigateur : le
 modèle ne voit jamais ses numéros, ni dans la page relue ni sur une
-capture. Quatre fichiers, une ligne chacun, droits 0600, dans
-`~/.config/serge/secrets/` :
+capture. La carte reste chiffrée sur le serveur, dans
+`~/.config/serge/secrets/payment-card.enc` (un objet JSON chiffré par la
+clé du coffre, `credential-vault.key`). Serge la déchiffre au moment de
+taper chaque champ, et rien n'est jamais écrit en clair :
 
-| Fichier | Contenu |
+| Secret | Champ |
 | --- | --- |
-| `carte-numero.key` | Le numéro de la carte. |
-| `carte-expiration.key` | La date d'expiration, `MM/AA`. |
-| `carte-cvc.key` | Le code à 3 chiffres. |
-| `carte-titulaire.key` | Le nom sur la carte. |
+| `payment-card.enc#pan` | le numéro |
+| `payment-card.enc#expiration` | la date d'expiration, `MM/AA`, tirée de `exp_month` et `exp_year` |
+| `payment-card.enc#cvc` | le code à 3 chiffres |
+| `payment-card.enc#cardholder_name` | le nom sur la carte |
 
 Si la banque demande une confirmation (3-D Secure) que Serge ne peut pas
 donner, le paiement test s'arrête et un ticket le dit : le faire à la main

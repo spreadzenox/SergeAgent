@@ -28,7 +28,9 @@ réponse (``remove_outputs``), une valeur d'une écriture
 (``remove_write_values``) ou une colonne lue par un outil de lecture
 (``remove_tool_columns``, avec ``tool``) se retirent une seule fois :
 exemple, le rythme des relances, sorti du plan d'un POC (Q37, corrigée
-par Q92).
+par Q92). Un paramètre figé d'un outil d'une invocation
+(``set_tool_params``, avec ``tool``) change comme une valeur : seulement
+s'il vaut encore celle d'origine.
 
     changes:
       - id: un_outil_de_plus
@@ -351,6 +353,47 @@ def _remove_tool_columns(conn: sqlite3.Connection, tool: str, raw: Any) -> str:
     return ' ; '.join(parts)
 
 
+def _set_tool_params(
+    conn: sqlite3.Connection, invocation: str, tool: str, raw: Any
+) -> str:
+    """Change des paramètres figés d'un outil d'une invocation déjà en base,
+    ``{param: {from, to}}`` ; une valeur changée dans Mission Control est
+    gardée."""
+    if not isinstance(raw, Mapping) or not all(
+        isinstance(spec, Mapping) and 'from' in spec and 'to' in spec
+        for spec in raw.values()
+    ):
+        raise PipelineSeedError(
+            'changes : set_tool_params, des paramètres {from, to}'
+        )
+    if _invocation_absente(conn, invocation):
+        return 'objet absent'
+    parts = []
+    for name, spec in raw.items():
+        lignes = conn.execute(
+            'SELECT p.rowid, p.value FROM invocation_tool_params p'
+            ' JOIN invocation_tools t ON t.id=p.invocation_tool_id'
+            ' WHERE t.invocation_id=? AND t.tool_id=? AND p.param_name=?',
+            (invocation, tool, str(name)),
+        ).fetchall()
+        if not lignes:
+            parts.append(f'{name} absent')
+            continue
+        avant, apres = str(spec['from']), str(spec['to'])
+        for rowid, valeur in lignes:
+            if str(valeur) == apres:
+                parts.append(f'{name} déjà à jour')
+            elif str(valeur) != avant:
+                parts.append(f'{name} gardé (changé dans Mission Control)')
+            else:
+                conn.execute(
+                    'UPDATE invocation_tool_params SET value=? WHERE rowid=?',
+                    (apres, rowid),
+                )
+                parts.append(f'{name} modifié')
+    return ' ; '.join(parts)
+
+
 def apply_changes(conn: sqlite3.Connection, raw: Any) -> None:
     """Applique les modifications de ``pipeline.yaml`` pas encore passées.
 
@@ -394,6 +437,13 @@ def apply_changes(conn: sqlite3.Connection, raw: Any) -> None:
                 invocation,
                 change.get('write'),
                 change['remove_write_values'],
+            )
+        elif 'set_tool_params' in change:
+            result = _set_tool_params(
+                conn,
+                invocation,
+                str(change.get('tool') or ''),
+                change['set_tool_params'],
             )
         elif 'remove_tool_columns' in change:
             result = _remove_tool_columns(

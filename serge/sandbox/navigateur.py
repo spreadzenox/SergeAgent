@@ -17,9 +17,10 @@ dans ``artifacts``.
 
 L'adresse ``http://chantier:<port>`` mène au chantier du business : le
 constructeur essaie ainsi le serveur qu'il vient de lancer. L'action
-« taper un secret » tape la valeur d'un secret de l'instance (un numéro de
-carte) dans un champ ; le modèle ne nomme que le secret, parmi ceux figés
-en base, et la page relue cache la valeur.
+« taper un secret » tape la valeur d'un secret de l'instance dans un champ :
+un fichier de secret, ou un champ de la carte chiffrée de Serge
+(``payment-card.enc#pan``). Le modèle ne nomme que le secret, parmi ceux
+figés en base, et la page relue cache la valeur.
 """
 
 from __future__ import annotations
@@ -43,7 +44,7 @@ from serge.sandbox.chantier import (
     ensure_network,
 )
 from serge.sandbox.docker import DockerError, docker, journal
-from serge.secrets import read_secret_file
+from serge.secrets import read_secret_value
 
 CONTAINER = 'serge-navigateur'
 CDP_PORT = '9222/tcp'
@@ -315,7 +316,7 @@ def _agir(session: _Session, args: dict[str, Any]) -> str:
         } - {''}
         if texte not in permis:
             return f'secret non permis : {texte}'
-        valeur = read_secret_file(config_root() / 'secrets' / texte)
+        valeur = read_secret_value(config_root() / 'secrets', texte)
         if not valeur:
             return f'secret absent sur ce serveur : {texte}'
         session.masques.add(valeur)

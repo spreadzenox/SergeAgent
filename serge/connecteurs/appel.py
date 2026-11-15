@@ -12,7 +12,10 @@ dans le corps, ou dans l'adresse pour une lecture (GET). Exemple : l'outil
 ``currency`` et ``metadata[venture_id]``, ce dernier figé en base.
 
 Le service vient du point d'entrée, ou d'un paramètre figé ``service`` sur
-l'invocation : le même outil sert en mode test et en vrai mode. Une
+l'invocation : le même outil sert en mode test et en vrai mode. Un chemin
+peut porter une valeur propre à l'instance, lue sur le serveur et jamais
+écrite dans le dépôt : ``{config:cloudflare-account-id}`` est la première
+ligne du fichier ``config_root/cloudflare-account-id``. Une
 écriture porte une clé d'idempotence tirée de la tâche et de son contenu :
 reprise après un arrêt, elle n'agit jamais deux fois. Toute erreur du
 service est notée au journal avec la raison qu'il donne (Q89).
@@ -22,6 +25,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import sqlite3
 import sys
 import urllib.error
@@ -35,6 +39,8 @@ from serge.paths import config_root
 from serge.secrets import read_secret_file
 
 TIMEOUT_S = 30
+# Une valeur propre à l'instance, dans un chemin : {config:<fichier>}.
+_CONFIG = re.compile(r'\{config:([A-Za-z0-9_.-]+)\}')
 # Les paramètres que l'appelant fige, sans les envoyer au service.
 _REGLAGES = {'service', 'task_id'}
 
@@ -99,6 +105,39 @@ def api_schema(conn: sqlite3.Connection, tool_id: str) -> dict[str, Any]:
     }
 
 
+def _typer(kind: str, value: Any) -> Any:
+    """Une valeur à son type : un paramètre figé en base arrive en texte
+    (« false », « 1 ») et doit partir en booléen ou en nombre dans un corps
+    JSON."""
+    if not isinstance(value, str):
+        return value
+    if kind == 'json':
+        return json.loads(value)
+    if kind == 'bool':
+        return value.strip().lower() in ('true', '1', 'oui')
+    if kind == 'number':
+        try:
+            return int(value)
+        except ValueError:
+            return float(value)
+    return value
+
+
+def _valeurs_d_instance(path: str) -> tuple[str, str]:
+    """Remplace ``{config:<fichier>}`` par sa valeur ; rend ``(chemin,
+    fichier manquant)``."""
+    for fichier in _CONFIG.findall(path):
+        try:
+            lignes = (config_root() / fichier).read_text().splitlines()
+        except OSError:
+            lignes = []
+        valeur = lignes[0].strip() if lignes else ''
+        if not valeur:
+            return path, fichier
+        path = path.replace('{config:' + fichier + '}', valeur)
+    return path, ''
+
+
 def _form(values: Mapping[str, Any]) -> bytes:
     """Le corps « form » de Stripe : un booléen s'écrit true ou false."""
     pairs = []
@@ -133,14 +172,17 @@ def call_api(
             continue
         if name not in permis:
             return {'ok': False, 'code': 'parametre_inconnu', 'detail': name}
-        if permis[name] == 'json' and isinstance(value, str):
-            value = json.loads(value)
+        value = _typer(permis[name], value)
         if '{' + name + '}' in path:
             path = path.replace(
                 '{' + name + '}', urllib.parse.quote(str(value), safe='')
             )
         else:
             values[name] = value
+    path, manquant = _valeurs_d_instance(path)
+    if manquant:
+        journal(f'{service_id} : réglage {manquant} absent de config_root')
+        return {'ok': False, 'code': 'config_absente', 'detail': manquant}
     url = base_url.rstrip('/') + path
     headers = {'Accept': 'application/json'}
     if auth == 'bearer':
@@ -156,7 +198,11 @@ def call_api(
     data = None
     if method == 'GET':
         if values:
-            url += '?' + urllib.parse.urlencode(values, doseq=True)
+            query = {
+                k: ('true' if v else 'false') if isinstance(v, bool) else v
+                for k, v in values.items()
+            }
+            url += '?' + urllib.parse.urlencode(query, doseq=True)
     else:
         if body_kind == 'form':
             data = _form(values)

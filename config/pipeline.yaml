@@ -192,19 +192,31 @@ api_services:
     doc: >-
       Stripe en vrai mode : de vrais paiements. Sert à la prod d'un produit
       fini et au paiement test de 1 € (étape 5).
-  - id: hostinger
-    title: Hostinger, le bureau d'enregistrement
-    base_url: https://developers.hostinger.com
+  # Le bureau d'enregistrement de Serge : Cloudflare (lot 10, Q91). Serge
+  # y a acheté serge-ops.com en août 2026, avec sa carte, enregistrée sur
+  # son compte Cloudflare. Deux jetons : l'un pour le registrar (vérifier,
+  # acheter), l'autre pour le DNS des zones du compte.
+  - id: cloudflare_registrar
+    title: Cloudflare, le bureau d'enregistrement
+    base_url: https://api.cloudflare.com/client/v4
     auth: bearer
-    secret_file: hostinger-api.key
+    secret_file: cloudflare-registrar.key
     body: json
     doc: >-
-      Le bureau d'enregistrement de domaines de Serge (lot 10, Q91) : la
-      disponibilité d'un nom, le catalogue des prix (en centimes), l'achat
-      avec le moyen de paiement par défaut du compte, et la zone DNS. Un
-      jeton d'API se crée dans hPanel (compte, API) ; un profil WHOIS doit
-      exister pour chaque extension achetée.
-
+      Le registrar de Cloudflare : la disponibilité et le prix d'un nom (en
+      dollars), l'achat (payé avec la carte de Serge enregistrée sur son
+      compte Cloudflare), les domaines du compte. L'identifiant du compte
+      est lu sur le serveur (config_root/cloudflare-account-id).
+  - id: cloudflare_dns
+    title: Cloudflare, le DNS
+    base_url: https://api.cloudflare.com/client/v4
+    auth: bearer
+    secret_file: cloudflare-infra.key
+    body: json
+    doc: >-
+      Les zones DNS du compte Cloudflare de Serge : faire pointer un domaine
+      acheté vers le serveur (un enregistrement A, sans le proxy de
+      Cloudflare, pour que Caddy obtienne son certificat).
 tools:
   - id: web_search
     title: Chercher sur le web public
@@ -983,80 +995,108 @@ tools:
         - {name: id, required: true, description: Le lien de paiement (plink_…).}
         - {name: active, type: bool, description: 'false pour le désactiver (figé en base).'}
 
-  # Le bureau d'enregistrement : Hostinger (lot 10, Q91). Les prix du
-  # catalogue sont en centimes ; l'achat paie avec le moyen de paiement par
-  # défaut du compte.
-  - id: hostinger_disponibilite
+  # Le bureau d'enregistrement : Cloudflare (lot 10, Q91). Les prix sont
+  # en dollars ; l'achat paie avec la carte de Serge, enregistrée sur son
+  # compte Cloudflare.
+  - id: cloudflare_disponibilite
     title: Un nom de domaine est-il libre ?
     doc: >-
-      Dit si un nom est libre, pour une ou plusieurs extensions. Exemple :
-      domain = devis-artisan, tlds = ["fr", "com"].
+      Dit si des noms complets sont libres chez Cloudflare (registrable),
+      premium ou non, et leur prix en dollars (pricing.registration_cost :
+      la première année ; pricing.renewal_cost : le renouvellement).
+      Exemple : domains = ["devis-artisan.com"]. Cloudflare ne vend pas
+      toutes les extensions.
     capability: call_api
     api:
-      service: hostinger
+      service: cloudflare_registrar
       method: POST
-      path: /api/domains/v1/availability
+      path: /accounts/{config:cloudflare-account-id}/registrar/domain-check
       params:
-        - {name: domain, required: true, description: 'Le nom, sans extension : devis-artisan.'}
-        - {name: tlds, type: json, required: true, description: 'Les extensions, sans point : ["fr", "com"].'}
-        - {name: with_alternatives, type: bool, description: Proposer des noms proches (une seule extension).}
-  - id: hostinger_catalogue
-    title: Le prix d'un nom de domaine
-    doc: >-
-      Le catalogue de Hostinger : pour une extension, ses prix en centimes
-      (first_period_price : la première année ; price : le renouvellement)
-      et l'identifiant à donner à l'achat (prices[].id). Exemple :
-      category = DOMAIN, name = .FR*.
+        - {name: domains, type: json, required: true, description: 'Les noms complets : ["devis-artisan.com"].'}
+  - id: cloudflare_domaines
+    title: Les domaines du compte
+    doc: Les noms de domaine déjà au compte Cloudflare de Serge.
     capability: call_api
     api:
-      service: hostinger
+      service: cloudflare_registrar
       method: GET
-      path: /api/billing/v1/catalog
+      path: /accounts/{config:cloudflare-account-id}/registrar/domains
       params:
-        - {name: category, description: 'DOMAIN pour les noms de domaine.'}
-        - {name: name, description: "L'extension, avec * : .FR* ou .COM*."}
-  - id: hostinger_acheter_domaine
+        - {name: per_page, type: number, description: Le nombre de domaines (50).}
+  - id: cloudflare_acheter_domaine
     title: Acheter un nom de domaine
     doc: >-
-      Achète un nom de domaine, payé avec le moyen de paiement par défaut du
-      compte. item_id : l'identifiant du prix dans le catalogue. Une réponse
-      202 veut dire que le paiement est en cours et que le domaine n'est pas
-      encore enregistré.
+      Achète un nom de domaine chez Cloudflare, payé avec la carte de Serge
+      enregistrée sur son compte. La durée et le renouvellement sont figés
+      en base (un an, pas de renouvellement automatique).
     capability: call_api
     api:
-      service: hostinger
+      service: cloudflare_registrar
       method: POST
-      path: /api/domains/v1/portfolio
+      path: /accounts/{config:cloudflare-account-id}/registrar/registrations
       params:
-        - {name: domain, required: true, description: 'Le nom complet : devis-artisan.fr.'}
-        - {name: item_id, required: true, description: "L'identifiant du prix dans le catalogue."}
-  - id: hostinger_domaine
-    title: Un nom de domaine du compte
+        - {name: domain_name, required: true, description: 'Le nom complet : devis-artisan.com.'}
+        - {name: years, type: number, description: La durée en années (figée en base).}
+        - {name: auto_renew, type: bool, description: Le renouvellement automatique (figé en base).}
+  - id: cloudflare_zone
+    title: La zone DNS d'un domaine
     doc: >-
-      L'état d'un nom de domaine déjà au compte (active, pending_setup…) et
-      ses serveurs de noms. Une erreur 404 : il n'est pas au compte.
+      La zone DNS d'un domaine du compte : son identifiant (result[0].id)
+      et son état. Juste après un achat, elle peut mettre une minute à
+      apparaître.
     capability: call_api
     api:
-      service: hostinger
+      service: cloudflare_dns
       method: GET
-      path: /api/domains/v1/portfolio/{domain}
+      path: /zones
       params:
-        - {name: domain, required: true, description: 'Le nom complet : devis-artisan.fr.'}
-  - id: hostinger_zone_dns
-    title: Faire pointer un domaine vers le serveur
-    doc: >-
-      Remplace des enregistrements DNS d'un domaine du compte. Exemple, pour
-      le faire pointer vers le serveur : zone = [{"name": "@", "type": "A",
-      "ttl": 300, "records": [{"content": "203.0.113.7"}]}].
+        - {name: name, required: true, description: 'Le nom complet : devis-artisan.com.'}
+  - id: cloudflare_dns_lire
+    title: Les enregistrements DNS d'une zone
+    doc: Les enregistrements d'une zone, filtrés par nom et par type.
     capability: call_api
     api:
-      service: hostinger
-      method: PUT
-      path: /api/dns/v1/zones/{domain}
+      service: cloudflare_dns
+      method: GET
+      path: /zones/{zone_id}/dns_records
       params:
-        - {name: domain, required: true, description: 'Le nom complet : devis-artisan.fr.'}
-        - {name: overwrite, type: bool, description: Remplacer les enregistrements de même nom et de même type (oui).}
-        - {name: zone, type: json, required: true, description: Les enregistrements.}
+        - {name: zone_id, required: true, description: La zone.}
+        - {name: name, description: 'Le nom : devis-artisan.com.'}
+        - {name: type, description: 'Le type : A.'}
+  - id: cloudflare_dns_creer
+    title: Créer un enregistrement DNS
+    doc: >-
+      Crée un enregistrement dans une zone. Pour faire pointer un domaine
+      vers le serveur : name = le domaine, content = l'IPv4 du serveur. Le
+      type, la durée et le proxy sont figés en base.
+    capability: call_api
+    api:
+      service: cloudflare_dns
+      method: POST
+      path: /zones/{zone_id}/dns_records
+      params:
+        - {name: zone_id, required: true, description: La zone.}
+        - {name: name, required: true, description: 'Le nom : devis-artisan.com.'}
+        - {name: content, required: true, description: "L'adresse IPv4 du serveur."}
+        - {name: type, description: 'Le type (figé en base : A).'}
+        - {name: ttl, type: number, description: La durée de vie en secondes (figée en base).}
+        - {name: proxied, type: bool, description: 'Le proxy de Cloudflare (figé en base : non).'}
+  - id: cloudflare_dns_modifier
+    title: Modifier un enregistrement DNS
+    doc: Remplace un enregistrement d'une zone (son id vient de la lecture).
+    capability: call_api
+    api:
+      service: cloudflare_dns
+      method: PUT
+      path: /zones/{zone_id}/dns_records/{record_id}
+      params:
+        - {name: zone_id, required: true, description: La zone.}
+        - {name: record_id, required: true, description: "L'enregistrement."}
+        - {name: name, required: true, description: 'Le nom : devis-artisan.com.'}
+        - {name: content, required: true, description: "L'adresse IPv4 du serveur."}
+        - {name: type, description: 'Le type (figé en base : A).'}
+        - {name: ttl, type: number, description: La durée de vie en secondes (figée en base).}
+        - {name: proxied, type: bool, description: 'Le proxy de Cloudflare (figé en base : non).'}
 
 writable_tables:
   - table: listen_cycles
@@ -4275,7 +4315,7 @@ invocations:
         label: Les remarques du critique sur ce plan
         params:
           plan_id: {source: task, value: plan_precedent}
-      - tool: hostinger_disponibilite
+      - tool: cloudflare_disponibilite
         mode: callable
         max_calls: 4
       - tool: web_search
@@ -4963,30 +5003,36 @@ invocations:
     settings:
       prix_max_eur: {value: 30, min: 1, max: 500, policy: true, description: "Le prix maximum d'un domaine acheté pour un produit, en euros par an (la première année comme le renouvellement)."}
     prompt: |
-      Tu achètes le nom de domaine du produit fini d'un business et tu le
-      fais pointer vers le serveur de Serge. C'est un vrai achat, payé avec
-      la carte de Serge : sois exact.
+      Tu achètes le nom de domaine du produit fini d'un business, chez
+      Cloudflare, et tu le fais pointer vers le serveur de Serge. C'est un vrai
+      achat, payé avec la carte de Serge enregistrée sur son compte Cloudflare :
+      sois exact.
 
       Le nom à acheter est le paramètre « domaine » de la tâche s'il est
       donné (un humain l'a choisi), sinon le domaine du plan validé.
 
-      1. Regarde s'il est déjà au compte (« Un nom de domaine du
-         compte ») : s'il y est, ne l'achète pas, passe au point 4.
-      2. Vérifie qu'il est libre, puis lis son prix dans le catalogue
-         (catégorie DOMAIN, nom .FR* pour un .fr). Les prix sont en
-         centimes : la première année (first_period_price) et le
-         renouvellement (price) doivent tous deux être sous {prix_max_eur} €
-         par an. Prends le prix d'un an.
-      3. S'il est libre et sous ce prix, achète-le avec l'identifiant de ce
-         prix (item_id). Une réponse 202 : le paiement est en cours et le
-         domaine n'est pas enregistré, l'achat n'a pas abouti.
-      4. Fais-le pointer vers le serveur : un enregistrement A pour « @ »,
-         vers l'adresse IPv4 du serveur, ttl 300, en remplaçant l'ancien.
+      1. Regarde s'il est déjà au compte (« Les domaines du compte ») : s'il y
+         est, ne l'achète pas, passe au point 4.
+      2. Vérifie qu'il est libre (« Un nom de domaine est-il libre ? ») :
+         registrable doit valoir true, et il ne doit pas être premium.
+         Cloudflare donne ses prix en dollars : la première année
+         (registration_cost) et le renouvellement (renewal_cost). Compte
+         1 $ = 1,10 € pour rester prudent : les deux doivent être sous
+         {prix_max_eur} € par an. Cloudflare ne vend pas toutes les
+         extensions : si celle-ci ne l'est pas, dis-le.
+      3. S'il est libre et sous ce prix, achète-le. La durée (un an) et
+         l'absence de renouvellement automatique sont réglées d'office.
+      4. Fais-le pointer vers le serveur : trouve sa zone (« La zone DNS d'un
+         domaine »), lis ses enregistrements A pour le domaine lui-même ; s'il
+         y en a un, modifie-le, sinon crée-le, avec le domaine comme nom et
+         l'adresse IPv4 du serveur. Juste après un achat, la zone peut mettre
+         une minute à apparaître : relis-la une fois.
 
       Rends achete « oui » si le domaine est au compte et pointe vers le
-      serveur, avec son nom et son prix ; sinon « non », la raison
-      (pris, trop cher, refusé par Hostinger : dis ce qu'il a répondu), et
-      deux ou trois noms libres sous le prix maximum, avec leur prix.
+      serveur, avec son nom et son prix ; sinon « non », la raison (pris, trop
+      cher, extension non vendue, refusé par Cloudflare : dis ce qu'il a
+      répondu), et deux ou trois noms libres sous le prix maximum, avec leur
+      prix.
     tools:
       - tool: plan_valide_du_produit
         mode: given
@@ -4996,24 +5042,40 @@ invocations:
       - tool: adresse_du_serveur
         mode: given
         label: Le serveur de Serge
-      - tool: hostinger_domaine
+      - tool: cloudflare_domaines
+        mode: callable
+        max_calls: 2
+      - tool: cloudflare_disponibilite
         mode: callable
         max_calls: 4
-      - tool: hostinger_disponibilite
-        mode: callable
-        max_calls: 4
-      - tool: hostinger_catalogue
-        mode: callable
-        max_calls: 3
-      - tool: hostinger_acheter_domaine
+      - tool: cloudflare_acheter_domaine
         mode: callable
         max_calls: 1
         params:
+          years: {source: fixed, value: '1'}
+          auto_renew: {source: fixed, value: 'false'}
           task_id: {source: task, value: task_id}
-      - tool: hostinger_zone_dns
+      - tool: cloudflare_zone
+        mode: callable
+        max_calls: 4
+      - tool: cloudflare_dns_lire
+        mode: callable
+        max_calls: 2
+      - tool: cloudflare_dns_creer
         mode: callable
         max_calls: 2
         params:
+          type: {source: fixed, value: A}
+          ttl: {source: fixed, value: '300'}
+          proxied: {source: fixed, value: 'false'}
+          task_id: {source: task, value: task_id}
+      - tool: cloudflare_dns_modifier
+        mode: callable
+        max_calls: 2
+        params:
+          type: {source: fixed, value: A}
+          ttl: {source: fixed, value: '300'}
+          proxied: {source: fixed, value: 'false'}
           task_id: {source: task, value: task_id}
     output:
       - {path: achete, type: choice, choices: [oui, non], description: 'Le domaine est-il au compte et pointe-t-il vers le serveur ?'}
@@ -5158,9 +5220,10 @@ invocations:
       3. Ouvre le lien dans le navigateur et paie comme une personne :
          une adresse e-mail (paiement-test@ suivi du domaine du produit),
          puis la carte de Serge avec l'action taper_secret, sans jamais
-         écrire ses numéros toi-même : carte-numero.key pour le numéro,
-         carte-expiration.key pour la date (MM/AA), carte-cvc.key pour le
-         code, carte-titulaire.key pour le nom. Valide, et attends la page
+         écrire ses numéros toi-même : payment-card.enc#pan pour le
+         numéro, payment-card.enc#expiration pour la date (MM/AA),
+         payment-card.enc#cvc pour le code, payment-card.enc#cardholder_name
+         pour le nom. Valide, et attends la page
          qui confirme le paiement. Si la banque demande une confirmation
          (3-D Secure) que tu ne peux pas donner, arrête-toi : paye « non ».
       4. Vérifie dans Stripe, par les sessions du lien de paiement, qu'une
@@ -5223,7 +5286,7 @@ invocations:
           venture_id: {source: task, value: venture_id}
           deliverable: {source: fixed, value: produit}
           task_id: {source: task, value: task_id}
-          secrets: {source: fixed, value: 'carte-numero.key,carte-expiration.key,carte-cvc.key,carte-titulaire.key'}
+          secrets: {source: fixed, value: 'payment-card.enc#pan,payment-card.enc#expiration,payment-card.enc#cvc,payment-card.enc#cardholder_name'}
       - tool: navigateur_lire
         mode: callable
         params: *navigateur_produit
@@ -6944,6 +7007,188 @@ changes:
     tool: plan_par_numero
     remove_tool_columns:
       - {table: product_plans, name: followups}
+  # Le registrar passe de Hostinger à Cloudflare, où Serge achète avec sa
+  # propre carte ; la carte du paiement test est lue dans le coffre chiffré
+  # (lot 10).
+  - id: lot10_achat_cloudflare_prompt
+    why: Serge achète ses domaines chez Cloudflare, avec sa carte.
+    table: invocations
+    where: {id: acheter_domaine}
+    set:
+      prompt:
+        from: |
+          Tu achètes le nom de domaine du produit fini d'un business et tu le
+          fais pointer vers le serveur de Serge. C'est un vrai achat, payé avec
+          la carte de Serge : sois exact.
+
+          Le nom à acheter est le paramètre « domaine » de la tâche s'il est
+          donné (un humain l'a choisi), sinon le domaine du plan validé.
+
+          1. Regarde s'il est déjà au compte (« Un nom de domaine du
+             compte ») : s'il y est, ne l'achète pas, passe au point 4.
+          2. Vérifie qu'il est libre, puis lis son prix dans le catalogue
+             (catégorie DOMAIN, nom .FR* pour un .fr). Les prix sont en
+             centimes : la première année (first_period_price) et le
+             renouvellement (price) doivent tous deux être sous {prix_max_eur} €
+             par an. Prends le prix d'un an.
+          3. S'il est libre et sous ce prix, achète-le avec l'identifiant de ce
+             prix (item_id). Une réponse 202 : le paiement est en cours et le
+             domaine n'est pas enregistré, l'achat n'a pas abouti.
+          4. Fais-le pointer vers le serveur : un enregistrement A pour « @ »,
+             vers l'adresse IPv4 du serveur, ttl 300, en remplaçant l'ancien.
+
+          Rends achete « oui » si le domaine est au compte et pointe vers le
+          serveur, avec son nom et son prix ; sinon « non », la raison
+          (pris, trop cher, refusé par Hostinger : dis ce qu'il a répondu), et
+          deux ou trois noms libres sous le prix maximum, avec leur prix.
+        to: |
+          Tu achètes le nom de domaine du produit fini d'un business, chez
+          Cloudflare, et tu le fais pointer vers le serveur de Serge. C'est un vrai
+          achat, payé avec la carte de Serge enregistrée sur son compte Cloudflare :
+          sois exact.
+
+          Le nom à acheter est le paramètre « domaine » de la tâche s'il est
+          donné (un humain l'a choisi), sinon le domaine du plan validé.
+
+          1. Regarde s'il est déjà au compte (« Les domaines du compte ») : s'il y
+             est, ne l'achète pas, passe au point 4.
+          2. Vérifie qu'il est libre (« Un nom de domaine est-il libre ? ») :
+             registrable doit valoir true, et il ne doit pas être premium.
+             Cloudflare donne ses prix en dollars : la première année
+             (registration_cost) et le renouvellement (renewal_cost). Compte
+             1 $ = 1,10 € pour rester prudent : les deux doivent être sous
+             {prix_max_eur} € par an. Cloudflare ne vend pas toutes les
+             extensions : si celle-ci ne l'est pas, dis-le.
+          3. S'il est libre et sous ce prix, achète-le. La durée (un an) et
+             l'absence de renouvellement automatique sont réglées d'office.
+          4. Fais-le pointer vers le serveur : trouve sa zone (« La zone DNS d'un
+             domaine »), lis ses enregistrements A pour le domaine lui-même ; s'il
+             y en a un, modifie-le, sinon crée-le, avec le domaine comme nom et
+             l'adresse IPv4 du serveur. Juste après un achat, la zone peut mettre
+             une minute à apparaître : relis-la une fois.
+
+          Rends achete « oui » si le domaine est au compte et pointe vers le
+          serveur, avec son nom et son prix ; sinon « non », la raison (pris, trop
+          cher, extension non vendue, refusé par Cloudflare : dis ce qu'il a
+          répondu), et deux ou trois noms libres sous le prix maximum, avec leur
+          prix.
+  - id: lot10_achat_cloudflare_outils
+    why: Serge achète ses domaines chez Cloudflare, avec sa carte.
+    invocation: acheter_domaine
+    add_tools:
+      - tool: cloudflare_domaines
+        mode: callable
+        max_calls: 2
+      - tool: cloudflare_disponibilite
+        mode: callable
+        max_calls: 4
+      - tool: cloudflare_acheter_domaine
+        mode: callable
+        max_calls: 1
+        params:
+          years: {source: fixed, value: '1'}
+          auto_renew: {source: fixed, value: 'false'}
+          task_id: {source: task, value: task_id}
+      - tool: cloudflare_zone
+        mode: callable
+        max_calls: 4
+      - tool: cloudflare_dns_lire
+        mode: callable
+        max_calls: 2
+      - tool: cloudflare_dns_creer
+        mode: callable
+        max_calls: 2
+        params:
+          type: {source: fixed, value: A}
+          ttl: {source: fixed, value: '300'}
+          proxied: {source: fixed, value: 'false'}
+          task_id: {source: task, value: task_id}
+      - tool: cloudflare_dns_modifier
+        mode: callable
+        max_calls: 2
+        params:
+          type: {source: fixed, value: A}
+          ttl: {source: fixed, value: '300'}
+          proxied: {source: fixed, value: 'false'}
+          task_id: {source: task, value: task_id}
+  - id: lot10_conception_cloudflare
+    why: La conception vérifie qu'un nom est libre chez Cloudflare.
+    invocation: concevoir_produit
+    add_tools:
+      - tool: cloudflare_disponibilite
+        mode: callable
+        max_calls: 4
+  - id: lot10_paiement_carte_du_coffre_prompt
+    why: La carte de Serge est lue dans le coffre chiffré, pas dans des fichiers en clair.
+    table: invocations
+    where: {id: paiement_test}
+    set:
+      prompt:
+        from: |
+          Tu fais le paiement test de 1 € d'un produit qui vient d'être mis en
+          vente (Stripe en vrai mode : c'est de l'argent réel, rendu à la fin).
+          Le numéro du business est dans les paramètres de la tâche
+          (venture_id), son adresse aussi (« url »).
+
+          1. Retrouve le produit du business dans Stripe (recherche :
+             metadata['venture_id']:'<numéro du business>').
+          2. Crée un prix de 1 € (100 centimes, eur, un paiement unique, sans
+             intervalle) pour ce produit, avec le nom court « paiement test »,
+             puis un lien de paiement pour ce prix, quantité 1.
+          3. Ouvre le lien dans le navigateur et paie comme une personne :
+             une adresse e-mail (paiement-test@ suivi du domaine du produit),
+             puis la carte de Serge avec l'action taper_secret, sans jamais
+             écrire ses numéros toi-même : carte-numero.key pour le numéro,
+             carte-expiration.key pour la date (MM/AA), carte-cvc.key pour le
+             code, carte-titulaire.key pour le nom. Valide, et attends la page
+             qui confirme le paiement. Si la banque demande une confirmation
+             (3-D Secure) que tu ne peux pas donner, arrête-toi : paye « non ».
+          4. Vérifie dans Stripe, par les sessions du lien de paiement, qu'une
+             session est payée (payment_status : paid), de 100 centimes, et
+             note son paiement (payment_intent, pi_…).
+          5. Rembourse ce paiement en entier.
+          6. Désactive le lien de paiement et archive le prix de 1 €.
+
+          Rends paye « oui » si le paiement est arrivé, avec son identifiant
+          (pi_…), et rembourse « oui » s'il est remboursé ; ton compte rendu
+          dit, en deux phrases, l'adresse du produit, ce qui s'est passé et ce
+          qui a raté.
+        to: |
+          Tu fais le paiement test de 1 € d'un produit qui vient d'être mis en
+          vente (Stripe en vrai mode : c'est de l'argent réel, rendu à la fin).
+          Le numéro du business est dans les paramètres de la tâche
+          (venture_id), son adresse aussi (« url »).
+
+          1. Retrouve le produit du business dans Stripe (recherche :
+             metadata['venture_id']:'<numéro du business>').
+          2. Crée un prix de 1 € (100 centimes, eur, un paiement unique, sans
+             intervalle) pour ce produit, avec le nom court « paiement test »,
+             puis un lien de paiement pour ce prix, quantité 1.
+          3. Ouvre le lien dans le navigateur et paie comme une personne :
+             une adresse e-mail (paiement-test@ suivi du domaine du produit),
+             puis la carte de Serge avec l'action taper_secret, sans jamais
+             écrire ses numéros toi-même : payment-card.enc#pan pour le
+             numéro, payment-card.enc#expiration pour la date (MM/AA),
+             payment-card.enc#cvc pour le code, payment-card.enc#cardholder_name
+             pour le nom. Valide, et attends la page
+             qui confirme le paiement. Si la banque demande une confirmation
+             (3-D Secure) que tu ne peux pas donner, arrête-toi : paye « non ».
+          4. Vérifie dans Stripe, par les sessions du lien de paiement, qu'une
+             session est payée (payment_status : paid), de 100 centimes, et
+             note son paiement (payment_intent, pi_…).
+          5. Rembourse ce paiement en entier.
+          6. Désactive le lien de paiement et archive le prix de 1 €.
+
+          Rends paye « oui » si le paiement est arrivé, avec son identifiant
+          (pi_…), et rembourse « oui » s'il est remboursé ; ton compte rendu
+          dit, en deux phrases, l'adresse du produit, ce qui s'est passé et ce
+          qui a raté.
+  - id: lot10_paiement_carte_du_coffre_secrets
+    why: La carte de Serge est lue dans le coffre chiffré, pas dans des fichiers en clair.
+    invocation: paiement_test
+    tool: navigateur_agir
+    set_tool_params:
+      secrets: {from: 'carte-numero.key,carte-expiration.key,carte-cvc.key,carte-titulaire.key', to: 'payment-card.enc#pan,payment-card.enc#expiration,payment-card.enc#cvc,payment-card.enc#cardholder_name'}
 
 deleted:
   invocations: [demo_ouvrir_cycle, demo_formuler, demo_choisir]
@@ -6951,5 +7196,15 @@ deleted:
   serge_texts: [voice_opening]
   links: [demo_cycle_vers_formuler, demo_formuler_vers_choisir]
   triggers: [demo_lancer_cycle]
-  tools: [known_business_candidates, eligible_poc_candidates, listen_cycle_documents]
+  tools:
+    - known_business_candidates
+    - eligible_poc_candidates
+    - listen_cycle_documents
+    - hostinger_disponibilite
+    - hostinger_catalogue
+    - hostinger_acheter_domaine
+    - hostinger_domaine
+    - hostinger_zone_dns
   quotas: [business_choisis]
+  # Le registrar Hostinger, remplacé par Cloudflare (lot 10).
+  api_services: [hostinger]

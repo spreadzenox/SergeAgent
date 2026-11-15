@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import re
 from pathlib import Path
@@ -34,6 +35,49 @@ def read_secret_file(path: Path) -> str:
         if re.fullmatch(r'[A-Z_][A-Z0-9_]*', key):
             return ''
     return first
+
+
+# La clé du coffre de l'instance : elle déchiffre les fichiers chiffrés des
+# secrets, comme la carte de Serge (payment-card.enc).
+CLE_DU_COFFRE = 'credential-vault.key'
+
+
+def read_vault_field(secrets_dir: Path, nom: str) -> str:
+    """Un champ d'un fichier chiffré du coffre : ``payment-card.enc#pan``.
+
+    Le fichier est un objet JSON chiffré (Fernet) par la clé du coffre. Le
+    champ ``expiration`` est tiré de ``exp_month`` et ``exp_year`` : « 08/29 ».
+    Rien n'est jamais écrit en clair ; ``''`` si le fichier, la clé ou le
+    champ manquent.
+    """
+    fichier, _, champ = nom.partition('#')
+    try:
+        from cryptography.fernet import Fernet, InvalidToken
+
+        cle = (secrets_dir / CLE_DU_COFFRE).read_bytes().strip()
+        brut = Fernet(cle).decrypt(
+            (secrets_dir / fichier).read_bytes().strip()
+        )
+        donnees = json.loads(brut.decode('utf-8'))
+    except (ImportError, OSError, ValueError, InvalidToken):
+        return ''
+    if not isinstance(donnees, dict):
+        return ''
+    if champ == 'expiration' and 'expiration' not in donnees:
+        mois, annee = donnees.get('exp_month'), donnees.get('exp_year')
+        if not mois or not annee:
+            return ''
+        return f'{int(mois):02d}/{str(annee).strip()[-2:]}'
+    valeur = donnees.get(champ)
+    return '' if valeur is None else str(valeur).strip()
+
+
+def read_secret_value(secrets_dir: Path, nom: str) -> str:
+    """Un secret par son nom : un fichier (``stripe-test.key``), ou un champ
+    d'un fichier chiffré du coffre (``payment-card.enc#pan``)."""
+    if '#' in nom:
+        return read_vault_field(secrets_dir, nom)
+    return read_secret_file(secrets_dir / nom)
 
 
 def owner_dashboard_token(system: Path | None = None) -> str:

@@ -72,10 +72,14 @@ Trois exceptions, toutes décrites dans `config/pipeline.yaml` :
   de la réponse (`remove_outputs`), une valeur d'une écriture
   (`remove_write_values`) ou une colonne lue par un outil
   (`remove_tool_columns`) se retirent une seule fois : exemple, le rythme
-  des relances, sorti du plan d'un POC (Q37, corrigée par Q92) ;
+  des relances, sorti du plan d'un POC (Q37, corrigée par Q92). Un
+  paramètre figé d'un outil d'une invocation (`set_tool_params`) change
+  comme une valeur, seulement s'il vaut encore celle d'origine : exemple,
+  les secrets que tape le paiement test ;
 - ce qui est **retiré** du fichier est listé dans la section `deleted` :
   marqué supprimé en base (invocations, liens, déclencheurs), ou effacé
-  (outils, quotas, textes de Serge).
+  (outils avec leur description d'API, quotas, textes de Serge, services
+  d'API). Exemple : Hostinger, remplacé par Cloudflare (lot 10).
 
 Rien d'autre n'est effacé au démarrage : une invocation supprimée dans
 Mission Control (`deleted_at` rempli) ne revient pas. Seule une capacité retirée du
