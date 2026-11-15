@@ -385,7 +385,12 @@ leurs outils (partie 15). L'identifiant du compte, propre à l'instance,
 n'est pas dans le dépôt : un chemin d'outil le nomme
 `{config:cloudflare-account-id}`, et « Appeler une API » le lit sur le
 serveur au moment de l'appel. Une valeur figée en base part avec son
-type (`years: 1`, `auto_renew: false`) dans un corps JSON.
+type (`years: 1`, `auto_renew: false`) dans un corps JSON. L'achat porte
+un verrou de prix décrit en base (`api_endpoints.guard`) : juste avant,
+« Appeler une API » redemande le prix à Cloudflare et refuse un nom pris,
+premium, ou au-dessus du réglage « prix_max_eur » (page Policy), ou sans
+réponse sûre. La consigne du modèle dit la même chose, mais c'est le code
+qui tient.
 
 Une écriture envoie une clé d'idempotence tirée de la tâche, de l'outil
 et du contenu (`Idempotency-Key: serge-…`) : une requête répétée après un

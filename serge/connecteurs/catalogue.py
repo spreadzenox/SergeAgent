@@ -8,6 +8,7 @@ qui écrit au journal (pas d'import circulaire, charte partie 2).
 
 from __future__ import annotations
 
+import json
 import sqlite3
 from collections.abc import Mapping
 from typing import Any
@@ -19,12 +20,15 @@ def seed_api(
     """Le point d'entrée d'un outil ``call_api``, depuis ``pipeline.yaml``."""
     conn.execute(
         'INSERT OR IGNORE INTO api_endpoints(tool_id, service_id, method,'
-        ' path) VALUES(?,?,?,?)',
+        ' path, guard) VALUES(?,?,?,?,?)',
         (
             tool_id,
             str(spec['service']),
             str(spec['method']).upper(),
             str(spec['path']),
+            json.dumps(spec['garde'], ensure_ascii=False)
+            if spec.get('garde')
+            else '',
         ),
     )
     for position, param in enumerate(spec.get('params') or []):

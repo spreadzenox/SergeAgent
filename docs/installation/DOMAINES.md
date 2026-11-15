@@ -55,8 +55,17 @@ de Serge est le moyen de paiement (Billing → Payment methods).
    rester prudent, et n'achète que sous le prix maximum de la page
    Policy (invocation « Acheter le domaine du produit », réglage
    « prix_max_eur », 30 € par an au départ). Cloudflare ne vend pas
-   toutes les extensions : un `.com` passe toujours.
+   toutes les extensions : un `.com` passe toujours. Cloudflare ne vend
+   qu'un nom libre, au prix du registre : un nom déjà pris ne s'achète
+   jamais, quel qu'en soit le prix.
 3. Il l'achète pour un an, sans renouvellement automatique (figé en base).
+   **Un verrou dans le code**, pas seulement dans la consigne du modèle :
+   juste avant l'achat, « Appeler une API » redemande le nom à Cloudflare
+   et refuse s'il n'est pas libre, s'il est premium, si l'un de ses deux
+   prix (fois 1,10) dépasse `prix_max_eur`, ou si Cloudflare ne répond
+   pas. Un modèle qui désobéirait ne peut donc rien acheter au-dessus du
+   plafond. Le refus est au journal (`connecteur : … verrou de prix`) et
+   en événement `api.refused`.
 4. Il fait pointer le domaine vers le serveur : un enregistrement A, sans
    le proxy de Cloudflare, vers l'adresse IPv4 du domaine de l'instance
    (outil « L'adresse du serveur de Serge »). Caddy obtient le

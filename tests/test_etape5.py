@@ -17,6 +17,8 @@ Scénarios :
   prospection lourde ;
 - un domaine qui n'a pas pu être acheté ouvre le ticket « Domaine » ; le
   nom donné par un humain est acheté ;
+- le verrou de prix : un nom trop cher, premium ou pris n'est jamais
+  acheté, même si le modèle appelle l'achat ; le plafond suit le réglage ;
 - avec un domaine commun des produits finis (réglage), rien n'est acheté :
   Serge crée l'enregistrement DNS du sous-domaine du produit, et la prod
   va sur ce sous-domaine ;
@@ -31,6 +33,7 @@ Scénarios :
 from __future__ import annotations
 
 import http.server
+import io
 import json
 import os
 import re
@@ -40,6 +43,7 @@ import tempfile
 import threading
 import unittest
 import urllib.parse
+from contextlib import redirect_stderr
 from pathlib import Path
 from typing import Any
 from unittest import mock
@@ -52,6 +56,7 @@ from serge.db.store import default_canon_path, open_db, utcnow  # noqa: E402
 from serge.ingress import adresse, caddy  # noqa: E402
 from serge.interpreter.flow import fire_button  # noqa: E402
 from serge.interpreter.queue import process_one  # noqa: E402
+from serge.interpreter.tools import run_tool  # noqa: E402
 from serge.llm.client import ChatResult, ToolCall  # noqa: E402
 from serge.mc.proj_faits import project_fait_pipe  # noqa: E402
 from serge.sandbox import publier  # noqa: E402
@@ -98,6 +103,8 @@ class _Services(http.server.BaseHTTPRequestHandler):
         chemin = r['chemin']
         compte = '/accounts/acct_test/registrar'
         if chemin == f'{compte}/domain-check':
+            if any(n.startswith('panne') for n in r['corps']['domains']):
+                return 500, {'success': False, 'errors': [{'code': 1}]}
             return 200, {
                 'success': True,
                 'result': {
@@ -105,11 +112,16 @@ class _Services(http.server.BaseHTTPRequestHandler):
                         {
                             'name': nom,
                             'registrable': nom not in self.pris,
-                            'tier': 'standard',
+                            'tier': 'premium'
+                            if nom.startswith('premium')
+                            else 'standard',
                             'pricing': {
                                 'currency': 'USD',
                                 'registration_cost': '10.46',
-                                'renewal_cost': '10.46',
+                                # Un renouvellement cher : 45 $ par an.
+                                'renewal_cost': '45.00'
+                                if nom.startswith('cher')
+                                else '10.46',
                             },
                         }
                         for nom in r['corps']['domains']
@@ -638,6 +650,54 @@ class Etape5Tests(unittest.TestCase):
         self.assertEqual(
             self._un("SELECT hostname FROM deployments WHERE target='prod'"),
             ('calc-simple.fr',),
+        )
+
+    def test_le_verrou_de_prix_tient_meme_si_le_modele_desobeit(self) -> None:
+        # Un modèle qui appelle l'achat malgré sa consigne : le code redemande
+        # le prix à Cloudflare et refuse au-dessus de prix_max_eur (30 €).
+        lien = self._un(
+            "SELECT id FROM invocation_tools WHERE invocation_id='acheter_domaine'"
+            " AND tool_id='cloudflare_acheter_domaine'"
+        )[0]
+
+        def acheter(nom: str) -> dict[str, Any]:
+            return run_tool(
+                self.conn,
+                'acheter_domaine',
+                lien,
+                'cloudflare_acheter_domaine',
+                {'domain_name': nom},
+                {'task_id': 't1'},
+            )
+
+        achats = '/accounts/acct_test/registrar/registrations'
+        _Services.pris = {'pris.com'}
+        for nom, raison in (
+            ('cher-calcul.com', '49.50 € dépasse le plafond de 30 €'),
+            ('premium-calcul.com', "vaut 'premium'"),
+            ('pris.com', 'registrable'),
+            # Sans réponse sûre de Cloudflare, le verrou refuse aussi.
+            ('panne-calcul.com', 'vérification impossible'),
+        ):
+            with redirect_stderr(io.StringIO()) as journal:
+                refus = acheter(nom)
+            self.assertEqual(refus['code'], 'verrou', nom)
+            self.assertIn(raison, refus['detail'])
+            self.assertIn('verrou de prix', journal.getvalue())
+        self.assertEqual(self._requetes(achats), [])
+        self.assertEqual(
+            self._un("SELECT COUNT(*) FROM events WHERE type='api.refused'"),
+            (4,),
+        )
+        # Le plafond suit le réglage de la page Policy : à 50 €, ça passe.
+        self.conn.execute(
+            "UPDATE invocation_settings SET value='50' WHERE"
+            " invocation_id='acheter_domaine' AND name='prix_max_eur'"
+        )
+        self.assertTrue(acheter('cher-calcul.com')['ok'])
+        self.assertEqual(
+            self._requetes(achats)[0]['corps']['domain_name'],
+            'cher-calcul.com',
         )
 
     def test_un_domaine_commun_evite_l_achat(self) -> None:

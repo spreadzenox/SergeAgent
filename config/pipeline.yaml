@@ -1044,6 +1044,19 @@ tools:
         - {name: domain_name, required: true, description: 'Le nom complet : devis-artisan.com.'}
         - {name: years, type: number, description: La durée en années (figée en base).}
         - {name: auto_renew, type: bool, description: Le renouvellement automatique (figé en base).}
+      # Le verrou de prix : avant l'achat, Serge redemande le prix à
+      # Cloudflare et refuse un nom pris, premium, ou dont le prix (la
+      # première année comme le renouvellement, en dollars fois 1,10 par
+      # prudence) dépasse le réglage « prix_max_eur » de l'invocation qui
+      # achète (page Policy). Un modèle ne peut pas passer outre.
+      garde:
+        verifier: cloudflare_disponibilite
+        avec: {domains: ['{domain_name}']}
+        exiger: {result.domains.0.registrable: true}
+        refuser: {result.domains.0.tier: premium}
+        prix: [result.domains.0.pricing.registration_cost, result.domains.0.pricing.renewal_cost]
+        taux: 1.10
+        plafond: prix_max_eur
   - id: cloudflare_zone
     title: La zone DNS d'un domaine
     doc: >-
