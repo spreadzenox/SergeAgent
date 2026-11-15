@@ -21,7 +21,7 @@ Elle reprend la mécanique de l'étape 2 (« Compter les tours », les
 paramètres de lien tirés de la réponse, les trois boutons de ticket), et
 s'appuie sur « Appeler une API » pour Stripe et Cloudflare.
 
-En attendant l'étape 4 (lot 11), elle part du bouton « Construire le vrai
+En attendant l'étape 4 (lot 12), elle part du bouton « Construire le vrai
 produit » de la fiche d'un business au test léger (`SMOKE_READY` ou
 `SMOKE_DONE`), qui le fait passer « en construction de son produit »
 (`PRODUCT_BUILDING`), ou du bouton « Bout en bout : le produit fini d'une
@@ -45,12 +45,17 @@ calculatrice » de la page Système (plus bas).
    (`metadata[venture_id]`) et une clé de recherche (`lookup_key`) égale
    au numéro du business : le produit retrouve son prix par cette clé, en
    mode test comme en vrai mode, sans rien changer à son code.
-5. **Construire le produit** (niveau « code ») : comptes, abonnement par
-   une page de paiement Stripe, le service. Son chantier reçoit la clé du
-   mode test (`STRIPE_SECRET_KEY`). Puis **publier en staging** (même
-   clé), **relire** (niveau « code ») jusqu'au paiement avec la carte de
-   test 4242 4242 4242 4242, comme à l'étape 2 : 3 reprises et
-   3 passages au plus.
+5. **Construire le produit** (niveau « code ») : comptes, e-mails,
+   abonnement par une page de paiement Stripe, le service. Son chantier
+   reçoit la clé du mode test (`STRIPE_SECRET_KEY`). Le constructeur
+   vérifie par des commandes, sans navigateur (Q96). Puis **publier en
+   staging** (même clé), **relire** (niveau « web », un modèle moins cher
+   qui navigue) jusqu'au paiement avec la carte de test 4242 4242 4242
+   4242, comme à l'étape 2 : 3 reprises et 3 passages au plus. Le
+   relecteur s'inscrit avec sa propre adresse (« Ma boîte e-mail ») et y
+   lit les e-mails du produit (un lien de validation) ; pour un scénario
+   qui demande la fin d'un abonnement, il l'annule dans Stripe en mode
+   test, comme si le temps avait passé.
 6. **Le ticket « Tester le produit »** (`TEST_PRODUIT`) : un humain essaie
    le staging, paiement compris. Il n'expire jamais.
 7. **Choisir le domaine** (sans LLM), une fois le produit essayé et
@@ -70,15 +75,16 @@ calculatrice » de la page Système (plus bas).
    prod** sur le domaine, avec une clé Stripe restreinte du vrai mode
    (`stripe-produits-live.key`) : le produit n'a jamais la clé complète de
    Serge.
-9. **Le paiement test de 1 €** (niveau « code ») : un prix de 1 € et un
-   lien de paiement, payé dans le navigateur avec la carte de Serge,
+9. **Le paiement test de 1 €** (niveau « web ») : un prix de 1 € et un
+   lien de paiement, payé dans le navigateur avec la carte de Serge et
+   l'adresse de la boîte du relecteur,
    déchiffrée de `payment-card.enc` au moment de taper (« taper un
    secret » : le modèle ne voit jamais ses numéros), vérifié
    dans Stripe (la session du lien est payée), remboursé ; le lien est
    désactivé et le prix archivé. Le paiement est noté dans `transactions`
    (`kind` = `canary`).
 10. **Produit en vente** : le business passe à `PRODUCT_READY`, d'où
-    part la prospection lourde (étape 6, lot 11), et un ticket
+    part la prospection lourde (étape 6, lot 12), et un ticket
     d'information le dit. Une étape ratée
     (Stripe, la prod, le paiement test) ouvre un ticket d'information
     avec la raison.
@@ -99,8 +105,30 @@ remboursé. Il faut, sur le serveur, les secrets décrits dans
 [`installation/STRIPE.md`](../installation/STRIPE.md) et
 [`installation/DOMAINES.md`](../installation/DOMAINES.md).
 
+**Les e-mails du produit** (lot 11, Q96). Le produit envoie ses e-mails
+(valider une inscription, changer un mot de passe oublié, un reçu) par
+SMTP, avec les variables `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`,
+`SMTP_PASS` et `MAIL_FROM` : le même code marche partout.
+
+- Dans le chantier et en staging, la boîte d'essai (un Mailpit sur le
+  serveur, `serge-boite`) garde tous les e-mails, quel que soit le
+  destinataire : rien ne part. Le relecteur y lit les siens ; Julien et
+  Clem les lisent sur la fiche du business (« E-mails d'essai »), pour
+  essayer le produit eux-mêmes avec n'importe quelle adresse.
+- En prod, ils partent par Resend, avec une clé par produit qui ne sait
+  qu'envoyer : Serge la crée la première fois avec la clé maîtresse et la
+  range dans `resend-<business>.key` ; aucun modèle ne la voit.
+  L'expéditeur est `<nom court>@<domaine d'envoi>`, toujours un
+  sous-domaine de Serge (page Policy, « E-mails des produits »). Sans
+  domaine d'envoi, la mise en prod rate et le dit.
+- Pas d'adresse ni de formulaire de contact pour l'instant : les e-mails
+  des clients viendront avec le lot 16. L'éditeur des mentions légales
+  est Julien Pesquet ; le service est tenu par Serge, un agent IA.
+
+Mise en place : [`installation/DOMAINES.md`](../installation/DOMAINES.md).
+
 **Pas encore fait** : les versions suivantes, publiées en prod quand la
-relecture est bonne (elles viennent avec l'étape 6, au lot 11), et le
+relecture est bonne (elles viennent avec l'étape 6, au lot 12), et le
 passage d'une demande des clients à « livrée ».
 
 ---
@@ -131,9 +159,10 @@ web, la mise en ligne, Stripe, les tables) est dans
    notamment **le prix définitif**, la fiche produit et le nom de domaine ;
    il y en aura peu, donc c'est une relecture rapide. Ce ticket n'expire
    jamais (Q91).
-4. **Construire** avec un duo de deux invocations du niveau de modèle
-   « code » (Q91). Le constructeur écrit et lance le produit dans un
-   chantier (un conteneur), et l'essaie dans un navigateur. Le relecteur
+4. **Construire** avec un duo de deux invocations (Q91) : le
+   constructeur (niveau « code ») écrit et lance le produit dans un
+   chantier (un conteneur), et le vérifie par des commandes ; le
+   relecteur (niveau « web », moins cher, Q96) est le seul à naviguer. Il
    ne voit jamais le code : il suit les scénarios de test comme un
    prospect ordinaire, sur ordinateur et sur mobile, garde ses captures
    comme preuves, et répond « bon », « à corriger » ou « nouvelle capacité

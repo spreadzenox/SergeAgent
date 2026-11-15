@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""demande_capacite : ticket REQUESTED, refus si vide, pas de doublon."""
+"""demande_capacite : ticket REQUESTED, refus si vide, pas de doublon.
+
+Une demande faite pendant une tâche la gèle : elle n'écrit rien et attend
+la réponse de Julien, sans limite de temps ; sa réponse (« Faire sans », ou
+un texte libre) la fait repartir du début, avec la réponse (lot 11).
+"""
 
 from __future__ import annotations
 
@@ -20,6 +25,8 @@ from serge.interpreter.tasks import enqueue_task  # noqa: E402
 from serge.llm.client import ChatResult, ToolCall  # noqa: E402
 from serge.pipeline_seed import seed_pipeline  # noqa: E402
 from serge.registry import load_ticket_types  # noqa: E402
+from serge.tickets.lifecycle import decide  # noqa: E402
+from serge.tickets.reponses import noter_reponse  # noqa: E402
 
 
 class DemandeCapaciteTests(unittest.TestCase):
@@ -71,13 +78,7 @@ class DemandeCapaciteTests(unittest.TestCase):
         n = self.conn.execute('SELECT COUNT(*) FROM tickets').fetchone()[0]
         self.assertEqual(n, 1)
 
-    def test_toute_invocation_peut_demander_une_capacite(self) -> None:
-        """Une invocation sans outil déclaré demande quand même à Julien.
-
-        L'outil « Demander une nouvelle capacité » est donné partout : le
-        faux modèle l'appelle deux fois (une demande vide, refusée, puis
-        une vraie), puis rend sa réponse.
-        """
+    def _redacteur(self) -> str:
         seed_pipeline(
             self.conn,
             {
@@ -87,36 +88,136 @@ class DemandeCapaciteTests(unittest.TestCase):
                 ],
             },
         )
-        enqueue_task(self.conn, 'redacteur', {})
+        task_id = str(enqueue_task(self.conn, 'redacteur', {}))
+        # Seule la tâche du rédacteur tourne : pas de déclencheur horaire.
+        self.conn.execute('UPDATE triggers SET enabled=0')
         set_heartbeat(self.conn, True)
         self.conn.commit()
+        return task_id
+
+    def test_une_demande_gele_la_tache_jusqu_a_la_reponse(self) -> None:
+        """Toute invocation peut demander à Julien ; sa tâche s'arrête là.
+
+        L'outil « Demander une nouvelle capacité » est donné partout : le
+        faux modèle l'appelle deux fois (une demande vide, refusée, puis
+        une vraie). La tâche est gelée, le modèle n'est plus appelé. « Faire
+        sans » la fait repartir : le modèle lit la réponse et rend la sienne.
+        """
+        task_id = self._redacteur()
         seen: list[list] = []
+        lus: list[str] = []
 
         def model(_key, name, messages, **kwargs):
             seen.append([t['function']['name'] for t in kwargs['tools']])
-            answers = [m for m in messages if m.get('role') == 'tool']
-            if not answers:
-                calls = (
-                    ToolCall('c1', 'demande_capacite', '{"need": " "}'),
-                    ToolCall(
-                        'c2',
-                        'demande_capacite',
-                        '{"need": "écrire sur LinkedIn"}',
+            lus.append(json.dumps(messages, ensure_ascii=False))
+            if 'reponses_de_julien' in lus[-1]:
+                return ChatResult('Fait, sans LinkedIn.', 5, 5, name, 1)
+            calls = (
+                ToolCall('c1', 'demande_capacite', '{"need": " "}'),
+                ToolCall(
+                    'c2',
+                    'demande_capacite',
+                    json.dumps(
+                        {
+                            'summary': 'Écrire sur LinkedIn',
+                            'need': 'Un compte LinkedIn et un outil pour y'
+                            ' publier, avec le détail de ce qu’il faut.',
+                        }
                     ),
-                )
-                return ChatResult('', 5, 5, name, 1, calls)
-            self.assertIn('echec', answers[0]['content'])
-            return ChatResult('Fait.', 5, 5, name, 1)
+                ),
+            )
+            return ChatResult('', 5, 5, name, 1, calls)
 
         process_one(
             self.conn, 'works', now='2026-09-28T10:00:00+00:00', caller=model
         )
         self.assertEqual(seen[0], ['demande_capacite'])
-        row = self.conn.execute(
-            "SELECT title, payload_json FROM tickets WHERE type='REQUESTED'"
+        self.assertEqual(len(seen), 1, 'gelée, la tâche ne rappelle pas')
+        statut = self.conn.execute(
+            'SELECT status, last_error FROM tasks WHERE id=?', (task_id,)
         ).fetchone()
-        self.assertEqual(row[0], 'écrire sur LinkedIn')
-        self.assertEqual(json.loads(row[1])['point_llm'], 'redacteur')
+        self.assertEqual(statut[0], 'blocked')
+        self.assertIn('Julien', statut[1])
+        row = self.conn.execute(
+            'SELECT id, title, payload_json, ref_table, ref_id FROM tickets'
+            " WHERE type='REQUESTED'"
+        ).fetchone()
+        self.assertEqual(row[1], 'Écrire sur LinkedIn')
+        charge = json.loads(row[2])
+        self.assertEqual(charge['en_bref'], 'Écrire sur LinkedIn')
+        self.assertIn('le détail', charge['demande'])
+        self.assertEqual(charge['point_llm'], 'redacteur')
+        self.assertEqual((row[3], row[4]), ('tasks', task_id))
+        # Sans réponse, rien ne repart.
+        self.assertIsNone(
+            process_one(
+                self.conn,
+                'works',
+                now='2026-10-28T10:00:00+00:00',
+                caller=model,
+            )
+        )
+        decide(self.conn, str(row[0]), 'APPROVED', actor='owner')
+        noter_reponse(self.conn, str(row[0]), 'faire_sans', '', 'owner')
+        self.conn.commit()
+        process_one(
+            self.conn, 'works', now='2026-10-28T10:00:00+00:00', caller=model
+        )
+        self.assertIn('fais sans', lus[-1])
+        self.assertIn('Ta demande : Écrire sur LinkedIn', lus[-1])
+        self.assertEqual(
+            self.conn.execute(
+                'SELECT status FROM tasks WHERE id=?', (task_id,)
+            ).fetchone()[0],
+            'done',
+        )
+        evenements = [
+            r[0]
+            for r in self.conn.execute(
+                "SELECT type FROM events WHERE type LIKE 'task.%' ORDER BY id"
+            )
+        ]
+        self.assertEqual(
+            evenements, ['task.frozen', 'task.thawed', 'task.done']
+        )
+
+    def test_une_reponse_libre_arrive_au_modele(self) -> None:
+        task_id = self._redacteur()
+        ticket = poser_demande(
+            self.conn,
+            'Une adresse de contact',
+            point='redacteur',
+            resume='Adresse de contact',
+            task_id=task_id,
+            types=self.types,
+        )
+        self.assertTrue(ticket['gel'])
+        self.conn.execute(
+            "UPDATE tasks SET status='blocked' WHERE id=?", (task_id,)
+        )
+        noter_reponse(
+            self.conn,
+            ticket['ticket_id'],
+            'reponse_libre',
+            'Pas d’adresse de contact pour l’instant.',
+            'owner',
+        )
+        valeur = self.conn.execute(
+            'SELECT value FROM task_params WHERE task_id=?'
+            " AND name='reponses_de_julien'",
+            (task_id,),
+        ).fetchone()[0]
+        self.assertIn('Ta demande : Adresse de contact', valeur)
+        self.assertIn('Pas d’adresse de contact pour l’instant.', valeur)
+        # La même demande, de la même tâche, encore ouverte : le même ticket.
+        again = poser_demande(
+            self.conn,
+            'Une adresse de contact',
+            point='redacteur',
+            task_id=task_id,
+            types=self.types,
+        )
+        self.assertEqual(again['ticket_id'], ticket['ticket_id'])
 
 
 if __name__ == '__main__':

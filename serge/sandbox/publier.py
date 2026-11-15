@@ -45,6 +45,7 @@ from serge.ingress import caddy
 from serge.paths import files_root
 from serge.policy_store import policy_en_vigueur
 from serge.sandbox.chantier import chantier_id, ensure_chantier
+from serge.sandbox.courriel import envoi_du_produit
 from serge.sandbox.docker import (
     DockerError,
     docker,
@@ -289,10 +290,19 @@ def _lancer(
         # La clé Stripe du produit : celle du mode test en staging, une clé
         # restreinte du vrai mode en prod (réglées en base, env_secrets).
         secrets = secret_env(str(args.get('env_secrets') or ''))
+        # Ses e-mails : la boîte d'essai en staging, Resend en prod.
+        envoi, cle = envoi_du_produit(
+            conn,
+            target,
+            str(args.get('venture_id') or ''),
+            slug(str(args.get('slug') or args.get('nom') or '')),
+            invocation_id,
+        )
     except DockerError as exc:
         return _rate(
             conn, deployment, args, version, 'secret_absent', str(exc), ''
         )
+    secrets = {**secrets, **cle}
     docker(['rm', '-f', container], timeout=120, check=False)
     docker(
         [
@@ -314,6 +324,7 @@ def _lancer(
             'DATA_DIR=/data',
             '-e',
             f'PUBLIC_URL={url}',
+            *envoi,
             *env_flags(secrets),
             '-p',
             f'127.0.0.1:{port}:{PORT}',

@@ -42,8 +42,14 @@ from serge.interpreter.queue import process_one  # noqa: E402
 from serge.interpreter.tools import run_capability  # noqa: E402
 from serge.mc.proj_ilots import project_ilots  # noqa: E402
 from serge.paths import files_root  # noqa: E402
-from serge.policy_store import policy_en_vigueur  # noqa: E402
-from serge.sandbox import publier  # noqa: E402
+from serge.policy_store import (
+    policy_en_vigueur,  # noqa: E402
+    set_setting,  # noqa: E402
+)
+from serge.sandbox import (
+    courriel,  # noqa: E402
+    publier,  # noqa: E402
+)
 from tests.test_chantier import ESSAI, faux_docker  # noqa: E402
 
 CHAMP = 'cible (staging ou prod)'
@@ -69,11 +75,18 @@ class PublierTests(unittest.TestCase):
             mock.patch.dict(os.environ, env),
             mock.patch.object(publier, '_repond', return_value=True),
             mock.patch.object(caddy, 'reload', return_value=''),
+            # La clé d'envoi d'un produit, chez Resend : voir test_courriel.
+            mock.patch.object(
+                courriel, 'cle_produit', return_value='re_produit_faux'
+            ),
         ):
             patcher.start()
             self.addCleanup(patcher.stop)
         self.conn = open_db(default_canon_path())
         self.addCleanup(self.conn.close)
+        set_setting(
+            self.conn, 'courriel.domaine_envoi', 'envoi.exemple.fr', 'test'
+        )
         set_heartbeat(self.conn, True)
         self.conn.commit()
         self._ecrire('Dockerfile', 'FROM node:22\nCMD ["node", "app.js"]\n')

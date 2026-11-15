@@ -64,7 +64,7 @@ lui donne).
 invocations et leurs réglages, les capacités et les outils, les règles
 d'écriture, les liens, les déclencheurs, les files et les tâches. Ce qui
 existe déjà reste (modifier un prompt, allumer ou éteindre). Créer une
-invocation depuis le site viendra au lot 13.
+invocation depuis le site viendra au lot 14.
 
 **Fusion dans `main`** après chaque étape du lot, avec des tests verts qui
 portent seulement sur ce qui est construit.
@@ -465,7 +465,7 @@ cas précis.
 - les capacités relever une boîte mail, envoyer un e-mail, ouvrir un
   ticket complet, bloquer les adresses d'une personne qui se désinscrit.
 
-**Ce que le lot 12 (web) ajoutera** : les profils de bac à sable, la
+**Ce que le lot 13 (web) ajoutera** : les profils de bac à sable, la
 colonne `sandbox_profile_id` sur `invocations`, les services décrits en
 base pour la capacité « appeler une API », et une colonne `needs_approval`
 sur `writable_tables` pour les écritures qui demandent l'accord de Julien.
@@ -752,7 +752,7 @@ tables à comparer.
 Le format de la réponse et l'écriture sont déjà décrits en base (parties 4
 et 5). Ce qui manquait, c'est de les relier aux chiffres réglables. Clem a
 validé cette organisation pour l'instant ; elle sera sans doute retouchée
-quand on créera une invocation depuis Mission Control (lot 13).
+quand on créera une invocation depuis Mission Control (lot 14).
 
 **`invocation_settings` : les réglages d'une invocation.** Une ligne par
 réglage, rattachée à l'invocation (la charte interdit de ranger une liste
@@ -799,7 +799,7 @@ paramètres, qui peuvent venir d'un réglage.
 « places libres = 3 − business en test ») : le quota protège, et le
 modèle compte lui-même ce qu'il voit. Les conditions (« écrire seulement
 si… ») viennent au lot 8. Les très grosses sorties (un plan complet, du
-code) restent un champ texte ou des fichiers du bac à sable (lot 12).
+code) restent un champ texte ou des fichiers du bac à sable (lot 13).
 
 **Ce qui reste dans la policy générale** : ce qui ne concerne aucune
 invocation en particulier (budget du jour, quotas d'envoi, heures
@@ -860,4 +860,4 @@ modèle d'un niveau (`llm_models.model` ; vide, c'est celui choisi à
 l'installation, affiché en gris) et le texte « Qui est Serge »
 (`serge_texts`). Chaque changement est noté au journal
 (`pipeline.model`, `pipeline.text`). Créer ou modifier le reste depuis le
-site (une invocation, un lien, un outil) reste le travail du lot 13.
+site (une invocation, un lien, un outil) reste le travail du lot 14.

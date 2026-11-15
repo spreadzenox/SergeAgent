@@ -1,4 +1,4 @@
-// Contrôles Policy : curseur, liste, choix multiples, plages, nombres.
+// Contrôles Policy : curseur, liste, choix multiples, plages, nombres, texte.
 // Chaque réglage arrive décrit par la base (spec) : titre, aide, sorte
 // (widget), bornes (min, max, pas) et choix. Aucun catalogue ici.
 
@@ -203,6 +203,16 @@ function champNombre(chemin, spec, val) {
   return wrap;
 }
 
+function champTexte(chemin, spec, val) {
+  const wrap = cadre(chemin, spec);
+  const input = el('input', 'texte-policy');
+  input.type = 'text';
+  input.value = String(val ?? '');
+  wrap.append(input);
+  wrap._lire = () => input.value.trim();
+  return wrap;
+}
+
 const FABRIQUES = {
   eur: (c, s, v) => champCurseur(c, s, v, fmtEur),
   pct: (c, s, v) => champCurseur(c, s, v, fmtPct),
@@ -215,6 +225,7 @@ const FABRIQUES = {
   choix: champChoix,
   fenetres: champFenetres,
   nombres: champNombres,
+  texte: champTexte,
 };
 
 // Le champ d'un réglage ; il lit sa valeur avec node._lire().

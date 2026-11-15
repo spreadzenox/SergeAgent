@@ -126,12 +126,30 @@ conversation (lot 8 bis, décisions Q85 et Q86), la grille de points
   paiement test de 1 €) ; restent les versions suivantes d'un produit,
   avec l'étape 6. Seulement des produits web, payants
   pour le produit fini (Q91). Le lot apporte trois capacités d'abord
-  prévues au lot 12 : le bac à sable (un conteneur où le constructeur code
+  prévues au lot 13 : le bac à sable (un conteneur où le constructeur code
   et lance son produit), l'interface web des invocations (lire une page et
   cliquer comme un humain) et « Appeler une API » (pour Stripe et l'achat
   des domaines). Le détail est dans
   [`docs/LOT10_CONCEPTION.md`](docs/LOT10_CONCEPTION.md).
-- [ ] **Lot 11 « Jusqu'aux premières ventes ».** Mettre en base les
+- [ ] **Lot 11 « Les e-mails des produits ».** Fait dans la même PR que
+  les correctifs du lot 10 (décision Q96), à essayer sur le serveur :
+  - un produit envoie ses e-mails par SMTP : en chantier et en staging,
+    la boîte d'essai (Mailpit) les garde, et la fiche du business les
+    montre ; en prod, Resend, avec une clé par produit, depuis un
+    sous-domaine de Serge ;
+  - le relecteur a sa propre boîte, une adresse par essai (la réception
+    de Resend), et les outils Stripe du mode test pour finir un
+    abonnement ;
+  - une demande à Julien gèle la tâche jusqu'à sa réponse (« Répondre »
+    ou « Faire sans ») ;
+  - un ticket Discord commence par « En bref » et se lit en entier par
+    « Voir en entier » ;
+  - pas d'adresse de contact (lot 16) ; l'éditeur des mentions légales
+    est Julien Pesquet.
+  Reste à faire par Clem : le compte Resend, son domaine d'envoi et sa
+  réception, la clé `resend.key`, et les deux réglages de la page Policy
+  ([`docs/installation/DOMAINES.md`](docs/installation/DOMAINES.md)).
+- [ ] **Lot 12 « Jusqu'aux premières ventes ».** Mettre en base les
   tables, les liens et les invocations qui mènent un business de son POC
   en ligne jusqu'à ses premières ventes : les campagnes de prospection
   (leur début, leur fin), trouver des prospects (étape 3), mesurer et
@@ -139,9 +157,9 @@ conversation (lot 8 bis, décisions Q85 et Q86), la grille de points
   principal (étape 4), vendre en masse le produit fini, tel qu'il sort de
   la construction, et enregistrer les ventes (étape 6), les places de test
   et l'étape 1 qui repart toute seule. Le détail est dans
-  [`docs/LOT11_CONCEPTION.md`](docs/LOT11_CONCEPTION.md) (décisions Q92
+  [`docs/LOT12_CONCEPTION.md`](docs/LOT12_CONCEPTION.md) (décisions Q92
   et Q93).
-- [ ] **Lot 12 « Web ».** On donne à Serge de quoi chercher, lire des
+- [ ] **Lot 13 « Web ».** On donne à Serge de quoi chercher, lire des
   pages et agir sur n'importe quel site : créer un compte, publier,
   écrire. On le met tard parce que c'est un gros chantier, mais plusieurs
   tâches des étapes 3 et 6 en dépendent. Il part du bac à sable, de
@@ -152,18 +170,18 @@ conversation (lot 8 bis, décisions Q85 et Q86), la grille de points
   à LinkedIn, Instagram, Facebook ou n'importe quel site, avec une
   invocation temporaire « Envoyer le premier LinkedIn » pour le tester
   (Q79).
-- [ ] **Lot 13 « L'éditeur sans code ».** Une page de Mission Control
+- [ ] **Lot 14 « L'éditeur sans code ».** Une page de Mission Control
   pour modifier le pipeline en direct et créer une invocation de toutes
   pièces : ajouter ou retirer des invocations, changer leur ordre, leur
   rôle, leur modèle, ce qu'elles voient et où elles écrivent, sans
   toucher au code. Il n'est possible qu'une fois le lot 6
   fait.
-- [ ] **Lot 14 « Les logiciels ».** Construire et essayer des produits
+- [ ] **Lot 15 « Les logiciels ».** Construire et essayer des produits
   qui ne sont pas des services web : une application de bureau, une
   extension de navigateur, un bot. Il faudra un bac à sable avec un vrai
   bureau, où une invocation lance le logiciel, voit son écran et clique
   dedans, comme l'interface web du lot 10 le fait pour une page (Q91).
-- [ ] **Lot 15 « Faire vivre les produits ».** Un produit qui a des
+- [ ] **Lot 16 « Faire vivre les produits ».** Un produit qui a des
   clients s'entretient : ce n'est plus un pipeline avec un début et une
   fin. Ce lot clarifie puis imagine le système complet d'entretien des
   produits qui existent : le point de la semaine et ce que fait chacune de
@@ -171,7 +189,7 @@ conversation (lot 8 bis, décisions Q85 et Q86), la grille de points
   service sur mesure (ajouter à un produit existant les fonctionnalités
   qu'un client demande, en rappelant le constructeur), les livraisons,
   les impayés et les remboursements, la maintenance et la fermeture d'un
-  business. Ses tâches sont dans la partie « Lot 15 » plus bas ; les
+  business. Ses tâches sont dans la partie « Lot 16 » plus bas ; les
   décisions qu'elles citent sont à revoir (Q92, Q93).
 
 ---
@@ -197,11 +215,11 @@ discutable, qui peut un jour changer, se règle depuis Mission Control.**
   - lot 10 (construire) : les bornes de la construction, qui deviennent
     les ressources d'un chantier, les tours d'outils et les passages
     (partie 11 de [`docs/LOT10_CONCEPTION.md`](docs/LOT10_CONCEPTION.md)) ;
-  - lot 11 (étapes 3, 4, 6, 7 et 8) : la répartition du budget, les invitations
+  - lot 12 (étapes 3, 4, 6, 7 et 8) : la répartition du budget, les invitations
     LinkedIn par mois, les devis et les essais de caisse, la consolidation
     de la mémoire (dont la leçon retirée après plusieurs démentis :
     aucune fonction en marche ne l'appelle aujourd'hui) ;
-  - lot 12 (web) : le plafond du navigateur, les recherches en mémoire par
+  - lot 13 (web) : le plafond du navigateur, les recherches en mémoire par
     cycle.
 - La voix est réglée en base comme une invocation (« Parler au
   téléphone ») : son prompt, ses modèles, sa durée maximale et ses tours
@@ -319,8 +337,8 @@ discutable, qui peut un jour changer, se règle depuis Mission Control.**
   découverte de contacts. Pour chacune, il faut soit la décrire en base
   dans le nouveau pipeline, soit la supprimer, et dans les deux cas
   supprimer le code qui lui était propre. On ne garde pas de code mort.
-  Le lot 11 en remplace cinq, et le point de la semaine du lot 15 trois
-  autres (voir [`docs/LOT11_CONCEPTION.md`](docs/LOT11_CONCEPTION.md),
+  Le lot 12 en remplace cinq, et le point de la semaine du lot 16 trois
+  autres (voir [`docs/LOT12_CONCEPTION.md`](docs/LOT12_CONCEPTION.md),
   partie 13).
 
 - [ ] **L'éditeur sans code dans Mission Control.** C'est le but du
@@ -363,11 +381,11 @@ discutable, qui peut un jour changer, se règle depuis Mission Control.**
   la table des adresses de contact). Par e-mail et par téléphone, on ne
   contacte que des professionnels, et jamais une adresse générique
   (`contact@`, `info@`…) : on cherche une personne nommée, avec son rôle
-  et son adresse directe (Q93). Au lot 11, elle cherche avec la
+  et son adresse directe (Q93). Au lot 12, elle cherche avec la
   recherche web et l'interface web du lot 10, et rend ses prospects par
   paquets de 10 (voir
-  [`docs/LOT11_CONCEPTION.md`](docs/LOT11_CONCEPTION.md), partie 4) ; le
-  lot 12 lui donnera SearXNG et les comptes.
+  [`docs/LOT12_CONCEPTION.md`](docs/LOT12_CONCEPTION.md), partie 4) ; le
+  lot 13 lui donnera SearXNG et les comptes.
 
 - [ ] **Prospecter sur LinkedIn.** LinkedIn est un canal important pour
   vendre à des professionnels. Serge l'utilise avec son propre compte, à
@@ -451,9 +469,9 @@ discutable, qui peut un jour changer, se règle depuis Mission Control.**
 
 ## Étape 6 — Prospection lourde
 
-La vente en masse du produit fini est au lot 11 (voir
-[`docs/LOT11_CONCEPTION.md`](docs/LOT11_CONCEPTION.md), partie 7) ; le
-suivi pendant la vente est au lot 15.
+La vente en masse du produit fini est au lot 12 (voir
+[`docs/LOT12_CONCEPTION.md`](docs/LOT12_CONCEPTION.md), partie 7) ; le
+suivi pendant la vente est au lot 16.
 
 ---
 
@@ -469,15 +487,15 @@ suivi pendant la vente est au lot 15.
   sont pas.
   Et chaque business arrêté ou fermé doit obligatoirement produire au
   moins une leçon, pour ne pas refaire les mêmes erreurs. Pour un business
-  arrêté, c'est au lot 11 (« Tirer la leçon d'un business arrêté ») ; pour
-  un business fermé, au lot 15.
+  arrêté, c'est au lot 12 (« Tirer la leçon d'un business arrêté ») ; pour
+  un business fermé, au lot 16.
 
 ---
 
-## Lot 15 — Faire vivre les produits
+## Lot 16 — Faire vivre les produits
 
 Ces tâches viennent des étapes 5, 6 et 8. Elles décrivent ce qui avait été
-décidé (Q43 à Q47) ; le lot 15 commence par les clarifier, puis imagine le
+décidé (Q43 à Q47) ; le lot 16 commence par les clarifier, puis imagine le
 système complet (Q92, Q93).
 
 - [ ] **Faire le point chaque semaine sur le business principal.** Une
@@ -487,6 +505,12 @@ système complet (Q92, Q93).
   et arrêter passent par Julien. Cette invocation remplace trois
   invocations qui existent aujourd'hui sans être appelées (plan de passage
   à l'échelle, options de pivot, arbitre du budget).
+
+- [ ] **L'adresse de contact des produits.** Un client écrit au produit
+  (une question, un mot de passe, la suppression de son compte) : ses
+  e-mails arrivent dans la boîte de Serge, rattachés au produit et au
+  client, et Serge y répond. D'ici là, aucun produit n'a d'adresse ni de
+  formulaire de contact, et les prompts le disent (Q96).
 
 - [ ] **Un service sur mesure.** Proposer à un client d'ajouter à un
   produit existant les fonctionnalités qu'il demande, en rappelant le
@@ -550,7 +574,7 @@ système complet (Q92, Q93).
 - [ ] **Couper tout seul un flux qui ne ramène que du bruit.** Au lot 7,
   un flux se coupe à la main. Plus tard : la coupure automatique d'un flux
   après 5 cycles de bruit (Q65). Le cycle qui repart tout seul quand une
-  place se libère est au lot 11 (Q92). Avant
+  place se libère est au lot 12 (Q92). Avant
   le vrai lancement de Serge, retirer le bouton « Effacer les idées
   (test) » (le lister dans la section `deleted` de `pipeline.yaml`).
 
@@ -559,7 +583,7 @@ système complet (Q92, Q93).
   essai », « Créer le contact d'essai », « Écrire le premier message »,
   « Préparer le premier appel ») servent à essayer l'e-mail et la voix
   (lot 8, Q79). Les lister dans la section `deleted` de `pipeline.yaml`
-  quand les vraies invocations de prospection (lot 11) écriront les
+  quand les vraies invocations de prospection (lot 12) écriront les
   premiers messages.
   Même chose pour les essais du lot 10 (Q91) : « Essayer le chantier »,
   « Essayer l'interface web », « Publier le chantier d'essai »,
@@ -572,7 +596,7 @@ système complet (Q92, Q93).
   qu'ils permettent (un business qui naît choisi pour un POC ou en
   construction de son produit, un plan qui naît validé). Le bouton
   « Construire le vrai produit » (lancer_produit) part quand l'étape 4
-  (lot 11) choisira le business principal. Les boutons « Supprimer de Stripe » restent : ils
+  (lot 12) choisira le business principal. Les boutons « Supprimer de Stripe » restent : ils
   nettoient après un business d'essai.
 
 - [ ] **La consolidation de la mémoire dans le pipeline.** Aujourd'hui,

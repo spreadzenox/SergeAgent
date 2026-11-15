@@ -134,12 +134,25 @@ BASE: tuple[Capability, ...] = (
     Capability(
         'request_capability',
         'Demander une nouvelle capacité',
-        'Ouvre une demande à Julien quand il manque à Serge un outil ou un'
-        ' accès pour faire ce qu’on lui demande.',
+        'Ouvre une demande à Julien quand il manque à Serge un outil, un'
+        ' accès ou une information pour faire ce qu’on lui demande. La'
+        ' tâche s’arrête et attend sa réponse ; elle repart du début avec'
+        ' sa réponse dans ses paramètres (« reponses_de_julien »).',
         'serge/demande_capacite.py',
         (
-            Param('need', 'text', True, 'Ce qui manque, en une phrase.'),
-            Param('context', 'text', False, 'Pourquoi on en a besoin.'),
+            Param(
+                'summary',
+                'text',
+                True,
+                'Ce que tu demandes, en une phrase simple et courte.',
+            ),
+            Param(
+                'need',
+                'text',
+                True,
+                'Ce qui manque, en détail : aussi long qu’il le faut.',
+            ),
+            Param('context', 'text', False, 'Pourquoi tu en as besoin.'),
         ),
     ),
     Capability(

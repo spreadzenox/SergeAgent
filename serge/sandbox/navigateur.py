@@ -38,12 +38,8 @@ from urllib.parse import urlsplit, urlunsplit
 from serge.db.store import append_event, utcnow
 from serge.paths import config_root, files_root
 from serge.policy_store import policy_en_vigueur
-from serge.sandbox.chantier import (
-    chantier_id,
-    container_name,
-    ensure_network,
-)
-from serge.sandbox.docker import DockerError, docker, journal
+from serge.sandbox.chantier import chantier_id, container_name
+from serge.sandbox.docker import DockerError, docker, ensure_network, journal
 from serge.secrets import read_secret_value
 
 CONTAINER = 'serge-navigateur'

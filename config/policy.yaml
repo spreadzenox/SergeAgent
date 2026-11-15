@@ -19,7 +19,9 @@
 # - canaux, jours, choix : plusieurs valeurs parmi « choices » ([valeur,
 #   libellé]) ;
 # - fenetres : des plages horaires [h, min, h, min] ;
-# - nombres : une liste de nombres entiers entre min et max.
+# - nombres : une liste de nombres entiers entre min et max ;
+# - texte : un texte court (200 caractères au plus), un nom de domaine par
+#   exemple.
 # Chaque réglage d'ici est lu par au moins un programme (un test le vérifie).
 schema_version: 2
 
@@ -48,6 +50,17 @@ sections:
         kind: eur
         min: 0
         max: 50
+        step: 0.5
+      - id: task_max_eur
+        value: 5.0
+        title: Dépense maximale d’une tâche
+        help: >-
+          Ce qu’une seule tâche peut coûter en appels aux modèles. Au-delà,
+          elle s’arrête en échec, et un ticket vous prévient. Exemple : une
+          construction qui tourne en rond. 0 : pas de plafond.
+        kind: eur
+        min: 0
+        max: 100
         step: 0.5
       - id: eur_per_usd
         value: 0.9
@@ -914,6 +927,61 @@ sections:
         min: 512
         max: 8192
         step: 256
+      - id: boite.image
+        value: axllent/mailpit:v1.32.0
+        title: Boîte d’essai, image
+        help: >-
+          Le Mailpit qui garde les e-mails des produits en chantier et en
+          staging : rien n’en sort, le relecteur et Mission Control les y
+          lisent.
+        kind: liste
+        choices: [axllent/mailpit:v1.32.0]
+      - id: boite.port
+        value: 18925
+        title: Boîte d’essai, port sur le serveur
+        help: >-
+          Le port, sur le serveur seulement, par lequel Serge lit la boîte
+          d’essai. À changer s’il est pris par un autre programme.
+        kind: curseur
+        min: 1024
+        max: 65535
+        step: 1
+
+  - id: courriel
+    title: E-mails des produits
+    why: >-
+      Les e-mails qu’envoient les produits (valider une inscription,
+      changer un mot de passe) et la boîte où le relecteur les lit (lot 11,
+      décision Q96). En chantier et en staging, ils restent dans la boîte
+      d’essai ; en prod, ils partent par Resend.
+    settings:
+      - id: domaine_envoi
+        value: ''
+        title: Domaine d’envoi
+        help: >-
+          Un sous-domaine de Serge vérifié chez Resend, par exemple
+          envoi.mon-domaine.com : chaque produit envoie depuis
+          <son nom>@ce domaine. Vide : aucun produit ne peut passer en prod.
+        kind: texte
+      - id: boite_relecteur
+        value: ''
+        title: Domaine de la boîte du relecteur
+        help: >-
+          Le domaine dont Resend reçoit les e-mails (celui en .resend.app de
+          votre compte, ou un sous-domaine de Serge) : le relecteur
+          s’inscrit avec relecteur-<essai>@ce domaine. Vide : seulement en
+          staging, dans la boîte d’essai.
+        kind: texte
+      - id: attente_s
+        value: 60
+        title: Attente d’un e-mail, en secondes
+        help: >-
+          Combien de temps le relecteur attend un e-mail (de validation, par
+          exemple) avant de conclure qu’il n’arrive pas.
+        kind: curseur
+        min: 5
+        max: 300
+        step: 5
 
 # « tel réglage ≤ tel autre » (« < » : strictement plus petit).
 relations:

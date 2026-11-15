@@ -59,6 +59,7 @@ from serge.interpreter.queue import process_one  # noqa: E402
 from serge.interpreter.tools import run_tool  # noqa: E402
 from serge.llm.client import ChatResult, ToolCall  # noqa: E402
 from serge.mc.proj_faits import project_fait_pipe  # noqa: E402
+from serge.policy_store import set_setting  # noqa: E402
 from serge.sandbox import publier  # noqa: E402
 from serge.tickets.acts import APPROVE, REJECT  # noqa: E402
 from serge.tickets.lifecycle import decide  # noqa: E402
@@ -163,6 +164,8 @@ class _Services(http.server.BaseHTTPRequestHandler):
                 ]
             },
             '/v1/refunds': {'id': 're_1', 'status': 'succeeded'},
+            # Resend : la clé d'envoi d'un produit (lot 11).
+            '/api-keys': {'id': 'cle_1', 'token': 're_produit_faux'},
         }.get(chemin, {'id': chemin.rsplit('/', 1)[-1]})
 
     do_GET = do_POST = do_PUT = _repondre  # noqa: N815 — les noms de http.server
@@ -384,6 +387,7 @@ class Etape5Tests(unittest.TestCase):
             ('stripe-produits-live.key', 'rk_live_faux'),
             ('cloudflare-registrar.key', 'cf_registrar_faux'),
             ('cloudflare-infra.key', 'cf_infra_faux'),
+            ('resend.key', 're_maitresse_faux'),
         ):
             (secrets / nom).write_text(valeur + '\n')
         (secrets.parent / 'cloudflare-account-id').write_text('acct_test\n')
@@ -427,6 +431,10 @@ class Etape5Tests(unittest.TestCase):
         )
         self.conn.execute(
             "UPDATE triggers SET enabled=0 WHERE event IN ('every', 'at')"
+        )
+        # Les e-mails des produits partent d'un sous-domaine de Serge (Q96).
+        set_setting(
+            self.conn, 'courriel.domaine_envoi', 'envoi.exemple.fr', 'test'
         )
         set_heartbeat(self.conn, True)
         self.conn.commit()
@@ -536,6 +544,15 @@ class Etape5Tests(unittest.TestCase):
             'STRIPE_SECRET_KEY=sk_test_faux',
             self._env(f'serge-chantier-{venture}-produit'),
         )
+        # En staging, les e-mails restent dans la boîte d'essai.
+        staging = f'serge-staging-{venture}-produit'
+        self.assertIn('SMTP_HOST=serge-boite', self._env(staging))
+        self.assertIn(
+            'MAIL_FROM=calculatrice@envoi.exemple.fr', self._env(staging)
+        )
+        self.assertTrue(
+            (self.dossier / 'docker/containers/serge-boite').is_dir()
+        )
         self.assertEqual(
             self._un(
                 'SELECT hostname, status FROM deployments'
@@ -595,6 +612,24 @@ class Etape5Tests(unittest.TestCase):
         self.assertIn(
             'STRIPE_SECRET_KEY=rk_live_faux',
             self._env(f'serge-prod-{venture}-produit'),
+        )
+        # En prod, ils partent par Resend, avec la clé du produit, créée
+        # une fois et rangée à part.
+        prod = self._env(f'serge-prod-{venture}-produit')
+        for variable in (
+            'SMTP_HOST=smtp.resend.com',
+            'SMTP_USER=resend',
+            'SMTP_PASS=re_produit_faux',
+            'MAIL_FROM=calculatrice@envoi.exemple.fr',
+        ):
+            self.assertIn(variable, prod)
+        cle = self._requetes('/api-keys')[0]
+        self.assertEqual(
+            (cle['auth'], cle['corps']['permission']),
+            ('Bearer re_maitresse_faux', 'sending_access'),
+        )
+        self.assertNotIn(
+            're_produit_faux', json.dumps(modeles.par_role, ensure_ascii=False)
         )
         rembourse = self._requetes('/v1/refunds')[0]
         self.assertEqual(
@@ -819,6 +854,29 @@ class Etape5Tests(unittest.TestCase):
             self._un('SELECT lifecycle FROM ventures WHERE id=?', venture),
             ('PRODUCT_BUILDING',),
         )
+
+    def test_sans_domaine_d_envoi_la_prod_rate(self) -> None:
+        set_setting(self.conn, 'courriel.domaine_envoi', '', 'test')
+        self.conn.commit()
+        modeles = FauxModeles(['calculatrice-pro.fr'])
+        venture = self._calculatrice(modeles)
+        self._repondre('PLAN_PRODUIT', 'valider')
+        self._vider(modeles)
+        self._repondre('TEST_PRODUIT', 'valider')
+        with redirect_stderr(io.StringIO()):
+            self._vider(modeles)
+        self.assertEqual(
+            self._un(
+                "SELECT status, last_error FROM deployments WHERE target='prod'"
+                ' AND venture_id=?',
+                venture,
+            ),
+            (
+                'failed',
+                'pas de domaine d’envoi des e-mails (page Policy, E-mails)',
+            ),
+        )
+        self.assertNotIn('payer', modeles.par_role)
 
     def test_l_adresse_du_serveur(self) -> None:
         self.assertEqual(

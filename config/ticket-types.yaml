@@ -82,14 +82,18 @@ types:
     fields: [contenu]
     buttons: [discuter_fil]
   REQUESTED:
-    role: Demandes d'évolution P3 des LLM (lecture seule owner, batch Meta-Grok)
+    role: &role_demande >-
+      Une invocation demande à Julien ce qui lui manque (un outil, un accès,
+      une information). Sa tâche attend la réponse, sans limite de temps :
+      « Répondre » (un texte libre) ou « Faire sans » la fait repartir du
+      début, avec la réponse.
     render: {color: 5793266, emoji: "💡"}
-    urgency: lecture_seule
+    urgency: normale
     expiry_hours: null
-    default: rien
-    default_detail: Relu en batch consolidation, jamais bloquant.
-    fields: [demande, contexte, point_llm]
-    buttons: [discuter_fil]
+    default: attend
+    default_detail: La tâche qui demande attend la réponse, sans limite de temps.
+    fields: &champs_demande [en_bref, demande, contexte, point_llm]
+    buttons: &boutons_demande [reponse_libre, faire_sans, discuter_fil]
   OWNER_ORDER:
     role: Ordres/questions/veto/infos owner vers Serge (sens inverse)
     render: {color: 5763719, emoji: "📢"}
@@ -144,10 +148,12 @@ types:
     rester_ouvert: true
     # Ce que montre le ticket, dans cet ordre : des outils en base, et la
     # colonne de l'envoi que chacun reçoit (Q50).
-    contenu:
+    contenu: &contenu_conversation
       - {label: Le business, tool: fiche_business, params: {venture_id: venture_id}}
       - {label: Le prospect, tool: fiche_contact, params: {contact_id: contact_id}}
-      - {label: Le fil, tool: fil_du_contact, params: {contact_id: contact_id}}
+      # « fin » : la carte Discord garde la fin du fil (les derniers
+      # messages), pas son début.
+      - {label: Le fil, tool: fil_du_contact, params: {contact_id: contact_id}, fin: true}
       - {label: Le brouillon de Serge, tool: brouillon_de_l_envoi, params: {touch_id: id}}
     fields: [Le business, Le prospect, Le fil, Le brouillon de Serge, Pourquoi, La question]
     buttons: [envoyer_brouillon, ma_reponse, reecrire, ne_rien_envoyer]
@@ -202,13 +208,14 @@ types:
     default_detail: >-
       Le plan attend un humain, sans limite de temps : il fixe le prix et
       le nom de domaine (Q91).
-    contenu:
+    contenu: &contenu_plan_produit
+      - {label: En bref, tool: plan_produit_en_bref, params: {plan_id: id}}
       - {label: Le business, tool: fiche_business, params: {venture_id: venture_id}}
       - {label: Le plan, tool: plan_produit_par_numero, params: {plan_id: id}}
       - {label: La critique, tool: critiques_du_plan, params: {plan_id: id}}
       - {label: La fiche produit, tool: fiche_produit, params: {venture_id: venture_id}}
       - {label: Les demandes des clients, tool: demandes_des_clients, params: {venture_id: venture_id}}
-    fields: [Le business, Le plan, La critique, La fiche produit, Les demandes des clients, Pourquoi]
+    fields: &champs_plan_produit [En bref, Le business, Le plan, La critique, La fiche produit, Les demandes des clients, Pourquoi]
     buttons: [valider, a_corriger, arreter_business, discuter]
   TEST_PRODUIT:
     role: >-
@@ -260,3 +267,46 @@ types:
     default_detail: Le passage attend un feu vert, sans limite de temps.
     fields: [Le lien, Ce qui passe]
     buttons: [passer, ne_pas_passer]
+
+# Changer un type déjà en base (serge/tickets/types.py) : une seule fois par
+# instance, et seulement si la valeur en base est encore « from ».
+changes:
+  - id: demande_bloquante
+    why: >-
+      Une demande gèle la tâche qui la fait jusqu'à la réponse de Julien
+      (lot 11) ; le ticket dit d'abord en bref ce qui est demandé.
+    type: REQUESTED
+    set:
+      role:
+        from: Demandes d'évolution P3 des LLM (lecture seule owner, batch Meta-Grok)
+        to: *role_demande
+      fields: {from: [demande, contexte, point_llm], to: *champs_demande}
+      buttons: {from: [discuter_fil], to: *boutons_demande}
+  - id: plan_produit_en_bref
+    why: Le ticket du plan dit d'abord le nom, le domaine et le prix (lot 11).
+    type: PLAN_PRODUIT
+    set:
+      contenu:
+        from:
+          - {label: Le business, tool: fiche_business, params: {venture_id: venture_id}}
+          - {label: Le plan, tool: plan_produit_par_numero, params: {plan_id: id}}
+          - {label: La critique, tool: critiques_du_plan, params: {plan_id: id}}
+          - {label: La fiche produit, tool: fiche_produit, params: {venture_id: venture_id}}
+          - {label: Les demandes des clients, tool: demandes_des_clients, params: {venture_id: venture_id}}
+        to: *contenu_plan_produit
+      fields:
+        from: [Le business, Le plan, La critique, La fiche produit, Les demandes des clients, Pourquoi]
+        to: *champs_plan_produit
+  - id: conversation_fin_du_fil
+    why: >-
+      La carte montre maintenant le début d'un long bloc ; pour le fil, ce
+      sont les derniers messages qui comptent (lot 11).
+    type: CONVERSATION
+    set:
+      contenu:
+        from:
+          - {label: Le business, tool: fiche_business, params: {venture_id: venture_id}}
+          - {label: Le prospect, tool: fiche_contact, params: {contact_id: contact_id}}
+          - {label: Le fil, tool: fil_du_contact, params: {contact_id: contact_id}}
+          - {label: Le brouillon de Serge, tool: brouillon_de_l_envoi, params: {touch_id: id}}
+        to: *contenu_conversation

@@ -75,8 +75,8 @@ prêt pour le test léger, en test léger, test léger fini, prêt pour le test
 lourd, en test lourd, passage à l'échelle, pivot, extension, arrêté, et
 invalide.
 
-Julien a décidé le parcours suivant ; le lot 11 en fixe les statuts
-(décision Q92, détail dans [`LOT11_CONCEPTION.md`](LOT11_CONCEPTION.md)) :
+Julien a décidé le parcours suivant ; le lot 12 en fixe les statuts
+(décision Q92, détail dans [`LOT12_CONCEPTION.md`](LOT12_CONCEPTION.md)) :
 
 ```text
 CANDIDATE        trouvé par l'étape 1
@@ -92,8 +92,8 @@ PRODUCT_BUILDING → PRODUCT_READY     construction (étape 5)
 FULL_RUNNING     prospection lourde et ventes (étape 6)
    ↓
 MAINTENANCE      plus de nouveaux prospects, mais on livre, on répond,
-   ↓             on corrige et on encaisse (lot 15)
-CLOSED           plus rien à faire : fermé et archivé (lot 15)
+   ↓             on corrige et on encaisse (lot 16)
+CLOSED           plus rien à faire : fermé et archivé (lot 16)
 ```
 
 Un business mis de côté (`PARKED`) a été testé mais pas choisi. Il libère
@@ -102,7 +102,7 @@ que son test date de moins de 60 jours. Un business arrêté (`KILLED`)
 n'avait aucun client, ou un test sous les seuils (Q92). Chaque changement
 de statut est écrit au journal, avec qui l'a décidé, quand et pourquoi.
 La vie d'un business qui a des clients (`MAINTENANCE`, `CLOSED`) sera
-imaginée au lot 15.
+imaginée au lot 16.
 
 ### Les places de test
 
@@ -168,8 +168,23 @@ Le runner tourne en continu, en deux copies, une par file
   l'historique contient des résultats d'outils : lire en cache coûte dix fois
   moins que lire normalement, écrire 25 % de plus, donc le gain commence au
   troisième appel d'une conversation. Les autres fournisseurs cachent seuls.
-  À vérifier sur un vrai appel : le coût de chaque appel d'une boucle doit
-  cesser de croître à chaque tour.
+  Le cache est propre à chaque fournisseur : un modèle d'Anthropic part
+  donc d'abord chez Anthropic, les autres fournisseurs seulement s'il ne
+  répond pas (le 15 novembre 2026, un appel sur deux partait chez un autre,
+  sans cache, et coûtait dix fois plus). Chaque appel note chez qui il est
+  parti et combien de jetons il a lus et écrits en cache
+  (`llm_usage.provider`, `cached_tokens`, `cache_write_tokens`).
+- Une tâche s'arrête en plein travail, avant son appel au modèle ou son
+  outil suivant : si Serge est coupé (elle repart du début au
+  redémarrage) ; si elle a dépensé son plafond (« Dépense maximale d'une
+  tâche », page Policy, 5 € au départ : elle échoue et un ticket prévient
+  Julien et Clem) ; si elle demande quelque chose à Julien (« Demander une
+  nouvelle capacité » : elle est gelée, statut `blocked`, jusqu'à sa
+  réponse, puis repart du début avec la réponse dans ses paramètres,
+  `reponses_de_julien`). Sans crédit chez OpenRouter, elle attend une
+  demi-heure au lieu d'échouer, et un ticket prévient. Chaque appel
+  d'outil est noté au journal (`tool.call` : l'outil, ses paramètres en
+  court, s'il a marché).
 - Deux plafonds de dépense, réglés sur la page Policy : celui du jour (par
   exemple 5 €) et celui du mois (par exemple 50 €), qui borne ce que Serge
   nous coûte en IA ; les achats de Serge pour ses business n'y comptent pas.

@@ -55,7 +55,12 @@ BUTTONS: dict[str, dict[str, Any]] = {
     'garder': {'label': 'Garder', 'style': 3, 'emoji': '✅'},
     'modifier': {'label': 'Modifier', 'style': 2, 'emoji': '✏️'},
     'jeter': {'label': 'Jeter', 'style': 4, 'emoji': '🗑️'},
+    'faire_sans': {'label': 'Faire sans', 'style': 2, 'emoji': '⏭️'},
+    # Ajouté de lui-même quand un champ de la carte est coupé : poste tout
+    # le ticket dans son fil (``serge/discord/interactions.py``).
+    'voir_en_entier': {'label': 'Voir en entier', 'style': 2, 'emoji': '📄'},
 }
+TOUT = 'voir_en_entier'
 TERMINAL = frozenset(
     {
         'APPROVED',
@@ -142,36 +147,80 @@ def _qcm_row(ticket_id: str, options: list[str], disabled: bool) -> dict:
 
 
 # Ce qu'une carte Discord montre au plus : 1 024 caractères par champ, et
-# une marge sous les 6 000 de tout le message.
+# une marge sous les 6 000 de tout le message. Au-delà, la carte montre le
+# début, et « Voir en entier » poste tout le texte dans le fil.
 CHAMP_MAX = 1024
 CARTE_MAX = 5000
+SUITE = '… (la suite : « Voir en entier »)'
 
 
-def _coupe(texte: str, place: int) -> str:
-    """Un texte trop long garde sa fin (les derniers messages d'un fil)."""
-    return texte if len(texte) <= place else '…' + texte[-(place - 1) :]
+def _coupe(texte: str, place: int, fin: bool) -> str:
+    """Un texte trop long garde son début ; ``fin`` : sa fin (les derniers
+    messages d'un fil, réglé sur le bloc du type de ticket)."""
+    if len(texte) <= place:
+        return texte
+    if fin:
+        return '…' + texte[-(place - 1) :]
+    return texte[: place - len(SUITE)] + SUITE
+
+
+def _fins(spec: Mapping[str, Any]) -> set[str]:
+    """Les champs dont la carte garde la fin (``fin: true`` sur un bloc)."""
+    return {
+        str(bloc.get('label') or '')
+        for bloc in spec.get('contenu') or []
+        if isinstance(bloc, dict) and bloc.get('fin')
+    }
 
 
 def _fields(
     ticket: Mapping[str, Any], spec: Mapping[str, Any]
-) -> list[dict[str, Any]]:
+) -> tuple[list[dict[str, Any]], bool]:
     """Un champ par valeur du ticket, dans l'ordre de son type ; puis, s'il
     est tranché, qui l'a tranché et comment (la même carte chez tous les
-    administrateurs, décision Q85)."""
+    administrateurs, décision Q85). Vrai en second si un champ est coupé."""
     reste = CARTE_MAX
     fields = []
+    fins = _fins(spec)
+    coupe = False
     for key, value in champs_carte(ticket, spec):
         place = min(CHAMP_MAX, reste)
-        if place < 20:
+        if place < 60:
+            coupe = True
             break
-        texte = _coupe(str(value) or '—', place)
+        brut = str(value) or '—'
+        texte = _coupe(brut, place, str(key) in fins)
+        coupe = coupe or texte != brut
         reste -= len(texte)
         fields.append({'name': str(key)[:256], 'value': texte})
     if ticket.get('tranche'):
         fields.append(
             {'name': 'Tranché', 'value': str(ticket['tranche'])[:CHAMP_MAX]}
         )
-    return fields
+    return fields, coupe
+
+
+def texte_entier(
+    ticket: Mapping[str, Any], spec: Mapping[str, Any], taille: int = 1900
+) -> list[str]:
+    """Tout le ticket, champ par champ, en messages Discord (2 000
+    caractères au plus chacun), coupés entre deux lignes, sinon entre deux
+    mots."""
+    messages: list[str] = []
+    for key, value in champs_carte(ticket, spec):
+        reste = f'**{key}**\n{strip_ids(str(value) or "—")}'
+        while reste:
+            if len(reste) <= taille:
+                messages.append(reste)
+                break
+            # Entre deux lignes, sinon entre deux mots.
+            coupure = reste.rfind('\n', 0, taille)
+            if coupure <= taille // 2:
+                coupure = reste.rfind(' ', 0, taille)
+            coupure = coupure if coupure > taille // 2 else taille
+            messages.append(reste[:coupure])
+            reste = reste[coupure:].lstrip('\n ')
+    return messages
 
 
 def render_card(
@@ -210,6 +259,7 @@ def render_card(
             else 'Sans expiry'
         )
     )
+    champs, coupe = _fields(ticket, spec)
     embed: dict[str, Any] = {
         'title': title,
         'description': f'{ticket.get("type")} • {ticket.get("state")}',
@@ -220,7 +270,7 @@ def render_card(
                 'value': strip_ids(str(field['value'])),
                 'inline': False,
             }
-            for field in _fields(ticket, spec)
+            for field in champs
         ],
         'footer': {'text': strip_ids(footer)[:2048]},
     }
@@ -286,6 +336,11 @@ def render_card(
                 )
                 continue
             row.append(_button(ticket_id, name, dead))
-        if row:
-            components.append({'type': 1, 'components': row[:5]})
+        if coupe:
+            # Lire tout le ticket reste possible une fois tranché.
+            row.append(_button(ticket_id, TOUT, False))
+        for debut in range(0, len(row), 5):
+            components.append(
+                {'type': 1, 'components': row[debut : debut + 5]}
+            )
     return {'embeds': [embed], 'components': components[:5]}

@@ -20,7 +20,7 @@ lui-même avant qu'aucun prospect ne le voie.
 **Seulement des produits web.** Au lot 10, Serge construit des services
 web, payants pour le produit fini : on paie pour avoir un compte et
 utiliser le service. Les logiciels (application de bureau, extension de
-navigateur, bot) attendent le lot 14.
+navigateur, bot) attendent le lot 15.
 
 Le lot se livre en sept PR, l'une après l'autre ; chacune se fusionne dès
 que sa CI est verte, et Clem l'essaie dans Mission Control (décision Q91) :
@@ -135,13 +135,13 @@ programme écoute sur le port donné par la variable `PORT`.
 
 Une invocation doit voir une page et y agir comme un humain. C'est ce
 dont ont besoin le constructeur, pour vérifier son travail, et le
-relecteur, qui ne fait que ça. Le lot 12 réutilisera la même interface
+relecteur, qui ne fait que ça. Le lot 13 réutilisera la même interface
 pour créer des comptes sur n'importe quel site.
 
 **Un navigateur Chrome dans son propre conteneur**, piloté par Serge avec
 Playwright, déjà installé. Le navigateur ne tourne jamais dans le
 programme de Serge : une page inconnue ne peut pas l'atteindre. Une
-session de navigateur par tâche ; le lot 12 ajoutera une session par
+session de navigateur par tâche ; le lot 13 ajoutera une session par
 compte, qui garde ses cookies.
 
 **Trois outils**, chacun une capacité générale (lot 10, PR 2) :
@@ -183,8 +183,10 @@ outils. Une session (un onglet et ses cookies) par tâche, fermée à la fin
 de la tâche. Le navigateur (profil « navigateur » de la page Policy :
 image `chromedp/headless-shell`, 2 Go de mémoire) et les chantiers sont
 sur un même réseau Docker, `serge-chantiers` : l'adresse
-`http://chantier:3000` mène au chantier du business de la tâche, pour que
-le constructeur essaie le serveur qu'il vient de lancer. Une connexion
+`http://chantier:3000` mène au chantier du business de la tâche, pour
+essayer un serveur lancé dans un chantier (« Essayer l'interface web »).
+Depuis Q96, le constructeur ne navigue plus : il vérifie par des
+commandes, et seul le relecteur essaie le produit en ligne. Une connexion
 perdue au navigateur (conteneur relancé) est refaite une fois.
 
 Après chaque action, l'outil rend la page relue, en version courte : le
@@ -260,6 +262,12 @@ million de jetons écrits, deux fois le prix de Sonnet 5.5.
 
 « Concevoir » et « Challenger » restent au niveau intelligent : ils
 écrivent un plan, ils ne codent pas.
+
+Depuis Q96 (15 novembre 2026), le relecteur et le paiement test passent
+à un cinquième niveau, **« web »** (voir et cliquer des pages, un modèle
+qui lit les images, 3 $ le million de jetons au plus ; au départ
+`anthropic/claude-sonnet-5.5`) : chaque clic est un appel au modèle, et le
+meilleur modèle y coûtait trop. « Code » ne sert plus qu'à construire.
 
 ---
 
@@ -345,7 +353,7 @@ c'est la clé du vrai mode. Le POC, lui, est gratuit : il n'a pas de clé
 
 ## 6. « Appeler une API », et Stripe
 
-Cette capacité était prévue au lot 12 ; elle arrive au lot 10 (Q91, fait
+Cette capacité était prévue au lot 13 ; elle arrive au lot 10 (Q91, fait
 en PR 5). Un service est décrit en base (`api_services`) : son adresse,
 comment s'authentifier, le nom du fichier de secret à lire (jamais sa
 valeur) et le format du corps (`form` pour Stripe, `json` ailleurs). Un
@@ -451,7 +459,7 @@ ses quotas en base, comme le demande la règle de tous les lots.
   quand son POC est validé, en ligne et sa campagne prête. À l'étape 5
   (PR 7) : `PRODUCT_BUILDING` (son produit fini est en construction) puis
   `PRODUCT_READY` (en vente sur son domaine, le paiement test arrivé),
-  d'où part la prospection lourde du lot 11 (`LOT11_CONCEPTION.md`).
+  d'où part la prospection lourde du lot 12 (`LOT12_CONCEPTION.md`).
 
 ---
 
@@ -497,10 +505,10 @@ l'environnement), dire l'adresse publique du serveur (capacité « Adresse
 du serveur »), et l'état des demandes des clients (migration v49).
 
 L'étape 5 part du business principal choisi à l'étape 4, qui arrive au
-lot 11. En attendant, elle se lance par un bouton sur la fiche d'un
+lot 12. En attendant, elle se lance par un bouton sur la fiche d'un
 business, « Construire le vrai produit » (pour un business au test
 léger), ou par « Bout en bout : le produit fini d'une calculatrice » sur
-la page Système. Le lot 11 les remplacera par un lien depuis l'étape 4.
+la page Système. Le lot 12 les remplacera par un lien depuis l'étape 4.
 
 Le déroulé : concevoir le produit (avec les demandes des clients et les
 réponses des prospects), le challenger (3 tours), le ticket « Plan » (prix
@@ -523,7 +531,7 @@ lourde.
   `transactions`, que le webhook saurait rattacher. Serge l'y note ensuite
   (`kind` = `canary`, l'identifiant du business porté par le prix). Le
   rattachement des paiements par le webhook vient avec la caisse
-  (étape 8, lot 11).
+  (étape 8, lot 12).
 - **Le produit n'a jamais la clé Stripe complète de Serge** : la clé du
   mode test en staging, une clé restreinte du vrai mode en prod
   (`stripe-produits-live.key`, à créer une fois, voir
@@ -546,7 +554,7 @@ lourde.
 **Les versions suivantes** (Q41, Q43) passent par la même boucle
 « construire, publier en staging, relire ». Une version que le relecteur
 juge bonne partira seule en prod, avec un ticket d'information. Cette
-boucle viendra avec l'étape 6, au lot 11, comme le passage d'une demande
+boucle viendra avec l'étape 6, au lot 12, comme le passage d'une demande
 des clients à « livrée ».
 
 ---

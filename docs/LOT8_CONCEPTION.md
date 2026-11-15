@@ -65,7 +65,7 @@ jour ; au-delà, ils attendent le lendemain).
 
 **Ajouter un canal**, c'est donc écrire son adaptateur, ajouter sa ligne et
 ses réglages : le pipeline ne change pas. Un canal par machine virtuelle
-(LinkedIn, lot 12) aura un adaptateur qui confie l'envoi à l'agent web.
+(LinkedIn, lot 13) aura un adaptateur qui confie l'envoi à l'agent web.
 
 ---
 

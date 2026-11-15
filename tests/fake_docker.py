@@ -104,6 +104,7 @@ def _set(name: str, value: str) -> int:
 
 def _exec(args: list[str]) -> int:
     detach = stdin = False
+    env = dict(os.environ)
     i = 0
     while args[i].startswith('-'):
         if args[i] == '-d':
@@ -111,6 +112,10 @@ def _exec(args: list[str]) -> int:
         elif args[i] == '-i':
             stdin = True
         elif args[i] == '-w':
+            i += 1
+        elif args[i] == '-e':
+            nom, _, valeur = args[i + 1].partition('=')
+            env[nom] = valeur
             i += 1
         i += 1
     name, argv = args[i], args[i + 1 :]
@@ -125,11 +130,12 @@ def _exec(args: list[str]) -> int:
         print(f'{os.environ["FAKE_DOCKER_DU_MB"]}\t{work}')
         return 0
     if detach:
-        subprocess.Popen(argv, cwd=work, start_new_session=True)
+        subprocess.Popen(argv, cwd=work, start_new_session=True, env=env)
         return 0
     done = subprocess.run(
         argv,
         cwd=work,
+        env=env,
         input=sys.stdin.buffer.read() if stdin else None,
         capture_output=True,
         check=False,

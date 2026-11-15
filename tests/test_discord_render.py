@@ -11,8 +11,10 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from serge.discord.render import (  # noqa: E402
+    SUITE,
     remaining_fr,
     render_card,
+    texte_entier,
 )
 from serge.registry import load_ticket_types  # noqa: E402
 
@@ -67,6 +69,62 @@ class DiscordRenderTests(unittest.TestCase):
             buttons[0]['custom_id'].startswith('t:t_abc123def456:cest_fait')
         )
         self.assertFalse(buttons[0]['disabled'])
+
+    def test_un_long_plan_montre_son_debut_et_se_lit_en_entier(self) -> None:
+        """Un champ trop long pour la carte garde son début, avec « Voir en
+        entier » ; le bouton poste tout le texte, en messages de 2 000
+        caractères au plus, sans rien perdre (lot 11)."""
+        plan = 'Le plan commence ici.\n' + 'Une étape du plan.\n' * 300
+        ticket = {
+            'id': 't_plan',
+            'type': 'PLAN_PRODUIT',
+            'title': 'Le plan d’un produit attend ton avis',
+            'state': 'OPEN',
+            'payload': {
+                'En bref': 'nom : Calculatrice\ndomaine : calc.com\nprix : 2 €',
+                'Le plan': plan,
+            },
+        }
+        spec = self.types['PLAN_PRODUIT']
+        card = render_card(ticket, spec, now_iso=NOW)
+        champs = {f['name']: f['value'] for f in card['embeds'][0]['fields']}
+        self.assertEqual(
+            champs['En bref'],
+            'nom : Calculatrice\ndomaine : calc.com\nprix : 2 €',
+        )
+        self.assertTrue(champs['Le plan'].startswith('Le plan commence ici.'))
+        self.assertTrue(champs['Le plan'].endswith(SUITE))
+        self.assertLessEqual(len(champs['Le plan']), 1024)
+        boutons = [
+            b['custom_id'] for r in card['components'] for b in r['components']
+        ]
+        self.assertIn('t:t_plan:voir_en_entier', boutons)
+        messages = texte_entier(ticket, spec)
+        self.assertTrue(all(len(m) <= 2000 for m in messages))
+        tout = '\n'.join(messages)
+        self.assertEqual(tout.count('Une étape du plan.'), 300)
+        self.assertTrue(messages[0].startswith('**En bref**'))
+        # Une carte qui tient en entier n'a pas ce bouton.
+        court = {**ticket, 'payload': {'Le plan': 'Court.'}}
+        boutons = [
+            b['custom_id']
+            for r in render_card(court, spec, now_iso=NOW)['components']
+            for b in r['components']
+        ]
+        self.assertNotIn('t:t_plan:voir_en_entier', boutons)
+
+    def test_le_fil_d_une_conversation_garde_sa_fin(self) -> None:
+        fil = 'Premier message.\n' + 'Un message.\n' * 200 + 'Dernier message.'
+        ticket = {
+            'id': 't_conv',
+            'type': 'CONVERSATION',
+            'title': 'Un prospect attend',
+            'state': 'OPEN',
+            'payload': {'Le fil': fil},
+        }
+        card = render_card(ticket, self.types['CONVERSATION'], now_iso=NOW)
+        champs = {f['name']: f['value'] for f in card['embeds'][0]['fields']}
+        self.assertTrue(champs['Le fil'].endswith('Dernier message.'))
 
     def test_etat_terminal_boutons_morts(self) -> None:
         closed = dict(GUICHET)

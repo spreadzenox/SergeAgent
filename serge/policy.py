@@ -37,8 +37,12 @@ KINDS = (
         'liste',
         'fenetres',
         'nombres',
+        'texte',
     }
 )
+# Un réglage « texte » (un nom de domaine, par exemple) : au plus ce nombre
+# de caractères.
+TEXTE_MAX = 200
 
 
 class PolicyError(ValueError):
@@ -193,6 +197,9 @@ def check_value(setting: Setting, value: Any) -> str:
         return _check_windows(value)
     if kind == 'nombres':
         return _check_numbers(setting, value)
+    if kind == 'texte':
+        ok = isinstance(value, str) and len(value) <= TEXTE_MAX
+        return '' if ok else f'un texte de {TEXTE_MAX} caractères au plus'
     return f'sorte de réglage inconnue : {kind}'
 
 

@@ -19,6 +19,11 @@ EVENTS = {
     'task.relaunched': 'Tâche relancée',
     'task.cancelled': 'Tâche annulée',
     'task.resumed': 'Tâche reprise après un arrêt',
+    'task.cut': 'Tâche arrêtée par le coupe-circuit',
+    'task.frozen': 'Tâche gelée : elle attend Julien',
+    'task.thawed': 'Tâche repartie avec la réponse de Julien',
+    'task.no_credit': 'Tâche remise à plus tard : plus de crédit OpenRouter',
+    'tool.call': 'Outil appelé',
     'write.inserted': 'Ligne ajoutée',
     'write.updated': 'Ligne modifiée',
     'write.refused': 'Écriture refusée',
@@ -206,6 +211,9 @@ NIVEAUX = {
     'fast': 'Rapide — un réflexe (classer, extraire). Le moins cher.',
     'mid': 'Moyen — assez malin pour rédiger ou comparer.',
     'smart': 'Intelligent — plans, arbitrages.',
-    'code': 'Code — construire et relire un produit, voir des pages. Le'
-    ' meilleur modèle, qui lit les images ; le plus cher (décision Q91).',
+    'code': 'Code — construire un produit. Le meilleur modèle, qui lit les'
+    ' images ; le plus cher (décision Q91).',
+    'web': 'Web — voir et cliquer des pages comme un humain : essayer un'
+    ' produit, payer. Un modèle qui lit les images, moins cher que « code »'
+    ' (décision Q96).',
 }

@@ -27,20 +27,34 @@ from typing import Any
 
 from serge.db.store import append_event, utcnow
 from serge.policy_store import policy_en_vigueur
+from serge.sandbox.courriel import ensure_boite
 from serge.sandbox.docker import (
+    NETWORK,
     DockerError,
     docker,
+    ensure_network,
     env_flags,
     journal,
     secret_env,
 )
 
 WORK = '/work'
-# Le réseau des chantiers et du navigateur : le navigateur y ouvre
-# ``http://<conteneur du chantier>:3000``. Il mène aussi à Internet.
-NETWORK = 'serge-chantiers'
 # Ce qu'on lit d'un fichier au plus : au-delà, il est coupé.
 MAX_FILE_BYTES = 2_000_000
+# L'envoi des e-mails dans un chantier : la boîte d'essai, où ils restent
+# (``serge/sandbox/courriel.py``). Chaque commande les reçoit, même dans un
+# chantier créé avant.
+COURRIEL = [
+    flag
+    for paire in (
+        'SMTP_HOST=serge-boite',
+        'SMTP_PORT=1025',
+        'SMTP_USER=',
+        'SMTP_PASS=',
+        'MAIL_FROM=chantier@essai.invalid',
+    )
+    for flag in ('-e', paire)
+]
 
 
 def _profile(conn: sqlite3.Connection, name: str) -> dict[str, Any]:
@@ -49,15 +63,6 @@ def _profile(conn: sqlite3.Connection, name: str) -> dict[str, Any]:
     if not isinstance(profile, dict):
         raise DockerError(f'profil de bac à sable inconnu : {name}')
     return profile
-
-
-def ensure_network() -> None:
-    """Crée le réseau des chantiers s'il n'existe pas encore."""
-    found = docker(
-        ['network', 'ls', '--filter', f'name=^{NETWORK}$', '-q'], timeout=30
-    ).stdout.strip()
-    if not found:
-        docker(['network', 'create', NETWORK], timeout=60)
 
 
 def _join_network(name: str) -> None:
@@ -169,6 +174,8 @@ def ensure_chantier(
             docker(['start', name], timeout=120)
         if profile.get('network') != 'aucun':
             _join_network(name)
+    if profile.get('network') != 'aucun':
+        _boite(conn)
     now = utcnow()
     conn.execute(
         'INSERT INTO sandboxes(id, venture_id, deliverable, profile,'
@@ -180,12 +187,26 @@ def ensure_chantier(
     return chantier, name, profile
 
 
+def _boite(conn: sqlite3.Connection) -> None:
+    """La boîte d'essai, pour les e-mails du chantier. Si elle ne démarre
+    pas, le chantier marche quand même : la raison est notée au journal."""
+    try:
+        ensure_boite(conn)
+    except DockerError as exc:
+        journal(f'boîte d’essai pas lancée : {exc}')
+
+
 def _exec(
-    name: str, argv: list[str], *, timeout: float, stdin: str | None = None
+    name: str,
+    argv: list[str],
+    *,
+    timeout: float,
+    stdin: str | None = None,
+    env: list[str] | None = None,
 ):
     flags = ['exec', '-i'] if stdin is not None else ['exec']
     return docker(
-        [*flags, '-w', WORK, name, *argv],
+        [*flags, *(env or []), '-w', WORK, name, *argv],
         timeout=timeout,
         stdin=stdin,
         check=False,
@@ -282,6 +303,7 @@ def sandbox_command(
             [
                 'exec',
                 '-d',
+                *COURRIEL,
                 '-w',
                 WORK,
                 name,
@@ -305,6 +327,7 @@ def sandbox_command(
             name,
             ['timeout', '-s', 'KILL', str(limit), 'sh', '-lc', command],
             timeout=limit + 30,
+            env=COURRIEL,
         )
         output = (done.stdout or '') + (done.stderr or '')
         if done.returncode == 137:

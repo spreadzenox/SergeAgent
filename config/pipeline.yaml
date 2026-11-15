@@ -46,6 +46,13 @@ llm_models:
     max_price_usd: 12.00
     tolerance_pct: 100
     needs_image: true
+  # Le niveau « web » (lot 11, Q96) : voir et cliquer des pages comme un
+  # humain, pour le relecteur et le paiement test. Un modèle qui lit les
+  # images, bien moins cher que « code » : chaque clic est un appel.
+  - tier: web
+    model: anthropic/claude-sonnet-5.5
+    max_price_usd: 3.00
+    needs_image: true
 
 # Les textes de Serge, modifiables sur la page Pipeline : ceux envoyés au
 # modèle, et la phrase de fin de chaque e-mail. Un repère entre accolades
@@ -217,6 +224,19 @@ api_services:
       Les zones DNS du compte Cloudflare de Serge : faire pointer un domaine
       acheté vers le serveur (un enregistrement A, sans le proxy de
       Cloudflare, pour que Caddy obtienne son certificat).
+  # Les e-mails des produits (lot 11, Q96) : Resend envoie ceux de la prod
+  # et reçoit ceux du relecteur. La clé maîtresse ne sert qu'à Serge : il
+  # crée une clé d'envoi par produit, et lit la boîte du relecteur.
+  - id: resend
+    title: Resend, les e-mails des produits
+    base_url: https://api.resend.com
+    auth: bearer
+    secret_file: resend.key
+    body: json
+    doc: >-
+      Envoie les e-mails des produits en prod (par SMTP, avec une clé par
+      produit) et reçoit ceux du relecteur. Gratuit jusqu'à 100 e-mails par
+      jour et 3 000 par mois, réception comprise.
 tools:
   - id: web_search
     title: Chercher sur le web public
@@ -887,6 +907,22 @@ tools:
         - {id: plan, table: product_plans, column: id, param: plan_id}
       params:
         - {name: plan_id, required: true, description: Le numéro du plan.}
+  - id: plan_produit_en_bref
+    title: Un plan de produit en bref
+    doc: Le nom du business, le domaine et le prix d'un plan de produit fini.
+    capability: db_read
+    read:
+      tables: [product_plans, ventures]
+      columns:
+        - {table: ventures, name: name, as: nom}
+        - {table: product_plans, name: domain, as: domaine}
+        - {table: product_plans, name: price, as: prix}
+      joins:
+        - {id: business, left: product_plans.venture_id, right: ventures.id}
+      filters:
+        - {id: plan, table: product_plans, column: id, param: plan_id}
+      params:
+        - {name: plan_id, required: true, description: Le numéro du plan.}
   - id: demandes_des_clients
     title: Les demandes des clients
     doc: >-
@@ -1000,6 +1036,84 @@ tools:
       params:
         - {name: id, required: true, description: Le lien de paiement (plink_…).}
         - {name: active, type: bool, description: 'false pour le désactiver (figé en base).'}
+  # Pour le relecteur : finir un abonnement de test, comme si la période
+  # payée était passée (lot 11).
+  - id: stripe_chercher_clients
+    title: Chercher un client Stripe par son e-mail
+    doc: Les clients Stripe qui ont cette adresse e-mail, avec leur numéro (cus_…).
+    capability: call_api
+    api:
+      service: stripe_test
+      method: GET
+      path: /v1/customers
+      params:
+        - {name: email, required: true, description: L'adresse e-mail du client.}
+        - {name: limit, type: number, description: Le nombre de clients (10).}
+  - id: stripe_abonnements
+    title: Les abonnements d'un client Stripe
+    doc: >-
+      Les abonnements d'un client (cus_…), avec leur numéro (sub_…) et leur
+      état (status : active, canceled…).
+    capability: call_api
+    api:
+      service: stripe_test
+      method: GET
+      path: /v1/subscriptions
+      params:
+        - {name: customer, required: true, description: Le client (cus_…).}
+        - {name: status, description: 'all pour tous, même annulés.'}
+  - id: stripe_annuler_abonnement
+    title: Annuler un abonnement Stripe tout de suite
+    doc: >-
+      Annule un abonnement immédiatement, comme à la fin de la période
+      payée : le produit doit retirer ce qu'il débloquait.
+    capability: call_api
+    api:
+      service: stripe_test
+      method: DELETE
+      path: /v1/subscriptions/{id}
+      params:
+        - {name: id, required: true, description: L'abonnement (sub_…).}
+
+  # Les e-mails des produits, par Resend (lot 11). Seul le code de Serge
+  # s'en sert : la clé d'envoi d'un produit ne passe jamais par un modèle.
+  - id: resend_creer_cle
+    title: Créer une clé d'envoi Resend
+    doc: Une clé qui ne sait qu'envoyer des e-mails, pour un produit.
+    capability: call_api
+    api:
+      service: resend
+      method: POST
+      path: /api-keys
+      params:
+        - {name: name, required: true, description: Le nom de la clé.}
+        - {name: permission, required: true, description: sending_access.}
+  - id: resend_recus
+    title: Les e-mails reçus par Resend
+    doc: Les derniers e-mails reçus, les plus récents d'abord.
+    capability: call_api
+    api:
+      service: resend
+      method: GET
+      path: /emails/receiving
+      params:
+        - {name: limit, type: number, description: Le nombre d'e-mails (100 au plus).}
+  - id: resend_recu
+    title: Un e-mail reçu par Resend
+    doc: Le texte et la page d'un e-mail reçu.
+    capability: call_api
+    api:
+      service: resend
+      method: GET
+      path: /emails/receiving/{id}
+      params:
+        - {name: id, required: true, description: Le numéro de l'e-mail reçu.}
+  - id: boite_mail
+    title: Ma boîte e-mail
+    doc: >-
+      Ton adresse e-mail pour cet essai (inscris-toi avec), et les e-mails
+      qu'elle a reçus : expéditeur, objet, texte et liens.
+    capability: mail_read
 
   # Le bureau d'enregistrement : Cloudflare (lot 10, Q91). Les prix sont
   # en dollars ; l'achat paie avec la carte de Serge, enregistrée sur son
@@ -1410,7 +1524,7 @@ status_transitions:
   # produit fini depuis le test léger (bouton de sa fiche, en attendant
   # l'étape 4), puis « produit en vente » quand il est en ligne sur son
   # domaine et que le paiement test est arrivé ; la prospection lourde
-  # (lot 11) part de là. Le bout en bout du produit fait naître une
+  # (lot 12) part de là. Le bout en bout du produit fait naître une
   # calculatrice déjà en construction.
   - {table: ventures, column: lifecycle, from: SMOKE_READY, to: PRODUCT_BUILDING}
   - {table: ventures, column: lifecycle, from: SMOKE_DONE, to: PRODUCT_BUILDING}
@@ -3223,7 +3337,7 @@ invocations:
       personne (lire, cliquer, taper, sur ordinateur et sur mobile), garde
       des captures, puis dit ce qu'elle a vu et ce qui ne marche pas.
     type: llm
-    model_tier: code
+    model_tier: web
     queue: works
     priority: 30
     max_tool_turns: 40
@@ -3357,6 +3471,14 @@ invocations:
         qui), fiche_limites (ce qu'il ne fait pas), fiche_prix,
         fiche_delais, fiche_usage (comment on s'en sert) ;
       - faq : 3 à 6 questions qu'un prospect posera, avec leur réponse.
+
+      Ce qui est réglé pour tous les produits, à ne pas redemander :
+      l'éditeur des mentions légales est Julien Pesquet, une personne qui
+      répond du produit, et le service est construit et tenu par Serge, un
+      agent IA. Pas d'adresse ni de formulaire de contact pour l'instant :
+      n'en prévois pas. Le produit peut envoyer des e-mails à ses clients
+      (valider une inscription, changer un mot de passe oublié, un reçu) :
+      Serge règle leur envoi.
 
       Le business doit être légal. Ne t'arrête pas sur des considérations
       morales qui ne sont pas contraires à la loi.
@@ -3496,6 +3618,13 @@ invocations:
       l'ERP d'une grande entreprise contactée par e-mail : c'est
       irréaliste ».
 
+      Ce qui est réglé pour tous les produits n'est pas une remarque :
+      l'éditeur des mentions légales est Julien Pesquet, une personne, et
+      le service est tenu par Serge, un agent IA ; pas d'adresse ni de
+      formulaire de contact pour l'instant ; le produit peut envoyer des
+      e-mails (valider une inscription, changer un mot de passe), et Serge
+      règle leur envoi.
+
       Chaque remarque est « à corriger » : le plan est mal fait mais
       faisable avec ce que Serge sait déjà faire ; dis précisément quoi
       changer. S'il manque à Serge un outil ou un accès, n'en fais pas une
@@ -3631,9 +3760,9 @@ invocations:
   - id: construire_poc
     title: Construire le POC
     role: >-
-      Construit le POC dans le chantier du business, l'essaie lui-même dans
-      le navigateur, sur ordinateur et sur mobile, et rend son compte rendu.
-      Il reprend le passage précédent : les remarques du relecteur, les
+      Construit le POC dans le chantier du business, le vérifie par des
+      commandes (le relecteur l'essaie dans le navigateur), et rend son compte
+      rendu. Il reprend le passage précédent : les remarques du relecteur, les
       consignes d'un humain, ou une publication ratée.
     step: conception_poc
     type: llm
@@ -3659,10 +3788,28 @@ invocations:
       Tu travailles dans un chantier : un conteneur Linux (Debian, avec
       git, Python 3 et Node), dossier /work, où tes fichiers restent d'une
       tâche à l'autre. Tes outils : lancer une commande (au besoin en
-      arrière-plan, pour un serveur), lire, écrire et modifier un fichier,
-      et un navigateur pour essayer ton produit : l'adresse
-      http://chantier:<port> mène au serveur que tu as lancé dans le
-      chantier. Tu peux appeler plusieurs outils d'un coup.
+      arrière-plan, pour un serveur), lire, écrire et modifier un fichier.
+      Tu peux appeler plusieurs outils d'un coup.
+
+      Les e-mails que le produit envoie à ses clients (valider une
+      inscription, changer un mot de passe oublié, un reçu) :
+      - envoie-les par SMTP avec les variables d'environnement SMTP_HOST,
+        SMTP_PORT, SMTP_USER, SMTP_PASS et MAIL_FROM (l'expéditeur), lues
+        au démarrage ; utilise STARTTLS quand le serveur le propose, et ne
+        t'identifie pas si SMTP_USER est vide. Dans le chantier et en
+        staging, une boîte d'essai garde les e-mails, quel que soit le
+        destinataire, et rien ne part : le relecteur et Julien les y
+        lisent. En prod, ils partent vraiment ;
+      - n'envoie que ce qu'un client attend, jamais de lettre
+        d'information : tous les produits de Serge partagent 100 e-mails
+        par jour. Au plus quelques e-mails par heure et par adresse, et un
+        nombre limité d'inscriptions par heure et par adresse IP, contre
+        les robots ;
+      - pas d'adresse ni de formulaire de contact pour l'instant, même si
+        le plan ou la fiche produit en parlent ;
+      - les mentions légales nomment l'éditeur, Julien Pesquet, une
+        personne qui répond du produit, et disent que le service est
+        construit et tenu par Serge, un agent IA.
 
       Règles :
       - choisis les langages et les outils que tu veux ; fais simple et
@@ -3673,10 +3820,12 @@ invocations:
         et connaît son adresse publique par PUBLIC_URL ;
       - le POC est gratuit : aucun paiement ;
       - en français, propre et clair sur ordinateur comme sur mobile ;
-      - avant de rendre, essaie toi-même chaque scénario de test dans le
-        navigateur, sur ordinateur puis sur mobile, et corrige ce qui ne va
-        pas. Docker n'est pas dans le chantier : lance le produit comme le
-        ferait le Dockerfile ;
+      - n'essaie pas le POC dans un navigateur : le relecteur le fera en
+        ligne, scénario par scénario, sur ordinateur et sur mobile.
+        Vérifie ton travail par des commandes : des tests automatiques et
+        quelques requêtes au serveur lancé dans le chantier (curl). Docker
+        n'est pas dans le chantier : lance le produit comme le ferait le
+        Dockerfile ;
       - s'il te manque un outil ou un accès, appelle « Demander une
         nouvelle capacité ».
 
@@ -3721,18 +3870,6 @@ invocations:
       - tool: chantier_modifier
         mode: callable
         params: *chantier_poc
-      - tool: navigateur_agir
-        mode: callable
-        params: &navigateur_poc
-          venture_id: {source: task, value: venture_id}
-          deliverable: {source: fixed, value: poc}
-          task_id: {source: task, value: task_id}
-      - tool: navigateur_lire
-        mode: callable
-        params: *navigateur_poc
-      - tool: navigateur_capture
-        mode: callable
-        params: *navigateur_poc
     output:
       - {path: fini, type: choice, choices: [oui, non], description: 'Le produit est-il prêt à être publié ?'}
       - {path: compte_rendu, type: text, description: 'Ce qui a été fait, vérifié, et ce qui reste.'}
@@ -3801,7 +3938,7 @@ invocations:
       remarques.
     step: conception_poc
     type: llm
-    model_tier: code
+    model_tier: web
     queue: works
     priority: 30
     max_tool_turns: 60
@@ -3815,7 +3952,9 @@ invocations:
       produit.
 
       Suis chaque scénario pas à pas, d'abord sur ordinateur, puis sur
-      mobile : lis la page, clique, tape, comme une personne. Prends une
+      mobile : lis la page, clique, tape, comme une personne. Si le POC te demande une adresse e-mail,
+      prends la tienne : « Ma boîte e-mail » te la donne, et te montre les
+      e-mails qu'il t'envoie. Prends une
       capture à chaque étape importante, garde-la (keep), et lis les
       erreurs de la page. Regarde vraiment l'écran : un bouton qui sort de
       l'écran, un texte illisible, un formulaire qui ne réagit pas, une
@@ -3840,13 +3979,20 @@ invocations:
           venture_id: {source: task, value: venture_id}
       - tool: navigateur_agir
         mode: callable
-        params: *navigateur_poc
+        params: &navigateur_poc
+          venture_id: {source: task, value: venture_id}
+          deliverable: {source: fixed, value: poc}
+          task_id: {source: task, value: task_id}
       - tool: navigateur_lire
         mode: callable
         params: *navigateur_poc
       - tool: navigateur_capture
         mode: callable
         params: *navigateur_poc
+      - tool: boite_mail
+        mode: callable
+        params: &boite_de_la_tache
+          task_id: {source: task, value: task_id}
     output:
       - {path: verdict, type: choice, choices: [bon, a_corriger], description: 'Un prospect peut-il faire chaque scénario ?'}
       - {path: remarques, type: text, description: 'Les problèmes trouvés, un par ligne ; vide si tout va bien.'}
@@ -4194,7 +4340,7 @@ invocations:
       - {path: compte_rendu, type: text, description: "Ce qui a été archivé, et ce qui a raté."}
 
   # --- L'étape 5 : le vrai produit (lot 10, Q41, Q43 et Q91) ---
-  # Détail : docs/etapes/5-construction.md. En attendant l'étape 4 (lot 11),
+  # Détail : docs/etapes/5-construction.md. En attendant l'étape 4 (lot 12),
   # elle part du bouton « Construire le vrai produit » de la fiche d'un
   # business, ou de « Bout en bout : le produit fini d'une calculatrice ».
   - id: lancer_produit
@@ -4202,8 +4348,8 @@ invocations:
     role: >-
       Le business passe en construction de son produit fini, et la
       conception commence. Lancé par le bouton « Construire le vrai
-      produit » de la fiche du business (temporaire, jusqu'à l'étape 4 du
-      lot 11). Sans LLM.
+      produit » de la fiche du business (temporaire, jusqu'à l'étape 4).
+      Sans LLM.
     step: build_venture
     type: capability
     capability: echo
@@ -4286,6 +4432,14 @@ invocations:
         numéro, ta décision (retenue ou refusee) et sa raison, en une
         phrase. Retiens ce qui fera payer ou rester des clients ; refuse ce
         qui est trop rare, trop cher à faire, ou hors du produit.
+
+      Ce qui est réglé pour tous les produits, à ne pas redemander :
+      l'éditeur des mentions légales est Julien Pesquet, une personne qui
+      répond du produit, et le service est construit et tenu par Serge, un
+      agent IA. Pas d'adresse ni de formulaire de contact pour l'instant :
+      n'en prévois pas. Le produit peut envoyer des e-mails à ses clients
+      (valider une inscription, changer un mot de passe oublié, un reçu) :
+      Serge règle leur envoi.
 
       Le business doit être légal. Ne t'arrête pas sur des considérations
       morales qui ne sont pas contraires à la loi.
@@ -4459,6 +4613,13 @@ invocations:
         ce qui est refusé l'est-il pour une bonne raison ?
       - les scénarios de test : chacun doit pouvoir être suivi pas à pas
         par quelqu'un qui découvre le site, et l'un va jusqu'au paiement.
+
+      Ce qui est réglé pour tous les produits n'est pas une remarque :
+      l'éditeur des mentions légales est Julien Pesquet, une personne, et
+      le service est tenu par Serge, un agent IA ; pas d'adresse ni de
+      formulaire de contact pour l'instant ; le produit peut envoyer des
+      e-mails (valider une inscription, changer un mot de passe), et Serge
+      règle leur envoi.
 
       Chaque remarque est « à corriger » : dis précisément quoi changer.
       S'il manque à Serge un outil ou un accès, n'en fais pas une
@@ -4668,11 +4829,11 @@ invocations:
   - id: construire_produit
     title: Construire le produit
     role: >-
-      Construit le produit fini, payant, dans son chantier : comptes,
-      abonnement par Stripe (en mode test dans le chantier et en staging),
-      le service lui-même ; l'essaie dans le navigateur, sur ordinateur et
-      sur mobile, jusqu'au paiement. Reprend le passage précédent : les
-      remarques du relecteur, les consignes d'un humain, ou une
+      Construit le produit fini, payant, dans son chantier : comptes, e-mails,
+      abonnement par Stripe (en mode test dans le chantier et en staging), le
+      service lui-même ; le vérifie par des commandes (le relecteur l'essaie
+      dans le navigateur, paiement compris). Reprend le passage précédent :
+      les remarques du relecteur, les consignes d'un humain, ou une
       publication ratée.
     step: build_venture
     type: llm
@@ -4700,10 +4861,8 @@ invocations:
       Tu travailles dans un chantier : un conteneur Linux (Debian, avec
       git, Python 3 et Node), dossier /work, où tes fichiers restent d'une
       tâche à l'autre. Tes outils : lancer une commande (au besoin en
-      arrière-plan, pour un serveur), lire, écrire et modifier un fichier,
-      et un navigateur pour essayer ton produit : l'adresse
-      http://chantier:<port> mène au serveur que tu as lancé dans le
-      chantier. Tu peux appeler plusieurs outils d'un coup.
+      arrière-plan, pour un serveur), lire, écrire et modifier un fichier.
+      Tu peux appeler plusieurs outils d'un coup.
 
       Le paiement, par Stripe :
       - la clé secrète de Stripe est dans la variable d'environnement
@@ -4729,6 +4888,26 @@ invocations:
       - pour essayer : la carte 4242 4242 4242 4242, une date future, un
         code à 3 chiffres.
 
+      Les e-mails que le produit envoie à ses clients (valider une
+      inscription, changer un mot de passe oublié, un reçu) :
+      - envoie-les par SMTP avec les variables d'environnement SMTP_HOST,
+        SMTP_PORT, SMTP_USER, SMTP_PASS et MAIL_FROM (l'expéditeur), lues
+        au démarrage ; utilise STARTTLS quand le serveur le propose, et ne
+        t'identifie pas si SMTP_USER est vide. Dans le chantier et en
+        staging, une boîte d'essai garde les e-mails, quel que soit le
+        destinataire, et rien ne part : le relecteur et Julien les y
+        lisent. En prod, ils partent vraiment ;
+      - n'envoie que ce qu'un client attend, jamais de lettre
+        d'information : tous les produits de Serge partagent 100 e-mails
+        par jour. Au plus quelques e-mails par heure et par adresse, et un
+        nombre limité d'inscriptions par heure et par adresse IP, contre
+        les robots ;
+      - pas d'adresse ni de formulaire de contact pour l'instant, même si
+        le plan ou la fiche produit en parlent ;
+      - les mentions légales nomment l'éditeur, Julien Pesquet, une
+        personne qui répond du produit, et disent que le service est
+        construit et tenu par Serge, un agent IA.
+
       Règles :
       - choisis les langages et les outils que tu veux ; fais simple et
         solide ;
@@ -4739,10 +4918,14 @@ invocations:
       - des comptes : inscription par e-mail et mot de passe (gardé haché),
         connexion, déconnexion ;
       - en français, propre et clair sur ordinateur comme sur mobile ;
-      - avant de rendre, essaie toi-même chaque scénario de test dans le
-        navigateur, sur ordinateur puis sur mobile, paiement compris, et
-        corrige ce qui ne va pas. Docker n'est pas dans le chantier : lance
-        le produit comme le ferait le Dockerfile ;
+      - n'essaie pas le produit dans un navigateur : le relecteur le fera
+        en ligne, scénario par scénario, sur ordinateur et sur mobile,
+        paiement compris. Vérifie ton travail par des commandes : des tests
+        automatiques et quelques requêtes au serveur lancé dans le chantier
+        (curl), par exemple l'inscription, l'e-mail qu'elle envoie (la boîte
+        d'essai : http://serge-boite:8025/api/v1/messages) et la session de
+        paiement. Docker n'est pas dans le chantier : lance le produit comme
+        le ferait le Dockerfile ;
       - s'il te manque un outil ou un accès, appelle « Demander une
         nouvelle capacité ».
 
@@ -4794,18 +4977,6 @@ invocations:
       - tool: chantier_modifier
         mode: callable
         params: *chantier_produit
-      - tool: navigateur_agir
-        mode: callable
-        params: &navigateur_produit
-          venture_id: {source: task, value: venture_id}
-          deliverable: {source: fixed, value: produit}
-          task_id: {source: task, value: task_id}
-      - tool: navigateur_lire
-        mode: callable
-        params: *navigateur_produit
-      - tool: navigateur_capture
-        mode: callable
-        params: *navigateur_produit
     output:
       - {path: fini, type: choice, choices: [oui, non], description: 'Le produit est-il prêt à être publié ?'}
       - {path: compte_rendu, type: text, description: 'Ce qui a été fait, vérifié, et ce qui reste.'}
@@ -4876,7 +5047,7 @@ invocations:
       captures, et rend « bon » ou « à corriger ».
     step: build_venture
     type: llm
-    model_tier: code
+    model_tier: web
     queue: works
     priority: 30
     max_tool_turns: 80
@@ -4891,7 +5062,13 @@ invocations:
 
       Suis chaque scénario pas à pas, d'abord sur ordinateur, puis sur
       mobile : lis la page, clique, tape, comme une personne. Crée un
-      compte avec une adresse inventée. Va jusqu'au paiement : la page de
+      compte avec ton adresse : « Ma boîte e-mail » te la donne, et te
+      montre les e-mails que le produit t'envoie (ouvre un lien de
+      validation dans le navigateur) ; un e-mail attendu qui n'arrive pas
+      est un problème. Si un scénario demande d'annuler un abonnement ou
+      d'attendre la fin de la période payée, fais-le avec les outils Stripe
+      du mode test (le client par son e-mail, ses abonnements, annuler) :
+      c'est comme si le temps avait passé. Va jusqu'au paiement : la page de
       paiement de Stripe est en mode test, paie avec la carte 4242 4242
       4242 4242, une date future (12/34) et le code 123, puis vérifie ce
       que le paiement débloque. Prends une capture à chaque étape
@@ -4919,13 +5096,30 @@ invocations:
           venture_id: {source: task, value: venture_id}
       - tool: navigateur_agir
         mode: callable
-        params: *navigateur_produit
+        params: &navigateur_produit
+          venture_id: {source: task, value: venture_id}
+          deliverable: {source: fixed, value: produit}
+          task_id: {source: task, value: task_id}
       - tool: navigateur_lire
         mode: callable
         params: *navigateur_produit
       - tool: navigateur_capture
         mode: callable
         params: *navigateur_produit
+      - tool: boite_mail
+        mode: callable
+        params: *boite_de_la_tache
+      - tool: stripe_chercher_clients
+        mode: callable
+        params: &stripe_test_de_la_tache
+          service: {source: fixed, value: stripe_test}
+          task_id: {source: task, value: task_id}
+      - tool: stripe_abonnements
+        mode: callable
+        params: *stripe_test_de_la_tache
+      - tool: stripe_annuler_abonnement
+        mode: callable
+        params: *stripe_test_de_la_tache
     output:
       - {path: verdict, type: choice, choices: [bon, a_corriger], description: 'Un client peut-il faire chaque scénario ?'}
       - {path: remarques, type: text, description: 'Les problèmes trouvés, un par ligne ; vide si tout va bien.'}
@@ -5306,7 +5500,7 @@ invocations:
       désactive le lien et archive le prix (Q41, Q91).
     step: build_venture
     type: llm
-    model_tier: code
+    model_tier: web
     queue: works
     priority: 30
     max_tool_turns: 60
@@ -5322,7 +5516,8 @@ invocations:
          intervalle) pour ce produit, avec le nom court « paiement test »,
          puis un lien de paiement pour ce prix, quantité 1.
       3. Ouvre le lien dans le navigateur et paie comme une personne :
-         une adresse e-mail (paiement-test@ suivi du domaine du produit),
+         l'adresse e-mail que te donne « Ma boîte e-mail » (appelle-la
+      avec wait à faux),
          puis la carte de Serge avec l'action taper_secret, sans jamais
          écrire ses numéros toi-même : payment-card.enc#pan pour le
          numéro, payment-card.enc#expiration pour la date (MM/AA),
@@ -5397,6 +5592,9 @@ invocations:
       - tool: navigateur_capture
         mode: callable
         params: *navigateur_produit
+      - tool: boite_mail
+        mode: callable
+        params: *boite_de_la_tache
     output:
       - {path: paye, type: choice, choices: [oui, non], description: 'Le paiement de 1 € est-il arrivé ?'}
       - {path: paiement, type: text, required: false, description: Le paiement (pi_…).}
@@ -5419,7 +5617,7 @@ invocations:
     role: >-
       Le produit est en ligne sur son domaine et le paiement test est
       arrivé : le business passe à « produit en vente », d'où part la
-      prospection lourde (étape 6, lot 11). Sans LLM.
+      prospection lourde (étape 6). Sans LLM.
     step: build_venture
     type: capability
     capability: echo
@@ -7458,6 +7656,355 @@ changes:
 
           Le business doit être légal. Ne t'arrête pas sur des considérations
           morales qui ne sont pas contraires à la loi.
+
+  - id: lots_decales_lancer_produit
+    why: >-
+      Les lots après le 10 sont décalés d'un cran (Q95) ; le rôle ne cite
+      plus de numéro de lot.
+    table: invocations
+    where: {id: lancer_produit}
+    set:
+      role:
+        from: >-
+          Le business passe en construction de son produit fini, et la
+          conception commence. Lancé par le bouton « Construire le vrai
+          produit » de la fiche du business (temporaire, jusqu'à l'étape 4 du
+          lot 11). Sans LLM.
+        to: >-
+          Le business passe en construction de son produit fini, et la
+          conception commence. Lancé par le bouton « Construire le vrai
+          produit » de la fiche du business (temporaire, jusqu'à l'étape 4).
+          Sans LLM.
+  - id: lots_decales_produit_pret
+    why: >-
+      Les lots après le 10 sont décalés d'un cran (Q95) ; le rôle ne cite
+      plus de numéro de lot.
+    table: invocations
+    where: {id: produit_pret}
+    set:
+      role:
+        from: >-
+          Le produit est en ligne sur son domaine et le paiement test est
+          arrivé : le business passe à « produit en vente », d'où part la
+          prospection lourde (étape 6, lot 11). Sans LLM.
+        to: >-
+          Le produit est en ligne sur son domaine et le paiement test est
+          arrivé : le business passe à « produit en vente », d'où part la
+          prospection lourde (étape 6). Sans LLM.
+
+  # --- Lot 11 (Q96) : les e-mails des produits, un relecteur moins cher,
+  # des constructeurs qui ne naviguent plus.
+  - id: lot11_construire_poc
+    why: >-
+      Le constructeur n'essaie plus dans le navigateur (le relecteur le
+      fait, avec un modèle moins cher) ; il sait envoyer les e-mails
+      (lot 11, Q96).
+    table: invocations
+    where: {id: construire_poc}
+    set:
+      role:
+        from: >-
+          Construit le POC dans le chantier du business, l'essaie lui-même
+          dans le navigateur, sur ordinateur et sur mobile, et rend son
+          compte rendu. Il reprend le passage précédent : les remarques du
+          relecteur, les consignes d'un humain, ou une publication ratée.
+        to: >-
+          Construit le POC dans le chantier du business, le vérifie par des
+          commandes (le relecteur l'essaie dans le navigateur), et rend son
+          compte rendu. Il reprend le passage précédent : les remarques du
+          relecteur, les consignes d'un humain, ou une publication ratée.
+      prompt:
+        replace:
+          - old: |-
+              Tes outils : lancer une commande (au besoin en
+              arrière-plan, pour un serveur), lire, écrire et modifier un fichier,
+              et un navigateur pour essayer ton produit : l'adresse
+              http://chantier:<port> mène au serveur que tu as lancé dans le
+              chantier. Tu peux appeler plusieurs outils d'un coup.
+            new: |-
+              Tes outils : lancer une commande (au besoin en
+              arrière-plan, pour un serveur), lire, écrire et modifier un fichier.
+              Tu peux appeler plusieurs outils d'un coup.
+          - old: |-
+              - avant de rendre, essaie toi-même chaque scénario de test dans le
+                navigateur, sur ordinateur puis sur mobile, et corrige ce qui ne va
+                pas. Docker n'est pas dans le chantier : lance le produit comme le
+                ferait le Dockerfile ;
+            new: |-
+              - n'essaie pas le POC dans un navigateur : le relecteur le fera en
+                ligne, scénario par scénario, sur ordinateur et sur mobile.
+                Vérifie ton travail par des commandes : des tests automatiques et
+                quelques requêtes au serveur lancé dans le chantier (curl). Docker
+                n'est pas dans le chantier : lance le produit comme le ferait le
+                Dockerfile ;
+          - old: |-
+              Règles :
+            new: |-
+              Les e-mails que le produit envoie à ses clients (valider une
+              inscription, changer un mot de passe oublié, un reçu) :
+              - envoie-les par SMTP avec les variables d'environnement SMTP_HOST,
+                SMTP_PORT, SMTP_USER, SMTP_PASS et MAIL_FROM (l'expéditeur), lues
+                au démarrage ; utilise STARTTLS quand le serveur le propose, et ne
+                t'identifie pas si SMTP_USER est vide. Dans le chantier et en
+                staging, une boîte d'essai garde les e-mails, quel que soit le
+                destinataire, et rien ne part : le relecteur et Julien les y
+                lisent. En prod, ils partent vraiment ;
+              - n'envoie que ce qu'un client attend, jamais de lettre
+                d'information : tous les produits de Serge partagent 100 e-mails
+                par jour. Au plus quelques e-mails par heure et par adresse, et un
+                nombre limité d'inscriptions par heure et par adresse IP, contre
+                les robots ;
+              - pas d'adresse ni de formulaire de contact pour l'instant, même si
+                le plan ou la fiche produit en parlent ;
+              - les mentions légales nomment l'éditeur, Julien Pesquet, une
+                personne qui répond du produit, et disent que le service est
+                construit et tenu par Serge, un agent IA.
+
+              Règles :
+  - id: lot11_construire_produit
+    why: >-
+      Le constructeur n'essaie plus dans le navigateur (le relecteur le
+      fait, avec un modèle moins cher) ; il sait envoyer les e-mails
+      (lot 11, Q96).
+    table: invocations
+    where: {id: construire_produit}
+    set:
+      role:
+        from: >-
+          Construit le produit fini, payant, dans son chantier : comptes,
+          abonnement par Stripe (en mode test dans le chantier et en
+          staging), le service lui-même ; l'essaie dans le navigateur, sur
+          ordinateur et sur mobile, jusqu'au paiement. Reprend le passage
+          précédent : les remarques du relecteur, les consignes d'un humain,
+          ou une publication ratée.
+        to: >-
+          Construit le produit fini, payant, dans son chantier : comptes,
+          e-mails, abonnement par Stripe (en mode test dans le chantier et
+          en staging), le service lui-même ; le vérifie par des commandes
+          (le relecteur l'essaie dans le navigateur, paiement compris).
+          Reprend le passage précédent : les remarques du relecteur, les
+          consignes d'un humain, ou une publication ratée.
+      prompt:
+        replace:
+          - old: |-
+              Tes outils : lancer une commande (au besoin en
+              arrière-plan, pour un serveur), lire, écrire et modifier un fichier,
+              et un navigateur pour essayer ton produit : l'adresse
+              http://chantier:<port> mène au serveur que tu as lancé dans le
+              chantier. Tu peux appeler plusieurs outils d'un coup.
+            new: |-
+              Tes outils : lancer une commande (au besoin en
+              arrière-plan, pour un serveur), lire, écrire et modifier un fichier.
+              Tu peux appeler plusieurs outils d'un coup.
+          - old: |-
+              - avant de rendre, essaie toi-même chaque scénario de test dans le
+                navigateur, sur ordinateur puis sur mobile, paiement compris, et
+                corrige ce qui ne va pas. Docker n'est pas dans le chantier : lance
+                le produit comme le ferait le Dockerfile ;
+            new: |-
+              - n'essaie pas le produit dans un navigateur : le relecteur le fera
+                en ligne, scénario par scénario, sur ordinateur et sur mobile,
+                paiement compris. Vérifie ton travail par des commandes : des tests
+                automatiques et quelques requêtes au serveur lancé dans le chantier
+                (curl), par exemple l'inscription, l'e-mail qu'elle envoie (la boîte
+                d'essai : http://serge-boite:8025/api/v1/messages) et la session de
+                paiement. Docker n'est pas dans le chantier : lance le produit comme
+                le ferait le Dockerfile ;
+          - old: |-
+              Règles :
+            new: |-
+              Les e-mails que le produit envoie à ses clients (valider une
+              inscription, changer un mot de passe oublié, un reçu) :
+              - envoie-les par SMTP avec les variables d'environnement SMTP_HOST,
+                SMTP_PORT, SMTP_USER, SMTP_PASS et MAIL_FROM (l'expéditeur), lues
+                au démarrage ; utilise STARTTLS quand le serveur le propose, et ne
+                t'identifie pas si SMTP_USER est vide. Dans le chantier et en
+                staging, une boîte d'essai garde les e-mails, quel que soit le
+                destinataire, et rien ne part : le relecteur et Julien les y
+                lisent. En prod, ils partent vraiment ;
+              - n'envoie que ce qu'un client attend, jamais de lettre
+                d'information : tous les produits de Serge partagent 100 e-mails
+                par jour. Au plus quelques e-mails par heure et par adresse, et un
+                nombre limité d'inscriptions par heure et par adresse IP, contre
+                les robots ;
+              - pas d'adresse ni de formulaire de contact pour l'instant, même si
+                le plan ou la fiche produit en parlent ;
+              - les mentions légales nomment l'éditeur, Julien Pesquet, une
+                personne qui répond du produit, et disent que le service est
+                construit et tenu par Serge, un agent IA.
+
+              Règles :
+  - id: lot11_concevoir_poc
+    why: >-
+      L'éditeur, l'adresse de contact et les e-mails sont réglés pour
+      tous les produits (lot 11, Q96).
+    table: invocations
+    where: {id: concevoir_poc}
+    set:
+      prompt:
+        replace:
+          - old: |-
+              Le business doit être légal.
+            new: |-
+              Ce qui est réglé pour tous les produits, à ne pas redemander :
+              l'éditeur des mentions légales est Julien Pesquet, une personne qui
+              répond du produit, et le service est construit et tenu par Serge, un
+              agent IA. Pas d'adresse ni de formulaire de contact pour l'instant :
+              n'en prévois pas. Le produit peut envoyer des e-mails à ses clients
+              (valider une inscription, changer un mot de passe oublié, un reçu) :
+              Serge règle leur envoi.
+
+              Le business doit être légal.
+  - id: lot11_concevoir_produit
+    why: >-
+      L'éditeur, l'adresse de contact et les e-mails sont réglés pour
+      tous les produits (lot 11, Q96).
+    table: invocations
+    where: {id: concevoir_produit}
+    set:
+      prompt:
+        replace:
+          - old: |-
+              Le business doit être légal.
+            new: |-
+              Ce qui est réglé pour tous les produits, à ne pas redemander :
+              l'éditeur des mentions légales est Julien Pesquet, une personne qui
+              répond du produit, et le service est construit et tenu par Serge, un
+              agent IA. Pas d'adresse ni de formulaire de contact pour l'instant :
+              n'en prévois pas. Le produit peut envoyer des e-mails à ses clients
+              (valider une inscription, changer un mot de passe oublié, un reçu) :
+              Serge règle leur envoi.
+
+              Le business doit être légal.
+  - id: lot11_challenger_poc
+    why: >-
+      Le critique ne demande plus l'éditeur ni une adresse de contact
+      (lot 11, Q96).
+    table: invocations
+    where: {id: challenger_poc}
+    set:
+      prompt:
+        replace:
+          - old: |-
+              Chaque remarque est « à corriger »
+            new: |-
+              Ce qui est réglé pour tous les produits n'est pas une remarque :
+              l'éditeur des mentions légales est Julien Pesquet, une personne, et
+              le service est tenu par Serge, un agent IA ; pas d'adresse ni de
+              formulaire de contact pour l'instant ; le produit peut envoyer des
+              e-mails (valider une inscription, changer un mot de passe), et Serge
+              règle leur envoi.
+
+              Chaque remarque est « à corriger »
+  - id: lot11_challenger_produit
+    why: >-
+      Le critique ne demande plus l'éditeur ni une adresse de contact
+      (lot 11, Q96).
+    table: invocations
+    where: {id: challenger_produit}
+    set:
+      prompt:
+        replace:
+          - old: |-
+              Chaque remarque est « à corriger »
+            new: |-
+              Ce qui est réglé pour tous les produits n'est pas une remarque :
+              l'éditeur des mentions légales est Julien Pesquet, une personne, et
+              le service est tenu par Serge, un agent IA ; pas d'adresse ni de
+              formulaire de contact pour l'instant ; le produit peut envoyer des
+              e-mails (valider une inscription, changer un mot de passe), et Serge
+              règle leur envoi.
+
+              Chaque remarque est « à corriger »
+  - id: lot11_relire_poc
+    why: >-
+      Le relecteur navigue avec le niveau « web », moins cher, et a sa
+      boîte e-mail (lot 11, Q96).
+    table: invocations
+    where: {id: relire_poc}
+    set:
+      model_tier: {from: code, to: web}
+      prompt:
+        replace:
+          - old: |-
+              tape, comme une personne. Prends une
+            new: |-
+              tape, comme une personne. Si le POC te demande une adresse e-mail,
+              prends la tienne : « Ma boîte e-mail » te la donne, et te montre les
+              e-mails qu'il t'envoie. Prends une
+  - id: lot11_relire_produit
+    why: >-
+      Le relecteur navigue avec le niveau « web », moins cher, a sa
+      boîte e-mail et finit un abonnement de test (lot 11, Q96).
+    table: invocations
+    where: {id: relire_produit}
+    set:
+      model_tier: {from: code, to: web}
+      prompt:
+        replace:
+          - old: |-
+              Crée un
+              compte avec une adresse inventée.
+            new: |-
+              Crée un
+              compte avec ton adresse : « Ma boîte e-mail » te la donne, et te
+              montre les e-mails que le produit t'envoie (ouvre un lien de
+              validation dans le navigateur) ; un e-mail attendu qui n'arrive pas
+              est un problème. Si un scénario demande d'annuler un abonnement ou
+              d'attendre la fin de la période payée, fais-le avec les outils Stripe
+              du mode test (le client par son e-mail, ses abonnements, annuler) :
+              c'est comme si le temps avait passé.
+  - id: lot11_paiement_test
+    why: >-
+      Le paiement test navigue avec le niveau « web » et paie avec
+      l'adresse de la boîte du relecteur (lot 11, Q96).
+    table: invocations
+    where: {id: paiement_test}
+    set:
+      model_tier: {from: code, to: web}
+      prompt:
+        replace:
+          - old: |-
+              une adresse e-mail (paiement-test@ suivi du domaine du produit),
+            new: |-
+              l'adresse e-mail que te donne « Ma boîte e-mail » (appelle-la
+              avec wait à faux),
+  - id: lot11_essayer_navigateur
+    why: >-
+      Naviguer passe au niveau « web », moins cher que « code » (lot 11,
+      Q96).
+    table: invocations
+    where: {id: essayer_navigateur}
+    set:
+      model_tier: {from: code, to: web}
+  - id: lot11_construire_poc_sans_navigateur
+    why: Seul le relecteur essaie le POC dans le navigateur (lot 11).
+    invocation: construire_poc
+    remove_tools: [navigateur_agir, navigateur_lire, navigateur_capture]
+  - id: lot11_construire_produit_sans_navigateur
+    why: Seul le relecteur essaie le produit dans le navigateur (lot 11).
+    invocation: construire_produit
+    remove_tools: [navigateur_agir, navigateur_lire, navigateur_capture]
+  - id: lot11_relire_poc_boite
+    why: Le relecteur s'inscrit avec sa propre adresse et lit ses e-mails (lot 11).
+    invocation: relire_poc
+    add_tools:
+      - {tool: boite_mail, mode: callable, params: {task_id: {source: task, value: task_id}}}
+  - id: lot11_relire_produit_boite
+    why: >-
+      Le relecteur s'inscrit avec sa propre adresse, lit ses e-mails et
+      finit un abonnement de test comme si le temps avait passé (lot 11).
+    invocation: relire_produit
+    add_tools:
+      - {tool: boite_mail, mode: callable, params: {task_id: {source: task, value: task_id}}}
+      - {tool: stripe_chercher_clients, mode: callable, params: {service: {source: fixed, value: stripe_test}, task_id: {source: task, value: task_id}}}
+      - {tool: stripe_abonnements, mode: callable, params: {service: {source: fixed, value: stripe_test}, task_id: {source: task, value: task_id}}}
+      - {tool: stripe_annuler_abonnement, mode: callable, params: {service: {source: fixed, value: stripe_test}, task_id: {source: task, value: task_id}}}
+  - id: lot11_paiement_test_boite
+    why: Le paiement test donne à Stripe l'adresse de la boîte du relecteur (lot 11).
+    invocation: paiement_test
+    add_tools:
+      - {tool: boite_mail, mode: callable, params: {task_id: {source: task, value: task_id}}}
 
 deleted:
   invocations: [demo_ouvrir_cycle, demo_formuler, demo_choisir]

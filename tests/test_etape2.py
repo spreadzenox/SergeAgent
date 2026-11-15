@@ -44,7 +44,11 @@ from serge.interpreter.queue import expirer_tickets, process_one  # noqa: E402
 from serge.interpreter.rules import quota_usage  # noqa: E402
 from serge.llm.client import ChatResult, ToolCall  # noqa: E402
 from serge.mc.proj_faits import project_fait_pipe  # noqa: E402
-from serge.sandbox import publier  # noqa: E402
+from serge.policy_store import set_setting  # noqa: E402
+from serge.sandbox import (
+    courriel,  # noqa: E402
+    publier,  # noqa: E402
+)
 from serge.tickets.reponses import noter_reponse  # noqa: E402
 from tests.test_chantier import faux_docker  # noqa: E402
 
@@ -185,11 +189,18 @@ class Etape2Tests(unittest.TestCase):
             mock.patch.dict(os.environ, env),
             mock.patch.object(publier, '_repond', return_value=True),
             mock.patch.object(caddy, 'reload', return_value=''),
+            # La clé d'envoi d'un produit, chez Resend : voir test_courriel.
+            mock.patch.object(
+                courriel, 'cle_produit', return_value='re_produit_faux'
+            ),
         ):
             patcher.start()
             self.addCleanup(patcher.stop)
         self.conn = open_db(default_canon_path())
         self.addCleanup(self.conn.close)
+        set_setting(
+            self.conn, 'courriel.domaine_envoi', 'envoi.exemple.fr', 'test'
+        )
         # Rien d'autre ne tourne : pas de relève de boîte, pas de relances.
         self.conn.execute(
             "UPDATE triggers SET enabled=0 WHERE event IN ('every', 'at')"

@@ -19,6 +19,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
+from serge.interpreter.halt import TaskFrozen, check_halt
 from serge.interpreter.intro import lessons_block, serge_intro, serge_text
 from serge.interpreter.output import Field, describe_format
 from serge.interpreter.seen import short_blocks
@@ -27,6 +28,12 @@ from serge.interpreter.settings import (
     load_settings,
     prompt_values,
     resolve_count,
+)
+from serge.interpreter.tool_calls import (
+    bounded,
+    call_limits,
+    drop_old_images,
+    limited_call,
 )
 from serge.interpreter.tools import fixed_params, run_tool, tool_schema
 from serge.llm.client import ChatResult
@@ -266,6 +273,12 @@ def converse(
     si ``tools_allowed`` est faux (une redemande de format : le modèle
     corrige sa réponse, il ne recommence pas ses recherches).
 
+    Avant chaque appel au modèle et chaque outil, la tâche s'arrête si
+    Serge a été coupé ou si elle a dépensé son plafond
+    (``serge/interpreter/halt.py``). Un outil qui ouvre une demande à
+    Julien gèle la tâche (``gel``) : le tour s'enregistre, puis elle
+    attend sa réponse.
+
     Tout l'historique repart au modèle à chaque tour : un résultat d'outil
     plus long que la taille réglée est coupé, avec une note, pour qu'un
     seul résultat ne coûte pas à chaque tour. L'attente, les pauses et
@@ -279,7 +292,8 @@ def converse(
     fin_des_outils = serge_text(conn, 'tools_exhausted')
     note_coupure = serge_text(conn, 'result_truncated')
     schemas, links = callable_tools(conn, inv, task)
-    limits = _call_limits(conn, inv, links)
+    limits = call_limits(conn, inv.id, links)
+    task_id = str(task.get('task_id') or '')
     calls: dict[str, int] = {}
     history = [dict(m) for m in messages]
     turns = 0
@@ -294,11 +308,12 @@ def converse(
             # Certains modèles rendent une réponse vide quand on leur
             # interdit les outils sans rien dire : on le leur dit.
             history.append({'role': 'user', 'content': fin_des_outils})
-        _drop_old_images(
+        drop_old_images(
             history,
             captures_gardees,
             serge_text(conn, 'capture_retiree', n=str(captures_gardees)),
         )
+        check_halt(conn, task_id)
         result = _call_model(
             caller,
             record,
@@ -333,10 +348,14 @@ def converse(
             }
         )
         images: list[str] = []
+        gel = ''
         for call in result.tool_calls:
-            outcome = _limited_call(
-                conn, inv, links, limits, calls, call, task
+            check_halt(conn, task_id)
+            outcome = limited_call(
+                conn, inv.id, links, limits, calls, call, task
             )
+            if outcome.get('gel') and task_id:
+                gel = str(outcome.get('ticket_id') or '')
             image = outcome.pop('image', None)
             if isinstance(image, str) and image.startswith('data:image/'):
                 outcome['image'] = 'montrée dans le message suivant'
@@ -345,7 +364,7 @@ def converse(
                 {
                     'role': 'tool',
                     'tool_call_id': call.id,
-                    'content': _borne(
+                    'content': bounded(
                         json.dumps(outcome, ensure_ascii=False, default=str),
                         max_result_chars,
                         note_coupure,
@@ -370,97 +389,5 @@ def converse(
         # avant de rappeler le modèle, pour ne pas bloquer la base pendant
         # l'appel.
         conn.commit()
-
-
-def _drop_old_images(
-    history: list[dict[str, Any]], kept: int, note: str
-) -> None:
-    """Ne garde dans l'historique que les ``kept`` dernières images.
-
-    Tout l'historique repart au modèle à chaque tour : sans cela, chaque
-    capture serait payée à chaque tour suivant. Une image retirée devient
-    un texte court (``note``). Exemple : avec 3, la quatrième capture fait
-    retirer la première.
-    """
-    seen = 0
-    for message in reversed(history):
-        content = message.get('content')
-        if not isinstance(content, list):
-            continue
-        for index in range(len(content) - 1, -1, -1):
-            part = content[index]
-            if not isinstance(part, dict) or part.get('type') != 'image_url':
-                continue
-            seen += 1
-            if seen > kept:
-                # Un texte vidé sur la page Pipeline n'est pas envoyé.
-                content[index] = {'type': 'text', 'text': note or '…'}
-
-
-def _borne(texte: str, limite: int, note: str) -> str:
-    """Un résultat d'outil coupé à ``limite`` caractères, avec une note
-    dont le repère ``{reste}`` dit combien de caractères ont été coupés."""
-    if limite <= 0 or len(texte) <= limite:
-        return texte
-    reste = str(len(texte) - limite)
-    return f'{texte[:limite]}… {note.replace("{reste}", reste)}'.rstrip()
-
-
-def _call_limits(
-    conn: sqlite3.Connection, inv: Invocation, links: Mapping[str, int | None]
-) -> dict[str, int]:
-    """Le nombre maximum d'appels de chaque outil qui en a un."""
-    settings = load_settings(conn, inv.id)
-    limits: dict[str, int] = {}
-    for name, link_id in links.items():
-        if link_id is None:
-            continue
-        row = conn.execute(
-            'SELECT max_calls FROM invocation_tools WHERE id=?', (link_id,)
-        ).fetchone()
-        limit = resolve_count(str(row[0]), settings) if row else None
-        if limit is not None:
-            limits[name] = limit
-    return limits
-
-
-def _limited_call(
-    conn: sqlite3.Connection,
-    inv: Invocation,
-    links: Mapping[str, int | None],
-    limits: Mapping[str, int],
-    calls: dict[str, int],
-    call: Any,
-    task: Mapping[str, str],
-) -> dict[str, Any]:
-    done = calls.get(call.name, 0)
-    if call.name in limits and done >= limits[call.name]:
-        return {
-            'ok': False,
-            'code': 'limite_atteinte',
-            'detail': f'au plus {limits[call.name]} appels de cet outil',
-        }
-    calls[call.name] = done + 1
-    return _call_tool(conn, inv, links, call.name, call.arguments, task)
-
-
-def _call_tool(
-    conn: sqlite3.Connection,
-    inv: Invocation,
-    links: Mapping[str, int | None],
-    name: str,
-    raw_args: str,
-    task: Mapping[str, str],
-) -> dict[str, Any]:
-    if name not in links:
-        return {'ok': False, 'code': 'outil_non_autorise'}
-    try:
-        args = json.loads(raw_args or '{}')
-    except json.JSONDecodeError:
-        return {'ok': False, 'code': 'arguments_illisibles'}
-    if not isinstance(args, dict):
-        return {'ok': False, 'code': 'arguments_illisibles'}
-    try:
-        return run_tool(conn, inv.id, links[name], name, args, task)
-    except Exception as exc:  # noqa: BLE001 — un outil en échec ne tue pas l'invocation
-        return {'ok': False, 'code': 'echec', 'detail': str(exc)[:200]}
+        if gel:
+            raise TaskFrozen(gel)

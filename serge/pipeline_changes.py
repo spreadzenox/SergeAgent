@@ -28,7 +28,11 @@ réponse (``remove_outputs``), une valeur d'une écriture
 (``remove_write_values``) ou une colonne lue par un outil de lecture
 (``remove_tool_columns``, avec ``tool``) se retirent une seule fois :
 exemple, le rythme des relances, sorti du plan d'un POC (Q37, corrigée
-par Q92). Un paramètre figé d'un outil d'une invocation
+par Q92). Un outil d'une invocation aussi (``remove_tools``) : le
+navigateur du constructeur (``serge/pipeline_changes_remove.py``). Dans un
+``set``, ``replace`` (une liste de ``{old, new}``) remplace seulement des
+passages d'un texte : un prompt changé ailleurs dans Mission Control garde
+ses changements. Un paramètre figé d'un outil d'une invocation
 (``set_tool_params``, avec ``tool``) change comme une valeur : seulement
 s'il vaut encore celle d'origine. Un paramètre de plus d'un lien
 (``add_link_params``) ou d'une invocation sans LLM (``add_params``)
@@ -50,6 +54,13 @@ from typing import Any
 
 from serge.interpreter.rules import safe_name, table_columns
 from serge.pipeline_changes_params import add_link_params, add_params
+from serge.pipeline_changes_remove import (
+    invocation_absente,
+    remove_outputs,
+    remove_tool_columns,
+    remove_tools,
+    remove_write_values,
+)
 from serge.seed_base import PipelineSeedError, seed_tool_link
 
 # Les tables du pipeline qu'une modification peut viser.
@@ -97,10 +108,13 @@ def _result(
     current = dict(zip(names, rows[0], strict=True))
     parts = []
     for name, spec in changes.items():
+        now = str(current[name] if current[name] is not None else '').strip()
+        if 'replace' in spec:
+            parts.append(_replace(conn, table, current, name, now, spec))
+            continue
         # Un texte (un prompt) se compare sans ses blancs de fin, comme il
         # est rangé en base.
         before, after = str(spec['from']).strip(), str(spec['to']).strip()
-        now = str(current[name] if current[name] is not None else '').strip()
         if now == after:
             parts.append(f'{name} déjà à jour')
         elif now != before:
@@ -116,6 +130,42 @@ def _result(
                 else f'{name} : {before or "(vide)"} → {after}'
             )
     return ' ; '.join(parts)
+
+
+def _replace(
+    conn: sqlite3.Connection,
+    table: str,
+    current: Mapping[str, Any],
+    name: str,
+    now: str,
+    spec: Mapping[str, Any],
+) -> str:
+    """Remplace des passages d'un texte (un prompt) : ``replace`` est une
+    liste de ``{old, new}``. Un passage absent (changé dans Mission
+    Control) est gardé ; le reste du texte n'est jamais touché."""
+    texte, faits, gardes = now, 0, 0
+    for pair in spec['replace']:
+        old, new = str(pair['old']).strip(), str(pair['new']).strip()
+        # Le nouveau passage peut contenir l'ancien (un paragraphe ajouté
+        # avant « Règles : ») : déjà là, il ne s'ajoute pas une seconde fois.
+        if new in texte:
+            continue
+        if old in texte:
+            texte, faits = texte.replace(old, new, 1), faits + 1
+        else:
+            gardes += 1
+    if texte != now:
+        conn.execute(
+            f'UPDATE "{table}" SET "{name}"=? WHERE rowid=?',
+            (texte, current['rowid']),
+        )
+    if gardes:
+        return f'{name} : {faits} passage(s) remplacé(s), {gardes} gardé(s) (changés dans Mission Control)'
+    return (
+        f'{name} : {faits} passage(s) remplacé(s)'
+        if faits
+        else f'{name} déjà à jour'
+    )
 
 
 def _add_tools(conn: sqlite3.Connection, invocation: str, raw: Any) -> str:
@@ -149,12 +199,6 @@ def _add_tools(conn: sqlite3.Connection, invocation: str, raw: Any) -> str:
     return ' ; '.join(parts)
 
 
-def _invocation_absente(conn: sqlite3.Connection, invocation: str) -> bool:
-    return not conn.execute(
-        'SELECT 1 FROM invocations WHERE id=?', (invocation,)
-    ).fetchone()
-
-
 def _add_outputs(conn: sqlite3.Connection, invocation: str, raw: Any) -> str:
     """Ajoute des champs à la réponse d'une invocation déjà en base ; un
     champ déjà là (même chemin) est gardé."""
@@ -163,7 +207,7 @@ def _add_outputs(conn: sqlite3.Connection, invocation: str, raw: Any) -> str:
         for out in raw
     ):
         raise PipelineSeedError('changes : add_outputs, une liste de champs')
-    if _invocation_absente(conn, invocation):
+    if invocation_absente(conn, invocation):
         return 'objet absent'
     parts = []
     for out in raw:
@@ -208,7 +252,7 @@ def _add_write_values(
         raise PipelineSeedError(
             'changes : add_write_values, un rang write et des valeurs'
         )
-    if _invocation_absente(conn, invocation):
+    if invocation_absente(conn, invocation):
         return 'objet absent'
     row = conn.execute(
         'SELECT id FROM invocation_writes WHERE invocation_id=? AND position=?',
@@ -277,85 +321,6 @@ def _add_trigger_params(
     return ' ; '.join(parts)
 
 
-def _textes(raw: Any, quoi: str) -> list[str]:
-    if not isinstance(raw, list) or not all(
-        isinstance(x, str) and x for x in raw
-    ):
-        raise PipelineSeedError(f'changes : {quoi}, une liste de noms')
-    return list(raw)
-
-
-def _remove_outputs(
-    conn: sqlite3.Connection, invocation: str, raw: Any
-) -> str:
-    """Retire des champs de la réponse d'une invocation déjà en base, avec
-    leurs sous-champs (``faq`` retire aussi ``faq.question``)."""
-    paths = _textes(raw, 'remove_outputs')
-    if _invocation_absente(conn, invocation):
-        return 'objet absent'
-    parts = []
-    for path in paths:
-        retires = conn.execute(
-            'DELETE FROM invocation_output_fields WHERE invocation_id=?'
-            ' AND (path=? OR path LIKE ?)',
-            (invocation, path, f'{path}.%'),
-        ).rowcount
-        parts.append(f'{path} retiré' if retires else f'{path} déjà absent')
-    return ' ; '.join(parts)
-
-
-def _remove_write_values(
-    conn: sqlite3.Connection, invocation: str, write: Any, raw: Any
-) -> str:
-    """Retire des valeurs d'une écriture d'une invocation déjà en base (son
-    rang ``write``) : la colonne n'est plus écrite."""
-    columns = _textes(raw, 'remove_write_values')
-    if not isinstance(write, int):
-        raise PipelineSeedError('changes : remove_write_values, un rang write')
-    if _invocation_absente(conn, invocation):
-        return 'objet absent'
-    row = conn.execute(
-        'SELECT id FROM invocation_writes WHERE invocation_id=? AND position=?',
-        (invocation, write),
-    ).fetchone()
-    if row is None:
-        return 'écriture absente'
-    parts = []
-    for column in columns:
-        retires = conn.execute(
-            'DELETE FROM invocation_write_values WHERE write_id=?'
-            ' AND column_name=?',
-            (row[0], column),
-        ).rowcount
-        parts.append(
-            f'{column} retiré' if retires else f'{column} déjà absent'
-        )
-    return ' ; '.join(parts)
-
-
-def _remove_tool_columns(conn: sqlite3.Connection, tool: str, raw: Any) -> str:
-    """Retire des colonnes lues par un outil de lecture déjà en base."""
-    if not isinstance(raw, list) or not all(
-        isinstance(c, Mapping) and c.get('table') and c.get('name')
-        for c in raw
-    ):
-        raise PipelineSeedError(
-            'changes : remove_tool_columns, une liste de {table, name}'
-        )
-    if not conn.execute('SELECT 1 FROM tools WHERE id=?', (tool,)).fetchone():
-        return 'objet absent'
-    parts = []
-    for col in raw:
-        retires = conn.execute(
-            'DELETE FROM tool_db_columns WHERE tool_id=? AND table_name=?'
-            ' AND column_name=?',
-            (tool, str(col['table']), str(col['name'])),
-        ).rowcount
-        nom = f'{col["table"]}.{col["name"]}'
-        parts.append(f'{nom} retiré' if retires else f'{nom} déjà absent')
-    return ' ; '.join(parts)
-
-
 def _set_tool_params(
     conn: sqlite3.Connection, invocation: str, tool: str, raw: Any
 ) -> str:
@@ -369,7 +334,7 @@ def _set_tool_params(
         raise PipelineSeedError(
             'changes : set_tool_params, des paramètres {from, to}'
         )
-    if _invocation_absente(conn, invocation):
+    if invocation_absente(conn, invocation):
         return 'objet absent'
     parts = []
     for name, spec in raw.items():
@@ -397,6 +362,25 @@ def _set_tool_params(
     return ' ; '.join(parts)
 
 
+# Les sortes de modification qui visent une invocation (``invocation``), et
+# les autres, chacune avec ce qu'elle vise (voir ``apply_changes``).
+_PAR_INVOCATION = {
+    'add_tools': _add_tools,
+    'add_outputs': _add_outputs,
+    'remove_outputs': remove_outputs,
+    'remove_tools': remove_tools,
+    'add_params': add_params,
+}
+_AUTRES = (
+    'add_trigger_params',
+    'add_write_values',
+    'remove_write_values',
+    'add_link_params',
+    'set_tool_params',
+    'remove_tool_columns',
+)
+
+
 def apply_changes(conn: sqlite3.Connection, raw: Any) -> None:
     """Applique les modifications de ``pipeline.yaml`` pas encore passées.
 
@@ -413,52 +397,35 @@ def apply_changes(conn: sqlite3.Connection, raw: Any) -> None:
         ).fetchone():
             continue
         invocation = str(change.get('invocation') or '')
-        if 'add_tools' in change:
-            result = _add_tools(conn, invocation, change['add_tools'])
-        elif 'add_outputs' in change:
-            result = _add_outputs(conn, invocation, change['add_outputs'])
-        elif 'add_trigger_params' in change:
+        kind = next(
+            (k for k in (*_PAR_INVOCATION, *_AUTRES) if k in change), ''
+        )
+        if kind in _PAR_INVOCATION:
+            result = _PAR_INVOCATION[kind](conn, invocation, change[kind])
+        elif kind == 'add_trigger_params':
             result = _add_trigger_params(
-                conn,
-                str(change.get('trigger') or ''),
-                change['add_trigger_params'],
+                conn, str(change.get('trigger') or ''), change[kind]
             )
-        elif 'add_write_values' in change:
-            result = _add_write_values(
-                conn,
-                invocation,
-                change.get('write'),
-                change['add_write_values'],
+        elif kind in ('add_write_values', 'remove_write_values'):
+            fonction = (
+                _add_write_values
+                if kind == 'add_write_values'
+                else remove_write_values
             )
-        elif 'remove_outputs' in change:
-            result = _remove_outputs(
-                conn, invocation, change['remove_outputs']
+            result = fonction(
+                conn, invocation, change.get('write'), change[kind]
             )
-        elif 'remove_write_values' in change:
-            result = _remove_write_values(
-                conn,
-                invocation,
-                change.get('write'),
-                change['remove_write_values'],
-            )
-        elif 'add_link_params' in change:
+        elif kind == 'add_link_params':
             result = add_link_params(
-                conn, str(change.get('link') or ''), change['add_link_params']
+                conn, str(change.get('link') or ''), change[kind]
             )
-        elif 'add_params' in change:
-            result = add_params(conn, invocation, change['add_params'])
-        elif 'set_tool_params' in change:
+        elif kind == 'set_tool_params':
             result = _set_tool_params(
-                conn,
-                invocation,
-                str(change.get('tool') or ''),
-                change['set_tool_params'],
+                conn, invocation, str(change.get('tool') or ''), change[kind]
             )
-        elif 'remove_tool_columns' in change:
-            result = _remove_tool_columns(
-                conn,
-                str(change.get('tool') or ''),
-                change['remove_tool_columns'],
+        elif kind == 'remove_tool_columns':
+            result = remove_tool_columns(
+                conn, str(change.get('tool') or ''), change[kind]
             )
         else:
             table = str(change['table'])

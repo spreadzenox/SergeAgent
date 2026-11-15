@@ -130,6 +130,11 @@ class TierSettingsTests(unittest.TestCase):
                     'tolerance': 1.0,
                     'needs_image': 1,
                 },
+                'web': {
+                    'max_price': 3.0,
+                    'tolerance': 0.95,
+                    'needs_image': 1,
+                },
             },
         )
         conn.execute(
@@ -576,8 +581,10 @@ class RealCatalogTests(unittest.TestCase):
                 'mid': 'xiaomi/mimo-v2.6-pro',
                 'smart': 'anthropic/claude-sonnet-5.5',
                 # L'échantillon (30 septembre) ne dit pas quels modèles
-                # lisent les images : le niveau « code » ne recommande rien.
+                # lisent les images : les niveaux « code » et « web » ne
+                # recommandent rien.
                 'code': '',
+                'web': '',
             },
         )
         self.assertEqual(page['scored'], 5)

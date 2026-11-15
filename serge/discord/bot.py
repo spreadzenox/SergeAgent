@@ -166,6 +166,25 @@ class Bot:
                 self._suite(interaction, 'C’est noté.')
             # Le ticket tranché est mis à jour tout de suite chez tous.
             self.reveil.set()
+        elif status == 'tout':
+            self._poster(interaction, list(result.get('textes') or []))
+
+    def _poster(
+        self, interaction: Mapping[str, Any], textes: list[str]
+    ) -> None:
+        """« Voir en entier » : tout le ticket, dans le fil, visible de tous.
+        Un message refusé par Discord est noté au journal ; les suivants ne
+        partent pas."""
+        for texte in textes:
+            try:
+                interaction_followup(
+                    str(interaction.get('application_id') or ''),
+                    str(interaction.get('token') or ''),
+                    {'content': texte[:2000]},
+                )
+            except DiscordError as exc:
+                journal(f'« Voir en entier » refusé par Discord : {exc}')
+                return
 
     def verifier_endpoint(self) -> None:
         """Que les clics arrivent bien au bot (décision Q90).

@@ -7,7 +7,8 @@ décision Q86) peut agir ; l'acte est noté à son nom (``discord:<id>``), et
 dédoublonné par l'id de l'interaction. Un bouton qui demande un texte
 (« Éditer », « Réponse libre », « Discuter », « Autre » d'un choix) ouvre
 une fenêtre de saisie. Le LLM n'est jamais sur le chemin d'une décision.
-Un refus est un message éphémère, en français.
+Un refus est un message éphémère, en français. « Voir en entier » ne
+tranche rien : le bot poste tout le texte du ticket dans son fil.
 """
 
 from __future__ import annotations
@@ -21,7 +22,13 @@ from serge.tickets.admins import is_admin
 from serge.tickets.items import set_item, tout_approuver
 from serge.tickets.lifecycle import decide, discuss
 from serge.tickets.reponses import message_du_ticket, noter_reponse
-from serge.tickets.shared import TicketError, already_applied, record_event
+from serge.tickets.shared import (
+    TicketError,
+    already_applied,
+    fetch_ticket,
+    record_event,
+)
+from serge.tickets.types import ticket_types
 
 ITEM_STATES = {'garder': 'keep', 'modifier': 'edit', 'jeter': 'drop'}
 # Les boutons qui demandent un texte : le titre de leur fenêtre de saisie,
@@ -214,6 +221,22 @@ def _bouton(
     return None
 
 
+def _tout(connection: sqlite3.Connection, ticket_id: str) -> dict[str, Any]:
+    """Tout le texte d'un ticket, en messages à poster dans son fil."""
+    from serge.discord.render import texte_entier
+
+    try:
+        ticket = dict(fetch_ticket(connection, ticket_id))
+    except TicketError as exc:
+        return {'status': 'error', 'error': str(exc)}
+    spec = ticket_types(connection).get(str(ticket['type'])) or {}
+    return {
+        'status': 'tout',
+        'ticket_id': ticket_id,
+        'textes': texte_entier(ticket, spec),
+    }
+
+
 def ephemere(texte: str) -> dict[str, Any]:
     """Un message que seule la personne qui a cliqué voit."""
     return {'content': texte[:2000], 'flags': 64}
@@ -284,6 +307,8 @@ def route_interaction(
             'error': 'admin_only',
             'message': 'Réservé aux administrateurs de Serge.',
         }
+    if not saisie and action == 'voir_en_entier':
+        return _tout(connection, ticket_id)
     actor = f'discord:{user}'
     decision_id = str(interaction.get('id') or '')
     if decision_id and already_applied(connection, ticket_id, decision_id):

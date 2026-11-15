@@ -110,4 +110,55 @@ def noter_reponse(
         ),
     )
     notify_rows_written(conn, 'ticket_answers', [ident])
+    if ref_table == 'tasks' and ref_id:
+        _degeler(conn, ticket_id, ref_id, acte, texte)
     return ident
+
+
+# Ce que dit à la tâche une réponse sans texte.
+SANS_TEXTE = {
+    'faire_sans': 'fais sans : continue sans ce que tu demandais, au mieux,'
+    ' et dis dans ta réponse ce qui manque',
+}
+
+
+def _degeler(
+    conn: sqlite3.Connection,
+    ticket_id: str,
+    task_id: str,
+    acte: str,
+    texte: str,
+) -> None:
+    """Une tâche gelée par sa demande repart, avec la réponse de Julien.
+
+    Exemple de ce que le modèle lit ensuite : « Ta demande : une adresse de
+    contact. Réponse de Julien : fais sans : continue sans… ».
+    """
+    import json
+
+    from serge.db.store import append_event
+    from serge.interpreter.tasks import thaw_task
+
+    row = conn.execute(
+        'SELECT payload_json FROM tickets WHERE id=?', (ticket_id,)
+    ).fetchone()
+    try:
+        charge = json.loads(row[0] or '{}') if row else {}
+    except ValueError:
+        charge = {}
+    demande = str(charge.get('en_bref') or charge.get('demande') or '')
+    reponse = texte.strip() or SANS_TEXTE.get(acte, f'« {acte} »')
+    if acte == 'faire_sans' and texte.strip():
+        reponse = f'{SANS_TEXTE[acte]}. {texte.strip()}'
+    if thaw_task(
+        conn,
+        task_id,
+        f'Ta demande : {demande}\nRéponse de Julien : {reponse}\n'
+        'Ne redemande pas la même chose.',
+    ):
+        append_event(
+            conn,
+            actor='ticket',
+            type='task.thawed',
+            payload={'task': task_id, 'ticket': ticket_id, 'acte': acte},
+        )
