@@ -18,7 +18,8 @@ Scénarios :
 - un domaine qui n'a pas pu être acheté ouvre le ticket « Domaine » ; le
   nom donné par un humain est acheté ;
 - avec un domaine commun des produits finis (réglage), rien n'est acheté :
-  la prod va sur un sous-domaine de ce domaine ;
+  Serge crée l'enregistrement DNS du sous-domaine du produit, et la prod
+  va sur ce sous-domaine ;
 - « Construire le vrai produit » sur la fiche d'un business au test léger
   lance la conception ; sur un business candidat, rien ne part ;
 - sans la clé restreinte du vrai mode, la mise en prod rate et un ticket
@@ -202,6 +203,7 @@ class FauxModeles:
         ('Tu essaies le produit fini', 'relire'),
         ('Tu achètes le nom de domaine', 'acheter'),
         ('Tu fais le paiement test de 1 €', 'payer'),
+        ('Tu fais pointer le sous-domaine', 'pointer'),
     )
 
     def __init__(self, domaines: list[str]) -> None:
@@ -303,6 +305,27 @@ class FauxModeles:
         return self._json(
             {'achete': 'oui', 'domaine': domaine, 'prix': '11,51 € par an'}
         )
+
+    def _pointer(self, messages, outils) -> ChatResult:
+        # Le nom vient de l'outil « L'adresse du produit », donné d'office.
+        nom = re.findall(
+            r'[a-z0-9-]+\.produits\.exemple\.fr', json.dumps(messages)
+        )[0]
+        if outils == 0:
+            return self._outils(
+                appel('z', 'cloudflare_zone', name='produits.exemple.fr')
+            )
+        if outils == 1:
+            return self._outils(
+                appel(
+                    'd',
+                    'cloudflare_dns_creer',
+                    zone_id='zone_1',
+                    name=nom,
+                    content=IP,
+                )
+            )
+        return self._json({'ok': 'oui', 'nom': nom})
 
     def _payer(self, _messages, outils) -> ChatResult:
         if outils == 0:
@@ -639,6 +662,14 @@ class Etape5Tests(unittest.TestCase):
                 for r in _Services.requetes
                 if r['chemin'].startswith('/accounts')
             ]
+        )
+        # Le sous-domaine du produit, et lui seul, pointe vers le serveur.
+        dns = self._requetes('/zones/zone_1/dns_records')
+        self.assertEqual(len(dns), 1)
+        self.assertEqual(dns[0]['auth'], 'Bearer cf_infra_faux')
+        self.assertEqual(
+            (dns[0]['corps']['name'], dns[0]['corps']['content']),
+            ('calculatrice.produits.exemple.fr', IP),
         )
         self.assertEqual(
             self._un(

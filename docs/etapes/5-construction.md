@@ -55,8 +55,9 @@ calculatrice » de la page Système (plus bas).
    le staging, paiement compris. Il n'expire jamais.
 7. **Choisir le domaine** (sans LLM), une fois le produit essayé et
    validé : avec un domaine commun des produits finis (réglage, page
-   Policy), rien n'est acheté et la prod ira sur
-   `<produit>.<domaine commun>` ; passer directement à l'étape 8. Sinon,
+   Policy), rien n'est acheté : Serge fait pointer
+   `<produit>.<domaine commun>` vers le serveur (un enregistrement DNS chez
+   Cloudflare, pour ce seul nom) et passe à l'étape 8. Sinon,
    **acheter le domaine** (niveau intelligent) : chez Cloudflare, avec la carte de Serge enregistrée
    sur son compte, s'il est libre et sous le prix maximum (30 € par an, la
    première année comme le renouvellement, page Policy), pour un an sans

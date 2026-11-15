@@ -532,7 +532,11 @@ lourde.
   domaine du produit » (page Policy). Rempli, la prod va sur
   `<produit>.<domaine commun>` sans rien acheter ; vide, Serge achète.
   « Choisir le domaine du produit » est une étape sans LLM entre l'essai
-  validé et l'achat : le choix ne dépend jamais d'un modèle.
+  validé et l'achat : le choix ne dépend jamais d'un modèle. Avec le
+  domaine commun, « Faire pointer le sous-domaine du produit » crée chez
+  Cloudflare l'enregistrement de ce seul nom, calculé par la capacité
+  « Adresse d'un produit » exactement comme la publication le calcule ;
+  elle n'a aucun outil d'achat.
 
 **Les versions suivantes** (Q41, Q43) passent par la même boucle
 « construire, publier en staging, relire ». Une version que le relecteur

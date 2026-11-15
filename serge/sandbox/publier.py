@@ -173,7 +173,22 @@ def _queue(text: str, limite: int = 3000) -> str:
     return text if len(text) <= limite else '…' + text[-limite:]
 
 
-def _hostname(args: dict[str, Any], target: str) -> str:
+def avec_le_nom(
+    conn: sqlite3.Connection, args: dict[str, Any]
+) -> dict[str, Any]:
+    """Les paramètres, avec le nom du business quand aucun nom court n'est
+    figé : « Devis Vocal » donne devis-vocal.<domaine>."""
+    if str(args.get('slug') or ''):
+        return args
+    venture_id = str(args.get('venture_id') or '')
+    row = conn.execute(
+        'SELECT name FROM ventures WHERE id=?', (venture_id,)
+    ).fetchone()
+    return {**args, 'nom': str(row[0]) if row else venture_id}
+
+
+def product_hostname(args: dict[str, Any], target: str) -> str:
+    """L'adresse d'un produit publié sur ``target`` (staging ou prod)."""
     domaine = str(args.get('domain') or '').strip().lower()
     if domaine and target == 'prod':
         return domaine
@@ -208,13 +223,7 @@ def publish_version(
         return {'ok': False, 'code': 'cible_inconnue', 'detail': target}
     chantier = chantier_id(venture_id, deliverable)
     deployment = f'{target}-{chantier}'
-    if not str(args.get('slug') or ''):
-        # Sans nom court figé, celui du business : « Devis Vocal » donne
-        # devis-vocal.<domaine>.
-        row = conn.execute(
-            'SELECT name FROM ventures WHERE id=?', (venture_id,)
-        ).fetchone()
-        args = {**args, 'nom': str(row[0]) if row else venture_id}
+    args = avec_le_nom(conn, args)
     if target == 'staging':
         _c, name, _p = ensure_chantier(conn, {**args, 'profile': 'chantier'})
         version, dossier, artifact = _snapshot(
@@ -272,7 +281,7 @@ def _lancer(
     artifact: str,
 ) -> dict[str, Any]:
     profile = policy_en_vigueur(conn)['sandbox']['produit']
-    hostname = _hostname(args, target)
+    hostname = product_hostname(args, target)
     url = f'https://{hostname}'
     port = _port(conn, deployment)
     container = f'serge-{deployment}'

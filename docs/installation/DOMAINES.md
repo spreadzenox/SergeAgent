@@ -19,11 +19,14 @@ sous un domaine que Serge possède déjà : page Policy, invocation
   propose le plan est alors ignoré.
 - **Vide** : Serge achète un domaine par produit, comme décrit plus bas.
 
-Il faut une fois, dans la zone Cloudflare de ce domaine, un
-enregistrement `*` de type A vers l'adresse IPv4 du serveur, sans le
-proxy de Cloudflare : chaque sous-domaine mène alors au serveur, et Caddy
-obtient son certificat HTTPS. Le réglage se change à tout moment ; il
-vaut pour les produits qui n'ont pas encore passé l'essai.
+Pour chaque produit, Serge crée lui-même, dans la zone Cloudflare de ce
+domaine, l'enregistrement A de son sous-domaine vers le serveur, sans le
+proxy de Cloudflare (invocation « Faire pointer le sous-domaine du
+produit », qui n'a aucun outil d'achat), puis le met en vente. Un seul nom
+par produit, jamais `*` : seuls les produits publiés mènent au serveur.
+Caddy obtient le certificat HTTPS de chacun. Le domaine doit être au
+compte Cloudflare de Serge. Le réglage se change à tout moment ; il vaut
+pour les produits qui n'ont pas encore passé l'essai.
 
 Serge passe par la capacité « Appeler une API ». Deux services sont
 décrits en base (table `api_services`, page SQLite) :

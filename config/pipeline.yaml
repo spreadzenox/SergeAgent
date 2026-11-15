@@ -946,6 +946,12 @@ tools:
       Le domaine de l'instance et l'adresse IPv4 publique du serveur, pour
       faire pointer le domaine d'un produit vers lui.
     capability: server_address
+  - id: adresse_du_produit
+    title: L'adresse d'un produit
+    doc: >-
+      Le nom où un produit est, ou sera, publié en prod, calculé comme la
+      publication le calcule : exemple, calculatrice.<domaine commun>.
+    capability: product_address
   - id: stripe_creer_prix_du_produit
     title: Créer le prix d'un produit Stripe
     doc: >-
@@ -5000,11 +5006,75 @@ invocations:
     queue: works
     priority: 30
     settings:
-      domaine_commun: {type: text, value: '', policy: true, description: "Le domaine commun des produits finis : chacun y est publié sur un sous-domaine (calculatrice.<ce domaine>) et Serge n'achète aucun domaine. Vide : Serge achète un domaine par produit. Le domaine doit être au compte Cloudflare de Serge, avec un enregistrement * vers le serveur."}
+      domaine_commun: {type: text, value: '', policy: true, description: "Le domaine commun des produits finis : chacun y est publié sur un sous-domaine (calculatrice.<ce domaine>) que Serge fait pointer vers le serveur, et il n'achète aucun domaine. Vide : Serge achète un domaine par produit. Le domaine doit être au compte Cloudflare de Serge."}
     params:
       venture_id: {source: task, value: venture_id}
       build_id: {source: task, value: build_id}
       domaine_commun: {source: setting, value: domaine_commun}
+
+  - id: pointer_sous_domaine
+    title: Faire pointer le sous-domaine du produit
+    role: >-
+      Avec un domaine commun des produits finis : crée, chez Cloudflare,
+      l'enregistrement DNS du sous-domaine du produit vers le serveur,
+      avant sa mise en vente. N'achète rien.
+    step: build_venture
+    type: llm
+    model_tier: mid
+    queue: works
+    priority: 30
+    max_tool_turns: 6
+    prompt: |
+      Tu fais pointer le sous-domaine d'un produit vers le serveur de
+      Serge, chez Cloudflare. Tu reçois l'adresse du produit (le nom à
+      faire pointer, exemple : calculatrice.<domaine commun>) et l'adresse
+      IPv4 du serveur. Le domaine commun est dans les paramètres de la
+      tâche (« domaine_commun »).
+
+      1. Trouve la zone du domaine commun (« La zone DNS d'un domaine »).
+      2. Lis ses enregistrements A pour le nom du produit.
+      3. S'il y en a un, modifie-le ; sinon crée-le : ce nom, vers
+         l'adresse IPv4 du serveur.
+
+      Rends ok « oui » si le nom pointe vers le serveur, avec ce nom ;
+      sinon « non », et ce que Cloudflare a répondu.
+    tools:
+      - tool: adresse_du_produit
+        mode: given
+        label: L'adresse du produit
+        params:
+          venture_id: {source: task, value: venture_id}
+          target: {source: fixed, value: prod}
+          base_domain: {source: task, value: domaine_commun}
+      - tool: adresse_du_serveur
+        mode: given
+        label: Le serveur de Serge
+      - tool: cloudflare_zone
+        mode: callable
+        max_calls: 3
+      - tool: cloudflare_dns_lire
+        mode: callable
+        max_calls: 2
+      - tool: cloudflare_dns_creer
+        mode: callable
+        max_calls: 2
+        params:
+          type: {source: fixed, value: A}
+          ttl: {source: fixed, value: '300'}
+          proxied: {source: fixed, value: 'false'}
+          task_id: {source: task, value: task_id}
+      - tool: cloudflare_dns_modifier
+        mode: callable
+        max_calls: 2
+        params:
+          type: {source: fixed, value: A}
+          ttl: {source: fixed, value: '300'}
+          proxied: {source: fixed, value: 'false'}
+          task_id: {source: task, value: task_id}
+    output:
+      - {path: ok, type: choice, choices: [oui, non], description: 'Le sous-domaine pointe-t-il vers le serveur ?'}
+      - {path: nom, type: text, description: 'Le nom : calculatrice.<domaine commun>.'}
+      - {path: raison, type: text, required: false, description: "Ce que Cloudflare a répondu, si ça n'a pas marché."}
 
   - id: acheter_domaine
     title: Acheter le domaine du produit
@@ -6038,14 +6108,30 @@ links:
     params:
       venture_id: {source: task, value: venture_id}
       build_id: {source: task, value: build_id}
-  - id: domaine_commun_vers_vente
-    title: Un domaine commun ; le produit est mis en vente sans achat
+  - id: domaine_commun_vers_sous_domaine
+    title: Un domaine commun ; Serge fait pointer le sous-domaine du produit
     from: choisir_domaine
-    to: mettre_en_vente
+    to: pointer_sous_domaine
     condition: {field: domaine_commun, op: non_vide}
     params:
       venture_id: {source: task, value: venture_id}
       domaine_commun: {source: field, value: domaine_commun}
+  - id: sous_domaine_vers_vente
+    title: Le sous-domaine pointe vers le serveur ; le produit est mis en vente
+    from: pointer_sous_domaine
+    to: mettre_en_vente
+    condition: {field: ok, op: '=', value: oui}
+    params:
+      venture_id: {source: task, value: venture_id}
+      domaine_commun: {source: task, value: domaine_commun}
+  - id: sous_domaine_rate_vers_ticket
+    title: Le sous-domaine du produit n'a pas pu pointer vers le serveur
+    from: pointer_sous_domaine
+    to: prevenir_produit
+    condition: {field: ok, op: '!=', value: oui}
+    params:
+      titre: {source: fixed, value: "Le sous-domaine d'un produit n'a pas pu pointer vers le serveur"}
+      raison: {source: field, value: raison}
   - id: test_produit_a_corriger_vers_construction
     title: Le produit est à corriger d'après un humain
     from: suite_test_produit

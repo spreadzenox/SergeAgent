@@ -46,6 +46,23 @@ PUBLIER: tuple[Capability, ...] = (
         ),
     ),
     Capability(
+        'product_address',
+        'Adresse d’un produit',
+        'Rend l’adresse où un produit est, ou sera, publié, calculée comme la'
+        ' publication la calcule : <produit>.<domaine commun> ou'
+        ' <produit>.<domaine de l’instance> en prod, staging-<produit>… en'
+        ' staging. Pour faire pointer ce nom vers le serveur avant de'
+        ' publier.',
+        'serge/ingress/adresse.py',
+        (
+            Param('venture_id', 'text', True, 'Le business.'),
+            Param('target', 'text', False, 'staging ou prod (prod).'),
+            Param('domain', 'text', False, 'Le domaine acheté, s’il y en a.'),
+            Param('base_domain', 'text', False, 'Le domaine commun.'),
+            Param('slug', 'text', False, 'Le nom court du produit.'),
+        ),
+    ),
+    Capability(
         'server_address',
         'Adresse du serveur',
         'Rend le domaine de l’instance et l’adresse IPv4 publique du'
