@@ -492,6 +492,7 @@ class RegistrarCloudflareTests(unittest.TestCase):
     def _comme_la_pr7(self, secrets: str) -> None:
         c = self.conn
         avant = self.changes
+        navigateur_sans_ecran(c)
         c.execute(
             "UPDATE invocations SET prompt=? WHERE id='acheter_domaine'",
             (avant['lot10_achat_cloudflare_prompt']['set']['prompt']['from'],),
@@ -755,3 +756,99 @@ class InstanceDuLot10Tests(unittest.TestCase):
             "SELECT result FROM pipeline_changes WHERE id='lot11_construire_produit'"
         ).fetchone()[0]
         self.assertIn('2 passage(s) remplacé(s), 1 gardé(s)', resultat)
+
+
+def navigateur_sans_ecran(conn: sqlite3.Connection) -> None:
+    """Le paiement test d'avant le vrai Chrome (Q97)."""
+    conn.execute(
+        "UPDATE invocation_tools SET tool_id=replace(tool_id, 'vrai_chrome_',"
+        " 'navigateur_') WHERE invocation_id='paiement_test'"
+        " AND tool_id LIKE 'vrai_chrome_%'"
+    )
+    conn.execute(
+        "DELETE FROM invocation_tools WHERE invocation_id='paiement_test'"
+        " AND tool_id='appeler_un_humain'"
+    )
+
+
+class VraiChromeTests(unittest.TestCase):
+    """Une instance du lot 11 : le paiement test paie dans le navigateur
+    sans écran, avec le niveau « web » sur Haiku. Au démarrage, il passe au
+    vrai Chrome, peut appeler un humain, et le niveau repasse à Sonnet
+    (Q97)."""
+
+    IDS = (
+        'vrai_chrome_paiement_test_sans_navigateur',
+        'vrai_chrome_paiement_test_outils',
+        'vrai_chrome_paiement_test_consignes',
+        'vrai_chrome_niveau_web_sonnet',
+    )
+
+    def setUp(self) -> None:
+        self.conn = sqlite3.connect(':memory:')
+        self.addCleanup(self.conn.close)
+        init_schema(self.conn)
+        self.data = read_yaml_file(config_dir() / 'pipeline.yaml')
+        consignes = {c['id']: c for c in self.data['changes']}[self.IDS[2]]
+        c = self.conn
+        navigateur_sans_ecran(c)
+        prompt = c.execute(
+            "SELECT prompt FROM invocations WHERE id='paiement_test'"
+        ).fetchone()[0]
+        for remplacement in consignes['set']['prompt']['replace']:
+            prompt = prompt.replace(remplacement['new'], remplacement['old'])
+        c.execute(
+            "UPDATE invocations SET prompt=? WHERE id='paiement_test'",
+            (prompt,),
+        )
+        c.execute(
+            "UPDATE llm_models SET model='anthropic/claude-haiku-5.5'"
+            " WHERE tier='web'"
+        )
+        c.executemany(
+            'DELETE FROM pipeline_changes WHERE id=?', [(i,) for i in self.IDS]
+        )
+
+    def test_le_paiement_test_passe_au_vrai_chrome(self) -> None:
+        self.assertNotIn(
+            'captcha',
+            self.conn.execute(
+                "SELECT prompt FROM invocations WHERE id='paiement_test'"
+            ).fetchone()[0],
+        )
+        seed_pipeline(self.conn, self.data)
+        outils = {
+            str(r[0])
+            for r in self.conn.execute(
+                'SELECT tool_id FROM invocation_tools'
+                " WHERE invocation_id='paiement_test'"
+            )
+        }
+        self.assertLessEqual(
+            {
+                'vrai_chrome_agir',
+                'vrai_chrome_lire',
+                'vrai_chrome_capture',
+                'appeler_un_humain',
+            },
+            outils,
+        )
+        self.assertFalse({o for o in outils if o.startswith('navigateur_')})
+        secrets = self.conn.execute(
+            'SELECT p.value FROM invocation_tool_params p'
+            ' JOIN invocation_tools t ON t.id=p.invocation_tool_id'
+            " WHERE t.invocation_id='paiement_test'"
+            " AND t.tool_id='vrai_chrome_agir' AND p.param_name='secrets'"
+        ).fetchone()[0]
+        self.assertIn('payment-card.enc#pan', secrets)
+        prompt = self.conn.execute(
+            "SELECT prompt FROM invocations WHERE id='paiement_test'"
+        ).fetchone()[0]
+        self.assertIn('Ouvre le lien dans le vrai Chrome', prompt)
+        self.assertIn('appelle « Appeler un humain »', prompt)
+        self.assertEqual(
+            self.conn.execute(
+                "SELECT model FROM llm_models WHERE tier='web'"
+            ).fetchone()[0],
+            'anthropic/claude-sonnet-5.5',
+        )

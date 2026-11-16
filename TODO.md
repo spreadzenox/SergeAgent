@@ -281,9 +281,9 @@ discutable, qui peut un jour changer, se règle depuis Mission Control.**
   moteur de recherche gratuit et sans clé (SearXNG), et s'en servir à la
   place de la page de résultats de DuckDuckGo. Il faut ensuite une
   capacité « Lire une page » qui monte d'un cran seulement si nécessaire :
-  une simple requête, puis un vrai navigateur Chrome piloté si la page a
-  besoin de JavaScript, puis un service de navigateur distant si le site
-  bloque ; chaque montée est écrite au journal. **Le bac à sable et
+  une simple requête, puis le navigateur sans écran si la page a besoin
+  de JavaScript, puis le vrai Chrome, avec son écran, si le site bloque
+  (Q97) ; chaque montée est écrite au journal. **Le bac à sable et
   l'interface web viennent du lot 10** (Q91) : des profils de bac à sable
   en base (ce qui y est installé, la mémoire, le temps et le réseau
   permis), et des outils pour lire une page comme un lecteur d'écran,
@@ -295,8 +295,8 @@ discutable, qui peut un jour changer, se règle depuis Mission Control.**
   un compte sur ce forum ») et l'interface web. Créer un compte de bout en
   bout est un enchaînement d'invocations en base : l'agent web remplit le
   formulaire, une invocation lit le code de confirmation dans la boîte
-  mail ou les SMS, un ticket demande à un humain de résoudre un captcha
-  (avec un lien vers l'écran en direct dans MC), et le compte est écrit en
+  mail ou les SMS, « Appeler un humain » (Q97) lui fait résoudre un
+  captcha dans l'écran du vrai Chrome, montré par MC, et le compte est écrit en
   base par la capacité d'écriture générique ; les colonnes secrètes des
   comptes (mot de passe, cookies) ne sont jamais marquées lisibles dans
   leur vue de table. **Un connecteur n'est pas du

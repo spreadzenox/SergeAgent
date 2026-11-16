@@ -223,6 +223,28 @@ class NavigateurTests(unittest.TestCase):
         navigateur.close_sessions()
         self.assertEqual(navigateur._ETAT.sessions, {})
 
+    def test_le_vrai_chrome_garde_son_profil_et_montre_l_onglet(self) -> None:
+        """Le vrai Chrome (Q97) : mêmes actions, dans le profil du
+        navigateur ; à la fin de la tâche, seul l'onglet se ferme."""
+        page = self._outil(
+            'real_browser_action', action='ouvrir', text=f'{self.site}/'
+        )['page']
+        self.assertIn('# Créez votre devis', page)
+        session = navigateur._ETAT_VRAI.sessions['t1']
+        profil = navigateur._ETAT_VRAI.browser.contexts[0]
+        self.assertIs(session.context, profil)
+        self.assertEqual(navigateur._ETAT.sessions, {}, 'pas l’autre')
+        capture = self._outil('real_browser_screenshot')
+        self.assertTrue(capture['image'].startswith('data:image/jpeg;base64,'))
+        self.assertIn(
+            'Créez votre devis', self._outil('real_browser_read')['page']
+        )
+        self.assertTrue(navigateur.montrer('t1'))
+        self.assertFalse(navigateur.montrer('t2'))
+        navigateur.close_sessions()
+        self.assertTrue(session.page.is_closed())
+        self.assertIn(profil, navigateur._ETAT_VRAI.browser.contexts)
+
     def test_taper_un_secret_sans_le_montrer(self) -> None:
         config = self.dossier / 'config'
         (config / 'secrets').mkdir(parents=True)
@@ -374,7 +396,7 @@ class NavigateurTests(unittest.TestCase):
             mock.patch.dict(sys.modules, {'playwright.sync_api': None}),
             self.assertRaises(navigateur.NavigateurAbsent) as refus,
         ):
-            navigateur._browser(self.conn)
+            navigateur._browser(self.conn, navigateur._ETAT)
         self.assertIn('playwright manque sur ce serveur', str(refus.exception))
 
     def test_essayer_l_interface_web(self) -> None:
@@ -488,9 +510,9 @@ class FichierMcTests(McServerCase):
 
 
 def tearDownModule() -> None:
-    if navigateur._ETAT.playwright is not None:
-        navigateur._ETAT.playwright.stop()
-        navigateur._ETAT.playwright = navigateur._ETAT.browser = None
+    if 'pw' in navigateur._PLAYWRIGHT:
+        navigateur._PLAYWRIGHT.pop('pw').stop()
+    navigateur._ETAT.browser = navigateur._ETAT_VRAI.browser = None
 
 
 if __name__ == '__main__':

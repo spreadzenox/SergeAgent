@@ -119,6 +119,11 @@ def noter_reponse(
 SANS_TEXTE = {
     'faire_sans': 'fais sans : continue sans ce que tu demandais, au mieux,'
     ' et dis dans ta réponse ce qui manque',
+    # « Appeler un humain » (serge/aide_humaine.py) : cette fois, la tâche
+    # doit rappeler le même outil au même blocage.
+    'pret': 'un humain est prêt : refais ton parcours ; au même blocage,'
+    ' rappelle le même outil, et l’humain le résoudra pendant que tu'
+    ' attends',
 }
 
 
@@ -150,11 +155,11 @@ def _degeler(
     reponse = texte.strip() or SANS_TEXTE.get(acte, f'« {acte} »')
     if acte == 'faire_sans' and texte.strip():
         reponse = f'{SANS_TEXTE[acte]}. {texte.strip()}'
+    suite = '' if acte == 'pret' else '\nNe redemande pas la même chose.'
     if thaw_task(
         conn,
         task_id,
-        f'Ta demande : {demande}\nRéponse de Julien : {reponse}\n'
-        'Ne redemande pas la même chose.',
+        f'Ta demande : {demande}\nRéponse de Julien : {reponse}{suite}',
     ):
         append_event(
             conn,

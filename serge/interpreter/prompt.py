@@ -13,6 +13,7 @@ l'invocation.
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 import time
 from collections.abc import Callable, Mapping
@@ -209,16 +210,14 @@ Caller = Callable[..., ChatResult]
 # résultat (``outil``, ``erreur``…).
 Record = Callable[[ChatResult | None, str], None]
 
-_PASSAGERES = ('NETWORK', 'EMPTY', 'API: OpenRouter HTTP 429')
+# Exemples : « API: OpenRouter HTTP 429 », « API: Anthropic HTTP 529 ».
+_PASSAGERE = re.compile(r'(NETWORK|EMPTY|API: \w+ HTTP (429|5\d\d))')
 
 
 def _passagere(exc: Exception) -> bool:
     """Une erreur qui peut disparaître en réessayant (délai, réponse vide,
-    trop de requêtes, panne du fournisseur)."""
-    text = str(exc)
-    return text.startswith(_PASSAGERES) or text.startswith(
-        'API: OpenRouter HTTP 5'
-    )
+    trop de requêtes, panne ou surcharge du fournisseur)."""
+    return _PASSAGERE.match(str(exc)) is not None
 
 
 def _call_model(

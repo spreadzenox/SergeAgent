@@ -27,14 +27,33 @@ types:
     fields: [decision, alternatives_ecartees, risque_propagation, irreversibilite]
     buttons: [approuver, rejeter, discuter]
   GUICHET:
-    role: Étapes déléguées humaines (CAPTCHA stream, KYC, signature, 3DS)
+    role: &role_guichet >-
+      « Appeler un humain », second temps : un humain prêt reçoit le lien
+      de l'écran du vrai Chrome (Mission Control) et y fait ce qui bloque
+      (un captcha) pendant que la tâche attend ; « C'est fait » la laisse
+      continuer (décision Q97).
     render: {color: 16711680, emoji: "🔴"}
     urgency: urgente
     expiry_minutes: [10, 30]
     default: pause_propre_reproposee
-    default_detail: Tâche en pause propre, re-proposée au prochain cycle (max 3, backoff 1/3/7j).
-    fields: [contexte, progres, action_requise, lien_stream, ttl]
-    buttons: [cest_fait, abandonner, discuter]
+    default_detail: >-
+      Sans « C'est fait » à temps, la tâche s'arrête et redemande si un
+      humain est prêt.
+    fields: &champs_guichet [contexte, action_requise, lien_stream]
+    buttons: &boutons_guichet [cest_fait, abandonner]
+  GUICHET_PRET:
+    role: >-
+      « Appeler un humain », premier temps : une page demande un humain (un
+      captcha) et la tâche s'est arrêtée. « Je suis prêt » la fait
+      repartir, et le lien de l'écran arrive dans un second ticket ;
+      « Abandonner » la fait continuer sans humain (décision Q97).
+    render: {color: 16711680, emoji: "🙋"}
+    urgency: urgente
+    expiry_hours: null
+    default: attend
+    default_detail: La tâche attend qu'un humain soit prêt, sans limite de temps.
+    fields: [en_bref, action_requise, point_llm]
+    buttons: [pret, abandonner]
   PUBLICATION:
     role: Drafts Reddit/LinkedIn/forums + contexte + risque
     render: {color: 3447003, emoji: "📣"}
@@ -310,3 +329,16 @@ changes:
           - {label: Le fil, tool: fil_du_contact, params: {contact_id: contact_id}}
           - {label: Le brouillon de Serge, tool: brouillon_de_l_envoi, params: {touch_id: id}}
         to: *contenu_conversation
+  - id: guichet_appeler_un_humain
+    why: >-
+      Un captcha passe par « Appeler un humain », en deux temps : ce ticket
+      est le second, avec le lien de l'écran du vrai Chrome (décision Q97).
+    type: GUICHET
+    set:
+      role:
+        from: Étapes déléguées humaines (CAPTCHA stream, KYC, signature, 3DS)
+        to: *role_guichet
+      fields:
+        from: [contexte, progres, action_requise, lien_stream, ttl]
+        to: *champs_guichet
+      buttons: {from: [cest_fait, abandonner, discuter], to: *boutons_guichet}

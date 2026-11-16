@@ -16,6 +16,45 @@ _OU = (
     Param('task_id', 'text', True, 'La tâche : une session par tâche.'),
 )
 
+_ACTION = (
+    *_OU,
+    Param(
+        'action',
+        'text',
+        True,
+        'ouvrir, cliquer, taper, taper_secret, choisir, touche,'
+        ' defiler, revenir, attendre ou ecran.',
+    ),
+    Param('ref', 'text', False, 'Le repère de l’élément : e7.'),
+    Param(
+        'text',
+        'text',
+        False,
+        'L’adresse (ouvrir), le texte (taper), le nom du secret'
+        ' (taper_secret), l’option (choisir),'
+        ' la touche (Enter, Escape, Tab), haut ou bas (defiler), le'
+        ' texte attendu (attendre), ordinateur ou mobile (ecran).',
+    ),
+    Param('submit', 'bool', False, 'Taper puis valider avec Entrée.'),
+    Param(
+        'secrets',
+        'text',
+        False,
+        'Les secrets permis pour taper_secret (figé en base).',
+    ),
+)
+_CAPTURE = (
+    *_OU,
+    Param('keep', 'bool', False, 'La garder comme preuve.'),
+    Param('full_page', 'bool', False, 'Toute la page, pas l’écran.'),
+)
+_VRAI = (
+    ' Dans le vrai Chrome : un Chromium normal, sur un écran virtuel, pour'
+    ' les pages qui refusent un navigateur sans écran (un captcha de'
+    ' paiement) ; un humain peut voir cet écran et y agir depuis Mission'
+    ' Control.'
+)
+
 NAVIGATEUR: tuple[Capability, ...] = (
     Capability(
         'browser_action',
@@ -28,33 +67,7 @@ NAVIGATEUR: tuple[Capability, ...] = (
         ' [e7]) et les nouvelles erreurs de la page. L’adresse'
         ' http://chantier:<port> mène au chantier du business.',
         'serge/sandbox/navigateur.py',
-        (
-            *_OU,
-            Param(
-                'action',
-                'text',
-                True,
-                'ouvrir, cliquer, taper, taper_secret, choisir, touche,'
-                ' defiler, revenir, attendre ou ecran.',
-            ),
-            Param('ref', 'text', False, 'Le repère de l’élément : e7.'),
-            Param(
-                'text',
-                'text',
-                False,
-                'L’adresse (ouvrir), le texte (taper), le nom du secret'
-                ' (taper_secret), l’option (choisir),'
-                ' la touche (Enter, Escape, Tab), haut ou bas (defiler), le'
-                ' texte attendu (attendre), ordinateur ou mobile (ecran).',
-            ),
-            Param('submit', 'bool', False, 'Taper puis valider avec Entrée.'),
-            Param(
-                'secrets',
-                'text',
-                False,
-                'Les secrets permis pour taper_secret (figé en base).',
-            ),
-        ),
+        _ACTION,
     ),
     Capability(
         'browser_read',
@@ -72,10 +85,50 @@ NAVIGATEUR: tuple[Capability, ...] = (
         ' et la montre au modèle comme une image. Gardée, elle est rangée'
         ' avec le livrable et a sa fiche dans les livrables (artifacts).',
         'serge/sandbox/navigateur.py',
+        _CAPTURE,
+    ),
+    Capability(
+        'real_browser_action',
+        'Agir dans le vrai Chrome',
+        'Comme « Agir dans une page ».' + _VRAI,
+        'serge/sandbox/navigateur.py',
+        _ACTION,
+    ),
+    Capability(
+        'real_browser_read',
+        'Lire la page du vrai Chrome',
+        'Comme « Lire la page ».' + _VRAI,
+        'serge/sandbox/navigateur.py',
+        _OU,
+    ),
+    Capability(
+        'real_browser_screenshot',
+        'Capture du vrai Chrome',
+        'Comme « Prendre une capture ».' + _VRAI,
+        'serge/sandbox/navigateur.py',
+        _CAPTURE,
+    ),
+    Capability(
+        'human_help',
+        'Appeler un humain',
+        'Quand une page demande un humain (un captcha), en deux temps.'
+        ' D’abord, la tâche s’arrête et un ticket demande aux'
+        ' administrateurs s’ils sont prêts ; « Je suis prêt » la fait'
+        ' repartir du début. Au même blocage, l’appel suivant envoie le'
+        ' lien de l’écran du vrai Chrome (Mission Control) et attend'
+        ' « C’est fait » quelques minutes, onglet de la tâche devant ;'
+        ' sans réponse, on revient au premier temps. « Abandonner » : la'
+        ' tâche continue sans humain.',
+        'serge/aide_humaine.py',
         (
-            *_OU,
-            Param('keep', 'bool', False, 'La garder comme preuve.'),
-            Param('full_page', 'bool', False, 'Toute la page, pas l’écran.'),
+            Param('task_id', 'text', True, 'La tâche qui attend.'),
+            Param(
+                'raison',
+                'text',
+                True,
+                'Ce qui bloque, en une phrase : « un captcha sur la page de'
+                ' paiement de Stripe ».',
+            ),
         ),
     ),
 )

@@ -5,6 +5,7 @@ description = "Serge instance kit: contract, wizards, builder, telephony"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "anthropic>=2.8.0",
     # La carte de Serge, chiffrée dans les secrets (Fernet), pour le
     # paiement test de 1 € (lot 10).
     "cryptography",

@@ -76,13 +76,27 @@ calculatrice » de la page Système (plus bas).
    (`stripe-produits-live.key`) : le produit n'a jamais la clé complète de
    Serge.
 9. **Le paiement test de 1 €** (niveau « web ») : un prix de 1 € et un
-   lien de paiement, payé dans le navigateur avec la carte de Serge et
+   lien de paiement, payé dans le **vrai Chrome** (un Chromium normal, sur
+   un écran virtuel : le captcha de Stripe ne se chargeait pas dans le
+   navigateur sans écran, décision Q97) avec la carte de Serge et
    l'adresse de la boîte du relecteur,
    déchiffrée de `payment-card.enc` au moment de taper (« taper un
    secret » : le modèle ne voit jamais ses numéros), vérifié
    dans Stripe (la session du lien est payée), remboursé ; le lien est
    désactivé et le prix archivé. Le paiement est noté dans `transactions`
-   (`kind` = `canary`).
+   (`kind` = `canary`). Si un captcha bloque, le modèle appelle « Appeler
+   un humain » : la tâche s'arrête, et un ticket « Un humain, prêt ? »
+   (`GUICHET_PRET`) mentionne les administrateurs. « Je suis prêt » la
+   fait repartir du début ; au même captcha, un second ticket (`GUICHET`)
+   envoie le lien de l'écran du vrai Chrome, dans Mission Control
+   (`/owner/vrai-chrome`, derrière la connexion), et la tâche attend
+   « C'est fait » 10 minutes (page Policy, « Bac à sable »). Sans réponse,
+   elle s'arrête et redemande ; « Abandonner » la fait continuer sans
+   humain. Pour faire passer une autre invocation au vrai Chrome, on
+   remplace ses outils « Agir dans une page », « Lire la page » et
+   « Prendre une capture » par « Agir dans le vrai Chrome », « Lire la page
+   du vrai Chrome » et « Capture du vrai Chrome » (page Pipeline), et on
+   lui donne « Appeler un humain ».
 10. **Produit en vente** : le business passe à `PRODUCT_READY`, d'où
     part la prospection lourde (étape 6, lot 12), et un ticket
     d'information le dit. Une étape ratée

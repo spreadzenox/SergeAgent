@@ -166,6 +166,32 @@ def for_page(
     }
 
 
+# Le coût d'un appel fait sans OpenRouter se calcule avec ses prix : un
+# catalogue lu il y a moins d'une heure suffit.
+PRIX_FRAIS_S = 3600.0
+
+
+def model_prices(
+    model: str,
+    root: Path | None = None,
+    *,
+    fetcher: Callable[[str], list[dict[str, Any]]] | None = None,
+    now: float | None = None,
+) -> dict[str, Any] | None:
+    """Les prix d'un modèle du catalogue OpenRouter, en dollars par million
+    de jetons (``prompt_usd``, ``completion_usd``, ``cache_read_usd``,
+    ``cache_write_usd``), ou ``None`` s'il n'y est pas.
+
+    Exemple : ``anthropic/claude-sonnet-5.5`` → 2 $ le million de jetons
+    lus, 10 $ écrits, 0,10 $ relus dans le cache.
+    """
+    moment = time.time() if now is None else now
+    if not _last['models'] or moment - float(_last['at']) > PRIX_FRAIS_S:
+        catalog(root, fetcher=fetcher, now=now)
+    found = next((m for m in _last['models'] if m['id'] == model), None)
+    return dict(found) if found else None
+
+
 def check_model(
     model: str,
     root: Path | None = None,

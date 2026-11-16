@@ -13,6 +13,7 @@ APPROVE = frozenset(
         'passer',
         'valider',
         'faire_sans',
+        'pret',
     }
 )
 REJECT = frozenset(

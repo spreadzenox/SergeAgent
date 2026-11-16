@@ -14,6 +14,7 @@ import sqlite3
 from collections.abc import Callable, Mapping
 from typing import Any
 
+from serge.aide_humaine import human_help
 from serge.connecteurs.appel import api_schema, call_api, nom_pour_le_modele
 from serge.conversations.contact import (
     add_contact,
@@ -41,6 +42,9 @@ from serge.sandbox.navigateur import (
     browser_action,
     browser_read,
     browser_screenshot,
+    real_browser_action,
+    real_browser_read,
+    real_browser_screenshot,
 )
 from serge.sandbox.publier import publish_version
 from serge.tickets.inform import inform_owners
@@ -253,6 +257,10 @@ RUNNERS: dict[str, Runner] = {
     'browser_action': browser_action,
     'browser_read': browser_read,
     'browser_screenshot': browser_screenshot,
+    'real_browser_action': real_browser_action,
+    'real_browser_read': real_browser_read,
+    'real_browser_screenshot': real_browser_screenshot,
+    'human_help': human_help,
     'publish_version': publish_version,
     'server_address': server_address,
     'product_address': product_address,

@@ -1,13 +1,18 @@
 #!/usr/bin/env python3
 """L'interface web des invocations : lire une page et y agir comme un humain.
 
-Un navigateur Chrome tourne dans son propre conteneur (``serge-navigateur``,
-profil « navigateur » de la page Policy) ; Serge le pilote avec Playwright,
-par le protocole de débogage de Chrome. Il ne tourne jamais dans le
-programme de Serge : une page inconnue ne peut pas l'atteindre.
+Un navigateur Chrome tourne dans son propre conteneur (``chrome.py``) :
+le navigateur sans écran, ou le vrai Chrome, avec un écran qu'un humain
+peut voir depuis Mission Control. Chaque invocation reçoit les outils de
+l'un ou de l'autre (« Agir dans une page », « Agir dans le vrai Chrome »…),
+réglés en base : on passe de l'un à l'autre en changeant ses outils.
+Serge les pilote avec Playwright, par le protocole de débogage de Chrome.
+Ils ne tournent jamais dans le programme de Serge : une page inconnue ne
+peut pas l'atteindre.
 
 Une session (un onglet, ses cookies) par tâche, fermée à la fin de la
-tâche. Après chaque action, l'outil rend la page relue, en version courte :
+tâche. Dans le vrai Chrome, l'onglet s'ouvre dans son profil, qui garde
+ses cookies d'une tâche à l'autre, comme celui d'une personne. Après chaque action, l'outil rend la page relue, en version courte :
 le modèle voit l'effet de son clic sans appel de plus. Une page se lit
 comme un lecteur d'écran la lirait (``page.js``) : une ligne par titre,
 texte, champ, bouton ou lien, avec un repère (``[e7]``) pour agir. Une
@@ -38,12 +43,11 @@ from urllib.parse import urlsplit, urlunsplit
 from serge.db.store import append_event, utcnow
 from serge.paths import config_root, files_root
 from serge.policy_store import policy_en_vigueur
+from serge.sandbox import chrome
 from serge.sandbox.chantier import chantier_id, container_name
-from serge.sandbox.docker import DockerError, docker, ensure_network, journal
+from serge.sandbox.docker import journal
 from serge.secrets import read_secret_value
 
-CONTAINER = 'serge-navigateur'
-CDP_PORT = '9222/tcp'
 SNAPSHOT_JS = (Path(__file__).with_name('page.js')).read_text(encoding='utf-8')
 ECRANS = {'ordinateur': (1280, 800), 'mobile': (390, 844)}
 
@@ -58,62 +62,24 @@ class _Session:
     # reçus : jamais rendus au modèle, ni en texte ni sur une capture.
     masques: set[str] = field(default_factory=set)
     champs_secrets: list[Any] = field(default_factory=list)
+    # Le vrai Chrome prête son profil : seul l'onglet est à fermer.
+    profil_prete: bool = False
 
 
 @dataclass
 class _Etat:
-    playwright: Any = None
+    nom: str
     browser: Any = None
     sessions: dict[str, _Session] = field(default_factory=dict)
 
 
-_ETAT = _Etat()
+_ETAT = _Etat(chrome.SANS_ECRAN)
+_ETAT_VRAI = _Etat(chrome.VRAI)
+_PLAYWRIGHT: dict[str, Any] = {}
 
 
-def _endpoint(conn: sqlite3.Connection) -> str:
-    """L'adresse du navigateur (le conteneur est lancé au besoin)."""
-    profile = policy_en_vigueur(conn)['sandbox']['navigateur']
-    state = docker(
-        [
-            'ps',
-            '-a',
-            '--filter',
-            f'name=^{CONTAINER}$',
-            '--format',
-            '{{.State}}',
-        ],
-        timeout=30,
-    ).stdout.strip()
-    if not state:
-        ensure_network()
-        docker(
-            [
-                'run',
-                '-d',
-                '--init',
-                '--name',
-                CONTAINER,
-                '--memory',
-                f'{int(profile["memory_mb"])}m',
-                '--cpus',
-                '1',
-                '--shm-size',
-                '512m',
-                '-p',
-                '127.0.0.1::9222',
-                '--network',
-                'serge-chantiers',
-                str(profile['image']),
-            ],
-            timeout=900,
-        )
-    elif state != 'running':
-        docker(['start', CONTAINER], timeout=120)
-    port = docker(['port', CONTAINER, CDP_PORT], timeout=30).stdout
-    adresse = port.strip().splitlines()[0] if port.strip() else ''
-    if not adresse:
-        raise DockerError('le navigateur ne publie pas son port de débogage')
-    return f'http://{adresse}'
+def _endpoint(conn: sqlite3.Connection, nom: str) -> str:
+    return chrome.endpoint(conn, nom)
 
 
 # Ce qu'il faut faire quand le paquet qui pilote le navigateur manque.
@@ -134,43 +100,52 @@ def navigateur_installe() -> bool:
     return importlib.util.find_spec('playwright') is not None
 
 
-def _browser(conn: sqlite3.Connection) -> Any:
-    if _ETAT.browser is not None and _ETAT.browser.is_connected():
-        return _ETAT.browser
+def _browser(conn: sqlite3.Connection, etat: _Etat) -> Any:
+    if etat.browser is not None and etat.browser.is_connected():
+        return etat.browser
     try:
         from playwright.sync_api import sync_playwright
     except ImportError as exc:
         journal(MANQUE)
         raise NavigateurAbsent(MANQUE) from exc
 
-    if _ETAT.playwright is None:
-        _ETAT.playwright = sync_playwright().start()
-    endpoint = _endpoint(conn)
+    if 'pw' not in _PLAYWRIGHT:
+        _PLAYWRIGHT['pw'] = sync_playwright().start()
+    endpoint = _endpoint(conn, etat.nom)
     try:
-        _ETAT.browser = _ETAT.playwright.chromium.connect_over_cdp(endpoint)
+        etat.browser = _PLAYWRIGHT['pw'].chromium.connect_over_cdp(endpoint)
     except Exception as exc:
         journal(f'navigateur injoignable ({endpoint}) : {exc}')
         raise
-    return _ETAT.browser
+    return etat.browser
 
 
-def _session(conn: sqlite3.Connection, task_id: str) -> _Session:
-    session = _ETAT.sessions.get(task_id)
+def _contexte(conn: sqlite3.Connection, etat: _Etat) -> Any:
+    """Un contexte neuf (sans écran), ou le profil du vrai Chrome."""
+    navigateur = _browser(conn, etat)
+    if etat is _ETAT_VRAI and navigateur.contexts:
+        return navigateur.contexts[0]
+    largeur, hauteur = ECRANS['ordinateur']
+    return navigateur.new_context(
+        viewport={'width': largeur, 'height': hauteur},
+        locale='fr-FR',
+        timezone_id='Europe/Paris',
+    )
+
+
+def _session(
+    conn: sqlite3.Connection, task_id: str, etat: _Etat = _ETAT
+) -> _Session:
+    session = etat.sessions.get(task_id)
     if session is not None:
         return session
-    largeur, hauteur = ECRANS['ordinateur']
-    reglage = {
-        'viewport': {'width': largeur, 'height': hauteur},
-        'locale': 'fr-FR',
-        'timezone_id': 'Europe/Paris',
-    }
     try:
-        context = _browser(conn).new_context(**reglage)
+        context = _contexte(conn, etat)
     except Exception:  # noqa: BLE001 — une connexion perdue (navigateur relancé)
-        _ETAT.browser = None
-        context = _browser(conn).new_context(**reglage)
+        etat.browser = None
+        context = _contexte(conn, etat)
     page = context.new_page()
-    session = _Session(context, page)
+    session = _Session(context, page, profil_prete=etat is _ETAT_VRAI)
 
     def erreur(texte: str) -> None:
         session.errors.append(masquer(texte, session.masques)[:300])
@@ -191,18 +166,35 @@ def _session(conn: sqlite3.Connection, task_id: str) -> _Session:
             erreur(f'HTTP {r.status} : {r.url}') if r.status >= 400 else None
         ),
     )
-    _ETAT.sessions[task_id] = session
+    etat.sessions[task_id] = session
     return session
 
 
 def close_sessions() -> None:
     """Ferme les sessions ouvertes : appelée à la fin de chaque tâche."""
-    for session in list(_ETAT.sessions.values()):
-        try:
-            session.context.close()
-        except Exception:  # noqa: BLE001 — une session déjà perdue
-            pass
-    _ETAT.sessions.clear()
+    for etat in (_ETAT, _ETAT_VRAI):
+        for session in list(etat.sessions.values()):
+            try:
+                if session.profil_prete:
+                    session.page.close()
+                else:
+                    session.context.close()
+            except Exception:  # noqa: BLE001 — une session déjà perdue
+                pass
+        etat.sessions.clear()
+
+
+def montrer(task_id: str) -> bool:
+    """Met devant, sur l'écran du vrai Chrome, l'onglet de la tâche, pour
+    l'humain qui va y agir. Faux si la tâche n'en a pas."""
+    session = _ETAT_VRAI.sessions.get(task_id)
+    if session is None:
+        return False
+    try:
+        session.page.bring_to_front()
+    except Exception:  # noqa: BLE001 — un onglet perdu
+        return False
+    return True
 
 
 def _chantier(args: dict[str, Any]) -> str:
@@ -354,9 +346,10 @@ def browser_action(
     _tool: str,
     args: dict[str, Any],
     _invocation_id: str,
+    etat: _Etat = _ETAT,
 ) -> dict[str, Any]:
     """Une action dans la page, puis la page relue en version courte."""
-    session = _session(conn, str(args.get('task_id') or ''))
+    session = _session(conn, str(args.get('task_id') or ''), etat)
     erreurs = len(session.errors)
     try:
         refus = _agir(session, args)
@@ -380,9 +373,10 @@ def browser_read(
     _tool: str,
     args: dict[str, Any],
     _invocation_id: str,
+    etat: _Etat = _ETAT,
 ) -> dict[str, Any]:
     """La page entière, et les dernières erreurs de la page."""
-    session = _session(conn, str(args.get('task_id') or ''))
+    session = _session(conn, str(args.get('task_id') or ''), etat)
     lignes = int(_reglages(conn)['browser_lines_read'])
     return {
         'ok': True,
@@ -396,6 +390,7 @@ def browser_screenshot(
     _tool: str,
     args: dict[str, Any],
     invocation_id: str,
+    etat: _Etat = _ETAT,
 ) -> dict[str, Any]:
     """Une capture de ce que voit l'écran ; gardée comme preuve sur demande.
 
@@ -403,7 +398,7 @@ def browser_screenshot(
     comme une image, pas comme du texte.
     """
     task_id = str(args.get('task_id') or '')
-    session = _session(conn, task_id)
+    session = _session(conn, task_id, etat)
     entiere = args.get('full_page') in (True, 'true', '1', 'oui')
     _cacher_secrets(session, True)
     try:
@@ -428,6 +423,27 @@ def browser_screenshot(
             rows=[('artifacts', result['gardee'])],
         )
     return result
+
+
+def real_browser_action(
+    conn: sqlite3.Connection, tool: str, args: dict[str, Any], inv: str
+) -> dict[str, Any]:
+    """« Agir dans une page », dans le vrai Chrome."""
+    return browser_action(conn, tool, args, inv, _ETAT_VRAI)
+
+
+def real_browser_read(
+    conn: sqlite3.Connection, tool: str, args: dict[str, Any], inv: str
+) -> dict[str, Any]:
+    """« Lire la page », dans le vrai Chrome."""
+    return browser_read(conn, tool, args, inv, _ETAT_VRAI)
+
+
+def real_browser_screenshot(
+    conn: sqlite3.Connection, tool: str, args: dict[str, Any], inv: str
+) -> dict[str, Any]:
+    """« Prendre une capture », dans le vrai Chrome."""
+    return browser_screenshot(conn, tool, args, inv, _ETAT_VRAI)
 
 
 def _garder(

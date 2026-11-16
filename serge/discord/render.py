@@ -56,6 +56,7 @@ BUTTONS: dict[str, dict[str, Any]] = {
     'modifier': {'label': 'Modifier', 'style': 2, 'emoji': '✏️'},
     'jeter': {'label': 'Jeter', 'style': 4, 'emoji': '🗑️'},
     'faire_sans': {'label': 'Faire sans', 'style': 2, 'emoji': '⏭️'},
+    'pret': {'label': 'Je suis prêt', 'style': 3, 'emoji': '🙋'},
     # Ajouté de lui-même quand un champ de la carte est coupé : poste tout
     # le ticket dans son fil (``serge/discord/interactions.py``).
     'voir_en_entier': {'label': 'Voir en entier', 'style': 2, 'emoji': '📄'},

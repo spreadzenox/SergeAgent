@@ -126,10 +126,9 @@ def _llm_answer(
     model, _referer = resolve_model(conn, inv.model_tier, root)
     api_key = ''
     if caller is None:
-        from serge.llm.client import chat
-        from serge.llm.runtime import read_api_key
+        from serge.llm.anthropic_direct import caller_for
 
-        caller, api_key = chat, read_api_key(root)
+        caller, api_key = caller_for(conn, model, root)
     system = system_prompt(conn, inv, fields)
     answers = []
     for user in contents:
