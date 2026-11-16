@@ -44,32 +44,16 @@ peuvent faire répondre Serge sans fin, sont traitées à part, au lot 10 bis
 
 **Une première version qu'on pourrait lancer** (décision Q98, 16 novembre
 2026) : le pipeline entier, de l'écoute du web à la vente, avec deux
-canaux, l'e-mail et l'appel. Deux exigences s'y ajoutent, décrites aux
-parties 17 et 18 : **un canal se branche sans toucher au reste**, et **les
-essais de la page Système sont à part** de ce qui tourne. La recherche de
-prospects se fait avec la recherche web d'aujourd'hui ; le moteur de
+canaux, l'e-mail et l'appel. Deux exigences s'y ajoutent : **un canal se
+branche sans toucher au reste** (partie 17), et **un seul essai, de bout
+en bout, à part de ce qui tourne** (décision Q99, partie 18). La recherche
+de prospects se fait avec la recherche web d'aujourd'hui ; le moteur de
 recherche et la navigation sur des sites qui bloquent restent au lot 13.
 
-Le lot se livre en six PR, l'une après l'autre ; chacune se fusionne dès
-que sa CI est verte :
-
-1. **Les essais à part** (partie 18) : un business d'essai est marqué, ne
-   prend aucune place, et ses boutons ne dépendent plus des places.
-2. **Les campagnes et le contrat d'un canal** (parties 2, 3 et 17) : les
-   statuts, la place lourde, les campagnes par canal et leurs réglages,
-   « Démarrer une campagne », « Réapprovisionner » et « Clore ».
-3. **Trouver des prospects et leur écrire** (partie 4) : « Trouver des
-   prospects », les adresses génériques refusées, la vérification d'une
-   adresse, les vraies versions de « Écrire le premier message » et de
-   « Préparer le premier appel », les rebonds.
-4. **Mesurer, juger, choisir** (parties 5 et 6) : le compte rendu d'un
-   test, son bilan, la leçon d'un business arrêté, le choix du principal
-   et son ticket, les vieux tests oubliés, l'étape 1 qui repart seule.
-5. **Vendre** (partie 7) : « Préparer la prospection lourde »,
-   « Enregistrer une vente », et Mission Control (partie 11).
-6. **Le bout en bout** : un essai de la page Système fait traverser toute
-   la chaîne à un business d'essai, avec des contacts d'essai, sans
-   toucher la chaîne réelle.
+Le lot se livre en deux PR (Q99 : la CI est longue). La première, déjà
+fusionnée, marque les business d'essai et les sort des places de test. La
+seconde apporte tout le reste : les étapes 3, 4 et 6, le couloir d'essai,
+l'essai total, « repartir d'une tâche », et le retrait des anciens essais.
 
 **Tous les chiffres sont des réglages en base**, comme d'habitude (Q68) :
 les réglages d'une invocation, marqués « policy » pour se changer sur la
@@ -91,8 +75,9 @@ SMOKE_READY        POC en ligne, campagne de test prête
    ↓  « Démarrer une campagne »
 SMOKE_RUNNING      Serge trouve ses prospects (40 par e-mail, par exemple),
    ↓               écrit, appelle, relance, répond
-   ↓  « Clore les campagnes finies »  (relances finies, ou durée écoulée)
-SMOKE_DONE         « Mesurer le test » : retenu, ou ──→ KILLED (sous les seuils)
+   ↓  « Suivre une campagne » clôt chaque campagne finie ; puis « Mesurer
+   ↓  le test », « Faire le bilan » et « Conclure le test »
+SMOKE_DONE         test fini et retenu ; sous les seuils ──→ KILLED
    ↓  quand plus aucun test léger ne tourne et que la place lourde est libre
    ↓  « Choisir le business principal »  → ticket à Julien (48 h)
 PRODUCT_BUILDING   le principal ; les autres retenus  ──→ PARKED
@@ -149,13 +134,18 @@ permis en base (`status_transitions`) :
 | De | Vers | Qui |
 |---|---|---|
 | `SMOKE_READY` | `SMOKE_RUNNING` | « Démarrer une campagne » |
-| `SMOKE_RUNNING` | `SMOKE_DONE` | « Clore les campagnes finies » |
-| `SMOKE_DONE` | `KILLED` | « Mesurer le test » (sous les seuils) |
+| `SMOKE_RUNNING` | `SMOKE_DONE` | « Conclure le test » (test retenu) |
+| `SMOKE_RUNNING` | `KILLED` | « Conclure le test » (sous les seuils) |
 | `SMOKE_DONE` | `PRODUCT_BUILDING` | « Appliquer le choix du principal » |
 | `SMOKE_DONE` | `PARKED` | idem, pour les autres retenus |
 | `PARKED` | `PRODUCT_BUILDING` | idem, un business mis de côté repris |
 | `PARKED` | `CANDIDATE` | « Oublier les vieux tests » (60 jours) |
 | `PRODUCT_READY` | `FULL_RUNNING` | « Démarrer une campagne » |
+
+Un business reste `SMOKE_RUNNING` pendant qu'on mesure son test, quelques
+minutes : `SMOKE_DONE` veut donc toujours dire « test fini et retenu ».
+Ainsi, le choix du principal ne part jamais pendant qu'un test est encore
+en train d'être mesuré.
 
 `PRODUCT_BUILDING` et `PRODUCT_READY` viennent du lot 10. Il n'y a pas de
 statut « choisi comme principal » à part : le choix lance tout de suite
@@ -208,16 +198,18 @@ page Policy) bornent toujours ce qui part : 200 e-mails par semaine
 tiennent dans 40 par jour.
 
 **Quand une campagne de test se termine**, au plus tôt (Q92 ; les
-chiffres sont des réglages de « Clore les campagnes finies ») :
+chiffres sont des réglages de « Suivre une campagne ») :
 
-1. ses prospects (40 pour l'e-mail) ont reçu leur premier message et
-   leurs relances, et la dernière relance date de plus de 7 jours ;
+1. elle a son compte de prospects (40 pour l'e-mail), plus aucun message
+   n'attend de partir, et rien n'est parti depuis 8 jours : c'est un jour
+   de plus que le plus long délai entre deux relances (7 jours), donc
+   toutes les relances sont faites ;
 2. **ou** elle a atteint la durée de son plan (30 jours au plus) ;
 3. **ou** Serge n'a plus de prospects à contacter : « Trouver des
    prospects » est passé 3 fois de suite sans en trouver un nouveau.
 
 Exemple : 40 artisans contactés en 4 jours, deux relances à J+3 et J+10,
-la dernière part au 14e jour ; le test se termine au 21e jour, même si le
+la dernière part au 14e jour ; le test se termine au 22e jour, même si le
 plan prévoyait 30 jours. Un test rapide ne garde pas sa place pour rien.
 
 **Une campagne lourde** n'a pas de durée : elle contacte son volume de la
@@ -237,22 +229,28 @@ Toutes ces invocations sont en base, comme les autres. Celles qui servent
 aussi à la prospection lourde sont marquées *(3 et 6)*.
 
 1. **Démarrer une campagne** *(3 et 6)* — sans LLM. Déclencheur : une
-   campagne passe à `READY`. Elle passe la campagne à `RUNNING`, note son
+   campagne passe à `READY`. Elle vérifie que le canal est branché, passe
+   la campagne à `RUNNING`, note son volume (les réglages du canal), son
    début et sa fin prévue (début + durée du plan, pour un test), et passe
    le business à `SMOKE_RUNNING` (ou `FULL_RUNNING` pour une campagne
-   lourde). Lien : « Trouver des prospects ».
+   lourde). Une campagne sur un canal qui n'est pas branché est annulée,
+   avec la raison. Lien : « Trouver des prospects ».
 
 2. **Trouver des prospects** *(3 et 6)* — LLM, niveau intelligent, file
-   des travaux. Elle reçoit d'office le plan (la cible), la fiche du
-   business et la fiche produit, et la version courte des contacts déjà
-   trouvés pour ce business (pour ne pas les reprendre). Outils :
-   rechercher sur le web, lire une page, l'interface web du lot 10 (pour
-   un annuaire ou une fiche Google Maps qui demande un navigateur),
-   chercher un contact en base, et **vérifier une adresse e-mail** (une
-   nouvelle capacité gratuite : le domaine reçoit-il des e-mails ?). Elle
-   rend au plus 10 prospects par passage (réglage) : nom, entreprise,
-   rôle, pourquoi il est visé, et ses adresses professionnelles (e-mail
-   ou téléphone), chacune avec la page où elle a été trouvée (Q36).
+   des travaux. Elle reçoit d'office la campagne (son canal, sa cible), le
+   plan, la fiche du business et la fiche produit. Outils : rechercher sur
+   le web, lire une page, et **« Ajouter un prospect »**. Elle ajoute au
+   plus 10 prospects par passage (réglage) : nom, entreprise, rôle,
+   pourquoi il est visé, et son adresse professionnelle sur le canal de la
+   campagne, avec la page où elle a été trouvée (Q36).
+
+   **« Ajouter un prospect » vérifie tout de suite, et dit pourquoi il
+   refuse** : une adresse générique (Q93), une adresse mal formée, un
+   domaine qui ne reçoit pas d'e-mails, une personne déjà contactée pour
+   ce business ou désinscrite, une campagne qui a son compte. Le modèle
+   lit le refus et cherche quelqu'un d'autre. Un prospect accepté devient
+   un contact, avec son adresse (et sa source) et un premier message « à
+   rédiger » sur le canal de la campagne.
 
    **Jamais d'adresse générique** (Q93). Un contact précis paie toujours,
    et beaucoup se trouvent en ligne : le site de l'entreprise (sa page
@@ -261,68 +259,68 @@ aussi à la prospection lourde sont marquées *(3 et 6)*.
    nommée, avec son rôle (« Marie Dupont, gérante »), et son adresse
    directe (`marie.dupont@…`), pas `contact@`, `info@` ou `accueil@`. Une
    entreprise dont elle ne trouve qu'une adresse générique est laissée de
-   côté. Le prompt le dit, et le code d'écriture le garantit : une
-   adresse dont le début est dans la liste des adresses génériques
-   (réglage en base : `contact`, `info`, `hello`, `accueil`, `bonjour`,
-   `admin`, `support`, `commercial`…) est refusée.
+   côté. La liste des débuts d'adresse refusés est un réglage (page
+   Policy, « Contacts »).
 
-   Elle écrit les contacts, leurs adresses (avec leur source), et un
-   premier message « à rédiger » pour chacun, sur le canal de la campagne.
-   Lien, une tâche par premier message : « Écrire le premier message » ou
-   « Préparer le premier appel ».
+3. **Suivre une campagne** *(3 et 6)* — sans LLM, toutes les heures, une
+   tâche par campagne `RUNNING`. Elle fait l'une de ces trois choses :
+   - **clore** la campagne (`FINISHED`, avec sa raison) si elle remplit
+     une condition de fin (partie 3) ; quand toutes les campagnes de test
+     d'un business sont finies, lien vers « Mesurer le test » ;
+   - **relancer « Trouver des prospects »** si la campagne n'a pas encore
+     son compte (40 au total pour un test, 200 cette semaine pour une
+     campagne lourde) et que Serge a moins d'un jour d'envois d'avance
+     (réglage : avec 40 e-mails par jour, il garde au plus 40 premiers
+     messages qui attendent). Ainsi, Serge ne cherche pas 1 000 prospects
+     d'un coup, et ne dépense pas pour des contacts qu'il n'aura pas le
+     temps d'écrire ;
+   - **attendre**.
 
-3. **Réapprovisionner les campagnes** *(3 et 6)* — sans LLM, toutes les
-   heures. Pour chaque campagne `RUNNING` qui n'a pas encore son volume
-   (40 au total pour un test, 200 cette semaine pour une campagne
-   lourde), elle relance « Trouver des prospects » si Serge a moins d'un
-   jour d'envois d'avance (réglage : avec 40 e-mails par jour, il garde au
-   plus 40 premiers messages qui attendent). Ainsi, Serge ne cherche pas
-   1 000 prospects d'un coup, et ne dépense pas pour des contacts qu'il
-   n'aura pas le temps d'écrire.
+   C'est une seule invocation, et non « Réapprovisionner » et « Clore »
+   séparées : les deux regardent la même campagne, à la même heure.
 
-4. **Écrire le premier message** *(3 et 6)* — LLM, niveau moyen, file des
+4. **Rédiger un premier message** *(3 et 6)* — sans LLM. Déclencheur : un
+   premier message « à rédiger » est écrit. Elle ne fait qu'aiguiller,
+   par un lien conditionné sur le canal : « Écrire le premier message »
+   pour l'e-mail, « Préparer le premier appel » pour l'appel. Un nouveau
+   canal ajoute ici son lien (partie 17).
+
+5. **Écrire le premier message** *(3 et 6)* — LLM, niveau moyen, file des
    conversations. La vraie version de l'invocation temporaire du lot 8.
    Elle reçoit le contact, la source de son adresse, le plan (l'angle,
-   l'offre), la fiche produit, et le lien du POC (phase `smoke`) ou le
-   lien du produit et son prix (phase `full`). Elle écrit l'objet et le
-   texte. Lien : « Envoyer un message » (existe).
+   l'offre), la fiche produit, et l'adresse du produit en ligne : le POC
+   pendant le test, le produit fini et son prix ensuite. Elle écrit
+   l'objet et le texte. Lien : « Envoyer un message » (existe).
 
-5. **Préparer le premier appel** *(3 et 6)* — LLM, niveau moyen. La vraie
+6. **Préparer le premier appel** *(3 et 6)* — LLM, niveau moyen. La vraie
    version de l'invocation temporaire : le but de l'appel, que l'agent
    vocal suit. Lien : « Envoyer un message ».
 
-6. **Les relances et les réponses** existent (lots 8 et 8 bis) : rien à
+7. **Les relances et les réponses** existent (lots 8 et 8 bis) : rien à
    ajouter. Le rythme des relances est le même pour tous les business :
    les réglages de « Préparer les relances » (3 jours, puis 7 jours, deux
-   au plus), sur la page Policy (Q92).
-
-7. **Clore les campagnes finies** *(3 et 6)* — sans LLM, toutes les
-   heures. Elle passe à `FINISHED` chaque campagne qui remplit une
-   condition de fin (partie 3), avec sa raison. Quand toutes les
-   campagnes de test d'un business sont finies, le business passe à
-   `SMOKE_DONE` et la date de fin du test est notée sur sa fiche.
+   au plus), sur la page Policy (Q92). **Un rebond** (l'e-mail n'a pas pu
+   être remis) est reconnu à la relève : l'adresse est désactivée, et le
+   contact passe à « injoignable » s'il n'en a pas d'autre.
 
 ---
 
 ## 5. La fin d'un test léger : mesurer et juger
 
-8. **Mesurer le test** — sans LLM. Déclencheur : un business passe à
-   `SMOKE_DONE`. Elle écrit le compte rendu chiffré du test
-   (`test_reports`) : prospects trouvés et contactés par canal, réponses
-   par réaction, points, dépense, points par euro. Puis elle **juge le
-   test avec des seuils en chiffres absolus**, réglés sur la page Policy
-   (Q93) :
+8. **Mesurer le test** — sans LLM. Lien depuis « Suivre une campagne »,
+   quand la dernière campagne de test d'un business est finie. Elle écrit
+   le compte rendu chiffré du test (`test_reports`) : prospects contactés
+   par canal, réponses par réaction, points, dépense, points par euro.
+   Puis elle **juge le test avec des seuils en chiffres absolus**, réglés
+   sur la page Policy (Q93) :
    - **assez de prospects contactés** : au moins 30, tous canaux
      confondus ; sinon le test ne dit rien, faute de prospects ;
    - **assez de points** : au moins 10 (par exemple un « intéressé » et
      un « refus », ou un « rendez-vous ») ;
    - **assez de points par euro** : au moins 0 au départ (pas de seuil).
 
-   Un test qui passe les trois seuils est **retenu**. Sinon, le business
-   passe à `KILLED`, avec la raison (« 4 points, moins que les 10
-   demandés »), libère sa place et produit une leçon (Q92) ; il n'est pas
-   comparé pour le choix du principal. Le code juge, pas un modèle : il
-   lit des chiffres et des seuils (charte, partie 4).
+   Un test qui passe les trois seuils est **retenu**. Le code juge, pas un
+   modèle : il lit des chiffres et des seuils (charte, partie 4).
 
 9. **Faire le bilan du test** — LLM, niveau intelligent, file des
    travaux. Lien depuis « Mesurer le test », retenu ou non. Elle lit le
@@ -331,6 +329,10 @@ aussi à la prospection lourde sont marquées *(3 et 6)*.
    rendu un bilan en quelques lignes : ce qui a plu, ce qui a bloqué, les
    prospects qui ont le mieux répondu. Ce bilan sert au choix du
    principal, à la conception du vrai produit et à la prospection lourde.
+   Lien : **« Conclure le test »**, sans LLM : le business retenu passe à
+   `SMOKE_DONE`, avec la date de fin de son test ; l'autre passe à
+   `KILLED`, avec la raison (« 4 points, moins que les 10 demandés »),
+   libère sa place et produit une leçon (Q92).
 
 10. **Tirer la leçon d'un business arrêté** — LLM, niveau moyen.
     Déclencheur : un business passe à `KILLED`, quelle que soit l'étape
@@ -344,29 +346,32 @@ aussi à la prospection lourde sont marquées *(3 et 6)*.
 ## 6. L'étape 4 : choisir le business principal
 
 11. **Choisir le business principal** — LLM, niveau intelligent, file des
-    travaux. Deux déclencheurs : un bilan de test est écrit, ou la place
-    lourde se libère (au lot 16). **Trois conditions** : aucun test léger
-    ne tourne encore (aucun business `POC_SELECTED`, `SMOKE_READY` ou
-    `SMOKE_RUNNING`), au moins un business retenu attend (`SMOKE_DONE`
-    retenu, ou `PARKED` testé il y a moins de 60 jours), et la place
-    lourde est libre (Q14 bis). Elle reçoit, pour chacun : ses chiffres,
-    son bilan et les réponses de ses prospects. Elle propose un business,
-    ou aucun, avec une phrase par business. Critère de départ, donné dans
-    le prompt : d'abord les points par euro, puis les points, puis la
-    facilité de vendre le produit fini. Elle écrit sa proposition
+    travaux. Deux déclencheurs : un test est conclu et retenu (son
+    business passe à `SMOKE_DONE`), ou un business est arrêté (il passe à
+    `KILLED`). **Trois conditions** : aucun test léger ne tourne encore
+    (aucun business `POC_SELECTED`, `SMOKE_READY` ou `SMOKE_RUNNING`), au
+    moins un business retenu attend (`SMOKE_DONE`, ou `PARKED` : un
+    business mis de côté depuis plus de 60 jours ne l'est plus), et la
+    place lourde est libre (Q14 bis). Elle reçoit, pour chacun : ses
+    chiffres, son bilan et les réponses de ses prospects. Elle propose un
+    business, ou aucun, avec une phrase par business. Critère de départ,
+    donné dans le prompt : d'abord les points par euro, puis les points,
+    puis la facilité de vendre le produit fini. Elle écrit sa proposition
     (`principal_choices`).
 
 12. **Faire valider le choix** — sans LLM (capacité « Demander à Julien »).
     Un ticket « Choix du principal » : la proposition, et pour chaque
     business ses chiffres et son bilan. Boutons : « Valider », « Choisir
-    un autre » (un choix parmi les autres business), « Aucun ». Sans
-    réponse sous 48 heures, la proposition s'applique (Q16 bis).
+    un autre » (on écrit le nom du business voulu, parmi ceux du ticket),
+    « Aucun ». Sans réponse sous 48 heures, la proposition s'applique
+    (Q16 bis).
 
 13. **Appliquer le choix du principal** — sans LLM. Déclencheur : la
     réponse au ticket. Le business choisi passe à `PRODUCT_BUILDING` ;
-    les autres business retenus passent à `PARKED`, avec la date. Avec
-    « Aucun », tous passent à `PARKED`. Lien : « Concevoir le produit »
-    (étape 5, lot 10), qui remplace le bouton d'essai du lot 10.
+    les autres business retenus passent à `PARKED`. Avec « Aucun », tous
+    passent à `PARKED`. Un nom qui ne désigne aucun business du ticket
+    rouvre le ticket, avec la raison. Lien : « Concevoir le produit »
+    (étape 5, lot 10), qui remplace le bouton de la fiche du business.
 
 14. **Oublier les vieux tests** — sans LLM, une fois par jour. Un business
     `PARKED` dont le test a fini il y a plus de 60 jours (réglage)
@@ -398,31 +403,32 @@ nouvelle version, pas de changement de prix ni de cible en cours de route
     (affinée par ce que le test a appris : les métiers, les tailles
     d'entreprise et les régions qui ont le mieux répondu) et l'angle des
     messages. Les volumes ne sont pas les siens : ce sont les réglages de
-    chaque canal (partie 3). Elle écrit aussi un premier message « à
-    rédiger » pour **chaque contact du test qui avait dit « intéressé » ou
-    « rendez-vous »** : ils apprennent les premiers que le produit existe,
-    avec son lien. Un ticket d'information prévient Julien (Q42 : la
-    prospection lourde est automatique).
+    chaque canal (partie 3). Lien : **« Prévenir les intéressés du
+    test »**, sans LLM : un premier message « à rédiger » pour **chaque
+    contact du test qui avait dit « intéressé » ou « rendez-vous »** ; ils
+    apprennent les premiers que le produit existe, avec son lien. Un
+    ticket d'information prévient Julien (Q42 : la prospection lourde est
+    automatique).
 
 17. La campagne passe à `RUNNING` par **Démarrer une campagne**, et le
-    business à `FULL_RUNNING`. **Trouver des prospects**, **Réapprovisionner
-    les campagnes**, **Écrire le premier message**, les relances et
-    **Traiter une réponse** servent comme au test léger, au volume de la
-    semaine. Différence : la fiche produit donne le prix et le lien
-    d'inscription du produit, et « Traiter une réponse » l'envoie à un
-    contact « intéressé ».
+    business à `FULL_RUNNING`. **Trouver des prospects**, **Suivre une
+    campagne**, **Écrire le premier message**, les relances et **Traiter
+    une réponse** servent comme au test léger, au volume de la semaine.
+    Différence : la fiche produit donne le prix et le lien d'inscription
+    du produit, et « Traiter une réponse » l'envoie à un contact
+    « intéressé ».
 
 18. **Enregistrer une vente** — sans LLM. Déclencheur : Stripe annonce un
-    paiement ou un abonnement (tables `transactions` et `subscriptions`,
-    remplies par le webhook). Elle retrouve le contact par son e-mail dans
-    ce business et le passe à « client » (`CUSTOMER`) : il ne reçoit plus
-    de relance de prospection. Un acheteur inconnu devient un contact
-    « entrant » et client. La **première vente** d'un business ouvre un
-    ticket d'information.
+    paiement (une transaction payée, écrite par le webhook, avec l'e-mail
+    du payeur). Elle retrouve le contact par son e-mail dans ce business
+    et le passe à « client » (`CUSTOMER`) : il ne reçoit plus de relance
+    de prospection. Un acheteur inconnu devient un contact « entrant » et
+    client. La **première vente** d'un business ouvre un ticket
+    d'information.
 
-19. **Clore les campagnes finies** termine une campagne lourde quand son
-    total est atteint (partie 3). Le business reste en `FULL_RUNNING`, et
-    le lot 12 s'arrête là.
+19. **Suivre une campagne** termine une campagne lourde quand son total
+    est atteint (partie 3). Le business reste en `FULL_RUNNING`, et le
+    lot 12 s'arrête là.
 
 ---
 
@@ -431,15 +437,17 @@ nouvelle version, pas de changement de prix ni de cible en cours de route
 Chaque table a sa vue, ses colonnes inscriptibles, ses statuts permis et
 ses quotas en base (règle de tous les lots).
 
-- **`campaigns`** (existe) : reçoit `phase` (`smoke` ou `full`), le plan
-  dont elle vient, ses volumes (au total, et par semaine pour une
-  campagne lourde), la date de fin prévue d'un test et la raison de sa
-  fin. Les colonnes que rien n'écrit (`budget_cap_eur`,
-  `thresholds_json`) sont retirées.
-- **`contacts`** (existe) : reçoit la campagne qui l'a trouvé.
+- **`campaigns`** (existe) : reçoit `phase` (`smoke` ou `full`), sa cible
+  et son angle (pour une campagne lourde), ses volumes (au total, et par
+  semaine pour une campagne lourde), son début, la date de fin prévue
+  d'un test, la raison de sa fin, et le compte des recherches de
+  prospects restées vides. Les colonnes que rien n'écrit
+  (`budget_cap_eur`, `thresholds_json`, `window_start`, `window_end`)
+  sont retirées.
 - **`contact_addresses`** (existe) : reçoit la page où l'adresse a été
-  trouvée (Q36) et le résultat de sa vérification (le domaine reçoit des
-  e-mails, ou un rebond).
+  trouvée (Q36). Les prospects d'une campagne sont ceux qui ont un
+  premier message dans cette campagne : la table des contacts ne change
+  pas.
 - **`test_reports`** (nouvelle) : une ligne par test léger : le business,
   ses chiffres par canal, le verdict (retenu ou non, avec la raison) et le
   bilan.
@@ -448,6 +456,11 @@ ses quotas en base (règle de tous les lots).
   comparé, et ce que Julien a décidé.
 - **`ventures`** : les statuts de la partie 2 ; la date de fin du test
   léger existe (`smoke_ended_at`) et sert à la règle des 60 jours.
+- **L'essai et les redémarrages** (parties 18 et 19) : `trial` sur les
+  cycles d'écoute, les pages, les tickets et leurs réponses ; sur une
+  tâche, l'essai dont elle fait partie, la tâche qui l'a créée et la
+  marque d'un redémarrage ; la valeur d'essai d'un réglage ; le couloir
+  d'un lien ou d'un déclencheur.
 
 Les ventes restent dans `transactions` et `subscriptions` (étape 8,
 lot 10) : on ne recopie rien.
@@ -461,19 +474,23 @@ départ :
 
 | Réglage | Départ | Où |
 |---|---|---|
-| Prospects d'un test léger, par canal | e-mail 40, appel 20 | Policy, « Taille des essais » |
+| Prospects d'un test léger, par canal | e-mail 40, appel 20 | « Démarrer une campagne » |
 | Prospects par semaine, prospection lourde, par canal | e-mail 200, appel 50 | idem |
 | Prospects au total, prospection lourde, par canal | e-mail 1 000, appel 250 | idem |
 | Durée maximale d'un test léger | celle du plan, 30 jours au plus | idem |
-| Fin d'un test léger après la dernière relance | 7 jours | « Clore les campagnes finies » |
-| Passages sans nouveau prospect avant de clore | 3 | idem |
+| Jours sans envoi avant de clore une campagne | 8 | « Suivre une campagne » |
+| Recherches sans nouveau prospect avant de clore | 3 | idem |
+| Envois d'avance gardés en réserve | 1 jour | idem |
 | Prospects par passage de « Trouver des prospects » | 10 | son réglage |
 | Adresses génériques refusées | `contact`, `info`, `hello`, `accueil`, `bonjour`, `admin`, `support`, `commercial`… | Policy, « Contacts » |
-| Envois d'avance gardés en réserve | 1 jour | « Réapprovisionner les campagnes » |
 | Prospects contactés pour qu'un test compte | 30 | « Mesurer le test » |
 | Points pour qu'un test soit retenu | 10 | idem |
 | Points par euro pour qu'un test soit retenu | 0 | idem |
-| Âge maximum d'un business mis de côté | 60 jours | « Choisir le business principal » |
+| Âge maximum d'un business mis de côté | 60 jours | « Oublier les vieux tests » |
+
+Ce sont des réglages d'invocation marqués « policy » : ils se changent
+sur la page Policy, sous leur invocation. Un réglage peut avoir une
+**valeur d'essai**, qui ne vaut que dans l'essai total (partie 18).
 
 Les places (3 et 1) sont des quotas de la page Policy. Les anciens
 réglages de « Taille des essais » sont remplacés : « Petit essai,
@@ -515,53 +532,50 @@ première vente.
 
 ---
 
-## 12. Ce que le code doit apprendre (plus tard)
+## 12. Ce que le code apprend
 
 Ce sont des capacités générales, réglées en base ; aucune ne connaît une
 invocation.
 
 1. **Une condition de déclencheur « nombre de lignes »** : « au plus
-   0 business `SMOKE_RUNNING` », « au moins 1 test retenu ». Les quotas
-   d'aujourd'hui servent à la fois de limite d'écriture et de condition ;
-   il faut une condition qui ne limite pas l'écriture.
-2. **Une valeur d'écriture « maintenant plus N jours »**, N lu dans une
-   colonne ou un réglage (la fin prévue d'un test).
-3. **Une règle d'écriture « valeur refusée »** : une colonne refuse les
-   valeurs qui commencent par un mot d'une liste en base (les adresses
-   génériques).
-4. **Les chiffres d'un business**, une capacité et un outil : prospects,
-   réactions, points, dépense, points par euro, ventes et argent, sur une
-   période. Mission Control les calcule déjà (lot 9) ; le pipeline doit
-   pouvoir les lire.
-5. **Vérifier une adresse e-mail** : le domaine a-t-il un serveur de
+   0 business `SMOKE_RUNNING` », « au moins 1 business `SMOKE_DONE` ».
+   Les quotas d'aujourd'hui servent à la fois de limite d'écriture et de
+   condition ; celle-ci ne limite pas l'écriture.
+2. **Le domaine des campagnes** (`serge/campaigns/`) : démarrer une
+   campagne, la suivre (la clore, ou dire qu'il lui faut des prospects),
+   ajouter un prospect (avec ses refus : adresse générique, domaine sans
+   e-mail, doublon), mesurer un test, appliquer le choix du principal,
+   enregistrer une vente.
+3. **Vérifier une adresse e-mail** : le domaine a-t-il un serveur de
    courrier (gratuit, sans service payant, Q48) ?
-6. **Les rebonds** : la relève de l'e-mail reconnaît un message de rebond,
+4. **Les rebonds** : la relève de l'e-mail reconnaît un message de rebond,
    marque l'adresse inactive, et le contact injoignable s'il n'a pas
-   d'autre adresse. Aujourd'hui, rien ne lit les rebonds.
-7. **Réapprovisionner** et **clore** des campagnes : deux capacités du
-   domaine des campagnes, comme « Préparer les relances » l'est des envois.
-8. **Enregistrer une vente** : relier un paiement Stripe à un contact par
-   son e-mail.
-9. **Un choix parmi des lignes dans un ticket** : le bouton « Choisir un
-   autre » liste les business comparés.
+   d'autre adresse.
+5. **La condition d'un lien lue dans les paramètres de la tâche**, quand
+   la réponse n'a pas ce champ.
+6. **Le couloir d'essai** (partie 18) et **repartir d'une tâche**
+   (partie 19).
 
 ---
 
 ## 13. Ce que le lot 12 retire
 
 - Les versions temporaires de « Écrire le premier message » et de
-  « Préparer le premier appel » : les vraies les remplacent, et le bouton
-  « Lancer un essai » s'en sert. Les boutons d'essai de la page Système
-  restent : ils essaient chaque brique à part, sur un business d'essai
-  (partie 18, décision Q98).
-- Le bouton « Construire le vrai produit » de la fiche d'un vrai
-  business, remplacé par le lien depuis le choix du principal ; il reste
-  pour un business d'essai.
+  « Préparer le premier appel » : les vraies les remplacent.
+- **Tous les essais de la page Système** (Q99) : « Lancer un essai »,
+  « Essayer le chantier », « Essayer l'interface web », « Essayer le
+  captcha avec un humain », « Publier le chantier d'essai », « Essayer
+  l'étape 2 », les deux « Bout en bout », et, sur la fiche d'un business,
+  « Essayer Stripe ». L'essai total (partie 18) les remplace. Les boutons
+  « Supprimer de Stripe » restent : ils servent à nettoyer.
+- Le bouton « Construire le vrai produit » de la fiche d'un business,
+  remplacé par le lien depuis le choix du principal.
 - Les champs « nombre de prospects » et « relances » du plan du POC
   (lot 10), remplacés par des réglages.
-- Le module `serge/funnels/lifecycle.py`, qui impose en dur « un seul
-  business actif » et d'anciens statuts : les statuts et les places sont
-  en base.
+- Les modules `serge/funnels/lifecycle.py`, `campaigns.py`, `essai.py`,
+  `rules.py` et `contact_tool.py`, que plus rien n'appelait : ils
+  imposaient en dur « un seul business actif », d'anciens statuts et
+  d'anciens seuils. Les statuts, les places et les seuils sont en base.
 - Les anciens réglages de « Taille des essais » (partie 9) et les
   colonnes inutiles des campagnes (partie 8).
 - Les invocations écrites mais jamais appelées que ce lot remplace (TODO,
@@ -672,12 +686,12 @@ particulier : il ne connaît que ce contrat.
   seule version de chacune, qui lit le canal dans la ligne qu'elle
   traite.
 
-Ajouter un canal, c'est donc : un adaptateur, une ligne de réglages, une
-invocation de premier message et son lien. Aucune autre invocation ne
-change. **Un test le garantit** (PR 2) : un canal factice, ajouté
-seulement de cette façon, traverse la chaîne (campagne, prospects,
-premier message, envoi, réponse, points) sans qu'aucune autre ligne du
-pipeline ne soit modifiée.
+Ajouter un canal, c'est donc : un adaptateur, ses réglages de volume, une
+invocation de premier message et son lien depuis « Rédiger un premier
+message ». Aucune autre invocation ne change. **Un test le garantit** : un
+canal factice, ajouté seulement de cette façon, traverse la chaîne
+(campagne, prospect, premier message, envoi, réponse, points) sans
+qu'aucune autre ligne du pipeline ne soit modifiée.
 
 **Trouver des prospects autrement** (un annuaire, un site où il faut
 naviguer) suit la même idée : c'est un outil de plus donné à « Trouver
@@ -687,35 +701,139 @@ rédiger.
 
 ---
 
-## 18. Les essais sont à part
+## 18. L'essai total
 
-Clem veut pouvoir lancer un essai de la page Système (la calculatrice,
-l'étape 2, un canal) **pendant que le vrai pipeline tourne**, sans rien
-casser (Q98). Un essai et la chaîne réelle ne doivent jamais se toucher
-en base.
+Un seul essai remplace tous ceux de la page Système (Q99). Il suit le
+même chemin que le vrai pipeline, de l'écoute du web à la vente, avec les
+mêmes invocations et les mêmes tables, **sans jamais toucher à ce qui
+tourne**.
 
-1. **Un business d'essai est marqué** (`ventures.trial` à 1). Tous les
-   boutons d'essai de la page Système créent le leur : « Lancer un
-   essai », « Essayer l'étape 2 », les deux « Bout en bout » d'une
-   calculatrice. Fait en PR 1, avec les business d'essai déjà en base.
-2. **Il ne prend aucune place** : les places de test et la place lourde
-   ne comptent que les vrais business. Un essai ne bloque pas l'étape 1,
-   et trois vrais tests ne bloquent pas un essai. Fait en PR 1 pour les
-   places de test.
-3. **La chaîne réelle ne part jamais pour lui.** Chaque déclencheur et
-   chaque lien qui fait avancer un vrai business tout seul (démarrer une
-   campagne, mesurer un test, choisir le principal, préparer la
-   prospection lourde, tirer une leçon, relancer l'étape 1) porte la
-   condition « pas un business d'essai ». Un essai s'arrête au bout de la
-   brique essayée. Exemple : la calculatrice d'un bout en bout arrive à
-   « produit en vente », et Serge ne lui cherche aucun prospect.
-4. **Il n'est jamais comparé ni compté** avec les vrais : absent du choix
-   du principal, de ce que l'étape 1 voit pour écarter les doublons, et
-   des totaux de la page Économie.
-5. **Il n'écrit qu'à ses contacts d'essai** : ceux que l'opérateur a
-   tapés dans le formulaire. Aucun essai ne trouve de vrais prospects.
+### Le couloir d'essai
 
-**Un test le garantit** à chaque PR : avec la chaîne réelle en base, un
-essai de bout en bout ne démarre aucune campagne, n'ouvre aucun cycle
-d'écoute, ne change aucune place et n'écrit à personne d'autre que ses
-contacts d'essai ; et un vrai business ne voit jamais un essai.
+Une tâche est soit du vrai pipeline, soit d'un essai : elle porte le
+numéro de son essai (`tasks.trial_run`). Tout en découle, dans
+l'interpréteur, sans rien savoir d'une invocation :
+
+1. **Ce qu'une tâche d'essai écrit est marqué.** Une table qui a une
+   colonne `trial` (les business, les cycles d'écoute, les pages, les
+   tickets) reçoit 1. Les autres lignes (campagnes, contacts, envois,
+   plans…) suivent leur business, par leur `venture_id`.
+2. **Chacun ne voit que son couloir.** Une vraie tâche ne lit, ne
+   modifie, ne compare et ne compte que les vraies lignes ; une tâche
+   d'essai, que celles des essais. Exemples : « Choisir les business » ne
+   voit jamais la calculatrice d'essai ; une page lue par l'essai n'est
+   pas « déjà gardée » pour la vraie écoute ; « Abandonner le cycle » ne
+   ferme pas le cycle de l'essai.
+3. **Les places ne comptent que le vrai.** Un essai ne prend ni place de
+   test, ni place lourde, ni le cycle d'écoute ouvert ; et des places
+   prises ne l'arrêtent pas.
+4. **La suite hérite du couloir.** Une tâche créée par un lien ou par une
+   ligne écrite est du couloir de cette ligne (sinon de la tâche qui l'a
+   créée). Une réponse à un ticket d'essai, un e-mail reçu d'un contact
+   d'essai, un paiement sur un business d'essai lancent donc des tâches
+   d'essai. Les déclencheurs à heure fixe sont du vrai pipeline : un
+   essai n'a ni relance, ni veille, ni oubli.
+5. **Un réglage peut avoir une valeur d'essai**, qui remplace la sienne
+   dans une tâche d'essai. C'est ce qui rend l'essai petit et rapide,
+   sans une ligne de code :
+
+   | Réglage | Vrai | Essai |
+   |---|---|---|
+   | Recherches de « Explorer le web » | 10 | 2 |
+   | Pages retenues, flux ajoutés | 30, 2 | 5, 0 |
+   | Idées de « Formuler des business » | 3 | 0 |
+   | Business à choisir, au moins | 0 | 1 |
+   | Prospects d'un test, e-mail et appel | 40, 20 | 1, 1 |
+   | Jours sans envoi avant de clore | 8 | 0 |
+   | Prospects contactés et points pour retenir un test | 30, 10 | 0, 0 |
+
+6. **Un lien ou un déclencheur peut n'exister que dans un couloir.**
+   C'est là, et seulement là, que l'essai quitte le vrai chemin :
+
+   | Dans le vrai pipeline | Dans l'essai |
+   |---|---|
+   | « Choisir les business » → « Concevoir le POC » | → le plan tout fait de la calculatrice, puis le ticket « Plan » |
+   | « Démarrer une campagne » → « Trouver des prospects » | → un premier message pour le contact tapé au lancement |
+   | « Suivre une campagne », toutes les heures | après chaque envoi |
+   | le paiement test → « Produit en vente » | → le captcha avec un humain, puis « Produit en vente » |
+   | un domaine à acheter | jamais : sans domaine commun des produits, un ticket le demande |
+   | une place se libère → un cycle d'écoute ; un business arrêté → une leçon | rien |
+
+### Ce que fait l'essai
+
+Sur la page Système, un seul bouton : **« Lancer l'essai total »**. On
+tape un nom, une adresse e-mail, un numéro, et l'étape de départ (1 si on
+ne met rien). Serge arrête l'essai précédent, s'il y en a un, puis :
+
+1. **Étape 1** : il crée le business d'essai « Calculatrice » et son
+   contact (les coordonnées tapées), ouvre un cycle d'écoute d'essai,
+   explore le web pour de vrai (2 recherches, 5 pages au plus, marquées
+   « essai »), trie ces pages, puis « Choisir les business » choisit la
+   calculatrice, seule candidate de l'essai.
+2. **Étape 2** : le plan du POC est tout fait ; le ticket « Plan » arrive
+   (mention « Essai »). Après « Valider » : construction, relecture,
+   ticket « Tester le produit », mise en ligne.
+3. **Étape 3** : les deux campagnes démarrent. Serge écrit un e-mail et
+   prépare un appel pour le contact de l'essai, les envoie, et les
+   campagnes se terminent aussitôt. Le test est mesuré, retenu quoi qu'il
+   arrive, et son bilan écrit.
+4. **Étape 4** : « Choisir le business principal », puis son ticket.
+5. **Étape 5** : le plan du produit (écrit par le modèle), son ticket,
+   Stripe en mode test, la construction, le ticket « Tester le produit »,
+   le sous-domaine, la mise en vente dans Stripe, le paiement test de
+   1 €, remboursé, puis le captcha avec un humain (les deux tickets).
+6. **Étape 6** : la prospection lourde est préparée, ses campagnes
+   démarrent, et le contact de l'essai reçoit un e-mail et un appel pour
+   le produit fini. Le paiement test a aussi enregistré une vente.
+
+**Partir du milieu** : avec l'étape de départ 2, 3, 5 ou 6, Serge met
+d'abord en base l'état d'où part cette étape (la calculatrice choisie ;
+son POC « en ligne » et ses campagnes prêtes ; trois demandes de clients
+et un test retenu ; un produit « en vente »), puis lance la suite. Ce qui
+précède n'est pas rejoué : à partir de 3 ou de 6, les messages n'ont donc
+pas de vrai site à montrer.
+
+**Arrêter un essai** (le relancer, ou le bouton « Arrêter l'essai ») :
+ses tâches en attente sont annulées, ses tickets ouverts fermés, son
+cycle d'écoute abandonné, ses campagnes annulées, et son business, s'il
+n'était pas arrivé au bout, passe à « arrêté ». Une tâche d'essai en
+cours finit, mais sa suite ne part pas. Ce qui est en ligne (le site, les
+produits Stripe) reste : « Supprimer de Stripe » sert à nettoyer.
+
+**Un test le garantit** : avec un vrai cycle ouvert, trois vrais business
+en test et un vrai principal, l'essai total va de l'écoute à la vente ;
+aucune vraie ligne n'a changé, aucune vraie tâche n'a été créée, et les
+vraies invocations ne voient à aucun moment une ligne de l'essai.
+
+---
+
+## 19. Repartir d'une tâche
+
+Une chaîne qui a bloqué (une tâche en échec, annulée, ou finie sur un
+mauvais résultat) doit pouvoir repartir d'une tâche précise, depuis
+Mission Control (Q99). Avant, seule une tâche en échec se relançait ; et
+rejouer une tâche finie ne faisait pas repartir sa suite, parce qu'un
+même résultat n'est jamais transmis deux fois.
+
+**« Repartir d'ici »**, sur la fiche de toute tâche qui n'est pas en
+cours :
+
+1. **Ce qui restait de l'ancienne chaîne est arrêté** : les tâches en
+   attente que cette tâche avait créées (et celles qu'elles avaient
+   créées), et leurs tickets ouverts. Chaque tâche note pour cela la tâche
+   qui l'a créée (`tasks.parent_id`).
+2. **Une tâche neuve part**, copie de l'ancienne : même invocation, mêmes
+   paramètres, même couloir.
+3. **Toute sa suite est neuve aussi** : la tâche neuve porte une marque
+   de redémarrage (`tasks.rerun`), que ses suivantes héritent, et qui
+   entre dans la clé de chaque tâche et de chaque passage. Un lien déjà
+   passé pour l'ancienne chaîne passe donc de nouveau.
+
+Exemple : le paiement test a fini sur « pas payé », et un ticket l'a dit.
+« Repartir d'ici » sur cette tâche refait le paiement, puis « Produit en
+vente », sans toucher au reste.
+
+Sur la page Système, **l'essai en cours** montre ses tâches dans l'ordre,
+avec leur état, ce qui attend (un ticket, une heure) et le bouton
+« Repartir d'ici » : on voit où l'essai a bloqué, et on le fait repartir
+de là.
