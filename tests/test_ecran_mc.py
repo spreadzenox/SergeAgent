@@ -9,7 +9,9 @@ Scénarios :
 - connecté, ``/owner/vrai-chrome`` ouvre noVNC, ses fichiers viennent du
   conteneur, sans les cookies de Mission Control ;
 - le flux de l'écran (une WebSocket) passe dans les deux sens ;
-- le vrai Chrome éteint : un message clair.
+- le vrai Chrome éteint : un message clair ;
+- la page d'essai du captcha (page Système) se lit sans connexion, et un
+  clic sur son bouton montre un code à quatre chiffres.
 """
 
 from __future__ import annotations
@@ -26,7 +28,11 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from serge.mc import ecran_actions  # noqa: E402
-from tests.mc_server_case import McServerCase  # noqa: E402
+from tests.mc_server_case import (  # noqa: E402
+    McServerCase,
+    _chromium_kwargs,
+    browser_ok,
+)
 
 
 class _FauxNoVnc(socketserver.BaseRequestHandler):
@@ -124,6 +130,28 @@ class EcranTests(McServerCase):
         )
         self.assertEqual(status, 503)
         self.assertIn('ne tourne pas', corps.decode('utf-8'))
+
+
+class PageDEssaiTests(McServerCase):
+    @unittest.skipUnless(browser_ok(), 'Chromium indisponible')
+    def test_un_clic_montre_un_code(self) -> None:
+        from playwright.sync_api import sync_playwright
+
+        status, _headers, _corps = self._request(
+            'GET', '/static/essai/captcha.html'
+        )
+        self.assertEqual(status, 200, 'sans connexion')
+        with sync_playwright() as handle:
+            navigateur = handle.chromium.launch(**_chromium_kwargs())
+            page = navigateur.new_page()
+            page.goto(f'{self.base}/static/essai/captcha.html')
+            self.assertFalse(page.locator('#resultat').is_visible())
+            page.get_by_role('button', name='Je suis un humain').click()
+            self.assertIn(
+                'Captcha résolu', page.locator('#resultat').inner_text()
+            )
+            self.assertRegex(page.locator('#code').inner_text(), r'^\d{4}$')
+            navigateur.close()
 
 
 if __name__ == '__main__':

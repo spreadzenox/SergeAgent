@@ -90,10 +90,18 @@ test qui se libère relance l'étape 1, sans clic (Q92).
   business à `SMOKE_READY`. Le nombre de prospects et le rythme des
   relances ne viennent plus du plan, mais de réglages (parties 3 et 4) :
   ces deux champs du plan sont à retirer.
-- **L'étape 5 (lot 10)** : « Concevoir le produit », le ticket du plan, la
-  construction, le ticket de test et la mise en vente amènent le business
-  à `PRODUCT_READY`. Au lot 10, elle se lance par un bouton d'essai ; le
-  lot 12 la lance par un lien depuis le choix du principal.
+- **L'étape 5 (lots 10 et 11)** : « Concevoir le produit », le ticket du
+  plan, la construction, le ticket de test et la mise en vente amènent le
+  business à `PRODUCT_READY`. Elle a été essayée de bout en bout sur le
+  serveur le 16 novembre 2026. Elle se lance encore par un bouton de la
+  fiche du business ; le lot 12 la lance par un lien depuis le choix du
+  principal.
+- **Ce que le lot 11 a ajouté** (décisions Q96 et Q97), utile aux
+  invocations de ce lot : une tâche a un plafond de dépense et s'arrête
+  avec le bouton rouge ; une demande à Julien la gèle jusqu'à sa
+  réponse ; un produit envoie de vrais e-mails ; une invocation peut
+  naviguer dans un vrai Chrome et passer la main à un humain pour un
+  captcha (« Appeler un humain »).
 - **Les conversations (lots 8 et 8 bis)** : « Envoyer un message » (garde-
   fous, plafonds du jour, heures d'appel), « Préparer les relances » et
   « Écrire une relance » (3 jours, puis 7 jours, 2 au plus), « Traiter une

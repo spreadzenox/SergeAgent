@@ -12,7 +12,9 @@ Scénarios :
 - sans « C'est fait » à temps, le ticket est annulé et la tâche s'arrête
   de nouveau, avec un nouveau « êtes-vous prêts ? » ;
 - « Abandonner » : la tâche repart et continue sans humain ;
-- sans onglet du vrai Chrome, l'outil le dit au modèle.
+- sans onglet du vrai Chrome, l'outil le dit au modèle ;
+- le bouton « Essayer le captcha avec un humain » de la page Système fait
+  tout le parcours sur la page d'essai, et rend le code lu sur la page.
 """
 
 from __future__ import annotations
@@ -31,6 +33,7 @@ sys.path.insert(0, str(ROOT))
 from serge import aide_humaine  # noqa: E402
 from serge.coupe_circuit import set_heartbeat  # noqa: E402
 from serge.db.boot import init_schema  # noqa: E402
+from serge.interpreter.flow import fire_button  # noqa: E402
 from serge.interpreter.queue import process_one  # noqa: E402
 from serge.interpreter.tasks import enqueue_task  # noqa: E402
 from serge.llm.client import ChatResult, ToolCall  # noqa: E402
@@ -218,6 +221,68 @@ class AideHumaineTests(unittest.TestCase):
         self._tourner()
         self.assertEqual(self._statut(), 'done')
         self.assertEqual(self.modele.resultats[-1]['code'], 'pas_d_ecran')
+
+
+class FauxEssayeur:
+    """Le modèle de l'essai de la page Système : il appelle un humain,
+    puis rend le code que la page montre (ici écrit à l'avance)."""
+
+    def __call__(self, _key, name, messages, **_kw) -> ChatResult:
+        dernier = messages[-1]
+        if dernier.get('role') != 'tool':
+            appel = ToolCall(
+                'h', 'appeler_un_humain', json.dumps({'raison': 'un essai'})
+            )
+            return ChatResult('', 1, 1, name, 1, (appel,))
+        fini = json.loads(dernier['content']).get('ok') is True
+        reponse = {
+            'resolu': 'oui' if fini else 'non',
+            'code': '4821' if fini else '',
+            'compte_rendu': 'L’humain a cliqué.' if fini else 'Personne.',
+        }
+        return ChatResult(json.dumps(reponse), 1, 1, name, 1)
+
+
+class EssaiDeLaPageSystemeTests(unittest.TestCase):
+    def test_le_bouton_fait_tout_le_parcours(self) -> None:
+        conn = sqlite3.connect(':memory:')
+        self.addCleanup(conn.close)
+        init_schema(conn)
+        conn.execute("UPDATE triggers SET enabled=0 WHERE event<>'button'")
+        set_heartbeat(conn, True)
+        task_id = fire_button(conn, 'bouton_essayer_captcha', {})
+        conn.commit()
+        modele = FauxEssayeur()
+
+        def tourner(horloge: FausseHorloge) -> None:
+            with (
+                mock.patch.object(aide_humaine, 'montrer', return_value=True),
+                mock.patch.object(aide_humaine, 'time', horloge),
+            ):
+                process_one(conn, 'works', now=MAINTENANT, caller=modele)
+
+        def repondre(kind: str, acte: str) -> None:
+            ticket = conn.execute(
+                'SELECT id FROM tickets WHERE type=? ORDER BY rowid DESC',
+                (kind,),
+            ).fetchone()[0]
+            noter_reponse(conn, ticket, acte, '', 'discord:1')
+            conn.commit()
+
+        tourner(FausseHorloge())
+        repondre('GUICHET_PRET', 'pret')
+        tourner(FausseHorloge(lambda: repondre('GUICHET', 'cest_fait')))
+        statut, reponse = conn.execute(
+            'SELECT status, answer_json FROM tasks WHERE id=?', (task_id,)
+        ).fetchone()
+        self.assertEqual(statut, 'done')
+        self.assertEqual(json.loads(reponse)['resolu'], 'oui')
+        self.assertEqual(json.loads(reponse)['code'], '4821')
+        # La page d'essai est dans les consignes, avec le domaine donné.
+        prompt = conn.execute(
+            "SELECT prompt FROM invocations WHERE id='essayer_captcha'"
+        ).fetchone()[0]
+        self.assertIn('/static/essai/captcha.html', prompt)
 
 
 if __name__ == '__main__':

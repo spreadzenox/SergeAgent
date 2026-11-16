@@ -275,7 +275,14 @@ et modifier un fichier) sont des capacités générales ; le business, le
 livrable et le profil du chantier sont des paramètres figés en base sur
 l'invocation, et les chiffres du profil sont sur la page Policy. La
 navigation sur le web et les connecteurs vers des services suivent la
-même règle depuis le lot 10 ; les canaux la suivront. Un connecteur n'est
+même règle depuis le lot 10 ; les canaux la suivront. Depuis le lot 11
+(décision Q97), une invocation navigue soit dans le navigateur sans
+écran, soit dans le vrai Chrome (un Chromium normal, sur un écran
+virtuel, pour les pages qui refusent le premier) : on lui donne les
+outils de l'un ou de l'autre. « Appeler un humain » lui fait passer la
+main pour un captcha : la tâche s'arrête, un administrateur se dit prêt
+sur Discord, puis résout le captcha dans l'écran du vrai Chrome, montré
+par Mission Control, pendant que la tâche attend. Un connecteur n'est
 pas du code écrit par Serge, mais la description du service en base
 (`api_services`, `api_endpoints` : son adresse, le nom de son secret, ses
 points d'entrée et leurs paramètres permis), utilisée par une seule
@@ -320,20 +327,34 @@ modifier tout le pipeline sans écrire de code, et de créer une invocation
 de toutes pièces : son rôle, son modèle, ce qu'elle reçoit, où elle écrit,
 ce qui la lance.
 
-**Où on en est (lot 6)** : les tables qui décrivent le pipeline existent,
-et un seul programme, l'interpréteur (`serge/interpreter/`), exécute
-n'importe quelle invocation décrite en base. Tout le code écrit en dur pour
-un enchaînement (le cycle d'écoute, la relève du mail, le circuit des
-réponses, la consolidation) a été rangé dans `pas_encore_branche/`. Le
-pipeline de départ (`config/pipeline.yaml`) contient les files, les
-modèles, la présentation de Serge, les outils, les protections des
-tables, et l'étape 1 entière (voir
-[`etapes/1-pre-prospection.md`](etapes/1-pre-prospection.md) et
-[`LOT7_CONCEPTION.md`](LOT7_CONCEPTION.md)), puis les conversations (lot 8)
-et l'étape 2, de la conception d'un POC à son test léger (lot 10, voir
-[`etapes/2-conception-poc.md`](etapes/2-conception-poc.md)). Les étapes
-suivantes sont l'objet des lots suivants. Serge ne peut
-donc pas encore être allumé pour de vrai, et il est arrêté par défaut.
+**Où on en est (16 novembre 2026, fin du lot 11)** : les tables qui
+décrivent le pipeline existent, et un seul programme, l'interpréteur
+(`serge/interpreter/`), exécute n'importe quelle invocation décrite en
+base. Tout le code écrit en dur pour un enchaînement (le cycle d'écoute,
+la relève du mail, le circuit des réponses, la consolidation) a été rangé
+dans `pas_encore_branche/`. Le pipeline de départ (`config/pipeline.yaml`)
+contient les files, les modèles, la présentation de Serge, les outils,
+les protections des tables, et :
+
+- l'étape 1 entière, 12 invocations (voir
+  [`etapes/1-pre-prospection.md`](etapes/1-pre-prospection.md) et
+  [`LOT7_CONCEPTION.md`](LOT7_CONCEPTION.md)) ;
+- les conversations, par e-mail et par téléphone (lots 8 et 8 bis) ;
+- l'étape 2, de la conception d'un POC à sa mise en ligne, 15 invocations
+  (lot 10, voir [`etapes/2-conception-poc.md`](etapes/2-conception-poc.md)) ;
+- l'étape 5, du plan du produit fini à son paiement test de 1 €, 24
+  invocations (lots 10 et 11, voir
+  [`etapes/5-construction.md`](etapes/5-construction.md)) : essayée de
+  bout en bout sur le serveur le 16 novembre 2026.
+
+Les étapes 3 (prospection légère), 4 (choix du business principal) et 6
+(prospection lourde) n'ont encore aucune invocation en base : c'est le
+lot 12 ([`LOT12_CONCEPTION.md`](LOT12_CONCEPTION.md)). Un business
+s'arrête donc aujourd'hui à la fin de son étape 2 (POC en ligne, prêt
+pour le test léger), et l'étape 5 se lance à la main, par le bouton
+« Construire le vrai produit » de la fiche du business (temporaire,
+jusqu'à l'étape 4). Serge ne peut donc pas encore être allumé pour de
+vrai, et il est arrêté par défaut.
 
 ### Ce que le code met dans la base
 
