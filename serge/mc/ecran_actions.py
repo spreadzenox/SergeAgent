@@ -3,9 +3,15 @@
 
 Le conteneur du vrai Chrome sert son écran avec noVNC
 (``serge/sandbox/chrome.py``), sur un port du serveur seulement. Mission
-Control vérifie la connexion, puis relaie la requête telle quelle : les
-fichiers de noVNC, puis le flux de l'écran (une WebSocket). Il ne lit ni ne
-change ce qui passe, et ne transmet ni ses cookies ni son jeton.
+Control vérifie la connexion, puis relaie : les fichiers de noVNC, lus dans
+le conteneur et rendus avec leur taille, puis le flux de l'écran (une
+WebSocket), dont les octets passent tels quels dans les deux sens. Il ne
+transmet ni ses cookies ni son jeton.
+
+Un fichier garde ouverte la connexion avec le navigateur (ou avec Caddy,
+devant Mission Control), comme toute page : le 16 novembre 2026, le relais
+la fermait après chaque fichier sans le dire, et Caddy, qui réutilise ses
+connexions, répondait 502 à un fichier sur dix ; la page ne démarrait pas.
 
 Exemple : ``/owner/vrai-chrome`` mène à
 ``/owner/vrai-chrome/vnc.html?autoconnect=1…`` ; les fichiers
@@ -15,6 +21,7 @@ Exemple : ``/owner/vrai-chrome`` mène à
 
 from __future__ import annotations
 
+import http.client
 import socket
 import threading
 import urllib.parse
@@ -83,24 +90,57 @@ class EcranMixin(_Base):
                 ' invocation s’en sert.',
             )
             return
+        cible = reste + (f'?{parts.query}' if parts.query else '')
+        if (self.headers.get('Upgrade') or '').lower() == 'websocket':
+            self._flux(adresse, cible)
+        else:
+            self._fichier(adresse, cible)
+
+    def _injoignable(self, adresse: str, exc: Exception) -> None:
+        journal(f'écran du vrai Chrome injoignable ({adresse}) : {exc}')
+        self._texte(502, f'Écran du vrai Chrome injoignable : {exc}')
+
+    def _fichier(self, adresse: str, cible: str) -> None:
+        """Un fichier de noVNC : lu en entier dans le conteneur, puis rendu
+        avec sa taille. La page est celle de noVNC : elle part sans la
+        politique de contenu des pages de Mission Control."""
+        amont = http.client.HTTPConnection(adresse, timeout=10)
+        try:
+            amont.request('GET', cible, headers={'Connection': 'close'})
+            reponse = amont.getresponse()
+            corps = reponse.read()
+        except (OSError, http.client.HTTPException) as exc:
+            self._injoignable(adresse, exc)
+            return
+        finally:
+            amont.close()
+        self.send_response(reponse.status)
+        self.send_header(
+            'Content-Type',
+            reponse.getheader('Content-Type') or 'application/octet-stream',
+        )
+        self.send_header('Content-Length', str(len(corps)))
+        self.send_header('Cache-Control', 'no-store')
+        self.send_header('X-Content-Type-Options', 'nosniff')
+        super().end_headers()
+        self.wfile.write(corps)
+
+    def _flux(self, adresse: str, cible: str) -> None:
+        """Le flux de l'écran : la demande de WebSocket part au conteneur,
+        puis les octets passent tels quels jusqu'à la fermeture."""
         hote, _, port = adresse.rpartition(':')
         try:
             amont = socket.create_connection((hote, int(port)), timeout=10)
         except (OSError, ValueError) as exc:
-            journal(f'écran du vrai Chrome injoignable ({adresse}) : {exc}')
-            self._texte(502, f'Écran du vrai Chrome injoignable : {exc}')
+            self._injoignable(adresse, exc)
             return
-        cible = reste + (f'?{parts.query}' if parts.query else '')
-        websocket = (self.headers.get('Upgrade') or '').lower() == 'websocket'
         lignes = [f'{self.command} {cible} HTTP/1.1', f'Host: {adresse}']
         lignes += [
             f'{nom}: {valeur}'
             for nom, valeur in self.headers.items()
             if nom.lower() not in _GARDES
         ]
-        lignes.append(
-            'Connection: Upgrade' if websocket else 'Connection: close'
-        )
+        lignes.append('Connection: Upgrade')
         amont.sendall(('\r\n'.join(lignes) + '\r\n\r\n').encode('latin-1'))
         amont.settimeout(None)
         self.close_connection = True
@@ -114,9 +154,9 @@ class EcranMixin(_Base):
 def _relayer(
     client: Any, rfile: Any, wfile: Any, amont: socket.socket
 ) -> None:
-    """Fait passer les octets dans les deux sens jusqu'à ce qu'un côté
-    ferme : une page (le conteneur ferme après sa réponse) ou l'écran
-    (l'humain ferme l'onglet)."""
+    """Fait passer les octets du flux de l'écran dans les deux sens,
+    jusqu'à ce qu'un côté ferme (l'humain ferme l'onglet, ou le conteneur
+    s'arrête)."""
 
     def descendre() -> None:
         try:

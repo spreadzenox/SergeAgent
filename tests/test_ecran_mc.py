@@ -8,6 +8,8 @@ Scénarios :
 - sans connexion, l'écran mène à la page de connexion ;
 - connecté, ``/owner/vrai-chrome`` ouvre noVNC, ses fichiers viennent du
   conteneur, sans les cookies de Mission Control ;
+- plusieurs fichiers de suite passent sur la même connexion, comme les
+  demande Caddy (une connexion fermée sans le dire donnait des 502) ;
 - le flux de l'écran (une WebSocket) passe dans les deux sens ;
 - le vrai Chrome éteint : un message clair ;
 - la page d'essai du captcha (page Système) se lit sans connexion, et un
@@ -16,6 +18,7 @@ Scénarios :
 
 from __future__ import annotations
 
+import http.client
 import socket
 import socketserver
 import sys
@@ -103,6 +106,32 @@ class EcranTests(McServerCase):
         requete = _FauxNoVnc.vus[-1]
         self.assertTrue(requete.startswith('GET /vnc.html?autoconnect=1 '))
         self.assertNotIn('serge_mc', requete, 'pas le cookie de MC')
+
+    def test_plusieurs_fichiers_sur_la_meme_connexion(self) -> None:
+        """Caddy garde sa connexion à Mission Control d'un fichier à
+        l'autre : chaque réponse dit sa taille et laisse la connexion
+        ouverte (16 novembre 2026 : un fichier sur dix revenait en 502)."""
+        cookie = self._auth_cookie()
+        connexion = http.client.HTTPConnection(
+            '127.0.0.1', self.port, timeout=5
+        )
+        self.addCleanup(connexion.close)
+        prises = set()
+        for fichier in ('vnc.html', 'app/ui.js', 'core/rfb.js'):
+            connexion.request(
+                'GET',
+                f'/owner/vrai-chrome/{fichier}',
+                headers={'Cookie': cookie},
+            )
+            reponse = connexion.getresponse()
+            self.assertEqual(
+                (reponse.status, reponse.read()), (200, b'page novnc')
+            )
+            self.assertEqual(reponse.getheader('Content-Length'), '10')
+            self.assertFalse(reponse.will_close, 'la connexion reste ouverte')
+            prises.add(id(connexion.sock))
+        self.assertEqual(len(prises), 1, 'une seule connexion a servi')
+        self.assertEqual(len(_FauxNoVnc.vus), 3)
 
     def test_le_flux_de_l_ecran_passe_dans_les_deux_sens(self) -> None:
         cookie = self._auth_cookie()
