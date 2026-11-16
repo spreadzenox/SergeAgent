@@ -25,13 +25,14 @@ REJECT = frozenset(
         'ne_rien_envoyer',
         'ne_pas_passer',
         'arreter_business',
+        'aucun',
     }
 )
 # Les boutons qui demandent un texte, et ce qu'ils font du ticket : le
 # trancher en le modifiant (le texte est la note), y répondre librement, ou
 # en discuter sans le trancher (« Réécrire » : Serge réécrit, puis le
 # nouveau brouillon revient dans le même ticket, décision Q85).
-EDITER = frozenset({'editer', 'ma_reponse', 'a_corriger'})
+EDITER = frozenset({'editer', 'ma_reponse', 'a_corriger', 'choisir_autre'})
 REPONDRE = frozenset({'reponse_libre', 'choix_qcm'})
 DISCUTER = frozenset({'discuter', 'discuter_fil', 'reecrire'})
 
@@ -50,5 +51,7 @@ BOUTONS = frozenset(
         'choix_qcm',
         'ma_reponse',
         'reecrire',
+        'a_corriger',
+        'choisir_autre',
     }
 )

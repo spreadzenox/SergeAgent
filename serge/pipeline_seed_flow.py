@@ -203,10 +203,12 @@ def seed_deleted(conn: sqlite3.Connection, data: Mapping[str, Any]) -> None:
     """Ce qui a été retiré du pipeline de départ, retiré aussi de la base.
 
     Format : ``{invocations: [...], links: [...], triggers: [...],
-    tools: [...], quotas: [...], serge_texts: [...], api_services: [...]}``.
+    tools: [...], quotas: [...], serge_texts: [...], api_services: [...],
+    settings: [{invocation, name}]}``.
     Les invocations, liens et déclencheurs sont marqués supprimés
-    (``deleted_at``) ; les outils, les quotas, les textes de Serge et les
-    services d'API, qui n'ont pas cette colonne, sont effacés.
+    (``deleted_at``) ; les outils, les quotas, les textes de Serge, les
+    services d'API et les réglages d'invocation, qui n'ont pas cette
+    colonne, sont effacés.
     """
     from serge.horloge import iso_utc
 
@@ -243,5 +245,11 @@ def seed_deleted(conn: sqlite3.Connection, data: Mapping[str, Any]) -> None:
         conn.execute('DELETE FROM table_quotas WHERE id=?', (str(ident),))
     for ident in raw.get('serge_texts') or []:
         conn.execute('DELETE FROM serge_texts WHERE id=?', (str(ident),))
+    # Un réglage que plus rien ne lit : ``{invocation, name}``.
+    for setting in raw.get('settings') or []:
+        conn.execute(
+            'DELETE FROM invocation_settings WHERE invocation_id=? AND name=?',
+            (str(setting['invocation']), str(setting['name'])),
+        )
     for ident in raw.get('api_services') or []:
         conn.execute('DELETE FROM api_services WHERE id=?', (str(ident),))

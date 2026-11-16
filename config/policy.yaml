@@ -686,6 +686,15 @@ sections:
           - [OPTED_OUT, Désinscrit]
           - [BLOCKED, Bloqué]
           - [INVALID, Fiche invalide]
+      - id: generic_addresses
+        value: 'contact, info, infos, hello, bonjour, accueil, admin, support, commercial, vente, sales, marketing, compta, rh, recrutement, jobs, direction, secretariat, mail, webmaster, noreply, no-reply'
+        title: Adresses génériques refusées
+        help: >-
+          Serge n’écrit qu’à une personne nommée (décision Q93). Une adresse
+          e-mail dont le début, avant le @, est dans cette liste (séparée
+          par des virgules) est refusée par « Ajouter un prospect » :
+          contact@, info@, accueil@…
+        kind: texte
       - id: silent_states
         value: [STOPPED]
         title: Étapes où Serge ne répond plus du tout

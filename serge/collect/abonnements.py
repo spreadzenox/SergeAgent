@@ -221,6 +221,15 @@ def upsert_abonnement(
     return {'id': ident, 'statut_abo': statut, 'venture_id': rattache}
 
 
+def _recu(obj: dict[str, Any]) -> dict[str, str]:
+    """Le reçu d'une facture payée : son numéro, et l'e-mail du payeur
+    (« Enregistrer une vente » retrouve son contact avec)."""
+    return {
+        'stripe_invoice': str(obj.get('id') or ''),
+        'customer_email': str(obj.get('customer_email') or ''),
+    }
+
+
 def appliquer_facture_abo(
     conn: sqlite3.Connection, obj: dict[str, Any]
 ) -> dict[str, Any]:
@@ -261,22 +270,14 @@ def appliquer_facture_abo(
                     intent_key=pi_id,
                 )
                 to_issued(conn, tx_id, str(obj.get('id') or pi_id))
-                mark_paid(
-                    conn,
-                    tx_id,
-                    {'stripe_invoice': str(obj.get('id') or '')},
-                )
+                mark_paid(conn, tx_id, _recu(obj))
             except CollectError as exc:
                 return {'status': 'refused', 'error': str(exc)}
         else:
             tx_id = str(row[0])
             if str(row[1]) != 'paid':
                 try:
-                    mark_paid(
-                        conn,
-                        tx_id,
-                        {'stripe_invoice': str(obj.get('id') or '')},
-                    )
+                    mark_paid(conn, tx_id, _recu(obj))
                 except CollectError as exc:
                     return {'status': 'refused', 'error': str(exc)}
     if sub_id.startswith('sub_'):

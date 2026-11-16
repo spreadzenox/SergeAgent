@@ -70,6 +70,7 @@ TABLES = frozenset(
         'invocations',
         'invocation_tools',
         'invocation_settings',
+        'invocation_output_fields',
         'links',
         'triggers',
         'table_quotas',

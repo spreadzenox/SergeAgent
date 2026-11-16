@@ -696,7 +696,6 @@ tools:
         - {table: product_plans, name: hypothesis, as: hypothese}
         - {table: product_plans, name: target, as: cible}
         - {table: product_plans, name: channel, as: canal}
-        - {table: product_plans, name: prospects}
         - {table: product_plans, name: duration_days, as: duree_jours}
         - {table: product_plans, name: price, as: prix}
         - {table: product_plans, name: deliverable, as: livrable}
@@ -1258,6 +1257,238 @@ tools:
         - {name: ttl, type: number, description: La durée de vie en secondes (figée en base).}
         - {name: proxied, type: bool, description: 'Le proxy de Cloudflare (figé en base : non).'}
 
+  # Le lot 12 : les campagnes, les prospects, la fin d'un test, le choix
+  # du principal (conception du lot 12, parties 3 à 7).
+  - id: canaux_branches
+    title: Les canaux branchés
+    doc: Les canaux par lesquels Serge peut écrire ou appeler sur ce serveur.
+    capability: db_read
+    read:
+      tables: [canaux]
+      columns:
+        - {table: canaux, name: id, as: canal}
+        - {table: canaux, name: titre}
+      filters:
+        - {id: branche, table: canaux, column: connected, fixed: '1'}
+  - id: campagne_par_numero
+    title: La campagne
+    doc: 'Une campagne, par son numéro : son business, sa phase, son canal, sa cible et son angle.'
+    capability: db_read
+    read:
+      tables: [campaigns]
+      columns:
+        - {table: campaigns, name: id}
+        - {table: campaigns, name: venture_id}
+        - {table: campaigns, name: phase}
+        - {table: campaigns, name: channel, as: canal}
+        - {table: campaigns, name: n_target, as: prospects_vises}
+        - {table: campaigns, name: target, as: cible}
+        - {table: campaigns, name: angle}
+      filters:
+        - {id: campagne, table: campaigns, column: id, param: campaign_id}
+      params:
+        - {name: campaign_id, required: true, description: Le numéro de la campagne.}
+  - id: campagnes_du_business
+    title: Les campagnes du business
+    doc: Les campagnes d'un business, avec leur phase, leur canal, leur état et la raison de leur fin.
+    capability: db_read
+    read:
+      tables: [campaigns]
+      columns:
+        - {table: campaigns, name: phase}
+        - {table: campaigns, name: channel, as: canal}
+        - {table: campaigns, name: state, as: etat}
+        - {table: campaigns, name: n_target, as: prospects_vises}
+        - {table: campaigns, name: end_reason, as: raison_de_la_fin}
+      filters:
+        - {id: business, table: campaigns, column: venture_id, param: venture_id}
+      params:
+        - {name: venture_id, required: true, description: Le numéro du business.}
+  - id: contacts_du_business
+    title: Les contacts déjà trouvés
+    doc: Les contacts d'un business (leur nom et leur entreprise), pour ne pas les proposer deux fois.
+    capability: db_read
+    read:
+      tables: [contacts]
+      columns:
+        - {table: contacts, name: display, as: contact}
+      filters:
+        - {id: business, table: contacts, column: venture_id, param: venture_id}
+      params:
+        - {name: venture_id, required: true, description: Le numéro du business.}
+        - {name: limit, type: integer, default: '300', description: Nombre maximal de contacts.}
+  - id: ajouter_prospect
+    title: Ajouter un prospect
+    doc: >-
+      Ajoute une personne à la campagne : son nom, son entreprise, son rôle,
+      pourquoi elle est visée, son adresse directe et la page où tu l'as
+      trouvée. L'outil vérifie tout de suite et dit pourquoi il refuse
+      (adresse générique, domaine sans e-mail, déjà contactée…) : cherche
+      alors quelqu'un d'autre.
+    capability: add_prospect
+  - id: fiche_prospect
+    title: La fiche du prospect
+    doc: Qui est le prospect, pourquoi il est visé, et où en est la conversation.
+    capability: db_read
+    read:
+      tables: [contacts]
+      columns:
+        - {table: contacts, name: display, as: nom}
+        - {table: contacts, name: note, as: pourquoi_il_est_vise}
+        - {table: contacts, name: funnel_state, as: etape}
+      filters:
+        - {id: contact, table: contacts, column: id, param: contact_id}
+      params:
+        - {name: contact_id, required: true, description: Le numéro du contact.}
+  - id: adresses_du_prospect
+    title: Les adresses du prospect
+    doc: Les adresses d'un contact, avec la page où chacune a été trouvée.
+    capability: db_read
+    read:
+      tables: [contact_addresses]
+      columns:
+        - {table: contact_addresses, name: channel, as: sorte}
+        - {table: contact_addresses, name: source_url, as: trouvee_sur}
+      filters:
+        - {id: contact, table: contact_addresses, column: contact_id, param: contact_id}
+        - {id: active, table: contact_addresses, column: active, fixed: '1'}
+      params:
+        - {name: contact_id, required: true, description: Le numéro du contact.}
+  - id: en_ligne_du_business
+    title: Ce qui est en ligne
+    doc: Les adresses où le POC ou le produit fini d'un business est en ligne, en prod.
+    capability: db_read
+    read:
+      tables: [deployments]
+      columns:
+        - {table: deployments, name: deliverable, as: livrable}
+        - {table: deployments, name: hostname, as: adresse}
+      filters:
+        - {id: business, table: deployments, column: venture_id, param: venture_id}
+        - {id: prod, table: deployments, column: target, fixed: prod}
+        - {id: en_ligne, table: deployments, column: status, fixed: running}
+      params:
+        - {name: venture_id, required: true, description: Le numéro du business.}
+  - id: contacts_a_contacter
+    title: Les contacts à contacter
+    doc: Les contacts d'un business qui ont une adresse d'une certaine sorte (email ou phone).
+    capability: db_read
+    read:
+      tables: [contact_addresses, contacts]
+      columns:
+        - {table: contacts, name: id, as: contact_id}
+        - {table: contacts, name: venture_id}
+        - {table: contact_addresses, name: value, as: address}
+      joins:
+        - {id: contact, left: contact_addresses.contact_id, right: contacts.id}
+      filters:
+        - {id: business, table: contacts, column: venture_id, param: venture_id}
+        - {id: sorte, table: contact_addresses, column: channel, param: address_kind}
+        - {id: active, table: contact_addresses, column: active, fixed: '1'}
+      params:
+        - {name: venture_id, required: true, description: Le numéro du business.}
+        - {name: address_kind, required: true, description: 'La sorte d''adresse : email ou phone.'}
+  - id: interesses_du_test
+    title: Les intéressés du test
+    doc: Les contacts d'un business qui ont dit « intéressé » ou « rendez-vous », avec le canal et l'adresse de leur premier message.
+    capability: db_read
+    read:
+      tables: [touches, contacts]
+      columns:
+        - {table: touches, name: contact_id}
+        - {table: touches, name: venture_id}
+        - {table: touches, name: channel}
+        - {table: touches, name: address}
+      joins:
+        - {id: contact, left: touches.contact_id, right: contacts.id}
+      filters:
+        - {id: business, table: touches, column: venture_id, param: venture_id}
+        - {id: premier, table: touches, column: kind, fixed: first}
+        - {id: parti, table: touches, column: status, fixed: sent}
+        - {id: interesse, table: contacts, column: funnel_state, fixed: [INTENT, MEETING]}
+      params:
+        - {name: venture_id, required: true, description: Le numéro du business.}
+  - id: compte_rendu_du_test
+    title: Le compte rendu du test
+    doc: Les chiffres du test léger d'un business, son verdict et son bilan.
+    capability: db_read
+    read:
+      tables: [test_reports]
+      columns:
+        - {table: test_reports, name: id}
+        - {table: test_reports, name: venture_id}
+        - {table: test_reports, name: contacted, as: prospects_contactes}
+        - {table: test_reports, name: replies, as: reponses}
+        - {table: test_reports, name: points}
+        - {table: test_reports, name: spend_eur, as: depense_eur}
+        - {table: test_reports, name: points_per_eur, as: points_par_euro}
+        - {table: test_reports, name: figures, as: detail}
+        - {table: test_reports, name: verdict}
+        - {table: test_reports, name: verdict_reason, as: raison}
+        - {table: test_reports, name: summary, as: bilan}
+      filters:
+        - {id: business, table: test_reports, column: venture_id, param: venture_id}
+      params:
+        - {name: venture_id, required: true, description: Le numéro du business.}
+  - id: business_retenus
+    title: Les business qui attendent le choix
+    doc: Les business dont le test est retenu, ou mis de côté par un choix précédent.
+    capability: db_read
+    read:
+      tables: [ventures]
+      columns:
+        - {table: ventures, name: id}
+        - {table: ventures, name: name, as: nom}
+        - {table: ventures, name: description}
+        - {table: ventures, name: sellable_offer, as: offre}
+        - {table: ventures, name: lifecycle, as: statut}
+        - {table: ventures, name: smoke_ended_at, as: fin_du_test}
+      filters:
+        - {id: retenus, table: ventures, column: lifecycle, fixed: [SMOKE_DONE, PARKED]}
+  - id: comptes_rendus_des_retenus
+    title: Les comptes rendus de leurs tests
+    doc: Pour chaque business qui attend le choix, les chiffres et le bilan de son test.
+    capability: db_read
+    read:
+      tables: [test_reports, ventures]
+      columns:
+        - {table: test_reports, name: venture_id, as: business}
+        - {table: test_reports, name: contacted, as: prospects_contactes}
+        - {table: test_reports, name: points}
+        - {table: test_reports, name: spend_eur, as: depense_eur}
+        - {table: test_reports, name: points_per_eur, as: points_par_euro}
+        - {table: test_reports, name: figures, as: detail}
+        - {table: test_reports, name: summary, as: bilan}
+      joins:
+        - {id: business, left: test_reports.venture_id, right: ventures.id}
+      filters:
+        - {id: retenus, table: ventures, column: lifecycle, fixed: [SMOKE_DONE, PARKED]}
+  - id: choix_par_numero
+    title: La proposition de Serge
+    doc: Une proposition de business principal, par son numéro.
+    capability: db_read
+    read:
+      tables: [principal_choices]
+      columns:
+        - {table: principal_choices, name: proposed_venture_id, as: business_propose}
+        - {table: principal_choices, name: notes, as: une_phrase_par_business}
+      filters:
+        - {id: choix, table: principal_choices, column: id, param: choice_id}
+      params:
+        - {name: choice_id, required: true, description: Le numéro de la proposition.}
+  - id: business_mis_de_cote_anciens
+    title: Les vieux tests mis de côté
+    doc: Les business mis de côté dont le test a fini il y a plus d'un certain nombre de jours.
+    capability: db_read
+    read:
+      tables: [ventures]
+      columns:
+        - {table: ventures, name: id}
+      filters:
+        - {id: de_cote, table: ventures, column: lifecycle, fixed: PARKED}
+        - {id: vieux, table: ventures, column: smoke_ended_at, operator: '<', days_ago: jours}
+      params:
+        - {name: jours, type: integer, required: true, description: L'âge maximum, en jours.}
 writable_tables:
   - table: listen_cycles
     insert: true
@@ -1283,7 +1514,8 @@ writable_tables:
       - {name: family, description: Sa famille de business.}
       - {name: choice_reason, description: Pourquoi il a été choisi.}
       - {name: validate_drafts, description: '1 : chaque brouillon de ce business attend un humain.'}
-      - {name: trial, description: "1 : un business d'essai, créé par un bouton d'essai de la page Système."}
+      - {name: trial, description: "1 : un business d'essai (il est marqué par le couloir d'essai)."}
+      - {name: smoke_ended_at, description: La fin de son test léger.}
   - table: listen_docs
     insert: true
     update: true
@@ -1341,6 +1573,7 @@ writable_tables:
     update: true
     description: Les messages que Serge envoie.
     columns:
+      - {name: campaign_id, description: La campagne de l'envoi.}
       - {name: contact_id, description: Le contact.}
       - {name: venture_id, description: Le business.}
       - {name: channel, description: Le canal.}
@@ -1412,7 +1645,6 @@ writable_tables:
       - {name: hypothesis, description: L'hypothèse.}
       - {name: target, description: La cible.}
       - {name: channel, description: Le canal.}
-      - {name: prospects, description: Le nombre de prospects.}
       - {name: duration_days, description: La durée du test.}
       - {name: price, description: Le prix.}
       - {name: deliverable, description: Le livrable.}
@@ -1447,13 +1679,52 @@ writable_tables:
     insert: true
     update: true
     delete: true
-    description: Les campagnes de test.
+    description: Les campagnes (un business, une phase, un canal).
     columns:
       - {name: venture_id, description: Le business.}
-      - {name: family, description: La sorte de campagne.}
+      - {name: phase, description: 'smoke (le test léger) ou full (la prospection lourde).'}
       - {name: channel, description: Le canal.}
       - {name: n_target, description: Le nombre de prospects visés.}
+      - {name: n_week, description: 'Les prospects par semaine, en prospection lourde.'}
+      - {name: target, description: Les prospects visés.}
+      - {name: angle, description: Ce que les messages mettent en avant.}
+      - {name: started_at, description: Son début.}
+      - {name: planned_end_at, description: La fin prévue d'un test.}
+      - {name: end_reason, description: La raison de sa fin.}
       - {name: state, description: L'état de la campagne.}
+  - table: test_reports
+    insert: true
+    update: true
+    description: Le compte rendu d'un test léger.
+    columns:
+      - {name: venture_id, description: Le business.}
+      - {name: contacted, description: Les prospects contactés.}
+      - {name: replies, description: Ceux qui ont répondu.}
+      - {name: points, description: Les points du test.}
+      - {name: spend_eur, description: Ce qu'il a coûté.}
+      - {name: points_per_eur, description: Les points par euro dépensé.}
+      - {name: figures, description: Le détail des chiffres.}
+      - {name: verdict, description: 'retenu ou non_retenu.'}
+      - {name: verdict_reason, description: La raison du verdict.}
+      - {name: summary, description: Le bilan du test.}
+  - table: principal_choices
+    insert: true
+    update: true
+    description: Les propositions de business principal.
+    columns:
+      - {name: proposed_venture_id, description: Le business proposé.}
+      - {name: notes, description: Une phrase par business comparé.}
+      - {name: status, description: 'PROPOSED, puis DECIDED.'}
+      - {name: decision, description: Ce que Julien a répondu.}
+      - {name: chosen_venture_id, description: Le business choisi.}
+  - table: lessons
+    insert: true
+    description: Les leçons de Serge.
+    columns:
+      - {name: statement, description: La leçon.}
+      - {name: scope, description: Sa portée.}
+      - {name: status, description: Son statut.}
+      - {name: created_by, description: Qui l'a écrite.}
 # Les changements d'étiquette et de statut permis. Un business naît
 # candidat, et seul un candidat peut être choisi : un business déjà en test
 # est refusé par le code d'écriture.
@@ -1568,6 +1839,30 @@ status_transitions:
   - {table: customer_requests, column: status, from: kept, to: delivered}
   - {table: transactions, column: status, from: '', to: succeeded}
 
+  # Le lot 12 : le test léger, le choix du principal, la prospection
+  # lourde. Un business reste « test en cours » pendant qu'on mesure son
+  # test : « test fini » veut toujours dire « test fini et retenu ».
+  - {table: ventures, column: lifecycle, from: SMOKE_READY, to: SMOKE_RUNNING}
+  - {table: ventures, column: lifecycle, from: SMOKE_RUNNING, to: SMOKE_DONE}
+  - {table: ventures, column: lifecycle, from: SMOKE_RUNNING, to: KILLED}
+  - {table: ventures, column: lifecycle, from: SMOKE_DONE, to: PARKED}
+  - {table: ventures, column: lifecycle, from: PARKED, to: PRODUCT_BUILDING}
+  - {table: ventures, column: lifecycle, from: PARKED, to: CANDIDATE}
+  - {table: ventures, column: lifecycle, from: PRODUCT_READY, to: FULL_RUNNING}
+  - {table: campaigns, column: state, from: '', to: READY}
+  - {table: campaigns, column: state, from: READY, to: RUNNING}
+  - {table: campaigns, column: state, from: READY, to: CANCELLED}
+  - {table: campaigns, column: state, from: RUNNING, to: FINISHED}
+  - {table: principal_choices, column: status, from: '', to: PROPOSED}
+  - {table: principal_choices, column: status, from: PROPOSED, to: DECIDED}
+  # L'essai total peut partir du milieu (Q99) : sa calculatrice, née
+  # candidate, saute alors à l'état d'où part l'étape demandée, et son
+  # plan tout fait naît déjà critiqué.
+  - {table: ventures, column: lifecycle, from: CANDIDATE, to: SMOKE_READY}
+  - {table: ventures, column: lifecycle, from: CANDIDATE, to: PRODUCT_BUILDING}
+  - {table: ventures, column: lifecycle, from: CANDIDATE, to: PRODUCT_READY}
+  - {table: product_plans, column: status, from: '', to: challenged}
+
 # Les quotas : le code d'écriture refuse une ligne de trop, quelle que soit
 # l'invocation, et un bouton ne lance rien si son quota est plein. Les
 # chiffres se règlent sur la page Policy de Mission Control.
@@ -1584,9 +1879,29 @@ table_quotas:
     table: listen_cycles
     column: status
     values: [OPEN]
+    # Le cycle d'écoute d'un essai ne prend pas la place du vrai (Q99).
+    where: {column: trial, value: '0'}
     max: 1
     policy: false
     description: Cycle d'écoute en cours
+  # La place de prospection lourde (Q14) : un seul business principal, de
+  # la construction de son produit à sa vente. Rien ne la libère avant le
+  # lot 16.
+  - id: place_lourde
+    table: ventures
+    column: lifecycle
+    values: [PRODUCT_BUILDING, PRODUCT_READY, FULL_RUNNING]
+    where: {column: trial, value: '0'}
+    max: 1
+    description: Place de prospection lourde occupée
+  - id: propositions_de_principal
+    table: principal_choices
+    column: status
+    values: [PROPOSED]
+    where: {column: trial, value: '0'}
+    max: 1
+    policy: false
+    description: Proposition de principal qui attend Julien
 
 # Quand une ligne passe dans tel état, les tâches en attente qui portent
 # son numéro sont annulées : abandonner un cycle arrête sa chaîne.
@@ -1762,7 +2077,6 @@ table_views:
       - {name: hypothesis, description: L'hypothèse à vérifier.}
       - {name: target, description: La cible.}
       - {name: channel, description: Le canal du test.}
-      - {name: prospects, description: Le nombre de prospects.}
       - {name: duration_days, description: La durée du test.}
       - {name: price, description: Le prix.}
       - {name: deliverable, description: Ce que le prospect peut essayer.}
@@ -1799,15 +2113,18 @@ table_views:
       - {name: owner_notes, description: Les consignes d'un humain.}
       - {name: created_at, description: Sa date.}
   - table: campaigns
-    title: Les campagnes de test
-    description: La campagne de test d'un business, prête après son POC.
+    title: Les campagnes
+    description: Les campagnes d'un business, une par phase et par canal.
     order: created_at
     columns:
       - {name: id, short: true, description: Le numéro de la campagne.}
       - {name: venture_id, short: true, description: Le business.}
-      - {name: channel, description: Le canal.}
+      - {name: phase, short: true, description: 'smoke (le test léger) ou full (la prospection lourde).'}
+      - {name: channel, short: true, description: Le canal.}
       - {name: n_target, description: Le nombre de prospects visés.}
-      - {name: state, short: true, description: 'DRAFT, puis READY.'}
+      - {name: target, description: Les prospects visés.}
+      - {name: angle, description: Ce que les messages mettent en avant.}
+      - {name: state, short: true, description: 'DRAFT, READY, RUNNING, puis FINISHED (ou CANCELLED).'}
 
 invocations:
   - id: ouvrir_cycle
@@ -1850,10 +2167,10 @@ invocations:
     default_max_rows: 50
     max_tool_turns: 10
     settings:
-      recherches_max: {value: 10, min: 1, max: 30, policy: true, description: Le nombre maximum de recherches par cycle.}
+      recherches_max: {value: 10, min: 1, max: 30, policy: true, trial: 2, description: Le nombre maximum de recherches par cycle.}
       lignes_apercu: {value: 5, min: 1, max: 30, policy: true, description: Les lignes lues dans l'aperçu d'une page.}
-      pages_max: {value: 30, min: 1, max: 100, policy: true, description: Le nombre maximum de pages retenues par cycle.}
-      flux_max: {value: 2, min: 0, max: 10, policy: true, description: Le nombre maximum de nouveaux flux RSS par cycle.}
+      pages_max: {value: 30, min: 1, max: 100, policy: true, trial: 5, description: Le nombre maximum de pages retenues par cycle.}
+      flux_max: {value: 2, min: 0, max: 10, policy: true, trial: 0, description: Le nombre maximum de nouveaux flux RSS par cycle.}
     compare:
       ventures: true
     prompt: &consigne_explorer |
@@ -2050,7 +2367,7 @@ invocations:
     default_max_rows: 100
     max_tool_turns: 5
     settings:
-      nombre_idees: {value: 3, min: 0, max: 10, policy: true, description: Le nombre maximum d'idées par passage.}
+      nombre_idees: {value: 3, min: 0, max: 10, policy: true, trial: 0, description: Le nombre maximum d'idées par passage.}
       lignes_page_entiere: {value: 150, min: 10, max: 2000, policy: true, description: Les lignes lues au plus dans une page lue en entier.}
       pages_entieres_max: {value: 10, min: 1, max: 30, policy: true, description: Le nombre maximum de pages lues en entier par passage.}
     compare:
@@ -2151,7 +2468,7 @@ invocations:
     default_max_rows: 100
     max_tool_turns: 5
     settings:
-      nombre_idees: {value: 3, min: 0, max: 10, policy: true, description: Le nombre maximum d'idées par passage.}
+      nombre_idees: {value: 3, min: 0, max: 10, policy: true, trial: 0, description: Le nombre maximum d'idées par passage.}
       lignes_page_entiere: {value: 150, min: 10, max: 2000, policy: true, description: Les lignes lues au plus dans une page lue en entier.}
       pages_entieres_max: {value: 10, min: 1, max: 30, policy: true, description: Le nombre maximum de pages lues en entier par passage.}
     compare:
@@ -2222,6 +2539,8 @@ invocations:
     gets_serge_intro: true
     default_max_rows: 50
     max_tool_turns: 4
+    settings:
+      choix_min: {value: 0, min: 0, max: 3, trial: 1, description: "Le nombre de business à choisir, au moins : 0, et 1 dans l'essai total."}
     compare:
       ventures: false
       listen_cycles: false
@@ -2255,7 +2574,7 @@ invocations:
         label: Les preuves des candidats
         max_rows: 150
     output:
-      - {path: choix, type: list, required: false, description: Les business choisis.}
+      - {path: choix, type: list, min_items: choix_min, description: 'Les business choisis (une liste vide si aucun).'}
       - {path: choix.business, type: text, description: Le numéro du business.}
       - {path: choix.raison, type: text, description: 'Pourquoi, en une phrase.'}
       - {path: note, type: text, required: false, description: "Ce que tu dis du cycle, par exemple pourquoi tu n'as rien choisi."}
@@ -3096,329 +3415,14 @@ invocations:
 # demi-fiche produit, la fiche de la personne qui essaie (ses coordonnées
 # restent en base, jamais dans le dépôt) avec son accord pour l'appel de
 # test, puis Serge lui écrit et l'appelle.
-  - id: lancer_essai
-    title: Lancer un essai (temporaire)
-    role: >-
-      Temporaire, pour essayer les canaux : remplace le business d'essai
-      précédent par un business bidon neuf, avec sa demi-fiche produit et
-      ses questions fréquentes. Sans LLM.
-    type: capability
-    capability: echo
-    queue: conversations
-    priority: 60
-    params:
-      name: {source: task, value: name}
-      email: {source: task, value: email}
-      phone: {source: task, value: phone}
-    writes:
-      - table: ventures
-        operation: delete
-        key: {column: lifecycle, source: fixed, value: TEST}
-      - table: ventures
-        operation: insert
-        values:
-          name: {source: fixed, value: Devis Vocal}
-          description: {source: fixed, value: 'Les artisans dictent leurs devis au téléphone ; Devis Vocal les met en page et les envoie au client.'}
-          sellable_offer: {source: fixed, value: 'Un mois d''essai gratuit, puis 29 € par mois, sans engagement.'}
-          lifecycle: {source: fixed, value: TEST}
-          trial: &essai_marque {source: fixed, value: '1'}
-          validate_drafts: &valeur_essai_valider {source: task, value: valider}
-      - table: product_sheets
-        operation: insert
-        parent: 1
-        values:
-          venture_id: {source: parent_row, value: id}
-          summary: {source: fixed, value: 'Pour les artisans du bâtiment : on appelle un numéro, on dicte son devis en parlant normalement, et le devis mis en page part au client par e-mail en moins de 10 minutes.'}
-          limits: {source: fixed, value: 'Pas d''export vers un logiciel de comptabilité ; pas de factures, seulement des devis ; en français seulement.'}
-          price: {source: fixed, value: 'Un mois d''essai gratuit, puis 29 € par mois, sans engagement.'}
-          delays: {source: fixed, value: 'Un devis part en moins de 10 minutes après l''appel.'}
-          usage: {source: fixed, value: 'On appelle le numéro Devis Vocal, on dit le nom du client, les prestations et les prix ; on relit le devis reçu par e-mail avant qu''il parte.'}
-      - table: product_faq
-        operation: insert
-        parent: 1
-        values:
-          venture_id: {source: parent_row, value: id}
-          question: {source: fixed, value: 'Est-ce que je peux corriger un devis avant qu''il parte ?'}
-          answer: {source: fixed, value: 'Oui : vous le recevez d''abord par e-mail, et il ne part au client que quand vous répondez « OK ».'}
-      - table: product_faq
-        operation: insert
-        parent: 1
-        values:
-          venture_id: {source: parent_row, value: id}
-          question: {source: fixed, value: 'Ça marche avec mon logo ?'}
-          answer: {source: fixed, value: 'Oui : vous envoyez votre logo une fois par e-mail, il est mis sur tous vos devis.'}
-
-  - id: creer_contact_essai
-    title: Créer le contact d'essai (temporaire)
-    role: >-
-      Temporaire : crée la fiche de la personne qui essaie, avec son accord
-      pour l'appel de test (à toute heure, décision Q79), puis un premier
-      e-mail et un premier appel à rédiger. Sans LLM.
-    type: capability
-    capability: add_contact
-    queue: conversations
-    priority: 60
-    params:
-      venture_id: {source: task, value: venture_id}
-      name: {source: task, value: name}
-      email: {source: task, value: email}
-      phone: {source: task, value: phone}
-      call_consent: {source: fixed, value: test}
-    writes:
-      - table: touches
-        operation: insert
-        for_each: rows
-        condition: {field: rows.email, op: non_vide}
-        values:
-          contact_id: {source: field, value: rows.contact_id}
-          venture_id: {source: field, value: rows.venture_id}
-          channel: {source: fixed, value: email}
-          address: {source: field, value: rows.email}
-          kind: {source: fixed, value: first}
-          status: {source: fixed, value: to_write}
-      - table: touches
-        operation: insert
-        for_each: rows
-        condition: {field: rows.phone, op: non_vide}
-        values:
-          contact_id: {source: field, value: rows.contact_id}
-          venture_id: {source: field, value: rows.venture_id}
-          channel: {source: fixed, value: voice}
-          address: {source: field, value: rows.phone}
-          kind: {source: fixed, value: first}
-          status: {source: fixed, value: to_write}
-
-  - id: ecrire_premier_message
-    title: Écrire le premier message (temporaire)
-    role: >-
-      Temporaire : rédige le premier e-mail au contact d'essai, qui lui
-      présente le business et son offre.
-    type: llm
-    model_tier: mid
-    queue: conversations
-    priority: 50
-    gets_serge_intro: true
-    max_tool_turns: 3
-    compare:
-      touches: false
-      contacts: false
-    prompt: |
-      Tu écris le premier e-mail de Serge à une personne qu'il ne connaît
-      pas encore, pour lui présenter un business.
-
-      Tu reçois la fiche du business, la fiche produit et ses questions
-      fréquentes, et la fiche de la personne. Écris un objet court et un
-      message de quelques phrases : le problème que le produit résout, ce
-      qu'il fait, l'offre, et une question simple pour l'inviter à
-      répondre. Ne promets rien qui ne soit pas dans la fiche produit.
-      Serge assume d'être un agent IA : pas de signature d'humain.
-    tools:
-      - tool: fiche_business
-        mode: given
-        label: La fiche du business
-        params:
-          venture_id: {source: task, value: venture_id}
-      - tool: fiche_produit
-        mode: given
-        label: La fiche produit
-        params:
-          venture_id: {source: task, value: venture_id}
-      - tool: questions_produit
-        mode: given
-        label: Les questions fréquentes
-        params:
-          venture_id: {source: task, value: venture_id}
-      - tool: fiche_contact
-        mode: given
-        label: La fiche de la personne
-        params:
-          contact_id: {source: task, value: contact_id}
-    output:
-      - {path: subject, type: text, description: L'objet de l'e-mail.}
-      - {path: body, type: text, description: Le texte de l'e-mail.}
-    writes:
-      - table: touches
-        operation: update
-        key: {column: id, source: task, value: touch_id}
-        values:
-          subject: {source: field, value: subject}
-          body: {source: field, value: body}
-          status: {source: fixed, value: pending}
-      - table: contacts
-        operation: update
-        key: {column: id, source: task, value: contact_id}
-        values:
-          funnel_state: {source: fixed, value: CONTACTING}
-
-  - id: preparer_premier_appel
-    title: Préparer le premier appel (temporaire)
-    role: >-
-      Temporaire : écrit le but du premier appel au contact d'essai, que
-      l'agent vocal reçoit au décrochage.
-    type: llm
-    model_tier: mid
-    queue: conversations
-    priority: 50
-    gets_serge_intro: true
-    max_tool_turns: 3
-    compare:
-      touches: false
-      contacts: false
-    prompt: |
-      Tu prépares le premier appel de Serge à une personne qu'il ne connaît
-      pas encore, pour lui présenter un business.
-
-      Tu reçois la fiche du business, la fiche produit et la fiche de la
-      personne. Écris le but de l'appel en deux ou trois phrases, pour
-      l'agent vocal : ce qu'il présente, l'offre, et ce qu'il veut obtenir
-      (un intérêt, un rendez-vous, une adresse e-mail pour envoyer la
-      documentation).
-    tools:
-      - tool: fiche_business
-        mode: given
-        label: La fiche du business
-        params:
-          venture_id: {source: task, value: venture_id}
-      - tool: fiche_produit
-        mode: given
-        label: La fiche produit
-        params:
-          venture_id: {source: task, value: venture_id}
-      - tool: fiche_contact
-        mode: given
-        label: La fiche de la personne
-        params:
-          contact_id: {source: task, value: contact_id}
-    output:
-      - {path: body, type: text, description: Le but de l'appel.}
-    writes:
-      - table: touches
-        operation: update
-        key: {column: id, source: task, value: touch_id}
-        values:
-          subject: {source: fixed, value: 'Appel d''essai'}
-          body: {source: field, value: body}
-          status: {source: fixed, value: pending}
-      - table: contacts
-        operation: update
-        key: {column: id, source: task, value: contact_id}
-        values:
-          funnel_state: {source: fixed, value: CONTACTING}
-
-  - id: essayer_chantier
-    title: Essayer le chantier (temporaire)
-    role: >-
-      Temporaire, pour essayer le chantier depuis Mission Control (lot 10,
-      Q91) : reçoit une mission, travaille dans le chantier d'essai avec
-      ses quatre outils (commande, lire, écrire, modifier), vérifie que ça
-      marche, puis rend un compte rendu.
-    type: llm
-    model_tier: smart
-    queue: works
-    priority: 30
-    max_tool_turns: 40
-    prompt: |
-      Tu travailles dans un chantier : un conteneur Linux (Debian, avec git,
-      Python 3 et Node), dans le dossier /work. Il est à toi : tu peux y
-      installer ce qu'il te faut. Tu as quatre outils : lancer une
-      commande, lire un fichier, écrire un fichier, modifier un passage
-      d'un fichier. Tu peux en appeler plusieurs d'un coup.
-
-      Fais la mission donnée dans les paramètres de la tâche. Avant de
-      répondre, vérifie que ce que tu as fait marche vraiment : lance-le,
-      lis ce qu'il rend. Un serveur se lance en arrière-plan ; interroge-le
-      ensuite avec curl.
-
-      Rends ton compte rendu : ce que tu as fait, les commandes qui l'ont
-      vérifié et ce qu'elles ont rendu, et ce qui ne marche pas encore.
-    tools:
-      - tool: chantier_commande
-        mode: callable
-        params:
-          venture_id: {source: fixed, value: essai}
-          deliverable: {source: fixed, value: chantier}
-          profile: {source: fixed, value: chantier}
-      - tool: chantier_lire
-        mode: callable
-        params:
-          venture_id: {source: fixed, value: essai}
-          deliverable: {source: fixed, value: chantier}
-          profile: {source: fixed, value: chantier}
-      - tool: chantier_ecrire
-        mode: callable
-        params:
-          venture_id: {source: fixed, value: essai}
-          deliverable: {source: fixed, value: chantier}
-          profile: {source: fixed, value: chantier}
-      - tool: chantier_modifier
-        mode: callable
-        params:
-          venture_id: {source: fixed, value: essai}
-          deliverable: {source: fixed, value: chantier}
-          profile: {source: fixed, value: chantier}
-    output:
-      - {path: marche, type: choice, choices: [oui, non], description: 'La mission marche-t-elle, vérifiée dans le chantier ?'}
-      - {path: compte_rendu, type: text, description: 'Ce qui a été fait, vérifié, et ce qui ne marche pas.'}
-
-  - id: essayer_navigateur
-    title: Essayer l'interface web (temporaire)
-    role: >-
-      Temporaire, pour essayer l'interface web depuis Mission Control (lot
-      10, Q91) : ouvre une adresse, y fait la mission comme le ferait une
-      personne (lire, cliquer, taper, sur ordinateur et sur mobile), garde
-      des captures, puis dit ce qu'elle a vu et ce qui ne marche pas.
-    type: llm
-    model_tier: web
-    queue: works
-    priority: 30
-    max_tool_turns: 40
-    prompt: |
-      Tu essaies un site web comme le ferait une personne ordinaire qui le
-      découvre. Tu as trois outils : agir dans la page (ouvrir une adresse,
-      cliquer sur un repère [e7], taper dans un champ, choisir dans une
-      liste, appuyer sur une touche, faire défiler, revenir, attendre un
-      texte, passer en écran ordinateur ou mobile), lire la page entière,
-      et prendre une capture. Après chaque action, tu reçois la page relue.
-
-      Commence par ouvrir l'adresse donnée dans les paramètres de la
-      tâche, puis fais la mission. L'adresse http://chantier:<port> mène au
-      chantier d'essai, si un serveur y tourne. Regarde vraiment l'écran :
-      prends au moins une capture sur ordinateur et une sur mobile, et
-      garde-les (keep). Lis les erreurs de la page.
-
-      Rends ce qui marche (oui ou non) et ton compte rendu : ce que tu as
-      fait, ce que tu as vu, ce qui ne marche pas ou gêne, avec le numéro
-      de la capture qui le montre.
-    tools:
-      - tool: navigateur_agir
-        mode: callable
-        params:
-          venture_id: {source: fixed, value: essai}
-          deliverable: {source: fixed, value: chantier}
-          task_id: {source: task, value: task_id}
-      - tool: navigateur_lire
-        mode: callable
-        params:
-          venture_id: {source: fixed, value: essai}
-          deliverable: {source: fixed, value: chantier}
-          task_id: {source: task, value: task_id}
-      - tool: navigateur_capture
-        mode: callable
-        params:
-          venture_id: {source: fixed, value: essai}
-          deliverable: {source: fixed, value: chantier}
-          task_id: {source: task, value: task_id}
-    output:
-      - {path: marche, type: choice, choices: [oui, non], description: 'Le site fait-il ce que demande la mission ?'}
-      - {path: compte_rendu, type: text, description: 'Ce qui a été fait, vu, et ce qui ne marche pas, captures à l''appui.'}
 
   - id: essayer_captcha
-    title: Essayer le captcha avec un humain (temporaire)
+    title: Essayer le captcha avec un humain
     role: >-
-      Temporaire, pour essayer « Appeler un humain » depuis Mission Control
-      (Q97) : ouvre dans le vrai Chrome une page d'essai qui tient lieu de
-      captcha, appelle un humain, attend qu'il ait cliqué dans l'écran,
-      puis rend le code que la page montre alors.
+      Une étape de l'essai total, après le paiement test (Q97, Q99) :
+      ouvre dans le vrai Chrome une page d'essai qui tient lieu de captcha,
+      appelle un humain, attend qu'il ait cliqué dans l'écran, puis rend le
+      code que la page montre alors.
     type: llm
     model_tier: web
     queue: works
@@ -3434,7 +3438,7 @@ invocations:
       2. Son bouton « Je suis un humain » ne doit être cliqué que par un
          humain : ne le clique jamais toi-même, et n'essaie pas de le
          contourner. Appelle « Appeler un humain », avec la raison « un
-         captcha d'essai (page Système) ». La première fois, la tâche
+         captcha d'essai (essai total) ». La première fois, la tâche
          s'arrête et repartira du début quand un humain sera prêt ; la fois
          suivante, il clique le bouton dans l'écran pendant que tu attends.
       3. Quand l'outil répond que l'humain a fini, lis la page : elle
@@ -3468,24 +3472,6 @@ invocations:
       - {path: code, type: text, required: false, description: Le code à quatre chiffres que montre la page.}
       - {path: compte_rendu, type: text, description: 'Ce qui s''est passé, en deux phrases.'}
 
-  - id: publier_essai
-    title: Publier le chantier d'essai (temporaire)
-    role: >-
-      Temporaire, pour essayer la publication depuis Mission Control (lot
-      10, Q91) : fige le chantier d'essai en une version, la construit et
-      la met en ligne en staging, ou passe la version du staging en prod.
-      Sans LLM.
-    type: capability
-    capability: publish_version
-    queue: works
-    priority: 30
-    params:
-      venture_id: {source: fixed, value: essai}
-      deliverable: {source: fixed, value: chantier}
-      slug: {source: fixed, value: essai}
-      target: {source: task, value: cible}
-      task_id: {source: task, value: task_id}
-
   # --- L'étape 2 : concevoir, critiquer, construire, relire (lot 10, Q91) ---
   # Un business choisi pour un POC est conçu, critiqué (3 tours au plus),
   # validé par un humain (ticket « Plan », 48 heures), construit dans son
@@ -3497,9 +3483,9 @@ invocations:
     title: Concevoir le POC
     role: >-
       Écrit le plan de A à Z du POC d'un business (hypothèse, cible, canal,
-      prospects, durée, prix indicatif, livrable, ce que le constructeur
-      doit faire, scénarios de test), sa fiche produit, ses
-      questions fréquentes et sa campagne de test. Au tour suivant, corrige
+      durée, prix indicatif, livrable, ce que le constructeur doit faire,
+      scénarios de test), sa fiche produit, ses questions fréquentes et sa
+      campagne de test. Au tour suivant, corrige
       son plan d'après le critique ou les consignes d'un humain.
     step: conception_poc
     type: llm
@@ -3509,8 +3495,6 @@ invocations:
     gets_serge_intro: true
     max_tool_turns: 6
     settings:
-      prospects_min: {value: 30, min: 5, max: 200, policy: true, description: "Le nombre de prospects d'un test léger, au moins."}
-      prospects_max: {value: 50, min: 5, max: 200, policy: true, description: "Le nombre de prospects d'un test léger, au plus."}
       duree_max_jours: {value: 10, min: 1, max: 60, policy: true, description: "La durée d'un test léger, en jours, au plus."}
     compare:
       product_plans: false
@@ -3543,8 +3527,8 @@ invocations:
       Écris un plan de A à Z, réalisable avec ça :
       - hypothese : ce qu'on veut vérifier, en une phrase ;
       - cible : les prospects, des professionnels (métier, taille, lieu) ;
-      - canal : email ou voice (le téléphone) ;
-      - prospects : combien, entre {prospects_min} et {prospects_max} ;
+      - canal : le canal du test, parmi les canaux branchés (tu en vois la
+        liste) : son numéro, tel quel ;
       - duree_jours : la durée du test, {duree_max_jours} jours au plus ;
       - prix : le prix indicatif du futur produit payant ;
       - livrable : ce que le prospect peut essayer, en deux phrases ;
@@ -3597,11 +3581,13 @@ invocations:
       - tool: web_search
         mode: callable
         max_calls: 3
+      - tool: canaux_branches
+        mode: given
+        label: Les canaux branchés
     output:
       - {path: hypothese, type: text, description: Ce qu'on veut vérifier.}
       - {path: cible, type: text, description: Les prospects visés.}
-      - {path: canal, type: choice, choices: [email, voice], description: Le canal du test.}
-      - {path: prospects, type: number, description: Le nombre de prospects.}
+      - {path: canal, type: text, description: 'Le canal du test : le numéro d''un canal branché.'}
       - {path: duree_jours, type: number, description: La durée du test en jours.}
       - {path: prix, type: text, description: Le prix indicatif du futur produit.}
       - {path: livrable, type: text, description: Ce que le prospect peut essayer.}
@@ -3626,7 +3612,6 @@ invocations:
           hypothesis: {source: field, value: hypothese}
           target: {source: field, value: cible}
           channel: {source: field, value: canal}
-          prospects: {source: field, value: prospects}
           duration_days: {source: field, value: duree_jours}
           price: {source: field, value: prix}
           deliverable: {source: field, value: livrable}
@@ -3662,9 +3647,8 @@ invocations:
         operation: insert
         values:
           venture_id: {source: task, value: venture_id}
-          family: {source: fixed, value: test_leger}
+          phase: {source: fixed, value: smoke}
           channel: {source: field, value: canal}
-          n_target: {source: field, value: prospects}
           state: {source: fixed, value: DRAFT}
 
   - id: challenger_poc
@@ -4217,172 +4201,6 @@ invocations:
       title: {source: fixed, value: Un POC validé n'a pas pu passer en prod}
       text: {source: task, value: raison}
 
-  # L'essai de l'étape 2 (temporaire, Q91) : un business tapé dans Mission
-  # Control est choisi pour un POC, comme par « Choisir les business ».
-  - id: creer_business_essai
-    title: Créer le business d'un essai de l'étape 2 (temporaire)
-    role: >-
-      Temporaire : crée un business candidat à partir du formulaire du
-      bouton « Essayer l'étape 2 ». Sans LLM.
-    type: capability
-    capability: echo
-    queue: works
-    priority: 30
-    params:
-      nom: {source: task, value: nom}
-      description: {source: task, value: description}
-      offre: {source: task, value: offre}
-    writes:
-      - table: ventures
-        operation: insert
-        values:
-          name: {source: task, value: nom}
-          description: {source: task, value: description}
-          sellable_offer: {source: task, value: offre}
-          lifecycle: {source: fixed, value: CANDIDATE}
-          trial: *essai_marque
-          family: {source: fixed, value: autre}
-
-  - id: choisir_business_essai
-    title: Choisir le business d'un essai de l'étape 2 (temporaire)
-    role: >-
-      Temporaire : le business de l'essai est choisi pour un POC (il prend
-      une place de test), et sa conception commence. Sans LLM.
-    type: capability
-    capability: echo
-    queue: works
-    priority: 30
-    params:
-      venture_id: {source: task, value: venture_id}
-    writes:
-      - table: ventures
-        operation: update
-        key: {column: id, source: task, value: venture_id}
-        values:
-          lifecycle: {source: fixed, value: POC_SELECTED}
-          choice_reason: {source: fixed, value: Essai de l'étape 2 depuis Mission Control.}
-
-  # Le bout en bout du POC (temporaire, Q91) : une calculatrice toute
-  # prête (fiche produit, questions, campagne, plan validé) entre
-  # directement en construction ; tout le reste est le vrai pipeline.
-  - id: bout_en_bout_poc
-    title: "Bout en bout : préparer le POC d'une calculatrice (temporaire)"
-    role: >-
-      Temporaire : met en base un business « Calculatrice », choisi pour un
-      POC, avec sa fiche produit, ses questions fréquentes, sa campagne et
-      un plan déjà validé, puis lance la construction du POC. La création
-      du business et la conception du plan sont court-circuitées ; la
-      suite est celle de l'étape 2. Sans LLM.
-    type: capability
-    capability: echo
-    queue: works
-    priority: 30
-    writes:
-      - table: ventures
-        operation: insert
-        dedup: false
-        values:
-          name: {source: fixed, value: Calculatrice}
-          description: {source: fixed, value: "Une calculatrice en ligne, simple et lisible, sur ordinateur comme sur mobile."}
-          sellable_offer: {source: fixed, value: "Gratuite pendant l'essai."}
-          family: {source: fixed, value: autre}
-          lifecycle: {source: fixed, value: POC_SELECTED}
-          trial: *essai_marque
-          choice_reason: {source: fixed, value: "Essai de bout en bout du POC depuis Mission Control."}
-      - table: product_sheets
-        operation: insert
-        parent: 0
-        values:
-          venture_id: {source: parent_row, value: id}
-          summary: {source: fixed, value: "Une calculatrice en ligne pour les quatre opérations, lisible sur ordinateur et sur mobile, sans compte."}
-          limits: {source: fixed, value: "Pas de fonctions scientifiques, pas d'historique des calculs."}
-          price: {source: fixed, value: Gratuite.}
-          delays: {source: fixed, value: "Tout de suite : on ouvre la page et on calcule."}
-          usage: {source: fixed, value: "On tape le calcul avec les boutons ou le clavier, puis « = »."}
-      - table: product_faq
-        operation: insert
-        parent: 0
-        values:
-          venture_id: {source: parent_row, value: id}
-          question: {source: fixed, value: "Faut-il créer un compte ?"}
-          answer: {source: fixed, value: "Non : on ouvre la page et on calcule."}
-      - table: product_faq
-        operation: insert
-        parent: 0
-        values:
-          venture_id: {source: parent_row, value: id}
-          question: {source: fixed, value: "Que se passe-t-il si je divise par zéro ?"}
-          answer: {source: fixed, value: "L'écran affiche « Erreur » ; la touche C remet à zéro."}
-      - table: campaigns
-        operation: insert
-        parent: 0
-        values:
-          venture_id: {source: parent_row, value: id}
-          family: {source: fixed, value: test_leger}
-          channel: {source: fixed, value: email}
-          n_target: {source: fixed, value: '30'}
-          state: {source: fixed, value: DRAFT}
-      - table: product_plans
-        operation: insert
-        parent: 0
-        values:
-          venture_id: {source: parent_row, value: id}
-          kind: {source: fixed, value: poc}
-          round: {source: fixed, value: '1'}
-          status: {source: fixed, value: validated}
-          hypothesis: {source: fixed, value: "Des visiteurs veulent une calculatrice en ligne simple, qui marche aussi bien au doigt qu'au clavier."}
-          target: {source: fixed, value: "Tout le monde ; c'est un essai de bout en bout de Serge."}
-          channel: {source: fixed, value: email}
-          prospects: {source: fixed, value: '30'}
-          duration_days: {source: fixed, value: '10'}
-          price: {source: fixed, value: Gratuite.}
-          deliverable: {source: fixed, value: "Une calculatrice en ligne : les quatre opérations, les nombres à virgule, l'effacement."}
-          plan: {source: fixed, value: "Une seule page, en français. En haut, l'écran : il affiche le calcul en cours et le résultat, avec une virgule décimale (3,5) ; 0 au départ. Dessous, le pavé : les chiffres 0 à 9, la virgule, les quatre opérations (+, −, ×, ÷), « = », « C » (tout effacer) et « ← » (effacer le dernier chiffre). Le clavier marche aussi : chiffres, + - * /, la virgule ou le point, Entrée pour « = », Échap pour « C », Retour arrière pour « ← ». Les calculs se font dans l'ordre où on les tape (12 + 7 × 2 = 38, comme une calculatrice de poche). Une division par zéro affiche « Erreur » jusqu'à « C ». Les résultats sont arrondis à 10 chiffres significatifs, pour que 0,1 + 0,2 donne 0,3. Sur mobile, tout le pavé tient dans l'écran sans défiler, avec des boutons d'au moins 48 pixels. Aucun compte, aucune donnée gardée, aucun service extérieur."}
-          scenarios: {source: fixed, value: "1. Ouvrir la page : l'écran affiche 0 et tout le pavé est visible. 2. Taper 12 + 7 = avec les boutons : l'écran affiche 19. 3. Taper 7 ÷ 2 = : l'écran affiche 3,5. 4. Taper 5 ÷ 0 = : l'écran affiche Erreur ; appuyer sur C : l'écran affiche 0. 5. Taper 0,1 + 0,2 = : l'écran affiche 0,3. 6. Taper 123 puis ← : l'écran affiche 12. 7. Au clavier, taper 9*9 puis Entrée : l'écran affiche 81. 8. Sur mobile, refaire le scénario 2 au doigt : tout le pavé tient dans l'écran, sans défiler."}
-          challenge: {source: fixed, value: "Plan tout fait de l'essai de bout en bout : pas de critique."}
-
-  # Stripe depuis la fiche d'un business (lot 10, Q91).
-  - id: essayer_stripe
-    title: Essayer Stripe en mode test (temporaire)
-    role: >-
-      Temporaire, pour essayer « Appeler une API » depuis la fiche d'un
-      business : crée dans Stripe, en mode test, un produit, un prix de 1 €
-      par mois portant l'identifiant du business, et un lien de paiement.
-    type: llm
-    model_tier: mid
-    queue: works
-    priority: 30
-    max_tool_turns: 6
-    prompt: |
-      Tu essaies Stripe, en mode test (aucun argent réel), pour le business
-      dont le numéro est dans les paramètres de la tâche. Crée un produit
-      nommé « Essai Serge », puis un prix de 1 € par mois pour ce produit
-      (100 centimes, eur, month), puis un lien de paiement pour ce prix,
-      quantité 1. Rends l'adresse du lien de paiement, et les identifiants
-      du produit et du prix.
-    tools:
-      - tool: stripe_creer_produit
-        mode: callable
-        params:
-          service: {source: fixed, value: stripe_test}
-          'metadata[venture_id]': {source: task, value: venture_id}
-          task_id: {source: task, value: task_id}
-      - tool: stripe_creer_prix
-        mode: callable
-        params:
-          service: {source: fixed, value: stripe_test}
-          'metadata[venture_id]': {source: task, value: venture_id}
-          task_id: {source: task, value: task_id}
-      - tool: stripe_creer_lien_paiement
-        mode: callable
-        params:
-          service: {source: fixed, value: stripe_test}
-          'metadata[venture_id]': {source: task, value: venture_id}
-          task_id: {source: task, value: task_id}
-    output:
-      - {path: lien, type: text, description: L'adresse du lien de paiement.}
-      - {path: compte_rendu, type: text, description: Les identifiants créés et ce qui a raté.}
-
   - id: supprimer_de_stripe
     title: Supprimer un business de Stripe
     role: >-
@@ -4429,31 +4247,6 @@ invocations:
     output:
       - {path: produits, type: number, description: Le nombre de produits archivés.}
       - {path: compte_rendu, type: text, description: "Ce qui a été archivé, et ce qui a raté."}
-
-  # --- L'étape 5 : le vrai produit (lot 10, Q41, Q43 et Q91) ---
-  # Détail : docs/etapes/5-construction.md. En attendant l'étape 4 (lot 12),
-  # elle part du bouton « Construire le vrai produit » de la fiche d'un
-  # business, ou de « Bout en bout : le produit fini d'une calculatrice ».
-  - id: lancer_produit
-    title: Lancer le vrai produit d'un business
-    role: >-
-      Le business passe en construction de son produit fini, et la
-      conception commence. Lancé par le bouton « Construire le vrai
-      produit » de la fiche du business (temporaire, jusqu'à l'étape 4).
-      Sans LLM.
-    step: build_venture
-    type: capability
-    capability: echo
-    queue: works
-    priority: 30
-    params:
-      venture_id: {source: task, value: venture_id}
-    writes:
-      - table: ventures
-        operation: update
-        key: {column: id, source: task, value: venture_id}
-        values:
-          lifecycle: {source: fixed, value: PRODUCT_BUILDING}
 
   - id: concevoir_produit
     title: Concevoir le produit
@@ -5750,22 +5543,850 @@ invocations:
       title: {source: task, value: titre}
       text: {source: task, value: raison}
 
-  # Le bout en bout du produit fini (temporaire, Q91) : une calculatrice
-  # dont le POC est déjà fait (sa fiche, son plan validé) et que des clients
-  # ont déjà commentée entre directement dans l'étape 5 ; tout le reste est
-  # le vrai pipeline, Stripe, domaine et paiement test compris.
-  - id: bout_en_bout_produit
-    title: "Bout en bout : préparer le produit fini d'une calculatrice (temporaire)"
+  # L'étape 3 (lot 12) : le test léger. Les mêmes invocations servent à la
+  # prospection lourde (étape 6) : elles lisent la phase et le canal dans
+  # la campagne qu'elles traitent.
+  - id: demarrer_campagne
+    title: Démarrer une campagne
     role: >-
-      Temporaire : met en base un business « Calculatrice » en construction
-      de son produit fini, avec la fiche produit et le plan validé de son
-      POC, et trois demandes de clients, puis lance la conception du
-      produit. La création du business, l'étape 2 et la prospection sont
-      court-circuitées ; la suite est celle de l'étape 5. Sans LLM.
+      Démarre une campagne prête : vérifie que son canal est branché, fixe
+      son volume (les réglages du canal), note son début et, pour un test,
+      sa fin prévue, et passe le business à « test en cours » ou « vente en
+      cours ». Une campagne sur un canal qui n'est pas branché est annulée.
+      Sans LLM.
+    step: prospection_light
+    type: capability
+    capability: start_campaign
+    queue: works
+    priority: 30
+    settings:
+      email_test: {value: 40, min: 1, max: 500, policy: true, trial: 1, description: "E-mail : les prospects d'un test léger."}
+      voice_test: {value: 20, min: 1, max: 500, policy: true, trial: 1, description: "Appel : les prospects d'un test léger."}
+      email_semaine: {value: 200, min: 1, max: 5000, policy: true, description: 'E-mail : les prospects par semaine, en prospection lourde.'}
+      voice_semaine: {value: 50, min: 1, max: 5000, policy: true, description: 'Appel : les prospects par semaine, en prospection lourde.'}
+      email_total: {value: 1000, min: 1, max: 50000, policy: true, trial: 1, description: 'E-mail : les prospects au total, en prospection lourde.'}
+      voice_total: {value: 250, min: 1, max: 50000, policy: true, trial: 1, description: 'Appel : les prospects au total, en prospection lourde.'}
+      duree_max_jours: {value: 30, min: 1, max: 90, policy: true, description: "La durée d'un test léger, en jours, au plus."}
+    params:
+      campaign_id: {source: task, value: campaign_id}
+    writes:
+      - table: campaigns
+        operation: update
+        key: {column: id, source: field, value: campaign_id}
+        values:
+          state: {source: field, value: state}
+          n_target: {source: field, value: n_target}
+          n_week: {source: field, value: n_week}
+          started_at: {source: field, value: started_at}
+          planned_end_at: {source: field, value: planned_end_at}
+          end_reason: {source: field, value: raison}
+      - table: ventures
+        operation: update
+        condition: {field: venture_status, op: non_vide}
+        key: {column: id, source: field, value: venture_id}
+        values:
+          lifecycle: {source: field, value: venture_status}
+
+  - id: trouver_prospects
+    title: Trouver des prospects
+    role: >-
+      Cherche sur le web des personnes précises à contacter pour une
+      campagne : leur nom, leur rôle, leur adresse directe sur le canal de
+      la campagne, et la page où elle a été trouvée. Jamais d'adresse
+      générique. Chaque prospect accepté reçoit un premier message à
+      rédiger.
+    step: prospection_light
+    type: llm
+    model_tier: smart
+    queue: works
+    priority: 20
+    gets_serge_intro: true
+    max_tool_turns: 25
+    settings:
+      prospects_par_passage: {value: 10, min: 1, max: 50, policy: true, description: 'Le nombre maximum de prospects ajoutés par passage.'}
+      recherches_max: {value: 15, min: 1, max: 60, policy: true, description: 'Le nombre maximum de recherches par passage.'}
+      pages_max: {value: 20, min: 1, max: 80, policy: true, description: 'Le nombre maximum de pages lues par passage.'}
+      lignes_page: {value: 120, min: 10, max: 2000, policy: true, description: 'Les lignes lues au plus dans une page.'}
+      ajouts_max: {value: 30, min: 1, max: 150, description: "Les essais d'ajout au plus par passage, refus compris."}
+    prompt: |
+      Tu trouves des prospects pour une campagne de Serge : de vraies
+      personnes, à qui il va écrire ou téléphoner.
+
+      Tu reçois la campagne (son canal, sa cible), le plan, la fiche du
+      business, la fiche produit, et les contacts déjà trouvés pour ce
+      business : n'en propose aucun une seconde fois.
+
+      Ce que tu cherches : une personne nommée, avec son rôle (« Marie
+      Dupont, gérante »), dans une entreprise qui correspond à la cible, et
+      son adresse directe sur le canal de la campagne :
+      - canal email : une adresse e-mail à son nom (marie.dupont@…). Jamais
+        une adresse générique (contact@, info@, accueil@…) : une entreprise
+        dont tu ne trouves que celle-là est laissée de côté ;
+      - canal voice : son numéro professionnel, au format international
+        (+33…).
+
+      Où chercher : le site de l'entreprise (sa page équipe, ses mentions
+      légales), les annuaires professionnels, les fiches d'entreprise, les
+      articles et les publications. Une adresse doit avoir été lue sur une
+      page : ne la devine jamais, ne la construis jamais d'après un modèle
+      (prenom.nom@…).
+
+      Méthode :
+      - fais au plus {recherches_max} recherches et lis au plus {pages_max}
+        pages ;
+      - dès que tu tiens une personne et son adresse, appelle « Ajouter un
+        prospect », avec la page où tu as trouvé l'adresse. L'outil
+        vérifie tout de suite : s'il refuse, lis pourquoi et cherche
+        quelqu'un d'autre ; s'il dit que la campagne ou le passage a son
+        compte, arrête-toi ;
+      - ajoute au plus {prospects_par_passage} prospects.
+
+      À la fin, dis en deux phrases ce que tu as trouvé, et ce qui a
+      manqué.
+    tools:
+      - tool: campagne_par_numero
+        mode: given
+        label: La campagne
+        params:
+          campaign_id: {source: task, value: campaign_id}
+      - tool: plan_valide_du_poc
+        mode: given
+        label: Le plan du POC
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: fiche_business
+        mode: given
+        label: La fiche du business
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: fiche_produit
+        mode: given
+        label: La fiche produit
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: contacts_du_business
+        mode: given
+        label: Les contacts déjà trouvés
+        max_rows: 300
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: web_search
+        mode: callable
+        max_calls: recherches_max
+      - tool: lire_page_entiere
+        mode: callable
+        max_calls: pages_max
+        params:
+          table: {source: fixed, value: ''}
+          id: {source: fixed, value: ''}
+          max_lines: {source: setting, value: lignes_page}
+      - tool: ajouter_prospect
+        mode: callable
+        max_calls: ajouts_max
+        params:
+          campaign_id: {source: task, value: campaign_id}
+    output:
+      - {path: compte_rendu, type: text, description: 'Ce que tu as trouvé et ce qui a manqué, en deux phrases.'}
+
+  - id: suivre_campagne
+    title: Suivre une campagne
+    role: >-
+      Regarde une campagne en cours, toutes les heures : la clôt si elle est
+      finie (elle a son compte et toutes ses relances sont faites, la durée
+      du test est atteinte, ou elle ne trouve plus de prospects), relance
+      « Trouver des prospects » s'il lui en manque, ou attend. Quand la
+      dernière campagne de test d'un business est close, son test est
+      mesuré. Sans LLM.
+    step: prospection_light
+    type: capability
+    capability: follow_campaign
+    queue: works
+    priority: 20
+    settings:
+      jours_sans_envoi: {value: 8, min: 0, max: 60, policy: true, trial: 0, description: "Les jours sans aucun envoi avant de clore une campagne qui a son compte : un de plus que le plus long délai entre deux relances."}
+      recherches_vides_max: {value: 3, min: 1, max: 20, policy: true, description: 'Les recherches de suite sans nouveau prospect avant de ne plus en chercher.'}
+      jours_d_avance: {value: 1, min: 1, max: 14, policy: true, description: "Les jours d'envois d'avance que Serge garde au plus, en premiers messages qui attendent."}
+    params:
+      campaign_id: {source: task, value: campaign_id}
+    writes:
+      - table: campaigns
+        operation: update
+        condition: {field: action, op: '=', value: clore}
+        key: {column: id, source: field, value: campaign_id}
+        values:
+          state: {source: field, value: state}
+          end_reason: {source: field, value: raison}
+
+  - id: rediger_premier_message
+    title: Rédiger un premier message
+    role: >-
+      Un premier message attend d'être rédigé : passe la main à
+      l'invocation du canal de ce message (« Écrire le premier e-mail »,
+      « Préparer le premier appel »). Un nouveau canal ajoute ici son
+      lien. Sans LLM.
+    step: prospection_light
+    type: capability
+    capability: echo
+    queue: conversations
+    priority: 50
+    params:
+      touch_id: {source: task, value: touch_id}
+      channel: {source: task, value: channel}
+
+  - id: premier_email
+    title: Écrire le premier e-mail
+    role: >-
+      Rédige le premier e-mail de Serge à un prospect : pourquoi il lui
+      écrit, ce que fait le produit, et où l'essayer. Pendant le test, le
+      lien est celui du POC ; ensuite, celui du produit fini, avec son
+      prix.
+    step: prospection_light
+    type: llm
+    model_tier: mid
+    queue: conversations
+    priority: 50
+    gets_serge_intro: true
+    max_tool_turns: 3
+    compare:
+      touches: false
+      contacts: false
+    prompt: |
+      Tu écris le premier e-mail de Serge à une personne qu'il ne connaît
+      pas encore, pour lui présenter un business.
+
+      Tu reçois la fiche du business, la fiche produit et ses questions
+      fréquentes, le plan (la cible et ce qu'on veut vérifier), la fiche de
+      la personne (qui elle est, pourquoi elle est visée), la page où son
+      adresse a été trouvée, et ce qui est en ligne.
+
+      Écris un objet court et un message de quelques phrases :
+      - une première phrase qui montre que tu sais à qui tu écris (son
+        métier, son entreprise), sans flatterie ;
+      - le problème que le produit résout, et ce qu'il fait ;
+      - où l'essayer : l'adresse de ce qui est en ligne, précédée de
+        https://. Si le produit fini est en ligne (livrable « produit »),
+        donne son adresse et son prix ; sinon celle du POC, gratuit
+        pendant le test. Si rien n'est en ligne, ne donne aucun lien ;
+      - une question simple pour l'inviter à répondre.
+
+      Ne promets rien qui ne soit pas dans la fiche produit. Dis où tu as
+      trouvé son adresse si elle le demande ; ne l'écris pas d'office.
+      Serge assume d'être un agent IA : pas de signature d'humain.
+    tools:
+      - tool: fiche_business
+        mode: given
+        label: La fiche du business
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: fiche_produit
+        mode: given
+        label: La fiche produit
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: questions_produit
+        mode: given
+        label: Les questions fréquentes
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: plan_valide_du_poc
+        mode: given
+        label: Le plan du POC
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: fiche_prospect
+        mode: given
+        label: La fiche de la personne
+        params:
+          contact_id: {source: task, value: contact_id}
+      - tool: adresses_du_prospect
+        mode: given
+        label: Où son adresse a été trouvée
+        params:
+          contact_id: {source: task, value: contact_id}
+      - tool: en_ligne_du_business
+        mode: given
+        label: Ce qui est en ligne
+        params:
+          venture_id: {source: task, value: venture_id}
+    output:
+      - {path: subject, type: text, description: L'objet de l'e-mail.}
+      - {path: body, type: text, description: Le texte de l'e-mail.}
+    writes:
+      - table: touches
+        operation: update
+        key: {column: id, source: task, value: touch_id}
+        values:
+          subject: {source: field, value: subject}
+          body: {source: field, value: body}
+          status: {source: fixed, value: pending}
+      - table: contacts
+        operation: update
+        key: {column: id, source: task, value: contact_id}
+        values:
+          funnel_state: {source: fixed, value: CONTACTING}
+
+  - id: premier_appel
+    title: Préparer le premier appel
+    role: >-
+      Écrit le but du premier appel de Serge à un prospect, que l'agent
+      vocal reçoit au décrochage : ce qu'il présente, l'offre, et ce qu'il
+      veut obtenir.
+    step: prospection_light
+    type: llm
+    model_tier: mid
+    queue: conversations
+    priority: 50
+    gets_serge_intro: true
+    max_tool_turns: 3
+    compare:
+      touches: false
+      contacts: false
+    prompt: |
+      Tu prépares le premier appel de Serge à une personne qu'il ne connaît
+      pas encore, pour lui présenter un business.
+
+      Tu reçois la fiche du business, la fiche produit, le plan (la cible
+      et ce qu'on veut vérifier), la fiche de la personne (qui elle est,
+      pourquoi elle est visée) et ce qui est en ligne.
+
+      Écris le but de l'appel en trois ou quatre phrases, pour l'agent
+      vocal : à qui il parle, ce qu'il présente, l'offre (le POC gratuit
+      pendant le test ; le produit fini et son prix s'il est en ligne), et
+      ce qu'il veut obtenir (un intérêt, un rendez-vous, une adresse
+      e-mail pour envoyer le lien).
+    tools:
+      - tool: fiche_business
+        mode: given
+        label: La fiche du business
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: fiche_produit
+        mode: given
+        label: La fiche produit
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: plan_valide_du_poc
+        mode: given
+        label: Le plan du POC
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: fiche_prospect
+        mode: given
+        label: La fiche de la personne
+        params:
+          contact_id: {source: task, value: contact_id}
+      - tool: en_ligne_du_business
+        mode: given
+        label: Ce qui est en ligne
+        params:
+          venture_id: {source: task, value: venture_id}
+    output:
+      - {path: body, type: text, description: Le but de l'appel.}
+    writes:
+      - table: touches
+        operation: update
+        key: {column: id, source: task, value: touch_id}
+        values:
+          subject: {source: fixed, value: Premier appel}
+          body: {source: field, value: body}
+          status: {source: fixed, value: pending}
+      - table: contacts
+        operation: update
+        key: {column: id, source: task, value: contact_id}
+        values:
+          funnel_state: {source: fixed, value: CONTACTING}
+
+  - id: mesurer_test
+    title: Mesurer le test
+    role: >-
+      Écrit le compte rendu chiffré du test léger d'un business (prospects
+      contactés par canal, réactions, points, dépense, points par euro) et
+      le juge avec des seuils en chiffres absolus : retenu, ou non, avec la
+      raison. Sans LLM.
+    step: prospection_light
+    type: capability
+    capability: measure_test
+    queue: works
+    priority: 30
+    settings:
+      prospects_min: {value: 30, min: 0, max: 500, policy: true, trial: 0, description: 'Les prospects contactés, au moins, pour qu''un test compte.'}
+      points_min: {value: 10, min: 0, max: 1000, policy: true, trial: 0, description: 'Les points, au moins, pour qu''un test soit retenu.'}
+      points_par_euro_min: {value: 0, min: 0, max: 1000, policy: true, description: 'Les points par euro dépensé, au moins, pour qu''un test soit retenu.'}
+    params:
+      venture_id: {source: task, value: venture_id}
+    writes:
+      - table: test_reports
+        operation: insert
+        values:
+          venture_id: {source: field, value: venture_id}
+          contacted: {source: field, value: contacted}
+          replies: {source: field, value: replies}
+          points: {source: field, value: points}
+          spend_eur: {source: field, value: spend_eur}
+          points_per_eur: {source: field, value: points_per_eur}
+          figures: {source: field, value: figures}
+          verdict: {source: field, value: verdict}
+          verdict_reason: {source: field, value: verdict_reason}
+
+  - id: faire_bilan
+    title: Faire le bilan du test
+    role: >-
+      Lit le compte rendu chiffré d'un test, les réponses des prospects et
+      leurs demandes, et écrit un bilan en quelques lignes : ce qui a plu,
+      ce qui a bloqué, les prospects qui ont le mieux répondu. Le bilan
+      sert au choix du principal, au produit fini et à la prospection
+      lourde.
+    step: prospection_light
+    type: llm
+    model_tier: smart
+    queue: works
+    priority: 30
+    gets_serge_intro: true
+    max_tool_turns: 4
+    prompt: |
+      Tu fais le bilan du test léger d'un business : Serge a montré un POC
+      à des prospects, par e-mail ou par téléphone.
+
+      Tu reçois la fiche du business, le plan du POC (ce qu'on voulait
+      vérifier), le compte rendu chiffré du test avec son verdict, ses
+      campagnes, les réponses des prospects et leurs demandes sur le
+      produit.
+
+      Écris le bilan en quelques lignes, sans rien inventer :
+      - ce qui a plu, avec les mots des prospects quand ils en ont ;
+      - ce qui a bloqué : les objections, les refus, les silences ;
+      - les prospects qui ont le mieux répondu (leur métier, la taille de
+        leur entreprise, leur région), et ceux qui n'ont pas répondu ;
+      - ce qu'il faudrait changer au produit ou au message.
+      Si presque personne n'a répondu, dis-le simplement : un bilan court
+      vaut mieux qu'un bilan inventé.
+    tools:
+      - tool: fiche_business
+        mode: given
+        label: La fiche du business
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: plan_valide_du_poc
+        mode: given
+        label: Le plan du POC
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: compte_rendu_du_test
+        mode: given
+        label: Le compte rendu chiffré
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: campagnes_du_business
+        mode: given
+        label: Ses campagnes
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: reponses_des_prospects
+        mode: given
+        label: Les réponses des prospects
+        max_rows: 100
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: demandes_des_clients
+        mode: given
+        label: Leurs demandes sur le produit
+        params:
+          venture_id: {source: task, value: venture_id}
+    output:
+      - {path: bilan, type: text, description: Le bilan du test, en quelques lignes.}
+    writes:
+      - table: test_reports
+        operation: update
+        key: {column: id, source: task, value: report_id}
+        values:
+          summary: {source: field, value: bilan}
+
+  - id: conclure_test
+    title: Conclure le test
+    role: >-
+      Le test est mesuré et son bilan écrit : le business retenu passe à
+      « test fini », avec la date ; l'autre est arrêté, et libère sa place
+      de test. Sans LLM.
+    step: prospection_light
     type: capability
     capability: echo
     queue: works
     priority: 30
+    params:
+      venture_id: {source: task, value: venture_id}
+      verdict: {source: task, value: verdict}
+    writes:
+      - table: ventures
+        operation: update
+        condition: {field: verdict, op: '=', value: retenu}
+        key: {column: id, source: task, value: venture_id}
+        values:
+          lifecycle: {source: fixed, value: SMOKE_DONE}
+          smoke_ended_at: {source: now}
+      - table: ventures
+        operation: update
+        condition: {field: verdict, op: '!=', value: retenu}
+        key: {column: id, source: task, value: venture_id}
+        values:
+          lifecycle: {source: fixed, value: KILLED}
+          smoke_ended_at: {source: now}
+
+  - id: tirer_lecon
+    title: Tirer la leçon d'un business arrêté
+    role: >-
+      Un business vient d'être arrêté : écrit une ou deux leçons, au statut
+      « proposée », que Julien garde ou jette sur la page Mémoire (Q46).
+    step: prospection_light
+    type: llm
+    model_tier: mid
+    queue: works
+    priority: 10
+    gets_serge_intro: true
+    max_tool_turns: 4
+    prompt: |
+      Un business de Serge vient d'être arrêté. Tu en tires une ou deux
+      leçons, pour que Serge ne refasse pas la même erreur.
+
+      Tu reçois la fiche du business, ses plans, le compte rendu de son
+      test s'il en a eu un, et les réponses de ses prospects.
+
+      Une leçon est une phrase courte, concrète et vérifiable, utile au
+      prochain business : « Les artisans ne répondent pas aux e-mails le
+      lundi », pas « mieux cibler ». Dis d'où elle vient (le chiffre, la
+      réponse d'un prospect). Si rien ne permet de conclure (un test sans
+      réponse, un arrêt décidé par un humain sans raison donnée), ne rends
+      aucune leçon.
+    tools:
+      - tool: fiche_business
+        mode: given
+        label: La fiche du business
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: plan_valide_du_poc
+        mode: given
+        label: Le plan du POC
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: compte_rendu_du_test
+        mode: given
+        label: Le compte rendu de son test
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: reponses_des_prospects
+        mode: given
+        label: Les réponses des prospects
+        max_rows: 100
+        params:
+          venture_id: {source: task, value: venture_id}
+    output:
+      - {path: lecons, type: list, required: false, max_items: 2, description: Les leçons, deux au plus.}
+      - {path: lecons.lecon, type: text, description: 'La leçon, en une phrase, avec d''où elle vient.'}
+    writes:
+      - table: lessons
+        operation: insert
+        for_each: lecons
+        values:
+          statement: {source: field, value: lecons.lecon}
+          scope: {source: fixed, value: global}
+          status: {source: fixed, value: candidate}
+          created_by: {source: fixed, value: tirer_lecon}
+
+  - id: prevenir_prospection
+    title: Prévenir d'une étape de la prospection
+    role: >-
+      Un ticket d'information prévient Julien et Clem : une campagne n'a
+      pas pu démarrer, la prospection lourde est lancée, une première
+      vente est arrivée. Sans LLM.
+    step: prospection_light
+    type: capability
+    capability: inform_owners
+    queue: conversations
+    priority: 80
+    params:
+      title: {source: task, value: titre}
+      text: {source: task, value: raison}
+
+  # L'étape 4 (lot 12) : choisir le business principal.
+  - id: choisir_principal
+    title: Choisir le business principal
+    role: >-
+      Quand plus aucun test léger ne tourne et que la place lourde est
+      libre, compare les business dont le test est retenu (et ceux mis de
+      côté depuis moins de 60 jours) et propose le principal, ou aucun,
+      avec une phrase par business. Julien valide par ticket.
+    step: choix_venture
+    type: llm
+    model_tier: smart
+    queue: works
+    priority: 30
+    gets_serge_intro: true
+    max_tool_turns: 4
+    prompt: |
+      Tu proposes le business principal de Serge : celui dont il va
+      construire le vrai produit, payant, puis le vendre en masse. Un seul
+      à la fois.
+
+      Tu reçois les business qui attendent (leur test léger est retenu, ou
+      ils ont été mis de côté par un choix précédent), le compte rendu
+      chiffré et le bilan de chaque test, et les réponses de leurs
+      prospects.
+
+      Tes critères, dans l'ordre :
+      1. les points par euro dépensé ;
+      2. les points ;
+      3. la facilité de vendre le produit fini : des prospects qui ont dit
+         ce qu'ils paieraient, un produit simple à construire et à
+         expliquer.
+
+      Propose un business, par son numéro, ou aucun (laisse alors le champ
+      vide) si aucun ne mérite d'y passer des semaines. Écris une phrase
+      par business comparé : pourquoi lui, ou pourquoi pas. N'invente
+      jamais un numéro.
+    tools:
+      - tool: business_retenus
+        mode: given
+        label: Les business qui attendent
+      - tool: comptes_rendus_des_retenus
+        mode: given
+        label: Les comptes rendus de leurs tests
+      - tool: reponses_des_prospects
+        mode: callable
+        max_calls: 6
+    output:
+      - {path: business, type: text, required: false, description: 'Le numéro du business proposé, ou vide pour aucun.'}
+      - {path: notes, type: text, description: 'Une phrase par business comparé.'}
+    writes:
+      - table: principal_choices
+        operation: insert
+        values:
+          proposed_venture_id: {source: field, value: business}
+          notes: {source: field, value: notes}
+          status: {source: fixed, value: PROPOSED}
+
+  - id: demander_choix_principal
+    title: Faire valider le choix du principal
+    role: >-
+      Ouvre le ticket « Choix du principal » : la proposition de Serge, et
+      pour chaque business ses chiffres et son bilan. Sans réponse sous 48
+      heures, la proposition s'applique (Q16 bis). Sans LLM.
+    step: choix_venture
+    type: capability
+    capability: ask_owners
+    queue: conversations
+    priority: 80
+    params:
+      ticket_type: {source: fixed, value: CHOIX_PRINCIPAL}
+      ref_table: {source: fixed, value: principal_choices}
+      ref_id: {source: task, value: choice_id}
+      raison: {source: task, value: raison}
+      title: {source: fixed, value: Le choix du business principal attend ton avis}
+
+  - id: appliquer_choix_principal
+    title: Appliquer le choix du principal
+    role: >-
+      La réponse au ticket « Choix du principal » : le business choisi
+      entre en construction de son produit fini ; les autres tests retenus
+      sont mis de côté. Avec « Aucun », tous sont mis de côté. Un nom qui
+      ne désigne aucun business du ticket rouvre le ticket. Sans LLM.
+    step: choix_venture
+    type: capability
+    capability: apply_principal
+    queue: conversations
+    priority: 80
+    params:
+      choice_id: {source: task, value: choice_id}
+      acte: {source: task, value: acte}
+      texte: {source: task, value: texte}
+    writes:
+      - table: ventures
+        operation: update
+        condition: {field: chosen, op: non_vide}
+        key: {column: id, source: field, value: chosen}
+        values:
+          lifecycle: {source: fixed, value: PRODUCT_BUILDING}
+      - table: ventures
+        operation: update
+        for_each: parked
+        key: {column: id, source: field, value: parked}
+        values:
+          lifecycle: {source: fixed, value: PARKED}
+      - table: principal_choices
+        operation: update
+        condition: {field: ok, op: '=', value: oui}
+        key: {column: id, source: task, value: choice_id}
+        values:
+          status: {source: fixed, value: DECIDED}
+          decision: {source: field, value: decision}
+          chosen_venture_id: {source: field, value: chosen}
+
+  - id: oublier_vieux_tests
+    title: Oublier les vieux tests
+    role: >-
+      Un business mis de côté dont le test a fini il y a plus de 60 jours
+      redevient candidat : l'étape 1 peut le choisir de nouveau (Q44).
+      Sans LLM.
+    step: choix_venture
+    type: capability
+    capability: db_read
+    queue: works
+    priority: 5
+    settings:
+      jours_max: {value: 60, min: 1, max: 365, policy: true, description: "L'âge maximum d'un business mis de côté, en jours, après la fin de son test."}
+    params:
+      tool_id: {source: fixed, value: business_mis_de_cote_anciens}
+      jours: {source: setting, value: jours_max}
+    writes:
+      - table: ventures
+        operation: update
+        for_each: rows
+        key: {column: id, source: field, value: rows.id}
+        values:
+          lifecycle: {source: fixed, value: CANDIDATE}
+
+  # L'étape 6 (lot 12) : vendre en masse le produit fini, tel qu'il est
+  # sorti de la construction (Q93).
+  - id: preparer_prospection_lourde
+    title: Préparer la prospection lourde
+    role: >-
+      Le produit fini est en vente : écrit une campagne lourde par canal,
+      avec la cible précise, affinée par ce que le test a appris, et
+      l'angle des messages. Les volumes sont les réglages de chaque canal.
+    step: prospection_lourde
+    type: llm
+    model_tier: smart
+    queue: works
+    priority: 30
+    gets_serge_intro: true
+    max_tool_turns: 4
+    compare:
+      campaigns: false
+    prompt: |
+      Le produit fini d'un business est en vente. Tu prépares sa
+      prospection lourde : Serge va le vendre en masse, tel qu'il est, à
+      de nouveaux prospects.
+
+      Tu reçois la fiche du business, la fiche produit (avec son prix), le
+      plan du produit, le compte rendu et le bilan de son test léger, les
+      campagnes de ce test, et les canaux branchés sur ce serveur.
+
+      Écris une campagne par canal utile, parmi les canaux branchés ; un
+      canal qui n'a rien donné pendant le test peut être laissé de côté.
+      Pour chacune :
+      - canal : le numéro du canal, tel qu'il est dans la liste ;
+      - cible : les prospects visés, précisément : les métiers, les
+        tailles d'entreprise et les régions qui ont le mieux répondu
+        pendant le test ; sans réponse au test, reprends la cible du
+        plan ;
+      - angle : ce que les messages doivent mettre en avant, d'après ce
+        qui a plu et ce qui a bloqué.
+      Tu ne fixes ni le nombre de prospects ni le prix : ils sont réglés
+      ailleurs. Ton compte rendu dit, en deux phrases, ce que tu as
+      décidé et pourquoi.
+    tools:
+      - tool: fiche_business
+        mode: given
+        label: La fiche du business
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: fiche_produit
+        mode: given
+        label: La fiche produit
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: plan_valide_du_produit
+        mode: given
+        label: Le plan du produit
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: compte_rendu_du_test
+        mode: given
+        label: Le compte rendu et le bilan du test
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: campagnes_du_business
+        mode: given
+        label: Les campagnes du test
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: canaux_branches
+        mode: given
+        label: Les canaux branchés
+    output:
+      - {path: campagnes, type: list, min_items: 1, description: Les campagnes lourdes, une par canal.}
+      - {path: campagnes.canal, type: text, description: Le numéro du canal.}
+      - {path: campagnes.cible, type: text, description: Les prospects visés, précisément.}
+      - {path: campagnes.angle, type: text, description: Ce que les messages mettent en avant.}
+      - {path: compte_rendu, type: text, description: 'Ce que tu as décidé et pourquoi, en deux phrases.'}
+    writes:
+      - table: campaigns
+        operation: insert
+        for_each: campagnes
+        values:
+          venture_id: {source: task, value: venture_id}
+          phase: {source: fixed, value: full}
+          channel: {source: field, value: campagnes.canal}
+          target: {source: field, value: campagnes.cible}
+          angle: {source: field, value: campagnes.angle}
+          state: {source: fixed, value: READY}
+
+  - id: prevenir_interesses
+    title: Prévenir les intéressés du test
+    role: >-
+      Chaque contact du test qui avait dit « intéressé » ou « rendez-vous »
+      reçoit un premier message à rédiger : il apprend le premier que le
+      produit existe, avec son lien. Sans LLM.
+    step: prospection_lourde
+    type: capability
+    capability: db_read
+    queue: works
+    priority: 30
+    params:
+      tool_id: {source: fixed, value: interesses_du_test}
+      venture_id: {source: task, value: venture_id}
+    writes:
+      - table: touches
+        operation: insert
+        for_each: rows
+        values:
+          contact_id: {source: field, value: rows.contact_id}
+          venture_id: {source: field, value: rows.venture_id}
+          channel: {source: field, value: rows.channel}
+          address: {source: field, value: rows.address}
+          kind: {source: fixed, value: first}
+          status: {source: fixed, value: to_write}
+
+  - id: enregistrer_vente
+    title: Enregistrer une vente
+    role: >-
+      Un paiement est arrivé : le contact de ce business qui a l'e-mail du
+      payeur passe à « client », et ne reçoit plus de relance. Un acheteur
+      inconnu devient un contact entrant. La première vente d'un business
+      ouvre un ticket d'information. Sans LLM.
+    step: prospection_lourde
+    type: capability
+    capability: record_sale
+    queue: conversations
+    priority: 60
+    params:
+      transaction_id: {source: task, value: transaction_id}
+
+  # L'essai total (lot 12, décision Q99) : un seul essai, de bout en bout,
+  # qui suit le vrai pipeline dans le couloir d'essai. Ces invocations ne
+  # font que poser l'état de départ : le business « Calculatrice », son
+  # contact, puis, selon l'étape de départ, ce que les étapes d'avant
+  # auraient laissé. Tout le reste est le vrai pipeline.
+  - id: lancer_essai_total
+    title: Lancer l'essai total
+    role: >-
+      Crée le business d'essai « Calculatrice ». Lancée par le bouton de la
+      page Système, dans le couloir d'essai : tout ce que l'essai écrit
+      est marqué, et rien du vrai pipeline n'est touché. Sans LLM.
+    type: capability
+    capability: echo
+    queue: works
+    priority: 30
+    params:
+      depart: {source: task, value: depart}
     writes:
       - table: ventures
         operation: insert
@@ -5773,68 +6394,393 @@ invocations:
         values:
           name: {source: fixed, value: Calculatrice}
           description: {source: fixed, value: "Une calculatrice en ligne, simple et lisible, sur ordinateur comme sur mobile."}
-          sellable_offer: {source: fixed, value: "Un abonnement à la calculatrice, avec ce que les clients ont demandé."}
+          sellable_offer: {source: fixed, value: "Gratuite pendant l'essai."}
           family: {source: fixed, value: autre}
-          lifecycle: {source: fixed, value: PRODUCT_BUILDING}
-          trial: *essai_marque
-          choice_reason: {source: fixed, value: "Essai de bout en bout du produit fini depuis Mission Control."}
+          lifecycle: {source: fixed, value: CANDIDATE}
+          validate_drafts: {source: task, value: valider}
+
+  - id: creer_contact_essai_total
+    title: Créer le contact de l'essai total
+    role: >-
+      Crée la fiche de la personne qui essaie, avec les coordonnées tapées
+      au lancement et son accord pour l'appel de test (à toute heure,
+      décision Q79). C'est à elle, et à elle seule, que l'essai écrira et
+      téléphonera. Puis l'essai part de l'étape demandée. Sans LLM.
+    type: capability
+    capability: add_contact
+    queue: works
+    priority: 30
+    params:
+      venture_id: {source: task, value: venture_id}
+      name: {source: task, value: name}
+      email: {source: task, value: email}
+      phone: {source: task, value: phone}
+      call_consent: {source: fixed, value: test}
+
+  - id: essai_depart_poc
+    title: "Essai total : partir de l'étape 2"
+    role: >-
+      La calculatrice de l'essai est choisie pour un POC, comme par
+      « Choisir les business ». Sans LLM.
+    type: capability
+    capability: echo
+    queue: works
+    priority: 30
+    params:
+      venture_id: {source: task, value: venture_id}
+    writes:
+      - table: ventures
+        operation: update
+        key: {column: id, source: task, value: venture_id}
+        values:
+          lifecycle: {source: fixed, value: POC_SELECTED}
+          choice_reason: {source: fixed, value: "Essai total : départ à l'étape 2."}
+
+  - id: essai_plan_poc
+    title: "Essai total : le plan tout fait du POC"
+    role: >-
+      Dans l'essai total, le plan du POC de la calculatrice est tout fait
+      (on sait à quoi s'attendre, et on dépense peu) : sa fiche produit,
+      ses questions fréquentes, ses deux campagnes de test (un e-mail, un
+      appel) et son plan, qui part au ticket « Plan ». Sans LLM.
+    type: capability
+    capability: echo
+    queue: works
+    priority: 30
+    params:
+      venture_id: {source: task, value: venture_id}
+    writes:
+      - table: product_plans
+        operation: insert
+        values:
+          venture_id: {source: task, value: venture_id}
+          kind: {source: fixed, value: poc}
+          round: {source: fixed, value: '1'}
+          status: {source: fixed, value: challenged}
+          channel: {source: fixed, value: email}
+          hypothesis: {source: fixed, value: "Des visiteurs veulent une calculatrice en ligne simple, qui marche aussi bien au doigt qu'au clavier."}
+          target: {source: fixed, value: "Tout le monde ; c'est l'essai total de Serge."}
+          duration_days: {source: fixed, value: "10"}
+          price: {source: fixed, value: "Gratuite."}
+          deliverable: {source: fixed, value: "Une calculatrice en ligne : les quatre opérations, les nombres à virgule, l'effacement."}
+          plan: {source: fixed, value: "Une seule page, en français. En haut, l'écran : il affiche le calcul en cours et le résultat, avec une virgule décimale (3,5) ; 0 au départ. Dessous, le pavé : les chiffres 0 à 9, la virgule, les quatre opérations (+, −, ×, ÷), « = », « C » (tout effacer) et « ← » (effacer le dernier chiffre). Le clavier marche aussi : chiffres, + - * /, la virgule ou le point, Entrée pour « = », Échap pour « C », Retour arrière pour « ← ». Les calculs se font dans l'ordre où on les tape (12 + 7 × 2 = 38, comme une calculatrice de poche). Une division par zéro affiche « Erreur » jusqu'à « C ». Les résultats sont arrondis à 10 chiffres significatifs, pour que 0,1 + 0,2 donne 0,3. Sur mobile, tout le pavé tient dans l'écran sans défiler, avec des boutons d'au moins 48 pixels. Aucun compte, aucune donnée gardée, aucun service extérieur."}
+          scenarios: {source: fixed, value: "1. Ouvrir la page : l'écran affiche 0 et tout le pavé est visible. 2. Taper 12 + 7 = avec les boutons : l'écran affiche 19. 3. Taper 7 ÷ 2 = : l'écran affiche 3,5. 4. Taper 5 ÷ 0 = : l'écran affiche Erreur ; appuyer sur C : l'écran affiche 0. 5. Taper 0,1 + 0,2 = : l'écran affiche 0,3. 6. Taper 123 puis ← : l'écran affiche 12. 7. Au clavier, taper 9*9 puis Entrée : l'écran affiche 81. 8. Sur mobile, refaire le scénario 2 au doigt : tout le pavé tient dans l'écran, sans défiler."}
+          challenge: {source: fixed, value: "Plan tout fait de l'essai total : pas de critique."}
+      - table: product_sheets
+        operation: delete
+        key: {column: venture_id, source: task, value: venture_id}
       - table: product_sheets
         operation: insert
-        parent: 0
         values:
-          venture_id: {source: parent_row, value: id}
+          venture_id: {source: task, value: venture_id}
           summary: {source: fixed, value: "Une calculatrice en ligne pour les quatre opérations, lisible sur ordinateur et sur mobile, sans compte."}
           limits: {source: fixed, value: "Pas de fonctions scientifiques, pas d'historique des calculs."}
-          price: {source: fixed, value: Gratuite pendant le test.}
+          price: {source: fixed, value: "Gratuite."}
           delays: {source: fixed, value: "Tout de suite : on ouvre la page et on calcule."}
           usage: {source: fixed, value: "On tape le calcul avec les boutons ou le clavier, puis « = »."}
       - table: product_faq
+        operation: delete
+        key: {column: venture_id, source: task, value: venture_id}
+      - table: product_faq
         operation: insert
-        parent: 0
         values:
-          venture_id: {source: parent_row, value: id}
+          venture_id: {source: task, value: venture_id}
           question: {source: fixed, value: "Faut-il créer un compte ?"}
           answer: {source: fixed, value: "Non : on ouvre la page et on calcule."}
+      - table: product_faq
+        operation: insert
+        values:
+          venture_id: {source: task, value: venture_id}
+          question: {source: fixed, value: "Que se passe-t-il si je divise par zéro ?"}
+          answer: {source: fixed, value: "L'écran affiche « Erreur » ; la touche C remet à zéro."}
+      - table: campaigns
+        operation: insert
+        values:
+          venture_id: {source: task, value: venture_id}
+          phase: {source: fixed, value: smoke}
+          channel: {source: fixed, value: email}
+          state: {source: fixed, value: DRAFT}
+      - table: campaigns
+        operation: insert
+        values:
+          venture_id: {source: task, value: venture_id}
+          phase: {source: fixed, value: smoke}
+          channel: {source: fixed, value: voice}
+          state: {source: fixed, value: DRAFT}
+
+  - id: essai_depart_test_leger
+    title: "Essai total : partir de l'étape 3"
+    role: >-
+      Pose l'état d'où part le test léger : la calculatrice a son plan
+      validé, sa fiche produit et ses deux campagnes prêtes. Son POC n'a
+      pas été construit : les messages n'ont pas de site à montrer. Sans
+      LLM.
+    type: capability
+    capability: echo
+    queue: works
+    priority: 30
+    params:
+      venture_id: {source: task, value: venture_id}
+    writes:
+      - table: ventures
+        operation: update
+        key: {column: id, source: task, value: venture_id}
+        values:
+          lifecycle: {source: fixed, value: SMOKE_READY}
+          choice_reason: {source: fixed, value: "Essai total : départ à l'étape 3."}
       - table: product_plans
         operation: insert
-        parent: 0
         values:
-          venture_id: {source: parent_row, value: id}
+          venture_id: {source: task, value: venture_id}
           kind: {source: fixed, value: poc}
           round: {source: fixed, value: '1'}
           status: {source: fixed, value: validated}
-          hypothesis: {source: fixed, value: "Des visiteurs veulent une calculatrice en ligne simple, qui marche aussi bien au doigt qu'au clavier."}
-          target: {source: fixed, value: "Tout le monde ; c'est un essai de bout en bout de Serge."}
           channel: {source: fixed, value: email}
-          prospects: {source: fixed, value: '30'}
-          duration_days: {source: fixed, value: '10'}
-          price: {source: fixed, value: Gratuite.}
+          hypothesis: {source: fixed, value: "Des visiteurs veulent une calculatrice en ligne simple, qui marche aussi bien au doigt qu'au clavier."}
+          target: {source: fixed, value: "Tout le monde ; c'est l'essai total de Serge."}
+          duration_days: {source: fixed, value: "10"}
+          price: {source: fixed, value: "Gratuite."}
           deliverable: {source: fixed, value: "Une calculatrice en ligne : les quatre opérations, les nombres à virgule, l'effacement."}
-          plan: {source: fixed, value: "Une seule page : l'écran, le pavé (0 à 9, virgule, + − × ÷, =, C, ←), le clavier, « Erreur » pour une division par zéro, des résultats arrondis à 10 chiffres significatifs, un pavé qui tient sur mobile."}
-          scenarios: {source: fixed, value: "1. Taper 12 + 7 = : 19. 2. Taper 7 ÷ 2 = : 3,5. 3. Taper 5 ÷ 0 = : Erreur, puis C : 0. 4. Sur mobile, tout le pavé tient dans l'écran."}
-          challenge: {source: fixed, value: "Plan tout fait de l'essai de bout en bout : pas de critique."}
+          plan: {source: fixed, value: "Une seule page, en français. En haut, l'écran : il affiche le calcul en cours et le résultat, avec une virgule décimale (3,5) ; 0 au départ. Dessous, le pavé : les chiffres 0 à 9, la virgule, les quatre opérations (+, −, ×, ÷), « = », « C » (tout effacer) et « ← » (effacer le dernier chiffre). Le clavier marche aussi : chiffres, + - * /, la virgule ou le point, Entrée pour « = », Échap pour « C », Retour arrière pour « ← ». Les calculs se font dans l'ordre où on les tape (12 + 7 × 2 = 38, comme une calculatrice de poche). Une division par zéro affiche « Erreur » jusqu'à « C ». Les résultats sont arrondis à 10 chiffres significatifs, pour que 0,1 + 0,2 donne 0,3. Sur mobile, tout le pavé tient dans l'écran sans défiler, avec des boutons d'au moins 48 pixels. Aucun compte, aucune donnée gardée, aucun service extérieur."}
+          scenarios: {source: fixed, value: "1. Ouvrir la page : l'écran affiche 0 et tout le pavé est visible. 2. Taper 12 + 7 = avec les boutons : l'écran affiche 19. 3. Taper 7 ÷ 2 = : l'écran affiche 3,5. 4. Taper 5 ÷ 0 = : l'écran affiche Erreur ; appuyer sur C : l'écran affiche 0. 5. Taper 0,1 + 0,2 = : l'écran affiche 0,3. 6. Taper 123 puis ← : l'écran affiche 12. 7. Au clavier, taper 9*9 puis Entrée : l'écran affiche 81. 8. Sur mobile, refaire le scénario 2 au doigt : tout le pavé tient dans l'écran, sans défiler."}
+          challenge: {source: fixed, value: "Plan tout fait de l'essai total : pas de critique."}
+      - table: product_sheets
+        operation: delete
+        key: {column: venture_id, source: task, value: venture_id}
+      - table: product_sheets
+        operation: insert
+        values:
+          venture_id: {source: task, value: venture_id}
+          summary: {source: fixed, value: "Une calculatrice en ligne pour les quatre opérations, lisible sur ordinateur et sur mobile, sans compte."}
+          limits: {source: fixed, value: "Pas de fonctions scientifiques, pas d'historique des calculs."}
+          price: {source: fixed, value: "Gratuite."}
+          delays: {source: fixed, value: "Tout de suite : on ouvre la page et on calcule."}
+          usage: {source: fixed, value: "On tape le calcul avec les boutons ou le clavier, puis « = »."}
+      - table: product_faq
+        operation: delete
+        key: {column: venture_id, source: task, value: venture_id}
+      - table: product_faq
+        operation: insert
+        values:
+          venture_id: {source: task, value: venture_id}
+          question: {source: fixed, value: "Faut-il créer un compte ?"}
+          answer: {source: fixed, value: "Non : on ouvre la page et on calcule."}
+      - table: product_faq
+        operation: insert
+        values:
+          venture_id: {source: task, value: venture_id}
+          question: {source: fixed, value: "Que se passe-t-il si je divise par zéro ?"}
+          answer: {source: fixed, value: "L'écran affiche « Erreur » ; la touche C remet à zéro."}
+      - table: campaigns
+        operation: insert
+        values:
+          venture_id: {source: task, value: venture_id}
+          phase: {source: fixed, value: smoke}
+          channel: {source: fixed, value: email}
+          state: {source: fixed, value: READY}
+      - table: campaigns
+        operation: insert
+        values:
+          venture_id: {source: task, value: venture_id}
+          phase: {source: fixed, value: smoke}
+          channel: {source: fixed, value: voice}
+          state: {source: fixed, value: READY}
+
+  - id: essai_depart_produit
+    title: "Essai total : partir de l'étape 5"
+    role: >-
+      Pose l'état d'où part la construction du produit fini : la
+      calculatrice a son plan de POC, un test retenu avec son bilan, et
+      trois demandes de clients. Sans LLM.
+    type: capability
+    capability: echo
+    queue: works
+    priority: 30
+    params:
+      venture_id: {source: task, value: venture_id}
+    writes:
+      - table: ventures
+        operation: update
+        key: {column: id, source: task, value: venture_id}
+        values:
+          lifecycle: {source: fixed, value: PRODUCT_BUILDING}
+          sellable_offer: {source: fixed, value: "Un abonnement à la calculatrice, avec ce que les clients ont demandé."}
+          choice_reason: {source: fixed, value: "Essai total : départ à l'étape 5."}
+      - table: product_plans
+        operation: insert
+        values:
+          venture_id: {source: task, value: venture_id}
+          kind: {source: fixed, value: poc}
+          round: {source: fixed, value: '1'}
+          status: {source: fixed, value: validated}
+          channel: {source: fixed, value: email}
+          hypothesis: {source: fixed, value: "Des visiteurs veulent une calculatrice en ligne simple, qui marche aussi bien au doigt qu'au clavier."}
+          target: {source: fixed, value: "Tout le monde ; c'est l'essai total de Serge."}
+          duration_days: {source: fixed, value: "10"}
+          price: {source: fixed, value: "Gratuite."}
+          deliverable: {source: fixed, value: "Une calculatrice en ligne : les quatre opérations, les nombres à virgule, l'effacement."}
+          plan: {source: fixed, value: "Une seule page, en français. En haut, l'écran : il affiche le calcul en cours et le résultat, avec une virgule décimale (3,5) ; 0 au départ. Dessous, le pavé : les chiffres 0 à 9, la virgule, les quatre opérations (+, −, ×, ÷), « = », « C » (tout effacer) et « ← » (effacer le dernier chiffre). Le clavier marche aussi : chiffres, + - * /, la virgule ou le point, Entrée pour « = », Échap pour « C », Retour arrière pour « ← ». Les calculs se font dans l'ordre où on les tape (12 + 7 × 2 = 38, comme une calculatrice de poche). Une division par zéro affiche « Erreur » jusqu'à « C ». Les résultats sont arrondis à 10 chiffres significatifs, pour que 0,1 + 0,2 donne 0,3. Sur mobile, tout le pavé tient dans l'écran sans défiler, avec des boutons d'au moins 48 pixels. Aucun compte, aucune donnée gardée, aucun service extérieur."}
+          scenarios: {source: fixed, value: "1. Ouvrir la page : l'écran affiche 0 et tout le pavé est visible. 2. Taper 12 + 7 = avec les boutons : l'écran affiche 19. 3. Taper 7 ÷ 2 = : l'écran affiche 3,5. 4. Taper 5 ÷ 0 = : l'écran affiche Erreur ; appuyer sur C : l'écran affiche 0. 5. Taper 0,1 + 0,2 = : l'écran affiche 0,3. 6. Taper 123 puis ← : l'écran affiche 12. 7. Au clavier, taper 9*9 puis Entrée : l'écran affiche 81. 8. Sur mobile, refaire le scénario 2 au doigt : tout le pavé tient dans l'écran, sans défiler."}
+          challenge: {source: fixed, value: "Plan tout fait de l'essai total : pas de critique."}
+      - table: product_sheets
+        operation: delete
+        key: {column: venture_id, source: task, value: venture_id}
+      - table: product_sheets
+        operation: insert
+        values:
+          venture_id: {source: task, value: venture_id}
+          summary: {source: fixed, value: "Une calculatrice en ligne pour les quatre opérations, lisible sur ordinateur et sur mobile, sans compte."}
+          limits: {source: fixed, value: "Pas de fonctions scientifiques, pas d'historique des calculs."}
+          price: {source: fixed, value: "Gratuite pendant le test."}
+          delays: {source: fixed, value: "Tout de suite : on ouvre la page et on calcule."}
+          usage: {source: fixed, value: "On tape le calcul avec les boutons ou le clavier, puis « = »."}
+      - table: product_faq
+        operation: delete
+        key: {column: venture_id, source: task, value: venture_id}
+      - table: product_faq
+        operation: insert
+        values:
+          venture_id: {source: task, value: venture_id}
+          question: {source: fixed, value: "Faut-il créer un compte ?"}
+          answer: {source: fixed, value: "Non : on ouvre la page et on calcule."}
+      - table: product_faq
+        operation: insert
+        values:
+          venture_id: {source: task, value: venture_id}
+          question: {source: fixed, value: "Que se passe-t-il si je divise par zéro ?"}
+          answer: {source: fixed, value: "L'écran affiche « Erreur » ; la touche C remet à zéro."}
+      - table: test_reports
+        operation: insert
+        values:
+          venture_id: {source: task, value: venture_id}
+          contacted: {source: fixed, value: '2'}
+          replies: {source: fixed, value: '1'}
+          points: {source: fixed, value: '8'}
+          figures: {source: fixed, value: "email : 1 contacté(s)\nvoice : 1 contacté(s)\nRéactions : 1 « intéressé »\nPoints : 8"}
+          verdict: {source: fixed, value: retenu}
+          verdict_reason: {source: fixed, value: "Compte rendu tout fait de l'essai total."}
+          summary: {source: fixed, value: "Le contact de l'essai a trouvé la calculatrice simple et lisible ; il demande l'historique des calculs et le pourcentage."}
       - table: customer_requests
         operation: insert
-        parent: 0
         values:
-          venture_id: {source: parent_row, value: id}
-          kind: {source: fixed, value: idée}
+          venture_id: {source: task, value: venture_id}
+          kind: {source: fixed, value: "idée"}
           text: {source: fixed, value: "J'aimerais retrouver mes derniers calculs quand je reviens sur la page, même le lendemain."}
       - table: customer_requests
         operation: insert
-        parent: 0
         values:
-          venture_id: {source: parent_row, value: id}
-          kind: {source: fixed, value: idée}
+          venture_id: {source: task, value: venture_id}
+          kind: {source: fixed, value: "idée"}
           text: {source: fixed, value: "Il manque le pourcentage et la racine carrée pour mes devis."}
       - table: customer_requests
         operation: insert
-        parent: 0
         values:
-          venture_id: {source: parent_row, value: id}
-          kind: {source: fixed, value: insatisfaction}
+          venture_id: {source: task, value: venture_id}
+          kind: {source: fixed, value: "insatisfaction"}
           text: {source: fixed, value: "1 ÷ 3 affiche une ligne de chiffres qui dépasse de l'écran sur mon téléphone."}
 
+  - id: essai_depart_vente
+    title: "Essai total : partir de l'étape 6"
+    role: >-
+      Pose l'état d'où part la prospection lourde : la calculatrice est
+      « en vente », avec sa fiche produit et le compte rendu de son test.
+      Son produit n'a pas été construit : les messages n'ont pas de site à
+      montrer. Sans LLM.
+    type: capability
+    capability: echo
+    queue: works
+    priority: 30
+    params:
+      venture_id: {source: task, value: venture_id}
+    writes:
+      - table: ventures
+        operation: update
+        key: {column: id, source: task, value: venture_id}
+        values:
+          lifecycle: {source: fixed, value: PRODUCT_READY}
+          sellable_offer: {source: fixed, value: "Un abonnement à la calculatrice, avec ce que les clients ont demandé."}
+          choice_reason: {source: fixed, value: "Essai total : départ à l'étape 6."}
+      - table: product_plans
+        operation: insert
+        values:
+          venture_id: {source: task, value: venture_id}
+          kind: {source: fixed, value: poc}
+          round: {source: fixed, value: '1'}
+          status: {source: fixed, value: validated}
+          channel: {source: fixed, value: email}
+          hypothesis: {source: fixed, value: "Des visiteurs veulent une calculatrice en ligne simple, qui marche aussi bien au doigt qu'au clavier."}
+          target: {source: fixed, value: "Tout le monde ; c'est l'essai total de Serge."}
+          duration_days: {source: fixed, value: "10"}
+          price: {source: fixed, value: "Gratuite."}
+          deliverable: {source: fixed, value: "Une calculatrice en ligne : les quatre opérations, les nombres à virgule, l'effacement."}
+          plan: {source: fixed, value: "Une seule page, en français. En haut, l'écran : il affiche le calcul en cours et le résultat, avec une virgule décimale (3,5) ; 0 au départ. Dessous, le pavé : les chiffres 0 à 9, la virgule, les quatre opérations (+, −, ×, ÷), « = », « C » (tout effacer) et « ← » (effacer le dernier chiffre). Le clavier marche aussi : chiffres, + - * /, la virgule ou le point, Entrée pour « = », Échap pour « C », Retour arrière pour « ← ». Les calculs se font dans l'ordre où on les tape (12 + 7 × 2 = 38, comme une calculatrice de poche). Une division par zéro affiche « Erreur » jusqu'à « C ». Les résultats sont arrondis à 10 chiffres significatifs, pour que 0,1 + 0,2 donne 0,3. Sur mobile, tout le pavé tient dans l'écran sans défiler, avec des boutons d'au moins 48 pixels. Aucun compte, aucune donnée gardée, aucun service extérieur."}
+          scenarios: {source: fixed, value: "1. Ouvrir la page : l'écran affiche 0 et tout le pavé est visible. 2. Taper 12 + 7 = avec les boutons : l'écran affiche 19. 3. Taper 7 ÷ 2 = : l'écran affiche 3,5. 4. Taper 5 ÷ 0 = : l'écran affiche Erreur ; appuyer sur C : l'écran affiche 0. 5. Taper 0,1 + 0,2 = : l'écran affiche 0,3. 6. Taper 123 puis ← : l'écran affiche 12. 7. Au clavier, taper 9*9 puis Entrée : l'écran affiche 81. 8. Sur mobile, refaire le scénario 2 au doigt : tout le pavé tient dans l'écran, sans défiler."}
+          challenge: {source: fixed, value: "Plan tout fait de l'essai total : pas de critique."}
+      - table: product_sheets
+        operation: delete
+        key: {column: venture_id, source: task, value: venture_id}
+      - table: product_sheets
+        operation: insert
+        values:
+          venture_id: {source: task, value: venture_id}
+          summary: {source: fixed, value: "Une calculatrice en ligne pour les quatre opérations, lisible sur ordinateur et sur mobile, sans compte."}
+          limits: {source: fixed, value: "Pas de fonctions scientifiques, pas d'historique des calculs."}
+          price: {source: fixed, value: "Gratuite pendant le test."}
+          delays: {source: fixed, value: "Tout de suite : on ouvre la page et on calcule."}
+          usage: {source: fixed, value: "On tape le calcul avec les boutons ou le clavier, puis « = »."}
+      - table: product_faq
+        operation: delete
+        key: {column: venture_id, source: task, value: venture_id}
+      - table: product_faq
+        operation: insert
+        values:
+          venture_id: {source: task, value: venture_id}
+          question: {source: fixed, value: "Faut-il créer un compte ?"}
+          answer: {source: fixed, value: "Non : on ouvre la page et on calcule."}
+      - table: product_faq
+        operation: insert
+        values:
+          venture_id: {source: task, value: venture_id}
+          question: {source: fixed, value: "Que se passe-t-il si je divise par zéro ?"}
+          answer: {source: fixed, value: "L'écran affiche « Erreur » ; la touche C remet à zéro."}
+      - table: test_reports
+        operation: insert
+        values:
+          venture_id: {source: task, value: venture_id}
+          contacted: {source: fixed, value: '2'}
+          replies: {source: fixed, value: '1'}
+          points: {source: fixed, value: '8'}
+          figures: {source: fixed, value: "email : 1 contacté(s)\nvoice : 1 contacté(s)\nRéactions : 1 « intéressé »\nPoints : 8"}
+          verdict: {source: fixed, value: retenu}
+          verdict_reason: {source: fixed, value: "Compte rendu tout fait de l'essai total."}
+          summary: {source: fixed, value: "Le contact de l'essai a trouvé la calculatrice simple et lisible ; il demande l'historique des calculs et le pourcentage."}
+
+  - id: prospects_essai
+    title: "Essai total : le prospect de l'essai"
+    role: >-
+      Dans l'essai total, la prospection n'a pas lieu (décision Q99) : au
+      lieu de chercher des prospects, la campagne reçoit un premier message
+      à rédiger pour le contact tapé au lancement, sur son canal. Sans LLM.
+    type: capability
+    capability: db_read
+    queue: works
+    priority: 30
+    params:
+      tool_id: {source: fixed, value: contacts_a_contacter}
+      venture_id: {source: task, value: venture_id}
+      address_kind: {source: task, value: address_kind}
+    writes:
+      - table: touches
+        operation: insert
+        for_each: rows
+        values:
+          campaign_id: {source: task, value: campaign_id}
+          contact_id: {source: field, value: rows.contact_id}
+          venture_id: {source: field, value: rows.venture_id}
+          channel: {source: task, value: channel}
+          address: {source: field, value: rows.address}
+          kind: {source: fixed, value: first}
+          status: {source: fixed, value: to_write}
 links:
   - id: cycle_ouvert_vers_exploration
     title: Le cycle ouvert part en exploration
@@ -5948,52 +6894,10 @@ links:
     to: envoyer_message
     params:
       touch_id: {source: task, value: touch_id}
-  - id: essai_vers_contact
-    title: Le business d'essai reçoit son contact
-    from: lancer_essai
-    to: creer_contact_essai
-    mode: per_row
-    write: 1
-    params:
-      venture_id: {source: row, value: id}
-      name: {source: task, value: name}
-      email: {source: task, value: email}
-      phone: {source: task, value: phone}
-  - id: contact_essai_vers_message
-    title: Le premier e-mail est rédigé
-    from: creer_contact_essai
-    to: ecrire_premier_message
-    mode: per_row
-    write: 0
-    params:
-      touch_id: {source: row, value: id}
-      contact_id: {source: row, value: contact_id}
-      venture_id: {source: row, value: venture_id}
-  - id: contact_essai_vers_appel
-    title: Le premier appel est préparé
-    from: creer_contact_essai
-    to: preparer_premier_appel
-    mode: per_row
-    write: 1
-    params:
-      touch_id: {source: row, value: id}
-      contact_id: {source: row, value: contact_id}
-      venture_id: {source: row, value: venture_id}
-  - id: premier_message_vers_envoi
-    title: Le premier e-mail part
-    from: ecrire_premier_message
-    to: envoyer_message
-    params:
-      touch_id: {source: task, value: touch_id}
-  - id: premier_appel_vers_envoi
-    title: Le premier appel part
-    from: preparer_premier_appel
-    to: envoyer_message
-    params:
-      touch_id: {source: task, value: touch_id}
 
   # --- L'étape 2 : du choix d'un business à son test léger (lot 10, Q91) ---
   - id: choix_vers_conception_poc
+    lane: real
     title: Un business choisi pour un POC part en conception
     from: choisir_business
     to: concevoir_poc
@@ -6003,34 +6907,6 @@ links:
     params:
       venture_id: {source: row, value: id}
       tour: {source: fixed, value: '1'}
-  - id: essai_vers_choix_etape2
-    title: Le business de l'essai est choisi pour un POC
-    from: creer_business_essai
-    to: choisir_business_essai
-    mode: per_row
-    write: 0
-    params:
-      venture_id: {source: row, value: id}
-  - id: essai_choisi_vers_conception
-    title: Le business de l'essai part en conception
-    from: choisir_business_essai
-    to: concevoir_poc
-    mode: per_row
-    write: 0
-    condition: {field: lifecycle, op: '=', value: POC_SELECTED}
-    params:
-      venture_id: {source: row, value: id}
-      tour: {source: fixed, value: '1'}
-  - id: bout_en_bout_poc_vers_construction
-    title: "Bout en bout : la calculatrice part en construction"
-    from: bout_en_bout_poc
-    to: construire_poc
-    mode: per_row
-    write: 0
-    params:
-      venture_id: {source: row, value: id}
-      passage: {source: fixed, value: '1'}
-      reprise: {source: fixed, value: '1'}
   - id: plan_vers_critique
     title: Le plan part à la critique
     from: concevoir_poc
@@ -6218,25 +7094,6 @@ links:
     params:
       raison: {source: field, value: detail}
 
-  # --- L'étape 5 : le vrai produit (lot 10, Q41, Q43 et Q91) ---
-  - id: lancement_vers_conception_produit
-    title: Le business part en conception de son produit
-    from: lancer_produit
-    to: concevoir_produit
-    mode: per_row
-    write: 0
-    params:
-      venture_id: {source: row, value: id}
-      tour: {source: fixed, value: '1'}
-  - id: bout_en_bout_produit_vers_conception
-    title: "Bout en bout : la calculatrice part en conception de son produit"
-    from: bout_en_bout_produit
-    to: concevoir_produit
-    mode: per_row
-    write: 0
-    params:
-      venture_id: {source: row, value: id}
-      tour: {source: fixed, value: '1'}
   - id: plan_produit_vers_critique
     title: Le plan du produit part à la critique
     from: concevoir_produit
@@ -6416,6 +7273,7 @@ links:
       venture_id: {source: task, value: venture_id}
       build_id: {source: task, value: build_id}
   - id: domaine_a_acheter
+    lane: real
     title: Pas de domaine commun ; Serge achète un domaine
     from: choisir_domaine
     to: acheter_domaine
@@ -6524,6 +7382,7 @@ links:
       titre: {source: fixed, value: "Un produit validé n'a pas pu passer en prod"}
       raison: {source: field, value: detail}
   - id: paiement_test_vers_produit_pret
+    lane: real
     title: Le paiement test est arrivé ; le produit est en vente
     from: paiement_test
     to: produit_pret
@@ -6547,6 +7406,267 @@ links:
       titre: {source: fixed, value: Un produit est en vente}
       raison: {source: task, value: compte_rendu}
 
+  # Le lot 12 : les campagnes, la fin d'un test, le choix du principal, la
+  # prospection lourde. `lane` : le lien n'existe que dans le vrai pipeline
+  # (real) ou que dans l'essai total (trial).
+  - id: demarrage_vers_prospects
+    title: La campagne démarre ; Serge lui cherche des prospects
+    from: demarrer_campagne
+    to: trouver_prospects
+    lane: real
+    condition: {field: state, op: '=', value: RUNNING}
+    params:
+      campaign_id: {source: field, value: campaign_id}
+      venture_id: {source: field, value: venture_id}
+  - id: demarrage_vers_prospect_essai
+    title: "Essai total : la campagne démarre ; son prospect est le contact de l'essai"
+    from: demarrer_campagne
+    to: prospects_essai
+    lane: trial
+    condition: {field: state, op: '=', value: RUNNING}
+    params:
+      campaign_id: {source: field, value: campaign_id}
+      venture_id: {source: field, value: venture_id}
+      channel: {source: field, value: channel}
+      address_kind: {source: field, value: address_kind}
+  - id: demarrage_refuse_vers_ticket
+    title: La campagne n'a pas pu démarrer
+    from: demarrer_campagne
+    to: prevenir_prospection
+    condition: {field: state, op: '=', value: CANCELLED}
+    params:
+      titre: {source: fixed, value: Une campagne n'a pas pu démarrer}
+      raison: {source: field, value: raison}
+  - id: suivi_vers_prospects
+    title: Il manque des prospects à la campagne
+    from: suivre_campagne
+    to: trouver_prospects
+    lane: real
+    condition: {field: action, op: '=', value: chercher}
+    params:
+      campaign_id: {source: field, value: campaign_id}
+      venture_id: {source: field, value: venture_id}
+  - id: suivi_vers_mesure
+    title: La dernière campagne de test est close ; le test est mesuré
+    from: suivre_campagne
+    to: mesurer_test
+    condition: {field: test_fini, op: '=', value: oui}
+    params:
+      venture_id: {source: field, value: venture_id}
+  - id: envoi_vers_suivi_essai
+    title: "Essai total : après chaque envoi, la campagne est suivie"
+    from: envoyer_message
+    to: suivre_campagne
+    lane: trial
+    condition: {field: campaign_id, op: non_vide}
+    params:
+      campaign_id: {source: field, value: campaign_id}
+  - id: premier_message_par_email
+    title: Un premier message par e-mail
+    from: rediger_premier_message
+    to: premier_email
+    condition: {field: channel, op: '=', value: email}
+    params: &premier_message
+      touch_id: {source: task, value: touch_id}
+      contact_id: {source: task, value: contact_id}
+      venture_id: {source: task, value: venture_id}
+  - id: premier_message_par_appel
+    title: Un premier message par téléphone
+    from: rediger_premier_message
+    to: premier_appel
+    condition: {field: channel, op: '=', value: voice}
+    params: *premier_message
+  - id: premier_email_vers_envoi
+    title: Le premier e-mail est écrit
+    from: premier_email
+    to: envoyer_message
+    params:
+      touch_id: {source: task, value: touch_id}
+  - id: premier_appel_vers_envoi
+    title: Le premier appel est préparé
+    from: premier_appel
+    to: envoyer_message
+    params:
+      touch_id: {source: task, value: touch_id}
+  - id: mesure_vers_bilan
+    title: Le test est mesuré ; son bilan est écrit
+    from: mesurer_test
+    to: faire_bilan
+    mode: per_row
+    write: 0
+    params:
+      report_id: {source: row, value: id}
+      venture_id: {source: row, value: venture_id}
+      verdict: {source: row, value: verdict}
+  - id: bilan_vers_conclusion
+    title: Le bilan est écrit ; le test est conclu
+    from: faire_bilan
+    to: conclure_test
+    params:
+      venture_id: {source: task, value: venture_id}
+      verdict: {source: task, value: verdict}
+  - id: proposition_vers_ticket
+    title: La proposition de principal part au ticket
+    from: choisir_principal
+    to: demander_choix_principal
+    mode: per_row
+    write: 0
+    params:
+      choice_id: {source: row, value: id}
+      raison: {source: fixed, value: 'Serge propose le business principal : le valider lance la construction de son produit fini.'}
+  - id: choix_vers_conception_produit
+    title: Le principal est choisi ; son produit fini est conçu
+    from: appliquer_choix_principal
+    to: concevoir_produit
+    mode: per_row
+    write: 0
+    condition: {field: lifecycle, op: '=', value: PRODUCT_BUILDING}
+    params:
+      venture_id: {source: row, value: id}
+      tour: {source: fixed, value: '1'}
+  - id: choix_a_redemander
+    title: Le nom écrit ne désigne aucun business du ticket
+    from: appliquer_choix_principal
+    to: demander_choix_principal
+    condition: {field: choice_id, op: non_vide}
+    params:
+      choice_id: {source: field, value: choice_id}
+      raison: {source: field, value: raison}
+  - id: lourde_vers_interesses
+    title: Les intéressés du test sont prévenus les premiers
+    from: preparer_prospection_lourde
+    to: prevenir_interesses
+    params:
+      venture_id: {source: task, value: venture_id}
+  - id: lourde_vers_ticket
+    title: La prospection lourde est lancée
+    from: preparer_prospection_lourde
+    to: prevenir_prospection
+    params:
+      titre: {source: fixed, value: La prospection lourde d'un business est lancée}
+      raison: {source: field, value: compte_rendu}
+  - id: premiere_vente_vers_ticket
+    title: La première vente d'un business
+    from: enregistrer_vente
+    to: prevenir_prospection
+    condition: {field: premiere, op: '=', value: oui}
+    params:
+      titre: {source: fixed, value: Première vente d'un business}
+      raison: {source: field, value: montant}
+
+  # L'essai total (Q99) : le départ, puis les seuls endroits où l'essai
+  # quitte le vrai chemin.
+  - id: essai_total_vers_contact
+    title: "Essai total : le business est créé ; son contact aussi"
+    from: lancer_essai_total
+    to: creer_contact_essai_total
+    mode: per_row
+    write: 0
+    params:
+      venture_id: {source: row, value: id}
+      name: {source: task, value: name}
+      email: {source: task, value: email}
+      phone: {source: task, value: phone}
+      depart: {source: task, value: depart}
+  - id: essai_total_depart_1
+    title: "Essai total : départ à l'étape 1, l'écoute du web"
+    from: creer_contact_essai_total
+    to: ouvrir_cycle
+    condition: {field: depart, op: '=', value: '1'}
+    params: &guide_essai
+      guide: {source: fixed, value: "Essai total de Serge : cherche des besoins autour des calculatrices et des petits outils de calcul en ligne."}
+  - id: essai_total_depart_defaut
+    title: "Essai total : sans étape de départ, l'écoute du web"
+    from: creer_contact_essai_total
+    to: ouvrir_cycle
+    condition: {field: depart, op: '=', value: ''}
+    params: *guide_essai
+  - id: essai_total_depart_2
+    title: "Essai total : départ à l'étape 2, le POC"
+    from: creer_contact_essai_total
+    to: essai_depart_poc
+    condition: {field: depart, op: '=', value: '2'}
+    params: &business_essai
+      venture_id: {source: task, value: venture_id}
+  - id: essai_total_depart_3
+    title: "Essai total : départ à l'étape 3, le test léger"
+    from: creer_contact_essai_total
+    to: essai_depart_test_leger
+    condition: {field: depart, op: '=', value: '3'}
+    params: *business_essai
+  - id: essai_total_depart_5
+    title: "Essai total : départ à l'étape 5, le produit fini"
+    from: creer_contact_essai_total
+    to: essai_depart_produit
+    condition: {field: depart, op: '=', value: '5'}
+    params: *business_essai
+  - id: essai_total_depart_6
+    title: "Essai total : départ à l'étape 6, la prospection lourde"
+    from: creer_contact_essai_total
+    to: essai_depart_vente
+    condition: {field: depart, op: '=', value: '6'}
+    params: *business_essai
+  - id: essai_choisi_vers_plan
+    title: "Essai total : la calculatrice est choisie ; son plan est tout fait"
+    from: essai_depart_poc
+    to: essai_plan_poc
+    mode: per_row
+    write: 0
+    params:
+      venture_id: {source: row, value: id}
+  - id: choix_vers_plan_tout_fait
+    title: "Essai total : le business choisi a un plan tout fait"
+    from: choisir_business
+    to: essai_plan_poc
+    mode: per_row
+    write: 0
+    lane: trial
+    condition: {field: lifecycle, op: '=', value: POC_SELECTED}
+    params:
+      venture_id: {source: row, value: id}
+  - id: plan_tout_fait_vers_ticket
+    title: "Essai total : le plan tout fait part au ticket « Plan »"
+    from: essai_plan_poc
+    to: demander_validation_plan
+    mode: per_row
+    write: 0
+    params:
+      plan_id: {source: row, value: id}
+  - id: essai_produit_vers_conception
+    title: "Essai total : le produit fini de la calculatrice est conçu"
+    from: essai_depart_produit
+    to: concevoir_produit
+    mode: per_row
+    write: 0
+    params:
+      venture_id: {source: row, value: id}
+      tour: {source: fixed, value: '1'}
+  - id: paiement_vers_captcha_essai
+    title: "Essai total : après le paiement test, le captcha avec un humain"
+    from: paiement_test
+    to: essayer_captcha
+    lane: trial
+    condition: {field: paye, op: '=', value: oui}
+    params:
+      venture_id: {source: task, value: venture_id}
+      compte_rendu: {source: field, value: compte_rendu}
+  - id: captcha_vers_produit_pret_essai
+    title: "Essai total : le captcha est essayé ; le produit est en vente"
+    from: essayer_captcha
+    to: produit_pret
+    lane: trial
+    params:
+      venture_id: {source: task, value: venture_id}
+      compte_rendu: {source: task, value: compte_rendu}
+  - id: essai_sans_domaine_commun
+    title: "Essai total : sans domaine commun, pas d'achat de domaine"
+    from: choisir_domaine
+    to: prevenir_produit
+    lane: trial
+    condition: {field: domaine_commun, op: '=', value: ''}
+    params:
+      titre: {source: fixed, value: "L'essai total a besoin du domaine commun des produits"}
+      raison: {source: fixed, value: "Un essai n'achète jamais de domaine. Règle « Le domaine commun des produits finis » (page Policy, « Choisir le domaine du produit »), puis fais repartir l'essai de la tâche « Choisir le domaine du produit »."}
 triggers:
   - id: lancer_cycle
     title: Lancer un cycle d'écoute
@@ -6702,68 +7822,6 @@ triggers:
     invocation: preparer_relances
     event: every
     every_minutes: 15
-  - id: bouton_lancer_essai
-    title: Lancer un essai
-    invocation: lancer_essai
-    event: button
-    confirm: >-
-      Serge crée un business bidon (il remplace le précédent), puis écrit à
-      cette adresse et appelle ce numéro pour lui présenter le business.
-      L'appel part à toute heure : c'est un essai. Les coordonnées restent
-      en base.
-    params:
-      name: {source: form, value: nom}
-      email: {source: form, value: e-mail}
-      phone: {source: form, value: 'téléphone (+33…)'}
-      valider: &case_essai_valider {source: form_case, value: Valider chaque brouillon}
-
-  - id: bouton_essayer_chantier
-    title: Essayer le chantier
-    invocation: essayer_chantier
-    event: button
-    confirm: >-
-      Serge ouvre le chantier d'essai (un conteneur sur le serveur) et y
-      fait la mission, avec le modèle du niveau intelligent. Le compte
-      rendu est sur la fiche de la tâche.
-    params:
-      mission: {source: form, value: mission}
-
-  - id: bouton_essayer_navigateur
-    title: Essayer l'interface web
-    invocation: essayer_navigateur
-    event: button
-    confirm: >-
-      Serge ouvre l'adresse dans son navigateur (un conteneur sur le
-      serveur) et y fait la mission comme une personne, avec le modèle du
-      niveau « code ». Le compte rendu et les captures sont sur la fiche de
-      la tâche.
-    params:
-      adresse: {source: form, value: adresse}
-      mission: {source: form, value: mission}
-
-  - id: bouton_essayer_captcha
-    title: Essayer le captcha avec un humain
-    invocation: essayer_captcha
-    event: button
-    confirm: >-
-      Serge ouvre une page d'essai dans le vrai Chrome et appelle un
-      humain : tu reçois sur Discord le ticket « Un humain, prêt ? »
-      (clique « Je suis prêt »), puis le ticket « À toi » avec le lien de
-      l'écran ; clique « Je suis un humain » dans l'écran, puis « C'est
-      fait ». Le code lu par Serge est sur la fiche de la tâche.
-
-  - id: bouton_publier_essai
-    title: Publier le chantier d'essai
-    invocation: publier_essai
-    event: button
-    confirm: >-
-      Serge fige le chantier d'essai, construit son image (il lui faut un
-      Dockerfile qui écoute sur le port de la variable PORT) et le met en
-      ligne en staging (staging-essai.<domaine>, non indexé) ; avec
-      « prod », il passe la version du staging sur essai.<domaine>. Le
-      résultat est dans l'îlot « Produits en ligne ».
-    params:
-      cible: {source: form, value: cible (staging ou prod)}
 
   - id: reponse_au_ticket_plan_poc
     title: Une réponse au ticket « Plan » d'un POC
@@ -6789,33 +7847,7 @@ triggers:
       texte: {source: row, value: text}
       build_id: {source: row, value: ref_id}
       venture_id: {source: row, value: venture_id}
-  - id: bouton_essayer_etape2
-    title: Essayer l'étape 2
-    invocation: creer_business_essai
-    event: button
-    confirm: >-
-      Serge crée ce business d'essai (il ne prend pas de place de test), le
-      choisit pour un POC et lance l'étape 2 : concevoir, critiquer, puis le ticket
-      « Plan ». Après ta validation, il construit le POC (niveau « code »),
-      le relit, et ouvre le ticket « Tester le produit ». Compter quelques
-      euros de modèles.
-    params:
-      nom: {source: form, value: nom}
-      description: {source: form, value: description}
-      offre: {source: form, value: offre}
 
-  - id: bouton_bout_en_bout_poc
-    title: "Bout en bout : le POC d'une calculatrice"
-    invocation: bout_en_bout_poc
-    event: button
-    confirm: >-
-      Serge met en base un business d'essai « Calculatrice » avec sa fiche
-      produit et un plan déjà validé (il ne prend pas de place de test), puis lance la
-      vraie construction du POC : le constructeur code au niveau « code »,
-      Serge publie en staging, le relecteur l'essaie dans son navigateur.
-      Puis le ticket « Tester le produit » : ouvre le lien du staging et
-      essaie la calculatrice ; « Valider » la met en prod. Compter quelques
-      euros de modèles.
   - id: reponse_au_ticket_plan_produit
     title: Une réponse au ticket « Plan » d'un produit
     invocation: suite_plan_produit
@@ -6852,34 +7884,7 @@ triggers:
       texte: {source: row, value: text}
       build_id: {source: row, value: ref_id}
       venture_id: {source: row, value: venture_id}
-  - id: bouton_bout_en_bout_produit
-    title: "Bout en bout : le produit fini d'une calculatrice"
-    invocation: bout_en_bout_produit
-    event: button
-    confirm: >-
-      Serge met en base une calculatrice dont le POC est fait, avec trois
-      demandes de clients, puis lance la vraie étape 5 : plan du produit
-      payant, critique, ticket « Plan » (tu valides le prix et le nom de
-      domaine), Stripe en mode test, construction et relecture jusqu'au
-      paiement avec la carte de test, ticket « Tester le produit ». Après ta
-      validation, c'est réel : Serge achète le domaine (sous le prix maximum
-      de la page Policy), met le produit en vente dans Stripe, le publie sur
-      son domaine et paie 1 € avec sa carte, puis se rembourse. Compter
-      quelques euros de modèles, plus le domaine.
 
-  # Les boutons de la fiche d'un business : leur formulaire attend le
-  # business, que Mission Control remplit (lot 10, Q91).
-  - id: bouton_essayer_stripe
-    title: Essayer Stripe (mode test)
-    invocation: essayer_stripe
-    event: button
-    confirm: >-
-      Serge crée dans Stripe, en mode test (aucun argent réel), un produit,
-      un prix de 1 € par mois et un lien de paiement pour ce business. Le
-      lien est sur la fiche de la tâche ; « Supprimer de Stripe (mode
-      test) » les archive ensuite.
-    params:
-      venture_id: {source: form, value: venture_id}
   - id: bouton_supprimer_stripe_test
     title: Supprimer de Stripe (mode test)
     invocation: supprimer_de_stripe
@@ -6902,23 +7907,160 @@ triggers:
       venture_id: {source: form, value: venture_id}
       service: {source: fixed, value: stripe_live}
 
+  # Le lot 12. `only_if_rows` : le déclencheur ne part que si ces nombres
+  # de lignes sont bons, comptés dans le couloir de la tâche à créer.
+  - id: campagne_prete
+    title: Une campagne est prête
+    invocation: demarrer_campagne
+    event: row_written
+    table: campaigns
+    filter_column: state
+    filter_value: READY
+    params:
+      campaign_id: {source: row, value: id}
+  - id: suivi_des_campagnes
+    title: Suivre chaque campagne en cours
+    invocation: suivre_campagne
+    event: every
+    every_minutes: 60
+    table: campaigns
+    filter_column: state
+    filter_value: RUNNING
+    params:
+      campaign_id: {source: row, value: id}
+  - id: premier_message_a_rediger
+    title: Un premier message est à rédiger
+    invocation: rediger_premier_message
+    event: row_written
+    table: touches
+    filter_column: kind
+    filter_value: first
+    params:
+      touch_id: {source: row, value: id}
+      contact_id: {source: row, value: contact_id}
+      venture_id: {source: row, value: venture_id}
+      channel: {source: row, value: channel}
+  - id: test_retenu
+    title: Un test léger est retenu
+    invocation: choisir_principal
+    event: row_written
+    table: ventures
+    filter_column: lifecycle
+    filter_value: SMOKE_DONE
+    only_if_room_in: [place_lourde, propositions_de_principal]
+    only_if_rows: &conditions_du_choix
+      - {table: ventures, column: lifecycle, values: [POC_SELECTED, SMOKE_READY, SMOKE_RUNNING], at_most: 0, description: Tests légers encore en cours}
+      - {table: ventures, column: lifecycle, values: [SMOKE_DONE, PARKED], at_least: 1, description: Tests retenus qui attendent}
+  - id: business_arrete
+    title: Un business est arrêté
+    invocation: choisir_principal
+    event: row_written
+    table: ventures
+    filter_column: lifecycle
+    filter_value: KILLED
+    only_if_room_in: [place_lourde, propositions_de_principal]
+    only_if_rows: *conditions_du_choix
+  - id: reponse_au_ticket_choix_principal
+    title: Une réponse au ticket « Choix du principal »
+    invocation: appliquer_choix_principal
+    event: row_written
+    table: ticket_answers
+    filter_column: ticket_type
+    filter_value: CHOIX_PRINCIPAL
+    params:
+      acte: {source: row, value: acte}
+      texte: {source: row, value: text}
+      choice_id: {source: row, value: ref_id}
+  - id: lecon_d_un_business_arrete
+    title: Un business arrêté donne une leçon
+    invocation: tirer_lecon
+    event: row_written
+    table: ventures
+    filter_column: lifecycle
+    filter_value: KILLED
+    lane: real
+    params:
+      venture_id: {source: row, value: id}
+  - id: oubli_des_vieux_tests
+    title: Oublier les vieux tests, chaque jour
+    invocation: oublier_vieux_tests
+    event: every
+    every_minutes: 1440
+  # L'étape 1 repart toute seule dès qu'une place de test se libère (Q92).
+  - id: place_liberee_par_un_arret
+    title: Une place de test se libère (un business est arrêté)
+    invocation: ouvrir_cycle
+    event: row_written
+    table: ventures
+    filter_column: lifecycle
+    filter_value: KILLED
+    lane: real
+    only_if_room_in: [places_de_test, cycles_ouverts]
+  - id: place_liberee_par_une_mise_de_cote
+    title: Une place de test se libère (un business est mis de côté)
+    invocation: ouvrir_cycle
+    event: row_written
+    table: ventures
+    filter_column: lifecycle
+    filter_value: PARKED
+    lane: real
+    only_if_room_in: [places_de_test, cycles_ouverts]
+  - id: place_liberee_par_le_principal
+    title: Une place de test se libère (le principal est choisi)
+    invocation: ouvrir_cycle
+    event: row_written
+    table: ventures
+    filter_column: lifecycle
+    filter_value: PRODUCT_BUILDING
+    lane: real
+    only_if_room_in: [places_de_test, cycles_ouverts]
+  - id: produit_en_vente
+    title: Un produit fini est en vente
+    invocation: preparer_prospection_lourde
+    event: row_written
+    table: ventures
+    filter_column: lifecycle
+    filter_value: PRODUCT_READY
+    params:
+      venture_id: {source: row, value: id}
+  - id: vente_arrivee
+    title: Un paiement est arrivé
+    invocation: enregistrer_vente
+    event: row_written
+    table: transactions
+    filter_column: status
+    filter_value: paid
+    params:
+      transaction_id: {source: row, value: id}
+  # L'essai total (Q99) : le seul bouton d'essai. `lane: trial` : il
+  # démarre un essai, qui remplace le précédent.
+  - id: bouton_essai_total
+    title: Lancer l'essai total
+    invocation: lancer_essai_total
+    event: button
+    lane: trial
+    confirm: >-
+      Serge arrête l'essai précédent, s'il y en a un, puis fait traverser
+      tout le pipeline à un business d'essai « Calculatrice », à part de
+      ce qui tourne : écoute du web (2 recherches), plan tout fait, POC,
+      un e-mail et un appel à ces coordonnées (l'appel part à toute
+      heure), mesure du test, choix du principal, produit fini, Stripe en
+      vrai mode, paiement test de 1 € remboursé, captcha avec un humain,
+      prospection lourde. Tu valides les tickets marqués « Essai » comme
+      en vrai. Étape de départ : 1 (rien), 2, 3, 5 ou 6. Compter quelques
+      euros de modèles.
+    params:
+      name: {source: form, value: nom}
+      email: {source: form, value: e-mail}
+      phone: {source: form, value: téléphone (+33…)}
+      depart: {source: form, value: 'étape de départ (1, 2, 3, 5 ou 6)'}
+      valider: {source: form_case, value: Valider chaque brouillon}
+
 # Les modifications d'objets déjà en base sur une instance existante (le
 # fichier ne les écrase jamais) : chacune n'est appliquée qu'une fois, et
 # seulement si la valeur en base est encore celle d'origine (`from`) ; une
 # valeur changée dans Mission Control est gardée. Résultat : table
 # pipeline_changes.
-  - id: bouton_construire_produit
-    title: Construire le vrai produit
-    invocation: lancer_produit
-    event: button
-    confirm: >-
-      Temporaire, en attendant l'étape 4 : pour un business au test léger
-      (Smoke prêt ou terminé). Serge conçoit son produit fini, payant, à
-      partir de son POC et des demandes de ses clients, puis le ticket
-      « Plan » (prix et nom de domaine), la construction, l'essai, l'achat
-      du domaine, la mise en vente et le paiement test de 1 €.
-    params:
-      venture_id: {source: form, value: venture_id}
 
 changes:
   - id: titre_qui_est_serge
@@ -7308,19 +8450,6 @@ changes:
           - Écris dans la langue du contact, simplement et brièvement.
           - Serge assume d'être un agent IA : ne prétends jamais être un humain.
         to: *consigne_traiter_reponse
-  - id: essai_case_valider
-    why: >-
-      Le business d'essai peut naître en mode « Valider chaque brouillon » :
-      même le premier e-mail attend un humain (lot 8 bis).
-    trigger: bouton_lancer_essai
-    add_trigger_params:
-      valider: *case_essai_valider
-  - id: essai_business_valider
-    why: Le business d'essai garde la case cochée dans le formulaire.
-    invocation: lancer_essai
-    write: 1
-    add_write_values:
-      validate_drafts: *valeur_essai_valider
   - id: essais_a_part_places
     why: >-
       Un business d'essai ne prend pas de place de test : lancer la
@@ -7330,56 +8459,6 @@ changes:
     set:
       where_column: {from: '', to: trial}
       where_value: {from: '', to: '0'}
-  - id: essais_a_part_bouton_etape2
-    why: Un bouton d'essai ne dépend plus des places de test (lot 12, Q98).
-    trigger: bouton_essayer_etape2
-    remove_trigger_conditions: [places_de_test]
-  - id: essais_a_part_bouton_bout_en_bout_poc
-    why: Un bouton d'essai ne dépend plus des places de test (lot 12, Q98).
-    trigger: bouton_bout_en_bout_poc
-    remove_trigger_conditions: [places_de_test]
-  - id: essais_a_part_texte_etape2
-    why: Le bouton dit que son business d'essai ne prend pas de place (Q98).
-    table: triggers
-    where: {id: bouton_essayer_etape2}
-    set:
-      confirm_text:
-        replace:
-          - old: Serge crée ce business, le choisit pour un POC (il prend une place de test) et lance
-            new: Serge crée ce business d'essai (il ne prend pas de place de test), le choisit pour un POC et lance
-  - id: essais_a_part_texte_bout_en_bout_poc
-    why: Le bouton dit que son business d'essai ne prend pas de place (Q98).
-    table: triggers
-    where: {id: bouton_bout_en_bout_poc}
-    set:
-      confirm_text:
-        replace:
-          - old: un business « Calculatrice » avec sa fiche produit et un plan déjà validé (il prend une place de test), puis
-            new: un business d'essai « Calculatrice » avec sa fiche produit et un plan déjà validé (il ne prend pas de place de test), puis
-  - id: essais_a_part_lancer_essai
-    why: Le business de « Lancer un essai » est marqué comme essai (Q98).
-    invocation: lancer_essai
-    write: 1
-    add_write_values:
-      trial: *essai_marque
-  - id: essais_a_part_etape2
-    why: Le business de « Essayer l'étape 2 » est marqué comme essai (Q98).
-    invocation: creer_business_essai
-    write: 0
-    add_write_values:
-      trial: *essai_marque
-  - id: essais_a_part_bout_en_bout_poc
-    why: La calculatrice du bout en bout du POC est marquée comme essai (Q98).
-    invocation: bout_en_bout_poc
-    write: 0
-    add_write_values:
-      trial: *essai_marque
-  - id: essais_a_part_bout_en_bout_produit
-    why: La calculatrice du bout en bout du produit est marquée comme essai (Q98).
-    invocation: bout_en_bout_produit
-    write: 0
-    add_write_values:
-      trial: *essai_marque
   - id: voix_email_du_contact
     why: >-
       L'agent vocal reçoit au décrochage l'e-mail que Serge a pour la
@@ -7828,24 +8907,6 @@ changes:
           Le business doit être légal. Ne t'arrête pas sur des considérations
           morales qui ne sont pas contraires à la loi.
 
-  - id: lots_decales_lancer_produit
-    why: >-
-      Les lots après le 10 sont décalés d'un cran (Q95) ; le rôle ne cite
-      plus de numéro de lot.
-    table: invocations
-    where: {id: lancer_produit}
-    set:
-      role:
-        from: >-
-          Le business passe en construction de son produit fini, et la
-          conception commence. Lancé par le bouton « Construire le vrai
-          produit » de la fiche du business (temporaire, jusqu'à l'étape 4 du
-          lot 11). Sans LLM.
-        to: >-
-          Le business passe en construction de son produit fini, et la
-          conception commence. Lancé par le bouton « Construire le vrai
-          produit » de la fiche du business (temporaire, jusqu'à l'étape 4).
-          Sans LLM.
   - id: lots_decales_produit_pret
     why: >-
       Les lots après le 10 sont décalés d'un cran (Q95) ; le rôle ne cite
@@ -8140,14 +9201,6 @@ changes:
             new: |-
               l'adresse e-mail que te donne « Ma boîte e-mail » (appelle-la
               avec wait à faux),
-  - id: lot11_essayer_navigateur
-    why: >-
-      Naviguer passe au niveau « web », moins cher que « code » (lot 11,
-      Q96).
-    table: invocations
-    where: {id: essayer_navigateur}
-    set:
-      model_tier: {from: code, to: web}
   - id: lot11_construire_poc_sans_navigateur
     why: Seul le relecteur essaie le POC dans le navigateur (lot 11).
     invocation: construire_poc
@@ -8254,12 +9307,176 @@ changes:
               - s'il te manque un outil ou un accès, appelle « Demander une
                 nouvelle capacité ».
 
+  # Le lot 12 (Q98, Q99) : les campagnes par canal, le couloir d'essai,
+  # l'essai total.
+  - id: lot12_poc_canal_branche
+    why: >-
+      Le nombre de prospects d'un test n'est plus dans le plan (c'est un
+      réglage par canal, Q93), et le canal se choisit parmi les canaux
+      branchés : un nouveau canal n'oblige pas à modifier cette invocation
+      (Q98).
+    table: invocations
+    where: {id: concevoir_poc}
+    set:
+      prompt:
+        replace:
+          - old: |-
+              - canal : email ou voice (le téléphone) ;
+              - prospects : combien, entre {prospects_min} et {prospects_max} ;
+            new: |-
+              - canal : le canal du test, parmi les canaux branchés (tu en vois la
+                liste) : son numéro, tel quel ;
+  - id: lot12_poc_sans_prospects_reponse
+    why: Le nombre de prospects d'un test est un réglage par canal (Q93).
+    invocation: concevoir_poc
+    remove_outputs: [prospects]
+  - id: lot12_poc_canal_texte
+    why: Le canal du test est le numéro d'un canal branché, pas un choix écrit d'avance (Q98).
+    table: invocation_output_fields
+    where: {invocation_id: concevoir_poc, path: canal}
+    set:
+      type: {from: choice, to: text}
+      choices: {from: 'email, voice', to: ''}
+  - id: lot12_poc_sans_prospects_plan
+    why: Le nombre de prospects d'un test est un réglage par canal (Q93).
+    invocation: concevoir_poc
+    write: 0
+    remove_write_values: [prospects]
+  - id: lot12_poc_sans_prospects_campagne
+    why: Le volume d'une campagne est fixé quand elle démarre, par les réglages de son canal (Q93).
+    invocation: concevoir_poc
+    write: 7
+    remove_write_values: [n_target]
+  - id: lot12_poc_canaux_branches
+    why: La conception voit les canaux branchés sur ce serveur.
+    invocation: concevoir_poc
+    add_tools:
+      - {tool: canaux_branches, mode: given, label: Les canaux branchés}
+  - id: lot12_plan_sans_prospects_lu
+    why: Le plan ne porte plus de nombre de prospects (Q93).
+    tool: plan_par_numero
+    remove_tool_columns:
+      - {table: product_plans, name: prospects}
+  - id: lot12_choix_au_moins
+    why: >-
+      « Choisir les business » rend toujours sa liste, même vide ; dans
+      l'essai total, elle doit choisir au moins un business (Q99).
+    table: invocation_output_fields
+    where: {invocation_id: choisir_business, path: choix}
+    set:
+      required: {from: 0, to: 1}
+      min_items: {from: '', to: choix_min}
+  - id: lot12_essai_explorer_recherches
+    why: &petit_essai L'essai total écoute le web pour de vrai, sur un petit volume (Q99).
+    table: invocation_settings
+    where: {invocation_id: explorer_web, name: recherches_max}
+    set: {trial_value: {from: '', to: 2}}
+  - id: lot12_essai_explorer_pages
+    why: *petit_essai
+    table: invocation_settings
+    where: {invocation_id: explorer_web, name: pages_max}
+    set: {trial_value: {from: '', to: 5}}
+  - id: lot12_essai_explorer_flux
+    why: *petit_essai
+    table: invocation_settings
+    where: {invocation_id: explorer_web, name: flux_max}
+    set: {trial_value: {from: '', to: 0}}
+  - id: lot12_essai_formuler_a
+    why: &business_tout_fait "Dans l'essai total, le business est tout fait (la calculatrice) : aucune idée n'est formulée (Q99)."
+    table: invocation_settings
+    where: {invocation_id: formuler_a, name: nombre_idees}
+    set: {trial_value: {from: '', to: 0}}
+  - id: lot12_essai_formuler_b
+    why: *business_tout_fait
+    table: invocation_settings
+    where: {invocation_id: formuler_b, name: nombre_idees}
+    set: {trial_value: {from: '', to: 0}}
+  - id: lot12_cycle_ouvert_sans_essai
+    why: Le cycle d'écoute d'un essai ne prend pas la place du vrai, et un vrai cycle n'arrête pas un essai (Q99).
+    table: table_quotas
+    where: {id: cycles_ouverts}
+    set:
+      where_column: {from: '', to: trial}
+      where_value: {from: '', to: '0'}
+  - id: lot12_conception_poc_vraie
+    why: &chemin_d_essai Dans l'essai total, ce lien est remplacé par un lien propre à l'essai (Q99).
+    table: links
+    where: {id: choix_vers_conception_poc}
+    set: {lane: {from: '', to: real}}
+  - id: lot12_produit_pret_vrai
+    why: *chemin_d_essai
+    table: links
+    where: {id: paiement_test_vers_produit_pret}
+    set: {lane: {from: '', to: real}}
+  - id: lot12_achat_de_domaine_vrai
+    why: Un essai n'achète jamais de domaine (Q99).
+    table: links
+    where: {id: domaine_a_acheter}
+    set: {lane: {from: '', to: real}}
+  - id: lot12_captcha_dans_l_essai
+    why: L'essai du captcha est une étape de l'essai total, plus un bouton de la page Système (Q99).
+    table: invocations
+    where: {id: essayer_captcha}
+    set:
+      title: {from: Essayer le captcha avec un humain (temporaire), to: Essayer le captcha avec un humain}
+      role:
+        from: >-
+          Temporaire, pour essayer « Appeler un humain » depuis Mission Control (Q97) : ouvre dans le vrai Chrome une page d'essai qui tient lieu de captcha, appelle un humain, attend qu'il ait cliqué dans l'écran, puis rend le code que la page montre alors.
+        to: >-
+          Une étape de l'essai total, après le paiement test (Q97, Q99) : ouvre dans le vrai Chrome une page d'essai qui tient lieu de captcha, appelle un humain, attend qu'il ait cliqué dans l'écran, puis rend le code que la page montre alors.
 deleted:
-  invocations: [demo_ouvrir_cycle, demo_formuler, demo_choisir]
+  invocations:
+    - demo_ouvrir_cycle
+    - demo_formuler
+    - demo_choisir
+    # Les essais de la page Système, remplacés par l'essai total, et le
+    # bouton « Construire le vrai produit », remplacé par le choix du
+    # principal (lot 12, Q99).
+    - lancer_essai
+    - creer_contact_essai
+    - ecrire_premier_message
+    - preparer_premier_appel
+    - essayer_chantier
+    - essayer_navigateur
+    - publier_essai
+    - creer_business_essai
+    - choisir_business_essai
+    - bout_en_bout_poc
+    - bout_en_bout_produit
+    - essayer_stripe
+    - lancer_produit
   # Le début d'un appel dépend de son sens : deux textes le remplacent.
   serge_texts: [voice_opening]
-  links: [demo_cycle_vers_formuler, demo_formuler_vers_choisir]
-  triggers: [demo_lancer_cycle]
+  links:
+    - demo_cycle_vers_formuler
+    - demo_formuler_vers_choisir
+    - essai_vers_contact
+    - contact_essai_vers_message
+    - contact_essai_vers_appel
+    - premier_message_vers_envoi
+    - premier_appel_vers_envoi
+    - essai_vers_choix_etape2
+    - essai_choisi_vers_conception
+    - bout_en_bout_poc_vers_construction
+    - bout_en_bout_produit_vers_conception
+    - lancement_vers_conception_produit
+  triggers:
+    - demo_lancer_cycle
+    - bouton_lancer_essai
+    - bouton_essayer_chantier
+    - bouton_essayer_navigateur
+    - bouton_essayer_captcha
+    - bouton_publier_essai
+    - bouton_essayer_etape2
+    - bouton_bout_en_bout_poc
+    - bouton_bout_en_bout_produit
+    - bouton_essayer_stripe
+    - bouton_construire_produit
+  # Le nombre de prospects d'un test n'est plus dans le plan du POC : c'est
+  # un réglage par canal de « Démarrer une campagne » (Q93).
+  settings:
+    - {invocation: concevoir_poc, name: prospects_min}
+    - {invocation: concevoir_poc, name: prospects_max}
   tools:
     - known_business_candidates
     - eligible_poc_candidates

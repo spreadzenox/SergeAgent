@@ -24,6 +24,7 @@ Les campagnes :
   le compte de ses recherches de prospects restées vides ; les colonnes
   que rien n'écrivait sont retirées ;
 - ``contact_addresses.source_url`` : la page où l'adresse a été trouvée ;
+  ``contacts.note`` : qui est ce prospect, et pourquoi il est visé ;
 - ``test_reports`` : le compte rendu d'un test léger ;
 - ``principal_choices`` : une proposition de business principal.
 """
@@ -54,6 +55,7 @@ _AJOUTS = (
     ('campaigns', 'dry_searches', 'INTEGER NOT NULL DEFAULT 0'),
     ('campaigns', 'found_at_search', 'INTEGER NOT NULL DEFAULT -1'),
     ('contact_addresses', 'source_url', "TEXT NOT NULL DEFAULT ''"),
+    ('contacts', 'note', "TEXT NOT NULL DEFAULT ''"),
 )
 _RETRAITS = ('budget_cap_eur', 'thresholds_json', 'window_start', 'window_end')
 # Les tables de la base qui nomment une colonne des campagnes.

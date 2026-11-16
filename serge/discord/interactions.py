@@ -42,6 +42,7 @@ SAISIES = {
     'ma_reponse': ('Ta réponse au contact', 'Le message qui partira'),
     'reecrire': ('Réécrire le brouillon', 'Tes consignes à Serge'),
     'a_corriger': ('À corriger', 'Ce qu’il faut corriger, tes consignes'),
+    'choisir_autre': ('Choisir un autre', 'Le nom du business voulu'),
 }
 # Les types d'interaction Discord : un composant, une fenêtre envoyée.
 COMPOSANT = frozenset({2, 3})
