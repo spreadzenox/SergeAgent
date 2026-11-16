@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Projecteurs P1 Système : la population, les messages non rattachés et
-les essais (les îlots sont dans ``proj_ilots.py``)."""
+l'essai total (les îlots sont dans ``proj_ilots.py``)."""
 
 from __future__ import annotations
 
@@ -67,17 +67,9 @@ def project_non_rattaches(
     }
 
 
-def _dernier_essai(conn: sqlite3.Connection) -> dict[str, Any] | None:
-    """Le fil du dernier contact d'essai : chaque envoi (statut, raison
-    d'un refus) et chaque message reçu (réaction), du plus récent au plus
-    ancien. ``None`` avant le premier essai."""
-    row = conn.execute(
-        'SELECT c.id, c.display, c.funnel_state FROM contacts c'
-        " JOIN ventures v ON v.id=c.venture_id WHERE v.lifecycle='TEST'"
-        ' ORDER BY c.created_at DESC, c.rowid DESC LIMIT 1'
-    ).fetchone()
-    if row is None:
-        return None
+def _fil(conn: sqlite3.Connection, contact_id: str) -> list[dict[str, Any]]:
+    """Le fil d'un contact : chaque envoi (statut, raison d'un refus) et
+    chaque message reçu (réaction), du plus récent au plus ancien."""
     fil = [
         {
             'heure': str(quand),
@@ -90,7 +82,7 @@ def _dernier_essai(conn: sqlite3.Connection) -> dict[str, Any] | None:
         for quand, canal, sorte, statut, erreur, objet in conn.execute(
             "SELECT COALESCE(NULLIF(sent_at, ''), updated_at), channel, kind,"
             ' status, last_error, subject FROM touches WHERE contact_id=?',
-            (row[0],),
+            (contact_id,),
         ).fetchall()
     ] + [
         {
@@ -104,30 +96,110 @@ def _dernier_essai(conn: sqlite3.Connection) -> dict[str, Any] | None:
         for quand, canal, reaction, statut, texte in conn.execute(
             'SELECT received_at, channel, reaction, status, body'
             ' FROM inbound_events WHERE contact_id=?',
-            (row[0],),
+            (contact_id,),
         ).fetchall()
     ]
+    return sorted(fil, key=lambda e: e['heure'], reverse=True)[:30]
+
+
+def _essai_total(conn: sqlite3.Connection) -> dict[str, Any] | None:
+    """Le dernier essai total : où il en est, ses tâches dans l'ordre, les
+    tickets qui attendent une réponse, et le fil de son contact. ``None``
+    avant le premier essai.
+
+    Un essai porte le numéro de la tâche qui l'a lancé
+    (``tasks.trial_run``) ; celui qui tourne est noté dans
+    ``runtime_flags``.
+    """
+    from serge.mc.proj_taches import ETATS_TACHE
+    from serge.trial import active_run
+
+    en_cours = active_run(conn)
+    row = conn.execute(
+        'SELECT id, created_at FROM tasks WHERE trial_run=id'
+        ' ORDER BY (id=?) DESC, created_at DESC, rowid DESC LIMIT 1',
+        (en_cours,),
+    ).fetchone()
+    if row is None:
+        return None
+    run = str(row[0])
+    depart = conn.execute(
+        "SELECT value FROM task_params WHERE task_id=? AND name='depart'",
+        (run,),
+    ).fetchone()
+    business = conn.execute(
+        'SELECT v.id, v.name, v.lifecycle FROM ventures v WHERE v.id IN'
+        ' (SELECT p.value FROM task_params p JOIN tasks t ON t.id=p.task_id'
+        " WHERE t.trial_run=? AND p.name='venture_id') LIMIT 1",
+        (run,),
+    ).fetchone()
+    taches = [
+        {
+            'id': str(ident),
+            'titre': str(titre or invocation),
+            'statut': str(statut),
+            'etat': ETATS_TACHE.get(str(statut), str(statut)),
+            'heure': str(fini or cree),
+            'erreur': str(erreur or ''),
+        }
+        for ident, titre, invocation, statut, cree, fini, erreur in conn.execute(
+            'SELECT t.id, i.title, t.invocation_id, t.status, t.created_at,'
+            ' t.finished_at, t.last_error FROM tasks t LEFT JOIN invocations i'
+            ' ON i.id=t.invocation_id WHERE t.trial_run=?'
+            ' ORDER BY t.created_at DESC, t.rowid DESC LIMIT 60',
+            (run,),
+        ).fetchall()
+    ]
+    contact = (
+        conn.execute(
+            'SELECT id, display, funnel_state FROM contacts WHERE venture_id=?'
+            ' ORDER BY created_at, rowid LIMIT 1',
+            (business[0],),
+        ).fetchone()
+        if business
+        else None
+    )
     return {
-        'contact': str(row[1]),
-        'etape': str(row[2]),
-        'fil': sorted(fil, key=lambda e: e['heure'], reverse=True)[:30],
+        'en_cours': run == en_cours,
+        'lance': str(row[1]),
+        'depart': str(depart[0] if depart and depart[0] else '1'),
+        'business': (
+            {
+                'id': str(business[0]),
+                'nom': str(business[1]),
+                'statut': str(business[2]),
+            }
+            if business
+            else None
+        ),
+        'taches': taches,
+        'tickets': [
+            {'id': str(r[0]), 'titre': str(r[1])}
+            for r in conn.execute(
+                'SELECT id, title FROM tickets WHERE trial=1'
+                " AND state IN ('OPEN', 'DISCUSSING')"
+                ' ORDER BY created_at DESC LIMIT 10'
+            ).fetchall()
+        ],
+        'contact': str(contact[1]) if contact else '',
+        'etape': str(contact[2]) if contact else '',
+        'fil': _fil(conn, str(contact[0])) if contact else [],
     }
 
 
 def project_essais(
     conn: sqlite3.Connection, policy: Mapping[str, Any], now: str
 ) -> dict[str, Any]:
-    """Les boutons sans étape (« Lancer un essai ») et le dernier essai.
+    """Le bouton de l'essai total, et le dernier essai (décision Q99).
 
     Returns:
-        Dict {boutons: [...] (comme la page Écoute), essai: le fil du
-        dernier contact d'essai (ou None)}. L'état des canaux est dans
-        leurs îlots.
+        Dict {boutons: les boutons sans étape (comme la page Écoute),
+        essai: où en est le dernier essai (ou None)}.
     """
     from serge.mc.proj_ecoute import boutons_de_etape
 
     _ = (policy, now)
     return {
         'boutons': boutons_de_etape(conn, ''),
-        'essai': _dernier_essai(conn),
+        'essai': _essai_total(conn),
     }

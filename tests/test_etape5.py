@@ -65,6 +65,7 @@ from serge.tickets.acts import APPROVE, REJECT  # noqa: E402
 from serge.tickets.lifecycle import decide  # noqa: E402
 from serge.tickets.reponses import noter_reponse  # noqa: E402
 from tests.test_chantier import faux_docker  # noqa: E402
+from tests.boutons_d_essai import poser  # noqa: E402
 
 IP = '93.184.216.34'
 
@@ -436,6 +437,14 @@ class Etape5Tests(unittest.TestCase):
         set_setting(
             self.conn, 'courriel.domaine_envoi', 'envoi.exemple.fr', 'test'
         )
+        poser(self.conn)
+        # La suite (le test léger, le choix du principal, la prospection
+        # lourde) a ses propres scénarios : ici, ses tâches attendent.
+        self.conn.execute(
+            'UPDATE pipeline_steps SET enabled=0 WHERE id IN'
+            " ('pre_prospection', 'prospection_light', 'choix_venture',"
+            " 'prospection_lourde')"
+        )
         set_heartbeat(self.conn, True)
         self.conn.commit()
 
@@ -778,54 +787,6 @@ class Etape5Tests(unittest.TestCase):
             self._un('SELECT lifecycle FROM ventures WHERE id=?', venture),
             ('PRODUCT_READY',),
         )
-
-    def test_construire_le_vrai_produit_depuis_la_fiche(self) -> None:
-        for ident, etat in (
-            ('ven_pret', 'SMOKE_READY'),
-            ('ven_neuf', 'CANDIDATE'),
-        ):
-            self.conn.execute(
-                'INSERT INTO ventures(id, name, description, lifecycle,'
-                ' created_at, updated_at) VALUES(?,?,?,?,?,?)',
-                (
-                    ident,
-                    f'Devis {ident}',
-                    'Des devis.',
-                    etat,
-                    utcnow(),
-                    utcnow(),
-                ),
-            )
-        self.conn.commit()
-        fiche = project_fait_pipe(self.conn, 'venture', 'ven_pret')
-        assert fiche is not None
-        self.assertIn(
-            'Construire le vrai produit',
-            [a['libelle'] for a in fiche['actions']],
-        )
-        modeles = FauxModeles(['devis-pret.fr'])
-        for ident in ('ven_pret', 'ven_neuf'):
-            fire_button(
-                self.conn, 'bouton_construire_produit', {'venture_id': ident}
-            )
-        self.conn.commit()
-        self._vider(modeles)
-        self.assertEqual(
-            dict(
-                self.conn.execute(
-                    "SELECT id, lifecycle FROM ventures WHERE id LIKE 'ven_%'"
-                ).fetchall()
-            ),
-            {'ven_pret': 'PRODUCT_BUILDING', 'ven_neuf': 'CANDIDATE'},
-        )
-        self.assertEqual(
-            self._un(
-                "SELECT COUNT(*) FROM product_plans WHERE kind='product'"
-                " AND venture_id='ven_pret'"
-            ),
-            (1,),
-        )
-        self.assertEqual(len(modeles.par_role['concevoir']), 1)
 
     def test_sans_cle_restreinte_la_prod_rate(self) -> None:
         (self.dossier / 'config/secrets/stripe-produits-live.key').unlink()

@@ -177,24 +177,43 @@ def _campagne(conn: sqlite3.Connection, ident: str) -> dict | None:
         'SELECT id, status, channel FROM touches WHERE campaign_id=?',
         (ident,),
     ).fetchall()
+    phase = PHASES.get(row['phase'], row['phase'])
+    trouves = conn.execute(
+        'SELECT COUNT(DISTINCT contact_id),'
+        " COUNT(DISTINCT CASE WHEN status='sent' THEN contact_id END)"
+        " FROM touches WHERE campaign_id=? AND kind='first'",
+        (ident,),
+    ).fetchone()
     return {
         'type': 'campagne',
         'id': ident,
-        'titre': f'Essai {row["channel"]} ({row["family"]})',
-        'pourquoi': 'Un essai concret : on parle à des gens, par un canal, et on mesure.',
+        'titre': f'{phase}, par {row["channel"]}',
+        'pourquoi': 'Une campagne : un business, une phase (le test léger ou'
+        ' la prospection lourde) et un canal.',
         'champs': _champs(
             [
                 ('État', ETATS_CAMPAGNE.get(row['state'], row['state'])),
-                ('Personnes visées', row['n_target']),
-                ('Idée de business', row['venture_id']),
+                ('Prospects visés', row['n_target']),
+                ('Par semaine', row['n_week'] or '—'),
+                ('Prospects trouvés', trouves[0]),
+                ('Prospects contactés', trouves[1]),
+                ('Cible', row['target'] or '—'),
+                ('Angle', row['angle'] or '—'),
+                ('Début', row['started_at'] or '—'),
+                ('Fin prévue', row['planned_end_at'] or '—'),
+                ('Raison de sa fin', row['end_reason'] or '—'),
+                ('Business', row['venture_id']),
             ]
         ),
         'enfants': _liens(
             [('venture', row['venture_id'], 'Venture')]
             + [('touch', str(t[0]), f'{t[2]} · {t[1]}') for t in touches[:20]]
         ),
-        'preuve': row['thresholds_json'] or '',
+        'preuve': '',
     }
+
+
+PHASES = {'smoke': 'Test léger', 'full': 'Prospection lourde'}
 
 
 CANAUX_ADRESSE = {'email': 'E-mail', 'phone': 'Téléphone'}

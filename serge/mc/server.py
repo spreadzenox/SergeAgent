@@ -368,6 +368,7 @@ class McHandler(
             '/owner/api/etape': self._api_etape,
             '/owner/api/bouton': self._api_bouton,
             '/owner/api/tache/repartir': self._api_tache_repartir,
+            '/owner/api/essai/arreter': self._api_essai_arreter,
             '/owner/api/tache/annuler': self._api_tache_annuler,
             '/owner/api/invocation/comparer': self._api_comparer,
             '/owner/api/lien/passer': self._api_lien_passer,

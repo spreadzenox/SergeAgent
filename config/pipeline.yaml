@@ -7476,13 +7476,13 @@ links:
     to: premier_appel
     condition: {field: channel, op: '=', value: voice}
     params: *premier_message
-  - id: premier_email_vers_envoi
+  - id: premier_email_part
     title: Le premier e-mail est écrit
     from: premier_email
     to: envoyer_message
     params:
       touch_id: {source: task, value: touch_id}
-  - id: premier_appel_vers_envoi
+  - id: premier_appel_part
     title: Le premier appel est préparé
     from: premier_appel
     to: envoyer_message

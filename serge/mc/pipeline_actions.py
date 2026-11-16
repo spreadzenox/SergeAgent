@@ -17,6 +17,7 @@ from serge.interpreter.flow import pass_waiting, set_link_auto
 from serge.interpreter.triggers import fire_button, trigger_refusal
 from serge.interpreter.restart import RestartError, restart_from
 from serge.interpreter.tasks import cancel_task
+from serge.trial_run import stop_trial
 from serge.llm.catalog import (
     check_model,
     for_page,
@@ -65,7 +66,8 @@ else:
 
 
 class PipelineActionsMixin(_Base):
-    """POST /owner/api/bouton, /tache/repartir, /tache/annuler, /invocation/comparer,
+    """POST /owner/api/bouton, /essai/arreter, /tache/repartir, /tache/annuler,
+    /invocation/comparer,
     /lien/* et /pipeline/*."""
 
     def _api_bouton(self) -> None:
@@ -127,6 +129,15 @@ class PipelineActionsMixin(_Base):
                 )
                 return
         self._send_json(200, {'ok': True, 'task_id': nouvelle})
+
+    def _api_essai_arreter(self) -> None:
+        """« Arrêter l'essai » : ses tâches en attente sont annulées, ses
+        tickets fermés, son business arrêté (décision Q99)."""
+        if not self._require_owner():
+            return
+        with self._db() as conn:
+            fait = stop_trial(conn, 'arrêté dans Mission Control')
+        self._send_json(200, {'ok': True, **fait})
 
     def _api_tache_annuler(self) -> None:
         """Annule une tâche en attente : ``{task_id}``."""

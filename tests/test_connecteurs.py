@@ -46,6 +46,7 @@ from serge.interpreter.tools import run_tool, tool_schema  # noqa: E402
 from serge.llm.client import ChatResult, ToolCall  # noqa: E402
 from serge.mc.proj_ecoute import boutons_de_etape  # noqa: E402
 from serge.mc.proj_faits import project_fait_pipe  # noqa: E402
+from tests.boutons_d_essai import poser  # noqa: E402
 
 
 class _FauxStripe(http.server.BaseHTTPRequestHandler):
@@ -149,6 +150,7 @@ class ConnecteursTests(unittest.TestCase):
             " VALUES('ven_7', 'Devis Artisan', 'POC_SELECTED', ?, ?)",
             (utcnow(), utcnow()),
         )
+        poser(self.conn)
         set_heartbeat(self.conn, True)
         self.conn.commit()
 
@@ -374,7 +376,7 @@ class ConnecteursTests(unittest.TestCase):
         self.assertIn('Essayer Stripe (mode test)', boutons)
         sans_etape = {b['titre'] for b in boutons_de_etape(self.conn, '')}
         self.assertNotIn('Supprimer de Stripe (mode test)', sans_etape)
-        self.assertIn('Lancer un essai', sans_etape)
+        self.assertIn('Lancer l\'essai total', sans_etape)
 
 
 if __name__ == '__main__':

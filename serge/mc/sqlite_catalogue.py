@@ -147,10 +147,10 @@ CATALOGUE: dict[str, tuple[str, str, str, str]] = {
         'channel = email, phone ou un réseau. active = 0 : ne plus écrire là.',
     ),
     'campaigns': (
-        'Un test sur un canal (e-mail, voix…) pour une venture.',
-        'Hypothèse approuvée + workers du canal.',
-        'touches, inbound_events, métriques U.',
-        'state RUNNING/PAUSED. n_target = N du smoke.',
+        'Une campagne : un business, une phase et un canal.',
+        'La conception du POC, « Préparer la prospection lourde ».',
+        'touches, « Suivre une campagne », le compte rendu du test.',
+        'phase : smoke ou full. n_target : les prospects visés.',
     ),
     'touches': (
         'Chaque geste sortant : un e-mail, un SMS, un appel.',

@@ -51,6 +51,7 @@ from serge.sandbox import (
 )
 from serge.tickets.reponses import noter_reponse  # noqa: E402
 from tests.test_chantier import faux_docker  # noqa: E402
+from tests.boutons_d_essai import poser  # noqa: E402
 
 FORMULAIRE = {
     'nom': 'Devis Artisan',
@@ -205,6 +206,14 @@ class Etape2Tests(unittest.TestCase):
         self.conn.execute(
             "UPDATE triggers SET enabled=0 WHERE event IN ('every', 'at')"
         )
+        poser(self.conn)
+        # La suite (le test léger, le choix du principal, la prospection
+        # lourde) a ses propres scénarios : ici, ses tâches attendent.
+        self.conn.execute(
+            'UPDATE pipeline_steps SET enabled=0 WHERE id IN'
+            " ('pre_prospection', 'prospection_light', 'choix_venture',"
+            " 'prospection_lourde')"
+        )
         set_heartbeat(self.conn, True)
         self.conn.commit()
 
@@ -274,12 +283,12 @@ class Etape2Tests(unittest.TestCase):
         self.assertEqual(
             _t(
                 self.conn.execute(
-                    'SELECT state, channel, n_target FROM campaigns'
+                    'SELECT state, channel, phase FROM campaigns'
                     ' WHERE venture_id=?',
                     (venture,),
                 ).fetchone()
             ),
-            ('DRAFT', 'email', 40),
+            ('DRAFT', 'email', 'smoke'),
         )
         # Le plan validé : construire, publier, relire, deux passages.
         self._repondre('PLAN_POC', 'valider')
@@ -341,11 +350,7 @@ class Etape2Tests(unittest.TestCase):
     def test_arreter_le_business_libere_sa_place(self) -> None:
         modeles = FauxModeles(['bon'], [])
         venture = self._essai(modeles)
-        # Le business du bouton d'essai ne prend pas de place (Q98) ; un
-        # vrai business, choisi par l'étape 1, en prend une.
-        self.assertEqual(quota_usage(self.conn, 'places_de_test')[0], 0)
-        self.conn.execute('UPDATE ventures SET trial=0')
-        self.conn.commit()
+        # Un business choisi pour un POC prend une place de test.
         self.assertEqual(quota_usage(self.conn, 'places_de_test')[0], 1)
         self._repondre('PLAN_POC', 'arreter_business')
         self._vider(modeles)

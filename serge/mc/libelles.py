@@ -25,6 +25,11 @@ EVENTS = {
     'task.no_credit': 'Tâche remise à plus tard : plus de crédit chez le fournisseur du modèle',
     'tool.call': 'Outil appelé',
     'human.help': 'Un humain appelé (captcha)',
+    'trial.started': 'Essai total lancé',
+    'trial.stopped': 'Essai total arrêté',
+    'prospect.added': 'Prospect ajouté à une campagne',
+    'prospect.domain_unchecked': 'Domaine d’un prospect non vérifié (résolveur DNS injoignable)',
+    'contact.customer': 'Contact devenu client',
     'write.inserted': 'Ligne ajoutée',
     'write.updated': 'Ligne modifiée',
     'write.refused': 'Écriture refusée',
@@ -59,18 +64,14 @@ TYPES_TICKET = {
 LIFECYCLE = {
     'CANDIDATE': 'Candidat',
     'POC_SELECTED': 'Choisi pour un test',
-    'SMOKE_READY': 'Smoke prêt',
-    'SMOKE_RUNNING': 'Smoke en cours',
-    'SMOKE_DONE': 'Smoke terminé',
+    'SMOKE_READY': 'Test léger prêt',
+    'SMOKE_RUNNING': 'Test léger en cours',
+    'SMOKE_DONE': 'Test léger retenu',
+    'PARKED': 'Mis de côté',
     'PRODUCT_BUILDING': 'Produit en construction',
     'PRODUCT_READY': 'Produit en vente',
-    'FULL_READY': 'Full prêt',
-    'FULL_RUNNING': 'Full en cours',
-    'SCALE': 'Passage à l’échelle',
-    'PIVOT': 'Pivot',
-    'EXTEND': 'Extension',
+    'FULL_RUNNING': 'Prospection lourde en cours',
     'KILLED': 'Arrêté',
-    'INVALID_RETRY': 'À refaire',
     'TEST': 'Business d’essai',
 }
 
@@ -128,10 +129,11 @@ ORBITES = {
 }
 
 ETATS_CAMPAGNE = {
-    'RUNNING': 'En cours',
-    'PAUSED': 'En pause',
-    'DONE': 'Terminé',
     'DRAFT': 'Brouillon',
+    'READY': 'Prête',
+    'RUNNING': 'En cours',
+    'FINISHED': 'Terminée',
+    'CANCELLED': 'Annulée',
 }
 
 ETATS_TICKET = {

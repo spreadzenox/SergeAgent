@@ -50,6 +50,7 @@ from serge.paths import files_root  # noqa: E402
 from serge.policy_store import set_setting  # noqa: E402
 from serge.sandbox import navigateur  # noqa: E402
 from tests.mc_server_case import McServerCase, _ci, browser_ok  # noqa: E402
+from tests.boutons_d_essai import poser  # noqa: E402
 
 PAGE = """<!doctype html><html lang="fr"><head><title>Devis</title></head>
 <body><h1>Créez votre devis</h1><p>Un devis en deux minutes.</p>
@@ -166,6 +167,7 @@ class NavigateurTests(unittest.TestCase):
         self.addCleanup(patcher.stop)
         self.conn = open_db(default_canon_path())
         self.addCleanup(self.conn.close)
+        poser(self.conn)
         set_heartbeat(self.conn, True)
         self.conn.commit()
         proc, endpoint = _chrome(self.dossier)

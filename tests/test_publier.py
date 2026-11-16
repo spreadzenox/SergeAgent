@@ -51,6 +51,7 @@ from serge.sandbox import (
     publier,  # noqa: E402
 )
 from tests.test_chantier import ESSAI, faux_docker  # noqa: E402
+from tests.boutons_d_essai import poser  # noqa: E402
 
 CHAMP = 'cible (staging ou prod)'
 
@@ -87,6 +88,7 @@ class PublierTests(unittest.TestCase):
         set_setting(
             self.conn, 'courriel.domaine_envoi', 'envoi.exemple.fr', 'test'
         )
+        poser(self.conn)
         set_heartbeat(self.conn, True)
         self.conn.commit()
         self._ecrire('Dockerfile', 'FROM node:22\nCMD ["node", "app.js"]\n')
