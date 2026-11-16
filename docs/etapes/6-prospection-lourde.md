@@ -15,29 +15,31 @@ des clients.
 
 ## Aujourd'hui
 
-### Le circuit des réponses : débranché depuis le lot 6
+**Le début de l'étape est en base depuis le lot 12** (16 novembre 2026) :
+vendre en masse le produit fini, tel qu'il sort de la construction. Elle
+n'est pas encore essayée sur le serveur : c'est le rôle de l'essai total
+(page Système). Le détail est dans
+[`LOT12_CONCEPTION.md`](../LOT12_CONCEPTION.md), partie 7.
 
-Avant le lot 6, l'ancien runner relevait la boîte mail toutes les
-5 minutes, rattachait chaque message à un prospect, le traduisait en
-signal, puis appelait selon le cas « Classer une réponse », « Extraire un
-rendez-vous », « Répondre à une intention » ou « Relire un message
-autre » ; une désinscription bloquait tout de suite la personne. Ce code
-est rangé dans `pas_encore_branche/` (`serge/workers/`,
-`serge/observe/router.py`). Il reviendra au lot 8, avec une seule
-invocation « Traiter une réponse » décrite en base.
+1. **Préparer la prospection lourde**, dès que le produit est en vente
+   (`PRODUCT_READY`) : une campagne lourde par canal, avec sa cible,
+   affinée par ce que le test a appris, et l'angle des messages. Un
+   ticket d'information prévient Julien et Clem.
+2. **Prévenir les intéressés du test** : chaque contact qui avait dit
+   « intéressé » ou « rendez-vous » reçoit le premier le lien du produit.
+3. Les campagnes démarrent (le business passe à `FULL_RUNNING`), et les
+   invocations du test léger servent telles quelles : trouver des
+   prospects (200 par semaine et 1 000 au total par e-mail), écrire le
+   premier message, relancer, répondre, suivre la campagne.
+4. **Enregistrer une vente** : quand Stripe annonce un paiement, le
+   contact qui a l'e-mail du payeur passe à « client », et ne reçoit plus
+   de relance ; la première vente d'un business ouvre un ticket
+   d'information.
 
-### La voix
-
-- Le pont vers Asterisk et l'agent vocal temps réel (`serge/voice/`)
-  existent. Ils ne décrochent et n'appellent que si Serge a été démarré
-  dans Mission Control ; Serge est arrêté par défaut.
-- « Noter un appel », « Écrire un script d'appel » et « Dialoguer à
-  l'oral » sont rangées dans `pas_encore_branche/`.
-
-### Écrit mais pas branché
-
-« Comment grandir », « Arbitrer l'allocation » et « Résumer un fil », dans
-`pas_encore_branche/`.
+Ce qui suit (le point de la semaine, les retours des clients, les
+livraisons, la maintenance) est au lot 16. Le pont vers Asterisk et
+l'agent vocal (`serge/voice/`) ne décrochent et n'appellent que si Serge a
+été démarré dans Mission Control ; Serge est arrêté par défaut.
 
 ---
 

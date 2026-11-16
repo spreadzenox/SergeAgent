@@ -3,9 +3,10 @@
 Ce document décrit la suite du pipeline après le lot 10 : comment Serge
 trouve des prospects, mène le test léger d'un business, le juge, choisit le
 business principal, puis vend en masse le produit fini, tel qu'il sort de
-la construction. **Rien n'est codé ici** : c'est la liste des invocations,
-des tables, des liens, des déclencheurs et des réglages à mettre en base,
-pour que Clem et Julien les valident avant le code.
+la construction : la liste des invocations, des tables, des liens, des
+déclencheurs et des réglages en base. Le lot est codé depuis le
+16 novembre 2026 ; il reste à l'essayer sur le serveur, avec l'essai
+total (partie 18).
 
 Ce lot s'appelait le lot 11 jusqu'au 15 novembre 2026 : un lot 11 pour les
 e-mails des produits s'est placé avant lui, et les lots suivants ont pris
@@ -234,7 +235,12 @@ aussi à la prospection lourde sont marquées *(3 et 6)*.
    début et sa fin prévue (début + durée du plan, pour un test), et passe
    le business à `SMOKE_RUNNING` (ou `FULL_RUNNING` pour une campagne
    lourde). Une campagne sur un canal qui n'est pas branché est annulée,
-   avec la raison. Lien : « Trouver des prospects ».
+   avec la raison. **Le téléphone ne démarre pas pour des inconnus** : le
+   canal « voice » demande l'accord de la personne avant tout appel (page
+   Policy, « Accord des gens »), et un prospect jamais contacté ne l'a
+   pas donné. Les 20 appels par test du tableau de la partie 3 restent
+   donc sans effet tant que ce réglage ne change pas : à trancher par
+   Julien et Clem. Lien : « Trouver des prospects ».
 
 2. **Trouver des prospects** *(3 et 6)* — LLM, niveau intelligent, file
    des travaux. Elle reçoit d'office la campagne (son canal, sa cible), le
@@ -441,9 +447,10 @@ ses quotas en base (règle de tous les lots).
   et son angle (pour une campagne lourde), ses volumes (au total, et par
   semaine pour une campagne lourde), son début, la date de fin prévue
   d'un test, la raison de sa fin, et le compte des recherches de
-  prospects restées vides. Les colonnes que rien n'écrit
-  (`budget_cap_eur`, `thresholds_json`, `window_start`, `window_end`)
-  sont retirées.
+  prospects restées vides. Sa colonne `family` devient `phase`. Les
+  colonnes que le pipeline n'écrit pas (`budget_cap_eur`,
+  `thresholds_json`, `window_start`, `window_end`) restent pour l'ancien
+  code de la page Policy, à retirer avec lui (partie 13).
 - **`contact_addresses`** (existe) : reçoit la page où l'adresse a été
   trouvée (Q36). Les prospects d'une campagne sont ceux qui ont un
   premier message dans cette campagne : la table des contacts ne change
@@ -517,18 +524,25 @@ première vente.
 
 ## 11. Mission Control
 
-- **Page Système, « Campagnes »** : la section retirée parce que rien ne
-  créait de campagne revient, branchée. Pour chaque campagne : son
-  business, sa phase, son canal, son état, combien de prospects trouvés
-  et contactés sur son volume, les réponses, les points, sa fin prévue
-  ou la raison de sa fin. Un bouton met une campagne en pause ou la
-  relance.
-- **Page En direct** : les places, « 3 places de test sur 3 occupées » et
-  « place lourde : libre », à côté du bouton du cycle d'écoute.
+Ce qui est fait :
+
+- **Page Système, « L'essai total »** : son seul bouton, où en est le
+  dernier essai, ses tickets qui attendent, ses tâches dans l'ordre avec
+  « Repartir d'ici », « Arrêter l'essai », et le fil de son contact
+  (parties 18 et 19).
+- **Fiche d'une tâche** : « Repartir d'ici », la tâche qui l'a créée et
+  celles qu'elle a créées.
 - **Fiche d'un business** : son compte rendu de test (chiffres, verdict,
-  bilan) et le choix du principal qui le concerne.
-- **Page Économie** : les ventes et l'argent encaissé par business
-  existent déjà ; s'y ajoutent les campagnes lourdes et leur rythme.
+  bilan), ses campagnes, et s'il est un business d'essai.
+- **Fiche d'une campagne** : sa phase, son canal, son état, combien de
+  prospects trouvés et contactés sur son volume, sa cible, son angle, sa
+  fin prévue ou la raison de sa fin.
+- **Pages Policy et Pipeline** : les réglages du lot (les volumes par
+  canal, les seuils, les délais) sous leur invocation, et la place lourde.
+
+Ce qui reste, à part (TODO) : les campagnes en une liste sur la page
+Système, les places sur la page En direct, et mettre une campagne en
+pause.
 
 ---
 
@@ -572,12 +586,14 @@ invocation.
   remplacé par le lien depuis le choix du principal.
 - Les champs « nombre de prospects » et « relances » du plan du POC
   (lot 10), remplacés par des réglages.
-- Les modules `serge/funnels/lifecycle.py`, `campaigns.py`, `essai.py`,
-  `rules.py` et `contact_tool.py`, que plus rien n'appelait : ils
-  imposaient en dur « un seul business actif », d'anciens statuts et
-  d'anciens seuils. Les statuts, les places et les seuils sont en base.
-- Les anciens réglages de « Taille des essais » (partie 9) et les
-  colonnes inutiles des campagnes (partie 8).
+- Les modules `serge/funnels/lifecycle.py` et `contact_tool.py`, que plus
+  rien n'appelait : le premier imposait en dur « un seul business actif »
+  et d'anciens statuts. Les statuts et les places sont en base.
+- **Pas encore retirés**, à faire à part (TODO) : la famille « Taille des
+  essais » de la page Policy et l'ancien code qui la lit
+  (`serge/funnels/campaigns.py`, `essai.py`, `rules.py`), que plus rien
+  n'appelle dans le pipeline, avec les colonnes des campagnes qu'il est
+  seul à écrire (partie 8).
 - Les invocations écrites mais jamais appelées que ce lot remplace (TODO,
   « Brancher ou supprimer les invocations jamais appelées ») : la
   découverte de contacts (→ « Trouver des prospects »), le résumé d'un
@@ -784,7 +800,8 @@ ne met rien). Serge arrête l'essai précédent, s'il y en a un, puis :
    1 €, remboursé, puis le captcha avec un humain (les deux tickets).
 6. **Étape 6** : la prospection lourde est préparée, ses campagnes
    démarrent, et le contact de l'essai reçoit un e-mail et un appel pour
-   le produit fini. Le paiement test a aussi enregistré une vente.
+   le produit fini. Une vente n'est enregistrée que si quelqu'un paie
+   vraiment : le paiement test de 1 € de Serge n'en est pas une.
 
 **Partir du milieu** : avec l'étape de départ 2, 3, 5 ou 6, Serge met
 d'abord en base l'état d'où part cette étape (la calculatrice choisie ;

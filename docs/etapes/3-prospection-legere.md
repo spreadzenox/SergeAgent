@@ -9,48 +9,49 @@ réactions.
 **Entrée.** Une campagne de test créée à l'étape 2, avec son plan.
 
 **Sortie.** Les réactions des prospects, notées en points (voir la grille
-de points dans [`PIPELINE.md`](../PIPELINE.md)). Le test se termine au
-statut `SMOKE_DONE`.
+de points dans [`PIPELINE.md`](../PIPELINE.md)). Un test retenu se termine
+au statut `SMOKE_DONE` ; un test sous les seuils, à `KILLED`.
 
 ---
 
 ## Aujourd'hui
 
-### Ce qui existe
+**L'étape est en base depuis le lot 12** (16 novembre 2026), par e-mail et
+par appel. Elle n'est pas encore essayée sur le serveur : c'est le rôle de
+l'essai total (page Système). Le détail est dans
+[`LOT12_CONCEPTION.md`](../LOT12_CONCEPTION.md), parties 3 à 5.
 
-- **Ranger les prospects** (`serge/funnels/contacts.py`). Une fiche par
-  personne dans `contacts`, une ligne par adresse dans `contact_addresses`.
-  Dans un même business :
-  1. une adresse déjà connue désigne la même personne. Exemple :
-     `ada@acme.fr` puis `ADA@acme.fr` ajoute à la fiche d'Ada, sans en
-     créer une autre ;
-  2. une boîte partagée (`contact@`, `info@`…) ne regroupe jamais ;
-  3. ni le nom, ni un même pseudo sur deux réseaux ne regroupent ;
-  4. une nouvelle adresse s'ajoute à côté des anciennes, rien n'est écrasé ;
-  5. si les adresses désignent deux fiches différentes, rien n'est écrit :
-     Serge ne fusionne jamais deux personnes tout seul.
+1. **Démarrer une campagne**, dès qu'elle est prête (le POC est en
+   ligne) : son volume vient des réglages de son canal (40 prospects par
+   e-mail), sa fin prévue du plan (30 jours au plus). Une campagne sur un
+   canal qui n'est pas branché ne démarre pas. **Le téléphone ne sert pas
+   à prospecter des inconnus** : ce canal demande l'accord de la personne
+   avant tout appel (page Policy, « Accord des gens »).
+2. **Trouver des prospects** : une personne nommée, son rôle, son adresse
+   directe et la page où elle a été trouvée. Son outil « Ajouter un
+   prospect » vérifie tout de suite et dit pourquoi il refuse : adresse
+   générique (`contact@`, `info@`…), domaine qui ne reçoit pas d'e-mails,
+   personne déjà contactée ou désinscrite. Au plus 10 prospects par
+   passage.
+3. **Rédiger un premier message**, par le canal de la campagne : « Écrire
+   le premier e-mail » ou « Préparer le premier appel », puis « Envoyer un
+   message ». Les relances et les réponses sont celles des lots 8 et
+   8 bis.
+4. **Suivre une campagne**, toutes les heures : la clore (elle a son
+   compte et rien n'est parti depuis 8 jours, ou sa durée est atteinte, ou
+   elle ne trouve plus de prospects), lui chercher des prospects s'il lui
+   en manque, ou attendre.
+5. **Mesurer le test**, quand sa dernière campagne est close : le compte
+   rendu chiffré, et le verdict avec des seuils en chiffres absolus
+   (30 prospects contactés, 10 points). **Faire le bilan**, puis
+   **conclure** : le business retenu passe à `SMOKE_DONE` ; l'autre est
+   arrêté (`KILLED`), libère sa place et donne une leçon (« Tirer la leçon
+   d'un business arrêté »).
 
-  Ce code n'est pas encore une capacité du pipeline.
-- **Le code d'envoi** (e-mail par Gog ou SMTP, garde-fous
-  `serge/guards/check.py`, quota) et **le pont téléphonique**
-  (`serge/voice/`, heures légales, consentement, mandat) existent. Ils
-  deviendront des capacités au lot 8.
-
-### Ce qui ne marche plus depuis le lot 6
-
-L'envoi d'e-mails, les appels sortants et la relève de la boîte mail
-étaient lancés par l'ancien runner, avec du code propre à chaque
-invocation (« Remplir les créneaux », « Écrire une relance »). Ce code est
-rangé dans `pas_encore_branche/` (`serge/workers/send.py`,
-`serge/workers/call.py`, `serge/workers/poll.py`).
-
-### Ce qui manque
-
-- **Trouver des prospects.** L'ancienne invocation de découverte de
-  contacts n'enregistrait que les contacts qu'on lui donnait, et personne
-  ne l'appelait.
-- **Lancer une campagne** et **relancer au bon moment** : rien ne
-  programme les premiers envois ni les relances.
+**Ranger les prospects** (`serge/funnels/contacts.py`) : une fiche par
+personne dans un business, une ligne par adresse ; une nouvelle adresse
+s'ajoute à côté des anciennes, rien n'est écrasé, et Serge ne fusionne
+jamais deux personnes tout seul.
 
 ---
 

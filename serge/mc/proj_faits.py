@@ -118,7 +118,7 @@ def _venture(conn: sqlite3.Connection, ident: str) -> dict | None:
         'titre': row['name'] or ident,
         'pourquoi': 'Une idée de business, de sa formulation à ses clients.',
         'actions': [bascule, *boutons_du_business(conn, ident)],
-        'cadres': cadres_produit(conn, ident),
+        'cadres': [*_test_leger(conn, ident), *cadres_produit(conn, ident)],
         'champs': _champs(
             [
                 (
@@ -127,8 +127,8 @@ def _venture(conn: sqlite3.Connection, ident: str) -> dict | None:
                 ),
                 (
                     'Business d’essai',
-                    'oui : il ne prend pas de place de test, et la chaîne'
-                    ' réelle ne part pas pour lui'
+                    'oui : il suit le pipeline dans le couloir d’essai, à'
+                    ' part des vrais business, et ne prend aucune place'
                     if row['trial']
                     else 'non',
                 ),
@@ -167,6 +167,23 @@ def _venture(conn: sqlite3.Connection, ident: str) -> dict | None:
         'enfants': enfants,
         'preuve': '',
     }
+
+
+def _test_leger(conn: sqlite3.Connection, ident: str) -> list[dict]:
+    """Le compte rendu du test léger d'un business : ses chiffres, son
+    verdict et son bilan. Rien avant la fin du test."""
+    row = conn.execute(
+        'SELECT figures, verdict, verdict_reason, summary FROM test_reports'
+        ' WHERE venture_id=? ORDER BY created_at DESC, rowid DESC LIMIT 1',
+        (ident,),
+    ).fetchone()
+    if row is None:
+        return []
+    verdict = 'Retenu' if row[1] == 'retenu' else 'Non retenu'
+    lignes = [str(row[0]), f'{verdict} : {row[2]}.']
+    if row[3]:
+        lignes += ['', 'Bilan :', str(row[3])]
+    return [{'titre': 'Le test léger', 'pre': '\n'.join(lignes)}]
 
 
 def _campagne(conn: sqlite3.Connection, ident: str) -> dict | None:
