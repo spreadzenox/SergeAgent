@@ -337,6 +337,10 @@ def fiche_tache(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
         champs.append(('Pas avant', row['not_before']))
     if row['last_error']:
         champs.append(('Erreur', row['last_error']))
+    if row['trial_run']:
+        champs.append(('Couloir', 'Essai total'))
+    if row['rerun']:
+        champs.append(('Chaîne', 'repartie d’une tâche (« Repartir d’ici »)'))
     champs += [(f'Paramètre {p[0]}', p[1]) for p in params]
     champs += [
         (f'Lu d’office : {r[0]}', f'{r[1]} lignes, {r[2]} laissées de côté')
@@ -369,14 +373,16 @@ def fiche_tache(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
                 ' plus.',
             }
         )
-    if row['status'] == 'failed':
+    if row['status'] not in ('ready', 'running'):
         actions.append(
             {
-                'libelle': 'Relancer la tâche',
-                'route': '/owner/api/tache/relancer',
+                'libelle': 'Repartir d’ici',
+                'route': '/owner/api/tache/repartir',
                 'charge': {'task_id': ident},
-                'confirmer': 'La tâche repart de zéro dans sa file, au'
-                ' prochain tour, si Serge est démarré.',
+                'confirmer': 'Une tâche neuve, copie de celle-ci, part dans'
+                ' sa file, et toute sa suite repart avec elle. Ce que'
+                ' l’ancienne avait laissé en attente (des tâches, des'
+                ' tickets) est annulé.',
             }
         )
     cadres = []
@@ -423,6 +429,21 @@ def fiche_tache(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
                 ('venture', str(p[1]), 'Business')
                 for p in params
                 if p[0] == 'venture_id' and p[1]
+            ]
+            # La chaîne : la tâche qui l'a créée, et celles qu'elle a
+            # créées.
+            + (
+                [('task', str(row['parent_id']), 'Créée par la tâche')]
+                if row['parent_id']
+                else []
+            )
+            + [
+                ('task', str(r[0]), 'A créé la tâche')
+                for r in conn.execute(
+                    'SELECT id FROM tasks WHERE parent_id=?'
+                    ' ORDER BY created_at, id LIMIT 20',
+                    (ident,),
+                ).fetchall()
             ]
         ),
         'preuve': json.dumps(

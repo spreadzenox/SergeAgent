@@ -16,7 +16,7 @@ EVENTS = {
     'sms.sent': 'SMS envoyé',
     'task.done': 'Tâche terminée',
     'task.failed': 'Tâche échouée',
-    'task.relaunched': 'Tâche relancée',
+    'task.restarted': 'Chaîne repartie d’une tâche',
     'task.cancelled': 'Tâche annulée',
     'task.resumed': 'Tâche reprise après un arrêt',
     'task.cut': 'Tâche arrêtée par le coupe-circuit',

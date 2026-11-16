@@ -26,7 +26,7 @@ from serge.coupe_circuit import set_heartbeat  # noqa: E402
 from serge.db.boot import init_schema  # noqa: E402
 from serge.db.store import open_db  # noqa: E402
 from serge.interpreter import tools as tools_mod  # noqa: E402
-from serge.interpreter.flow import fire_button, fire_due_triggers  # noqa: E402
+from serge.interpreter.triggers import fire_button, fire_due_triggers  # noqa: E402
 from serge.interpreter.queue import (  # noqa: E402
     process_one,
     resume_interrupted,

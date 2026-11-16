@@ -31,7 +31,7 @@ sys.path.insert(0, str(ROOT))
 from serge.coupe_circuit import set_heartbeat  # noqa: E402
 from serge.db.boot import init_schema  # noqa: E402
 from serge.db.migrate import MIGRATIONS, apply_pending  # noqa: E402
-from serge.interpreter.flow import fire_button, trigger_refusal  # noqa: E402
+from serge.interpreter.triggers import fire_button, trigger_refusal  # noqa: E402
 from serge.interpreter.queue import process_one  # noqa: E402
 from serge.interpreter.rules import quota_refusal, quota_usage  # noqa: E402
 from serge.pipeline_seed import seed_pipeline  # noqa: E402

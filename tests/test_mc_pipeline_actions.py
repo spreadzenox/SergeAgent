@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """MC : les actions sur le pipeline, depuis la fiche d'un objet.
 
-Scénario 1 : une tâche a échoué ; sa fiche montre « Relancer la tâche » ;
-un clic la remet dans sa file, prête, sans son erreur. Une tâche qui n'a
-pas échoué ne peut pas être relancée.
+Scénario 1 : une tâche a échoué ; sa fiche montre « Repartir d'ici » ;
+un clic met dans la file une tâche neuve, copie de celle-ci. Une tâche en
+cours ne repart pas.
 
 Scénario 2 : sur la fiche de « Formuler des business A », Julien retire
 les business des tables qu'elle voit pour comparer, puis les remet (les
@@ -59,14 +59,24 @@ class RelancerTacheTests(McBrowserCase):
         page = self._auth_context().new_page()
         self._watch_errors(page)
         page.goto(f'{self.base}/owner#/objet/task/{echec}')
-        bouton = page.get_by_role('button', name='Relancer la tâche')
+        bouton = page.get_by_role('button', name='Repartir d’ici')
         bouton.click(timeout=10000)
         page.locator('.modale').get_by_role(
-            'button', name='Relancer la tâche'
+            'button', name='Repartir d’ici'
         ).click()
         expect(page.locator('.toast-succes')).to_contain_text('fait')
-        expect(page.locator('#page')).to_contain_text('Prête')
-        self.assertEqual(self._etat(echec), ('ready', ''))
+        # L'ancienne tâche reste en échec ; une tâche neuve, copie de
+        # celle-ci, attend dans la file.
+        self.assertEqual(self._etat(echec), ('failed', 'boum'))
+        conn = sqlite3.connect(self.db_path)
+        try:
+            neuves = conn.execute(
+                'SELECT t.status, p.value FROM tasks t JOIN task_params p'
+                " ON p.task_id=t.id WHERE t.rerun<>'' AND p.name='n'"
+            ).fetchall()
+        finally:
+            conn.close()
+        self.assertEqual(neuves, [('ready', '1')])
 
     def test_annuler_une_tache_en_attente(self) -> None:
         conn = sqlite3.connect(self.db_path)
@@ -99,14 +109,23 @@ class RelancerTacheTests(McBrowserCase):
         self.assertEqual(status, 409)
         self.assertEqual(self._etat(faite)[0], 'done')
 
-    def test_une_tache_finie_ne_se_relance_pas(self) -> None:
-        _, faite = self._taches()
+    def test_une_tache_en_cours_ne_repart_pas(self) -> None:
+        conn = sqlite3.connect(self.db_path)
+        invocations(
+            conn, ('envoyer', 'Envoyer un e-mail', 'prospection_light')
+        )
+        en_cours = tache(
+            conn, 'envoyer', {'n': '5'}, key='k5', status='running'
+        )
+        conn.commit()
+        conn.close()
         cookie = self._auth_cookie()
-        status, _, _ = self._api_post(
-            '/owner/api/tache/relancer', {'task_id': faite}, cookie
+        status, _, corps = self._api_post(
+            '/owner/api/tache/repartir', {'task_id': en_cours}, cookie
         )
         self.assertEqual(status, 409)
-        self.assertEqual(self._etat(faite)[0], 'done')
+        self.assertIn('en cours', str(corps))
+        self.assertEqual(self._etat(en_cours)[0], 'running')
 
 
 class ComparerTests(McBrowserCase):

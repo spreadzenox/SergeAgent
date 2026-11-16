@@ -31,7 +31,8 @@ from typing import Any
 
 from serge.db.store import utcnow
 from serge.funnels.contacts import normalise_value
-from serge.interpreter.flow import fire_row_triggers, pass_links
+from serge.interpreter.flow import pass_links
+from serge.interpreter.triggers import fire_row_triggers
 from serge.interpreter.prompt import (
     Invocation,
     callable_tools,

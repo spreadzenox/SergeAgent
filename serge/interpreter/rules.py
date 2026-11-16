@@ -25,6 +25,8 @@ import unicodedata
 from collections.abc import Mapping
 from typing import Any
 
+from serge.trial import lane_clause
+
 
 class WriteConfigError(ValueError):
     """La règle d'écriture vise une table ou une colonne interdite."""
@@ -145,8 +147,12 @@ def find_duplicate(
             continue
         key = 'id' if _has_column(conn, table, 'id') else 'rowid'
         select = ', '.join(f'"{c}"' for c in columns)
+        # Un doublon se cherche dans le couloir de la tâche : la page lue
+        # par un essai n'est pas « déjà gardée » pour la vraie écoute.
+        lane = lane_clause(conn, table)
         for row in conn.execute(
             f'SELECT {key}, {select} FROM "{table}"'
+            + (f' WHERE {lane}' if lane else '')
         ).fetchall():
             existing = _normal(' '.join(str(v or '') for v in row[1:]))
             if method == 'exact':

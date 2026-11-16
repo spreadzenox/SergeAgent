@@ -23,6 +23,19 @@ from serge.seed_base import (
 )
 
 
+LANES = ('', 'real', 'trial')
+
+
+def _lane(raw: Any, quoi: str) -> str:
+    """Le couloir d'un lien ou d'un déclencheur : vide (les deux), ``real``
+    (le vrai pipeline seulement) ou ``trial`` (l'essai seulement ; pour un
+    bouton : il démarre un essai)."""
+    lane = str(raw or '')
+    if lane not in LANES:
+        raise PipelineSeedError(f'{quoi} : couloir inconnu {lane!r}')
+    return lane
+
+
 def _write_id(conn: sqlite3.Connection, invocation: str, position: Any) -> int:
     if position is None:
         return 0
@@ -68,6 +81,7 @@ def seed_links(conn: sqlite3.Connection, data: Mapping[str, Any]) -> None:
             condition_field=cond[0],
             condition_op=cond[1],
             condition_value=cond[2],
+            lane=_lane(link.get('lane'), f'lien {ident}'),
         )
         seed_params(
             conn, 'link_params', {'link_id': ident}, link.get('params'), ident
@@ -110,7 +124,9 @@ def seed_triggers(conn: sqlite3.Connection, data: Mapping[str, Any]) -> None:
             confirm_text=str(trig.get('confirm', '')).strip(),
             origin='code',
             updated_by='pipeline.yaml',
+            lane=_lane(trig.get('lane'), f'déclencheur {ident}'),
         )
+        _seed_row_conditions(conn, ident, trig.get('only_if_rows'))
         for quota in trig.get('only_if_room_in') or []:
             if not exists(conn, 'table_quotas', 'id', str(quota)):
                 raise PipelineSeedError(
@@ -128,6 +144,35 @@ def seed_triggers(conn: sqlite3.Connection, data: Mapping[str, Any]) -> None:
             {'trigger_id': ident},
             trig.get('params'),
             ident,
+        )
+
+
+def _seed_row_conditions(
+    conn: sqlite3.Connection, trigger: str, raw: Any
+) -> None:
+    """Les conditions « nombre de lignes » d'un déclencheur.
+
+    Format : ``[{table, column, values, at_most | at_least, description}]``.
+    Exemple : ``{table: ventures, column: lifecycle, values:
+    [SMOKE_RUNNING], at_most: 0, description: Business en test}``.
+    """
+    for position, cond in enumerate(raw or []):
+        op = 'at_most' if 'at_most' in cond else 'at_least'
+        if op not in cond:
+            raise PipelineSeedError(
+                f'déclencheur {trigger} : at_most ou at_least attendu'
+            )
+        insert(
+            conn,
+            'trigger_row_conditions',
+            trigger_id=trigger,
+            position=position,
+            table_name=str(cond['table']),
+            column_name=str(cond['column']),
+            counted_values=', '.join(str(v) for v in cond['values']),
+            op=op,
+            n=int(cond[op]),
+            description=str(cond.get('description', '')).strip(),
         )
 
 

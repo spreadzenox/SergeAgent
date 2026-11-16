@@ -39,7 +39,7 @@ sys.path.insert(0, str(ROOT))
 from serge.coupe_circuit import set_heartbeat  # noqa: E402
 from serge.db.store import default_canon_path, open_db  # noqa: E402
 from serge.ingress import caddy  # noqa: E402
-from serge.interpreter.flow import fire_button  # noqa: E402
+from serge.interpreter.triggers import fire_button  # noqa: E402
 from serge.interpreter.queue import expirer_tickets, process_one  # noqa: E402
 from serge.interpreter.rules import quota_usage  # noqa: E402
 from serge.llm.client import ChatResult, ToolCall  # noqa: E402

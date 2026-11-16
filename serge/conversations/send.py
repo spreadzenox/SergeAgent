@@ -65,7 +65,7 @@ from serge.conversations.stop import stop
 from serge.db.store import append_event, utcnow
 from serge.funnels.contacts import normalise_value
 from serge.guards import Reason, check
-from serge.interpreter.flow import notify_rows_written
+from serge.interpreter.triggers import notify_rows_written
 from serge.interpreter.intro import serge_text
 from serge.interpreter.tasks import enqueue_task
 from serge.policy_store import policy_en_vigueur, setting_value

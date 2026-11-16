@@ -39,7 +39,7 @@ from serge.channels.adapters import ADAPTERS  # noqa: E402
 from serge.channels.base import Adapter, Outgoing  # noqa: E402
 from serge.coupe_circuit import set_heartbeat  # noqa: E402
 from serge.db.store import default_canon_path, open_db  # noqa: E402
-from serge.interpreter.flow import fire_button  # noqa: E402
+from serge.interpreter.triggers import fire_button  # noqa: E402
 from serge.interpreter.queue import process_one  # noqa: E402
 from serge.llm.client import ChatResult  # noqa: E402
 from serge.privacy import subject_hash  # noqa: E402

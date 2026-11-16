@@ -23,7 +23,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from serge.interpreter.flow import fire_button  # noqa: E402
+from serge.interpreter.triggers import fire_button  # noqa: E402
 from tests import test_etape2  # noqa: E402
 from tests.test_etape2 import FauxModeles, _t  # noqa: E402
 

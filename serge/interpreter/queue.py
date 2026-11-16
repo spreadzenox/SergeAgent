@@ -27,7 +27,7 @@ from pathlib import Path
 
 from serge.coupe_circuit import heartbeat_marche
 from serge.db.store import append_event, utcnow
-from serge.interpreter.flow import fire_due_triggers
+from serge.interpreter.triggers import fire_due_triggers
 from serge.interpreter.halt import (
     TaskCut,
     TaskFrozen,

@@ -24,6 +24,7 @@ from collections.abc import Callable, Mapping
 from typing import Any
 
 from serge.interpreter.rules import safe_name, table_columns
+from serge.trial import lane_clause
 
 
 class ViewSeedError(ValueError):
@@ -144,10 +145,14 @@ def _select(
 ) -> tuple[list[dict[str, Any]], int]:
     """Les lignes demandées, les plus récentes d'abord, et leur nombre exact."""
     name = safe_name(table)
-    clause, bound = '', []
+    # Une invocation ne voit que les lignes de son couloir (le vrai
+    # pipeline, ou un essai).
+    parts, bound = [lane_clause(conn, name)], []
     if where is not None:
-        clause = f' WHERE "{safe_name(where[0])}"=?'
+        parts.append(f'"{safe_name(where[0])}"=?')
         bound = [where[1]]
+    clause = ' AND '.join(p for p in parts if p)
+    clause = f' WHERE {clause}' if clause else ''
     cols = ', '.join(f'"{safe_name(c)}"' for c in columns)
     rows = conn.execute(
         f'SELECT {cols} FROM "{name}"{clause}{_order(conn, table)}'

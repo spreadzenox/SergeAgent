@@ -19,6 +19,8 @@ import sqlite3
 from collections.abc import Mapping
 from typing import Any
 
+from serge.trial import in_trial
+
 
 class SettingError(ValueError):
     """Un réglage manque, ou sa valeur ne convient pas."""
@@ -30,11 +32,18 @@ _REPERE = re.compile(r'\{([a-z][a-z0-9_.]*)\}')
 def load_settings(
     conn: sqlite3.Connection, invocation_id: str
 ) -> dict[str, str]:
-    """Les réglages d'une invocation : ``{nom: valeur}``."""
+    """Les réglages d'une invocation : ``{nom: valeur}``.
+
+    Dans une tâche d'essai, un réglage qui a une valeur d'essai
+    (``trial_value``) la prend. Exemple : « Explorer le web » fait 10
+    recherches, et 2 dans l'essai total.
+    """
+    essai = in_trial()
     return {
-        str(name): str(value)
-        for name, value in conn.execute(
-            'SELECT name, value FROM invocation_settings WHERE invocation_id=?',
+        str(name): str(trial if essai and str(trial) != '' else value)
+        for name, value, trial in conn.execute(
+            'SELECT name, value, trial_value FROM invocation_settings'
+            ' WHERE invocation_id=?',
             (invocation_id,),
         ).fetchall()
     }
@@ -118,8 +127,9 @@ def seed_settings(
 ) -> None:
     """Range les réglages de départ d'une invocation (``pipeline.yaml``).
 
-    Format : ``{nom: {type, value, min, max, description, policy}}``.
+    Format : ``{nom: {type, value, min, max, description, policy, trial}}``.
     Exemple : ``nombre_idees: {value: 2, min: 1, max: 10, policy: true}``.
+    ``trial`` : sa valeur dans un essai (absente : la même).
     Un réglage déjà en base n'est jamais modifié : seuls les nouveaux
     s'ajoutent.
 
@@ -140,11 +150,15 @@ def seed_settings(
         probleme = check_setting(kind, value, low, high)
         if probleme:
             raise SettingError(f'{where} : {probleme}')
+        trial = str(spec.get('trial', ''))
+        probleme = check_setting(kind, trial, low, high) if trial else ''
+        if probleme:
+            raise SettingError(f'{where} (essai) : {probleme}')
         conn.execute(
             'INSERT OR IGNORE INTO invocation_settings(invocation_id, name,'
             ' type, value,'
-            ' min_value, max_value, description, policy, updated_by)'
-            ' VALUES(?,?,?,?,?,?,?,?,?)',
+            ' min_value, max_value, description, policy, updated_by,'
+            ' trial_value) VALUES(?,?,?,?,?,?,?,?,?,?)',
             (
                 invocation_id,
                 str(name),
@@ -155,5 +169,6 @@ def seed_settings(
                 str(spec.get('description', '')).strip(),
                 int(bool(spec.get('policy', False))),
                 'pipeline.yaml',
+                trial,
             ),
         )
