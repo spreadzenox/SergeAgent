@@ -189,9 +189,9 @@ def quota_refusal(
     Une ligne ne compte que si elle entre dans le quota : un business déjà
     ``POC_SELECTED`` qu'on modifie ne prend pas une place de plus.
     """
-    for quota_id, column, counted, maximum in conn.execute(
-        'SELECT id, column_name, counted_values, max_value FROM table_quotas'
-        ' WHERE table_name=? ORDER BY id',
+    for quota_id, column, counted, maximum, ou, vaut in conn.execute(
+        'SELECT id, column_name, counted_values, max_value, where_column,'
+        ' where_value FROM table_quotas WHERE table_name=? ORDER BY id',
         (table,),
     ).fetchall():
         column = safe_name(str(column))
@@ -202,11 +202,16 @@ def quota_refusal(
             continue
         if current is not None and str(current.get(column) or '') in compte:
             continue
+        if ou and not _dans_le_quota(
+            conn, table, str(ou), vaut, values, current
+        ):
+            continue
+        filtre, valeurs = _filtre(str(ou), vaut)
         marques = ', '.join('?' for _ in compte)
         row = conn.execute(
             f'SELECT COUNT(*) FROM "{safe_name(table)}"'
-            f' WHERE "{column}" IN ({marques})',
-            compte,
+            f' WHERE "{column}" IN ({marques}){filtre}',
+            [*compte, *valeurs],
         ).fetchone()
         if int(row[0]) >= int(maximum):
             return (
@@ -214,6 +219,38 @@ def quota_refusal(
                 f' avec {column} parmi {", ".join(compte)}'
             )
     return ''
+
+
+def _filtre(ou: str, vaut: Any) -> tuple[str, list[str]]:
+    """Le filtre d'un quota qui ne compte que certaines lignes."""
+    if not ou:
+        return '', []
+    return f' AND "{safe_name(ou)}"=?', [str(vaut)]
+
+
+def _dans_le_quota(
+    conn: sqlite3.Connection,
+    table: str,
+    ou: str,
+    vaut: Any,
+    values: Mapping[str, Any],
+    current: Mapping[str, Any] | None,
+) -> bool:
+    """La ligne écrite est-elle de celles que le quota compte ?
+
+    Sa valeur est celle qu'on écrit, sinon celle de la ligne en base, sinon
+    la valeur par défaut de la colonne. Exemple : un business d'essai
+    (``trial`` à 1) n'entre pas dans les places de test, qui comptent les
+    business dont ``trial`` vaut 0.
+    """
+    if ou in values:
+        valeur = values[ou]
+    elif current is not None and ou in current:
+        valeur = current[ou]
+    else:
+        defaut = table_columns(conn, table).get(ou, {}).get('default')
+        valeur = str(defaut if defaut is not None else '').strip("'")
+    return str(valeur) == str(vaut)
 
 
 def quota_usage(
@@ -226,18 +263,20 @@ def quota_usage(
     """
     row = conn.execute(
         'SELECT table_name, column_name, counted_values, max_value,'
-        ' description FROM table_quotas WHERE id=?',
+        ' description, where_column, where_value FROM table_quotas'
+        ' WHERE id=?',
         (quota_id,),
     ).fetchone()
     if row is None:
         return None
-    table, column, counted, maximum, description = row
+    table, column, counted, maximum, description, ou, vaut = row
     compte = [v.strip() for v in str(counted).split(',') if v.strip()]
     marques = ', '.join('?' for _ in compte) or "''"
+    filtre, valeurs = _filtre(str(ou or ''), vaut)
     used = conn.execute(
         f'SELECT COUNT(*) FROM "{safe_name(str(table))}"'
-        f' WHERE "{safe_name(str(column))}" IN ({marques})',
-        compte,
+        f' WHERE "{safe_name(str(column))}" IN ({marques}){filtre}',
+        [*compte, *valeurs],
     ).fetchone()
     return int(used[0]), int(maximum), str(description or quota_id)
 

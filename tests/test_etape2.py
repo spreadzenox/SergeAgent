@@ -341,6 +341,11 @@ class Etape2Tests(unittest.TestCase):
     def test_arreter_le_business_libere_sa_place(self) -> None:
         modeles = FauxModeles(['bon'], [])
         venture = self._essai(modeles)
+        # Le business du bouton d'essai ne prend pas de place (Q98) ; un
+        # vrai business, choisi par l'étape 1, en prend une.
+        self.assertEqual(quota_usage(self.conn, 'places_de_test')[0], 0)
+        self.conn.execute('UPDATE ventures SET trial=0')
+        self.conn.commit()
         self.assertEqual(quota_usage(self.conn, 'places_de_test')[0], 1)
         self._repondre('PLAN_POC', 'arreter_business')
         self._vider(modeles)

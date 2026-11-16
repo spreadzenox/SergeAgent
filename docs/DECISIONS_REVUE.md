@@ -2066,3 +2066,30 @@ Ce qui s'est passé ensuite, le même jour :
   le bouton « Essayer le captcha avec un humain » ouvre une page d'essai
   dont seul un humain clique le bouton, envoie les deux tickets, puis
   rend le code que la page montre.
+
+### Q98 — Lot 12 : une première version qu'on pourrait lancer, des canaux qui se branchent, des essais à part (validé par Clem, 16 novembre 2026)
+Question : les trois points encore ouverts de la conception du lot 12, et
+faut-il avancer le moteur de recherche du lot 13 pour trouver des
+prospects ?
+Décidé :
+1. **Les chiffres de départ sont bons**, puisqu'ils se règlent dans
+   Mission Control : 40 e-mails et 20 appels pour un test ; 200 e-mails et
+   50 appels par semaine en prospection lourde, jusqu'à 1 000 et 250 ; un
+   test retenu à partir de 30 prospects contactés et 10 points ; les
+   intéressés du test prévenus les premiers quand le produit sort.
+2. **Pas de lot 13 pour l'instant** : trouver des prospects se fait avec
+   la recherche web d'aujourd'hui.
+3. **Une première version entière** : le pipeline de A à Z, avec toutes
+   ses invocations en base, par e-mail et par appel seulement. Elle doit
+   pouvoir être lancée, même si on ne la lance pas tout de suite.
+4. **Une approche par canal** : ajouter un canal, y compris un canal qui
+   demande de naviguer sur le web, doit être un branchement, qui écrit
+   dans les mêmes tables et ne demande ni de modifier ni de retester le
+   reste (le contrat est dans la conception du lot 12, partie 17).
+5. **Les essais sont à part** : un essai de la page Système (la
+   calculatrice, par exemple) lancé pendant que le pipeline tourne ne
+   doit rien casser. Les business d'essai sont séparés des vrais, et
+   n'écrivent pas au même endroit (partie 18). Le pipeline doit supporter
+   des essais et des modifications pendant qu'il tourne.
+6. Ensuite viendront le moteur de recherche (lot 13), d'autres canaux, et
+   faire vivre les produits (lot 16).

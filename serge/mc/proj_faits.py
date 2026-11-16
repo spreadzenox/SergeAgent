@@ -126,6 +126,13 @@ def _venture(conn: sqlite3.Connection, ident: str) -> dict | None:
                     LIFECYCLE.get(row['lifecycle'], row['lifecycle']),
                 ),
                 (
+                    'Business d’essai',
+                    'oui : il ne prend pas de place de test, et la chaîne'
+                    ' réelle ne part pas pour lui'
+                    if row['trial']
+                    else 'non',
+                ),
+                (
                     'Serge peut avancer tout seul',
                     'oui' if row['schedulable'] else 'non',
                 ),

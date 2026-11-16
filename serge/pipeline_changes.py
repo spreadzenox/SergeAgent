@@ -59,6 +59,7 @@ from serge.pipeline_changes_remove import (
     remove_outputs,
     remove_tool_columns,
     remove_tools,
+    remove_trigger_conditions,
     remove_write_values,
 )
 from serge.seed_base import PipelineSeedError, seed_tool_link
@@ -373,6 +374,7 @@ _PAR_INVOCATION = {
 }
 _AUTRES = (
     'add_trigger_params',
+    'remove_trigger_conditions',
     'add_write_values',
     'remove_write_values',
     'add_link_params',
@@ -404,6 +406,10 @@ def apply_changes(conn: sqlite3.Connection, raw: Any) -> None:
             result = _PAR_INVOCATION[kind](conn, invocation, change[kind])
         elif kind == 'add_trigger_params':
             result = _add_trigger_params(
+                conn, str(change.get('trigger') or ''), change[kind]
+            )
+        elif kind == 'remove_trigger_conditions':
+            result = remove_trigger_conditions(
                 conn, str(change.get('trigger') or ''), change[kind]
             )
         elif kind in ('add_write_values', 'remove_write_values'):
