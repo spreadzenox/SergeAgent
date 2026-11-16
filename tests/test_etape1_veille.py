@@ -5,6 +5,10 @@ Scénarios :
 - toutes les 6 heures, une tâche par flux actif lit ses pages ; une page
   déjà gardée (même adresse) ne l'est pas deux fois, un flux coupé n'est
   pas lu ;
+- un site qui n'accepte qu'une lecture par minute (Reddit) répond 429 aux
+  autres : elles repartent après l'attente qu'il demande, et tous ses flux
+  sont lus ; un site qui refuse toujours laisse la tâche en échec, avec la
+  raison, dans la base et dans le journal de la file ;
 - chaque jour, les pages « bruit » ou jamais triées de plus de 30 jours
   sont supprimées, les « besoin nouveau » jamais utilisées après 60 jours,
   jamais une preuve ;
@@ -14,11 +18,15 @@ Scénarios :
 
 from __future__ import annotations
 
+import io
 import json
 import sqlite3
 import sys
 import unittest
+import urllib.error
+from contextlib import redirect_stderr
 from datetime import UTC, datetime, timedelta
+from http.client import HTTPMessage
 from pathlib import Path
 from unittest import mock
 
@@ -59,9 +67,9 @@ def _flux(
     ][:max_items]
 
 
-def _vider(conn: sqlite3.Connection) -> None:
+def _vider(conn: sqlite3.Connection, now: str = NOW) -> None:
     for _ in range(10):
-        if process_one(conn, 'works', now=NOW) is None:
+        if process_one(conn, 'works', now=now) is None:
             return
 
 
@@ -116,6 +124,181 @@ class VeilleTests(unittest.TestCase):
         self.assertEqual(
             self.conn.execute('SELECT COUNT(*) FROM listen_docs').fetchone(),
             (2,),
+        )
+
+
+# Un flux Atom comme ceux de Reddit : le lien est dans ``href``, le texte
+# dans ``content``.
+ATOM = (
+    '<?xml version="1.0" encoding="UTF-8"?>'
+    '<feed xmlns="http://www.w3.org/2005/Atom"><title>forum</title>'
+    '<entry><title>Avis PEA</title><link href="{flux}comments/1/"/>'
+    '<content type="html">&lt;p&gt;Bonjour, un avis ?&lt;/p&gt;</content>'
+    '<updated>2026-09-28T09:00:00+00:00</updated></entry></feed>'
+)
+
+
+class _SiteLimite:
+    """Un faux site qui accepte ``par_minute`` lecture par minute et
+    répond 429 aux autres, avec l'attente dans ``x-ratelimit-reset``."""
+
+    def __init__(self, par_minute: int) -> None:
+        self.par_minute = par_minute
+        self.minute = 0
+        self.lues: list[tuple[int, str]] = []
+        self.refus = 0
+
+    def __call__(self, request, timeout: float) -> io.BytesIO:
+        flux = request.full_url
+        servies = sum(1 for minute, _ in self.lues if minute == self.minute)
+        if servies >= self.par_minute:
+            self.refus += 1
+            entetes = HTTPMessage()
+            entetes['x-ratelimit-reset'] = '41'
+            raise urllib.error.HTTPError(
+                flux, 429, 'Too Many Requests', entetes, None
+            )
+        self.lues.append((self.minute, flux))
+        return io.BytesIO(ATOM.format(flux=flux[:-4]).encode())
+
+
+class VeilleSiteLimiteTests(unittest.TestCase):
+    """Trois flux du même site, lus à la même seconde (le serveur, du 29
+    septembre au 16 novembre 2026 : 1 lecture finie et 4 en échec à chaque
+    passage, et aucune page gardée)."""
+
+    FLUX = [f'https://forum.test/r/{nom}/.rss' for nom in 'abc']
+
+    def setUp(self) -> None:
+        self.conn = sqlite3.connect(':memory:')
+        self.addCleanup(self.conn.close)
+        init_schema(self.conn)
+        set_heartbeat(self.conn, True)
+        self.conn.executemany(
+            'INSERT INTO listen_feeds(id, url, active) VALUES(?, ?, 1)',
+            [(f'f{n}', url) for n, url in enumerate(self.FLUX)],
+        )
+        self.conn.commit()
+        # Pas de réseau en test : l'adresse est jugée publique.
+        patcher = mock.patch('serge.listen.page.check_host')
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def _passer(self, site: _SiteLimite, minutes: int) -> str:
+        """Vide la file ``minutes`` minutes après le déclencheur ; rend ce
+        que la file a écrit dans son journal."""
+        site.minute = minutes
+        moment = datetime.fromisoformat(NOW) + timedelta(minutes=minutes)
+        with (
+            mock.patch('urllib.request.urlopen', site),
+            redirect_stderr(io.StringIO()) as journal,
+        ):
+            _vider(self.conn, moment.isoformat())
+        return journal.getvalue()
+
+    def _taches(self) -> list[tuple[str, str, str]]:
+        return self.conn.execute(
+            'SELECT t.status, t.not_before, t.last_error FROM tasks t'
+            ' JOIN task_params p ON p.task_id=t.id'
+            " WHERE t.invocation_id='lire_un_flux' AND p.name='url'"
+            ' ORDER BY p.value'
+        ).fetchall()
+
+    def test_les_lectures_refusees_repartent_et_tous_les_flux_sont_lus(
+        self,
+    ) -> None:
+        site = _SiteLimite(par_minute=1)
+        journal = self._passer(site, 0)
+        # Une lecture passe ; les deux autres attendent 41 s plus une de
+        # marge, sans être en échec.
+        plus_tard = '2026-09-28T10:00:42+00:00'
+        self.assertEqual(
+            self._taches(),
+            [
+                ('done', '', ''),
+                ('ready', plus_tard, ''),
+                ('ready', plus_tard, ''),
+            ],
+        )
+        self.assertIn(
+            'remise à plus tard (42 s) : NETWORK: HTTP 429 Too Many Requests'
+            f' ({self.FLUX[1]})',
+            journal,
+        )
+        refus = [
+            json.loads(r[0])
+            for r in self.conn.execute(
+                "SELECT payload_json FROM events WHERE type='task.too_fast'"
+            )
+        ]
+        self.assertEqual(
+            [(r['not_before'], r['error']) for r in refus],
+            [
+                (
+                    plus_tard,
+                    f'NETWORK: HTTP 429 Too Many Requests ({flux})',
+                )
+                for flux in self.FLUX[1:]
+            ],
+        )
+        # Une minute après, le site en accepte une de plus ; puis la
+        # dernière.
+        self._passer(site, 1)
+        self.assertEqual(
+            [t[0] for t in self._taches()], ['done', 'done', 'ready']
+        )
+        self._passer(site, 2)
+        self.assertEqual([t[0] for t in self._taches()], ['done'] * 3)
+        self.assertEqual(site.lues, list(enumerate(self.FLUX)))
+        self.assertEqual(site.refus, 3)
+        # Chaque flux a ramené sa page, lue dans le format Atom.
+        pages = self.conn.execute(
+            'SELECT feed_id, url, title, excerpt FROM listen_docs'
+            ' ORDER BY feed_id'
+        ).fetchall()
+        self.assertEqual(
+            pages,
+            [
+                (
+                    f'f{n}',
+                    f'{flux[:-4]}comments/1/',
+                    'Avis PEA',
+                    'Bonjour, un avis ?',
+                )
+                for n, flux in enumerate(self.FLUX)
+            ],
+        )
+        lus = self.conn.execute(
+            "SELECT COUNT(*) FROM listen_feeds WHERE last_read_at<>''"
+        ).fetchone()
+        self.assertEqual(lus, (3,))
+
+    def test_un_site_qui_refuse_toujours_laisse_un_echec_avec_la_raison(
+        self,
+    ) -> None:
+        self.conn.execute(
+            "UPDATE policy_settings SET value_json='1'"
+            " WHERE id='web.feed_retries'"
+        )
+        self.conn.execute("UPDATE listen_feeds SET active=0 WHERE id<>'f0'")
+        self.conn.commit()
+        site = _SiteLimite(par_minute=0)
+        self._passer(site, 0)
+        self.assertEqual([t[0] for t in self._taches()], ['ready'])
+        journal = self._passer(site, 1)
+        raison = (
+            f'NETWORK: HTTP 429 Too Many Requests ({self.FLUX[0]}),'
+            ' refusé 2 fois de suite'
+        )
+        self.assertEqual(self._taches(), [('failed', mock.ANY, raison)])
+        self.assertIn(f'« Lire un flux RSS » en échec : {raison}', journal)
+        self.assertEqual(site.refus, 2)
+        self.assertEqual(
+            self.conn.execute(
+                'SELECT (SELECT COUNT(*) FROM listen_docs),'
+                " (SELECT COUNT(*) FROM listen_feeds WHERE last_read_at<>'')"
+            ).fetchone(),
+            (0, 0),
         )
 
 

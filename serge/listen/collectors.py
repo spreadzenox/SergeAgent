@@ -4,6 +4,11 @@
 Respect ToS lecture (timeout, cap items, user-agent identifié). Autres
 sources (API/forums) : même contrat [{id, source, title, url, excerpt,
 published}]. Erreurs typées ListenError (NETWORK/PARSE).
+
+Un site qui refuse une lecture trop rapprochée (HTTP 429) dit combien de
+temps attendre : ``TooManyReads`` porte cette attente. Exemple : Reddit
+accepte une lecture de flux par minute et répond ``x-ratelimit-reset: 41``
+aux suivantes.
 """
 
 from __future__ import annotations
@@ -12,12 +17,47 @@ import hashlib
 import urllib.error
 import urllib.request
 import xml.etree.ElementTree as ET
+from typing import Any
 
 USER_AGENT = 'SergeListen/1.0 (+https://serge.local/bot-info)'
+ATOM = '{http://www.w3.org/2005/Atom}'
+# Après un refus « trop de lectures » : l'attente quand le site ne dit pas
+# combien, et la plus longue qu'on accepte de lui (au-delà, le passage
+# suivant de la veille relira le flux).
+WAIT_S = 60
+MAX_WAIT_S = 3600
 
 
 class ListenError(ValueError):
     pass
+
+
+class TooManyReads(ListenError):
+    """Le site refuse une lecture trop rapprochée (HTTP 429).
+
+    ``wait_s`` : les secondes à attendre avant de relire.
+    """
+
+    def __init__(self, message: str, wait_s: int) -> None:
+        super().__init__(message)
+        self.wait_s = wait_s
+
+
+def _wait_s(headers: Any) -> int:
+    """Les secondes à attendre après un refus « trop de lectures ».
+
+    Le site le dit dans l'en-tête ``Retry-After`` ou, comme Reddit, dans
+    ``x-ratelimit-reset`` ; sinon, une minute. Une seconde de marge (le
+    site arrondit vers le bas), et jamais plus d'une heure : la valeur
+    vient de l'extérieur.
+    """
+    for name in ('Retry-After', 'x-ratelimit-reset'):
+        try:
+            asked = int(float(str((headers or {}).get(name) or '')))
+        except (ValueError, OverflowError):
+            continue
+        return min(max(asked, 0) + 1, MAX_WAIT_S)
+    return WAIT_S
 
 
 def _doc_id(source: str, url: str) -> str:
@@ -52,24 +92,34 @@ def parse_rss(
         root = ET.fromstring(text)
     except ET.ParseError as exc:
         raise ListenError(f'PARSE: flux illisible ({exc})') from exc
-    items = root.findall('.//item') or root.findall(
-        './/{http://www.w3.org/2005/Atom}entry'
-    )
+    items = root.findall('.//item') or root.findall(f'.//{ATOM}entry')
     docs: list[dict[str, str]] = []
     seen: set[str] = set()
     for item in items[: max(1, max_items)]:
-        title = _text(item.find('title')) or _text(
-            item.find('{http://www.w3.org/2005/Atom}title')
-        )
+        title = _text(item.find('title')) or _text(item.find(f'{ATOM}title'))
         link_el = item.find('link')
+        if link_el is None:
+            # Atom : le lien de la page est celui sans ``rel``, ou
+            # « alternate » (les autres mènent au flux ou aux réponses).
+            link_el = next(
+                (
+                    link
+                    for link in item.findall(f'{ATOM}link')
+                    if link.get('rel', 'alternate') == 'alternate'
+                ),
+                None,
+            )
         url = ''
         if link_el is not None:
             url = (link_el.get('href') or _text(link_el)).strip()
-        excerpt = _text(item.find('description')) or _text(
-            item.find('{http://www.w3.org/2005/Atom}summary')
+        # Atom : le résumé, sinon le contenu (Reddit ne donne que lui).
+        excerpt = (
+            _text(item.find('description'))
+            or _text(item.find(f'{ATOM}summary'))
+            or _text(item.find(f'{ATOM}content'))
         )
         published = _text(item.find('pubDate')) or _text(
-            item.find('{http://www.w3.org/2005/Atom}updated')
+            item.find(f'{ATOM}updated')
         )
         if not url or url in seen:
             continue
@@ -103,6 +153,7 @@ def fetch_rss(
 
     Raises:
         ListenError: NETWORK (transport/HTTP), PARSE (contenu).
+        TooManyReads: Le site demande d'attendre (HTTP 429).
     """
     from serge.listen.page import PageError, check_host
 
@@ -119,7 +170,12 @@ def fetch_rss(
         with urllib.request.urlopen(request, timeout=timeout) as response:
             raw = response.read(2_000_000)
     except urllib.error.HTTPError as exc:
-        raise ListenError(f'NETWORK: HTTP {exc.code}') from exc
+        # La raison donnée en face, et le flux : c'est elle qu'on lit dans
+        # Mission Control.
+        reason = f'NETWORK: HTTP {exc.code} {str(exc.reason)[:100]} ({url})'
+        if exc.code == 429:
+            raise TooManyReads(reason, _wait_s(exc.headers)) from exc
+        raise ListenError(reason) from exc
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
         raise ListenError(f'NETWORK: flux injoignable ({exc})') from exc
     return parse_rss(raw, source, max_items)

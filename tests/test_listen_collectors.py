@@ -14,6 +14,7 @@ sys.path.insert(0, str(ROOT))
 
 from serge.listen.collectors import (  # noqa: E402
     ListenError,
+    TooManyReads,
     fetch_rss,
     parse_rss,
 )
@@ -27,6 +28,17 @@ RSS = """<?xml version="1.0"?>
 <description>x</description></item>
 <item><title>Sans lien</title><description>y</description></item>
 </channel></rss>"""
+
+
+# Atom : le lien de la page parmi d'autres, et le texte dans ``content``.
+ATOM = """<?xml version="1.0"?>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>T</title>
+<entry><title>Avis PEA</title>
+<link rel="replies" href="https://f.test/a/reponses"/>
+<link rel="alternate" href="https://f.test/a"/>
+<content type="html">&lt;p&gt;Un avis ?&lt;/p&gt;</content>
+<updated>2026-11-16T21:13:29+00:00</updated></entry>
+</feed>"""
 
 
 def _response(raw: bytes):
@@ -47,6 +59,14 @@ class CollectorsTests(unittest.TestCase):
         self.assertEqual(doc['url'], 'https://f.test/a')
         self.assertTrue(doc['id'].startswith('ld_'))
         self.assertIn('artisans', doc['excerpt'])
+
+    def test_parse_atom(self) -> None:
+        docs = parse_rss(ATOM.encode(), 'forum-test')
+        self.assertEqual(
+            [(d['url'], d['title'], d['excerpt']) for d in docs],
+            [('https://f.test/a', 'Avis PEA', '<p>Un avis ?</p>')],
+        )
+        self.assertEqual(docs[0]['published'], '2026-11-16T21:13:29+00:00')
 
     def test_parse_invalide(self) -> None:
         with self.assertRaisesRegex(ListenError, '^PARSE'):
@@ -80,7 +100,9 @@ class CollectorsTests(unittest.TestCase):
             None,  # type: ignore[arg-type]
         )
         with mock.patch('urllib.request.urlopen', side_effect=error):
-            with self.assertRaisesRegex(ListenError, '^NETWORK'):
+            with self.assertRaisesRegex(
+                ListenError, r'^NETWORK: HTTP 404 NF \(https://x.test/rss\)$'
+            ):
                 fetch_rss('https://x.test/rss', 'x', timeout=20, max_items=50)
         with mock.patch(
             'urllib.request.urlopen',
@@ -88,6 +110,32 @@ class CollectorsTests(unittest.TestCase):
         ):
             with self.assertRaisesRegex(ListenError, '^NETWORK'):
                 fetch_rss('https://x.test/rss', 'x', timeout=20, max_items=50)
+
+    def test_trop_de_lectures_l_attente_demandee(self) -> None:
+        """L'attente vient de l'extérieur : en secondes dans l'un des deux
+        en-têtes, sinon une minute ; une heure au plus."""
+        for entetes, attente in (
+            ({'Retry-After': '30'}, 31),
+            ({'x-ratelimit-reset': '41.0'}, 42),
+            ({}, 60),
+            ({'Retry-After': 'Wed, 21 Oct 2026 07:28:00 GMT'}, 60),
+            ({'Retry-After': '-5'}, 1),
+            ({'x-ratelimit-reset': '1794862800'}, 3600),
+            ({'Retry-After': '1e999'}, 60),
+        ):
+            error = urllib.error.HTTPError(
+                'https://x',
+                429,
+                'Too Many Requests',
+                entetes,  # type: ignore[arg-type]
+                None,  # type: ignore[arg-type]
+            )
+            with mock.patch('urllib.request.urlopen', side_effect=error):
+                with self.assertRaises(TooManyReads) as refus:
+                    fetch_rss(
+                        'https://x.test/rss', 'x', timeout=20, max_items=50
+                    )
+            self.assertEqual(refus.exception.wait_s, attente, entetes)
 
 
 if __name__ == '__main__':

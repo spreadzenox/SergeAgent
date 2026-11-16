@@ -576,6 +576,19 @@ sections:
         min: 1
         max: 60
         step: 1
+      - id: feed_retries
+        value: 10
+        title: Nouveaux essais d’un flux qui répond « trop de lectures »
+        help: >-
+          Un site qui refuse une lecture trop rapprochée (HTTP 429) dit
+          combien de temps attendre : la lecture repart après cette attente,
+          au plus ce nombre de fois, puis échoue avec la raison. Exemple :
+          Reddit accepte une lecture de flux par minute ; 5 flux Reddit lus
+          ensemble passent un par minute, le dernier à son 4e nouvel essai.
+        kind: curseur
+        min: 0
+        max: 50
+        step: 1
 
   - id: channels
     title: Canaux
