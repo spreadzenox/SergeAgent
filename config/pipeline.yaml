@@ -1283,6 +1283,7 @@ writable_tables:
       - {name: family, description: Sa famille de business.}
       - {name: choice_reason, description: Pourquoi il a été choisi.}
       - {name: validate_drafts, description: '1 : chaque brouillon de ce business attend un humain.'}
+      - {name: trial, description: "1 : un business d'essai, créé par un bouton d'essai de la page Système."}
   - table: listen_docs
     insert: true
     update: true
@@ -1575,6 +1576,8 @@ table_quotas:
     table: ventures
     column: lifecycle
     values: [POC_SELECTED, SMOKE_READY, SMOKE_RUNNING, SMOKE_DONE]
+    # Un business d'essai (page Système) ne prend pas de place (Q98).
+    where: {column: trial, value: '0'}
     max: 3
     description: Places de test occupées
   - id: cycles_ouverts
@@ -3118,6 +3121,7 @@ invocations:
           description: {source: fixed, value: 'Les artisans dictent leurs devis au téléphone ; Devis Vocal les met en page et les envoie au client.'}
           sellable_offer: {source: fixed, value: 'Un mois d''essai gratuit, puis 29 € par mois, sans engagement.'}
           lifecycle: {source: fixed, value: TEST}
+          trial: &essai_marque {source: fixed, value: '1'}
           validate_drafts: &valeur_essai_valider {source: task, value: valider}
       - table: product_sheets
         operation: insert
@@ -4236,6 +4240,7 @@ invocations:
           description: {source: task, value: description}
           sellable_offer: {source: task, value: offre}
           lifecycle: {source: fixed, value: CANDIDATE}
+          trial: *essai_marque
           family: {source: fixed, value: autre}
 
   - id: choisir_business_essai
@@ -4282,6 +4287,7 @@ invocations:
           sellable_offer: {source: fixed, value: "Gratuite pendant l'essai."}
           family: {source: fixed, value: autre}
           lifecycle: {source: fixed, value: POC_SELECTED}
+          trial: *essai_marque
           choice_reason: {source: fixed, value: "Essai de bout en bout du POC depuis Mission Control."}
       - table: product_sheets
         operation: insert
@@ -5770,6 +5776,7 @@ invocations:
           sellable_offer: {source: fixed, value: "Un abonnement à la calculatrice, avec ce que les clients ont demandé."}
           family: {source: fixed, value: autre}
           lifecycle: {source: fixed, value: PRODUCT_BUILDING}
+          trial: *essai_marque
           choice_reason: {source: fixed, value: "Essai de bout en bout du produit fini depuis Mission Control."}
       - table: product_sheets
         operation: insert
@@ -6786,10 +6793,9 @@ triggers:
     title: Essayer l'étape 2
     invocation: creer_business_essai
     event: button
-    only_if_room_in: [places_de_test]
     confirm: >-
-      Serge crée ce business, le choisit pour un POC (il prend une place de
-      test) et lance l'étape 2 : concevoir, critiquer, puis le ticket
+      Serge crée ce business d'essai (il ne prend pas de place de test), le
+      choisit pour un POC et lance l'étape 2 : concevoir, critiquer, puis le ticket
       « Plan ». Après ta validation, il construit le POC (niveau « code »),
       le relit, et ouvre le ticket « Tester le produit ». Compter quelques
       euros de modèles.
@@ -6802,10 +6808,9 @@ triggers:
     title: "Bout en bout : le POC d'une calculatrice"
     invocation: bout_en_bout_poc
     event: button
-    only_if_room_in: [places_de_test]
     confirm: >-
-      Serge met en base un business « Calculatrice » avec sa fiche produit
-      et un plan déjà validé (il prend une place de test), puis lance la
+      Serge met en base un business d'essai « Calculatrice » avec sa fiche
+      produit et un plan déjà validé (il ne prend pas de place de test), puis lance la
       vraie construction du POC : le constructeur code au niveau « code »,
       Serge publie en staging, le relecteur l'essaie dans son navigateur.
       Puis le ticket « Tester le produit » : ouvre le lien du staging et
@@ -7316,6 +7321,65 @@ changes:
     write: 1
     add_write_values:
       validate_drafts: *valeur_essai_valider
+  - id: essais_a_part_places
+    why: >-
+      Un business d'essai ne prend pas de place de test : lancer la
+      calculatrice d'un essai ne bloque plus l'étape 1 (lot 12, Q98).
+    table: table_quotas
+    where: {id: places_de_test}
+    set:
+      where_column: {from: '', to: trial}
+      where_value: {from: '', to: '0'}
+  - id: essais_a_part_bouton_etape2
+    why: Un bouton d'essai ne dépend plus des places de test (lot 12, Q98).
+    trigger: bouton_essayer_etape2
+    remove_trigger_conditions: [places_de_test]
+  - id: essais_a_part_bouton_bout_en_bout_poc
+    why: Un bouton d'essai ne dépend plus des places de test (lot 12, Q98).
+    trigger: bouton_bout_en_bout_poc
+    remove_trigger_conditions: [places_de_test]
+  - id: essais_a_part_texte_etape2
+    why: Le bouton dit que son business d'essai ne prend pas de place (Q98).
+    table: triggers
+    where: {id: bouton_essayer_etape2}
+    set:
+      confirm_text:
+        replace:
+          - old: Serge crée ce business, le choisit pour un POC (il prend une place de test) et lance
+            new: Serge crée ce business d'essai (il ne prend pas de place de test), le choisit pour un POC et lance
+  - id: essais_a_part_texte_bout_en_bout_poc
+    why: Le bouton dit que son business d'essai ne prend pas de place (Q98).
+    table: triggers
+    where: {id: bouton_bout_en_bout_poc}
+    set:
+      confirm_text:
+        replace:
+          - old: un business « Calculatrice » avec sa fiche produit et un plan déjà validé (il prend une place de test), puis
+            new: un business d'essai « Calculatrice » avec sa fiche produit et un plan déjà validé (il ne prend pas de place de test), puis
+  - id: essais_a_part_lancer_essai
+    why: Le business de « Lancer un essai » est marqué comme essai (Q98).
+    invocation: lancer_essai
+    write: 1
+    add_write_values:
+      trial: *essai_marque
+  - id: essais_a_part_etape2
+    why: Le business de « Essayer l'étape 2 » est marqué comme essai (Q98).
+    invocation: creer_business_essai
+    write: 0
+    add_write_values:
+      trial: *essai_marque
+  - id: essais_a_part_bout_en_bout_poc
+    why: La calculatrice du bout en bout du POC est marquée comme essai (Q98).
+    invocation: bout_en_bout_poc
+    write: 0
+    add_write_values:
+      trial: *essai_marque
+  - id: essais_a_part_bout_en_bout_produit
+    why: La calculatrice du bout en bout du produit est marquée comme essai (Q98).
+    invocation: bout_en_bout_produit
+    write: 0
+    add_write_values:
+      trial: *essai_marque
   - id: voix_email_du_contact
     why: >-
       L'agent vocal reçoit au décrochage l'e-mail que Serge a pour la

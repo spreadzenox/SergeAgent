@@ -195,6 +195,10 @@ def _seed_rules(conn: sqlite3.Connection, data: Mapping[str, Any]) -> None:
             max_value=int(quota['max']),
             description=str(quota.get('description', '')).strip(),
             policy=int(bool(quota.get('policy', True))),
+            # Le quota ne compte que les lignes dont cette colonne a cette
+            # valeur (exemple : pas les business d'essai).
+            where_column=str((quota.get('where') or {}).get('column', '')),
+            where_value=str((quota.get('where') or {}).get('value', '')),
             updated_by='pipeline.yaml',
         )
     # Quand une ligne passe dans tel état, ses tâches en attente sont

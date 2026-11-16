@@ -178,6 +178,10 @@ livré :
   [`docs/LOT12_CONCEPTION.md`](docs/LOT12_CONCEPTION.md) (décisions Q92
   et Q93). Au 16 novembre 2026, les étapes 1, 2 et 5 et les conversations
   sont en base ; les étapes 3, 4 et 6 n'ont encore aucune invocation.
+  C'est une première version qu'on pourrait lancer, par e-mail et par
+  appel, où un canal se branche sans toucher au reste et où les essais
+  de la page Système sont à part de ce qui tourne (Q98). Elle se livre en
+  six PR ; la première, les essais à part, est faite.
 - [ ] **Lot 13 « Web ».** On donne à Serge de quoi chercher, lire des
   pages et agir sur n'importe quel site : créer un compte, publier,
   écrire. On le met tard parce que c'est un gros chantier, mais plusieurs

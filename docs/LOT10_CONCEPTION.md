@@ -503,8 +503,8 @@ ticket ; ses liens, conditionnés sur le bouton, lancent la suite. Exemple :
 « Valider » sur le ticket « Plan » lance « Construire le POC ».
 
 Pour l'essayer sans cycle d'écoute, le bouton « Essayer l'étape 2 » de la
-page Système crée un business, le choisit pour un POC (il prend une place
-de test) et lance l'étape. Le bouton « Bout en bout : le POC d'une
+page Système crée un business d'essai, le choisit pour un POC (il ne
+prend pas de place de test, décision Q98) et lance l'étape. Le bouton « Bout en bout : le POC d'une
 calculatrice » saute aussi la conception : un business et un plan tout
 faits (une calculatrice) entrent directement en construction, puis tout
 est réel jusqu'à la prod

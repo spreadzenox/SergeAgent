@@ -42,6 +42,35 @@ sont réutilisés sans changement de fond. Les réponses automatiques, qui
 peuvent faire répondre Serge sans fin, sont traitées à part, au lot 10 bis
 (TODO).
 
+**Une première version qu'on pourrait lancer** (décision Q98, 16 novembre
+2026) : le pipeline entier, de l'écoute du web à la vente, avec deux
+canaux, l'e-mail et l'appel. Deux exigences s'y ajoutent, décrites aux
+parties 17 et 18 : **un canal se branche sans toucher au reste**, et **les
+essais de la page Système sont à part** de ce qui tourne. La recherche de
+prospects se fait avec la recherche web d'aujourd'hui ; le moteur de
+recherche et la navigation sur des sites qui bloquent restent au lot 13.
+
+Le lot se livre en six PR, l'une après l'autre ; chacune se fusionne dès
+que sa CI est verte :
+
+1. **Les essais à part** (partie 18) : un business d'essai est marqué, ne
+   prend aucune place, et ses boutons ne dépendent plus des places.
+2. **Les campagnes et le contrat d'un canal** (parties 2, 3 et 17) : les
+   statuts, la place lourde, les campagnes par canal et leurs réglages,
+   « Démarrer une campagne », « Réapprovisionner » et « Clore ».
+3. **Trouver des prospects et leur écrire** (partie 4) : « Trouver des
+   prospects », les adresses génériques refusées, la vérification d'une
+   adresse, les vraies versions de « Écrire le premier message » et de
+   « Préparer le premier appel », les rebonds.
+4. **Mesurer, juger, choisir** (parties 5 et 6) : le compte rendu d'un
+   test, son bilan, la leçon d'un business arrêté, le choix du principal
+   et son ticket, les vieux tests oubliés, l'étape 1 qui repart seule.
+5. **Vendre** (partie 7) : « Préparer la prospection lourde »,
+   « Enregistrer une vente », et Mission Control (partie 11).
+6. **Le bout en bout** : un essai de la page Système fait traverser toute
+   la chaîne à un business d'essai, avec des contacts d'essai, sans
+   toucher la chaîne réelle.
+
 **Tous les chiffres sont des réglages en base**, comme d'habitude (Q68) :
 les réglages d'une invocation, marqués « policy » pour se changer sur la
 page Policy, ou la policy générale pour ce qui ne concerne aucune
@@ -520,13 +549,14 @@ invocation.
 
 ## 13. Ce que le lot 12 retire
 
-- Les invocations temporaires du kit d'essai des canaux (« Lancer un
-  essai », « Créer le contact d'essai », « Écrire le premier message
-  (temporaire) », « Préparer le premier appel (temporaire) ») et le bouton
-  « Lancer un essai », une fois les vraies invocations essayées en
-  production (TODO, « Plus tard »).
-- Le bouton d'essai « Construire le vrai produit » du lot 10, remplacé par
-  le lien depuis le choix du principal.
+- Les versions temporaires de « Écrire le premier message » et de
+  « Préparer le premier appel » : les vraies les remplacent, et le bouton
+  « Lancer un essai » s'en sert. Les boutons d'essai de la page Système
+  restent : ils essaient chaque brique à part, sur un business d'essai
+  (partie 18, décision Q98).
+- Le bouton « Construire le vrai produit » de la fiche d'un vrai
+  business, remplacé par le lien depuis le choix du principal ; il reste
+  pour un business d'essai.
 - Les champs « nombre de prospects » et « relances » du plan du POC
   (lot 10), remplacés par des réglages.
 - Le module `serge/funnels/lifecycle.py`, qui impose en dur « un seul
@@ -592,8 +622,8 @@ automatique (dans ce lot), le rythme des relances (un réglage commun)
 générique, la prospection lourde qui vend le produit tel quel, le point de
 la semaine au lot 16 (Q93).
 
-Encore à valider, avec les valeurs de départ proposées (toutes
-réglables) :
+Validés par Clem le 16 novembre 2026 (Q98), comme valeurs de départ,
+toutes réglables dans Mission Control :
 
 1. **Les volumes** : 40 e-mails et 20 appels pour un test ; 200 e-mails
    et 50 appels par semaine en prospection lourde, jusqu'à 1 000 et 250.
@@ -601,3 +631,91 @@ réglables) :
    au moins.
 3. **Les intéressés du test** : prévenus en premier quand le produit fini
    sort, avec son lien.
+
+---
+
+## 17. Le contrat d'un canal
+
+Clem veut pouvoir ajouter un canal (LinkedIn, un formulaire de contact,
+un réseau où il faut naviguer) **sans toucher au reste ni tout retester**
+(Q98). Le reste du pipeline ne doit donc rien savoir d'un canal en
+particulier : il ne connaît que ce contrat.
+
+**Ce qu'un canal apporte, et rien d'autre :**
+
+1. **Son adaptateur** (`serge/channels/`) : envoyer un message à une
+   adresse, et relever ce qui arrive. C'est le seul code d'un canal. Le
+   catalogue `canaux` dit s'il est branché sur ce serveur. Un canal qui
+   passe par un navigateur (LinkedIn, lot 13) aura le même adaptateur,
+   qui pilotera le vrai Chrome.
+2. **Sa sorte d'adresse** (`canaux.address_channel`) : une adresse
+   e-mail, un numéro de téléphone, un profil. « Trouver des prospects »
+   cherche cette sorte d'adresse pour la campagne du canal.
+3. **Son invocation de premier message**, en base : « Écrire le premier
+   message » pour l'e-mail, « Préparer le premier appel » pour l'appel.
+   Un lien conditionné sur le canal la lance.
+4. **Ses réglages**, en base : prospects d'un test, prospects par semaine
+   et au total en prospection lourde, plafond du jour.
+
+**Ce qui ne change jamais, quel que soit le canal :**
+
+- une **campagne** est un business, une phase et un canal
+  (`campaigns`) ;
+- un prospect est un **contact** (`contacts`), avec ses **adresses**
+  (`contact_addresses` : le canal, l'adresse, la page où elle a été
+  trouvée) ;
+- un message est un **envoi** (`touches` : le canal, l'adresse, son
+  état), et ce qui arrive est un **message reçu** (`inbound_events`) ;
+- « Démarrer une campagne », « Trouver des prospects »,
+  « Réapprovisionner », « Clore », « Envoyer un message », les relances,
+  « Traiter une réponse », la grille de points, « Mesurer le test » : une
+  seule version de chacune, qui lit le canal dans la ligne qu'elle
+  traite.
+
+Ajouter un canal, c'est donc : un adaptateur, une ligne de réglages, une
+invocation de premier message et son lien. Aucune autre invocation ne
+change. **Un test le garantit** (PR 2) : un canal factice, ajouté
+seulement de cette façon, traverse la chaîne (campagne, prospects,
+premier message, envoi, réponse, points) sans qu'aucune autre ligne du
+pipeline ne soit modifiée.
+
+**Trouver des prospects autrement** (un annuaire, un site où il faut
+naviguer) suit la même idée : c'est un outil de plus donné à « Trouver
+des prospects ». Quel que soit l'outil, elle écrit au même endroit : des
+contacts, leurs adresses avec leur source, et un premier message à
+rédiger.
+
+---
+
+## 18. Les essais sont à part
+
+Clem veut pouvoir lancer un essai de la page Système (la calculatrice,
+l'étape 2, un canal) **pendant que le vrai pipeline tourne**, sans rien
+casser (Q98). Un essai et la chaîne réelle ne doivent jamais se toucher
+en base.
+
+1. **Un business d'essai est marqué** (`ventures.trial` à 1). Tous les
+   boutons d'essai de la page Système créent le leur : « Lancer un
+   essai », « Essayer l'étape 2 », les deux « Bout en bout » d'une
+   calculatrice. Fait en PR 1, avec les business d'essai déjà en base.
+2. **Il ne prend aucune place** : les places de test et la place lourde
+   ne comptent que les vrais business. Un essai ne bloque pas l'étape 1,
+   et trois vrais tests ne bloquent pas un essai. Fait en PR 1 pour les
+   places de test.
+3. **La chaîne réelle ne part jamais pour lui.** Chaque déclencheur et
+   chaque lien qui fait avancer un vrai business tout seul (démarrer une
+   campagne, mesurer un test, choisir le principal, préparer la
+   prospection lourde, tirer une leçon, relancer l'étape 1) porte la
+   condition « pas un business d'essai ». Un essai s'arrête au bout de la
+   brique essayée. Exemple : la calculatrice d'un bout en bout arrive à
+   « produit en vente », et Serge ne lui cherche aucun prospect.
+4. **Il n'est jamais comparé ni compté** avec les vrais : absent du choix
+   du principal, de ce que l'étape 1 voit pour écarter les doublons, et
+   des totaux de la page Économie.
+5. **Il n'écrit qu'à ses contacts d'essai** : ceux que l'opérateur a
+   tapés dans le formulaire. Aucun essai ne trouve de vrais prospects.
+
+**Un test le garantit** à chaque PR : avec la chaîne réelle en base, un
+essai de bout en bout ne démarre aucune campagne, n'ouvre aucun cycle
+d'écoute, ne change aucune place et n'écrit à personne d'autre que ses
+contacts d'essai ; et un vrai business ne voit jamais un essai.

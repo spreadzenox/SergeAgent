@@ -4,9 +4,9 @@
 Les sortes de modification ``remove_*`` de la section ``changes`` de
 ``config/pipeline.yaml`` (voir ``serge/pipeline_changes.py``) : un champ de
 la réponse d'une invocation, une valeur d'une de ses écritures, une
-colonne lue par un outil de lecture, ou un outil d'une invocation.
-Exemple : le navigateur du constructeur, quand seul le relecteur essaie le
-produit (lot 11).
+colonne lue par un outil de lecture, un outil d'une invocation, ou une
+condition d'un déclencheur. Exemple : le navigateur du constructeur, quand
+seul le relecteur essaie le produit (lot 11).
 """
 
 from __future__ import annotations
@@ -125,4 +125,25 @@ def remove_tools(conn: sqlite3.Connection, invocation: str, raw: Any) -> str:
             )
             conn.execute('DELETE FROM invocation_tools WHERE id=?', (lien,))
         parts.append(f'{tool} retiré' if liens else f'{tool} déjà absent')
+    return ' ; '.join(parts)
+
+
+def remove_trigger_conditions(
+    conn: sqlite3.Connection, trigger: str, raw: Any
+) -> str:
+    """Retire des conditions d'un déclencheur déjà en base (les quotas dont
+    il dépendait). Exemple : un bouton d'essai ne dépend plus des places
+    de test (lot 12)."""
+    quotas = _textes(raw, 'remove_trigger_conditions')
+    if not conn.execute(
+        'SELECT 1 FROM triggers WHERE id=?', (trigger,)
+    ).fetchone():
+        return 'objet absent'
+    parts = []
+    for quota in quotas:
+        retires = conn.execute(
+            'DELETE FROM trigger_conditions WHERE trigger_id=? AND quota_id=?',
+            (trigger, quota),
+        ).rowcount
+        parts.append(f'{quota} retiré' if retires else f'{quota} déjà absent')
     return ' ; '.join(parts)
