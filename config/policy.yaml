@@ -394,6 +394,16 @@ sections:
           avec le crédit d’API de l’abonnement Claude (décision Q97).
         kind: liste
         choices: [non, oui]
+      - id: anthropic_workspace
+        value: ''
+        title: Anthropic, identifiant du workspace
+        help: >-
+          Seulement pour une clé d’Anthropic qui vaut pour tous les
+          workspaces du compte (celle d’un abonnement, par exemple) :
+          l’identifiant du workspace à utiliser, qui commence par wrkspc_
+          (Console d’Anthropic, Settings, Workspaces). Sans lui, Anthropic
+          refuse chaque appel. Vide pour une clé liée à un workspace.
+        kind: texte
 
   - id: tools
     page: pipeline

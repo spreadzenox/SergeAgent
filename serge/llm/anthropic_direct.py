@@ -26,6 +26,7 @@ import json
 import sqlite3
 import time
 from collections.abc import Callable
+from functools import partial
 from pathlib import Path
 from typing import Any
 
@@ -70,11 +71,18 @@ def caller_for(
 ) -> tuple[Callable[..., ChatResult], str]:
     """Qui appelle le modèle, et avec quelle clé : Anthropic directement si
     le réglage le demande et que le modèle est d'Anthropic, sinon
-    OpenRouter. Sans clé Anthropic, l'appel échoue et le dit."""
-    direct = policy_en_vigueur(conn)['llm_calls'].get('anthropic_direct')
-    if direct == 'oui' and is_anthropic(model):
+    OpenRouter. Sans clé Anthropic, l'appel échoue et le dit.
+
+    Une clé qui vaut pour tous les workspaces du compte (celle d'un
+    abonnement) doit dire lequel sert : c'est le réglage « Anthropic,
+    identifiant du workspace », envoyé avec chaque appel.
+    """
+    reglages = policy_en_vigueur(conn)['llm_calls']
+    if reglages.get('anthropic_direct') == 'oui' and is_anthropic(model):
         base = root or config_root()
-        return chat, read_secret_file(base / 'secrets/anthropic-api-key')
+        cle = read_secret_file(base / 'secrets/anthropic-api-key')
+        workspace = str(reglages.get('anthropic_workspace') or '').strip()
+        return partial(chat, workspace_id=workspace), cle
     return openrouter_chat, read_api_key(root)
 
 
@@ -87,6 +95,7 @@ def chat(
     tools: list[dict[str, Any]] | None = None,
     tool_choice: str | dict[str, Any] | None = None,
     parallel_tool_calls: bool = False,
+    workspace_id: str = '',
     client: Any = None,
     prices: Prices | None = None,
     **_openrouter: Any,
@@ -101,6 +110,8 @@ def chat(
         tools: Schémas des outils, au format d'OpenRouter.
         tool_choice: ``none`` pour une réponse sans outil.
         parallel_tool_calls: Plusieurs outils dans le même tour.
+        workspace_id: Le workspace à utiliser (``wrkspc_…``), pour une clé
+            qui vaut pour tous ceux du compte ; vide sinon.
         client: Remplace le client Anthropic (tests).
         prices: Rend les prix d'un modèle (tests ; défaut : le catalogue).
 
@@ -118,6 +129,8 @@ def chat(
         params['tool_choice']['disable_parallel_tool_use'] = True
     if _keeps_cache(model, messages, tool_choice):
         params['cache_control'] = {'type': 'ephemeral'}
+    if workspace_id:
+        params['workspace_id'] = workspace_id
     client = client or anthropic.Anthropic(api_key=api_key, timeout=timeout)
     started = time.monotonic()
     try:
@@ -357,4 +370,9 @@ def _error(exc: anthropic.APIStatusError) -> LlmError:
         exc, anthropic.EnforcedSpendLimitReachedError
     ):
         return LlmError(f'CREDIT: Anthropic HTTP {exc.status_code} : {raison}')
+    if 'anthropic-workspace-id' in raison:
+        raison += (
+            ' — régler « Anthropic, identifiant du workspace » (page'
+            ' Pipeline, « Appels au modèle »)'
+        )
     return LlmError(f'API: Anthropic HTTP {exc.status_code} : {raison}')

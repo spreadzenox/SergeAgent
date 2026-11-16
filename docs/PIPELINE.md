@@ -190,7 +190,11 @@ Le runner tourne en continu, en deux copies, une par file
   donne pas). Exemple : 10 000 jetons lus, 90 000 relus en cache et 1 000
   écrits avec Sonnet 5.5 coûtent 0,039 $. Si le modèle refuse une demande
   (ses filtres de sécurité), un autre modèle d'Anthropic la reprend.
-  Sans clé, l'appel échoue et le dit.
+  Sans clé, l'appel échoue et le dit. Une clé qui vaut pour tous les
+  workspaces du compte (celle d'un abonnement) doit dire lequel sert :
+  le réglage « Anthropic, identifiant du workspace » (`wrkspc_…`, lu dans
+  la Console d'Anthropic) part avec chaque appel ; sans lui, Anthropic
+  refuse, et l'erreur de la tâche nomme ce réglage.
 - Une tâche s'arrête en plein travail, avant son appel au modèle ou son
   outil suivant : si Serge est coupé (elle repart du début au
   redémarrage) ; si elle a dépensé son plafond (« Dépense maximale d'une
