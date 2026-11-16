@@ -15,12 +15,18 @@ début au redémarrage ; au-delà de son plafond de dépense, elle échoue et
 Julien et Clem sont prévenus ; une demande à Julien la gèle jusqu'à sa
 réponse. Sans crédit chez OpenRouter (ou chez Anthropic, appelé
 directement), elle attend une demi-heure au lieu
-d'échouer, et ils sont prévenus.
+d'échouer, et ils sont prévenus. Quand un site répond « trop de lectures »
+(HTTP 429), elle repart après l'attente qu'il demande, un nombre borné de
+fois.
+
+Une tâche en échec ou remise à plus tard laisse une ligne, avec la raison,
+dans le journal de la file : Mission Control le montre sur la page Health.
 """
 
 from __future__ import annotations
 
 import sqlite3
+import sys
 import time
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -38,6 +44,7 @@ from serge.interpreter.prompt import Caller
 from serge.interpreter.run import fail_task, run_task
 from serge.interpreter.tasks import freeze_task, next_task
 from serge.interpreter.triggers import fire_due_triggers
+from serge.listen.collectors import TooManyReads
 from serge.llm.runtime import budget_reached
 from serge.policy_store import policy_en_vigueur
 from serge.sandbox.navigateur import close_sessions
@@ -50,6 +57,11 @@ EN_COURS = {'tache': ''}
 # Sans crédit chez OpenRouter, une tâche LLM attend ce temps avant de
 # réessayer.
 ATTENTE_CREDIT = timedelta(minutes=30)
+
+
+def journal(texte: str) -> None:
+    """Une ligne dans le journal de la file (lisible sur la page Health)."""
+    print(f'file : {texte}', file=sys.stderr, flush=True)
 
 
 def _queue_enabled(conn: sqlite3.Connection, queue_id: str) -> bool:
@@ -97,6 +109,9 @@ def process_one(
         conn.rollback()
         freeze_task(conn, task_id, exc.ticket_id)
         _noter(conn, task_id, 'task.frozen', {'ticket': exc.ticket_id})
+    except TooManyReads as exc:
+        conn.rollback()
+        _relire_plus_tard(conn, task_id, exc, moment)
     except Exception as exc:  # noqa: BLE001 — une tâche en échec ne tue pas la file
         conn.rollback()
         raison = f'{type(exc).__name__}: {exc}'
@@ -108,7 +123,7 @@ def process_one(
             )
             _prevenir(conn, f'{fournisseur} n’a plus de crédit', raison)
         else:
-            fail_task(conn, task_id, raison)
+            _echouer(conn, task_id, raison)
             if isinstance(exc, TaskOverBudget):
                 _prevenir(
                     conn,
@@ -142,7 +157,11 @@ def _noter(
 
 
 def _remettre(
-    conn: sqlite3.Connection, task_id: str, kind: str, not_before: str
+    conn: sqlite3.Connection,
+    task_id: str,
+    kind: str,
+    not_before: str,
+    raison: str = '',
 ) -> None:
     """Remet une tâche arrêtée dans la file, sans rien écrire : elle
     repartira du début (après ``not_before``)."""
@@ -151,7 +170,48 @@ def _remettre(
         ' WHERE id=?',
         (not_before, task_id),
     )
-    _noter(conn, task_id, kind, {'not_before': not_before})
+    extra = {'not_before': not_before}
+    _noter(
+        conn, task_id, kind, {**extra, 'error': raison} if raison else extra
+    )
+
+
+def _echouer(conn: sqlite3.Connection, task_id: str, raison: str) -> None:
+    """Marque une tâche en échec, et le dit dans le journal de la file."""
+    fail_task(conn, task_id, raison)
+    journal(f'tâche {task_id} {_titre(conn, task_id)} en échec : {raison}')
+
+
+def _relire_plus_tard(
+    conn: sqlite3.Connection, task_id: str, refus: TooManyReads, now: str
+) -> None:
+    """Un site a répondu « trop de lectures » : la tâche repart après
+    l'attente qu'il demande, sans rien avoir écrit.
+
+    Au-delà du nombre de nouveaux essais permis (page Policy, « Lecture du
+    web »), elle échoue avec la raison. Exemple : Reddit accepte une
+    lecture de flux par minute ; 5 flux Reddit lus ensemble passent un par
+    minute, le dernier à son 4e nouvel essai.
+    """
+    essais = int(
+        conn.execute(
+            'SELECT attempts FROM tasks WHERE id=?', (task_id,)
+        ).fetchone()[0]
+    )
+    if essais > int(policy_en_vigueur(conn)['web']['feed_retries']):
+        _echouer(conn, task_id, f'{refus}, refusé {essais} fois de suite')
+        return
+    # raccourci : les lectures refusées d'un même site repartent ensemble,
+    # et une seule passe à chaque fois (10 refus pour 5 flux). Les espacer
+    # dès le déclencheur si un site porte plus d'une dizaine de flux.
+    plus_tard = datetime.fromisoformat(now) + timedelta(seconds=refus.wait_s)
+    _remettre(
+        conn, task_id, 'task.too_fast', plus_tard.isoformat(), str(refus)
+    )
+    journal(
+        f'tâche {task_id} {_titre(conn, task_id)} remise à plus tard'
+        f' ({refus.wait_s} s) : {refus}'
+    )
 
 
 def _titre(conn: sqlite3.Connection, task_id: str) -> str:

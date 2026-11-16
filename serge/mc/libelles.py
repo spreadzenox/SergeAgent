@@ -23,6 +23,7 @@ EVENTS = {
     'task.frozen': 'Tâche gelée : elle attend Julien',
     'task.thawed': 'Tâche repartie avec la réponse de Julien',
     'task.no_credit': 'Tâche remise à plus tard : plus de crédit chez le fournisseur du modèle',
+    'task.too_fast': 'Tâche remise à plus tard : le site lu demande d’attendre',
     'tool.call': 'Outil appelé',
     'human.help': 'Un humain appelé (captcha)',
     'trial.started': 'Essai total lancé',

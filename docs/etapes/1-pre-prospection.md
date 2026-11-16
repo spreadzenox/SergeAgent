@@ -21,8 +21,23 @@ L'étape est entièrement décrite en base (lot 7) ; le détail technique est
 dans [`LOT7_CONCEPTION.md`](../LOT7_CONCEPTION.md). Rien ne tourne tant
 que Serge n'a pas été démarré dans Mission Control.
 
-- **La veille** lit chaque flux RSS suivi toutes les 6 heures et garde
-  ses pages nouvelles, avec un aperçu de 5 lignes.
+- **La veille** lit chaque flux suivi (RSS ou Atom) toutes les 6 heures
+  et garde ses pages nouvelles, avec un aperçu de 5 lignes.
+- **Un site qui répond « trop de lectures » (HTTP 429)** dit combien de
+  temps attendre. La lecture refusée n'est pas en échec : elle repart
+  après cette attente, au plus 10 fois (réglage « Nouveaux essais d'un
+  flux qui répond trop de lectures », page Policy, « Lecture du web »).
+  Exemple : Reddit accepte une lecture de flux par minute ; les 5 flux
+  Reddit suivis passent un par minute, le dernier 4 minutes après le
+  premier.
+- **Une lecture en échec reste visible, avec la raison.** Encore refusée
+  après ses 10 nouveaux essais, ou en échec pour une autre raison (flux
+  introuvable, illisible), la tâche est marquée en échec avec la réponse
+  du site et l'adresse du flux. Exemple : « NETWORK: HTTP 429 Too Many
+  Requests (https://www.reddit.com/r/exemple/.rss), refusé 11 fois de
+  suite ». Cette ligne se lit sur la page Health (journal de la file des
+  travaux), comme chaque lecture remise à plus tard, et sur la fiche de
+  la tâche.
 - **Le cycle** se lance depuis la page Écoute, avec un texte de guidage,
   s'il reste une place de test et qu'aucun cycle n'est ouvert : Explorer
   le web, Rattacher les pages, Trier (par paquets), Formuler A puis B,
@@ -45,6 +60,11 @@ que Serge n'a pas été démarré dans Mission Control.
 - **Une page qui a besoin d'un navigateur** (JavaScript, protection) ne se
   lit pas : seule une simple requête est faite.
 - **Un flux qui ne ramène que du bruit** se coupe à la main.
+- **Les flux d'un même site partent dans la même seconde.** Un site qui
+  n'en accepte qu'un par minute refuse les autres, qui repartent ensemble
+  une minute plus tard, et ainsi de suite : 10 lectures refusées pour
+  5 flux. Au-delà de 11 flux sur un même site, les derniers finissent en
+  échec (avec 10 nouveaux essais).
 - **Le cycle ne se lance pas tout seul.**
 
 ---

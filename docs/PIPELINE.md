@@ -153,7 +153,11 @@ Le runner tourne en continu, en deux copies, une par file
   prospect. La file de chaque invocation se règle dans Mission Control.
 - Chaque file exécute une tâche après l'autre et enregistre en base après
   chacune. Si une tâche échoue, seules ses écritures sont annulées ; elle
-  est marquée en échec, avec la raison, et la file continue. Si le
+  est marquée en échec, avec la raison, et la file continue. La raison
+  est aussi écrite dans le journal de la file, qui se lit sur la page
+  Health. Une lecture qu'un site refuse pour « trop de lectures »
+  (HTTP 429) n'est pas un échec : la tâche repart après l'attente que le
+  site demande (détail : [étape 1](etapes/1-pre-prospection.md)). Si le
   programme est arrêté au milieu d'une tâche (un redéploiement, par
   exemple), la tâche est reprise depuis le début au redémarrage, et c'est
   noté au journal.
