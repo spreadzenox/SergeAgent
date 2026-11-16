@@ -183,11 +183,17 @@ def _inspect(args: list[str]) -> int:
 
 
 def _image(args: list[str]) -> int:
-    """``image inspect IMAGE`` : 0 si l'image a été construite."""
-    if (ROOT / 'images' / args[-1].replace('/', '_')).is_file():
+    """``image ls -q IMAGE`` : son identifiant si elle a été construite,
+    rien sinon ; ``image inspect`` d'une image absente est un refus, comme
+    chez Docker."""
+    construite = (ROOT / 'images' / args[-1].replace('/', '_')).is_file()
+    if args[0] == 'ls':
+        if construite:
+            print(f'id-{args[-1]}')
         return 0
-    print(f'Error: No such image: {args[-1]}', file=sys.stderr)
-    return 1
+    if construite:
+        return 0
+    return _refuse(f'No such image: {args[-1]}', 1)
 
 
 def _port(args: list[str]) -> int:
