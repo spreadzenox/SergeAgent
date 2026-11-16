@@ -91,12 +91,28 @@ def limited_call(
 ) -> dict[str, Any]:
     """Un appel d'outil demandé par le modèle, noté au journal.
 
+    Seul un appel qui part vraiment compte dans la limite de l'outil : des
+    paramètres illisibles (un JSON coupé) ou un outil non permis ne font
+    rien, et le modèle peut renvoyer l'appel. Exemple : « Mettre en vente »
+    n'a droit qu'à une création de prix ; son premier essai, illisible, ne
+    lui enlève pas ce droit (16 novembre 2026).
+
     Exemple d'événement ``tool.call`` : l'outil ``navigateur_agir``, ses
     paramètres ``{"action": "cliquer", "ref": "e7"}``, et ``ok`` vrai.
     """
+    args = _arguments(call.arguments)
     done = calls.get(call.name, 0)
-    if call.name in limits and done >= limits[call.name]:
-        outcome: dict[str, Any] = {
+    if call.name not in links:
+        outcome: dict[str, Any] = {'ok': False, 'code': 'outil_non_autorise'}
+    elif args is None:
+        outcome = {
+            'ok': False,
+            'code': 'arguments_illisibles',
+            'detail': 'les paramètres ne sont pas un objet JSON complet ;'
+            ' rien n’est parti, renvoie l’appel en entier',
+        }
+    elif call.name in limits and done >= limits[call.name]:
+        outcome = {
             'ok': False,
             'code': 'limite_atteinte',
             'detail': f'au plus {limits[call.name]} appels de cet outil',
@@ -104,7 +120,7 @@ def limited_call(
     else:
         calls[call.name] = done + 1
         outcome = _call_tool(
-            conn, invocation_id, links, call.name, call.arguments, task
+            conn, invocation_id, links[call.name], call.name, args, task
         )
     append_event(
         conn,
@@ -121,23 +137,24 @@ def limited_call(
     return outcome
 
 
+def _arguments(raw: str) -> dict[str, Any] | None:
+    """Les paramètres d'un appel, ou ``None`` s'ils sont illisibles."""
+    try:
+        args = json.loads(raw or '{}')
+    except json.JSONDecodeError:
+        return None
+    return args if isinstance(args, dict) else None
+
+
 def _call_tool(
     conn: sqlite3.Connection,
     invocation_id: str,
-    links: Mapping[str, int | None],
+    link: int | None,
     name: str,
-    raw_args: str,
+    args: dict[str, Any],
     task: Mapping[str, str],
 ) -> dict[str, Any]:
-    if name not in links:
-        return {'ok': False, 'code': 'outil_non_autorise'}
     try:
-        args = json.loads(raw_args or '{}')
-    except json.JSONDecodeError:
-        return {'ok': False, 'code': 'arguments_illisibles'}
-    if not isinstance(args, dict):
-        return {'ok': False, 'code': 'arguments_illisibles'}
-    try:
-        return run_tool(conn, invocation_id, links[name], name, args, task)
+        return run_tool(conn, invocation_id, link, name, args, task)
     except Exception as exc:  # noqa: BLE001 — un outil en échec ne tue pas l'invocation
         return {'ok': False, 'code': 'echec', 'detail': str(exc)[:200]}

@@ -141,6 +141,32 @@ class ArretTests(unittest.TestCase):
         ]
         self.assertEqual(len(outils), 0, 'arrêtée avant l’outil')
 
+    def test_le_plafond_compte_seulement_la_tentative_en_cours(self) -> None:
+        """Une tâche qui repart du début (après une panne) a de nouveau tout
+        son plafond : la dépense de sa tentative perdue ne compte pas."""
+        self.assertEqual(
+            set_setting(self.conn, 'budget.task_max_eur', 0.5, 'test'), ''
+        )
+        task_id = self._tache()
+        self.conn.execute(
+            'INSERT INTO llm_usage(point, tier, model, tokens_in, tokens_out,'
+            ' latency_ms, verdict, cost_usd, task_id, created_at) VALUES'
+            "('redacteur', 'smart', 'faux', 1, 1, 1, 'outil', 10.0, ?,"
+            " '2026-11-14T10:00:00+00:00')",
+            (task_id,),
+        )
+        self.conn.commit()
+        appels: list[int] = []
+
+        def model(_key, name, _messages, **_kw):
+            appels.append(1)
+            if len(appels) == 1:
+                return self._outil(name, cout=0.01)
+            return ChatResult('{"text": "fini"}', 1, 1, name, 1)
+
+        process_one(self.conn, 'works', now=MAINTENANT, caller=model)
+        self.assertEqual(self._etat(task_id)[0], 'done')
+
     def test_sans_credit_la_tache_attend_et_un_seul_ticket(self) -> None:
         taches = [self._tache('a'), self._tache('b')]
 
