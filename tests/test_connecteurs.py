@@ -42,7 +42,7 @@ from serge.coupe_circuit import set_heartbeat  # noqa: E402
 from serge.db.store import default_canon_path, open_db, utcnow  # noqa: E402
 from serge.interpreter.flow import fire_button  # noqa: E402
 from serge.interpreter.queue import process_one  # noqa: E402
-from serge.interpreter.tools import run_tool  # noqa: E402
+from serge.interpreter.tools import run_tool, tool_schema  # noqa: E402
 from serge.llm.client import ChatResult, ToolCall  # noqa: E402
 from serge.mc.proj_ecoute import boutons_de_etape  # noqa: E402
 from serge.mc.proj_faits import project_fait_pipe  # noqa: E402
@@ -119,6 +119,7 @@ class ConnecteursTests(unittest.TestCase):
         config = racine / 'config'
         (config / 'secrets').mkdir(parents=True)
         (config / 'secrets/stripe-test.key').write_text('sk_test_faux\n')
+        (config / 'secrets/stripe-live.key').write_text('rk_live_faux\n')
         instance = racine / 'instance.toml'
         instance.write_text(f'[paths]\nconfig_root = "{config}"\n')
         patcher = mock.patch.dict(
@@ -224,6 +225,39 @@ class ConnecteursTests(unittest.TestCase):
             ).fetchone()[0],
             3,
         )
+
+    def test_les_crochets_de_stripe_deviennent_des_points_pour_le_modele(
+        self,
+    ) -> None:
+        """Anthropic refuse un nom de paramètre d'outil avec des crochets
+        (le paiement test, 16 novembre 2026) : le modèle voit
+        ``line_items.0.price`` ; Stripe reçoit ``line_items[0][price]``."""
+        lien = self.conn.execute(
+            "SELECT id FROM invocation_tools WHERE invocation_id='paiement_test'"
+            " AND tool_id='stripe_creer_lien_paiement'"
+        ).fetchone()[0]
+        figes = {'service', 'metadata[venture_id]', 'task_id'}
+        schema = tool_schema(
+            self.conn, 'stripe_creer_lien_paiement', figes, 'paiement_test'
+        )
+        noms = set(schema['function']['parameters']['properties'])
+        self.assertIn('line_items.0.price', noms)
+        self.assertFalse([n for n in noms if '[' in n])
+        self.assertNotIn('metadata.venture_id', noms)
+        run_tool(
+            self.conn,
+            'paiement_test',
+            lien,
+            'stripe_creer_lien_paiement',
+            {'line_items.0.price': 'price_1', 'line_items.0.quantity': 1},
+            {'venture_id': 'ven_7', 'task_id': 't1'},
+        )
+        corps = _FauxStripe.requetes[-1]['corps']
+        self.assertEqual(
+            (corps['line_items[0][price]'], corps['line_items[0][quantity]']),
+            ('price_1', '1'),
+        )
+        self.assertEqual(corps['metadata[venture_id]'], 'ven_7')
 
     def test_parametre_interdit_erreur_et_secret_absent(self) -> None:
         tache = {'venture_id': 'ven_7', 'task_id': 't1'}

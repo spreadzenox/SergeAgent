@@ -160,6 +160,15 @@ def _params(conn: sqlite3.Connection, tool_id: str) -> dict[str, str]:
     }
 
 
+def nom_pour_le_modele(nom: str) -> str:
+    """Un nom de paramètre que tous les modèles acceptent : les crochets des
+    paramètres de Stripe deviennent des points (``line_items[0][price]`` →
+    ``line_items.0.price``). Anthropic refuse un nom avec des crochets dans
+    le schéma d'un outil (16 novembre 2026, le paiement test) ; l'appel
+    repart avec le vrai nom (``call_api``)."""
+    return re.sub(r'\[([^\]]*)\]', r'.\1', nom)
+
+
 def api_schema(conn: sqlite3.Connection, tool_id: str) -> dict[str, Any]:
     """Le schéma d'un point d'entrée, tel qu'on le montre au modèle."""
     doc = conn.execute(
@@ -178,9 +187,9 @@ def api_schema(conn: sqlite3.Connection, tool_id: str) -> dict[str, Any]:
             prop['description'] += ' (un objet ou une liste JSON)'
         else:
             prop['type'] = types[str(kind)]
-        properties[str(name)] = prop
+        properties[nom_pour_le_modele(str(name))] = prop
         if needed:
-            required.append(str(name))
+            required.append(nom_pour_le_modele(str(name)))
     return {
         'type': 'function',
         'function': {
@@ -256,8 +265,11 @@ def call_api(
         return {'ok': False, 'code': 'service_inconnu', 'detail': service_id}
     base_url, auth, secret_file, body_kind = (str(x) for x in service)
     permis = _params(conn, tool_id)
+    # Le modèle donne les noms du schéma (des points), la base les vrais.
+    vrais = {nom_pour_le_modele(n): n for n in permis}
     values: dict[str, Any] = {}
     for name, value in args.items():
+        name = vrais.get(name, name)
         if name in _REGLAGES or value in (None, ''):
             continue
         if name not in permis:

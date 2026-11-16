@@ -243,7 +243,13 @@ def _raison_http(exc: urllib.error.HTTPError) -> str:
         return ''
     erreur = corps.get('error') if isinstance(corps, dict) else None
     message = erreur.get('message') if isinstance(erreur, dict) else erreur
-    return f' : {str(message)[:200]}' if message else ''
+    # « Provider returned error » : la vraie raison est celle du fournisseur
+    # (exemple : un nom de paramètre d'outil refusé par Anthropic).
+    meta = erreur.get('metadata') if isinstance(erreur, dict) else None
+    brut = meta.get('raw') if isinstance(meta, dict) else ''
+    if brut:
+        message = f'{message} : {brut}'
+    return f' : {str(message)[:400]}' if message else ''
 
 
 def _keeps_cache(
