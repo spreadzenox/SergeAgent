@@ -23,6 +23,7 @@ from __future__ import annotations
 import sqlite3
 from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
+from contextvars import ContextVar
 from typing import Any
 
 # Le drapeau qui porte le numéro de l'essai en cours.
@@ -31,35 +32,36 @@ FLAG = 'essai_en_cours'
 # « Supprimer de Stripe » sur la calculatrice d'un essai déjà arrêté.
 NO_RUN = 'sans'
 
-# La tâche que ce programme exécute : son essai (vide : le vrai pipeline)
-# et son numéro. Chaque file tourne dans son propre programme, une tâche à
-# la fois.
-_STATE = {'run': '', 'task': ''}
+# La tâche en cours : son essai (vide : le vrai pipeline) et son numéro.
+# Une file exécute une tâche à la fois ; le pont téléphonique mène
+# plusieurs appels, chacun dans son propre contexte.
+_RUN: ContextVar[str] = ContextVar('trial_run', default='')
+_TASK: ContextVar[str] = ContextVar('trial_task', default='')
 
 
 def current_run() -> str:
     """L'essai de la tâche en cours, ou ``''`` (le vrai pipeline)."""
-    return _STATE['run']
+    return _RUN.get()
 
 
 def current_task() -> str:
     """Le numéro de la tâche en cours, ou ``''``."""
-    return _STATE['task']
+    return _TASK.get()
 
 
 def in_trial() -> bool:
-    return bool(_STATE['run'])
+    return bool(_RUN.get())
 
 
 @contextmanager
 def lane(trial_run: str, task_id: str = '') -> Iterator[None]:
     """Le temps d'une tâche (ou d'un appel), on est dans son couloir."""
-    before = dict(_STATE)
-    _STATE.update(run=trial_run, task=task_id)
+    run, task = _RUN.set(trial_run), _TASK.set(task_id)
     try:
         yield
     finally:
-        _STATE.update(before)
+        _RUN.reset(run)
+        _TASK.reset(task)
 
 
 def active_run(conn: sqlite3.Connection) -> str:

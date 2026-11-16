@@ -45,10 +45,12 @@ from serge.interpreter.tasks import (
     enqueue_task,
     finish_task,
     start_task,
+    task_lane,
     task_params,
 )
 from serge.interpreter.tools import run_tool, tool_capability
 from serge.interpreter.writer import write_answer
+from serge.trial import lane, run_for_row
 
 # La file dont l'invocation allumée mène les appels.
 VOICE_QUEUE = 'voice'
@@ -153,6 +155,8 @@ def start_call(
         params,
         origin_ref=f'appel {cdr_id}',
         key=f'appel:{cdr_id}:{uuid.uuid4().hex[:8]}',
+        # L'appel d'un contact d'essai est mené dans le couloir d'essai.
+        trial_run=run_for_row(conn, {'venture_id': venture_id}, ''),
     )
     if task_id is None or not start_task(conn, task_id):
         return None
@@ -164,10 +168,16 @@ def start_call(
 
 def instructions(conn: sqlite3.Connection, call: Call) -> str:
     """Le prompt de l'agent : le sien, puis ce qu'il reçoit au décrochage."""
-    blocks = given_blocks(conn, call.inv, call.task_id, call.task)
-    return '\n\n'.join(
-        [system_prompt(conn, call.inv, []), *blocks[:1]]
-    ).strip()
+    with _couloir(conn, call):
+        blocks = given_blocks(conn, call.inv, call.task_id, call.task)
+        return '\n\n'.join(
+            [system_prompt(conn, call.inv, []), *blocks[:1]]
+        ).strip()
+
+
+def _couloir(conn: sqlite3.Connection, call: Call):
+    """Ce que l'agent lit, écrit et lance est du couloir de son appel."""
+    return lane(task_lane(conn, call.task_id)[0], call.task_id)
 
 
 def tools(conn: sqlite3.Connection, call: Call) -> list[dict[str, Any]]:
@@ -210,9 +220,10 @@ def run_tool_call(
         return json.dumps({'ok': False, 'code': 'arguments_illisibles'})
     if not isinstance(args, dict):
         args = {}
-    result = run_tool(
-        conn, call.inv.id, call.links[name], name, args, call.task
-    )
+    with _couloir(conn, call):
+        result = run_tool(
+            conn, call.inv.id, call.links[name], name, args, call.task
+        )
     rows = result.get('rows')
     if (
         not call.task.get('contact_id')
@@ -263,11 +274,12 @@ def finish_call(conn: sqlite3.Connection, call: Call) -> None:
             'venture_id': venture,
             'status': 'attached' if contact else 'unattached',
         }
-        written = write_answer(
-            conn, call.inv.id, call.task_id, call.task, answer
-        )
-        fire_row_triggers(conn, written)
-        pass_links(conn, call.inv.id, call.task_id, written, answer)
+        with _couloir(conn, call):
+            written = write_answer(
+                conn, call.inv.id, call.task_id, call.task, answer
+            )
+            fire_row_triggers(conn, written, call.task_id)
+            pass_links(conn, call.inv.id, call.task_id, written, answer)
     finish_task(conn, call.task_id)
     conn.commit()
 

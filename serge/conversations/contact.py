@@ -21,6 +21,7 @@ from serge.funnels.contact_errors import ContactError
 from serge.funnels.contacts import add_address, create_contact, normalise_value
 from serge.policy_store import setting_value
 from serge.privacy import subject_hash
+from serge.trial import lane_clause
 
 # Les fiches rendues au plus par une recherche.
 SEARCH_MAX = 5
@@ -156,9 +157,10 @@ def contact_search(
         ' c.funnel_state FROM contacts c'
         ' LEFT JOIN ventures v ON v.id=c.venture_id'
         ' LEFT JOIN contact_addresses a ON a.contact_id=c.id'
-        " WHERE (a.channel='email' AND a.value_norm=?)"
+        " WHERE ((a.channel='email' AND a.value_norm=?)"
         " OR (a.channel='phone' AND a.value_norm=?)"
-        ' OR c.display LIKE ? ORDER BY c.created_at DESC LIMIT ?',
+        f' OR c.display LIKE ?) AND {lane_clause(conn, "contacts", "c")}'
+        ' ORDER BY c.created_at DESC LIMIT ?',
         (
             normalise_value('email', query),
             normalise_value('phone', query) or '-',

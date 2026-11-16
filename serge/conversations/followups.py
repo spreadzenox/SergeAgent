@@ -30,6 +30,7 @@ from typing import Any
 from serge.conversations.send import silent_states, stop_states
 from serge.db.store import utcnow
 from serge.policy_store import setting_value
+from serge.trial import lane_clause
 
 WAITING = frozenset({'to_write', 'pending', 'sending'})
 
@@ -112,9 +113,12 @@ def due_followups(
     now = datetime.fromisoformat(utcnow())
     rows = []
     stopped = set(stop_states(conn)) | set(silent_states(conn))
+    # Les contacts du couloir de la tâche : le contact d'un essai n'est
+    # jamais relancé par le vrai pipeline.
     for contact, venture, state in conn.execute(
         'SELECT DISTINCT c.id, c.venture_id, c.funnel_state FROM contacts c'
         " JOIN touches t ON t.contact_id=c.id AND t.kind='first'"
+        f' WHERE {lane_clause(conn, "contacts", "c")}'
     ).fetchall():
         if str(state) in stopped:
             continue
