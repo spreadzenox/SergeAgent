@@ -16,6 +16,8 @@ from typing import Any
 
 from serge.db.store import utcnow
 from serge.interpreter.settings import load_settings
+from serge.policy_store import setting_value
+from serge.privacy import subject_hash
 
 SMOKE, FULL = 'smoke', 'full'
 RUNNING_STATUS = {SMOKE: 'SMOKE_RUNNING', FULL: 'FULL_RUNNING'}
@@ -54,6 +56,33 @@ def _days(conn: sqlite3.Connection, venture: str, maximum: int) -> int:
     return min(planned, maximum)
 
 
+def _cold_refusal(conn: sqlite3.Connection, row: dict) -> str:
+    """Un canal qui demande l'accord de la personne avant tout contact
+    (page Policy, « Accord des gens ») ne sert pas à prospecter des
+    inconnus : sans un contact de ce business qui a donné son accord, la
+    campagne ne démarre pas. Rend la raison, ou ``''``."""
+    channel = str(row['channel'])
+    if channel not in (setting_value(conn, 'consent.opt_in_channels') or []):
+        return ''
+    for (address,) in conn.execute(
+        'SELECT a.value_norm FROM contact_addresses a JOIN contacts c'
+        ' ON c.id=a.contact_id WHERE c.venture_id=? AND a.channel=?'
+        ' AND a.active=1',
+        (row['venture_id'], row['address_kind']),
+    ).fetchall():
+        if conn.execute(
+            'SELECT 1 FROM consents WHERE subject_hash=? AND channel IN'
+            " (?, '*') AND revoked_at=''",
+            (subject_hash(str(address)), channel),
+        ).fetchone():
+            return ''
+    return (
+        f'le canal « {channel} » demande l’accord de la personne avant tout'
+        ' contact (page Policy, « Accord des gens ») : il ne sert pas à'
+        ' prospecter des inconnus'
+    )
+
+
 def start_campaign(
     conn: sqlite3.Connection, _tool: str, args: dict[str, Any], inv: str
 ) -> dict[str, Any]:
@@ -62,8 +91,9 @@ def start_campaign(
     Rend ce que les règles d'écriture rangent : la campagne passe à
     ``RUNNING`` avec son volume, son début et sa fin prévue, et son
     business à « test en cours » ou « vente en cours ». Une campagne dont
-    le canal n'est pas branché, ou n'a pas de réglage de volume, est
-    annulée (``CANCELLED``), avec la raison.
+    le canal n'est pas branché, n'a pas de réglage de volume, ou demande
+    un accord que personne n'a donné, est annulée (``CANCELLED``), avec la
+    raison.
     """
     row = campaign(conn, str(args.get('campaign_id') or ''))
     if row is None or row['state'] != 'READY':
@@ -81,6 +111,8 @@ def start_campaign(
         raison = f'phase inconnue : {phase}'
     elif total is None:
         raison = f'aucun réglage de volume pour le canal « {channel} »'
+    else:
+        raison = _cold_refusal(conn, row)
     if raison:
         return {**base, 'ok': False, 'state': 'CANCELLED', 'raison': raison}
     now = datetime.fromisoformat(utcnow())
