@@ -143,6 +143,11 @@ couple. Après le merge, on le fait à deux :
       ```sh
       (umask 077; read -rs CLE; printf '%s\n' "$CLE" > ~/.config/serge/secrets/anthropic-api-key; unset CLE)
       ```
+
+      Si la clé vaut pour tous les workspaces du compte (celle d'un
+      abonnement), remplir aussi « Anthropic, identifiant du workspace »
+      (page Pipeline) avec l'identifiant `wrkspc_…` lu dans la Console
+      d'Anthropic (Settings, Workspaces).
 - [ ] linger user (`loginctl enable-linger serge`) pour les units
       `--user` après logout
 - [x] Docker rootless pour l'utilisateur `serge` (service

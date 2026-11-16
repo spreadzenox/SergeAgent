@@ -140,8 +140,8 @@ class DirectTests(unittest.TestCase):
             patch.start()
             self.addCleanup(patch.stop)
 
-    def _tache(self) -> str:
-        task_id = str(enqueue_task(self.conn, 'redacteur', {'cle': 'a'}))
+    def _tache(self, cle: str = 'a') -> str:
+        task_id = str(enqueue_task(self.conn, 'redacteur', {'cle': cle}))
         self.conn.commit()
         return task_id
 
@@ -191,6 +191,9 @@ class DirectTests(unittest.TestCase):
         self.assertEqual(premier['model'], 'claude-sonnet-5-5')
         self.assertEqual(premier['thinking'], {'type': 'between_tools'})
         self.assertEqual(premier['fallbacks'], 'default')
+        self.assertNotIn(
+            'workspace_id', premier, 'une clé liée à un workspace'
+        )
         self.assertIn('Écris.', premier['system'])
         self.assertEqual(premier['messages'][0]['role'], 'user')
         self.assertNotIn('cache_control', premier, 'pas encore d’outil')
@@ -215,6 +218,48 @@ class DirectTests(unittest.TestCase):
         self.assertAlmostEqual(dernier[3], 900 / 1_000_000)
         self.assertEqual(dernier[4], 'Anthropic (direct)')
         self.assertEqual(dernier[5], 'anthropic/claude-sonnet-5.5')
+
+    def test_une_cle_de_tout_le_compte_dit_son_workspace(self) -> None:
+        """La clé d'un abonnement vaut pour tous les workspaces : sans
+        l'identifiant de l'un d'eux, Anthropic refuse chaque appel, et
+        l'erreur dit quel réglage remplir (16 novembre 2026)."""
+        self._direct('oui')
+        requete = httpx2.Request('POST', 'https://api.anthropic.com/v1')
+        refus = anthropic.BadRequestError(
+            'This API key is not scoped to a workspace, so this request must'
+            ' include the anthropic-workspace-id header',
+            response=httpx2.Response(400, request=requete),
+            body=None,
+        )
+        FakeAnthropic.replies = [refus]
+        task_id = self._tache()
+        process_one(
+            self.conn, 'works', now=MAINTENANT, caller=None, root=self.root
+        )
+        raison = self.conn.execute(
+            'SELECT last_error FROM tasks WHERE id=?', (task_id,)
+        ).fetchone()[0]
+        self.assertIn('identifiant du workspace', raison)
+
+        self.assertEqual(
+            set_setting(
+                self.conn, 'llm_calls.anthropic_workspace', 'wrkspc_01A', 't'
+            ),
+            '',
+        )
+        self.conn.commit()
+        FakeAnthropic.instances = []
+        FakeAnthropic.replies = [
+            _message([{'type': 'text', 'text': '{"text": "fini"}'}])
+        ]
+        self._tache('b')
+        process_one(
+            self.conn, 'works', now=MAINTENANT, caller=None, root=self.root
+        )
+        (requete_partie,) = [
+            r for c in FakeAnthropic.instances for r in c.requests
+        ]
+        self.assertEqual(requete_partie['workspace_id'], 'wrkspc_01A')
 
     def test_non_tout_passe_par_openrouter(self) -> None:
         appel, cle = anthropic_direct.caller_for(
