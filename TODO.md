@@ -182,11 +182,11 @@ Ce que chaque lot a vraiment livré :
   Q93, Q98 et Q99). Il reste, à part :
   - **essayer le lot sur le serveur** : lancer l'essai total, étape par
     étape ;
-  - **le téléphone pour des inconnus** : le canal « voice » demande
-    l'accord de la personne avant tout appel (page Policy, « Accord des
-    gens »), donc une campagne par téléphone ne démarre pas pour des
-    prospects jamais contactés. La conception prévoyait 20 appels par
-    test : à trancher par Julien et Clem ;
+  - **le téléphone pour des inconnus** : tant que le canal « voice »
+    demande l'accord de la personne avant tout appel (page Policy,
+    « Accord des gens », c'est le cas au départ), une campagne par
+    téléphone ne démarre pas pour des prospects jamais contactés. C'est
+    voulu (décision Q100) ; la voix sera reprise dans un lot suivant ;
   - **retirer la famille « Taille des essais » de la page Policy** et
     l'ancien code qui la lit (`serge/funnels/campaigns.py`, `essai.py`,
     `rules.py`, `metrics.py`), que plus rien n'appelle dans le pipeline ;

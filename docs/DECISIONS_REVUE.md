@@ -2146,3 +2146,20 @@ Décidé :
     « Essayer Stripe » et « Construire le vrai produit » sont retirés.
 12. **Le lot 12 se livre en une ou deux PR**, pas six : la CI est longue.
 Le détail est dans la conception du lot 12, parties 18 et 19.
+
+### Q100 — Le téléphone ne prospecte pas sans accord (validé par Clem, 16 novembre 2026)
+Constat : la conception du lot 12 prévoit 20 appels par test léger, mais
+le canal « voice » demande l'accord de la personne avant tout appel
+(page Policy, « Accord des gens »), et un prospect jamais contacté ne l'a
+pas donné.
+Décidé :
+1. **Le réglage « Accord des gens » décide.** Tant que le téléphone y
+   figure (c'est le cas au départ), Serge n'appelle personne sans son
+   accord : une campagne par téléphone ne démarre pas pour des inconnus,
+   elle est annulée avec la raison. Si on retire le téléphone de ce
+   réglage, les appels partent.
+2. **Par défaut, Serge n'appelle pas.** « Et tant pis » : la voix sera
+   reprise dans les lots suivants, avec d'autres changements.
+3. Dans l'essai total, le contact tapé au lancement a donné son accord
+   (« test ») : son appel part.
+

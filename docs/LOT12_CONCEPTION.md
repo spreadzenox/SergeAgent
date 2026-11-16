@@ -239,8 +239,9 @@ aussi à la prospection lourde sont marquées *(3 et 6)*.
    canal « voice » demande l'accord de la personne avant tout appel (page
    Policy, « Accord des gens »), et un prospect jamais contacté ne l'a
    pas donné. Les 20 appels par test du tableau de la partie 3 restent
-   donc sans effet tant que ce réglage ne change pas : à trancher par
-   Julien et Clem. Lien : « Trouver des prospects ».
+   donc sans effet tant que ce réglage ne change pas : c'est voulu, et
+   la voix sera reprise dans un lot suivant (décision Q100). Lien :
+   « Trouver des prospects ».
 
 2. **Trouver des prospects** *(3 et 6)* — LLM, niveau intelligent, file
    des travaux. Elle reçoit d'office la campagne (son canal, sa cible), le
