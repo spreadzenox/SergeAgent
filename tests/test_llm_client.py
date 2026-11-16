@@ -155,6 +155,31 @@ class LlmClientTests(unittest.TestCase):
             ):
                 chat('k', 'm', [])
 
+    def test_la_raison_du_fournisseur_est_dite(self) -> None:
+        corps = io.BytesIO(
+            json.dumps(
+                {
+                    'error': {
+                        'code': 400,
+                        'message': 'Provider returned error',
+                        'metadata': {
+                            'raw': '{"message":"tools.0.custom.input_schema'
+                            '.properties: Property keys should match'
+                            ' pattern"}'
+                        },
+                    }
+                }
+            ).encode()
+        )
+        error = urllib.error.HTTPError('https://x', 400, 'Bad', {}, corps)
+        with mock.patch('urllib.request.urlopen', side_effect=error):
+            with self.assertRaisesRegex(
+                LlmError,
+                '^API: OpenRouter HTTP 400 : Provider returned error : .*'
+                'Property keys should match pattern',
+            ):
+                chat('k', 'm', [])
+
     def test_erreurs_typees(self) -> None:
         with self.assertRaisesRegex(LlmError, '^AUTH'):
             chat('', 'm', [])

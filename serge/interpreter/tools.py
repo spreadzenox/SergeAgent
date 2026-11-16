@@ -14,7 +14,7 @@ import sqlite3
 from collections.abc import Callable, Mapping
 from typing import Any
 
-from serge.connecteurs.appel import api_schema, call_api
+from serge.connecteurs.appel import api_schema, call_api, nom_pour_le_modele
 from serge.conversations.contact import (
     add_contact,
     add_contact_address,
@@ -408,7 +408,11 @@ def tool_schema(
                 },
             },
         }
-    return _without_fixed(schema, fixed)
+    # Un paramètre figé d'« Appeler une API » est aussi retiré sous son nom
+    # du schéma (des points au lieu des crochets).
+    return _without_fixed(
+        schema, fixed | {nom_pour_le_modele(f) for f in fixed}
+    )
 
 
 def _without_fixed(schema: dict[str, Any], fixed: set[str]) -> dict[str, Any]:
