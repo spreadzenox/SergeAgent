@@ -383,6 +383,17 @@ sections:
         min: 1
         max: 20
         step: 1
+      - id: anthropic_direct
+        value: non
+        title: Modèles d’Anthropic, appeler Anthropic directement
+        help: >-
+          oui : les modèles anthropic/… sont appelés chez Anthropic, avec la
+          clé de l’instance (secrets/anthropic-api-key), sans passer par
+          OpenRouter ; le coût est calculé avec les prix du catalogue. Les
+          autres modèles passent toujours par OpenRouter. Pour les essais,
+          avec le crédit d’API de l’abonnement Claude (décision Q97).
+        kind: liste
+        choices: [non, oui]
 
   - id: tools
     page: pipeline
@@ -928,6 +939,18 @@ sections:
         min: 512
         max: 8192
         step: 256
+      - id: vrai_chrome.attente_minutes
+        value: 10
+        title: Vrai Chrome, attente d’un humain en minutes
+        help: >-
+          Quand une invocation appelle un humain (un captcha), combien de
+          temps elle attend « C’est fait » après lui avoir envoyé le lien
+          de l’écran. Sans réponse, elle s’arrête et redemande si quelqu’un
+          est prêt (décision Q97).
+        kind: curseur
+        min: 2
+        max: 30
+        step: 1
       - id: boite.image
         value: axllent/mailpit:v1.32.0
         title: Boîte d’essai, image

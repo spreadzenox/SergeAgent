@@ -64,7 +64,7 @@ class DiscordRenderTests(unittest.TestCase):
         self.assertIn('pause_propre', embed['footer']['text'])
         buttons = card['components'][0]['components']
         labels = [button['label'] for button in buttons]
-        self.assertEqual(labels, ["C'est fait", 'Abandonner', 'Discuter'])
+        self.assertEqual(labels, ["C'est fait", 'Abandonner'])
         self.assertTrue(
             buttons[0]['custom_id'].startswith('t:t_abc123def456:cest_fait')
         )

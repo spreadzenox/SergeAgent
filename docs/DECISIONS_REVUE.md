@@ -2017,3 +2017,36 @@ Décidé :
 9. **L'éditeur des mentions légales est Julien Pesquet** : un humain
    répond de chaque produit, une IA ne peut rien porter légalement ; le
    service est tenu par Serge, un agent IA.
+
+### Q97 — Le vrai Chrome pour payer, un humain au captcha, et Anthropic en direct pour les essais (validé par Clem, 16 novembre 2026)
+Constat : le 16 novembre 2026, le paiement test de 1 € n'a pas pu payer :
+sur la page de Stripe, le captcha ne se chargeait pas dans le navigateur
+sans écran (Chromium « headless », que les pages reconnaissent), et
+« Carte » restait impossible à choisir. Aucun paiement n'est parti.
+Décidé :
+1. **Un vrai Chrome** : un Chromium normal, sur un écran virtuel, dans son
+   propre conteneur, inspiré de la console Chrome du VPS sans s'en servir
+   ni y toucher. Il prend la forme d'outils qu'on donne ou non à une
+   invocation (« Agir dans le vrai Chrome », « Lire la page du vrai
+   Chrome », « Capture du vrai Chrome ») : on passe de l'un à l'autre en
+   changeant ses outils. Pour l'instant, seul le paiement test l'a ; les
+   autres gardent le navigateur sans écran.
+2. **Un humain au captcha, en deux temps** (outil « Appeler un humain ») :
+   une tâche ne dort pas en tenant un navigateur ouvert. Au captcha, elle
+   s'arrête et un ticket demande si un humain est prêt ; « Je suis prêt »
+   la fait repartir ; au même captcha, elle envoie le lien de l'écran et
+   attend « C'est fait » 10 minutes (réglage), puis continue ; sans
+   réponse, on revient au premier temps.
+3. **L'écran se voit dans Mission Control, derrière sa connexion** : plus
+   sûr qu'un lien ouvert à tous.
+4. **On garde « taper un secret »** : le modèle ne voit jamais les numéros
+   de la carte. Donner la carte dédiée de Serge au modèle qui paie reste
+   permis si un jour il le faut.
+5. **Appeler Anthropic directement, pour les essais** : la clé d'API liée
+   à l'abonnement Claude Ultra donne 200 $ de crédit d'API. Un réglage oui
+   ou non dans Mission Control envoie les modèles `anthropic/…` chez
+   Anthropic au lieu d'OpenRouter ; la clé est posée sur le VPS par
+   commande, jamais dans le dépôt ni dans une conversation.
+6. **Le niveau « web » (les relecteurs, le paiement test) repasse à
+   Sonnet**, avec ce crédit.
+7. **Pas de Browserbase** : il est retiré de l'inventaire de l'instance.

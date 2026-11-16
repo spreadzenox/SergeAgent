@@ -130,6 +130,19 @@ couple. Après le merge, on le fait à deux :
       navigateur n'est téléchargé. S'il manque, l'îlot « Chantiers » de la
       page Système est en erreur et le dit.
 - [ ] Asterisk / Caddy selon features
+- [x] Le vrai Chrome (décision Q97) : son image (`serge-vrai-chrome:…`,
+      Debian, Chromium, Xvfb, x11vnc, noVNC) est construite par Serge au
+      premier usage, quelques minutes, depuis `serge/sandbox/image_chrome/`.
+      Son débogage et son écran ne sont publiés que sur `127.0.0.1` ;
+      Mission Control montre l'écran à `/owner/vrai-chrome`, après sa
+      connexion. Il ne touche à aucun autre conteneur du serveur.
+- [ ] Clé d'API d'Anthropic, facultative, pour le réglage « appeler
+      Anthropic directement » (page Pipeline). La poser sur le VPS, en
+      tapant la clé (rien ne s'affiche) puis Entrée :
+
+      ```sh
+      (umask 077; read -rs CLE; printf '%s\n' "$CLE" > ~/.config/serge/secrets/anthropic-api-key; unset CLE)
+      ```
 - [ ] linger user (`loginctl enable-linger serge`) pour les units
       `--user` après logout
 - [x] Docker rootless pour l'utilisateur `serge` (service

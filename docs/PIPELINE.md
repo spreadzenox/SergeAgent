@@ -178,6 +178,19 @@ Le runner tourne en continu, en deux copies, une par file
   est réécrit au prix fort : les captures sortent donc par paquets,
   seulement au-delà du double du réglage « Captures gardées » (10 au
   départ, page Pipeline).
+- **Appeler Anthropic directement** (réglage « Modèles d'Anthropic,
+  appeler Anthropic directement », page Pipeline, « non » au départ) : à
+  « oui », les modèles `anthropic/…` sont appelés chez Anthropic avec la
+  clé de l'instance (`secrets/anthropic-api-key`), sans OpenRouter ; les
+  autres modèles passent toujours par OpenRouter. Pour les essais, avec le
+  crédit d'API de l'abonnement Claude (décision Q97). Le client traduit
+  l'historique au format d'Anthropic, coupe la réflexion quand le modèle
+  le permet, demande le cache dans une boucle d'outils, et calcule le coût
+  avec les jetons et les prix du catalogue d'OpenRouter (Anthropic ne le
+  donne pas). Exemple : 10 000 jetons lus, 90 000 relus en cache et 1 000
+  écrits avec Sonnet 5.5 coûtent 0,039 $. Si le modèle refuse une demande
+  (ses filtres de sécurité), un autre modèle d'Anthropic la reprend.
+  Sans clé, l'appel échoue et le dit.
 - Une tâche s'arrête en plein travail, avant son appel au modèle ou son
   outil suivant : si Serge est coupé (elle repart du début au
   redémarrage) ; si elle a dépensé son plafond (« Dépense maximale d'une
@@ -185,8 +198,9 @@ Le runner tourne en continu, en deux copies, une par file
   elle échoue et un ticket prévient Julien et Clem) ; si elle demande quelque chose à Julien (« Demander une
   nouvelle capacité » : elle est gelée, statut `blocked`, jusqu'à sa
   réponse, puis repart du début avec la réponse dans ses paramètres,
-  `reponses_de_julien`). Sans crédit chez OpenRouter, elle attend une
-  demi-heure au lieu d'échouer, et un ticket prévient. Chaque appel
+  `reponses_de_julien`). Sans crédit chez OpenRouter (ou chez Anthropic,
+  appelé directement), elle attend une demi-heure au lieu d'échouer, et
+  un ticket prévient. Chaque appel
   d'outil est noté au journal (`tool.call` : l'outil, ses paramètres en
   court, s'il a marché). Un appel aux paramètres illisibles ne part pas
   et ne compte pas dans la limite d'appels de son outil.
@@ -196,7 +210,9 @@ Le runner tourne en continu, en deux copies, une par file
   Quand l'un est atteint, les tâches LLM attendent le lendemain ou le mois
   suivant ; les autres continuent. La dépense est le coût réel facturé par
   OpenRouter pour chaque appel (`llm_usage.cost_usd`), jamais une
-  estimation ; les appels dont le coût n'est pas connu sont signalés à part.
+  estimation ; appelé directement chez Anthropic, il est calculé avec ses
+  jetons et ses prix ; les appels dont le coût n'est pas connu sont
+  signalés à part.
 - Aucune température n'est envoyée au modèle : il garde celle de son
   fournisseur, et le prompt fait le reste (décisions Q62 et Q68).
 - Les appels au modèle se règlent sur la page Pipeline (famille « Appels

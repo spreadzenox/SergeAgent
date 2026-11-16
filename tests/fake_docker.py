@@ -169,13 +169,25 @@ def _network(args: list[str]) -> int:
 
 
 def _inspect(args: list[str]) -> int:
-    """``inspect -f <réseaux> NAME`` : les réseaux du conteneur."""
+    """``inspect -f <format> NAME`` : l'image du conteneur
+    (``.Config.Image``), sinon ses réseaux."""
     state = _state(args[-1])
     if state is None:
         print(f'Error: No such object: {args[-1]}', file=sys.stderr)
         return 1
+    if 'Config.Image' in ' '.join(args):
+        print(state['image'])
+        return 0
     print(' '.join(state.get('networks', [])))
     return 0
+
+
+def _image(args: list[str]) -> int:
+    """``image inspect IMAGE`` : 0 si l'image a été construite."""
+    if (ROOT / 'images' / args[-1].replace('/', '_')).is_file():
+        return 0
+    print(f'Error: No such image: {args[-1]}', file=sys.stderr)
+    return 1
 
 
 def _port(args: list[str]) -> int:
@@ -234,6 +246,8 @@ def main(args: list[str]) -> int:
         return _port(rest)
     if command == 'build':
         return _build(rest)
+    if command == 'image':
+        return _image(rest)
     if command == 'rm':
         return _rm(rest)
     if command == 'logs':

@@ -13,7 +13,8 @@ Une tâche en plein travail s'arrête (``serge/interpreter/halt.py``) :
 coupée par le coupe-circuit, elle revient dans la file et repartira du
 début au redémarrage ; au-delà de son plafond de dépense, elle échoue et
 Julien et Clem sont prévenus ; une demande à Julien la gèle jusqu'à sa
-réponse. Sans crédit chez OpenRouter, elle attend une demi-heure au lieu
+réponse. Sans crédit chez OpenRouter (ou chez Anthropic, appelé
+directement), elle attend une demi-heure au lieu
 d'échouer, et ils sont prévenus.
 """
 
@@ -102,7 +103,10 @@ def process_one(
         if raison.startswith('LlmError: CREDIT'):
             plus_tard = datetime.now(UTC) + ATTENTE_CREDIT
             _remettre(conn, task_id, 'task.no_credit', plus_tard.isoformat())
-            _prevenir(conn, 'OpenRouter n’a plus de crédit', raison)
+            fournisseur = (
+                'Anthropic' if 'Anthropic' in raison else 'OpenRouter'
+            )
+            _prevenir(conn, f'{fournisseur} n’a plus de crédit', raison)
         else:
             fail_task(conn, task_id, raison)
             if isinstance(exc, TaskOverBudget):

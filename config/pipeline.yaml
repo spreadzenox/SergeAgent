@@ -628,6 +628,33 @@ tools:
       elle sert de preuve et se voit dans Mission Control.
     capability: browser_screenshot
 
+  # Le vrai Chrome (Q97) : un Chromium normal, sur un écran virtuel, pour
+  # les pages qui refusent un navigateur sans écran (le captcha d'un
+  # paiement). Une invocation passe de l'un à l'autre en changeant ses
+  # outils sur la page Pipeline : ces trois-là au lieu des trois d'avant.
+  - id: vrai_chrome_agir
+    title: Agir dans le vrai Chrome
+    doc: >-
+      Comme « Agir dans une page », dans le vrai Chrome : un humain peut voir
+      son écran et y agir depuis Mission Control.
+    capability: real_browser_action
+  - id: vrai_chrome_lire
+    title: Lire la page du vrai Chrome
+    doc: Comme « Lire la page », dans le vrai Chrome.
+    capability: real_browser_read
+  - id: vrai_chrome_capture
+    title: Capture du vrai Chrome
+    doc: Comme « Prendre une capture », dans le vrai Chrome.
+    capability: real_browser_screenshot
+  - id: appeler_un_humain
+    title: Appeler un humain
+    doc: >-
+      Quand une page demande un humain (un captcha). La première fois, la
+      tâche s'arrête, et repart du début quand un humain se dit prêt ; la
+      fois suivante, au même blocage, l'humain le résout dans l'écran du
+      vrai Chrome pendant que la tâche attend, puis elle continue.
+    capability: human_help
+
   # --- L'étape 2 : concevoir, critiquer, construire, relire (lot 10, Q91) ---
   - id: capacites_de_serge
     title: Ce que Serge sait faire
@@ -5519,7 +5546,7 @@ invocations:
       2. Crée un prix de 1 € (100 centimes, eur, un paiement unique, sans
          intervalle) pour ce produit, avec le nom court « paiement test »,
          puis un lien de paiement pour ce prix, quantité 1.
-      3. Ouvre le lien dans le navigateur et paie comme une personne :
+      3. Ouvre le lien dans le vrai Chrome et paie comme une personne :
          l'adresse e-mail que te donne « Ma boîte e-mail » (appelle-la
       avec wait à faux),
          puis la carte de Serge avec l'action taper_secret, sans jamais
@@ -5529,6 +5556,11 @@ invocations:
          pour le nom. Valide, et attends la page
          qui confirme le paiement. Si la banque demande une confirmation
          (3-D Secure) que tu ne peux pas donner, arrête-toi : paye « non ».
+         Si un captcha bloque (« je ne suis pas un robot », des images à
+         choisir), appelle « Appeler un humain » : la première fois, la
+         tâche s'arrête et repartira du début quand un humain sera prêt ;
+         la fois suivante, au même blocage, il le résout dans l'écran
+         pendant que tu attends ; relis alors la page et continue.
       4. Vérifie dans Stripe, par les sessions du lien de paiement, qu'une
          session est payée (payment_status : paid), de 100 centimes, et
          note son paiement (payment_intent, pi_…).
@@ -5583,19 +5615,23 @@ invocations:
           service: {source: fixed, value: stripe_live}
           active: {source: fixed, value: 'false'}
           task_id: {source: task, value: task_id}
-      - tool: navigateur_agir
+      - tool: vrai_chrome_agir
         mode: callable
-        params:
+        params: &vrai_chrome_paiement
           venture_id: {source: task, value: venture_id}
           deliverable: {source: fixed, value: produit}
           task_id: {source: task, value: task_id}
           secrets: {source: fixed, value: 'payment-card.enc#pan,payment-card.enc#expiration,payment-card.enc#cvc,payment-card.enc#cardholder_name'}
-      - tool: navigateur_lire
+      - tool: vrai_chrome_lire
         mode: callable
         params: *navigateur_produit
-      - tool: navigateur_capture
+      - tool: vrai_chrome_capture
         mode: callable
         params: *navigateur_produit
+      - tool: appeler_un_humain
+        mode: callable
+        params: &humain_de_la_tache
+          task_id: {source: task, value: task_id}
       - tool: boite_mail
         mode: callable
         params: *boite_de_la_tache
@@ -8009,6 +8045,46 @@ changes:
     invocation: paiement_test
     add_tools:
       - {tool: boite_mail, mode: callable, params: {task_id: {source: task, value: task_id}}}
+  - id: vrai_chrome_paiement_test_sans_navigateur
+    why: >-
+      Le paiement test passe au vrai Chrome : le captcha de Stripe ne se
+      chargeait pas dans le navigateur sans écran (16 novembre 2026, Q97).
+    invocation: paiement_test
+    remove_tools: [navigateur_agir, navigateur_lire, navigateur_capture]
+  - id: vrai_chrome_paiement_test_outils
+    why: Le paiement test paie dans le vrai Chrome et peut appeler un humain (Q97).
+    invocation: paiement_test
+    add_tools:
+      - {tool: vrai_chrome_agir, mode: callable, params: *vrai_chrome_paiement}
+      - {tool: vrai_chrome_lire, mode: callable, params: *navigateur_produit}
+      - {tool: vrai_chrome_capture, mode: callable, params: *navigateur_produit}
+      - {tool: appeler_un_humain, mode: callable, params: *humain_de_la_tache}
+  - id: vrai_chrome_paiement_test_consignes
+    why: Le paiement test paie dans le vrai Chrome et appelle un humain au captcha (Q97).
+    table: invocations
+    where: {id: paiement_test}
+    set:
+      prompt:
+        replace:
+          - old: 3. Ouvre le lien dans le navigateur et paie comme une personne
+            new: 3. Ouvre le lien dans le vrai Chrome et paie comme une personne
+          - old: |-
+              (3-D Secure) que tu ne peux pas donner, arrête-toi : paye « non ».
+            new: |-
+              (3-D Secure) que tu ne peux pas donner, arrête-toi : paye « non ».
+                 Si un captcha bloque (« je ne suis pas un robot », des images à
+                 choisir), appelle « Appeler un humain » : la première fois, la
+                 tâche s'arrête et repartira du début quand un humain sera prêt ;
+                 la fois suivante, au même blocage, il le résout dans l'écran
+                 pendant que tu attends ; relis alors la page et continue.
+  - id: vrai_chrome_niveau_web_sonnet
+    why: >-
+      Avec le crédit d'API d'Anthropic, le niveau « web » (les relecteurs,
+      le paiement test) repasse à Sonnet (16 novembre 2026, Q97).
+    table: llm_models
+    where: {tier: web}
+    set:
+      model: {from: anthropic/claude-haiku-5.5, to: anthropic/claude-sonnet-5.5}
 
   - id: certificats_tls_construire_poc
     why: >-

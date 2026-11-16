@@ -28,6 +28,8 @@ from serge.mc.auth import (
 )
 from serge.mc.coupe_actions import CoupeActionsMixin
 from serge.mc.discord_actions import DiscordActionsMixin
+from serge.mc.ecran_actions import PREFIXE as ECRAN
+from serge.mc.ecran_actions import EcranMixin
 from serge.mc.etape_actions import EtapeActionsMixin
 from serge.mc.llm_actions import LlmActionsMixin
 from serge.mc.pipeline_actions import PipelineActionsMixin
@@ -85,6 +87,7 @@ class McHandler(
     PolicyActionsMixin,
     CoupeActionsMixin,
     DiscordActionsMixin,
+    EcranMixin,
     EtapeActionsMixin,
     PipelineActionsMixin,
     LlmActionsMixin,
@@ -239,6 +242,9 @@ class McHandler(
             )
             html = self._template('shell.html').replace('<!--BOOT-->', blob)
             self._send_html(200, html)
+            return
+        if path == ECRAN or path.startswith(f'{ECRAN}/'):
+            self._ecran()
             return
         api = GET_API.get(path)
         if api is not None:

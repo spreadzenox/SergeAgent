@@ -276,20 +276,6 @@ entries:
     portable: "yes"
     notes: Discord bot token (v0 gateway bot); required when features.discord is true.
 
-  - id: browserbase
-    kind: secret
-    current_location: /home/serge/.config/serge/secrets/browserbase.key
-    required_for: pipeline
-    portable: "yes"
-    notes: Browserbase API key (optionnelle).
-
-  - id: path.browserbase_project_id
-    kind: path
-    current_location: /home/serge/.config/serge/browserbase-project-id
-    required_for: pipeline
-    portable: "yes"
-    notes: Non-secret project id file paired with secret.browserbase.
-
   - id: secret.cloudflare_infra
     kind: secret
     current_location: /home/serge/.config/serge/secrets/cloudflare-infra.key
