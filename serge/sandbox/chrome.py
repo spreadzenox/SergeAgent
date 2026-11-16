@@ -84,8 +84,9 @@ def _lancer(nom: str, image: str, memoire_mb: int, ports: list[str]) -> None:
 def _image_construite(image: str) -> None:
     """Construit l'image du vrai Chrome si elle manque (quelques minutes,
     une seule fois par version de ses fichiers)."""
-    absente = docker(['image', 'inspect', image], timeout=30, check=False)
-    if absente.returncode != 0:
+    # « image ls » rend une liste vide pour une image absente ; « image
+    # inspect » serait un refus de Docker, donc une panne (16 novembre 2026).
+    if not docker(['image', 'ls', '-q', image], timeout=30).stdout.strip():
         docker(['build', '-t', image, str(DOSSIER_IMAGE)], timeout=1800)
 
 
