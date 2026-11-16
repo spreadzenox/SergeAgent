@@ -295,7 +295,12 @@ Une ligne par écriture qu'une invocation fait avec sa réponse.
   business que l'écriture parente vient de créer.
 - `key_column`, `key_source`, `key_value` : pour `update`, comment
   retrouver la ligne à modifier. Exemple : la colonne `id` des business,
-  égale au champ `choix.venture_id` de la réponse.
+  égale au champ `choix.venture_id` de la réponse. Une clé peut viser
+  plusieurs lignes (« les campagnes de ce business ») : chaque ligne est
+  alors jugée pour elle-même (un changement de statut refusé pour l'une
+  est noté, et les autres sont modifiées), et chaque ligne modifiée
+  réveille ses liens et ses déclencheurs. Exemple : le POC mis en ligne
+  passe ses deux campagnes à « prête », et les deux démarrent.
 
 ### `invocation_write_values` — quelle colonne reçoit quoi
 

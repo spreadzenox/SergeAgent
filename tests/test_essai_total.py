@@ -21,6 +21,8 @@ Scénarios :
 - à partir de l'étape 1 : un cycle d'écoute d'essai, 2 recherches et 5
   pages au plus, marquées ; « Choisir les business » ne voit que la
   calculatrice ; son plan tout fait part au ticket « Plan » ;
+- le POC mis en ligne passe les deux campagnes à « prête » d'un coup :
+  les deux démarrent ;
 - à partir de l'étape 6 : la prospection lourde écrit et appelle le
   contact de l'essai, lui seul ;
 - relancer l'essai arrête le précédent et le remplace ;
@@ -444,6 +446,53 @@ class EssaiTotalTests(unittest.TestCase):
             [('email', 'DRAFT'), ('voice', 'DRAFT')],
         )
         self.assertNotIn('concevoir', self.modeles.recu)
+
+    def test_apres_le_poc_les_deux_campagnes_demarrent(self) -> None:
+        """Le chemin du serveur, le 16 novembre 2026 : parti de l'étape 1,
+        le POC mis en ligne passe les deux campagnes à « prête » d'un seul
+        coup. Les deux doivent démarrer (seule la première démarrait, et le
+        test n'était jamais mesuré)."""
+        from serge.interpreter.tasks import enqueue_task
+
+        essai = self._essai({**FORMULAIRE, DEPART: '1'})
+        venture = self._un('SELECT id FROM ventures')[0]
+        # Le plan validé et le POC en prod (étape 2, essayée ailleurs) :
+        # « POC prêt pour le test léger ».
+        enqueue_task(
+            self.conn, 'poc_pret', {'venture_id': venture}, trial_run=essai
+        )
+        self._vider()
+        self.assertEqual(self._echecs(), [])
+        self.assertEqual(
+            [
+                tuple(c)
+                for c in self.conn.execute(
+                    'SELECT channel, state FROM campaigns ORDER BY channel'
+                )
+            ],
+            [('email', 'FINISHED'), ('voice', 'FINISHED')],
+        )
+        self.assertEqual(len(self.mails), 1)
+        self.assertEqual(len(self.composes), 1)
+        self.assertEqual(
+            self._un('SELECT lifecycle FROM ventures')[0], 'SMOKE_DONE'
+        )
+        # « Repartir d'ici » sur « POC prêt » ne touche pas une campagne
+        # finie : son retour à « prête » est refusé, ligne par ligne.
+        from serge.interpreter.restart import restart_from
+
+        pret = self._un("SELECT id FROM tasks WHERE invocation_id='poc_pret'")[
+            0
+        ]
+        restart_from(self.conn, pret)
+        self._vider()
+        self.assertEqual(
+            self._un(
+                'SELECT COUNT(*) FROM campaigns WHERE state=?', ('FINISHED',)
+            ),
+            (2,),
+        )
+        self.assertEqual(len(self.mails), 1)
 
     def test_a_partir_de_l_etape_6_la_prospection_lourde(self) -> None:
         self._essai({**FORMULAIRE, DEPART: '6'})
