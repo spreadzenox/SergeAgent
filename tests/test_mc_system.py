@@ -234,7 +234,7 @@ class McSystemTests(McBrowserCase):
 
         page = self._page_home()
         expect(page.locator('[data-section="business"]')).to_contain_text(
-            'Smoke en cours'
+            'Test léger en cours'
         )
         expect(page.locator('[data-section="business"]')).not_to_contain_text(
             'SMOKE_RUNNING'

@@ -20,7 +20,8 @@ Scénarios :
 - un canal de plus se branche sans toucher au reste : son adaptateur, son
   réglage de volume, son invocation de premier message et son lien ;
 - une campagne par téléphone ne démarre pas pour des inconnus : le canal
-  demande leur accord.
+  demande leur accord ; sans cet accord demandé (page Policy), elle
+  démarre.
 """
 
 from __future__ import annotations
@@ -48,6 +49,7 @@ from serge.interpreter.tasks import enqueue_task  # noqa: E402
 from serge.interpreter.triggers import notify_rows_written  # noqa: E402
 from serge.llm.client import ChatResult, ToolCall  # noqa: E402
 from serge.pipeline_seed import seed_pipeline  # noqa: E402
+from serge.policy_store import set_setting  # noqa: E402
 from serge.tickets.reponses import noter_reponse  # noqa: E402
 
 T = '2026-11-01T09:00:00+00:00'
@@ -495,6 +497,36 @@ class ChaineTests(ChaineCase):
         self.assertEqual(
             self._un("SELECT title FROM tickets WHERE type='FYI'")[0],
             "Une campagne n'a pas pu démarrer",
+        )
+
+    def test_sans_accord_demande_le_telephone_demarre(self) -> None:
+        # Le téléphone retiré de « Accord des gens » (page Policy) : la
+        # campagne démarre, et Serge cherche des numéros (décision Q100).
+        set_setting(
+            self.conn, 'consent.opt_in_channels', ['sms', 'whatsapp'], 'test'
+        )
+        self._regler('demarrer_campagne', 'voice_test', 1)
+        self.modeles.prospects = [
+            {
+                'name': 'Marie Dupont',
+                'address': '+33612345678',
+                'source_url': 'https://dupont-batiment.fr/equipe',
+            }
+        ]
+        self.conn.execute(
+            "UPDATE invocations SET enabled=0 WHERE id='premier_appel'"
+        )
+        campagne = self._business('v1', canal='voice')
+        self._vider()
+        self.assertEqual(
+            self._un(
+                'SELECT state, n_target FROM campaigns WHERE id=?', campagne
+            ),
+            ('RUNNING', 1),
+        )
+        self.assertEqual(
+            self._un('SELECT channel, address, status FROM touches'),
+            ('voice', '+33612345678', 'to_write'),
         )
 
 
