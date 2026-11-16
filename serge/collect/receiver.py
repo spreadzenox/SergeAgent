@@ -18,6 +18,7 @@ from serge.collect.webhook import (  # noqa: E402
     verify_event,
 )
 from serge.db.store import default_canon_path, open_db  # noqa: E402
+from serge.interpreter.triggers import notify_rows_written  # noqa: E402
 
 DEFAULT_LISTEN = '127.0.0.1:8788'
 MAX_BODY = 262144
@@ -91,6 +92,10 @@ class Handler(BaseHTTPRequestHandler):
         conn = open_db(self.db_path)
         try:
             result = apply_event(conn, event)
+            # Un paiement arrivé réveille le pipeline (« Enregistrer une
+            # vente »), comme une ligne écrite par une invocation.
+            if result.get('status') == 'ok' and result.get('id'):
+                notify_rows_written(conn, 'transactions', [str(result['id'])])
             conn.commit()
         finally:
             conn.close()

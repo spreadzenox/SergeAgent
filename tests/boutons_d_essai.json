@@ -1,0 +1,744 @@
+{
+ "schema_version": 1,
+ "invocations": [
+  {
+   "id": "essayer_chantier",
+   "title": "Essayer le chantier (temporaire)",
+   "role": "Temporaire, pour essayer le chantier depuis Mission Control (lot 10, Q91) : reçoit une mission, travaille dans le chantier d'essai avec ses quatre outils (commande, lire, écrire, modifier), vérifie que ça marche, puis rend un compte rendu.",
+   "type": "llm",
+   "model_tier": "smart",
+   "queue": "works",
+   "priority": 30,
+   "max_tool_turns": 40,
+   "prompt": "Tu travailles dans un chantier : un conteneur Linux (Debian, avec git,\nPython 3 et Node), dans le dossier /work. Il est à toi : tu peux y\ninstaller ce qu'il te faut. Tu as quatre outils : lancer une\ncommande, lire un fichier, écrire un fichier, modifier un passage\nd'un fichier. Tu peux en appeler plusieurs d'un coup.\n\nFais la mission donnée dans les paramètres de la tâche. Avant de\nrépondre, vérifie que ce que tu as fait marche vraiment : lance-le,\nlis ce qu'il rend. Un serveur se lance en arrière-plan ; interroge-le\nensuite avec curl.\n\nRends ton compte rendu : ce que tu as fait, les commandes qui l'ont\nvérifié et ce qu'elles ont rendu, et ce qui ne marche pas encore.\n",
+   "tools": [
+    {
+     "tool": "chantier_commande",
+     "mode": "callable",
+     "params": {
+      "venture_id": {
+       "source": "fixed",
+       "value": "essai"
+      },
+      "deliverable": {
+       "source": "fixed",
+       "value": "chantier"
+      },
+      "profile": {
+       "source": "fixed",
+       "value": "chantier"
+      }
+     }
+    },
+    {
+     "tool": "chantier_lire",
+     "mode": "callable",
+     "params": {
+      "venture_id": {
+       "source": "fixed",
+       "value": "essai"
+      },
+      "deliverable": {
+       "source": "fixed",
+       "value": "chantier"
+      },
+      "profile": {
+       "source": "fixed",
+       "value": "chantier"
+      }
+     }
+    },
+    {
+     "tool": "chantier_ecrire",
+     "mode": "callable",
+     "params": {
+      "venture_id": {
+       "source": "fixed",
+       "value": "essai"
+      },
+      "deliverable": {
+       "source": "fixed",
+       "value": "chantier"
+      },
+      "profile": {
+       "source": "fixed",
+       "value": "chantier"
+      }
+     }
+    },
+    {
+     "tool": "chantier_modifier",
+     "mode": "callable",
+     "params": {
+      "venture_id": {
+       "source": "fixed",
+       "value": "essai"
+      },
+      "deliverable": {
+       "source": "fixed",
+       "value": "chantier"
+      },
+      "profile": {
+       "source": "fixed",
+       "value": "chantier"
+      }
+     }
+    }
+   ],
+   "output": [
+    {
+     "path": "marche",
+     "type": "choice",
+     "choices": [
+      "oui",
+      "non"
+     ],
+     "description": "La mission marche-t-elle, vérifiée dans le chantier ?"
+    },
+    {
+     "path": "compte_rendu",
+     "type": "text",
+     "description": "Ce qui a été fait, vérifié, et ce qui ne marche pas."
+    }
+   ]
+  },
+  {
+   "id": "essayer_navigateur",
+   "title": "Essayer l'interface web (temporaire)",
+   "role": "Temporaire, pour essayer l'interface web depuis Mission Control (lot 10, Q91) : ouvre une adresse, y fait la mission comme le ferait une personne (lire, cliquer, taper, sur ordinateur et sur mobile), garde des captures, puis dit ce qu'elle a vu et ce qui ne marche pas.",
+   "type": "llm",
+   "model_tier": "web",
+   "queue": "works",
+   "priority": 30,
+   "max_tool_turns": 40,
+   "prompt": "Tu essaies un site web comme le ferait une personne ordinaire qui le\ndécouvre. Tu as trois outils : agir dans la page (ouvrir une adresse,\ncliquer sur un repère [e7], taper dans un champ, choisir dans une\nliste, appuyer sur une touche, faire défiler, revenir, attendre un\ntexte, passer en écran ordinateur ou mobile), lire la page entière,\net prendre une capture. Après chaque action, tu reçois la page relue.\n\nCommence par ouvrir l'adresse donnée dans les paramètres de la\ntâche, puis fais la mission. L'adresse http://chantier:<port> mène au\nchantier d'essai, si un serveur y tourne. Regarde vraiment l'écran :\nprends au moins une capture sur ordinateur et une sur mobile, et\ngarde-les (keep). Lis les erreurs de la page.\n\nRends ce qui marche (oui ou non) et ton compte rendu : ce que tu as\nfait, ce que tu as vu, ce qui ne marche pas ou gêne, avec le numéro\nde la capture qui le montre.\n",
+   "tools": [
+    {
+     "tool": "navigateur_agir",
+     "mode": "callable",
+     "params": {
+      "venture_id": {
+       "source": "fixed",
+       "value": "essai"
+      },
+      "deliverable": {
+       "source": "fixed",
+       "value": "chantier"
+      },
+      "task_id": {
+       "source": "task",
+       "value": "task_id"
+      }
+     }
+    },
+    {
+     "tool": "navigateur_lire",
+     "mode": "callable",
+     "params": {
+      "venture_id": {
+       "source": "fixed",
+       "value": "essai"
+      },
+      "deliverable": {
+       "source": "fixed",
+       "value": "chantier"
+      },
+      "task_id": {
+       "source": "task",
+       "value": "task_id"
+      }
+     }
+    },
+    {
+     "tool": "navigateur_capture",
+     "mode": "callable",
+     "params": {
+      "venture_id": {
+       "source": "fixed",
+       "value": "essai"
+      },
+      "deliverable": {
+       "source": "fixed",
+       "value": "chantier"
+      },
+      "task_id": {
+       "source": "task",
+       "value": "task_id"
+      }
+     }
+    }
+   ],
+   "output": [
+    {
+     "path": "marche",
+     "type": "choice",
+     "choices": [
+      "oui",
+      "non"
+     ],
+     "description": "Le site fait-il ce que demande la mission ?"
+    },
+    {
+     "path": "compte_rendu",
+     "type": "text",
+     "description": "Ce qui a été fait, vu, et ce qui ne marche pas, captures à l'appui."
+    }
+   ]
+  },
+  {
+   "id": "publier_essai",
+   "title": "Publier le chantier d'essai (temporaire)",
+   "role": "Temporaire, pour essayer la publication depuis Mission Control (lot 10, Q91) : fige le chantier d'essai en une version, la construit et la met en ligne en staging, ou passe la version du staging en prod. Sans LLM.",
+   "type": "capability",
+   "capability": "publish_version",
+   "queue": "works",
+   "priority": 30,
+   "params": {
+    "venture_id": {
+     "source": "fixed",
+     "value": "essai"
+    },
+    "deliverable": {
+     "source": "fixed",
+     "value": "chantier"
+    },
+    "slug": {
+     "source": "fixed",
+     "value": "essai"
+    },
+    "target": {
+     "source": "task",
+     "value": "cible"
+    },
+    "task_id": {
+     "source": "task",
+     "value": "task_id"
+    }
+   }
+  },
+  {
+   "id": "creer_business_essai",
+   "title": "Créer le business d'un essai de l'étape 2 (temporaire)",
+   "role": "Temporaire : crée un business candidat à partir du formulaire du bouton « Essayer l'étape 2 ». Sans LLM.",
+   "type": "capability",
+   "capability": "echo",
+   "queue": "works",
+   "priority": 30,
+   "params": {
+    "nom": {
+     "source": "task",
+     "value": "nom"
+    },
+    "description": {
+     "source": "task",
+     "value": "description"
+    },
+    "offre": {
+     "source": "task",
+     "value": "offre"
+    }
+   },
+   "writes": [
+    {
+     "table": "ventures",
+     "operation": "insert",
+     "values": {
+      "name": {
+       "source": "task",
+       "value": "nom"
+      },
+      "description": {
+       "source": "task",
+       "value": "description"
+      },
+      "sellable_offer": {
+       "source": "task",
+       "value": "offre"
+      },
+      "lifecycle": {
+       "source": "fixed",
+       "value": "CANDIDATE"
+      },
+      "family": {
+       "source": "fixed",
+       "value": "autre"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "choisir_business_essai",
+   "title": "Choisir le business d'un essai de l'étape 2 (temporaire)",
+   "role": "Temporaire : le business de l'essai est choisi pour un POC (il prend une place de test), et sa conception commence. Sans LLM.",
+   "type": "capability",
+   "capability": "echo",
+   "queue": "works",
+   "priority": 30,
+   "params": {
+    "venture_id": {
+     "source": "task",
+     "value": "venture_id"
+    }
+   },
+   "writes": [
+    {
+     "table": "ventures",
+     "operation": "update",
+     "key": {
+      "column": "id",
+      "source": "task",
+      "value": "venture_id"
+     },
+     "values": {
+      "lifecycle": {
+       "source": "fixed",
+       "value": "POC_SELECTED"
+      },
+      "choice_reason": {
+       "source": "fixed",
+       "value": "Essai de l'étape 2 depuis Mission Control."
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "essayer_stripe",
+   "title": "Essayer Stripe en mode test (temporaire)",
+   "role": "Temporaire, pour essayer « Appeler une API » depuis la fiche d'un business : crée dans Stripe, en mode test, un produit, un prix de 1 € par mois portant l'identifiant du business, et un lien de paiement.",
+   "type": "llm",
+   "model_tier": "mid",
+   "queue": "works",
+   "priority": 30,
+   "max_tool_turns": 6,
+   "prompt": "Tu essaies Stripe, en mode test (aucun argent réel), pour le business\ndont le numéro est dans les paramètres de la tâche. Crée un produit\nnommé « Essai Serge », puis un prix de 1 € par mois pour ce produit\n(100 centimes, eur, month), puis un lien de paiement pour ce prix,\nquantité 1. Rends l'adresse du lien de paiement, et les identifiants\ndu produit et du prix.\n",
+   "tools": [
+    {
+     "tool": "stripe_creer_produit",
+     "mode": "callable",
+     "params": {
+      "service": {
+       "source": "fixed",
+       "value": "stripe_test"
+      },
+      "metadata[venture_id]": {
+       "source": "task",
+       "value": "venture_id"
+      },
+      "task_id": {
+       "source": "task",
+       "value": "task_id"
+      }
+     }
+    },
+    {
+     "tool": "stripe_creer_prix",
+     "mode": "callable",
+     "params": {
+      "service": {
+       "source": "fixed",
+       "value": "stripe_test"
+      },
+      "metadata[venture_id]": {
+       "source": "task",
+       "value": "venture_id"
+      },
+      "task_id": {
+       "source": "task",
+       "value": "task_id"
+      }
+     }
+    },
+    {
+     "tool": "stripe_creer_lien_paiement",
+     "mode": "callable",
+     "params": {
+      "service": {
+       "source": "fixed",
+       "value": "stripe_test"
+      },
+      "metadata[venture_id]": {
+       "source": "task",
+       "value": "venture_id"
+      },
+      "task_id": {
+       "source": "task",
+       "value": "task_id"
+      }
+     }
+    }
+   ],
+   "output": [
+    {
+     "path": "lien",
+     "type": "text",
+     "description": "L'adresse du lien de paiement."
+    },
+    {
+     "path": "compte_rendu",
+     "type": "text",
+     "description": "Les identifiants créés et ce qui a raté."
+    }
+   ]
+  },
+  {
+   "id": "bout_en_bout_produit",
+   "title": "Bout en bout : préparer le produit fini d'une calculatrice (temporaire)",
+   "role": "Temporaire : met en base un business « Calculatrice » en construction de son produit fini, avec la fiche produit et le plan validé de son POC, et trois demandes de clients, puis lance la conception du produit. La création du business, l'étape 2 et la prospection sont court-circuitées ; la suite est celle de l'étape 5. Sans LLM.",
+   "type": "capability",
+   "capability": "echo",
+   "queue": "works",
+   "priority": 30,
+   "writes": [
+    {
+     "table": "ventures",
+     "operation": "insert",
+     "dedup": false,
+     "values": {
+      "name": {
+       "source": "fixed",
+       "value": "Calculatrice"
+      },
+      "description": {
+       "source": "fixed",
+       "value": "Une calculatrice en ligne, simple et lisible, sur ordinateur comme sur mobile."
+      },
+      "sellable_offer": {
+       "source": "fixed",
+       "value": "Un abonnement à la calculatrice, avec ce que les clients ont demandé."
+      },
+      "family": {
+       "source": "fixed",
+       "value": "autre"
+      },
+      "lifecycle": {
+       "source": "fixed",
+       "value": "PRODUCT_BUILDING"
+      },
+      "choice_reason": {
+       "source": "fixed",
+       "value": "Essai de bout en bout du produit fini depuis Mission Control."
+      }
+     }
+    },
+    {
+     "table": "product_sheets",
+     "operation": "insert",
+     "parent": 0,
+     "values": {
+      "venture_id": {
+       "source": "parent_row",
+       "value": "id"
+      },
+      "summary": {
+       "source": "fixed",
+       "value": "Une calculatrice en ligne pour les quatre opérations, lisible sur ordinateur et sur mobile, sans compte."
+      },
+      "limits": {
+       "source": "fixed",
+       "value": "Pas de fonctions scientifiques, pas d'historique des calculs."
+      },
+      "price": {
+       "source": "fixed",
+       "value": "Gratuite pendant le test."
+      },
+      "delays": {
+       "source": "fixed",
+       "value": "Tout de suite : on ouvre la page et on calcule."
+      },
+      "usage": {
+       "source": "fixed",
+       "value": "On tape le calcul avec les boutons ou le clavier, puis « = »."
+      }
+     }
+    },
+    {
+     "table": "product_faq",
+     "operation": "insert",
+     "parent": 0,
+     "values": {
+      "venture_id": {
+       "source": "parent_row",
+       "value": "id"
+      },
+      "question": {
+       "source": "fixed",
+       "value": "Faut-il créer un compte ?"
+      },
+      "answer": {
+       "source": "fixed",
+       "value": "Non : on ouvre la page et on calcule."
+      }
+     }
+    },
+    {
+     "table": "product_plans",
+     "operation": "insert",
+     "parent": 0,
+     "values": {
+      "venture_id": {
+       "source": "parent_row",
+       "value": "id"
+      },
+      "kind": {
+       "source": "fixed",
+       "value": "poc"
+      },
+      "round": {
+       "source": "fixed",
+       "value": "1"
+      },
+      "status": {
+       "source": "fixed",
+       "value": "validated"
+      },
+      "hypothesis": {
+       "source": "fixed",
+       "value": "Des visiteurs veulent une calculatrice en ligne simple, qui marche aussi bien au doigt qu'au clavier."
+      },
+      "target": {
+       "source": "fixed",
+       "value": "Tout le monde ; c'est un essai de bout en bout de Serge."
+      },
+      "channel": {
+       "source": "fixed",
+       "value": "email"
+      },
+      "duration_days": {
+       "source": "fixed",
+       "value": "10"
+      },
+      "price": {
+       "source": "fixed",
+       "value": "Gratuite."
+      },
+      "deliverable": {
+       "source": "fixed",
+       "value": "Une calculatrice en ligne : les quatre opérations, les nombres à virgule, l'effacement."
+      },
+      "plan": {
+       "source": "fixed",
+       "value": "Une seule page : l'écran, le pavé (0 à 9, virgule, + − × ÷, =, C, ←), le clavier, « Erreur » pour une division par zéro, des résultats arrondis à 10 chiffres significatifs, un pavé qui tient sur mobile."
+      },
+      "scenarios": {
+       "source": "fixed",
+       "value": "1. Taper 12 + 7 = : 19. 2. Taper 7 ÷ 2 = : 3,5. 3. Taper 5 ÷ 0 = : Erreur, puis C : 0. 4. Sur mobile, tout le pavé tient dans l'écran."
+      },
+      "challenge": {
+       "source": "fixed",
+       "value": "Plan tout fait de l'essai de bout en bout : pas de critique."
+      }
+     }
+    },
+    {
+     "table": "customer_requests",
+     "operation": "insert",
+     "parent": 0,
+     "values": {
+      "venture_id": {
+       "source": "parent_row",
+       "value": "id"
+      },
+      "kind": {
+       "source": "fixed",
+       "value": "idée"
+      },
+      "text": {
+       "source": "fixed",
+       "value": "J'aimerais retrouver mes derniers calculs quand je reviens sur la page, même le lendemain."
+      }
+     }
+    },
+    {
+     "table": "customer_requests",
+     "operation": "insert",
+     "parent": 0,
+     "values": {
+      "venture_id": {
+       "source": "parent_row",
+       "value": "id"
+      },
+      "kind": {
+       "source": "fixed",
+       "value": "idée"
+      },
+      "text": {
+       "source": "fixed",
+       "value": "Il manque le pourcentage et la racine carrée pour mes devis."
+      }
+     }
+    },
+    {
+     "table": "customer_requests",
+     "operation": "insert",
+     "parent": 0,
+     "values": {
+      "venture_id": {
+       "source": "parent_row",
+       "value": "id"
+      },
+      "kind": {
+       "source": "fixed",
+       "value": "insatisfaction"
+      },
+      "text": {
+       "source": "fixed",
+       "value": "1 ÷ 3 affiche une ligne de chiffres qui dépasse de l'écran sur mon téléphone."
+      }
+     }
+    }
+   ]
+  }
+ ],
+ "links": [
+  {
+   "id": "essai_vers_choix_etape2",
+   "title": "Le business de l'essai est choisi pour un POC",
+   "from": "creer_business_essai",
+   "to": "choisir_business_essai",
+   "mode": "per_row",
+   "write": 0,
+   "params": {
+    "venture_id": {
+     "source": "row",
+     "value": "id"
+    }
+   }
+  },
+  {
+   "id": "essai_choisi_vers_conception",
+   "title": "Le business de l'essai part en conception",
+   "from": "choisir_business_essai",
+   "to": "concevoir_poc",
+   "mode": "per_row",
+   "write": 0,
+   "condition": {
+    "field": "lifecycle",
+    "op": "=",
+    "value": "POC_SELECTED"
+   },
+   "params": {
+    "venture_id": {
+     "source": "row",
+     "value": "id"
+    },
+    "tour": {
+     "source": "fixed",
+     "value": "1"
+    }
+   }
+  },
+  {
+   "id": "bout_en_bout_produit_vers_conception",
+   "title": "Bout en bout : la calculatrice part en conception de son produit",
+   "from": "bout_en_bout_produit",
+   "to": "concevoir_produit",
+   "mode": "per_row",
+   "write": 0,
+   "params": {
+    "venture_id": {
+     "source": "row",
+     "value": "id"
+    },
+    "tour": {
+     "source": "fixed",
+     "value": "1"
+    }
+   }
+  }
+ ],
+ "triggers": [
+  {
+   "id": "bouton_essayer_chantier",
+   "title": "Essayer le chantier",
+   "invocation": "essayer_chantier",
+   "event": "button",
+   "confirm": "Serge ouvre le chantier d'essai (un conteneur sur le serveur) et y fait la mission, avec le modèle du niveau intelligent. Le compte rendu est sur la fiche de la tâche.",
+   "params": {
+    "mission": {
+     "source": "form",
+     "value": "mission"
+    }
+   }
+  },
+  {
+   "id": "bouton_essayer_navigateur",
+   "title": "Essayer l'interface web",
+   "invocation": "essayer_navigateur",
+   "event": "button",
+   "confirm": "Serge ouvre l'adresse dans son navigateur (un conteneur sur le serveur) et y fait la mission comme une personne, avec le modèle du niveau « code ». Le compte rendu et les captures sont sur la fiche de la tâche.",
+   "params": {
+    "adresse": {
+     "source": "form",
+     "value": "adresse"
+    },
+    "mission": {
+     "source": "form",
+     "value": "mission"
+    }
+   }
+  },
+  {
+   "id": "bouton_essayer_captcha",
+   "title": "Essayer le captcha avec un humain",
+   "invocation": "essayer_captcha",
+   "event": "button",
+   "confirm": "Serge ouvre une page d'essai dans le vrai Chrome et appelle un humain : tu reçois sur Discord le ticket « Un humain, prêt ? » (clique « Je suis prêt »), puis le ticket « À toi » avec le lien de l'écran ; clique « Je suis un humain » dans l'écran, puis « C'est fait ». Le code lu par Serge est sur la fiche de la tâche."
+  },
+  {
+   "id": "bouton_publier_essai",
+   "title": "Publier le chantier d'essai",
+   "invocation": "publier_essai",
+   "event": "button",
+   "confirm": "Serge fige le chantier d'essai, construit son image (il lui faut un Dockerfile qui écoute sur le port de la variable PORT) et le met en ligne en staging (staging-essai.<domaine>, non indexé) ; avec « prod », il passe la version du staging sur essai.<domaine>. Le résultat est dans l'îlot « Produits en ligne ».",
+   "params": {
+    "cible": {
+     "source": "form",
+     "value": "cible (staging ou prod)"
+    }
+   }
+  },
+  {
+   "id": "bouton_essayer_etape2",
+   "title": "Essayer l'étape 2",
+   "invocation": "creer_business_essai",
+   "event": "button",
+   "confirm": "Serge crée ce business d'essai (il ne prend pas de place de test), le choisit pour un POC et lance l'étape 2 : concevoir, critiquer, puis le ticket « Plan ». Après ta validation, il construit le POC (niveau « code »), le relit, et ouvre le ticket « Tester le produit ». Compter quelques euros de modèles.",
+   "params": {
+    "nom": {
+     "source": "form",
+     "value": "nom"
+    },
+    "description": {
+     "source": "form",
+     "value": "description"
+    },
+    "offre": {
+     "source": "form",
+     "value": "offre"
+    }
+   }
+  },
+  {
+   "id": "bouton_bout_en_bout_produit",
+   "title": "Bout en bout : le produit fini d'une calculatrice",
+   "invocation": "bout_en_bout_produit",
+   "event": "button",
+   "confirm": "Serge met en base une calculatrice dont le POC est fait, avec trois demandes de clients, puis lance la vraie étape 5 : plan du produit payant, critique, ticket « Plan » (tu valides le prix et le nom de domaine), Stripe en mode test, construction et relecture jusqu'au paiement avec la carte de test, ticket « Tester le produit ». Après ta validation, c'est réel : Serge achète le domaine (sous le prix maximum de la page Policy), met le produit en vente dans Stripe, le publie sur son domaine et paie 1 € avec sa carte, puis se rembourse. Compter quelques euros de modèles, plus le domaine."
+  },
+  {
+   "id": "bouton_essayer_stripe",
+   "title": "Essayer Stripe (mode test)",
+   "invocation": "essayer_stripe",
+   "event": "button",
+   "confirm": "Serge crée dans Stripe, en mode test (aucun argent réel), un produit, un prix de 1 € par mois et un lien de paiement pour ce business. Le lien est sur la fiche de la tâche ; « Supprimer de Stripe (mode test) » les archive ensuite.",
+   "params": {
+    "venture_id": {
+     "source": "form",
+     "value": "venture_id"
+    }
+   }
+  }
+ ]
+}

@@ -7,6 +7,11 @@ ajoute, modifie ou supprime, une ligne pour quel élément de la réponse, et
 ``invocation_write_values`` dit quelle colonne reçoit quoi. Les
 protections (``rules.py``) sont appliquées à chaque ligne, et chaque
 écriture ou refus est noté au journal.
+
+Le couloir d'essai (``serge/trial.py``) : une ligne nouvelle écrite par
+une tâche d'essai est marquée, et une tâche ne modifie ni ne supprime que
+les lignes de son couloir. Exemple : « Abandonner le cycle », lancée dans
+le vrai pipeline, ne ferme pas le cycle d'écoute d'un essai.
 """
 
 from __future__ import annotations
@@ -29,6 +34,7 @@ from serge.interpreter.rules import (
     transition_refusal,
 )
 from serge.interpreter.settings import load_settings, resolve_count
+from serge.trial import lane_clause, mark
 
 
 @dataclass
@@ -164,11 +170,21 @@ def _journal(
     )
 
 
+def _in_lane(conn: sqlite3.Connection, table: str) -> str:
+    """« Et dans mon couloir » : la fin d'un WHERE, ou ``''``."""
+    clause = lane_clause(conn, table)
+    return f' AND {clause}' if clause else ''
+
+
 def _row(
-    conn: sqlite3.Connection, table: str, key: str, value: Any
+    conn: sqlite3.Connection,
+    table: str,
+    key: str,
+    value: Any,
+    lane: str = '',
 ) -> dict | None:
     cursor = conn.execute(
-        f'SELECT * FROM "{table}" WHERE "{safe_name(key)}"=?', (value,)
+        f'SELECT * FROM "{table}" WHERE "{safe_name(key)}"=?{lane}', (value,)
     )
     row = cursor.fetchone()
     if row is None:
@@ -312,14 +328,15 @@ def _delete(
     (exemple : supprimer un business, puis ses preuves).
     """
     column = safe_name(key_column)
+    lane = _in_lane(conn, table)
     cursor = conn.execute(
-        f'SELECT * FROM "{table}" WHERE "{column}"=?', (key,)
+        f'SELECT * FROM "{table}" WHERE "{column}"=?{lane}', (key,)
     )
     names = [d[0] for d in cursor.description]
     rows = [dict(zip(names, r, strict=True)) for r in cursor.fetchall()]
     if not rows:
         return None
-    conn.execute(f'DELETE FROM "{table}" WHERE "{column}"=?', (key,))
+    conn.execute(f'DELETE FROM "{table}" WHERE "{column}"=?{lane}', (key,))
     return rows[0]
 
 
@@ -332,6 +349,7 @@ def _insert(
     *,
     dedup: bool = True,
 ) -> dict[str, Any] | None:
+    values = mark(conn, table, values)
     refusal = transition_refusal(conn, table, values, None) or quota_refusal(
         conn, table, values, None
     )
@@ -391,7 +409,8 @@ def _update(
     key: Any,
     values: dict[str, Any],
 ) -> dict[str, Any] | None:
-    current = _row(conn, table, key_column, key)
+    lane = _in_lane(conn, table)
+    current = _row(conn, table, key_column, key, lane)
     if current is None:
         _journal(
             conn,
@@ -426,7 +445,8 @@ def _update(
         [
             r[0]
             for r in conn.execute(
-                f'SELECT id FROM "{table}" WHERE "{safe_name(key_column)}"=?',
+                f'SELECT id FROM "{table}"'
+                f' WHERE "{safe_name(key_column)}"=?{lane}',
                 (key,),
             )
         ]
@@ -435,7 +455,7 @@ def _update(
     )
     sets = ', '.join(f'"{safe_name(c)}"=?' for c in changes)
     conn.execute(
-        f'UPDATE "{table}" SET {sets} WHERE "{safe_name(key_column)}"=?',
+        f'UPDATE "{table}" SET {sets} WHERE "{safe_name(key_column)}"=?{lane}',
         [*changes.values(), key],
     )
     annulees = cancel_tasks_on_change(conn, table, ids, values, utcnow())
@@ -459,7 +479,7 @@ def _update(
         'updated',
         {'table': table, 'id': key, 'values': values},
     )
-    return _row(conn, table, key_column, key)
+    return _row(conn, table, key_column, key, lane)
 
 
 class DuplicateRefused(ValueError):

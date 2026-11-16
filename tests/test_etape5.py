@@ -22,8 +22,8 @@ Scénarios :
 - avec un domaine commun des produits finis (réglage), rien n'est acheté :
   Serge crée l'enregistrement DNS du sous-domaine du produit, et la prod
   va sur ce sous-domaine ;
-- « Construire le vrai produit » sur la fiche d'un business au test léger
-  lance la conception ; sur un business candidat, rien ne part ;
+- l'essai total, à partir de l'étape 5 : le même chemin, dans le couloir
+  d'essai, puis le captcha avec un humain ; jamais d'achat de domaine ;
 - sans la clé restreinte du vrai mode, la mise en prod rate et un ticket
   le dit ;
 - l'adresse du serveur vient du domaine de l'instance ; une adresse privée
@@ -52,11 +52,12 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from serge.coupe_circuit import set_heartbeat  # noqa: E402
-from serge.db.store import default_canon_path, open_db, utcnow  # noqa: E402
+from serge.db.store import default_canon_path, open_db  # noqa: E402
 from serge.ingress import adresse, caddy  # noqa: E402
-from serge.interpreter.flow import fire_button  # noqa: E402
 from serge.interpreter.queue import process_one  # noqa: E402
+from serge.interpreter.rules import quota_usage  # noqa: E402
 from serge.interpreter.tools import run_tool  # noqa: E402
+from serge.interpreter.triggers import fire_button  # noqa: E402
 from serge.llm.client import ChatResult, ToolCall  # noqa: E402
 from serge.mc.proj_faits import project_fait_pipe  # noqa: E402
 from serge.policy_store import set_setting  # noqa: E402
@@ -64,6 +65,7 @@ from serge.sandbox import publier  # noqa: E402
 from serge.tickets.acts import APPROVE, REJECT  # noqa: E402
 from serge.tickets.lifecycle import decide  # noqa: E402
 from serge.tickets.reponses import noter_reponse  # noqa: E402
+from tests.boutons_d_essai import poser  # noqa: E402
 from tests.test_chantier import faux_docker  # noqa: E402
 
 IP = '93.184.216.34'
@@ -219,6 +221,7 @@ class FauxModeles:
         ('Tu achètes le nom de domaine', 'acheter'),
         ('Tu fais le paiement test de 1 €', 'payer'),
         ('Tu fais pointer le sous-domaine', 'pointer'),
+        ('Tu essaies le passage de main à un humain', 'captcha'),
     )
 
     def __init__(self, domaines: list[str]) -> None:
@@ -240,6 +243,11 @@ class FauxModeles:
     @staticmethod
     def _outils(*calls: ToolCall) -> ChatResult:
         return ChatResult('', 10, 10, 'faux', 1, tool_calls=calls)
+
+    def _captcha(self, _messages, _outils) -> ChatResult:
+        return self._json(
+            {'resolu': 'non', 'compte_rendu': 'Personne n’était disponible.'}
+        )
 
     def _concevoir(self, messages, _outils) -> ChatResult:
         demandes = re.findall(r'cus_[0-9a-f]{12}', json.dumps(messages))
@@ -435,6 +443,14 @@ class Etape5Tests(unittest.TestCase):
         # Les e-mails des produits partent d'un sous-domaine de Serge (Q96).
         set_setting(
             self.conn, 'courriel.domaine_envoi', 'envoi.exemple.fr', 'test'
+        )
+        poser(self.conn)
+        # La suite (le test léger, le choix du principal, la prospection
+        # lourde) a ses propres scénarios : ici, ses tâches attendent.
+        self.conn.execute(
+            'UPDATE pipeline_steps SET enabled=0 WHERE id IN'
+            " ('pre_prospection', 'prospection_light', 'choix_venture',"
+            " 'prospection_lourde')"
         )
         set_heartbeat(self.conn, True)
         self.conn.commit()
@@ -779,53 +795,88 @@ class Etape5Tests(unittest.TestCase):
             ('PRODUCT_READY',),
         )
 
-    def test_construire_le_vrai_produit_depuis_la_fiche(self) -> None:
-        for ident, etat in (
-            ('ven_pret', 'SMOKE_READY'),
-            ('ven_neuf', 'CANDIDATE'),
-        ):
-            self.conn.execute(
-                'INSERT INTO ventures(id, name, description, lifecycle,'
-                ' created_at, updated_at) VALUES(?,?,?,?,?,?)',
-                (
-                    ident,
-                    f'Devis {ident}',
-                    'Des devis.',
-                    etat,
-                    utcnow(),
-                    utcnow(),
-                ),
-            )
-        self.conn.commit()
-        fiche = project_fait_pipe(self.conn, 'venture', 'ven_pret')
-        assert fiche is not None
-        self.assertIn(
-            'Construire le vrai produit',
-            [a['libelle'] for a in fiche['actions']],
-        )
-        modeles = FauxModeles(['devis-pret.fr'])
-        for ident in ('ven_pret', 'ven_neuf'):
+    def _essai_total(self, modeles: FauxModeles) -> str:
+        """L'essai total, à partir de l'étape 5 (décision Q99)."""
+        self.assertIsNotNone(
             fire_button(
-                self.conn, 'bouton_construire_produit', {'venture_id': ident}
+                self.conn,
+                'bouton_essai_total',
+                {
+                    'nom': 'Essai Testeur',
+                    'e-mail': 'essai@exemple.fr',
+                    'téléphone (+33…)': '+33600000001',
+                    'étape de départ (1, 2, 3, 5 ou 6)': '5',
+                },
             )
+        )
         self.conn.commit()
         self._vider(modeles)
-        self.assertEqual(
-            dict(
-                self.conn.execute(
-                    "SELECT id, lifecycle FROM ventures WHERE id LIKE 'ven_%'"
-                ).fetchall()
-            ),
-            {'ven_pret': 'PRODUCT_BUILDING', 'ven_neuf': 'CANDIDATE'},
+        return str(self._un('SELECT id FROM ventures WHERE trial=1')[0])
+
+    def test_l_essai_total_a_partir_de_l_etape_5(self) -> None:
+        self.conn.execute(
+            "UPDATE invocation_settings SET value='produits.exemple.fr'"
+            " WHERE invocation_id='choisir_domaine' AND name='domaine_commun'"
         )
+        self.conn.commit()
+        modeles = FauxModeles(['calculatrice-pro.fr'])
+        venture = self._essai_total(modeles)
+        self._repondre('PLAN_PRODUIT', 'valider')
+        self._vider(modeles)
+        self._repondre('TEST_PRODUIT', 'valider')
+        self._vider(modeles)
+        self.assertEqual(self._echecs(), [])
+        # Comme en vrai : Stripe en vrai mode, le sous-domaine, le paiement
+        # test remboursé. Jamais d'achat de domaine.
+        self.assertNotIn('acheter', modeles.par_role)
         self.assertEqual(
             self._un(
-                "SELECT COUNT(*) FROM product_plans WHERE kind='product'"
-                " AND venture_id='ven_pret'"
+                'SELECT hostname, status FROM deployments'
+                " WHERE venture_id=? AND target='prod'",
+                venture,
             ),
-            (1,),
+            ('calculatrice.produits.exemple.fr', 'running'),
         )
-        self.assertEqual(len(modeles.par_role['concevoir']), 1)
+        self.assertEqual(
+            self._requetes('/v1/refunds')[0]['corps']['payment_intent'], 'pi_1'
+        )
+        # Après le paiement test, le captcha avec un humain, puis « Produit
+        # en vente » : le résultat du captcha ne bloque rien.
+        self.assertEqual(len(modeles.par_role['captcha']), 1)
+        self.assertEqual(
+            self._un(
+                'SELECT lifecycle, trial FROM ventures WHERE id=?', venture
+            ),
+            ('PRODUCT_READY', 1),
+        )
+        # Tout est de l'essai : ses tickets, ses tâches ; la place lourde
+        # reste libre.
+        self.assertEqual(
+            self._un('SELECT MIN(trial), COUNT(*) > 0 FROM tickets'), (1, 1)
+        )
+        self.assertEqual(
+            self._un("SELECT COUNT(*) FROM tasks WHERE trial_run=''"), (0,)
+        )
+        self.assertEqual(quota_usage(self.conn, 'place_lourde')[0], 0)
+
+    def test_un_essai_n_achete_jamais_de_domaine(self) -> None:
+        # Sans domaine commun des produits, le vrai pipeline achèterait un
+        # domaine ; l'essai s'arrête là, et un ticket dit quoi régler.
+        modeles = FauxModeles(['calculatrice-pro.fr'])
+        self._essai_total(modeles)
+        self._repondre('PLAN_PRODUIT', 'valider')
+        self._vider(modeles)
+        self._repondre('TEST_PRODUIT', 'valider')
+        self._vider(modeles)
+        self.assertEqual(self._echecs(), [])
+        self.assertNotIn('acheter', modeles.par_role)
+        self.assertNotIn('payer', modeles.par_role)
+        self.assertTrue(
+            self._un(
+                'SELECT 1 FROM tickets WHERE title='
+                "'Essai — Il manque le domaine commun des produits'"
+            )
+        )
 
     def test_sans_cle_restreinte_la_prod_rate(self) -> None:
         (self.dossier / 'config/secrets/stripe-produits-live.key').unlink()

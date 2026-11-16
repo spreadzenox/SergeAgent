@@ -28,11 +28,9 @@ calculatrice, du plan au paiement test de 1 € (payé dans le vrai Chrome,
 vérifié dans Stripe, remboursé), puis essayée à la main, inscription et
 paiement compris.
 
-En attendant l'étape 4 (lot 12), elle part du bouton « Construire le vrai
-produit » de la fiche d'un business au test léger (`SMOKE_READY` ou
-`SMOKE_DONE`), qui le fait passer « en construction de son produit »
-(`PRODUCT_BUILDING`), ou du bouton « Bout en bout : le produit fini d'une
-calculatrice » de la page Système (plus bas).
+Elle part du choix du business principal (étape 4, lot 12) : « Appliquer
+le choix du principal » fait passer le business choisi « en construction
+de son produit » (`PRODUCT_BUILDING`) et lance « Concevoir le produit ».
 
 1. **Concevoir le produit** (niveau intelligent) reçoit la fiche du
    business, le plan de son POC, la fiche produit, toutes les demandes de
@@ -114,15 +112,17 @@ La fiche du business, dans Mission Control, montre le plan du produit
 avec son domaine, les demandes des clients et ce que le plan en a fait,
 les passages, les captures, les publications et les versions.
 
-**Le bout en bout du produit fini.** Le bouton « Bout en bout : le
-produit fini d'une calculatrice » de la page Système met en base, d'un
-clic, une calculatrice dont le POC est fait (sa fiche produit et son plan
-validé) et trois demandes de clients (un historique des calculs, le
-pourcentage et la racine carrée, un résultat qui dépasse de l'écran). La
-conception du produit commence aussitôt ; tout le reste est l'étape 5
-réelle : Stripe en mode test puis en vrai mode, l'achat du domaine
-(validé dans le ticket « Plan »), la prod, le paiement test de 1 €
-remboursé. Il faut, sur le serveur, les secrets décrits dans
+**Dans l'essai total.** L'essai total de la page Système (décision Q99)
+passe par cette étape comme un vrai business, dans le couloir d'essai :
+plan du produit, Stripe en mode test puis en vrai mode, la prod sur un
+sous-domaine, le paiement test de 1 €, remboursé. Deux différences : il
+n'achète jamais de domaine (sans domaine commun des produits, un ticket
+demande de le régler), et, après le paiement test, il essaie le captcha
+avec un humain avant « Produit en vente ». Avec l'étape de départ 5,
+l'essai commence ici, avec une calculatrice dont le POC est fait et trois
+demandes de clients (un historique des calculs, le pourcentage et la
+racine carrée, un résultat qui dépasse de l'écran). Il faut, sur le
+serveur, les secrets décrits dans
 [`installation/STRIPE.md`](../installation/STRIPE.md) et
 [`installation/DOMAINES.md`](../installation/DOMAINES.md).
 

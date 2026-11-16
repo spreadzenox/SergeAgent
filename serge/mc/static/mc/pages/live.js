@@ -69,16 +69,14 @@ function canalFr(canal) {
 }
 
 function etatCampagne(etat) {
-  if (etat === 'RUNNING') {
-    return 'en cours';
-  }
-  if (etat === 'PAUSED') {
-    return 'en pause';
-  }
-  if (etat === 'DRAFT') {
-    return 'brouillon';
-  }
-  return etat || '';
+  const noms = {
+    DRAFT: 'brouillon',
+    READY: 'prête',
+    RUNNING: 'en cours',
+    FINISHED: 'terminée',
+    CANCELLED: 'annulée',
+  };
+  return noms[etat] || etat || '';
 }
 
 function ligneMetriques(u1, u2, u3, points, parEuro, paid) {

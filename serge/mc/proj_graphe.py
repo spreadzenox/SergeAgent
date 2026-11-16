@@ -192,7 +192,7 @@ def project_business(
     if row:
         venture = {'id': row[0], 'nom': row[1] or row[0], 'lifecycle': row[2]}
         for camp in conn.execute(
-            'SELECT id, family, channel, state FROM campaigns WHERE venture_id=?',
+            'SELECT id, phase, channel, state FROM campaigns WHERE venture_id=?',
             (row[0],),
         ).fetchall():
             m = campaign_metrics(conn, str(camp[0]))

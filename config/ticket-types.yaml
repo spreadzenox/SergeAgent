@@ -213,6 +213,26 @@ types:
       - {label: Le relecteur, tool: passage_par_numero, params: {build_id: id}}
     fields: [Le business, Le staging, Les scénarios de test, Le relecteur, Pourquoi]
     buttons: [valider, a_corriger, arreter_business, discuter]
+  CHOIX_PRINCIPAL:
+    role: >-
+      La proposition de business principal, à valider (lot 12, Q16 bis) :
+      le business dont Serge construira le produit fini, puis qu'il vendra
+      en masse. « Valider » applique la proposition ; « Choisir un autre »
+      prend le business dont tu écris le nom, parmi ceux du ticket ;
+      « Aucun » les met tous de côté.
+    render: {color: 15844367, emoji: "🏆"}
+    urgency: normale
+    expiry_hours: 48
+    default: valider
+    default_detail: >-
+      La proposition s'applique : le business proposé entre en construction
+      de son produit fini, les autres sont mis de côté (Q16 bis).
+    contenu:
+      - {label: La proposition de Serge, tool: choix_par_numero, params: {choice_id: id}}
+      - {label: Les business qui attendent, tool: business_retenus}
+      - {label: Les comptes rendus de leurs tests, tool: comptes_rendus_des_retenus}
+    fields: [La proposition de Serge, Les business qui attendent, Les comptes rendus de leurs tests, Pourquoi]
+    buttons: [valider, choisir_autre, aucun, discuter]
   PLAN_PRODUIT:
     role: >-
       Le plan du produit fini, payant, d'un business : son prix définitif,

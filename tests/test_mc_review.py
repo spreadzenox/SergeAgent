@@ -50,7 +50,7 @@ class ReviewApiTests(McServerCase):
             self.assertEqual(regler('budget.monthly_eur', value), 400)
         with open_db(self.db_path) as conn:
             conn.execute(
-                "INSERT INTO campaigns(id,venture_id,family,channel,state,n_target,created_at,updated_at) VALUES('running','v','named','email','RUNNING',10,'t','t')"
+                "INSERT INTO campaigns(id,venture_id,phase,channel,state,n_target,created_at,updated_at) VALUES('running','v','named','email','RUNNING',10,'t','t')"
             )
         self.assertEqual(regler('testing.n_smoke_min', 35), 409)
 

@@ -136,21 +136,21 @@ CATALOGUE: dict[str, tuple[str, str, str, str]] = {
     ),
     'contacts': (
         'Une fiche par personne, dans un business : où elle en est.',
-        'Tool contact_upsert, qualification, réponses reçues.',
+        '« Ajouter un prospect », « Créer un contact », réponses reçues.',
         'contact_addresses, touches, inbound_events, campagnes.',
         'funnel_state = l’étape du prospect, regime = qui a écrit en premier.',
     ),
     'contact_addresses': (
         'Les adresses d’une personne : une ligne par adresse, jamais écrasée.',
-        'Tool contact_upsert.',
+        '« Ajouter un prospect », « Noter une adresse ».',
         'Envois (e-mail, appel), relève de la boîte mail.',
         'channel = email, phone ou un réseau. active = 0 : ne plus écrire là.',
     ),
     'campaigns': (
-        'Un test sur un canal (e-mail, voix…) pour une venture.',
-        'Hypothèse approuvée + workers du canal.',
-        'touches, inbound_events, métriques U.',
-        'state RUNNING/PAUSED. n_target = N du smoke.',
+        'Une campagne : un business, une phase et un canal.',
+        'La conception du POC, « Préparer la prospection lourde ».',
+        'touches, « Suivre une campagne », le compte rendu du test.',
+        'phase : smoke ou full. n_target : les prospects visés.',
     ),
     'touches': (
         'Chaque geste sortant : un e-mail, un SMS, un appel.',

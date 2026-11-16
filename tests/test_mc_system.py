@@ -81,7 +81,7 @@ class McSystemTests(McBrowserCase):
             )
             add_address(conn, 'p2', 'email', 'bob@x.io')
             conn.execute(
-                'INSERT INTO campaigns(id, venture_id, family, channel,'
+                'INSERT INTO campaigns(id, venture_id, phase, channel,'
                 ' state, n_target, created_at, updated_at)'
                 " VALUES('c1','v1','named','email','RUNNING',10,?,?)",
                 (iso, iso),
@@ -130,27 +130,88 @@ class McSystemTests(McBrowserCase):
         expect(page.locator('[data-ilot="resume"]')).to_have_text(
             'Pas branché sur ce serveur.'
         )
-        # Les boutons d'essai, déclarés en base, par l'identifiant de leur
-        # déclencheur : le bout en bout, le chantier et l'interface web
-        # (lot 10), puis les canaux.
+        # L'essai total : un seul bouton, déclaré en base (décision Q99).
         essais = page.locator('[data-section="essais"]')
         expect(essais.locator('[data-bouton-base]')).to_have_text(
-            [
-                "Bout en bout : le POC d'une calculatrice",
-                "Bout en bout : le produit fini d'une calculatrice",
-                'Essayer le captcha avec un humain',
-                'Essayer le chantier',
-                "Essayer l'étape 2",
-                "Essayer l'interface web",
-                'Lancer un essai',
-                "Publier le chantier d'essai",
-            ]
+            ["Lancer l'essai total"]
+        )
+        expect(essais.locator('[data-essais="etat"]')).to_have_text(
+            'Aucun essai pour l’instant.'
         )
         # Le message d'un inconnu : pas traité, mais visible.
         expect(page.locator('[data-section="non_rattaches"]')).to_contain_text(
             'inconnu@ailleurs.fr · Une question'
         )
         self.assertTrue(page.url.endswith('#/system'))
+
+    def test_l_essai_total_se_suit_et_s_arrete(self) -> None:
+        """Un essai lancé : la page montre où il en est et ses tâches ;
+        « Repartir d'ici » relance une tâche finie, « Arrêter l'essai »
+        l'arrête (décision Q99)."""
+        import sqlite3
+
+        from playwright.sync_api import expect
+
+        from serge.coupe_circuit import set_heartbeat
+        from serge.interpreter.queue import process_one
+        from serge.interpreter.triggers import fire_button
+
+        page = self._page_home()
+        conn = sqlite3.connect(self.db_path)
+        try:
+            set_heartbeat(conn, True)
+            conn.execute(
+                "UPDATE triggers SET enabled=0 WHERE event IN ('every', 'at')"
+            )
+            essai = fire_button(
+                conn,
+                'bouton_essai_total',
+                {
+                    'nom': 'Essai Testeur',
+                    'e-mail': 'essai@exemple.fr',
+                    'étape de départ (1, 2, 3, 5 ou 6)': '5',
+                },
+            )
+            conn.commit()
+            # Le business et son contact sont créés ; la suite attend.
+            for _ in range(3):
+                process_one(conn, 'works')
+            conn.commit()
+        finally:
+            conn.close()
+        page.goto(f'{self.base}/owner#/system')
+        essais = page.locator('[data-section="essais"]')
+        etat = essais.locator('[data-essais="etat"]')
+        expect(etat).to_contain_text('En cours', timeout=15000)
+        expect(etat).to_contain_text('à partir de l’étape 5')
+        expect(etat).to_contain_text('Calculatrice')
+        taches = essais.locator('[data-list="taches-essai"]')
+        expect(taches).to_contain_text("Lancer l'essai total")
+        expect(taches).to_contain_text('Terminée')
+        # « Repartir d'ici », sur la tâche qui a lancé l'essai.
+        taches.locator(f'[data-repartir="{essai}"]').click()
+        page.locator('.modale').get_by_role(
+            'button', name='Repartir d’ici'
+        ).click()
+        expect(page.locator('.toast-succes').first).to_contain_text('fait')
+        conn = sqlite3.connect(self.db_path)
+        try:
+            self.assertEqual(
+                conn.execute(
+                    "SELECT COUNT(*) FROM tasks WHERE rerun<>''"
+                    " AND invocation_id='lancer_essai_total'"
+                ).fetchone()[0],
+                1,
+            )
+        finally:
+            conn.close()
+        # « Arrêter l'essai ».
+        essais.locator('[data-essais="arreter"]').click()
+        page.locator('.modale').get_by_role(
+            'button', name='Arrêter l’essai'
+        ).click()
+        expect(etat).to_contain_text('Arrêté ou fini', timeout=15000)
+        expect(essais.locator('[data-essais="arreter"]')).to_be_hidden()
 
     def test_pas_de_fuite_boucle_ilots(self) -> None:
         page = self._page_home()
@@ -173,7 +234,7 @@ class McSystemTests(McBrowserCase):
 
         page = self._page_home()
         expect(page.locator('[data-section="business"]')).to_contain_text(
-            'Smoke en cours'
+            'Test léger en cours'
         )
         expect(page.locator('[data-section="business"]')).not_to_contain_text(
             'SMOKE_RUNNING'

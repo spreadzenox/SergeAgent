@@ -19,7 +19,11 @@ Scénarios :
   et son paragraphe du prompt ; une instance neuve n'a rien à retirer ;
 - une instance de la PR 7 passe de Hostinger à Cloudflare et à la carte
   chiffrée du coffre ; des secrets changés dans Mission Control sont
-  gardés.
+  gardés ;
+- une instance du lot 11 reçoit le lot 12 : le plan d'un POC perd son
+  nombre de prospects et choisit un canal branché, les valeurs d'essai et
+  les couloirs des liens arrivent, les boutons d'essai de la page Système
+  sont retirés ; sa base renomme la phase des campagnes.
 """
 
 from __future__ import annotations
@@ -220,7 +224,7 @@ class InstanceDuLot7Tests(unittest.TestCase):
             )
         conn.executescript(
             "UPDATE invocation_tools SET max_calls='' WHERE tool_id="
-            "'lire_page_entiere';"
+            "'lire_page_entiere' AND invocation_id LIKE 'formuler_%';"
             "UPDATE invocation_settings SET value='300' WHERE"
             " name='lignes_page_entiere';"
             "DELETE FROM invocation_settings WHERE name='pages_entieres_max';"
@@ -252,6 +256,7 @@ class InstanceDuLot7Tests(unittest.TestCase):
             conn.execute(
                 'SELECT DISTINCT max_calls FROM invocation_tools'
                 " WHERE tool_id='lire_page_entiere'"
+                " AND invocation_id LIKE 'formuler_%'"
             ).fetchall(),
             [('pages_entieres_max',)],
         )
@@ -631,6 +636,252 @@ class RegistrarCloudflareTests(unittest.TestCase):
                 'SELECT result FROM pipeline_changes WHERE id='
                 "'lot10_paiement_carte_du_coffre_secrets'"
             ).fetchone()[0],
+        )
+
+
+class InstanceDuLot11Tests(unittest.TestCase):
+    """Une instance du lot 11, telle qu'elle tourne : le plan d'un POC
+    porte un nombre de prospects et un canal choisi dans une liste écrite
+    d'avance, rien n'a de couloir ni de valeur d'essai, et les boutons
+    d'essai de la page Système existent. Au démarrage, elle reçoit le
+    lot 12 (Q98, Q99)."""
+
+    def setUp(self) -> None:
+        from tests.boutons_d_essai import poser
+
+        self.conn = sqlite3.connect(':memory:')
+        self.addCleanup(self.conn.close)
+        init_schema(self.conn)
+        self.data = read_yaml_file(config_dir() / 'pipeline.yaml')
+        changes = {c['id']: c for c in self.data['changes']}
+        c = self.conn
+        # La conception du POC, comme au lot 11.
+        prompt = c.execute(
+            "SELECT prompt FROM invocations WHERE id='concevoir_poc'"
+        ).fetchone()[0]
+        for r in changes['lot12_poc_canal_branche']['set']['prompt'][
+            'replace'
+        ]:
+            self.assertIn(r['new'], prompt)
+            prompt = prompt.replace(r['new'], r['old'])
+        c.execute(
+            "UPDATE invocations SET prompt=? WHERE id='concevoir_poc'",
+            (prompt,),
+        )
+        ecritures = [
+            r[0]
+            for r in c.execute(
+                'SELECT id FROM invocation_writes WHERE invocation_id='
+                "'concevoir_poc' ORDER BY position"
+            )
+        ]
+        c.executescript(
+            f"""
+            UPDATE invocation_output_fields SET type='choice',
+                choices='email, voice'
+                WHERE invocation_id='concevoir_poc' AND path='canal';
+            INSERT INTO invocation_output_fields(invocation_id, path, type,
+                required, description, position)
+                VALUES('concevoir_poc', 'prospects', 'number', 1, '', 99);
+            INSERT INTO invocation_write_values(write_id, column_name,
+                source, value) VALUES({ecritures[0]}, 'prospects', 'field',
+                'prospects'), ({ecritures[6]}, 'n_target', 'field',
+                'prospects');
+            INSERT INTO invocation_settings(invocation_id, name, value)
+                VALUES('concevoir_poc', 'prospects_min', '30'),
+                ('concevoir_poc', 'prospects_max', '50');
+            DELETE FROM invocation_tools WHERE invocation_id='concevoir_poc'
+                AND tool_id='canaux_branches';
+            INSERT INTO tool_db_columns(tool_id, table_name, column_name)
+                VALUES('plan_par_numero', 'product_plans', 'prospects');
+            UPDATE invocation_output_fields SET required=0, min_items=''
+                WHERE invocation_id='choisir_business' AND path='choix';
+            UPDATE invocation_settings SET trial_value='';
+            DELETE FROM invocation_settings
+                WHERE invocation_id='choisir_business' AND name='choix_min';
+            UPDATE table_quotas SET where_column='', where_value=''
+                WHERE id='cycles_ouverts';
+            UPDATE links SET lane='';
+            UPDATE invocations
+                SET title='Essayer le captcha avec un humain (temporaire)'
+                WHERE id='essayer_captcha';
+            DELETE FROM pipeline_changes WHERE id LIKE 'lot12_%';
+            """
+        )
+        c.execute(
+            "UPDATE invocations SET role=? WHERE id='essayer_captcha'",
+            (changes['lot12_captcha_dans_l_essai']['set']['role']['from'],),
+        )
+        # Les boutons d'essai des briques, encore là au lot 11.
+        poser(c)
+
+    def _un(self, sql: str) -> tuple:
+        return tuple(self.conn.execute(sql).fetchone())
+
+    def test_elle_recoit_le_lot_12(self) -> None:
+        seed_pipeline(self.conn, self.data)
+        c = self.conn
+        # Le plan d'un POC : plus de nombre de prospects, un canal branché.
+        prompt = self._un(
+            "SELECT prompt FROM invocations WHERE id='concevoir_poc'"
+        )[0]
+        self.assertNotIn('prospects_min', prompt)
+        self.assertIn('parmi les canaux branchés', prompt)
+        champs = dict(
+            c.execute(
+                'SELECT path, type FROM invocation_output_fields'
+                " WHERE invocation_id='concevoir_poc'"
+            )
+        )
+        self.assertNotIn('prospects', champs)
+        self.assertEqual(champs['canal'], 'text')
+        self.assertEqual(
+            self._un(
+                'SELECT COUNT(*) FROM invocation_write_values v'
+                ' JOIN invocation_writes w ON w.id=v.write_id'
+                " WHERE w.invocation_id='concevoir_poc'"
+                " AND v.column_name IN ('prospects', 'n_target')"
+            ),
+            (0,),
+        )
+        self.assertEqual(
+            self._un(
+                'SELECT COUNT(*) FROM invocation_settings WHERE invocation_id='
+                "'concevoir_poc' AND name LIKE 'prospects_%'"
+            ),
+            (0,),
+        )
+        self.assertEqual(
+            self._un(
+                'SELECT mode FROM invocation_tools WHERE invocation_id='
+                "'concevoir_poc' AND tool_id='canaux_branches'"
+            ),
+            ('given',),
+        )
+        self.assertEqual(
+            self._un(
+                'SELECT COUNT(*) FROM tool_db_columns WHERE tool_id='
+                "'plan_par_numero' AND column_name='prospects'"
+            ),
+            (0,),
+        )
+        # Le couloir d'essai : les valeurs d'essai, les liens du vrai
+        # pipeline, le cycle d'écoute d'un essai à part.
+        essais = dict(
+            (f'{i}.{n}', v)
+            for i, n, v in c.execute(
+                'SELECT invocation_id, name, trial_value'
+                " FROM invocation_settings WHERE trial_value<>''"
+                " AND invocation_id IN ('explorer_web', 'formuler_a',"
+                " 'formuler_b', 'choisir_business')"
+            )
+        )
+        self.assertEqual(
+            essais,
+            {
+                'explorer_web.recherches_max': '2',
+                'explorer_web.pages_max': '5',
+                'explorer_web.flux_max': '0',
+                'formuler_a.nombre_idees': '0',
+                'formuler_b.nombre_idees': '0',
+                'choisir_business.choix_min': '1',
+            },
+        )
+        self.assertEqual(
+            self._un(
+                'SELECT required, min_items FROM invocation_output_fields'
+                " WHERE invocation_id='choisir_business' AND path='choix'"
+            ),
+            (1, 'choix_min'),
+        )
+        self.assertEqual(
+            sorted(
+                r[0]
+                for r in c.execute("SELECT id FROM links WHERE lane='real'")
+            ),
+            [
+                'choix_vers_conception_poc',
+                'domaine_a_acheter',
+                'paiement_test_vers_produit_pret',
+            ],
+        )
+        self.assertEqual(
+            self._un(
+                'SELECT where_column, where_value FROM table_quotas'
+                " WHERE id='cycles_ouverts'"
+            ),
+            ('trial', '0'),
+        )
+        # Les essais de la page Système sont retirés ; le captcha reste,
+        # comme étape de l'essai total.
+        self.assertEqual(
+            sorted(
+                r[0]
+                for r in c.execute(
+                    "SELECT id FROM triggers WHERE event='button'"
+                    " AND deleted_at='' AND id LIKE 'bouton_ess%'"
+                )
+            ),
+            ['bouton_essai_total'],
+        )
+        self.assertEqual(
+            self._un(
+                'SELECT COUNT(*) FROM invocations WHERE id IN'
+                " ('essayer_chantier', 'essayer_navigateur', 'publier_essai',"
+                " 'essayer_stripe', 'creer_business_essai',"
+                " 'bout_en_bout_produit') AND deleted_at=''"
+            ),
+            (0,),
+        )
+        titre, role, supprime = self._un(
+            'SELECT title, role, deleted_at FROM invocations'
+            " WHERE id='essayer_captcha'"
+        )
+        self.assertEqual(titre, 'Essayer le captcha avec un humain')
+        self.assertIn('essai total', role)
+        self.assertEqual(supprime, '')
+
+    def test_la_base_du_lot_11_renomme_la_phase_des_campagnes(self) -> None:
+        from serge.db.migrate import MIGRATIONS, apply_pending
+
+        conn = sqlite3.connect(':memory:')
+        self.addCleanup(conn.close)
+        apply_pending(conn, [m for m in MIGRATIONS if m[0] <= 52], head=52)
+        conn.executescript(
+            """
+            INSERT INTO campaigns(id, venture_id, family, channel, state,
+                n_target, created_at, updated_at)
+                VALUES('c1', 'v1', 'test_leger', 'email', 'DRAFT', 30, 't', 't');
+            INSERT INTO writable_columns(table_name, column_name)
+                VALUES('campaigns', 'family');
+            INSERT INTO invocation_writes(id, invocation_id, table_name,
+                operation) VALUES(7, 'concevoir_poc', 'campaigns', 'insert');
+            INSERT INTO invocation_write_values(write_id, column_name, source,
+                value) VALUES(7, 'family', 'fixed', 'test_leger');
+            """
+        )
+        apply_pending(conn, MIGRATIONS)
+        self.assertEqual(
+            tuple(
+                conn.execute(
+                    'SELECT phase, n_target FROM campaigns'
+                ).fetchone()
+            ),
+            ('smoke', 30),
+        )
+        self.assertEqual(
+            tuple(
+                conn.execute(
+                    'SELECT column_name, value FROM invocation_write_values'
+                ).fetchone()
+            ),
+            ('phase', 'smoke'),
+        )
+        self.assertEqual(
+            conn.execute(
+                "SELECT column_name FROM writable_columns WHERE table_name='campaigns'"
+            ).fetchall(),
+            [('phase',)],
         )
 
 

@@ -18,6 +18,7 @@ from serge.db.query_catalogue import (  # noqa: F401
     tool_catalogue,
 )
 from serge.db.query_errors import DbReadError
+from serge.trial import lane_clause
 
 _IDENTIFIER = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
 _OPERATORS = frozenset({'=', '!=', '<', '<=', '>', '>=', 'LIKE', 'IN'})
@@ -393,6 +394,10 @@ def _build(
             f'{_quote(item["table"])}.{_quote(item["name"])} AS {_quote(alias)}'
         )
     clauses, bound = _where(catalogue, values, included)
+    # Un outil de lecture ne rend que les lignes du couloir de la tâche
+    # (le vrai pipeline, ou un essai) : serge/trial.py.
+    lanes = (lane_clause(conn, table) for table in sorted(included))
+    clauses += [clause for clause in lanes if clause]
     sql = (
         'SELECT '
         + ', '.join(select_sql)

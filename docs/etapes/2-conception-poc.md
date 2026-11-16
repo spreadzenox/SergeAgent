@@ -20,13 +20,13 @@ ligne de code ne lui est propre : ses invocations, ses liens et ses
 tickets sont dans `config/pipeline.yaml` et `config/ticket-types.yaml`.
 
 1. **Concevoir le POC** (niveau intelligent) part d'un business choisi
-   pour un POC, par « Choisir les business » (étape 1) ou par le bouton
-   « Essayer l'étape 2 » de la page Système. Elle écrit le plan
+   pour un POC, par « Choisir les business » (étape 1). Elle écrit le plan
    (`product_plans`), la fiche produit et ses questions fréquentes, et la
-   campagne de test, au brouillon (`campaigns`). Réglages : 30 à 50
-   prospects, 10 jours au plus (page Policy). Le plan ne fixe pas le
-   rythme des relances : il est commun à tous les business (Q37,
-   corrigée par Q92).
+   campagne de test, au brouillon (`campaigns`), sur un canal branché.
+   Réglage : 10 jours au plus (page Policy). Le plan ne fixe ni le rythme
+   des relances, commun à tous les business (Q37, corrigée par Q92), ni
+   le nombre de prospects, qui est un réglage par canal de « Démarrer une
+   campagne » (Q93).
 2. **Challenger le POC** (niveau intelligent) rend « bon » ou
    « a_corriger » avec ses remarques (`plan_critiques`). « Compter les
    tours de critique » renvoie le plan à la conception, 3 tours au plus.
@@ -56,19 +56,14 @@ La fiche du business, dans Mission Control, montre le plan, les
 remarques du critique, les passages avec le verdict du relecteur, les
 captures, les publications et les versions.
 
-**Le bout en bout du POC.** Le bouton « Bout en bout : le POC d'une
-calculatrice » de la page Système met en base, d'un clic, un business
-« Calculatrice » choisi pour un POC, avec sa fiche produit, ses questions
-fréquentes, sa campagne et un plan déjà validé (huit scénarios de test :
-12 + 7, 7 ÷ 2, la division par zéro, 0,1 + 0,2, le clavier, le
-mobile…). La construction commence aussitôt ; tout le reste est le vrai
-pipeline, à partir de l'étape 4 ci-dessus : construire, publier en
-staging, relire dans le navigateur, le ticket « Tester le produit » (son
-lien ouvre la calculatrice), puis la prod. Seules la conception du plan
-et la création du business sont court-circuitées. Chaque essai crée un
-business neuf (l'écriture passe outre la règle de doublon, `dedup:
-false`) ; sa publication reprend l'adresse `staging-calculatrice.<domaine>`
-et arrête le produit de l'essai d'avant.
+**Dans l'essai total.** L'essai total de la page Système (décision Q99)
+passe par cette étape avec un business « Calculatrice » et un plan tout
+fait (huit scénarios de test : 12 + 7, 7 ÷ 2, la division par zéro,
+0,1 + 0,2, le clavier, le mobile…), qui part au ticket « Plan » comme un
+vrai plan ; la conception et la critique sont sautées. Tout le reste est
+le vrai pipeline, à partir de l'étape 4 ci-dessus : construire, publier en
+staging, relire dans le navigateur, le ticket « Tester le produit », la
+prod. Avec l'étape de départ 2, l'essai commence ici.
 
 ## Décidé
 

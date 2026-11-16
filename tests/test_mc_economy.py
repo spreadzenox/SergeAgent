@@ -53,7 +53,7 @@ class McEconomyTests(McBrowserCase):
                 (iso, iso),
             )
             conn.execute(
-                'INSERT INTO campaigns(id, venture_id, family, channel, state, n_target, created_at, updated_at)'
+                'INSERT INTO campaigns(id, venture_id, phase, channel, state, n_target, created_at, updated_at)'
                 " VALUES('c_eco', 'v_eco', 'named', 'email', 'RUNNING', 10, ?, ?)",
                 (iso, iso),
             )

@@ -29,7 +29,7 @@ class MetricsTests(unittest.TestCase):
             " VALUES('v1','t','t')"
         )
         self.connection.execute(
-            'INSERT INTO campaigns(id, venture_id, family, channel,'
+            'INSERT INTO campaigns(id, venture_id, phase, channel,'
             " created_at, updated_at) VALUES('c1','v1','named','email','t','t')"
         )
         self.connection.execute(
@@ -109,7 +109,7 @@ class MetricsTests(unittest.TestCase):
 
     def test_agregat_venture(self) -> None:
         self.connection.execute(
-            'INSERT INTO campaigns(id, venture_id, family, channel,'
+            'INSERT INTO campaigns(id, venture_id, phase, channel,'
             " created_at, updated_at) VALUES('c2','v1','ads','meta','t','t')"
         )
         self._touch('t0', 'sent')

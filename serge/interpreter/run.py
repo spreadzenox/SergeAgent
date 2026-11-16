@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Any
 
 from serge.db.store import append_event, utcnow
-from serge.interpreter.flow import fire_row_triggers, pass_links
+from serge.interpreter.flow import pass_links
 from serge.interpreter.intro import serge_text
 from serge.interpreter.output import check_answer, load_fields, parse_answer
 from serge.interpreter.prompt import (
@@ -33,12 +33,19 @@ from serge.interpreter.prompt import (
     load_invocation,
     system_prompt,
 )
-from serge.interpreter.tasks import finish_task, start_task, task_params
+from serge.interpreter.tasks import (
+    finish_task,
+    start_task,
+    task_lane,
+    task_params,
+)
 from serge.interpreter.tools import fixed_params, run_capability
+from serge.interpreter.triggers import fire_row_triggers
 from serge.interpreter.writer import write_answer
 from serge.llm.client import ChatResult
 from serge.llm.runtime import budget_reached
 from serge.policy_store import policy_en_vigueur
+from serge.trial import lane
 
 TIER_TO_OLD = {
     'fast': 'T1',
@@ -272,6 +279,20 @@ def run_task(
     # La tâche est marquée « en cours » et enregistrée tout de suite : la
     # base n'est jamais bloquée pendant un appel au modèle.
     conn.commit()
+    # Tout ce qu'elle lit, écrit et lance est de son couloir (le vrai
+    # pipeline, ou un essai).
+    with lane(task_lane(conn, task_id)[0], task_id):
+        _run(conn, task_id, caller=caller, root=root)
+    return True
+
+
+def _run(
+    conn: sqlite3.Connection,
+    task_id: str,
+    *,
+    caller: Caller | None,
+    root: Path | None,
+) -> None:
     row = conn.execute(
         'SELECT invocation_id FROM tasks WHERE id=?', (task_id,)
     ).fetchone()
@@ -291,7 +312,7 @@ def run_task(
     else:
         answer = _capability_answer(conn, inv, task)
     written = write_answer(conn, inv.id, task_id, task, answer)
-    fire_row_triggers(conn, written)
+    fire_row_triggers(conn, written, task_id)
     pass_links(conn, inv.id, task_id, written, answer)
     finish_task(conn, task_id)
     append_event(
@@ -303,7 +324,6 @@ def run_task(
             'rows_written': sum(len(w.rows) for w in written.values()),
         },
     )
-    return True
 
 
 def fail_task(conn: sqlite3.Connection, task_id: str, error: str) -> None:

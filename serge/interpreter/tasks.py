@@ -20,17 +20,27 @@ class TaskError(ValueError):
     """Une tâche ne peut pas être créée."""
 
 
+# « Cette tâche démarre un essai » : l'essai porte le numéro de la tâche.
+SELF = 'self'
+
+
 def task_key(
-    invocation_id: str, origin: str, origin_ref: str, params: Mapping[str, Any]
+    invocation_id: str,
+    origin: str,
+    origin_ref: str,
+    params: Mapping[str, Any],
+    rerun: str = '',
 ) -> str:
     """Clé stable d'une tâche : la même demande donne toujours la même clé.
 
     Exemple : le lien ``l1`` qui passe la ligne ``v_3`` produit toujours la
     même clé, même après un redémarrage ; la tâche n'est donc jamais créée
-    deux fois.
+    deux fois. La marque d'un redémarrage (« Repartir d'ici ») entre dans
+    la clé : la suite d'une tâche rejouée est faite de tâches neuves.
     """
+    parts = [invocation_id, origin, origin_ref, sorted(params.items())]
     blob = json.dumps(
-        [invocation_id, origin, origin_ref, sorted(params.items())],
+        [*parts, rerun] if rerun else parts,
         ensure_ascii=False,
         default=str,
     )
@@ -46,11 +56,18 @@ def enqueue_task(
     origin_ref: str = '',
     not_before: str = '',
     key: str = '',
+    trial_run: str = '',
+    parent: str = '',
+    rerun: str = '',
 ) -> str | None:
     """Ajoute une tâche à la file de son invocation.
 
     La file et la priorité sont lues sur l'invocation au moment de la
     création. Une invocation éteinte ou supprimée ne reçoit pas de tâche.
+    ``trial_run`` : l'essai dont elle fait partie (vide : le vrai
+    pipeline ; ``SELF`` : elle démarre un essai, qui porte son numéro) ;
+    ``parent`` : la tâche qui la crée ; ``rerun`` : la marque d'un
+    redémarrage, héritée de sa mère.
 
     Returns:
         L'id de la tâche, celui de la tâche déjà existante pour la même
@@ -85,7 +102,7 @@ def enqueue_task(
         ).fetchone()
         if waiting is not None:
             return str(waiting[0])
-    idem = key or task_key(invocation_id, origin, origin_ref, values)
+    idem = key or task_key(invocation_id, origin, origin_ref, values, rerun)
     found = conn.execute(
         'SELECT id FROM tasks WHERE idempotency_key=?', (idem,)
     ).fetchone()
@@ -98,8 +115,8 @@ def enqueue_task(
     try:
         conn.execute(
             'INSERT INTO tasks(id, invocation_id, queue_id, priority, status,'
-            ' not_before, origin, origin_ref, idempotency_key, created_at)'
-            ' VALUES(?,?,?,?,?,?,?,?,?,?)',
+            ' not_before, origin, origin_ref, idempotency_key, created_at,'
+            ' trial_run, parent_id, rerun) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)',
             (
                 task_id,
                 invocation_id,
@@ -111,6 +128,9 @@ def enqueue_task(
                 origin_ref,
                 idem,
                 utcnow(),
+                task_id if trial_run == SELF else trial_run,
+                parent,
+                rerun,
             ),
         )
     except sqlite3.IntegrityError:
@@ -129,6 +149,15 @@ def enqueue_task(
             (task_id, name, value),
         )
     return task_id
+
+
+def task_lane(conn: sqlite3.Connection, task_id: str) -> tuple[str, str]:
+    """L'essai d'une tâche (vide : le vrai pipeline) et la marque de son
+    redémarrage (vide : la chaîne d'origine)."""
+    row = conn.execute(
+        'SELECT trial_run, rerun FROM tasks WHERE id=?', (task_id,)
+    ).fetchone()
+    return (str(row[0]), str(row[1])) if row else ('', '')
 
 
 def task_params(conn: sqlite3.Connection, task_id: str) -> dict[str, str]:
@@ -184,19 +213,6 @@ def finish_task(
         'UPDATE tasks SET status=?, last_error=?, finished_at=? WHERE id=?',
         ('failed' if error else 'done', error[:500], utcnow(), task_id),
     )
-
-
-def relaunch_task(conn: sqlite3.Connection, task_id: str) -> bool:
-    """Remet une tâche échouée dans sa file. Faux si elle n'avait pas échoué.
-
-    Elle repart de zéro ; son nombre d'essais est gardé.
-    """
-    cursor = conn.execute(
-        "UPDATE tasks SET status='ready', last_error='', not_before='',"
-        " started_at='', finished_at='' WHERE id=? AND status='failed'",
-        (task_id,),
-    )
-    return cursor.rowcount == 1
 
 
 def cancel_task(conn: sqlite3.Connection, task_id: str, reason: str) -> bool:

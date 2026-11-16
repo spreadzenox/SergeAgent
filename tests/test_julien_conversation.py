@@ -41,8 +41,8 @@ from serge.discord.interactions import (  # noqa: E402
     premiere_reponse,
     route_interaction,
 )
-from serge.interpreter.flow import notify_rows_written  # noqa: E402
 from serge.interpreter.queue import expirer_tickets  # noqa: E402
+from serge.interpreter.triggers import notify_rows_written  # noqa: E402
 from serge.llm.client import ChatResult  # noqa: E402
 from serge.policy_store import set_setting  # noqa: E402
 from serge.privacy import subject_hash  # noqa: E402

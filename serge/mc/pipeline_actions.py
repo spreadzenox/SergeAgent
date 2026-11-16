@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """MC : les actions sur le pipeline.
 
-Le bouton d'un déclencheur, relancer une tâche, les tables qu'une
+Le bouton d'un déclencheur, repartir d'une tâche, les tables qu'une
 invocation voit pour comparer, le passage d'un lien à la main, et, sur la
 page Pipeline, le modèle de chaque niveau. Les réglages et les textes de
 la page Pipeline passent par ``serge/mc/policy_actions.py``.
@@ -13,13 +13,10 @@ import re
 from typing import TYPE_CHECKING, Any, Protocol
 
 from serge.db.store import append_event, utcnow
-from serge.interpreter.flow import (
-    fire_button,
-    pass_waiting,
-    set_link_auto,
-    trigger_refusal,
-)
-from serge.interpreter.tasks import cancel_task, relaunch_task
+from serge.interpreter.flow import pass_waiting, set_link_auto
+from serge.interpreter.restart import RestartError, restart_from
+from serge.interpreter.tasks import cancel_task
+from serge.interpreter.triggers import fire_button, trigger_refusal
 from serge.llm.catalog import (
     check_model,
     for_page,
@@ -28,6 +25,7 @@ from serge.llm.catalog import (
 )
 from serge.mc.proj_vues import changer_comparaison
 from serge.policy_store import policy_en_vigueur
+from serge.trial_run import stop_trial
 
 # Un identifiant de modèle : « openai/gpt-5-mini », vide pour celui de
 # l'installation.
@@ -68,7 +66,8 @@ else:
 
 
 class PipelineActionsMixin(_Base):
-    """POST /owner/api/bouton, /tache/relancer, /tache/annuler, /invocation/comparer,
+    """POST /owner/api/bouton, /essai/arreter, /tache/repartir, /tache/annuler,
+    /invocation/comparer,
     /lien/* et /pipeline/*."""
 
     def _api_bouton(self) -> None:
@@ -110,28 +109,35 @@ class PipelineActionsMixin(_Base):
             )
         self._send_json(200, {'ok': True, 'task_id': task_id})
 
-    def _api_tache_relancer(self) -> None:
-        """Remet une tâche échouée dans sa file : ``{task_id}``."""
+    def _api_tache_repartir(self) -> None:
+        """« Repartir d'ici » : ``{task_id}``. Une tâche neuve, copie de
+        celle-ci, repart avec toute sa suite (décision Q99)."""
         if not self._require_owner():
             return
         body = self._json_body() or {}
         task_id = str(body.get('task_id') or '').strip()
         with self._db() as conn:
-            if not task_id or not relaunch_task(conn, task_id):
+            try:
+                nouvelle = restart_from(conn, task_id)
+            except RestartError as exc:
                 self._refus(
                     409,
-                    'Cette tâche ne peut pas être relancée.',
+                    f'Cette tâche ne peut pas repartir : {exc}.',
                     'task',
-                    'Seule une tâche échouée peut être relancée.',
+                    'Une tâche en cours finit d’abord ; une tâche d’un'
+                    ' essai remplacé ne repart pas.',
                 )
                 return
-            append_event(
-                conn,
-                actor='owner',
-                type='task.relaunched',
-                payload={'task': task_id},
-            )
-        self._send_json(200, {'ok': True, 'task_id': task_id})
+        self._send_json(200, {'ok': True, 'task_id': nouvelle})
+
+    def _api_essai_arreter(self) -> None:
+        """« Arrêter l'essai » : ses tâches en attente sont annulées, ses
+        tickets fermés, son business arrêté (décision Q99)."""
+        if not self._require_owner():
+            return
+        with self._db() as conn:
+            fait = stop_trial(conn, 'arrêté dans Mission Control')
+        self._send_json(200, {'ok': True, **fait})
 
     def _api_tache_annuler(self) -> None:
         """Annule une tâche en attente : ``{task_id}``."""

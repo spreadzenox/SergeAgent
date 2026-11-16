@@ -75,9 +75,10 @@ installer. Sans le fichier, l'appel échoue avec `secret_absent`, et la
 raison est au journal (`connecteur : stripe_test : secret
 stripe-test.key absent`).
 
-Pour essayer : sur la fiche d'un business, « Essayer Stripe (mode
-test) », puis vérifier le produit dans le Dashboard Stripe (mode test),
-puis « Supprimer de Stripe (mode test) ».
+Pour essayer : l'essai total de la page Système, à partir de l'étape 5,
+crée le produit dans Stripe en mode test ; on le vérifie dans le Dashboard
+Stripe (mode test), puis « Supprimer de Stripe (mode test) », sur la fiche
+du business, l'archive.
 
 ## Le produit fini : une clé restreinte, et la carte de Serge
 

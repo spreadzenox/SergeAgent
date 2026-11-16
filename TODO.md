@@ -104,9 +104,9 @@ remplir la base, dans `config/pipeline.yaml` (le détail est dans
 On avance par lots. Un lot est un ensemble de tâches qui vont ensemble ;
 chaque lot se termine par des tests verts et un commit, puis Julien ou
 Clem regarde le résultat avant qu'on attaque le suivant. **Les lots 1 à
-11, le 8 bis et le 10 bis sont faits** (l'historique git en garde la
-trace). **Le prochain est le lot 12.** Ce que chaque lot a vraiment
-livré :
+12, le 8 bis et le 10 bis sont faits** (l'historique git en garde la
+trace). **Le lot 12 reste à essayer sur le serveur**, avec l'essai total.
+Ce que chaque lot a vraiment livré :
 
 - **Lots 1 à 7** : le runner, le pipeline en base (lot 6 : un seul
   programme, l'interpréteur, exécute toute invocation décrite en base) et
@@ -167,21 +167,32 @@ livré :
   et Pipeline ; il reste à remettre, lot par lot, les réglages retirés
   parce que rien ne les lisait. Le détail est dans la partie « Avant le
   lot 8 » plus bas.
-- [ ] **Lot 12 « Jusqu'aux premières ventes ».** Mettre en base les
-  tables, les liens et les invocations qui mènent un business de son POC
-  en ligne jusqu'à ses premières ventes : les campagnes de prospection
-  (leur début, leur fin), trouver des prospects (étape 3), mesurer et
-  juger un test léger avec des seuils chiffrés, choisir le business
-  principal (étape 4), vendre en masse le produit fini, tel qu'il sort de
-  la construction, et enregistrer les ventes (étape 6), les places de test
-  et l'étape 1 qui repart toute seule. Le détail est dans
-  [`docs/LOT12_CONCEPTION.md`](docs/LOT12_CONCEPTION.md) (décisions Q92
-  et Q93). Au 16 novembre 2026, les étapes 1, 2 et 5 et les conversations
-  sont en base ; les étapes 3, 4 et 6 n'ont encore aucune invocation.
-  C'est une première version qu'on pourrait lancer, par e-mail et par
-  appel, où un canal se branche sans toucher au reste et où les essais
-  de la page Système sont à part de ce qui tourne (Q98). Elle se livre en
-  six PR ; la première, les essais à part, est faite.
+- [x] **Lot 12 « Jusqu'aux premières ventes ».** Le pipeline entier est
+  en base, de l'écoute du web à la vente, par e-mail et par appel : les
+  campagnes (un business, une phase, un canal), « Trouver des prospects »
+  et son outil « Ajouter un prospect » (jamais d'adresse générique), la
+  fin d'un test mesurée avec des seuils chiffrés, le choix du principal
+  et son ticket, la prospection lourde, les ventes enregistrées, les
+  places, et l'étape 1 qui repart toute seule. Un canal se branche sans
+  toucher au reste. **Un seul essai, « l'essai total »**, remplace tous
+  ceux de la page Système : il suit le vrai chemin dans un couloir à
+  part (Q99). **« Repartir d'ici »** fait repartir une chaîne d'une tâche
+  précise. Le détail est dans
+  [`docs/LOT12_CONCEPTION.md`](docs/LOT12_CONCEPTION.md) (décisions Q92,
+  Q93, Q98 et Q99). Il reste, à part :
+  - **essayer le lot sur le serveur** : lancer l'essai total, étape par
+    étape ;
+  - **le téléphone pour des inconnus** : tant que le canal « voice »
+    demande l'accord de la personne avant tout appel (page Policy,
+    « Accord des gens », c'est le cas au départ), une campagne par
+    téléphone ne démarre pas pour des prospects jamais contactés. C'est
+    voulu (décision Q100) ; la voix sera reprise dans un lot suivant ;
+  - **retirer la famille « Taille des essais » de la page Policy** et
+    l'ancien code qui la lit (`serge/funnels/campaigns.py`, `essai.py`,
+    `rules.py`, `metrics.py`), que plus rien n'appelle dans le pipeline ;
+  - **Mission Control** : les campagnes sur la page Système, les places
+    sur la page En direct, le compte rendu d'un test sur la fiche de son
+    business ; aujourd'hui, une campagne se lit sur sa fiche.
 - [ ] **Lot 13 « Web ».** On donne à Serge de quoi chercher, lire des
   pages et agir sur n'importe quel site : créer un compte, publier,
   écrire. On le met tard parce que c'est un gros chantier, mais plusieurs

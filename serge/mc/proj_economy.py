@@ -30,8 +30,10 @@ def project_entonnoir(
         points_par_euro, paid_eur}}.
     """
     _ = (policy, now)
+    # Un business d'essai n'est ni compté ni comparé avec les vrais (Q99).
     v_rows = conn.execute(
-        'SELECT id, name, lifecycle FROM ventures ORDER BY created_at'
+        'SELECT id, name, lifecycle FROM ventures WHERE trial=0'
+        ' ORDER BY created_at'
     ).fetchall()
 
     ventures = []

@@ -1,6 +1,6 @@
 // Page P1 Système : canvas îlots + panneau drill-down + liste accessible.
 import {afficherBoutons, brancherBoutons} from '../boutons.js';
-import {fillList, li, rel} from '../components.js';
+import {confirmModal, fillList, li, rel, toast} from '../components.js';
 import {dispositionIlots, startIlots} from '../hud.js';
 
 const SANTE_FR = {
@@ -58,9 +58,26 @@ function renderEssais(main, payload, sig) {
     'Aucun bouton d’essai en base.',
   );
   const essai = payload.essai;
-  section.querySelector('[data-essais="contact"]').textContent = essai
-    ? `${essai.contact} — étape : ${essai.etape}.`
+  const business = essai && essai.business;
+  section.querySelector('[data-essais="etat"]').textContent = essai
+    ? `${essai.en_cours ? 'En cours' : 'Arrêté ou fini'}, lancé ${rel(essai.lance)}, à partir de l’étape ${essai.depart}${business ? ` — ${business.nom} : ${business.statut}` : ''}.`
     : 'Aucun essai pour l’instant.';
+  section.querySelector('[data-essais="arreter"]').hidden = !(essai && essai.en_cours);
+  fillList(
+    section.querySelector('[data-list="tickets-essai"]'),
+    essai ? essai.tickets : [],
+    'Aucun ticket d’essai n’attend.',
+    (t) => lienVers(`#/objet/ticket/${t.id}`, t.titre),
+  );
+  fillList(
+    section.querySelector('[data-list="taches-essai"]'),
+    essai ? essai.taches : [],
+    'Aucune tâche.',
+    (t) => ligneTache(t, essai.en_cours),
+  );
+  section.querySelector('[data-essais="contact"]').textContent = essai && essai.contact
+    ? `${essai.contact} — étape : ${essai.etape}.`
+    : '';
   fillList(
     section.querySelector('[data-list="fil"]'),
     essai ? essai.fil : [],
@@ -68,6 +85,71 @@ function renderEssais(main, payload, sig) {
     (e) => li(`${rel(e.heure)} · ${e.sens} · ${CANAUX[e.canal] || e.canal} · ${SORTES[e.sorte] || e.sorte} · ${STATUTS[e.statut] || e.statut}${e.detail ? ` — ${e.detail}` : ''}`),
   );
   section.dataset.sig = sig;
+}
+
+function lienVers(adresse, texte) {
+  const item = document.createElement('li');
+  const lien = document.createElement('a');
+  lien.href = adresse;
+  lien.textContent = texte;
+  item.append(lien);
+  return item;
+}
+
+// Une tâche de l’essai : son heure, son titre (lien vers sa fiche), son
+// état, et « Repartir d’ici » si elle n’attend pas et ne tourne pas.
+function ligneTache(tache, enCours) {
+  const item = lienVers(`#/objet/task/${tache.id}`, tache.titre);
+  item.prepend(`${rel(tache.heure)} · `);
+  item.append(` · ${tache.etat}${tache.erreur ? ` — ${tache.erreur}` : ''} `);
+  if (enCours && !['ready', 'running'].includes(tache.statut)) {
+    const bouton = document.createElement('button');
+    bouton.type = 'button';
+    bouton.className = 'btn-doux';
+    bouton.dataset.repartir = tache.id;
+    bouton.textContent = 'Repartir d’ici';
+    item.append(bouton);
+  }
+  return item;
+}
+
+async function poster(route, charge, question) {
+  const ok = await confirmModal(document.body, question);
+  if (!ok) {
+    return;
+  }
+  try {
+    const response = await fetch(route, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(charge),
+    });
+    const data = await response.json().catch(() => ({}));
+    toast(document.body, response.ok ? 'C’est fait.' : (data.erreur || 'Refusé.'), response.ok ? 'succes' : 'erreur');
+  } catch {
+    toast(document.body, 'Action injoignable. Réessaie.', 'erreur');
+  }
+}
+
+function brancherEssai(section) {
+  section.addEventListener('click', (ev) => {
+    const repartir = ev.target.closest('[data-repartir]');
+    if (repartir) {
+      poster('/owner/api/tache/repartir', {task_id: repartir.dataset.repartir}, {
+        title: 'Repartir d’ici ?',
+        message: 'Une tâche neuve, copie de celle-ci, part dans sa file, et toute sa suite repart avec elle. Ce que l’ancienne avait laissé en attente (des tâches, des tickets) est annulé.',
+        confirm: 'Repartir d’ici',
+      });
+    }
+    if (ev.target.closest('[data-essais="arreter"]')) {
+      poster('/owner/api/essai/arreter', {}, {
+        title: 'Arrêter l’essai ?',
+        message: 'Ses tâches en attente sont annulées, ses tickets fermés, et son business arrêté. Une tâche en cours finit, mais sa suite ne part pas. Ce qui est en ligne reste.',
+        confirm: 'Arrêter l’essai',
+        danger: true,
+      });
+    }
+  });
 }
 
 function renderNonRattaches(main, payload, sig) {
@@ -86,6 +168,7 @@ export function mount(main, store) {
   main.replaceChildren(tpl.content.cloneNode(true));
   // La tâche placée, le flux de Mission Control montre la suite.
   brancherBoutons(main.querySelector('[data-essais="boutons"]'), async () => {});
+  brancherEssai(main.querySelector('[data-section="essais"]'));
   let choisi = 'taches';
   const canvas = main.querySelector('[data-hud="ilots"]');
   const etat = () => ({items: ilotsDuStore(store), choisi});

@@ -33,12 +33,13 @@ sys.path.insert(0, str(ROOT))
 from serge import aide_humaine  # noqa: E402
 from serge.coupe_circuit import set_heartbeat  # noqa: E402
 from serge.db.boot import init_schema  # noqa: E402
-from serge.interpreter.flow import fire_button  # noqa: E402
 from serge.interpreter.queue import process_one  # noqa: E402
 from serge.interpreter.tasks import enqueue_task  # noqa: E402
+from serge.interpreter.triggers import fire_button  # noqa: E402
 from serge.llm.client import ChatResult, ToolCall  # noqa: E402
 from serge.pipeline_seed import seed_pipeline  # noqa: E402
 from serge.tickets.reponses import noter_reponse  # noqa: E402
+from tests.boutons_d_essai import poser  # noqa: E402
 
 MAINTENANT = '2026-11-16T15:00:00+00:00'
 
@@ -113,6 +114,7 @@ class AideHumaineTests(unittest.TestCase):
             },
         )
         self.conn.execute('UPDATE triggers SET enabled=0')
+        poser(self.conn)
         set_heartbeat(self.conn, True)
         self.task_id = str(enqueue_task(self.conn, 'payeur', {'cle': 'a'}))
         self.conn.commit()
@@ -248,6 +250,7 @@ class EssaiDeLaPageSystemeTests(unittest.TestCase):
         conn = sqlite3.connect(':memory:')
         self.addCleanup(conn.close)
         init_schema(conn)
+        poser(conn)
         conn.execute("UPDATE triggers SET enabled=0 WHERE event<>'button'")
         set_heartbeat(conn, True)
         task_id = fire_button(conn, 'bouton_essayer_captcha', {})

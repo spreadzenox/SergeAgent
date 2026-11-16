@@ -65,11 +65,12 @@ from serge.conversations.stop import stop
 from serge.db.store import append_event, utcnow
 from serge.funnels.contacts import normalise_value
 from serge.guards import Reason, check
-from serge.interpreter.flow import notify_rows_written
 from serge.interpreter.intro import serge_text
 from serge.interpreter.tasks import enqueue_task
+from serge.interpreter.triggers import notify_rows_written
 from serge.policy_store import policy_en_vigueur, setting_value
 from serge.tickets.inform import inform_owners
+from serge.trial import current_run, current_task, lane_clause
 
 OPTED_OUT = 'OPTED_OUT'
 
@@ -253,9 +254,10 @@ def _day_full(conn: sqlite3.Connection, channel: str) -> str:
     if cap is None:
         return ''
     now = datetime.fromisoformat(utcnow())
+    # Les envois d'un essai ne prennent rien au plafond du vrai pipeline.
     sent = conn.execute(
         "SELECT COUNT(*) FROM touches WHERE channel=? AND status='sent'"
-        ' AND sent_at LIKE ?',
+        f' AND sent_at LIKE ? AND {lane_clause(conn, "touches")}',
         (channel, f'{now.date().isoformat()}%'),
     ).fetchone()[0]
     if int(sent) < int(cap):
@@ -314,6 +316,9 @@ def _wait(
         origin_ref=f'{reason} : {touch["id"]}',
         not_before=until,
         key=f'{touch["id"]}:{until}',
+        # La reprise est la suite de cette tâche, dans son couloir.
+        trial_run=current_run(),
+        parent=current_task(),
     )
     return {
         'ok': True,
@@ -340,6 +345,13 @@ def send_message(
     touch = _touch(conn, str(args.get('touch_id') or ''))
     if touch is None:
         return {'ok': False, 'code': 'envoi_inconnu'}
+    # Tout ce que rend la capacité dit aussi la campagne de l'envoi.
+    return {**_send(conn, touch, inv), 'campaign_id': touch['campaign_id']}
+
+
+def _send(
+    conn: sqlite3.Connection, touch: dict[str, Any], inv: str
+) -> dict[str, Any]:
     status = str(touch['status'])
     if status in ('sent', 'cancelled'):
         return {'ok': True, 'status': status}

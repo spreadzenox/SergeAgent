@@ -27,7 +27,6 @@ from pathlib import Path
 
 from serge.coupe_circuit import heartbeat_marche
 from serge.db.store import append_event, utcnow
-from serge.interpreter.flow import fire_due_triggers
 from serge.interpreter.halt import (
     TaskCut,
     TaskFrozen,
@@ -38,6 +37,7 @@ from serge.interpreter.halt import (
 from serge.interpreter.prompt import Caller
 from serge.interpreter.run import fail_task, run_task
 from serge.interpreter.tasks import freeze_task, next_task
+from serge.interpreter.triggers import fire_due_triggers
 from serge.llm.runtime import budget_reached
 from serge.policy_store import policy_en_vigueur
 from serge.sandbox.navigateur import close_sessions

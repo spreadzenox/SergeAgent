@@ -37,9 +37,9 @@ sys.path.insert(0, str(ROOT))
 from serge.coupe_circuit import set_heartbeat  # noqa: E402
 from serge.db.store import default_canon_path, open_db  # noqa: E402
 from serge.ingress import caddy  # noqa: E402
-from serge.interpreter.flow import fire_button  # noqa: E402
 from serge.interpreter.queue import process_one  # noqa: E402
 from serge.interpreter.tools import run_capability  # noqa: E402
+from serge.interpreter.triggers import fire_button  # noqa: E402
 from serge.mc.proj_ilots import project_ilots  # noqa: E402
 from serge.paths import files_root  # noqa: E402
 from serge.policy_store import (
@@ -50,6 +50,7 @@ from serge.sandbox import (
     courriel,  # noqa: E402
     publier,  # noqa: E402
 )
+from tests.boutons_d_essai import poser  # noqa: E402
 from tests.test_chantier import ESSAI, faux_docker  # noqa: E402
 
 CHAMP = 'cible (staging ou prod)'
@@ -87,6 +88,7 @@ class PublierTests(unittest.TestCase):
         set_setting(
             self.conn, 'courriel.domaine_envoi', 'envoi.exemple.fr', 'test'
         )
+        poser(self.conn)
         set_heartbeat(self.conn, True)
         self.conn.commit()
         self._ecrire('Dockerfile', 'FROM node:22\nCMD ["node", "app.js"]\n')

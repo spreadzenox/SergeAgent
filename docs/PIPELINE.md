@@ -327,34 +327,44 @@ modifier tout le pipeline sans écrire de code, et de créer une invocation
 de toutes pièces : son rôle, son modèle, ce qu'elle reçoit, où elle écrit,
 ce qui la lance.
 
-**Où on en est (16 novembre 2026, fin du lot 11)** : les tables qui
+**Où on en est (16 novembre 2026, fin du lot 12)** : les tables qui
 décrivent le pipeline existent, et un seul programme, l'interpréteur
 (`serge/interpreter/`), exécute n'importe quelle invocation décrite en
 base. Tout le code écrit en dur pour un enchaînement (le cycle d'écoute,
 la relève du mail, le circuit des réponses, la consolidation) a été rangé
 dans `pas_encore_branche/`. Le pipeline de départ (`config/pipeline.yaml`)
 contient les files, les modèles, la présentation de Serge, les outils,
-les protections des tables, et :
+les protections des tables, et le pipeline entier, de l'écoute du web à
+la vente, par e-mail et par appel :
 
 - l'étape 1 entière, 12 invocations (voir
   [`etapes/1-pre-prospection.md`](etapes/1-pre-prospection.md) et
-  [`LOT7_CONCEPTION.md`](LOT7_CONCEPTION.md)) ;
+  [`LOT7_CONCEPTION.md`](LOT7_CONCEPTION.md)) ; elle repart seule dès
+  qu'une place de test se libère ;
 - les conversations, par e-mail et par téléphone (lots 8 et 8 bis) ;
 - l'étape 2, de la conception d'un POC à sa mise en ligne, 15 invocations
   (lot 10, voir [`etapes/2-conception-poc.md`](etapes/2-conception-poc.md)) ;
+- l'étape 3, le test léger (lot 12, voir
+  [`etapes/3-prospection-legere.md`](etapes/3-prospection-legere.md)) :
+  démarrer une campagne, trouver des prospects, écrire le premier message,
+  suivre la campagne, mesurer le test, en faire le bilan, le conclure ;
+- l'étape 4, le choix du business principal et son ticket (lot 12) ;
 - l'étape 5, du plan du produit fini à son paiement test de 1 €, 24
   invocations (lots 10 et 11, voir
   [`etapes/5-construction.md`](etapes/5-construction.md)) : essayée de
-  bout en bout sur le serveur le 16 novembre 2026.
+  bout en bout sur le serveur le 16 novembre 2026 ;
+- l'étape 6, la prospection lourde et les ventes enregistrées (lot 12).
 
-Les étapes 3 (prospection légère), 4 (choix du business principal) et 6
-(prospection lourde) n'ont encore aucune invocation en base : c'est le
-lot 12 ([`LOT12_CONCEPTION.md`](LOT12_CONCEPTION.md)). Un business
-s'arrête donc aujourd'hui à la fin de son étape 2 (POC en ligne, prêt
-pour le test léger), et l'étape 5 se lance à la main, par le bouton
-« Construire le vrai produit » de la fiche du business (temporaire,
-jusqu'à l'étape 4). Serge ne peut donc pas encore être allumé pour de
-vrai, et il est arrêté par défaut.
+Les étapes 3, 4 et 6 ne sont pas encore essayées sur le serveur : c'est
+le rôle de **l'essai total**, le seul essai de la page Système. Il fait
+traverser tout le pipeline à un business d'essai « Calculatrice », dans
+un couloir à part : tout ce qu'il écrit est marqué, il ne prend aucune
+place, et les vraies invocations ne voient jamais ses lignes
+([`LOT12_CONCEPTION.md`](LOT12_CONCEPTION.md), parties 18 et 19, décision
+Q99). Une chaîne qui a bloqué repart d'une tâche précise, par le bouton
+« Repartir d'ici » de sa fiche. Tant que l'essai total n'a pas traversé
+tout le pipeline sur le serveur, Serge n'est pas allumé pour de vrai : il
+est arrêté par défaut.
 
 ### Ce que le code met dans la base
 
@@ -490,10 +500,10 @@ Policy). Le canal appel est branché aussi : un appel part dans les heures
 d'appel de la page Policy (sinon il attend le prochain créneau), l'agent
 vocal sait à qui il parle, et la transcription entre dans le fil ; la
 suite d'un appel part par e-mail si Serge a l'adresse, sinon il rappelle
-(décision Q83). Pour essayer les deux canaux, le bouton « Lancer un essai »
-(page Système) crée un business bidon, puis Serge écrit et appelle la
-personne indiquée ; avec la case « Valider chaque brouillon » cochée,
-chaque message, le premier compris, attend un administrateur. Le détail
+(décision Q83). Pour essayer les deux canaux, l'essai total de la page
+Système, à partir de l'étape 3, écrit et appelle la personne indiquée ;
+avec la case « Valider chaque brouillon » cochée, chaque message, le
+premier compris, attend un administrateur. Le détail
 est dans
 [`LOT8_CONCEPTION.md`](LOT8_CONCEPTION.md).
 

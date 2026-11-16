@@ -36,12 +36,13 @@ sys.path.insert(0, str(ROOT))
 
 from serge.coupe_circuit import set_heartbeat  # noqa: E402
 from serge.db.store import default_canon_path, open_db  # noqa: E402
-from serge.interpreter.flow import fire_button  # noqa: E402
 from serge.interpreter.queue import process_one  # noqa: E402
 from serge.interpreter.tools import run_capability  # noqa: E402
+from serge.interpreter.triggers import fire_button  # noqa: E402
 from serge.llm.client import ChatResult, ToolCall  # noqa: E402
 from serge.mc.proj_taches import fiche_tache  # noqa: E402
 from serge.policy_store import set_setting  # noqa: E402
+from tests.boutons_d_essai import poser  # noqa: E402
 
 ESSAI = {
     'venture_id': 'essai',
@@ -127,6 +128,7 @@ class ChantierTests(unittest.TestCase):
         self.addCleanup(patcher.stop)
         self.conn = open_db(default_canon_path())
         self.addCleanup(self.conn.close)
+        poser(self.conn)
         set_heartbeat(self.conn, True)
         self.conn.commit()
 

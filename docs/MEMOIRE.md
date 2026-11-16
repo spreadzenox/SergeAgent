@@ -41,7 +41,8 @@ ressemblait à la fiche *Y* » est une ligne du journal.
 **La connaissance répond à la question « qu'a-t-on appris ? ».** Ce sont
 les leçons, les procédures qui marchent, les pièges à éviter et des
 résumés. Elles sont proposées par la consolidation (l'étape 7 de la
-chaîne), qui relit le journal, et Julien garde ou jette chaque leçon.
+chaîne), qui relit le journal, et par « Tirer la leçon d'un business
+arrêté » (lot 12), et Julien garde ou jette chaque leçon.
 Exemple : « les artisans répondent surtout entre 7 h et 8 h » est une
 leçon.
 

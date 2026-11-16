@@ -14,6 +14,7 @@ from __future__ import annotations
 import sqlite3
 
 from serge.capabilities.base import BASE
+from serge.capabilities.campaigns import CAMPAIGNS
 from serge.capabilities.chantier import CHANTIER
 from serge.capabilities.connecteurs import CONNECTEURS
 from serge.capabilities.conversations import CONVERSATIONS
@@ -30,6 +31,7 @@ CAPABILITIES: tuple[Capability, ...] = (
     *PUBLIER,
     *CONNECTEURS,
     *COURRIEL,
+    *CAMPAIGNS,
 )
 
 

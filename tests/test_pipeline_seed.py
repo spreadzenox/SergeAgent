@@ -173,17 +173,15 @@ class PipelineSeedTests(unittest.TestCase):
             self._one("SELECT at_time FROM triggers WHERE id='chaque_lundi'"),
             ('08:30',),
         )
-        # Celles du pipeline de départ ('' → CANDIDATE, CANDIDATE →
-        # POC_SELECTED, '' → TEST pour le business d'essai, POC_SELECTED →
-        # SMOKE_READY ou KILLED à l'étape 2, '' → POC_SELECTED pour le bout
-        # en bout ; à l'étape 5, l'entrée en construction du produit par
-        # trois chemins, puis PRODUCT_READY ou KILLED), le fichier de test n'en
-        # ajoute pas de nouvelle.
+        # Celles du pipeline de départ (les 11 des lots 6 à 11, les 7 du
+        # test léger, du choix du principal et de la prospection lourde, et
+        # les 3 départs « du milieu » de l'essai total), le fichier de test
+        # n'en ajoute pas de nouvelle.
         self.assertEqual(
             self._one(
                 "SELECT COUNT(*) FROM status_transitions WHERE table_name='ventures'"
             ),
-            (11,),
+            (21,),
         )
 
     def test_rien_n_est_ecrase(self) -> None:

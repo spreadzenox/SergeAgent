@@ -36,7 +36,7 @@ class ProjEconomyTests(unittest.TestCase):
             " VALUES('v1', 'Agence Alpha', 'ACTIVE', '2026-09-01T10:00:00+00:00', 't')"
         )
         conn.execute(
-            'INSERT INTO campaigns(id, venture_id, family, channel, state, n_target, created_at, updated_at)'
+            'INSERT INTO campaigns(id, venture_id, phase, channel, state, n_target, created_at, updated_at)'
             " VALUES('c1', 'v1', 'named', 'email', 'RUNNING', 10, '2026-09-02T10:00:00+00:00', 't')"
         )
         conn.execute(

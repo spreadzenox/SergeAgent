@@ -39,9 +39,9 @@ sys.path.insert(0, str(ROOT))
 from serge.coupe_circuit import set_heartbeat  # noqa: E402
 from serge.db.store import default_canon_path, open_db  # noqa: E402
 from serge.ingress import caddy  # noqa: E402
-from serge.interpreter.flow import fire_button  # noqa: E402
 from serge.interpreter.queue import expirer_tickets, process_one  # noqa: E402
 from serge.interpreter.rules import quota_usage  # noqa: E402
+from serge.interpreter.triggers import fire_button  # noqa: E402
 from serge.llm.client import ChatResult, ToolCall  # noqa: E402
 from serge.mc.proj_faits import project_fait_pipe  # noqa: E402
 from serge.policy_store import set_setting  # noqa: E402
@@ -50,6 +50,7 @@ from serge.sandbox import (
     publier,  # noqa: E402
 )
 from serge.tickets.reponses import noter_reponse  # noqa: E402
+from tests.boutons_d_essai import poser  # noqa: E402
 from tests.test_chantier import faux_docker  # noqa: E402
 
 FORMULAIRE = {
@@ -205,6 +206,14 @@ class Etape2Tests(unittest.TestCase):
         self.conn.execute(
             "UPDATE triggers SET enabled=0 WHERE event IN ('every', 'at')"
         )
+        poser(self.conn)
+        # La suite (le test léger, le choix du principal, la prospection
+        # lourde) a ses propres scénarios : ici, ses tâches attendent.
+        self.conn.execute(
+            'UPDATE pipeline_steps SET enabled=0 WHERE id IN'
+            " ('pre_prospection', 'prospection_light', 'choix_venture',"
+            " 'prospection_lourde')"
+        )
         set_heartbeat(self.conn, True)
         self.conn.commit()
 
@@ -274,12 +283,12 @@ class Etape2Tests(unittest.TestCase):
         self.assertEqual(
             _t(
                 self.conn.execute(
-                    'SELECT state, channel, n_target FROM campaigns'
+                    'SELECT state, channel, phase FROM campaigns'
                     ' WHERE venture_id=?',
                     (venture,),
                 ).fetchone()
             ),
-            ('DRAFT', 'email', 40),
+            ('DRAFT', 'email', 'smoke'),
         )
         # Le plan validé : construire, publier, relire, deux passages.
         self._repondre('PLAN_POC', 'valider')
@@ -341,11 +350,7 @@ class Etape2Tests(unittest.TestCase):
     def test_arreter_le_business_libere_sa_place(self) -> None:
         modeles = FauxModeles(['bon'], [])
         venture = self._essai(modeles)
-        # Le business du bouton d'essai ne prend pas de place (Q98) ; un
-        # vrai business, choisi par l'étape 1, en prend une.
-        self.assertEqual(quota_usage(self.conn, 'places_de_test')[0], 0)
-        self.conn.execute('UPDATE ventures SET trial=0')
-        self.conn.commit()
+        # Un business choisi pour un POC prend une place de test.
         self.assertEqual(quota_usage(self.conn, 'places_de_test')[0], 1)
         self._repondre('PLAN_POC', 'arreter_business')
         self._vider(modeles)

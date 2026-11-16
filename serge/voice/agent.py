@@ -26,12 +26,11 @@ import json
 import sqlite3
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime
 from typing import Any
 
 from serge.db.store import utcnow
 from serge.funnels.contacts import normalise_value
-from serge.interpreter.flow import fire_row_triggers, pass_links
+from serge.interpreter.flow import pass_links
 from serge.interpreter.prompt import (
     Invocation,
     callable_tools,
@@ -44,10 +43,13 @@ from serge.interpreter.tasks import (
     enqueue_task,
     finish_task,
     start_task,
+    task_lane,
     task_params,
 )
 from serge.interpreter.tools import run_tool, tool_capability
+from serge.interpreter.triggers import fire_row_triggers
 from serge.interpreter.writer import write_answer
+from serge.trial import lane, run_for_row
 
 # La file dont l'invocation allumée mène les appels.
 VOICE_QUEUE = 'voice'
@@ -152,6 +154,8 @@ def start_call(
         params,
         origin_ref=f'appel {cdr_id}',
         key=f'appel:{cdr_id}:{uuid.uuid4().hex[:8]}',
+        # L'appel d'un contact d'essai est mené dans le couloir d'essai.
+        trial_run=run_for_row(conn, {'venture_id': venture_id}, ''),
     )
     if task_id is None or not start_task(conn, task_id):
         return None
@@ -163,10 +167,16 @@ def start_call(
 
 def instructions(conn: sqlite3.Connection, call: Call) -> str:
     """Le prompt de l'agent : le sien, puis ce qu'il reçoit au décrochage."""
-    blocks = given_blocks(conn, call.inv, call.task_id, call.task)
-    return '\n\n'.join(
-        [system_prompt(conn, call.inv, []), *blocks[:1]]
-    ).strip()
+    with _couloir(conn, call):
+        blocks = given_blocks(conn, call.inv, call.task_id, call.task)
+        return '\n\n'.join(
+            [system_prompt(conn, call.inv, []), *blocks[:1]]
+        ).strip()
+
+
+def _couloir(conn: sqlite3.Connection, call: Call):
+    """Ce que l'agent lit, écrit et lance est du couloir de son appel."""
+    return lane(task_lane(conn, call.task_id)[0], call.task_id)
 
 
 def tools(conn: sqlite3.Connection, call: Call) -> list[dict[str, Any]]:
@@ -209,9 +219,10 @@ def run_tool_call(
         return json.dumps({'ok': False, 'code': 'arguments_illisibles'})
     if not isinstance(args, dict):
         args = {}
-    result = run_tool(
-        conn, call.inv.id, call.links[name], name, args, call.task
-    )
+    with _couloir(conn, call):
+        result = run_tool(
+            conn, call.inv.id, call.links[name], name, args, call.task
+        )
     rows = result.get('rows')
     if (
         not call.task.get('contact_id')
@@ -262,34 +273,14 @@ def finish_call(conn: sqlite3.Connection, call: Call) -> None:
             'venture_id': venture,
             'status': 'attached' if contact else 'unattached',
         }
-        written = write_answer(
-            conn, call.inv.id, call.task_id, call.task, answer
-        )
-        fire_row_triggers(conn, written)
-        pass_links(conn, call.inv.id, call.task_id, written, answer)
+        with _couloir(conn, call):
+            written = write_answer(
+                conn, call.inv.id, call.task_id, call.task, answer
+            )
+            fire_row_triggers(conn, written, call.task_id)
+            pass_links(conn, call.inv.id, call.task_id, written, answer)
     finish_task(conn, call.task_id)
     conn.commit()
-
-
-def call_seconds(conn: sqlite3.Connection, venture_id: str) -> float:
-    """La durée des appels d'un business, en secondes : ses tâches d'appel
-    terminées, du décroché à la fin. Un appel coupé par un redémarrage du
-    pont ne compte pas : sa fin n'est pas celle de l'appel."""
-    total = 0.0
-    for started, finished in conn.execute(
-        'SELECT t.started_at, t.finished_at FROM tasks t JOIN task_params p'
-        " ON p.task_id=t.id AND p.name='venture_id'"
-        " WHERE t.queue_id=? AND p.value=? AND t.status='done'"
-        " AND t.started_at<>'' AND t.finished_at<>''",
-        (VOICE_QUEUE, venture_id),
-    ).fetchall():
-        try:
-            debut = datetime.fromisoformat(str(started))
-            fin = datetime.fromisoformat(str(finished))
-        except ValueError:
-            continue
-        total += max(0.0, (fin - debut).total_seconds())
-    return total
 
 
 def close_interrupted_calls(conn: sqlite3.Connection) -> int:

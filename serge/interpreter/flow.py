@@ -1,21 +1,20 @@
 #!/usr/bin/env python3
-"""Passer la main : les liens entre invocations et les déclencheurs.
+"""Passer la main : les liens entre invocations.
 
 Un **lien** part d'une invocation qui vient de finir. En mode
 ``on_finish``, il crée une tâche ; en mode ``per_row``, une tâche par ligne
 écrite par l'une de ses règles d'écriture. Un même résultat n'est jamais
 transmis deux fois (``link_passages``). Un lien dont ``auto`` vaut 0 note
 le passage avec ses paramètres (``link_passage_params``) et attend le clic
-« Passer à la suite » dans Mission Control.
+« Passer à la suite » dans Mission Control. Les déclencheurs sont dans
+``triggers.py``.
 
-Un **déclencheur** crée une tâche quand une ligne est écrite dans une table
-(``row_written``), à intervalle régulier (``every``), à une heure fixe
-certains jours (``at``), ou quand on clique sur un bouton (``button``).
-Un déclencheur horaire qui vise une table crée une tâche par ligne de cette
-table (exemple : lire chaque flux actif toutes les 6 heures). Un
-déclencheur peut exiger qu'un ou plusieurs quotas aient de la place
-(``trigger_conditions``) : exemple, ne lancer un cycle que s'il reste une
-place de test.
+**Le couloir d'essai** (``serge/trial.py``) : une tâche créée par un lien
+est du couloir de la ligne qu'il passe, sinon de la tâche qui l'a créée.
+Un lien peut n'exister que dans un couloir (``lane`` : ``real`` ou
+``trial``). La suite d'un essai arrêté ne part pas. La marque d'un
+redémarrage (``tasks.rerun``) suit la chaîne : la suite d'une tâche
+rejouée repasse par ses liens.
 """
 
 from __future__ import annotations
@@ -25,19 +24,39 @@ import sqlite3
 from collections.abc import Mapping
 from datetime import datetime, timedelta
 from typing import Any
-from zoneinfo import ZoneInfo
 
 from serge.db.store import utcnow
-from serge.interpreter.rules import condition_met, quota_usage, safe_name
-from serge.interpreter.schedule import due_slot
+from serge.interpreter.rules import condition_met
 from serge.interpreter.settings import load_settings
-from serge.interpreter.tasks import enqueue_task, task_params
+from serge.interpreter.tasks import (
+    enqueue_task,
+    task_key,
+    task_lane,
+    task_params,
+)
 from serge.interpreter.writer import Written
 from serge.policy_store import setting_value
 from serge.tickets.passage import clore_ticket_de_passage, ticket_de_passage
+from serge.trial import NO_RUN, active_run, run_for_row
 
 
-def _params(
+def lane_ok(lane: str, trial_run: str) -> bool:
+    """Ce lien ou ce déclencheur existe-t-il dans ce couloir ?"""
+    return not lane or (lane == 'trial') == bool(trial_run)
+
+
+def alive(conn: sqlite3.Connection, trial_run: str) -> bool:
+    """La suite d'un essai arrêté ou remplacé ne part pas."""
+    return trial_run in ('', NO_RUN) or trial_run == active_run(conn)
+
+
+def ref(base: str, rerun: str) -> str:
+    """La référence d'un passage ou d'un déclenchement, propre à un
+    redémarrage : la suite d'une tâche rejouée repasse par ses liens."""
+    return f'{base}#{rerun}' if rerun else base
+
+
+def params_from(
     rows: list[tuple[str, str, str]],
     *,
     row: Mapping[str, Any] | None = None,
@@ -88,11 +107,16 @@ def _pass(
     source_ref: str,
     params: dict[str, str],
     not_before: str = '',
+    *,
+    from_task: str = '',
+    trial_run: str = '',
 ) -> None:
+    if not alive(conn, trial_run):
+        return
     cursor = conn.execute(
-        'INSERT OR IGNORE INTO link_passages(link_id, source_ref, created_at)'
-        ' VALUES(?,?,?)',
-        (link_id, source_ref, utcnow()),
+        'INSERT OR IGNORE INTO link_passages(link_id, source_ref, created_at,'
+        ' from_task) VALUES(?,?,?,?)',
+        (link_id, source_ref, utcnow(), from_task),
     )
     if cursor.rowcount != 1:
         return
@@ -104,7 +128,16 @@ def _pass(
         )
         ticket_de_passage(conn, link_id, source_ref, params)
         return
-    _mark_passed(conn, link_id, source_ref, to_invocation, params, not_before)
+    _mark_passed(
+        conn,
+        link_id,
+        source_ref,
+        to_invocation,
+        params,
+        not_before,
+        from_task=from_task,
+        trial_run=trial_run,
+    )
 
 
 def _mark_passed(
@@ -114,7 +147,14 @@ def _mark_passed(
     to_invocation: str,
     params: Mapping[str, str],
     not_before: str = '',
+    *,
+    from_task: str = '',
+    trial_run: str = '',
 ) -> str | None:
+    # Une tâche par passage : deux résultats différents qui passent le
+    # même lien avec les mêmes paramètres donnent deux tâches. Exemple :
+    # « Suivre une campagne » relance « Trouver des prospects » une
+    # deuxième fois, pour la même campagne.
     task_id = enqueue_task(
         conn,
         to_invocation,
@@ -122,6 +162,12 @@ def _mark_passed(
         origin='link',
         origin_ref=link_id,
         not_before=not_before,
+        key=task_key(
+            to_invocation, 'link', f'{link_id}:{source_ref}', dict(params)
+        ),
+        trial_run=trial_run,
+        parent=from_task,
+        rerun=task_lane(conn, from_task)[1] if from_task else '',
     )
     conn.execute(
         'UPDATE link_passages SET task_id=?, passed_at=?'
@@ -144,7 +190,7 @@ def pass_waiting(
         lien éteint ou supprimé, invocation suivante éteinte).
     """
     row = conn.execute(
-        'SELECT l.to_invocation_id FROM link_passages p'
+        'SELECT l.to_invocation_id, p.from_task FROM link_passages p'
         ' JOIN links l ON l.id=p.link_id'
         " WHERE p.link_id=? AND p.source_ref=? AND p.passed_at=''"
         " AND l.enabled=1 AND l.deleted_at=''",
@@ -165,7 +211,16 @@ def pass_waiting(
         (str(row[0]),),
     ).fetchone():
         return None
-    task = _mark_passed(conn, link_id, source_ref, str(row[0]), params)
+    origine = str(row[1] or '')
+    task = _mark_passed(
+        conn,
+        link_id,
+        source_ref,
+        str(row[0]),
+        params,
+        from_task=origine,
+        trial_run=task_lane(conn, origine)[0] if origine else '',
+    )
     clore_ticket_de_passage(conn, link_id, source_ref)
     return task
 
@@ -224,40 +279,48 @@ def pass_links(
     """Lance les invocations suivantes, selon les liens de celle-ci.
 
     Un lien peut avoir une condition, lue dans la réponse (lien
-    ``on_finish``) ou dans la ligne écrite (lien ``per_row``), et un délai
-    (voir ``_delay``).
+    ``on_finish`` ; sinon dans les paramètres de la tâche, quand la réponse
+    n'a pas ce champ) ou dans la ligne écrite (lien ``per_row``), et un
+    délai (voir ``_delay``).
     """
     task = task_params(conn, task_id)
+    trial_run, rerun = task_lane(conn, task_id)
     settings = load_settings(conn, invocation_id)
     reponse = answer if isinstance(answer, Mapping) else {}
     for link in conn.execute(
         'SELECT id, to_invocation_id, mode, write_id, auto, condition_field,'
         ' condition_op, condition_value, delay_min_setting,'
-        ' delay_max_setting FROM links'
+        ' delay_max_setting, lane FROM links'
         " WHERE from_invocation_id=? AND enabled=1 AND deleted_at=''",
         (invocation_id,),
     ).fetchall():
         link_id, to_inv, mode, write_id, auto = (str(x) for x in link[:5])
-        field, op, expected, low, high = (str(x or '') for x in link[5:])
+        field, op, expected, low, high, lane = (str(x or '') for x in link[5:])
         rows = _link_param_rows(conn, link_id)
         if mode == 'on_finish':
-            if condition_met(reponse.get(field), op, expected):
+            value = reponse[field] if field in reponse else task.get(field)
+            if lane_ok(lane, trial_run) and condition_met(value, op, expected):
                 _pass(
                     conn,
                     link_id,
                     to_inv,
                     auto == '1',
-                    f'task:{task_id}',
-                    _params(
+                    ref(f'task:{task_id}', rerun),
+                    params_from(
                         rows, task=task, settings=settings, answer=reponse
                     ),
                     _delay(conn, low, high, task),
+                    from_task=task_id,
+                    trial_run=trial_run,
                 )
             continue
         done = written.get(int(write_id))
         if done is None:
             continue
         for row in done.rows:
+            run = run_for_row(conn, row, trial_run)
+            if not lane_ok(lane, run):
+                continue
             if not condition_met(row.get(field), op, expected):
                 continue
             _pass(
@@ -265,181 +328,11 @@ def pass_links(
                 link_id,
                 to_inv,
                 auto == '1',
-                f'{done.table}:{row.get("id", "")}',
-                _params(
+                ref(f'{done.table}:{row.get("id", "")}', rerun),
+                params_from(
                     rows, row=row, task=task, settings=settings, answer=reponse
                 ),
                 _delay(conn, low, high, {**task, **row}),
+                from_task=task_id,
+                trial_run=run,
             )
-
-
-def trigger_refusal(conn: sqlite3.Connection, trigger_id: str) -> str:
-    """Pourquoi ce déclencheur ne peut pas créer de tâche, ou ``''``.
-
-    Exemple : « Au plus 3 business en test : 3 sur 3 ».
-    """
-    for (quota_id,) in conn.execute(
-        'SELECT quota_id FROM trigger_conditions WHERE trigger_id=?'
-        ' ORDER BY quota_id',
-        (trigger_id,),
-    ).fetchall():
-        usage = quota_usage(conn, str(quota_id))
-        if usage is not None and usage[0] >= usage[1]:
-            return f'{usage[2]} : {usage[0]} sur {usage[1]}'
-    return ''
-
-
-def fire_row_triggers(
-    conn: sqlite3.Connection, written: Mapping[int, Written]
-) -> None:
-    """Déclencheurs « une ligne est écrite dans telle table »."""
-    for done in written.values():
-        if not done.rows:
-            continue
-        for trig_id, inv, column, value in conn.execute(
-            'SELECT id, invocation_id, filter_column, filter_value FROM triggers'
-            " WHERE event='row_written' AND table_name=? AND enabled=1"
-            " AND deleted_at=''",
-            (done.table,),
-        ).fetchall():
-            if trigger_refusal(conn, str(trig_id)):
-                continue
-            rows = _trigger_param_rows(conn, str(trig_id))
-            for row in done.rows:
-                if column and str(row.get(str(column), '')) != str(value):
-                    continue
-                enqueue_task(
-                    conn,
-                    str(inv),
-                    _params(rows, row=row),
-                    origin='trigger',
-                    origin_ref=f'{trig_id}:{done.table}:{row.get("id", "")}',
-                )
-
-
-def notify_rows_written(
-    conn: sqlite3.Connection, table: str, row_ids: list[str]
-) -> None:
-    """Prévient les déclencheurs « une ligne est écrite » pour des lignes
-    écrites hors de l'interpréteur.
-
-    Un programme qui reçoit de l'extérieur (un appel, un SMS) écrit sa
-    ligne, puis appelle cette fonction : le pipeline se réveille comme
-    après l'écriture d'une invocation. Exemple : le résumé d'un appel reçu,
-    écrit dans ``inbound_events``, lance « Traiter une réponse ».
-    """
-    cursor = conn.execute(
-        f'SELECT * FROM "{safe_name(table)}" WHERE id IN'
-        f' ({",".join("?" * len(row_ids))})',
-        row_ids,
-    )
-    names = [d[0] for d in cursor.description]
-    rows = [dict(zip(names, r, strict=True)) for r in cursor.fetchall()]
-    fire_row_triggers(conn, {0: Written(table, rows=rows)})
-
-
-def _trigger_param_rows(conn: sqlite3.Connection, trigger_id: str) -> list:
-    return [
-        (str(a), str(b), str(c))
-        for a, b, c in conn.execute(
-            'SELECT param_name, source, value FROM trigger_params'
-            ' WHERE trigger_id=?',
-            (trigger_id,),
-        ).fetchall()
-    ]
-
-
-def fire_due_triggers(
-    conn: sqlite3.Connection, now: str, timezone: str = 'Europe/Paris'
-) -> None:
-    """Déclencheurs horaires : à intervalle régulier ou à heure fixe."""
-    moment = datetime.fromisoformat(now)
-    zone = ZoneInfo(timezone)
-    for (
-        trig_id,
-        inv,
-        event,
-        every,
-        at_time,
-        at_days,
-        last,
-        table,
-        column,
-        value,
-    ) in conn.execute(
-        'SELECT id, invocation_id, event, every_minutes, at_time, at_days,'
-        ' last_fired_at, table_name, filter_column, filter_value FROM triggers'
-        " WHERE event IN ('every', 'at') AND enabled=1 AND deleted_at=''"
-    ).fetchall():
-        if trigger_refusal(conn, str(trig_id)):
-            continue
-        slot = due_slot(
-            str(event),
-            int(every),
-            str(at_time),
-            str(at_days),
-            str(last),
-            moment,
-            zone,
-        )
-        if not slot:
-            continue
-        rows = _trigger_param_rows(conn, str(trig_id))
-        for ref, row in _target_rows(
-            conn, str(table), str(column), str(value)
-        ):
-            enqueue_task(
-                conn,
-                str(inv),
-                _params(rows, row=row),
-                origin='trigger',
-                origin_ref=f'{trig_id}:{slot}{ref}',
-            )
-        conn.execute(
-            'UPDATE triggers SET last_fired_at=? WHERE id=?', (now, trig_id)
-        )
-
-
-def _target_rows(
-    conn: sqlite3.Connection, table: str, column: str, value: str
-) -> list[tuple[str, dict[str, Any]]]:
-    """Les lignes visées par un déclencheur horaire, ou une seule tâche.
-
-    Sans table, une seule tâche. Avec une table, une tâche par ligne (qui
-    a ``column`` = ``value``, si le filtre est réglé).
-    """
-    if not table:
-        return [('', {})]
-    sql = f'SELECT * FROM "{safe_name(table)}"'
-    args: tuple = ()
-    if column:
-        sql += f' WHERE "{safe_name(column)}"=?'
-        args = (value,)
-    cursor = conn.execute(sql, args)
-    names = [d[0] for d in cursor.description]
-    out = []
-    for raw in cursor.fetchall():
-        row = dict(zip(names, raw, strict=True))
-        out.append((f':{row.get("id", "")}', row))
-    return out
-
-
-def fire_button(
-    conn: sqlite3.Connection, trigger_id: str, form: Mapping[str, Any]
-) -> str | None:
-    """Un bouton de Mission Control : crée la tâche avec le formulaire."""
-    row = conn.execute(
-        "SELECT invocation_id FROM triggers WHERE id=? AND event='button'"
-        " AND enabled=1 AND deleted_at=''",
-        (trigger_id,),
-    ).fetchone()
-    if row is None or trigger_refusal(conn, trigger_id):
-        return None
-    params = _params(_trigger_param_rows(conn, trigger_id), form=form)
-    return enqueue_task(
-        conn,
-        str(row[0]),
-        params,
-        origin='button',
-        origin_ref=f'{trigger_id}:{utcnow()}',
-    )

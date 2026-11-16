@@ -2086,10 +2086,80 @@ Décidé :
    demande de naviguer sur le web, doit être un branchement, qui écrit
    dans les mêmes tables et ne demande ni de modifier ni de retester le
    reste (le contrat est dans la conception du lot 12, partie 17).
-5. **Les essais sont à part** : un essai de la page Système (la
-   calculatrice, par exemple) lancé pendant que le pipeline tourne ne
-   doit rien casser. Les business d'essai sont séparés des vrais, et
-   n'écrivent pas au même endroit (partie 18). Le pipeline doit supporter
-   des essais et des modifications pendant qu'il tourne.
+5. **Les essais sont à part** : un essai lancé pendant que le pipeline
+   tourne ne doit rien casser. Ce qu'un essai écrit est séparé du vrai
+   (partie 18). Le pipeline doit supporter des essais et des
+   modifications pendant qu'il tourne. La décision Q99 remplace les
+   essais de la page Système par un seul essai, de bout en bout.
 6. Ensuite viendront le moteur de recherche (lot 13), d'autres canaux, et
    faire vivre les produits (lot 16).
+
+### Q99 — Un seul essai, de bout en bout, et repartir d'une tâche (validé par Clem, 16 novembre 2026)
+Question : comment essayer le lot 12, et que deviennent les essais de la
+page Système (« Lancer un essai », « Essayer l'étape 2 », les deux « Bout
+en bout », le captcha…) ?
+Décidé :
+1. **Un seul essai, « l'essai total »**, remplace tous les essais de la
+   page Système. Il suit le même chemin que le vrai pipeline, de l'écoute
+   du web à la vente, avec les mêmes invocations et les mêmes tables.
+   Clem : « il y a actuellement 1 milliard de trucs dans les tests
+   possibles ».
+2. **Il n'interfère jamais avec ce qui tourne.** Tout ce qu'il écrit est
+   marqué « essai » (une colonne `trial` là où il en faut) : son business,
+   son cycle d'écoute, les pages qu'il lit sur le web, ses tickets, ses
+   tâches. Il ne prend aucune place, n'est jamais compté ni comparé avec
+   le vrai, et s'il casse au milieu, rien d'autre ne casse.
+3. **Sa prospection n'a pas lieu.** Au lancement, on tape un nom, une
+   adresse e-mail et un numéro : Serge envoie un e-mail et passe un appel
+   à ces coordonnées, rien d'autre. La campagne d'essai se termine dès que
+   l'e-mail est parti et l'appel passé, sans relance ni attente. Une
+   réponse à l'e-mail est traitée comme d'habitude ; la suite ne l'attend
+   pas.
+4. **Ses résultats ne bloquent rien.** Quoi que donne la prospection, la
+   suite part : le test est retenu, le business est choisi comme
+   principal, la calculatrice est construite et mise en vente.
+5. **Il est le plus complet possible.** L'écoute du web tourne pour de
+   vrai, sur un petit volume ; le business (une calculatrice) et le plan
+   de son POC sont tout faits, pour savoir à quoi s'attendre et dépenser
+   peu. Le plan du produit fini est écrit par le modèle, comme
+   aujourd'hui. Une étape fixe, après le paiement test, essaie le captcha
+   avec un humain.
+6. **Les tickets se valident comme en vrai** (plan, test du produit, choix
+   du principal, domaine), avec la mention « Essai ».
+7. **Il fait de vraies choses, comme l'étape 5 d'aujourd'hui** : produit
+   et prix dans Stripe en vrai mode, paiement test de 1 € remboursé, site
+   en ligne sur un sous-domaine. Jamais d'achat de domaine.
+8. **On choisit l'étape de départ** (1, 2, 3, 5 ou 6) dans le formulaire
+   du bouton : chercher un bug à l'étape 5 n'oblige pas à tout refaire
+   depuis l'écoute.
+9. **Un seul essai à la fois** : relancer l'essai arrête le précédent et
+   le remplace.
+10. **Repartir d'une tâche.** Un essai (ou le vrai pipeline) qui a bloqué
+    doit pouvoir repartir d'une tâche précise, proprement, depuis Mission
+    Control, quel que soit l'état de cette tâche. Clem : relancer en se
+    basant sur le lien de la tâche, « c'était tout pourri ».
+11. **Mission Control est nettoyé** : de la page Système, il ne reste que
+    le bouton de l'essai total ; de la fiche d'un business, « Supprimer de
+    Stripe ». « Lancer un essai », « Essayer le chantier », « Essayer
+    l'interface web », « Essayer le captcha avec un humain », « Publier le
+    chantier d'essai », « Essayer l'étape 2 », les deux « Bout en bout »,
+    « Essayer Stripe » et « Construire le vrai produit » sont retirés.
+12. **Le lot 12 se livre en une ou deux PR**, pas six : la CI est longue.
+Le détail est dans la conception du lot 12, parties 18 et 19.
+
+### Q100 — Le téléphone ne prospecte pas sans accord (validé par Clem, 16 novembre 2026)
+Constat : la conception du lot 12 prévoit 20 appels par test léger, mais
+le canal « voice » demande l'accord de la personne avant tout appel
+(page Policy, « Accord des gens »), et un prospect jamais contacté ne l'a
+pas donné.
+Décidé :
+1. **Le réglage « Accord des gens » décide.** Tant que le téléphone y
+   figure (c'est le cas au départ), Serge n'appelle personne sans son
+   accord : une campagne par téléphone ne démarre pas pour des inconnus,
+   elle est annulée avec la raison. Si on retire le téléphone de ce
+   réglage, les appels partent.
+2. **Par défaut, Serge n'appelle pas.** « Et tant pis » : la voix sera
+   reprise dans les lots suivants, avec d'autres changements.
+3. Dans l'essai total, le contact tapé au lancement a donné son accord
+   (« test ») : son appel part.
+

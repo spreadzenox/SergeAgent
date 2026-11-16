@@ -46,6 +46,12 @@ BUTTONS: dict[str, dict[str, Any]] = {
     'passer': {'label': 'Passer à la suite', 'style': 3, 'emoji': '▶️'},
     'valider': {'label': 'Valider', 'style': 3, 'emoji': '✅'},
     'a_corriger': {'label': 'À corriger', 'style': 1, 'emoji': '✏️'},
+    'choisir_autre': {
+        'label': 'Choisir un autre',
+        'style': 1,
+        'emoji': '🔀',
+    },
+    'aucun': {'label': 'Aucun', 'style': 4, 'emoji': '🚫'},
     'arreter_business': {
         'label': 'Arrêter le business',
         'style': 4,

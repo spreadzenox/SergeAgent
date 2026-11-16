@@ -66,7 +66,7 @@ def main() -> None:
         )
         add_address(conn, ident, 'email', email)
     conn.execute(
-        'INSERT INTO campaigns(id, venture_id, family, channel, state,'
+        'INSERT INTO campaigns(id, venture_id, phase, channel, state,'
         ' n_target, created_at, updated_at) VALUES'
         "('c1','v1','named','email','RUNNING',40,?,?),"
         "('c2','v1','named','voice','PAUSED',12,?,?)",

@@ -15,6 +15,12 @@ from collections.abc import Callable, Mapping
 from typing import Any
 
 from serge.aide_humaine import human_help
+from serge.campaigns.follow import follow_campaign
+from serge.campaigns.measure import measure_test
+from serge.campaigns.principal import apply_principal
+from serge.campaigns.prospect import add_prospect
+from serge.campaigns.sale import record_sale
+from serge.campaigns.start import start_campaign
 from serge.connecteurs.appel import api_schema, call_api, nom_pour_le_modele
 from serge.conversations.contact import (
     add_contact,
@@ -266,6 +272,12 @@ RUNNERS: dict[str, Runner] = {
     'product_address': product_address,
     'call_api': call_api,
     'mail_read': boite_relecteur,
+    'start_campaign': start_campaign,
+    'follow_campaign': follow_campaign,
+    'add_prospect': add_prospect,
+    'measure_test': measure_test,
+    'apply_principal': apply_principal,
+    'record_sale': record_sale,
 }
 
 

@@ -67,12 +67,12 @@ class ProjSystemFixtures(unittest.TestCase):
         )
         add_address(conn, 'p2', 'email', 'bob@x.io')
         conn.execute(
-            'INSERT INTO campaigns(id, venture_id, family, channel, state,'
+            'INSERT INTO campaigns(id, venture_id, phase, channel, state,'
             ' n_target, created_at, updated_at) VALUES'
             "('c1','v1','named','email','RUNNING',10,'t','t')"
         )
         conn.execute(
-            'INSERT INTO campaigns(id, venture_id, family, channel, state,'
+            'INSERT INTO campaigns(id, venture_id, phase, channel, state,'
             ' n_target, created_at, updated_at) VALUES'
             "('c2','v1','named','sms','DRAFT',5,'t','t')"
         )

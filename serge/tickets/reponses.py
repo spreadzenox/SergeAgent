@@ -75,24 +75,24 @@ def noter_reponse(
         objet: L'objet saisi avec le texte (une réponse par e-mail) ; vide,
             celui du message dont parle le ticket est gardé.
     """
-    from serge.interpreter.flow import notify_rows_written
+    from serge.interpreter.triggers import notify_rows_written
 
     row = conn.execute(
-        'SELECT type, ref_table, ref_id, venture_id, contact_id, question'
-        ' FROM tickets WHERE id=?',
+        'SELECT type, ref_table, ref_id, venture_id, contact_id, question,'
+        ' trial, task_id FROM tickets WHERE id=?',
         (ticket_id,),
     ).fetchone()
     if row is None:
         return ''
     ident = new_id('ta')
-    kind, ref_table, ref_id, venture, contact, question = map(str, row)
+    kind, ref_table, ref_id, venture, contact, question = map(str, row[:6])
     objet = objet.strip() or message_du_ticket(conn, ticket_id).get(
         'objet', ''
     )
     conn.execute(
         'INSERT INTO ticket_answers(id, ticket_id, ticket_type, acte, text,'
         ' subject, answered_by, ref_table, ref_id, venture_id, contact_id,'
-        ' question, created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)',
+        ' question, created_at, trial) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
         (
             ident,
             ticket_id,
@@ -107,9 +107,14 @@ def noter_reponse(
             contact,
             question,
             iso_utc(),
+            int(row[6] or 0),
         ),
     )
-    notify_rows_written(conn, 'ticket_answers', [ident])
+    # La suite d'une réponse est la suite de la tâche qui a ouvert le
+    # ticket : même couloir, même chaîne (« Repartir d'ici » la retrouve).
+    notify_rows_written(
+        conn, 'ticket_answers', [ident], from_task=str(row[7] or '')
+    )
     if ref_table == 'tasks' and ref_id:
         _degeler(conn, ticket_id, ref_id, acte, texte)
     return ident
