@@ -467,7 +467,7 @@ class EssaiTotalTests(unittest.TestCase):
         )
         self.assertEqual(
             self._un("SELECT title, trial FROM tickets WHERE type='FYI'"),
-            ("La prospection lourde d'un business est lancée", 1),
+            ("Essai — La prospection lourde d'un business est lancée", 1),
         )
 
     def test_relancer_l_essai_remplace_le_precedent(self) -> None:
@@ -555,7 +555,7 @@ class EssaiTotalTests(unittest.TestCase):
         )
         self.assertEqual(
             [t['titre'] for t in essai['tickets']],
-            ['Le choix du business principal attend ton avis'],
+            ['Essai — Le choix du business principal attend ton avis'],
         )
         titres = [t['titre'] for t in essai['taches']]
         for titre in (

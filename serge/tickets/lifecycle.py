@@ -19,6 +19,8 @@ from serge.tickets.shared import (
 from serge.trial import current_task, in_trial
 
 DECIDED = frozenset({'APPROVED', 'REJECTED', 'EDITED'})
+# Le début du titre d'un ticket ouvert par l'essai total (décision Q99).
+TRIAL_PREFIX = 'Essai — '
 OPENISH = frozenset({'DRAFT', 'OPEN', 'DISCUSSING'})
 
 
@@ -85,8 +87,11 @@ def create_ticket(
     moment = now or utcnow()
     current = datetime.fromisoformat(moment)
     ticket_id = new_id('t')
-    # Un ticket ouvert par une tâche d'essai est marqué « essai », et tout
-    # ticket garde la tâche qui l'a ouvert (pour « Repartir d'ici »).
+    # Un ticket ouvert par une tâche d'essai est marqué « essai », et le
+    # dit dans son titre, partout où on le lit ; tout ticket garde la
+    # tâche qui l'a ouvert (pour « Repartir d'ici »).
+    if in_trial():
+        title = f'{TRIAL_PREFIX}{title}'
     connection.execute(
         'INSERT INTO tickets(id, type, title, state, payload_json, expiry_at,'
         ' default_action, versions_json, thread_ref, created_at, updated_at,'

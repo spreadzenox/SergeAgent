@@ -7665,7 +7665,7 @@ links:
     lane: trial
     condition: {field: domaine_commun, op: '=', value: ''}
     params:
-      titre: {source: fixed, value: "L'essai total a besoin du domaine commun des produits"}
+      titre: {source: fixed, value: Il manque le domaine commun des produits}
       raison: {source: fixed, value: "Un essai n'achète jamais de domaine. Règle « Le domaine commun des produits finis » (page Policy, « Choisir le domaine du produit »), puis fais repartir l'essai de la tâche « Choisir le domaine du produit »."}
 triggers:
   - id: lancer_cycle

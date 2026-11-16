@@ -874,7 +874,7 @@ class Etape5Tests(unittest.TestCase):
         self.assertTrue(
             self._un(
                 'SELECT 1 FROM tickets WHERE title='
-                "'L''essai total a besoin du domaine commun des produits'"
+                "'Essai — Il manque le domaine commun des produits'"
             )
         )
 
