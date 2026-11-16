@@ -14,7 +14,6 @@ ne reçoit plus cette page. « Choisir » prend l'idée de A et ferme le cycle.
 from __future__ import annotations
 
 import json
-import re
 import sqlite3
 import sys
 import unittest

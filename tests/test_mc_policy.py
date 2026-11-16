@@ -45,9 +45,11 @@ class McPolicyTests(McBrowserCase):
         regles = page.locator('[data-section="politique_active"]')
         expect(regles).to_contain_text('Argent')
         expect(regles).to_contain_text('Plafond du mois')
-        # La taille des essais est une famille comme les autres.
-        expect(regles).to_contain_text('Taille des essais')
         expect(regles).to_contain_text('Lecture du web')
+        # Les familles que plus rien ne lisait sont retirées (nettoyage du
+        # 16 novembre 2026).
+        for famille in ('Taille des essais', 'Santé des comptes', 'Horaires'):
+            expect(regles).not_to_contain_text(famille)
         # Ce qui touche au modèle est sur la page Pipeline (Q68).
         expect(regles).not_to_contain_text('Appels au modèle')
         # Retirés (Q68) : rien ne s'en servait.
