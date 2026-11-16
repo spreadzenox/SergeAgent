@@ -245,8 +245,11 @@ class EtapeUnFrontTests(McBrowserCase):
             'Places de test occupées : 0 sur 3.', timeout=10000
         )
         expect(page.locator('[data-trigger="lancer_cycle"]')).to_be_enabled()
-        page.locator('[data-trigger="bouton_effacer_idees"]').click()
-        expect(page.locator('.modale')).to_contain_text('Les pages restent.')
+        # Un bouton qui demande confirmation dit ce qu'il va faire.
+        page.locator('[data-trigger="bouton_abandonner_cycle"]').click()
+        expect(page.locator('.modale')).to_contain_text(
+            'ses tâches en attente sont annulées'
+        )
         page.locator('.modale').get_by_role('button', name='Annuler').click()
         flux = page.locator('[data-ecoute="flux"]')
         expect(flux).to_contain_text('Forum A')

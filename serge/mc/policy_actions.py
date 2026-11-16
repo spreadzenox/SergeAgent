@@ -22,7 +22,7 @@ from typing import TYPE_CHECKING, Any, Protocol
 
 from serge.db.store import append_event, utcnow
 from serge.interpreter.settings import check_setting
-from serge.policy_store import previous_value, set_setting, setting_lock
+from serge.policy_store import previous_value, set_setting
 
 # Le plus grand entier que SQLite range.
 _SQLITE_MAX = 2**63 - 1
@@ -165,15 +165,12 @@ def change_setting(
     """Change le réglage visé par ``body``.
 
     Returns:
-        ``(code HTTP, problème, clé)`` : 409 si la famille du réglage est
-        verrouillée (un essai tourne), 400 si la valeur est refusée, 200 si
-        c'est fait.
+        ``(code HTTP, problème, clé)`` : 400 si la valeur est refusée, 200
+        si c'est fait.
     """
     if cible == 'policy':
         ident = str(body.get('id') or '')
         key = {'id': ident}
-        if lock := setting_lock(conn, ident):
-            return 409, lock, key
         problem = set_setting(conn, ident, value, 'mc')
     elif cible == 'invocation':
         problem, key = _change_invocation(conn, body, str(value).strip())
@@ -213,7 +210,7 @@ class PolicyActionsMixin(_Base):
     def _api_reglage(self) -> None:
         """Change un réglage : ``{cible, …, value}``.
 
-        La valeur est vérifiée (sorte, bornes, relations, verrou),
+        La valeur est vérifiée (sorte, bornes, relations),
         enregistrée, et l'ancienne devient la valeur précédente.
         """
         if not self._require_owner():

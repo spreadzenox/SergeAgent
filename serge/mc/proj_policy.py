@@ -8,7 +8,7 @@ import sqlite3
 from collections.abc import Mapping
 from typing import Any
 
-from serge.policy_store import section_lock, settings
+from serge.policy_store import settings
 
 
 def _precedent(at: str, by: str, value: Any) -> dict[str, Any] | None:
@@ -24,8 +24,7 @@ def settings_sections(conn: sqlite3.Connection, page: str) -> list[dict]:
 
     Chaque réglage arrive avec sa description (titre, aide, sorte, bornes,
     choix), sa valeur, et sa valeur précédente : la page n'a aucun
-    catalogue à elle. Une famille verrouillée dit pourquoi (exemple : un
-    essai tourne).
+    catalogue à elle.
     """
     previous = {
         str(r[0]): _precedent(str(r[2]), str(r[3]), json.loads(r[1] or 'null'))
@@ -55,7 +54,6 @@ def settings_sections(conn: sqlite3.Connection, page: str) -> list[dict]:
             'id': str(row[0]),
             'titre': str(row[1]),
             'pourquoi': str(row[2]),
-            'verrou': section_lock(conn, str(row[0])),
             'reglages': reglages[str(row[0])],
         }
         for row in conn.execute(
@@ -74,7 +72,7 @@ def project_politique_active(
     """Les familles de réglages de la page Policy (P5).
 
     Returns:
-        ``{sections: [{id, titre, pourquoi, verrou, reglages: [...]}]}``.
+        ``{sections: [{id, titre, pourquoi, reglages: [...]}]}``.
     """
     _ = (policy, now)
     return {'sections': settings_sections(conn, 'policy')}

@@ -76,21 +76,15 @@ def _describe(conn: sqlite3.Connection, setting: Setting) -> None:
 
 def _seed_sections(conn: sqlite3.Connection, sections: list) -> None:
     for position, section in enumerate(sections):
-        lock = section.get('locked_while') or {}
         conn.execute(
             'INSERT OR IGNORE INTO policy_sections(id, position, page, title,'
-            ' why, lock_table, lock_column, lock_value, lock_reason)'
-            ' VALUES(?,?,?,?,?,?,?,?,?)',
+            ' why) VALUES(?,?,?,?,?)',
             (
                 str(section['id']),
                 position,
                 str(section.get('page') or 'policy'),
                 str(section.get('title') or ''),
                 str(section.get('why') or ''),
-                str(lock.get('table') or ''),
-                str(lock.get('column') or ''),
-                str(lock.get('value') or ''),
-                str(lock.get('reason') or ''),
             ),
         )
 
@@ -233,43 +227,13 @@ def policy_en_vigueur(conn: sqlite3.Connection) -> dict[str, Any]:
     )
 
 
-def section_lock(conn: sqlite3.Connection, section_id: str) -> str:
-    """Pourquoi une section ne peut pas changer maintenant, ou ``''``.
-
-    Exemple : la taille des essais ne change pas pendant qu'un essai tourne
-    (une ligne de ``campaigns`` a ``state`` = ``RUNNING``).
-    """
-    from serge.interpreter.rules import safe_name
-
-    row = conn.execute(
-        'SELECT lock_table, lock_column, lock_value, lock_reason'
-        ' FROM policy_sections WHERE id=?',
-        (section_id,),
-    ).fetchone()
-    if row is None or not row[0]:
-        return ''
-    table, column = safe_name(str(row[0])), safe_name(str(row[1]))
-    busy = conn.execute(
-        f'SELECT 1 FROM "{table}" WHERE "{column}"=? LIMIT 1', (str(row[2]),)
-    ).fetchone()
-    return str(row[3]) if busy else ''
-
-
-def setting_lock(conn: sqlite3.Connection, ident: str) -> str:
-    """Le verrou de la famille d'un réglage (voir ``section_lock``)."""
-    row = conn.execute(
-        'SELECT section_id FROM policy_settings WHERE id=?', (ident,)
-    ).fetchone()
-    return section_lock(conn, str(row[0])) if row else ''
-
-
 def set_setting(
     conn: sqlite3.Connection, ident: str, value: Any, by: str
 ) -> str:
     """Change un réglage ; rend ce qui ne va pas, ou ``''`` si c'est fait.
 
     La valeur est vérifiée (sorte, bornes, choix), puis les relations
-    (« le plancher ne dépasse pas le plafond ») et le verrou de la section.
+    (« le plancher ne dépasse pas le plafond »).
     L'ancienne valeur devient la valeur précédente, avec qui l'a remplacée
     et quand. Le journal est écrit
     par l'appelant (Mission Control) : ce module est lu au démarrage, avant
@@ -279,16 +243,12 @@ def set_setting(
     if not found:
         return 'réglage inconnu'
     setting = found[0]
-    problem = (
-        check_value(setting, value)
-        or check_relations(
-            {
-                **{s.id: s.value for s in settings(conn)},
-                ident: value,
-            },
-            relations(conn),
-        )
-        or section_lock(conn, setting.section_id)
+    problem = check_value(setting, value) or check_relations(
+        {
+            **{s.id: s.value for s in settings(conn)},
+            ident: value,
+        },
+        relations(conn),
     )
     if problem:
         return problem

@@ -25,10 +25,10 @@ from tests.test_mc_pipeline_page import CATALOGUE
 
 
 class ReviewApiTests(McServerCase):
-    def test_policy_refuse_les_tailles_incoherentes_et_le_verrou(self):
+    def test_policy_refuse_les_valeurs_incoherentes(self):
         # Un réglage général s'enregistre seul (Q68) : la relation entre
-        # tailles, les nombres non finis et le verrou d'un essai en cours
-        # sont vérifiés à chaque réglage.
+        # deux réglages et les nombres non finis sont vérifiés à chaque
+        # réglage.
         cookie = self._auth_cookie()
 
         def regler(ident, value):
@@ -38,8 +38,9 @@ class ReviewApiTests(McServerCase):
                 cookie,
             )[0]
 
-        # Arrêter à 5 réponses positives quand on élargit à 5 : incohérent.
-        self.assertEqual(regler('testing.kill_max_positives', 5), 400)
+        # Le moteur de recherche rendrait moins de résultats (1) que ce
+        # qu'une recherche en demande (5) : incohérent.
+        self.assertEqual(regler('web.search_max_results', 1), 400)
         self.assertEqual(
             self._request(
                 'GET', '/owner/api/state?page=p5', headers={'Cookie': cookie}
@@ -48,11 +49,6 @@ class ReviewApiTests(McServerCase):
         )
         for value in [float('nan'), float('inf')]:
             self.assertEqual(regler('budget.monthly_eur', value), 400)
-        with open_db(self.db_path) as conn:
-            conn.execute(
-                "INSERT INTO campaigns(id,venture_id,phase,channel,state,n_target,created_at,updated_at) VALUES('running','v','named','email','RUNNING',10,'t','t')"
-            )
-        self.assertEqual(regler('testing.n_smoke_min', 35), 409)
 
     def test_nombres_refuses_et_formulaire_unicode(self):
         cookie = self._auth_cookie()

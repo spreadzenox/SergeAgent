@@ -86,8 +86,8 @@ sections:
         step: 0.01
 
   - id: quotas
-    title: Plafonds par canal
-    why: Combien de messages, appels ou invitations, pour ne pas spammer.
+    title: Plafonds des SMS reçus
+    why: Combien de SMS Serge accepte de recevoir par minute.
     settings:
       - id: sms_per_sender_per_min
         value: 10
@@ -105,25 +105,6 @@ sections:
         min: 1
         max: 120
         step: 1
-      - id: linkedin_connect_per_day
-        value: 20
-        title: Invitations LinkedIn par jour
-        help: Le compteur du jour est sur la page En direct.
-        kind: curseur
-        min: 0
-        max: 80
-        step: 1
-
-  - id: windows
-    title: Horaires
-    why: Le fuseau dans lequel Serge lit ses heures.
-    settings:
-      - id: timezone
-        value: Europe/Paris
-        title: Fuseau
-        help: Les heures des déclencheurs sont lues dans ce fuseau.
-        kind: liste
-        choices: [Europe/Paris, Europe/Brussels, Europe/London, UTC]
 
   - id: calling_zones
     title: Pays et appels
@@ -182,146 +163,6 @@ sections:
           - [sms, SMS]
           - [whatsapp, WhatsApp]
           - [email, E-mail]
-
-  - id: testing
-    title: Taille des essais
-    why: >-
-      Combien de personnes un essai touche, et quand on l’arrête ou on
-      l’élargit.
-    locked_while:
-      table: campaigns
-      column: state
-      value: RUNNING
-      reason: Un essai tourne, on ne change pas sa taille en cours de route.
-    settings:
-      - id: n_smoke_min
-        value: 30
-        title: Petit essai, personnes touchées
-        help: Le nombre de personnes d’un petit essai.
-        kind: curseur
-        min: 1
-        max: 500
-        step: 1
-      - id: n_full_target
-        value: 200
-        title: Grand essai, personnes touchées
-        help: Le nombre de personnes d’un grand essai.
-        kind: curseur
-        min: 10
-        max: 5000
-        step: 10
-      - id: kill_max_positives
-        value: 1
-        title: Arrêt, réponses positives au plus
-        help: Un grand essai qui n’a pas plus de réponses positives est arrêté.
-        kind: curseur
-        min: 0
-        max: 20
-        step: 1
-      - id: scale_min_positives
-        value: 5
-        title: Élargir, réponses positives au moins
-        help: Il en faut au moins autant pour passer à un essai plus grand.
-        kind: curseur
-        min: 1
-        max: 50
-        step: 1
-      - id: scale_min_meetings
-        value: 2
-        title: Élargir, rendez-vous au moins
-        help: Il en faut au moins autant pour passer à un essai plus grand.
-        kind: curseur
-        min: 1
-        max: 20
-        step: 1
-      - id: extend_max
-        value: 1
-        title: Prolongations au plus
-        help: Combien de fois un essai peut être prolongé.
-        kind: curseur
-        min: 1
-        max: 5
-        step: 1
-
-  - id: standing
-    title: Santé des comptes
-    why: >-
-      Un capital qui baisse à l’usage et remonte au repos. En dessous du
-      plancher, l’acte est refusé.
-    settings:
-      - id: cout_usage
-        value: 0.10
-        title: Coût d’un acte
-        help: Retiré du capital après chaque usage.
-        kind: pct
-        min: 0
-        max: 1
-        step: 0.01
-      - id: gain_par_heure
-        value: 0.02
-        title: Gain par heure de repos
-        help: Quand le compte ne sert pas, le capital remonte de ce pas.
-        kind: pct
-        min: 0
-        max: 1
-        step: 0.01
-      - id: idle_apres_heures
-        value: 1
-        title: Heures avant que ça remonte
-        help: Rien ne remonte tant que ce délai n’est pas passé.
-        kind: curseur
-        min: 0
-        max: 48
-        step: 1
-      - id: capital_min
-        value: 0.20
-        title: Plancher pour agir
-        help: En dessous, l’acte est refusé.
-        kind: pct
-        min: 0
-        max: 1
-        step: 0.05
-      - id: capital_max
-        value: 1.0
-        title: Plafond du capital
-        help: Le repos ne le fait jamais dépasser.
-        kind: pct
-        min: 0
-        max: 1
-        step: 0.05
-
-  - id: collect
-    title: Encaissement
-    why: Les relances de paiement et les petits remboursements.
-    settings:
-      - id: refund_auto_max_eur
-        value: 5.0
-        title: Remboursement sans te demander, au plus
-        help: Au-dessus, c’est toi qui décides.
-        kind: eur
-        min: 0
-        max: 50
-        step: 0.5
-      - id: dunning_days
-        value: [7, 14]
-        title: Jours de relance d’un paiement
-        help: Par exemple 7, 14 pour une relance 7 jours puis 14 jours après.
-        kind: nombres
-        min: 1
-        max: 90
-
-  - id: memory
-    title: Mémoire
-    why: Ce qu’on garde au quotidien, et ce qu’on archive.
-    settings:
-      - id: episode_archive_days
-        value: 30
-        title: Jours avant d’archiver un épisode
-        help: Le détail brut quitte le quotidien.
-        kind: curseur
-        min: 7
-        max: 180
-        step: 1
 
   - id: llm_calls
     page: pipeline
@@ -1028,9 +869,7 @@ sections:
 
 # « tel réglage ≤ tel autre » (« < » : strictement plus petit).
 relations:
-  - [standing.capital_min, '<=', standing.capital_max]
   - [tools.search_results, '<=', web.search_max_results]
-  - [testing.kill_max_positives, '<', testing.scale_min_positives]
   - [channels.email.reply_delay_min_minutes, '<=', channels.email.reply_delay_max_minutes]
   - [channels.voice.reply_delay_min_minutes, '<=', channels.voice.reply_delay_max_minutes]
 
@@ -1071,24 +910,6 @@ changes:
           Combien de messages, appels ou invitations, pour ne pas spammer, et
           combien de fois on redemande une réponse au modèle.
         to: Combien de messages, appels ou invitations, pour ne pas spammer.
-  - id: horaires_sans_heures_silencieuses
-    why: Les heures silencieuses de Discord n'existent plus (Q86).
-    table: policy_sections
-    where: {id: windows}
-    set:
-      why:
-        from: Quand on a le droit de parler aux gens, et quand on se tait.
-        to: Le fuseau dans lequel Serge lit ses heures.
-  - id: fuseau_sans_resume_du_jour
-    why: Le résumé du jour sur Discord n'existe plus (Q86).
-    table: policy_settings
-    where: {id: windows.timezone}
-    set:
-      help:
-        from: >-
-          Les heures des déclencheurs et du résumé du jour sont lues dans ce
-          fuseau.
-        to: Les heures des déclencheurs sont lues dans ce fuseau.
   - id: aide_contacts_30_jours
     why: La voix lit maintenant ce réglage (pas de réglage en double, Q78).
     table: policy_settings
@@ -1114,3 +935,24 @@ deleted:
   - voice.quality_window
   - voice.quality_min_score
   - voice.quality_max_bad
+  # Le nettoyage d'après le lot 12 (16 novembre 2026) : plus aucun
+  # programme ne lisait ces réglages. La taille et les seuils d'un test
+  # sont des réglages de « Démarrer une campagne » et de « Mesurer le
+  # test » ; la santé des comptes, les relances de paiement, l'archivage
+  # et LinkedIn n'ont pas de code branché ; le fuseau est celui de Paris.
+  - testing.n_smoke_min
+  - testing.n_full_target
+  - testing.kill_max_positives
+  - testing.scale_min_positives
+  - testing.scale_min_meetings
+  - testing.extend_max
+  - standing.cout_usage
+  - standing.gain_par_heure
+  - standing.idle_apres_heures
+  - standing.capital_min
+  - standing.capital_max
+  - collect.refund_auto_max_eur
+  - collect.dunning_days
+  - memory.episode_archive_days
+  - windows.timezone
+  - quotas.linkedin_connect_per_day

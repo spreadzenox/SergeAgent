@@ -34,9 +34,6 @@ POLICY = {
         'email': {'max_per_day': 40},
         'voice': {'max_per_day': 50},
     },
-    'quotas': {
-        'linkedin_connect_per_day': 20,
-    },
 }
 
 
@@ -297,8 +294,7 @@ class ProjLiveTests(unittest.TestCase):
         self.assertEqual(
             (jauges['voix']['faits'], jauges['voix']['quota']), (0, 50)
         )
-        self.assertEqual(jauges['linkedin']['libelle'], 'Invitations LinkedIn')
-        self.assertEqual(jauges['linkedin']['quota'], 20)
+        self.assertNotIn('linkedin', jauges)
 
 
 if __name__ == '__main__':

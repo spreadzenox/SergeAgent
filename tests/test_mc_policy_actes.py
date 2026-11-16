@@ -12,7 +12,6 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from serge.db.store import open_db  # noqa: E402
-from serge.funnels.essai import ouvrir_essai  # noqa: E402
 from serge.policy_store import policy_en_vigueur  # noqa: E402
 from tests.mc_server_case import McServerCase  # noqa: E402
 
@@ -59,33 +58,6 @@ class PolicyActesTests(McServerCase):
             )
         finally:
             conn.close()
-
-    def test_taille_des_essais_puis_verrou(self) -> None:
-        cookie = self._auth_cookie()
-        charge = {'cible': 'policy', 'id': 'testing.n_smoke_min'}
-        self.assertEqual(self._regler(cookie, {**charge, 'value': 40})[0], 200)
-        conn_live = open_db(self.db_path)
-        try:
-            conn_live.execute(
-                'INSERT INTO ventures(id, lifecycle, schedulable,'
-                " created_at, updated_at) VALUES('v-essai','SMOKE_RUNNING',"
-                "1,'t','t')"
-            )
-            cid = ouvrir_essai(conn_live, 'v-essai', 'named', 'email', 'smoke')
-            n = conn_live.execute(
-                'SELECT n_target FROM campaigns WHERE id=?', (cid,)
-            ).fetchone()[0]
-            self.assertEqual(n, 40)
-            # Activer une campagne verrouille la taille des essais.
-            conn_live.execute(
-                'INSERT INTO campaigns(id, venture_id, phase, channel, state,'
-                ' n_target, created_at, updated_at)'
-                " VALUES('c1', 'v1', 'named', 'email', 'RUNNING', 10, 't', 't')"
-            )
-            conn_live.commit()
-        finally:
-            conn_live.close()
-        self.assertEqual(self._regler(cookie, {**charge, 'value': 45})[0], 409)
 
     def test_reglage_d_invocation_et_quota_remis(self) -> None:
         cookie = self._auth_cookie()

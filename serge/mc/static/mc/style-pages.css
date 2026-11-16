@@ -276,11 +276,6 @@ table.matrice {
   margin-top: 0.6rem;
 }
 
-.verrou-regle {
-  color: var(--orange);
-  margin: 0 0 1rem;
-}
-
 @media (max-width: 1100px) {
   [data-policy='atelier'],
   [data-pipeline='reglages'],

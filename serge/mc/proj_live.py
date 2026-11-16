@@ -231,11 +231,11 @@ def project_jauges(
 
     Args:
         conn: Connexion canon (lecture).
-        policy: Policy (budget + quotas).
+        policy: Policy (budget, canaux).
         now: Maintenant ISO UTC.
 
     Returns:
-        Dict llm / mois / email / voix / linkedin (ratio None si plafond 0,
+        Dict llm / mois / email / voix (ratio None si plafond 0,
         ``branche`` faux pour un canal qui ne peut pas envoyer ici).
     """
     day = now[:10]
@@ -246,7 +246,6 @@ def project_jauges(
     # Ce que Serge nous coûte en IA ce mois-ci (décision Q68).
     mois = llm_spend(conn, policy, day[:7]).eur
     cap_mois = float(budget.get('monthly_eur', 0) or 0)
-    quotas = policy.get('quotas') or {}
     email = _barre(
         conn,
         'email',
@@ -288,14 +287,5 @@ def project_jauges(
                 ),
             ),
             'libelle': 'Appels',
-        },
-        'linkedin': {
-            **_barre(
-                conn,
-                'linkedin',
-                _touches_jour(conn, 'linkedin', day),
-                _quota_jour(quotas, 'linkedin_connect_per_day'),
-            ),
-            'libelle': 'Invitations LinkedIn',
         },
     }

@@ -13,7 +13,6 @@ budget:
 quotas:
   sms_per_sender_per_min: 2
   sms_global_per_min: 4
-  linkedin_connect_per_day: 0
 
 channels:
   email:

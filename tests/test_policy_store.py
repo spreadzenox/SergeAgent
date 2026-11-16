@@ -38,7 +38,7 @@ class PolicyStoreTests(unittest.TestCase):
     def test_rempli_au_demarrage_avec_sa_description(self) -> None:
         pol = policy_en_vigueur(self.conn)
         self.assertEqual(pol['budget']['monthly_eur'], 50.0)
-        self.assertEqual(pol['testing']['n_smoke_min'], 30)
+        self.assertEqual(pol['quotas']['sms_global_per_min'], 60)
         self.assertEqual(pol['calling_zones']['FR']['contact_per_30d'], 4)
         row = self.conn.execute(
             'SELECT title, kind, min_value, max_value FROM policy_settings'
@@ -63,26 +63,18 @@ class PolicyStoreTests(unittest.TestCase):
         self.assertEqual(set_setting(self.conn, ident, 50.0, 'mc'), '')
         self.assertEqual(previous_value(self.conn, ident), (True, 80.0))
 
-    def test_valeur_relation_et_verrou_refuses(self) -> None:
+    def test_valeur_et_relation_refusees(self) -> None:
         self.assertEqual(
             set_setting(self.conn, 'budget.monthly_eur', 900, 'mc'),
             'au plus 500',
         )
-        # Le plancher du capital ne dépasse pas son plafond (1,0).
+        # Les résultats d'une recherche (5) ne dépassent pas ce que le
+        # moteur rend au plus.
         self.assertEqual(
-            set_setting(self.conn, 'standing.capital_max', 0.1, 'mc'),
-            'standing.capital_min doit rester ≤ standing.capital_max',
+            set_setting(self.conn, 'web.search_max_results', 1, 'mc'),
+            'tools.search_results doit rester ≤ web.search_max_results',
         )
-        self.conn.execute(
-            'INSERT INTO campaigns(id, venture_id, phase, channel, state,'
-            " n_target, created_at, updated_at) VALUES('c', 'v', 'named',"
-            " 'email', 'RUNNING', 10, 't', 't')"
-        )
-        self.assertIn(
-            'Un essai tourne',
-            set_setting(self.conn, 'testing.n_smoke_min', 35, 'mc'),
-        )
-        self.assertEqual(self._valeur('testing.n_smoke_min'), 30)
+        self.assertEqual(self._valeur('web.search_max_results'), 10)
         self.assertEqual(
             set_setting(self.conn, 'inconnu.x', 1, 'mc'), 'réglage inconnu'
         )

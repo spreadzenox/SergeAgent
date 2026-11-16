@@ -19,7 +19,6 @@ from serge.collect import (  # noqa: E402
     create_intent,
     mark_overdue,
     mark_paid,
-    request_refund,
     to_issued,
     to_quote_draft,
     to_quote_sent,
@@ -27,8 +26,6 @@ from serge.collect import (  # noqa: E402
     to_sent,
 )
 from serge.db.boot import init_schema  # noqa: E402
-
-POLICY = {'collect': {'refund_auto_max_eur': 5.0}}
 
 
 class CollectTests(unittest.TestCase):
@@ -97,25 +94,6 @@ class CollectTests(unittest.TestCase):
         self.assertEqual(self._status(intent_id), 'cancelled')
         with self.assertRaises(CollectError):
             mark_paid(self.connection, intent_id)
-
-    def test_refund_auto_sous_seuil_ticket_au_dela(self) -> None:
-        small = create_intent(self.connection, 'v1', 'invoice', 3.0)
-        to_issued(self.connection, small, 'F-1')
-        to_sent(self.connection, small)
-        mark_paid(self.connection, small)
-        result = request_refund(self.connection, POLICY, small)
-        self.assertTrue(result['auto'])
-        self.assertIsNotNone(result['refund_id'])
-        big = create_intent(self.connection, 'v1', 'invoice', 29.0)
-        to_issued(self.connection, big, 'F-2')
-        to_sent(self.connection, big)
-        mark_paid(self.connection, big)
-        result = request_refund(self.connection, POLICY, big)
-        self.assertFalse(result['auto'])
-        self.assertIsNone(result['refund_id'])
-        unpaid = create_intent(self.connection, 'v1', 'invoice', 1.0)
-        with self.assertRaises(CollectError):
-            request_refund(self.connection, POLICY, unpaid)
 
     def test_canary_marqué(self) -> None:
         intent_id = create_canary(self.connection, 'v1', 'stripe-test')

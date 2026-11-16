@@ -12,7 +12,6 @@ from __future__ import annotations
 import json
 import sqlite3
 import uuid
-from collections.abc import Mapping
 from typing import Any
 
 from serge.db.store import append_event, utcnow
@@ -206,42 +205,3 @@ def create_canary(conn: sqlite3.Connection, venture_id: str, rail: str) -> str:
         (json.dumps(envelope, ensure_ascii=False), intent_id),
     )
     return intent_id
-
-
-def request_refund(
-    conn: sqlite3.Connection,
-    policy: Mapping[str, Any],
-    intent_id: str,
-) -> dict[str, Any]:
-    """Remboursement : < seuil → intent refund auto ; ≥ seuil → ticket.
-
-    Args:
-        conn: Connexion canon (commit par l'appelant).
-        policy: Policy (collect.refund_auto_max_eur).
-        intent_id: Transaction payée à rembourser.
-
-    Returns:
-        {auto: bool, refund_id: str|None} (caller: FYI ou ticket).
-    """
-    row = _get(conn, intent_id)
-    if row['status'] != 'paid':
-        raise CollectError('remboursement : transaction non payée')
-    cap = float((policy.get('collect') or {}).get('refund_auto_max_eur', 5.0))
-    if float(row['amount_eur']) < cap:
-        refund_id = create_intent(
-            conn,
-            row['venture_id'],
-            'refund',
-            float(row['amount_eur']),
-            str(row['currency'] or 'EUR'),
-        )
-        append_event(
-            conn,
-            actor='collect',
-            type='collect.refund_auto',
-            venture_id=row['venture_id'],
-            payload={'id': refund_id, 'of': intent_id},
-            links={'transaction': refund_id},
-        )
-        return {'auto': True, 'refund_id': refund_id}
-    return {'auto': False, 'refund_id': None}

@@ -416,18 +416,6 @@ tools:
       params:
         - {name: jours, type: integer, required: true, description: Age minimum en jours.}
         - {name: limit, type: integer, default: '500', description: Nombre maximal de pages.}
-  - id: idees
-    title: Les idées de business
-    doc: Les business encore candidats ou choisis pour un test (pas plus loin).
-    capability: db_read
-    read:
-      tables: [ventures]
-      columns:
-        - {table: ventures, name: id}
-      filters:
-        - {id: idees, table: ventures, column: lifecycle, fixed: [CANDIDATE, POC_SELECTED]}
-      params:
-        - {name: limit, type: integer, default: '500', description: Nombre maximal de business.}
 
   # --- Les conversations (lot 8, décision Q79) ---
   - id: fil_du_contact
@@ -2691,29 +2679,6 @@ invocations:
         for_each: rows
         key: {column: id, source: field, value: rows.id}
 
-  - id: effacer_idees
-    title: Effacer les idées (test)
-    role: >-
-      Bouton temporaire, pour tester le cycle en production autant de fois
-      qu'on veut : détruit tous les business encore candidats ou choisis,
-      et leurs preuves. Les pages restent. À retirer avant le vrai
-      lancement de Serge. Sans LLM.
-    step: pre_prospection
-    type: capability
-    capability: db_read
-    queue: works
-    priority: 20
-    params:
-      tool_id: {source: fixed, value: idees}
-    writes:
-      - table: ventures
-        operation: delete
-        for_each: rows
-        key: {column: id, source: field, value: rows.id}
-      - table: venture_sources
-        operation: delete
-        for_each: rows
-        key: {column: venture_id, source: field, value: rows.id}
 
 # --- Les conversations (lot 8, décision Q79) -------------------------------
 # Un message reçu réveille « Traiter une réponse », qui écrit la réponse ;
@@ -7683,13 +7648,6 @@ triggers:
       Le cycle ouvert est fermé et ses tâches en attente sont annulées ;
       sa chaîne s'arrête après la tâche en cours. On peut alors en lancer
       un autre.
-  - id: bouton_effacer_idees
-    title: Effacer les idées (test)
-    invocation: effacer_idees
-    event: button
-    confirm: >-
-      Tous les business encore candidats ou choisis, et leurs preuves, sont
-      détruits. Les pages restent. Bouton temporaire, pour tester.
   - id: veille_flux
     title: Lire chaque flux RSS suivi
     invocation: lire_un_flux
@@ -9445,6 +9403,9 @@ deleted:
     - bout_en_bout_produit
     - essayer_stripe
     - lancer_produit
+    # Le bouton temporaire « Effacer les idées (test) » de la page Écoute :
+    # l'essai total essaie l'étape 1 sans toucher aux vrais business.
+    - effacer_idees
   # Le début d'un appel dépend de son sens : deux textes le remplacent.
   serge_texts: [voice_opening]
   links:
@@ -9472,12 +9433,14 @@ deleted:
     - bouton_bout_en_bout_produit
     - bouton_essayer_stripe
     - bouton_construire_produit
+    - bouton_effacer_idees
   # Le nombre de prospects d'un test n'est plus dans le plan du POC : c'est
   # un réglage par canal de « Démarrer une campagne » (Q93).
   settings:
     - {invocation: concevoir_poc, name: prospects_min}
     - {invocation: concevoir_poc, name: prospects_max}
   tools:
+    - idees
     - known_business_candidates
     - eligible_poc_candidates
     - listen_cycle_documents

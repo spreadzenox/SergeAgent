@@ -14,7 +14,6 @@ sys.path.insert(0, str(ROOT))
 from serge.db.boot import init_schema  # noqa: E402
 from serge.funnels.metrics import (  # noqa: E402
     campaign_metrics,
-    venture_metrics,
 )
 
 NOW = '2026-09-09T19:00:00+00:00'
@@ -106,31 +105,6 @@ class MetricsTests(unittest.TestCase):
         self._touch('t0', 'sent', cost=0.2)
         metrics = campaign_metrics(self.connection, 'c1')
         self.assertEqual(metrics['u4_eur'], 0.2)
-
-    def test_agregat_venture(self) -> None:
-        self.connection.execute(
-            'INSERT INTO campaigns(id, venture_id, phase, channel,'
-            " created_at, updated_at) VALUES('c2','v1','ads','meta','t','t')"
-        )
-        self._touch('t0', 'sent')
-        self.connection.execute(
-            'INSERT INTO touches(id, campaign_id, channel, status, cost_eur,'
-            ' idempotency_key, created_at, updated_at)'
-            " VALUES('a0','c2','meta','sent',1.0,'a0',?,?)",
-            (NOW, NOW),
-        )
-        self._inbound('e1', 'INTENT', cls='trial')
-        self.connection.execute(
-            'INSERT INTO inbound_events(id, campaign_id, channel, native_type,'
-            ' signal, class, received_at)'
-            " VALUES('a1','c2','meta','CONVERTED','INTENT','trial',?)",
-            (NOW,),
-        )
-        metrics = venture_metrics(self.connection, 'v1')
-        self.assertEqual(metrics['u1'], 2)
-        self.assertEqual(metrics['u3'], 2)
-        self.assertEqual(metrics['u5_classes'], 1)
-        self.assertEqual(metrics['cost_eur'], 1.01)
 
 
 if __name__ == '__main__':
