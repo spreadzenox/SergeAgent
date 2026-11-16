@@ -3408,6 +3408,62 @@ invocations:
       - {path: marche, type: choice, choices: [oui, non], description: 'Le site fait-il ce que demande la mission ?'}
       - {path: compte_rendu, type: text, description: 'Ce qui a été fait, vu, et ce qui ne marche pas, captures à l''appui.'}
 
+  - id: essayer_captcha
+    title: Essayer le captcha avec un humain (temporaire)
+    role: >-
+      Temporaire, pour essayer « Appeler un humain » depuis Mission Control
+      (Q97) : ouvre dans le vrai Chrome une page d'essai qui tient lieu de
+      captcha, appelle un humain, attend qu'il ait cliqué dans l'écran,
+      puis rend le code que la page montre alors.
+    type: llm
+    model_tier: web
+    queue: works
+    priority: 30
+    max_tool_turns: 15
+    prompt: |
+      Tu essaies le passage de main à un humain, sur une page d'essai qui
+      tient lieu de captcha.
+
+      1. Ouvre dans le vrai Chrome la page
+         https://<domaine>/static/essai/captcha.html, où <domaine> est le
+         nom du serveur de Serge (« hostname », donné plus bas).
+      2. Son bouton « Je suis un humain » ne doit être cliqué que par un
+         humain : ne le clique jamais toi-même, et n'essaie pas de le
+         contourner. Appelle « Appeler un humain », avec la raison « un
+         captcha d'essai (page Système) ». La première fois, la tâche
+         s'arrête et repartira du début quand un humain sera prêt ; la fois
+         suivante, il clique le bouton dans l'écran pendant que tu attends.
+      3. Quand l'outil répond que l'humain a fini, lis la page : elle
+         montre « Captcha résolu » et un code à quatre chiffres.
+
+      Rends resolu « oui » et le code si la page le montre. Sinon rends
+      « non », et dis pourquoi dans ton compte rendu (personne n'était
+      disponible, l'écran n'a pas pu s'ouvrir, la page n'a pas changé).
+    tools:
+      - tool: adresse_du_serveur
+        mode: given
+        label: Le serveur de Serge
+      - tool: vrai_chrome_agir
+        mode: callable
+        params: &vrai_chrome_essai
+          venture_id: {source: fixed, value: essai}
+          deliverable: {source: fixed, value: chantier}
+          task_id: {source: task, value: task_id}
+      - tool: vrai_chrome_lire
+        mode: callable
+        params: *vrai_chrome_essai
+      - tool: vrai_chrome_capture
+        mode: callable
+        params: *vrai_chrome_essai
+      - tool: appeler_un_humain
+        mode: callable
+        params:
+          task_id: {source: task, value: task_id}
+    output:
+      - {path: resolu, type: choice, choices: [oui, non], description: 'La page montre-t-elle « Captcha résolu » ?'}
+      - {path: code, type: text, required: false, description: Le code à quatre chiffres que montre la page.}
+      - {path: compte_rendu, type: text, description: 'Ce qui s''est passé, en deux phrases.'}
+
   - id: publier_essai
     title: Publier le chantier d'essai (temporaire)
     role: >-
@@ -6677,6 +6733,17 @@ triggers:
     params:
       adresse: {source: form, value: adresse}
       mission: {source: form, value: mission}
+
+  - id: bouton_essayer_captcha
+    title: Essayer le captcha avec un humain
+    invocation: essayer_captcha
+    event: button
+    confirm: >-
+      Serge ouvre une page d'essai dans le vrai Chrome et appelle un
+      humain : tu reçois sur Discord le ticket « Un humain, prêt ? »
+      (clique « Je suis prêt »), puis le ticket « À toi » avec le lien de
+      l'écran ; clique « Je suis un humain » dans l'écran, puis « C'est
+      fait ». Le code lu par Serge est sur la fiche de la tâche.
 
   - id: bouton_publier_essai
     title: Publier le chantier d'essai

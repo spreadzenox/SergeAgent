@@ -19,7 +19,14 @@ ligne de code ne lui est propre : ses invocations, ses liens et ses
 tickets sont dans `config/pipeline.yaml` et `config/ticket-types.yaml`.
 Elle reprend la mécanique de l'étape 2 (« Compter les tours », les
 paramètres de lien tirés de la réponse, les trois boutons de ticket), et
-s'appuie sur « Appeler une API » pour Stripe et Cloudflare.
+s'appuie sur « Appeler une API » pour Stripe et Cloudflare. Le lot 11
+(décisions Q96 et Q97) y a ajouté les e-mails du produit, la boîte du
+relecteur, les arrêts d'une tâche, et le vrai Chrome du paiement test.
+
+**Essayée de bout en bout sur le serveur le 16 novembre 2026** : une
+calculatrice, du plan au paiement test de 1 € (payé dans le vrai Chrome,
+vérifié dans Stripe, remboursé), puis essayée à la main, inscription et
+paiement compris.
 
 En attendant l'étape 4 (lot 12), elle part du bouton « Construire le vrai
 produit » de la fiche d'un business au test léger (`SMOKE_READY` ou

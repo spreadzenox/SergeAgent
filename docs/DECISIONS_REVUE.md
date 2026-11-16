@@ -2050,3 +2050,19 @@ Décidé :
 6. **Le niveau « web » (les relecteurs, le paiement test) repasse à
    Sonnet**, avec ce crédit.
 7. **Pas de Browserbase** : il est retiré de l'inventaire de l'instance.
+
+
+Ce qui s'est passé ensuite, le même jour :
+- la clé de l'abonnement vaut pour tous les workspaces du compte :
+  Anthropic refuse un appel qui ne dit pas lequel sert. Un réglage
+  « Anthropic, identifiant du workspace » l'envoie avec chaque appel ;
+- le paiement test, relancé dans le vrai Chrome avec Sonnet appelé chez
+  Anthropic, a payé 1 €, l'a vérifié dans Stripe et s'est remboursé, en
+  12 appels et 0,08 $, sans captcha ni 3-D Secure. Le produit a ensuite
+  été essayé à la main, inscription et paiement compris : le lot 11 est
+  fini ;
+- aucun captcha n'étant apparu, « Appeler un humain » n'a pas servi pour
+  de vrai. Clem a demandé un essai du captcha seul sur la page Système :
+  le bouton « Essayer le captcha avec un humain » ouvre une page d'essai
+  dont seul un humain clique le bouton, envoie les deux tickets, puis
+  rend le code que la page montre.

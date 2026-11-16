@@ -138,6 +138,7 @@ class McSystemTests(McBrowserCase):
             [
                 "Bout en bout : le POC d'une calculatrice",
                 "Bout en bout : le produit fini d'une calculatrice",
+                'Essayer le captcha avec un humain',
                 'Essayer le chantier',
                 "Essayer l'étape 2",
                 "Essayer l'interface web",

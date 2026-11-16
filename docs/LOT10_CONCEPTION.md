@@ -189,6 +189,23 @@ Depuis Q96, le constructeur ne navigue plus : il vérifie par des
 commandes, et seul le relecteur essaie le produit en ligne. Une connexion
 perdue au navigateur (conteneur relancé) est refaite une fois.
 
+**Le vrai Chrome (lot 11, décision Q97).** Ce navigateur est sans écran
+(« headless »), et certaines pages le reconnaissent : le 16 novembre
+2026, le captcha de la page de paiement de Stripe ne s'y chargeait pas.
+Serge a donc un second navigateur, dans son propre conteneur
+(`serge-vrai-chrome`) : un Chromium normal sur un écran virtuel, avec un
+profil qui garde ses cookies. Ses trois outils (« Agir dans le vrai
+Chrome », « Lire la page du vrai Chrome », « Capture du vrai Chrome »)
+font les mêmes actions ; une invocation passe de l'un à l'autre en
+changeant ses outils sur la page Pipeline. Seul le paiement test l'a
+aujourd'hui. Un humain voit cet écran et y agit depuis Mission Control
+(`/owner/vrai-chrome`, derrière la connexion), et l'outil « Appeler un
+humain » lui passe la main pour un captcha, en deux temps
+(`serge/aide_humaine.py`) : la tâche s'arrête et demande si quelqu'un
+est prêt, puis, repartie, envoie le lien de l'écran et attend « C'est
+fait ». Le bouton « Essayer le captcha avec un humain » de la page
+Système essaie ce passage de main sur une page d'essai.
+
 Après chaque action, l'outil rend la page relue, en version courte : le
 modèle voit l'effet de son clic sans appel de plus.
 
@@ -710,4 +727,9 @@ le vrai modèle, sur une machine avec Docker.
 - **Les écarts de l'étape 5** à valider (partie 9) : le domaine acheté
   après l'essai, le paiement test vérifié par l'API de Stripe.
 - **Une banque qui exige 3-D Secure** pour le paiement test de 1 € : Serge
-  s'arrête et un ticket le dit. Le faire à la main une fois.
+  s'arrête et un ticket le dit. Le faire à la main une fois. Le paiement
+  test du 16 novembre 2026, dans le vrai Chrome, est passé sans 3-D
+  Secure ni captcha.
+- **« Appeler un humain » n'a pas encore servi sur un vrai captcha** : il
+  est vérifié par ses tests et par le bouton d'essai de la page Système
+  (décision Q97).

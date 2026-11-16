@@ -103,13 +103,63 @@ remplir la base, dans `config/pipeline.yaml` (le détail est dans
 
 On avance par lots. Un lot est un ensemble de tâches qui vont ensemble ;
 chaque lot se termine par des tests verts et un commit, puis Julien ou
-Clem regarde le résultat avant qu'on attaque le suivant. Les lots 1 à 9,
-le 8 bis et le 10 bis sont faits (l'historique git en garde la trace) : le
-runner et le pipeline en base, l'étape 1, les conversations par e-mail et
-par téléphone (lot 8 : voir
-[`docs/LOT8_CONCEPTION.md`](docs/LOT8_CONCEPTION.md)), Julien dans la
-conversation (lot 8 bis, décisions Q85 et Q86), la grille de points
-(lot 9, décision Q84) et les réponses automatiques (lot 10 bis, Q93).
+Clem regarde le résultat avant qu'on attaque le suivant. **Les lots 1 à
+11, le 8 bis et le 10 bis sont faits** (l'historique git en garde la
+trace). **Le prochain est le lot 12.** Ce que chaque lot a vraiment
+livré :
+
+- **Lots 1 à 7** : le runner, le pipeline en base (lot 6 : un seul
+  programme, l'interpréteur, exécute toute invocation décrite en base) et
+  l'étape 1, de l'écoute du web au choix des business (lot 7).
+- **Lot 8** : les conversations par e-mail et par téléphone
+  ([`docs/LOT8_CONCEPTION.md`](docs/LOT8_CONCEPTION.md)). **Lot 8 bis** :
+  Julien dans la conversation (décisions Q85 et Q86). **Lot 9** : la
+  grille de points (Q84). **Lot 10 bis** : les réponses automatiques
+  (Q93).
+- **Lot 10 « Concevoir et construire »** (Q91,
+  [`docs/LOT10_CONCEPTION.md`](docs/LOT10_CONCEPTION.md)) : les étapes 2
+  et 5 en base. Le plan d'un POC ou d'un produit et sa fiche produit, la
+  critique, la validation par ticket, la construction dans un chantier
+  (un conteneur par business et par livrable), la relecture dans un
+  navigateur par un relecteur qui ne voit pas le code, le staging puis la
+  prod, le domaine (acheté chez Cloudflare, ou un sous-domaine du domaine
+  commun), la mise en vente dans Stripe et le paiement test de 1 €. Trois
+  capacités générales : le bac à sable, l'interface web des invocations,
+  et « Appeler une API ». Seulement des produits web.
+- **Lot 11**, parti des e-mails des produits et devenu bien plus gros
+  (Q95, Q96, Q97) :
+  - **les e-mails des produits** : en chantier et en staging, une boîte
+    d'essai (Mailpit) garde tout, et la fiche du business les montre ; en
+    prod, Resend, avec une clé par produit, depuis un sous-domaine de
+    Serge ; le relecteur a sa propre boîte, une adresse par essai ;
+  - **des tâches qui s'arrêtent** : le bouton rouge arrête aussi la tâche
+    en cours, une tâche a un plafond de dépense, une demande à Julien la
+    gèle jusqu'à sa réponse (« Répondre » ou « Faire sans »), et sans
+    crédit chez le fournisseur du modèle elle attend au lieu d'échouer ;
+  - **une construction moins chère** : le constructeur ne navigue plus,
+    un niveau de modèle « web » pour naviguer, le cache des modèles
+    d'Anthropic, les captures retirées par paquets, chaque appel d'outil
+    au journal. La construction d'une calculatrice est passée de 17 $ à
+    2 $ ;
+  - **des tickets lisibles** : « En bref » d'abord, puis « Voir en
+    entier » ;
+  - **le web dynamique** : un vrai Chrome sur un écran virtuel, donné par
+    ses outils à une invocation à la place du navigateur sans écran ;
+    « Appeler un humain » pour un captcha, en deux temps ; l'écran du
+    vrai Chrome dans Mission Control, derrière la connexion ; un bouton
+    de la page Système pour essayer ce passage de main sans captcha
+    réel ;
+  - **Anthropic en direct** pour les essais : un réglage envoie les
+    modèles `anthropic/…` chez Anthropic, avec la clé et le workspace de
+    l'instance.
+
+  Essayé de bout en bout sur le serveur le 16 novembre 2026 : une
+  calculatrice conçue, construite, relue, mise en ligne sur son domaine
+  et mise en vente ; son paiement test de 1 € payé dans le vrai Chrome,
+  vérifié dans Stripe et remboursé (12 appels au modèle, 0,08 $) ; le
+  produit a ensuite été essayé à la main, inscription et paiement
+  compris. Il reste, du lot 10, les versions suivantes d'un produit :
+  elles sont au lot 16.
 
 - [ ] **Avant le lot 8 : les réglages en base.** Toute grandeur
   discutable se règle depuis Mission Control, sans réglage en double
@@ -117,38 +167,6 @@ conversation (lot 8 bis, décisions Q85 et Q86), la grille de points
   et Pipeline ; il reste à remettre, lot par lot, les réglages retirés
   parce que rien ne les lisait. Le détail est dans la partie « Avant le
   lot 8 » plus bas.
-- [ ] **Lot 10 « Concevoir et construire ».** On écrit le plan d'un POC
-  et sa fiche produit, on les fait critiquer, Julien les valide, puis
-  Serge construit, essaie et met en ligne, d'abord le POC, ensuite le vrai
-  produit. Ce sont les étapes 2 et 5 ; l'étape 2 est en base depuis la
-  PR 4 du lot, « Appeler une API » et les outils Stripe depuis la PR 5,
-  l'étape 5 depuis la PR 7 (avec l'achat des domaines chez Cloudflare et le
-  paiement test de 1 €) ; restent les versions suivantes d'un produit,
-  avec l'étape 6. Seulement des produits web, payants
-  pour le produit fini (Q91). Le lot apporte trois capacités d'abord
-  prévues au lot 13 : le bac à sable (un conteneur où le constructeur code
-  et lance son produit), l'interface web des invocations (lire une page et
-  cliquer comme un humain) et « Appeler une API » (pour Stripe et l'achat
-  des domaines). Le détail est dans
-  [`docs/LOT10_CONCEPTION.md`](docs/LOT10_CONCEPTION.md).
-- [ ] **Lot 11 « Les e-mails des produits ».** Fait dans la même PR que
-  les correctifs du lot 10 (décision Q96), à essayer sur le serveur :
-  - un produit envoie ses e-mails par SMTP : en chantier et en staging,
-    la boîte d'essai (Mailpit) les garde, et la fiche du business les
-    montre ; en prod, Resend, avec une clé par produit, depuis un
-    sous-domaine de Serge ;
-  - le relecteur a sa propre boîte, une adresse par essai (la réception
-    de Resend), et les outils Stripe du mode test pour finir un
-    abonnement ;
-  - une demande à Julien gèle la tâche jusqu'à sa réponse (« Répondre »
-    ou « Faire sans ») ;
-  - un ticket Discord commence par « En bref » et se lit en entier par
-    « Voir en entier » ;
-  - pas d'adresse de contact (lot 16) ; l'éditeur des mentions légales
-    est Julien Pesquet.
-  Reste à faire par Clem : le compte Resend, son domaine d'envoi et sa
-  réception, la clé `resend.key`, et les deux réglages de la page Policy
-  ([`docs/installation/DOMAINES.md`](docs/installation/DOMAINES.md)).
 - [ ] **Lot 12 « Jusqu'aux premières ventes ».** Mettre en base les
   tables, les liens et les invocations qui mènent un business de son POC
   en ligne jusqu'à ses premières ventes : les campagnes de prospection
@@ -158,12 +176,18 @@ conversation (lot 8 bis, décisions Q85 et Q86), la grille de points
   la construction, et enregistrer les ventes (étape 6), les places de test
   et l'étape 1 qui repart toute seule. Le détail est dans
   [`docs/LOT12_CONCEPTION.md`](docs/LOT12_CONCEPTION.md) (décisions Q92
-  et Q93).
+  et Q93). Au 16 novembre 2026, les étapes 1, 2 et 5 et les conversations
+  sont en base ; les étapes 3, 4 et 6 n'ont encore aucune invocation.
 - [ ] **Lot 13 « Web ».** On donne à Serge de quoi chercher, lire des
   pages et agir sur n'importe quel site : créer un compte, publier,
   écrire. On le met tard parce que c'est un gros chantier, mais plusieurs
-  tâches des étapes 3 et 6 en dépendent. Il part du bac à sable, de
-  l'interface web et de « Appeler une API », construits au lot 10 (Q91).
+  tâches des étapes 3 et 6 en dépendent. Il part de ce qui existe : le
+  bac à sable, l'interface web et « Appeler une API » (lot 10, Q91), le
+  vrai Chrome, son écran dans Mission Control et « Appeler un humain »
+  pour les captchas (lot 11, Q97). Il reste le moteur de recherche, la
+  lecture d'une page qui monte d'un cran, les comptes et leurs sessions,
+  la garde de santé des comptes et « Construire un connecteur » (partie
+  « Pour tout Serge », « Le web »).
   L'agent web et les connecteurs y sont des capacités générales réglées en
   base, jamais du code écrit pour une invocation. C'est aussi ce qui ouvre
   les canaux de conversation par machine virtuelle : un LLM qui se connecte
@@ -288,15 +312,18 @@ discutable, qui peut un jour changer, se règle depuis Mission Control.**
   en base (ce qui y est installé, la mémoire, le temps et le réseau
   permis), et des outils pour lire une page comme un lecteur d'écran,
   cliquer, taper, taper un secret sans le montrer au modèle, prendre une
-  capture. Ce lot y ajoute les secrets et les comptes auxquels un profil a
+  capture. **Le vrai Chrome et « Appeler un humain » viennent du lot 11**
+  (Q97) : les mêmes outils dans un Chromium normal, et un humain qui
+  résout un captcha dans son écran, montré par Mission Control. Ce lot y
+  ajoute les secrets et les comptes auxquels un profil a
   accès, et une session de navigateur par compte, qui garde ses cookies.
   **L'« Agent web » n'est donc pas du code** : c'est une invocation LLM
   réglée en base, qui reçoit une mission en paramètre (par exemple « crée
   un compte sur ce forum ») et l'interface web. Créer un compte de bout en
   bout est un enchaînement d'invocations en base : l'agent web remplit le
   formulaire, une invocation lit le code de confirmation dans la boîte
-  mail ou les SMS, « Appeler un humain » (Q97) lui fait résoudre un
-  captcha dans l'écran du vrai Chrome, montré par MC, et le compte est écrit en
+  mail ou les SMS, « Appeler un humain » fait résoudre un captcha par
+  un humain, et le compte est écrit en
   base par la capacité d'écriture générique ; les colonnes secrètes des
   comptes (mot de passe, cookies) ne sont jamais marquées lisibles dans
   leur vue de table. **Un connecteur n'est pas du
@@ -430,40 +457,11 @@ discutable, qui peut un jour changer, se règle depuis Mission Control.**
 
 ## Étape 5 — Construction
 
-- [ ] **Construire le vrai produit.** Pas de prospection lourde sans
-  pouvoir encaisser. Une invocation conçoit le produit et écrit sa fiche
-  produit (table `product_sheets`, lot 8), en partant du POC et de toutes
-  les demandes des clients du business (`customer_requests`) ; une autre
-  les critique, puis Julien valide dans un ticket, en fixant le prix
-  définitif. Le produit est payant : on paie pour avoir un compte et
-  utiliser le service (Q91). Serge le construit ensuite avec un duo de
-  deux invocations LLM du niveau « code », réglées en base : un
-  constructeur qui écrit et lance le produit dans un chantier (un
-  conteneur), et un relecteur qui ne voit jamais le code, l'essaie comme
-  un prospect dans un navigateur, puis répond « bon », « à corriger » ou
-  « il faut une nouvelle capacité ». Aucune ligne de code ne leur est
-  propre. Le produit est essayé en staging, avec Stripe en mode test, puis
-  par un humain, depuis le lien d'un ticket de test qui n'expire jamais.
-  Après sa validation, Serge crée le produit et son prix dans Stripe par
-  l'outil « Créer un prix Stripe », qui inscrit sur le prix l'identifiant
-  du business, pour que chaque abonnement soit rattaché au bon business
-  (Q76). Le produit est mis en ligne sur un domaine que Serge achète seul,
-  une fois son nom validé dans le ticket du plan (Q91). Serge
-  fait enfin, seul et avec sa carte, un paiement de test de 1 € qu'il se
-  rembourse, pour vérifier que tout marche. Le détail est dans
-  [`docs/LOT10_CONCEPTION.md`](docs/LOT10_CONCEPTION.md).
-
-- [ ] **Mettre en ligne et ranger les fichiers.** Les livrables doivent
-  être en ligne et faciles à retrouver. Serge les publie sur son serveur,
-  chacun dans son propre conteneur, avec ses propres données, sans accès
-  à la base de Serge : en staging sur `staging-<business>.<domaine>`,
-  puis en prod, sur un sous-domaine pour un POC et sur un domaine acheté
-  pour le business principal (Q91). Chaque version d'un livrable est
-  rangée dans son propre dossier (le business, le livrable, puis le numéro
-  de version), et n'est plus jamais modifiée une fois publiée. Chaque
-  fichier a sa fiche dans la base. Publier est une capacité générale
-  (« publier cette version en staging ou en prod »), réglée par ses
-  paramètres, qui sert à tous les livrables (lot 10, PR 3).
+Faite aux lots 10 et 11 : concevoir le produit et sa fiche, le
+construire dans un chantier, le relire, le mettre en ligne sur son
+domaine, le mettre en vente et faire le paiement test de 1 € (voir
+[`docs/etapes/5-construction.md`](docs/etapes/5-construction.md)). Les
+versions suivantes d'un produit sont au lot 16.
 
 ---
 
