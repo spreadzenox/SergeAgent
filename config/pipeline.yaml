@@ -1488,7 +1488,7 @@ tools:
         - {id: de_cote, table: ventures, column: lifecycle, fixed: PARKED}
         - {id: vieux, table: ventures, column: smoke_ended_at, operator: '<', days_ago: jours}
       params:
-        - {name: jours, type: integer, required: true, description: L'âge maximum, en jours.}
+        - {name: jours, type: integer, required: true, description: 'L''âge maximum, en jours.'}
 writable_tables:
   - table: listen_cycles
     insert: true
@@ -5993,7 +5993,7 @@ invocations:
         params:
           venture_id: {source: task, value: venture_id}
     output:
-      - {path: bilan, type: text, description: Le bilan du test, en quelques lignes.}
+      - {path: bilan, type: text, description: 'Le bilan du test, en quelques lignes.'}
     writes:
       - table: test_reports
         operation: update
@@ -6079,7 +6079,7 @@ invocations:
         params:
           venture_id: {source: task, value: venture_id}
     output:
-      - {path: lecons, type: list, required: false, max_items: 2, description: Les leçons, deux au plus.}
+      - {path: lecons, type: list, required: false, max_items: 2, description: 'Les leçons, deux au plus.'}
       - {path: lecons.lecon, type: text, description: 'La leçon, en une phrase, avec d''où elle vient.'}
     writes:
       - table: lessons
@@ -6312,9 +6312,9 @@ invocations:
         mode: given
         label: Les canaux branchés
     output:
-      - {path: campagnes, type: list, min_items: 1, description: Les campagnes lourdes, une par canal.}
+      - {path: campagnes, type: list, min_items: 1, description: 'Les campagnes lourdes, une par canal.'}
       - {path: campagnes.canal, type: text, description: Le numéro du canal.}
-      - {path: campagnes.cible, type: text, description: Les prospects visés, précisément.}
+      - {path: campagnes.cible, type: text, description: 'Les prospects visés, précisément.'}
       - {path: campagnes.angle, type: text, description: Ce que les messages mettent en avant.}
       - {path: compte_rendu, type: text, description: 'Ce que tu as décidé et pourquoi, en deux phrases.'}
     writes:
@@ -9345,7 +9345,7 @@ changes:
   - id: lot12_poc_sans_prospects_campagne
     why: Le volume d'une campagne est fixé quand elle démarre, par les réglages de son canal (Q93).
     invocation: concevoir_poc
-    write: 7
+    write: 6
     remove_write_values: [n_target]
   - id: lot12_poc_canaux_branches
     why: La conception voit les canaux branchés sur ce serveur.

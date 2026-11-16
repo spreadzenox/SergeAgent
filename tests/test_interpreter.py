@@ -26,12 +26,15 @@ from serge.coupe_circuit import set_heartbeat  # noqa: E402
 from serge.db.boot import init_schema  # noqa: E402
 from serge.db.store import open_db  # noqa: E402
 from serge.interpreter import tools as tools_mod  # noqa: E402
-from serge.interpreter.triggers import fire_button, fire_due_triggers  # noqa: E402
 from serge.interpreter.queue import (  # noqa: E402
     process_one,
     resume_interrupted,
 )
 from serge.interpreter.tasks import enqueue_task, start_task  # noqa: E402
+from serge.interpreter.triggers import (  # noqa: E402
+    fire_button,
+    fire_due_triggers,
+)
 from serge.llm.client import ChatResult, ToolCall  # noqa: E402
 from serge.pipeline_seed import seed_pipeline  # noqa: E402
 from tests.taches_fixtures import (  # noqa: E402

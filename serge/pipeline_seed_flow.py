@@ -22,7 +22,6 @@ from serge.seed_base import (
     seed_params,
 )
 
-
 LANES = ('', 'real', 'trial')
 
 

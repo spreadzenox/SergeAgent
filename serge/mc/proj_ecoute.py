@@ -7,8 +7,8 @@ import sqlite3
 from collections.abc import Mapping
 from typing import Any
 
-from serge.interpreter.triggers import trigger_refusal
 from serge.interpreter.rules import quota_usage
+from serge.interpreter.triggers import trigger_refusal
 from serge.mc.proj_etape import lister_invocations
 
 ETAPE = 'pre_prospection'

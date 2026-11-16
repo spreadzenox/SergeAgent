@@ -47,7 +47,7 @@ def _days(conn: sqlite3.Connection, venture: str, maximum: int) -> int:
     """La durée d'un test : celle du dernier plan validé du POC, au plus
     le maximum réglé."""
     row = conn.execute(
-        "SELECT duration_days FROM product_plans WHERE venture_id=?"
+        'SELECT duration_days FROM product_plans WHERE venture_id=?'
         " AND kind='poc' AND status='validated'"
         ' ORDER BY created_at DESC, rowid DESC LIMIT 1',
         (venture,),

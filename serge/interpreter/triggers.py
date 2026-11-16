@@ -270,7 +270,7 @@ def fire_button(
     lance une tâche d'essai.
     """
     row = conn.execute(
-        "SELECT invocation_id, lane FROM triggers WHERE id=?"
+        'SELECT invocation_id, lane FROM triggers WHERE id=?'
         " AND event='button' AND enabled=1 AND deleted_at=''",
         (trigger_id,),
     ).fetchone()

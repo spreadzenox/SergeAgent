@@ -81,7 +81,7 @@ class McSystemTests(McBrowserCase):
             )
             add_address(conn, 'p2', 'email', 'bob@x.io')
             conn.execute(
-                'INSERT INTO campaigns(id, venture_id, family, channel,'
+                'INSERT INTO campaigns(id, venture_id, phase, channel,'
                 ' state, n_target, created_at, updated_at)'
                 " VALUES('c1','v1','named','email','RUNNING',10,?,?)",
                 (iso, iso),

@@ -74,7 +74,7 @@ class PolicyStoreTests(unittest.TestCase):
             'standing.capital_min doit rester ≤ standing.capital_max',
         )
         self.conn.execute(
-            'INSERT INTO campaigns(id, venture_id, family, channel, state,'
+            'INSERT INTO campaigns(id, venture_id, phase, channel, state,'
             " n_target, created_at, updated_at) VALUES('c', 'v', 'named',"
             " 'email', 'RUNNING', 10, 't', 't')"
         )

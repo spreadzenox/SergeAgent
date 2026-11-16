@@ -171,7 +171,7 @@ class FauxModeles:
                 },
             ),
             (
-                'vient d\'être arrêté',
+                "vient d'être arrêté",
                 'lecon',
                 {'lecons': [{'lecon': 'Deux prospects ne disent rien.'}]},
             ),
@@ -194,7 +194,11 @@ def _dns(domaine: str, _resolver: Any = None) -> tuple[bool | None, str]:
 
 class ChaineCase(unittest.TestCase):
     def setUp(self) -> None:
-        self.email, self.voix, self.pigeon = FauxCanal(), FauxCanal(), FauxCanal()
+        self.email, self.voix, self.pigeon = (
+            FauxCanal(),
+            FauxCanal(),
+            FauxCanal(),
+        )
         for patcher in (
             mock.patch.dict(
                 ADAPTERS,
@@ -366,7 +370,9 @@ class ChaineTests(ChaineCase):
             self._regler('mesurer_test', nom, valeur)
         self._suivre(campagne, 9)
         self.assertEqual(
-            self._un('SELECT state, end_reason FROM campaigns WHERE id=?', campagne),
+            self._un(
+                'SELECT state, end_reason FROM campaigns WHERE id=?', campagne
+            ),
             ('FINISHED', 'tous ses prospects sont contactés et relancés'),
         )
         contactes, reponses, points, verdict, bilan = self._un(
@@ -386,7 +392,9 @@ class ChaineTests(ChaineCase):
         self._vider()
         self.assertEqual(self._statut('v1'), 'PRODUCT_BUILDING')
         self.assertEqual(
-            self._un('SELECT status, decision, chosen_venture_id FROM principal_choices'),
+            self._un(
+                'SELECT status, decision, chosen_venture_id FROM principal_choices'
+            ),
             ('DECIDED', 'valider', 'v1'),
         )
         # La conception du produit fini attend (l'étape 5 est éteinte ici).
@@ -424,7 +432,11 @@ class ChaineTests(ChaineCase):
             " VALUES('tx1', 'v1', 'invoice', 29, 'pi_1', 'paid', ?, ?, ?)",
             (
                 json.dumps(
-                    {'receipt': {'customer_email': 'Marie.Dupont@dupont-batiment.fr'}}
+                    {
+                        'receipt': {
+                            'customer_email': 'Marie.Dupont@dupont-batiment.fr'
+                        }
+                    }
                 ),
                 T,
                 T,
@@ -457,7 +469,10 @@ class ChaineTests(ChaineCase):
         # 0 point, sous les 10 demandés : arrêté, avec la raison.
         self.assertEqual(
             self._un('SELECT verdict, verdict_reason FROM test_reports'),
-            ('non_retenu', '2 prospect(s) contacté(s), moins que les 30 demandés'),
+            (
+                'non_retenu',
+                '2 prospect(s) contacté(s), moins que les 30 demandés',
+            ),
         )
         self.assertEqual(self._statut('v1'), 'KILLED')
         self.assertEqual(
@@ -500,7 +515,8 @@ class CanalDePlusTests(ChaineCase):
         # 1. son adaptateur ; 2. son réglage de volume ; 3. son invocation
         # de premier message et son lien.
         patcher = mock.patch.dict(
-            ADAPTERS, {'pigeon': _adaptateur('pigeon', 'colombier', self.pigeon)}
+            ADAPTERS,
+            {'pigeon': _adaptateur('pigeon', 'colombier', self.pigeon)},
         )
         patcher.start()
         self.addCleanup(patcher.stop)
@@ -555,7 +571,13 @@ class CanalDePlusTests(ChaineCase):
         )
         for table, lignes in avant.items():
             self.assertEqual(
-                [r for r in self.conn.execute(f'SELECT * FROM {table} ORDER BY 1, 2') if r in lignes],
+                [
+                    r
+                    for r in self.conn.execute(
+                        f'SELECT * FROM {table} ORDER BY 1, 2'
+                    )
+                    if r in lignes
+                ],
                 lignes,
                 f'{table} : rien de ce qui existait n’a changé',
             )

@@ -23,7 +23,6 @@ from typing import Any
 
 from serge.db.store import append_event, utcnow
 from serge.interpreter.flow import pass_links
-from serge.interpreter.triggers import fire_row_triggers
 from serge.interpreter.intro import serge_text
 from serge.interpreter.output import check_answer, load_fields, parse_answer
 from serge.interpreter.prompt import (
@@ -41,6 +40,7 @@ from serge.interpreter.tasks import (
     task_params,
 )
 from serge.interpreter.tools import fixed_params, run_capability
+from serge.interpreter.triggers import fire_row_triggers
 from serge.interpreter.writer import write_answer
 from serge.llm.client import ChatResult
 from serge.llm.runtime import budget_reached

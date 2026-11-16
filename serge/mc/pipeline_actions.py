@@ -14,10 +14,9 @@ from typing import TYPE_CHECKING, Any, Protocol
 
 from serge.db.store import append_event, utcnow
 from serge.interpreter.flow import pass_waiting, set_link_auto
-from serge.interpreter.triggers import fire_button, trigger_refusal
 from serge.interpreter.restart import RestartError, restart_from
 from serge.interpreter.tasks import cancel_task
-from serge.trial_run import stop_trial
+from serge.interpreter.triggers import fire_button, trigger_refusal
 from serge.llm.catalog import (
     check_model,
     for_page,
@@ -26,6 +25,7 @@ from serge.llm.catalog import (
 )
 from serge.mc.proj_vues import changer_comparaison
 from serge.policy_store import policy_en_vigueur
+from serge.trial_run import stop_trial
 
 # Un identifiant de modèle : « openai/gpt-5-mini », vide pour celui de
 # l'installation.

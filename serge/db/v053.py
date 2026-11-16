@@ -21,8 +21,7 @@ Les campagnes :
 - ``campaigns.family`` devient ``phase`` (``smoke`` ou ``full``), partout
   où la base nomme cette colonne ; la campagne reçoit sa cible, son angle,
   son volume par semaine, son début, sa fin prévue, la raison de sa fin et
-  le compte de ses recherches de prospects restées vides ; les colonnes
-  que rien n'écrivait sont retirées ;
+  le compte de ses recherches de prospects restées vides ;
 - ``contact_addresses.source_url`` : la page où l'adresse a été trouvée ;
   ``contacts.note`` : qui est ce prospect, et pourquoi il est visé ;
 - ``test_reports`` : le compte rendu d'un test léger ;
@@ -57,7 +56,6 @@ _AJOUTS = (
     ('contact_addresses', 'source_url', "TEXT NOT NULL DEFAULT ''"),
     ('contacts', 'note', "TEXT NOT NULL DEFAULT ''"),
 )
-_RETRAITS = ('budget_cap_eur', 'thresholds_json', 'window_start', 'window_end')
 # Les tables de la base qui nomment une colonne des campagnes.
 _NOMMENT = (
     ('writable_columns', 'table_name', 'column_name'),
@@ -111,18 +109,6 @@ def apply_v053(connection: sqlite3.Connection) -> None:
                 f'ALTER TABLE {table} ADD COLUMN {colonne} {sorte}'
             )
     _phase(connection)
-    presentes = _colonnes(connection, 'campaigns')
-    for colonne in _RETRAITS:
-        if colonne in presentes:
-            connection.execute(f'ALTER TABLE campaigns DROP COLUMN {colonne}')
-    for table, _ou, nom in _NOMMENT:
-        if _existe(connection, table):
-            trous = ','.join('?' * len(_RETRAITS))
-            connection.execute(
-                f"DELETE FROM {table} WHERE table_name='campaigns'"
-                f' AND {nom} IN ({trous})',
-                _RETRAITS,
-            )
     connection.executescript(
         """
         CREATE TABLE IF NOT EXISTS trigger_row_conditions (

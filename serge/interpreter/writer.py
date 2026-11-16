@@ -455,8 +455,7 @@ def _update(
     )
     sets = ', '.join(f'"{safe_name(c)}"=?' for c in changes)
     conn.execute(
-        f'UPDATE "{table}" SET {sets}'
-        f' WHERE "{safe_name(key_column)}"=?{lane}',
+        f'UPDATE "{table}" SET {sets} WHERE "{safe_name(key_column)}"=?{lane}',
         [*changes.values(), key],
     )
     annulees = cancel_tasks_on_change(conn, table, ids, values, utcnow())

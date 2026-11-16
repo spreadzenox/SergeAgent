@@ -55,8 +55,7 @@ def apply_principal(
     choice = str(args.get('choice_id') or '')
     acte = str(args.get('acte') or '')
     row = conn.execute(
-        'SELECT proposed_venture_id, status FROM principal_choices'
-        ' WHERE id=?',
+        'SELECT proposed_venture_id, status FROM principal_choices WHERE id=?',
         (choice,),
     ).fetchone()
     if row is None or str(row[1]) != 'PROPOSED':

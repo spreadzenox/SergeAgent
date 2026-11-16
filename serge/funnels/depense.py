@@ -16,10 +16,32 @@ Les achats (publicité, domaines) s'ajouteront quand ils existeront.
 from __future__ import annotations
 
 import sqlite3
+from datetime import datetime
 from typing import Any
 
 from serge.llm.runtime import VERDICTS_COMPTES
 from serge.policy_store import setting_value
+
+
+def call_seconds(conn: sqlite3.Connection, venture_id: str) -> float:
+    """La durée des appels d'un business, en secondes : ses tâches d'appel
+    terminées, du décroché à la fin. Un appel coupé par un redémarrage du
+    pont ne compte pas : sa fin n'est pas celle de l'appel."""
+    total = 0.0
+    for started, finished in conn.execute(
+        'SELECT t.started_at, t.finished_at FROM tasks t JOIN task_params p'
+        " ON p.task_id=t.id AND p.name='venture_id'"
+        " WHERE t.queue_id=? AND p.value=? AND t.status='done'"
+        " AND t.started_at<>'' AND t.finished_at<>''",
+        ('voice', venture_id),
+    ).fetchall():
+        try:
+            debut = datetime.fromisoformat(str(started))
+            fin = datetime.fromisoformat(str(finished))
+        except ValueError:
+            continue
+        total += max(0.0, (fin - debut).total_seconds())
+    return total
 
 
 def depense_business(
@@ -30,8 +52,6 @@ def depense_business(
     Returns:
         ``{modeles_eur, jetons_sans_cout, minutes, appels_eur, total_eur}``.
     """
-    from serge.voice.agent import call_seconds
-
     eur_per_usd = float(setting_value(conn, 'budget.eur_per_usd') or 0)
     prix_minute = float(setting_value(conn, 'budget.call_minute_eur') or 0)
     row = conn.execute(

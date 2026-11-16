@@ -17,7 +17,11 @@ import sqlite3
 from typing import Any
 
 from serge.campaigns.start import SMOKE
-from serge.funnels.depense import depense_business, points_par_euro, texte_euros
+from serge.funnels.depense import (
+    depense_business,
+    points_par_euro,
+    texte_euros,
+)
 from serge.funnels.points import points_prospects, texte_points
 from serge.interpreter.settings import load_settings
 
@@ -81,7 +85,10 @@ def measure_test(
     for found in best.values():
         reactions[found['reaction']] = reactions.get(found['reaction'], 0) + 1
     lines = [
-        *(f'{channel} : {count} contacté(s)' for channel, count in by_channel.items()),
+        *(
+            f'{channel} : {count} contacté(s)'
+            for channel, count in by_channel.items()
+        ),
         'Réactions : '
         + (
             ', '.join(f'{n} « {r} »' for r, n in sorted(reactions.items()))

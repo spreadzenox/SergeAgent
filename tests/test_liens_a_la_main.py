@@ -26,8 +26,8 @@ sys.path.insert(0, str(ROOT))
 from serge.coupe_circuit import set_heartbeat  # noqa: E402
 from serge.db.boot import init_schema  # noqa: E402
 from serge.interpreter.flow import pass_waiting, set_link_auto
-from serge.interpreter.triggers import fire_button
 from serge.interpreter.queue import process_one  # noqa: E402
+from serge.interpreter.triggers import fire_button
 from serge.mc.proj_objet import project_objet  # noqa: E402
 from serge.tickets.admins import add_admin  # noqa: E402
 from tests.mc_server_case import McBrowserCase  # noqa: E402

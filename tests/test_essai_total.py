@@ -132,7 +132,10 @@ class FauxModeles:
             'trier': {'besoin_nouveau': [], 'bruit': [], 'enrichit': []},
             'formuler': {'fiches': []},
             'choisir': {
-                'choix': [{'business': n, 'raison': 'Seul candidat.'} for n in numeros[:1]],
+                'choix': [
+                    {'business': n, 'raison': 'Seul candidat.'}
+                    for n in numeros[:1]
+                ],
                 'note': '',
             },
         }[role]
@@ -248,13 +251,13 @@ class EssaiTotalTests(unittest.TestCase):
         self.conn.commit()
         self._vider()
 
-    def test_a_partir_de_l_etape_3_un_e_mail_un_appel_et_la_suite(self) -> None:
+    def test_a_partir_de_l_etape_3_un_e_mail_un_appel_et_la_suite(
+        self,
+    ) -> None:
         essai = self._essai(FORMULAIRE)
         self.assertEqual(self._echecs(), [])
         self.assertEqual(active_run(self.conn), essai)
-        venture, nom, marque = self._un(
-            'SELECT id, name, trial FROM ventures'
-        )
+        venture, nom, marque = self._un('SELECT id, name, trial FROM ventures')
         self.assertEqual((nom, marque), ('Calculatrice', 1))
         contact, etape = self._un(
             "SELECT id, funnel_state FROM contacts WHERE display='Essai Testeur'"
@@ -286,7 +289,9 @@ class EssaiTotalTests(unittest.TestCase):
             [tuple(e) for e in envois], [('email', 'sent'), ('voice', 'sent')]
         )
         # Le modèle a lu la fiche produit pour écrire.
-        self.assertIn('Pas de fonctions scientifiques', self.modeles.recu['email'][0])
+        self.assertIn(
+            'Pas de fonctions scientifiques', self.modeles.recu['email'][0]
+        )
         # Les deux campagnes sont closes aussitôt, le test mesuré et retenu
         # quoi qu'il arrive (0 point), le principal proposé.
         self.assertEqual(
@@ -369,7 +374,11 @@ class EssaiTotalTests(unittest.TestCase):
                 ),
                 'places': [
                     quota_usage(self.conn, q)[:2]
-                    for q in ('places_de_test', 'place_lourde', 'cycles_ouverts')
+                    for q in (
+                        'places_de_test',
+                        'place_lourde',
+                        'cycles_ouverts',
+                    )
                 ],
             }
 
@@ -401,7 +410,9 @@ class EssaiTotalTests(unittest.TestCase):
         self.assertNotIn('Devis', self.modeles.recu['choisir'][0])
         self.assertIn('Calculatrice', self.modeles.recu['choisir'][0])
 
-    def test_a_partir_de_l_etape_1_l_ecoute_est_petite_et_marquee(self) -> None:
+    def test_a_partir_de_l_etape_1_l_ecoute_est_petite_et_marquee(
+        self,
+    ) -> None:
         self._essai({**FORMULAIRE, DEPART: ''})
         self.assertEqual(self._echecs(), [])
         # Un cycle d'essai, fermé par « Choisir les business ».
@@ -451,7 +462,9 @@ class EssaiTotalTests(unittest.TestCase):
             [('full', 'email', 'FINISHED'), ('full', 'voice', 'FINISHED')],
         )
         self.assertEqual([m.address for m in self.mails], ['essai@exemple.fr'])
-        self.assertEqual([c['to_e164'] for c in self.composes], ['+33600000001'])
+        self.assertEqual(
+            [c['to_e164'] for c in self.composes], ['+33600000001']
+        )
         self.assertEqual(
             self._un("SELECT title, trial FROM tickets WHERE type='FYI'"),
             ("La prospection lourde d'un business est lancée", 1),
@@ -486,7 +499,9 @@ class EssaiTotalTests(unittest.TestCase):
 
     def test_la_case_valider_fait_attendre_le_premier_message(self) -> None:
         self._essai({**FORMULAIRE, 'Valider chaque brouillon': '1'})
-        self.assertEqual(self._un('SELECT validate_drafts FROM ventures'), (1,))
+        self.assertEqual(
+            self._un('SELECT validate_drafts FROM ventures'), (1,)
+        )
         self.assertEqual(self.mails, [])
         self.assertEqual(self.composes, [])
         envois = self.conn.execute(
@@ -498,7 +513,7 @@ class EssaiTotalTests(unittest.TestCase):
         )
         self.assertEqual(
             self._un(
-                "SELECT COUNT(*), MIN(trial) FROM tickets"
+                'SELECT COUNT(*), MIN(trial) FROM tickets'
                 " WHERE type='CONVERSATION' AND state='OPEN'"
             ),
             (2, 1),

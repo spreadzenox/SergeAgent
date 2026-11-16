@@ -91,7 +91,7 @@ class McPolicyTests(McBrowserCase):
         conn = open_db(self.db_path)
         try:
             conn.execute(
-                'INSERT INTO campaigns(id, venture_id, family, channel, state,'
+                'INSERT INTO campaigns(id, venture_id, phase, channel, state,'
                 ' n_target, created_at, updated_at)'
                 " VALUES('c1', 'v1', 'named', 'email', 'RUNNING', 10, 't', 't')"
             )

@@ -122,7 +122,11 @@ PIPELINE = {
             ],
         },
         {'id': 't_vrai_seulement', 'type': 'capability', 'capability': 'echo'},
-        {'id': 't_essai_seulement', 'type': 'capability', 'capability': 'echo'},
+        {
+            'id': 't_essai_seulement',
+            'type': 'capability',
+            'capability': 'echo',
+        },
         {'id': 't_suite', 'type': 'capability', 'capability': 'echo'},
         # Ferme tous les cycles ouverts (comme « Abandonner le cycle »).
         {
@@ -266,9 +270,7 @@ class ChaineTests(CouloirCase):
         )
         # La même page est gardée dans chaque couloir : pas un doublon.
         self.assertEqual(
-            sorted(
-                self.conn.execute('SELECT url, trial FROM listen_docs')
-            ),
+            sorted(self.conn.execute('SELECT url, trial FROM listen_docs')),
             [
                 ('https://exemple.fr/besoin', 0),
                 ('https://exemple.fr/besoin', 1),
@@ -276,7 +278,9 @@ class ChaineTests(CouloirCase):
         )
         # La suite hérite du couloir ; chaque lien d'un seul couloir ne
         # part que dans le sien.
-        self.assertEqual(self._taches('t_choisir'), [('done', essai), ('done', '')])
+        self.assertEqual(
+            self._taches('t_choisir'), [('done', essai), ('done', '')]
+        )
         self.assertEqual(self._taches('t_essai_seulement'), [('done', essai)])
         self.assertEqual(self._taches('t_vrai_seulement'), [('done', '')])
         self.assertNotEqual(essai, vraie)
@@ -344,7 +348,10 @@ class ChaineTests(CouloirCase):
         process_one(self.conn, 'works', now=MAINTENANT)
         self.assertEqual(
             self._business(),
-            {'Devis': (0, 'POC_SELECTED', '40'), 'Calcul': (1, 'CANDIDATE', '1')},
+            {
+                'Devis': (0, 'POC_SELECTED', '40'),
+                'Calcul': (1, 'CANDIDATE', '1'),
+            },
         )
         self.assertIn(
             'Business en test : 1, au plus 0',
@@ -448,7 +455,9 @@ class RepartirTests(CouloirCase):
         self.assertEqual(parents[0], depart)
         self.assertTrue(parents[1])
 
-    def test_une_tache_en_cours_ou_d_un_vieil_essai_ne_repart_pas(self) -> None:
+    def test_une_tache_en_cours_ou_d_un_vieil_essai_ne_repart_pas(
+        self,
+    ) -> None:
         essai = fire_button(self.conn, 't_bouton_essai', {'nom': 'Calcul'})
         assert essai is not None
         self.conn.execute(

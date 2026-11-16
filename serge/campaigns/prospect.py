@@ -80,7 +80,9 @@ def _address_refusal(
     return '' if receives is not False else f'{why} ({domain})'
 
 
-def _already(conn: sqlite3.Connection, venture: str, kind: str, norm: str) -> bool:
+def _already(
+    conn: sqlite3.Connection, venture: str, kind: str, norm: str
+) -> bool:
     return (
         conn.execute(
             'SELECT 1 FROM contact_addresses a JOIN contacts c'
@@ -161,8 +163,17 @@ def add_prospect(
         'INSERT INTO touches(id, campaign_id, contact_id, venture_id,'
         ' channel, address, kind, status, idempotency_key, created_at,'
         " updated_at) VALUES(?,?,?,?,?,?, 'first', 'to_write', ?, ?, ?)",
-        (touch, row['id'], contact, venture, row['channel'], address,
-         touch, now, now),
+        (
+            touch,
+            row['id'],
+            contact,
+            venture,
+            row['channel'],
+            address,
+            touch,
+            now,
+            now,
+        ),
     )
     conn.execute(
         'UPDATE campaigns SET dry_searches=0 WHERE id=?', (row['id'],)

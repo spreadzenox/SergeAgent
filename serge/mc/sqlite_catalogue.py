@@ -136,13 +136,13 @@ CATALOGUE: dict[str, tuple[str, str, str, str]] = {
     ),
     'contacts': (
         'Une fiche par personne, dans un business : où elle en est.',
-        'Tool contact_upsert, qualification, réponses reçues.',
+        '« Ajouter un prospect », « Créer un contact », réponses reçues.',
         'contact_addresses, touches, inbound_events, campagnes.',
         'funnel_state = l’étape du prospect, regime = qui a écrit en premier.',
     ),
     'contact_addresses': (
         'Les adresses d’une personne : une ligne par adresse, jamais écrasée.',
-        'Tool contact_upsert.',
+        '« Ajouter un prospect », « Noter une adresse ».',
         'Envois (e-mail, appel), relève de la boîte mail.',
         'channel = email, phone ou un réseau. active = 0 : ne plus écrire là.',
     ),

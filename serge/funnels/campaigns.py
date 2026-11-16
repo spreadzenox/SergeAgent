@@ -30,7 +30,7 @@ def _new_id() -> str:
 
 def _get(conn: sqlite3.Connection, campaign_id: str) -> sqlite3.Row:
     row = conn.execute(
-        'SELECT id, venture_id, family, channel, state, n_target,'
+        'SELECT id, venture_id, phase AS family, channel, state, n_target,'
         ' budget_cap_eur, window_start, window_end, thresholds_json'
         ' FROM campaigns WHERE id=?',
         (campaign_id,),
@@ -107,7 +107,7 @@ def create_campaign(
     campaign_id = _new_id()
     moment = utcnow()
     conn.execute(
-        'INSERT INTO campaigns(id, venture_id, family, channel, state,'
+        'INSERT INTO campaigns(id, venture_id, phase, channel, state,'
         ' n_target, budget_cap_eur, window_start, window_end,'
         " thresholds_json, created_at, updated_at) VALUES(?,?,?,?,'DRAFT',"
         '?,?,?,?,?,?,?)',

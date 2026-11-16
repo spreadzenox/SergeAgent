@@ -33,9 +33,9 @@ sys.path.insert(0, str(ROOT))
 from serge import aide_humaine  # noqa: E402
 from serge.coupe_circuit import set_heartbeat  # noqa: E402
 from serge.db.boot import init_schema  # noqa: E402
-from serge.interpreter.triggers import fire_button  # noqa: E402
 from serge.interpreter.queue import process_one  # noqa: E402
 from serge.interpreter.tasks import enqueue_task  # noqa: E402
+from serge.interpreter.triggers import fire_button  # noqa: E402
 from serge.llm.client import ChatResult, ToolCall  # noqa: E402
 from serge.pipeline_seed import seed_pipeline  # noqa: E402
 from serge.tickets.reponses import noter_reponse  # noqa: E402

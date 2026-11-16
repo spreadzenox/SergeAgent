@@ -46,7 +46,7 @@ class SqliteMiroirTests(unittest.TestCase):
         fiche = project_table(self.conn, 'contacts')
         assert fiche is not None
         self.assertIn('par personne', fiche['pourquoi'])
-        self.assertIn('contact_upsert', fiche['champs'][0]['v'])
+        self.assertIn('Ajouter un prospect', fiche['champs'][0]['v'])
         adresses = project_table(self.conn, 'contact_addresses')
         assert adresses is not None
         self.assertIn('par adresse', adresses['pourquoi'])
