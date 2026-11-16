@@ -217,6 +217,31 @@ class AppelsTests(unittest.TestCase):
             serge_text(self.conn, 'tools_exhausted'),
         )
 
+    def test_un_appel_illisible_ne_compte_pas_dans_la_limite(self) -> None:
+        """Un outil permis une seule fois : un premier appel aux paramètres
+        coupés ne part pas et ne lui enlève pas son droit (« Mettre en
+        vente », 16 novembre 2026)."""
+        self.conn.execute(
+            "UPDATE invocation_tools SET max_calls='1' WHERE tool_id='repeter'"
+        )
+        coupe = ChatResult(
+            '', 7, 3, 'faux', 1, (ToolCall('c1', 'repeter', '{"x": 1'),)
+        )
+        bon = ChatResult(
+            '', 7, 3, 'faux', 1, (ToolCall('c2', 'repeter', '{"x": 2}'),)
+        )
+        script = Script(coupe, bon, REPONSE)
+        statut, _ = self._tourner(script)
+        self.assertEqual(statut, 'done')
+        resultats = [
+            json.loads(m['content'])
+            for m in script.appels[2]['messages']
+            if m.get('role') == 'tool'
+        ]
+        self.assertEqual(resultats[0]['code'], 'arguments_illisibles')
+        self.assertNotEqual(resultats[1].get('code'), 'limite_atteinte')
+        self.assertIs(resultats[1].get('ok', True), True)
+
     def test_un_resultat_d_outil_geant_est_coupe(self) -> None:
         geant = ToolCall('c1', 'repeter', json.dumps({'x': 'a' * 50000}))
         script = Script(ChatResult('', 1, 1, 'faux', 1, (geant,)), REPONSE)

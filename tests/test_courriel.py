@@ -44,6 +44,12 @@ from serge.sandbox.docker import DockerError  # noqa: E402
 from tests.test_chantier import faux_docker  # noqa: E402
 
 LIEN = 'https://staging-calcu-devis.serge.exemple.fr/valider?jeton=abc'
+CLOUDFLARE_1010 = {
+    'title': 'Error 1010: Access denied',
+    'status': 403,
+    'detail': "The site owner has blocked access based on your browser's"
+    ' signature.',
+}
 
 
 class _Boites(http.server.BaseHTTPRequestHandler):
@@ -62,7 +68,19 @@ class _Boites(http.server.BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
+    def _bloque(self) -> bool:
+        """Comme le pare-feu de Cloudflare devant Resend : le nom de client
+        de Python par défaut est refusé (16 novembre 2026)."""
+        if self.path.startswith('/api/v1/') or not self.headers.get(
+            'User-Agent', ''
+        ).startswith('Python-urllib'):
+            return False
+        self._envoyer(403, CLOUDFLARE_1010)
+        return True
+
     def do_GET(self) -> None:  # noqa: N802 — le nom de http.server
+        if self._bloque():
+            return
         chemin = urllib.parse.urlsplit(self.path)
         query = dict(urllib.parse.parse_qsl(chemin.query))
         if chemin.path == '/api/v1/search':
@@ -102,9 +120,11 @@ class _Boites(http.server.BaseHTTPRequestHandler):
     def do_POST(self) -> None:  # noqa: N802 — le nom de http.server
         longueur = int(self.headers.get('Content-Length') or 0)
         corps = json.loads(self.rfile.read(longueur) or b'{}')
+        if self._bloque():
+            return
         self.cles.append(corps)
         if self.refuser_cle:
-            self._envoyer(403, {'message': 'API key is invalid'})
+            self._envoyer(403, CLOUDFLARE_1010)
         else:
             self._envoyer(201, {'id': 'cle_1', 'token': 're_produit_secret'})
 
@@ -236,9 +256,11 @@ class CourrielTests(unittest.TestCase):
     def test_un_refus_de_resend_est_dit_clairement(self) -> None:
         _Boites.refuser_cle = True
         with redirect_stderr(io.StringIO()) as journal:
-            with self.assertRaisesRegex(DockerError, 'HTTP 403'):
+            with self.assertRaisesRegex(
+                DockerError, 'HTTP 403 Error 1010: Access denied'
+            ):
                 courriel.cle_produit(self.conn, 'ven_2', 'publier_prod')
-        self.assertIn('API key is invalid', journal.getvalue())
+        self.assertIn('Error 1010', journal.getvalue())
         self.assertFalse((self.secrets / 'resend-ven_2.key').exists())
 
     def test_sans_domaine_d_envoi_rien_ne_passe_en_prod(self) -> None:

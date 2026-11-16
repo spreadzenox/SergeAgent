@@ -180,10 +180,12 @@ def cle_produit(
     data: dict[str, Any] = brut if isinstance(brut, dict) else {}
     cle = str(data.get('token') or '')
     if not reponse.get('ok') or not cle:
+        from serge.connecteurs.appel import raison_du_service
+
         message = (
             f'clé d’envoi du produit pas créée : HTTP {reponse.get("status")}'
-            f' {str(data.get("message") or data.get("erreur") or "")[:200]}'
-        )
+            f' {raison_du_service(data)}'
+        ).strip()
         journal(message)
         raise DockerError(message)
     fichier.parent.mkdir(parents=True, exist_ok=True)

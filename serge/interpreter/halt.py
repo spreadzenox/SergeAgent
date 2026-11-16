@@ -10,9 +10,9 @@ outil :
   s'interrompent pas d'eux-mêmes : le chien de garde de la file
   (``watchdog``) arrête alors son programme, que systemd relance ;
 - **le plafond de dépense d'une tâche** (page Policy, « Dépense maximale
-  d'une tâche ») : exemple, une construction qui a coûté 5,02 € pour un
-  plafond de 5 € s'arrête en échec, avec la raison, et Julien et Clem en
-  sont prévenus ;
+  d'une tâche »), pour sa tentative en cours : exemple, une construction
+  qui a coûté 5,02 € pour un plafond de 5 € s'arrête en échec, avec la
+  raison, et Julien et Clem en sont prévenus ;
 - **une demande à Julien** : l'invocation a appelé « Demander une nouvelle
   capacité » ; la tâche est gelée jusqu'à sa réponse (voir
   ``serge/demande_capacite.py``).
@@ -48,12 +48,21 @@ class TaskFrozen(RuntimeError):
 
 
 def task_spend_eur(conn: sqlite3.Connection, task_id: str) -> float:
-    """Ce qu'une tâche a coûté en appels au modèle, en euros."""
+    """Ce que la tentative en cours d'une tâche a coûté en appels au modèle,
+    en euros : depuis son dernier départ (``tasks.started_at``).
+
+    Une tâche qui repart du début (coupée, sans crédit, dégelée, relancée)
+    a de nouveau tout son plafond : le 15 novembre 2026, une relecture
+    reprise après une panne d'OpenRouter s'arrêtait à cause des 4,5 € de
+    la tentative perdue.
+    """
     policy = policy_en_vigueur(conn)
     taux = float((policy.get('budget') or {}).get('eur_per_usd', 0) or 0)
     row = conn.execute(
-        'SELECT COALESCE(SUM(cost_usd), 0) FROM llm_usage WHERE task_id=?',
-        (task_id,),
+        'SELECT COALESCE(SUM(cost_usd), 0) FROM llm_usage WHERE task_id=?'
+        ' AND created_at >= COALESCE((SELECT started_at FROM tasks'
+        " WHERE id=?), '')",
+        (task_id, task_id),
     ).fetchone()
     return float(row[0]) * taux
 

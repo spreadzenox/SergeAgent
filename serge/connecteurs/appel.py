@@ -44,6 +44,11 @@ from serge.paths import config_root
 from serge.secrets import read_secret_file
 
 TIMEOUT_S = 30
+# Le nom du client dans chaque requête. Sans lui, Python envoie le sien
+# (« Python-urllib »), que le pare-feu de certains services refuse : Resend,
+# derrière Cloudflare, répondait « Error 1010: Access denied » (16 novembre
+# 2026).
+USER_AGENT = 'SergeAgent/1.0'
 # Une valeur propre à l'instance, dans un chemin : {config:<fichier>}.
 _CONFIG = re.compile(r'\{config:([A-Za-z0-9_.-]+)\}')
 # Les paramètres que l'appelant fige, sans les envoyer au service.
@@ -285,7 +290,7 @@ def call_api(
                 },
             )
             return {'ok': False, 'code': 'verrou', 'detail': refus}
-    headers = {'Accept': 'application/json'}
+    headers = {'Accept': 'application/json', 'User-Agent': USER_AGENT}
     if auth == 'bearer':
         secret = read_secret_file(config_root() / 'secrets' / secret_file)
         if not secret:
@@ -317,7 +322,7 @@ def call_api(
         headers['Idempotency-Key'] = f'serge-{empreinte}'
     statut, reponse = _envoyer(url, method, data, headers)
     if statut >= 400 or statut == 0:
-        raison = _raison(reponse)
+        raison = raison_du_service(reponse)
         journal(f'{service_id} {method} {path} : HTTP {statut} {raison}')
     append_event(
         conn,
@@ -356,11 +361,16 @@ def _lire(raw: bytes) -> Any:
         return {'texte': raw.decode('utf-8', 'replace')[:2000]}
 
 
-def _raison(reponse: Any) -> str:
-    """Ce que le service dit d'une erreur (Stripe : ``error.message``)."""
+def raison_du_service(reponse: Any) -> str:
+    """Ce que le service dit d'une erreur : ``error.message`` (Stripe),
+    ``message`` (Resend), ou ``title`` et ``detail`` (une page d'erreur de
+    Cloudflare, devant un service : « Error 1010: Access denied »)."""
     if isinstance(reponse, dict):
         erreur = reponse.get('error') or reponse.get('erreur') or reponse
         if isinstance(erreur, dict):
-            return str(erreur.get('message') or erreur)[:300]
+            texte = erreur.get('message') or ' : '.join(
+                str(erreur[k]) for k in ('title', 'detail') if erreur.get(k)
+            )
+            return str(texte or erreur)[:300]
         return str(erreur)[:300]
     return str(reponse)[:300]

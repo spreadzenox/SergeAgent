@@ -3826,6 +3826,8 @@ invocations:
         quelques requêtes au serveur lancé dans le chantier (curl). Docker
         n'est pas dans le chantier : lance le produit comme le ferait le
         Dockerfile ;
+      - vérifie toujours les certificats TLS, du SMTP comme des API : ne
+        désactive jamais leur vérification ;
       - s'il te manque un outil ou un accès, appelle « Demander une
         nouvelle capacité ».
 
@@ -4926,6 +4928,8 @@ invocations:
         d'essai : http://serge-boite:8025/api/v1/messages) et la session de
         paiement. Docker n'est pas dans le chantier : lance le produit comme
         le ferait le Dockerfile ;
+      - vérifie toujours les certificats TLS, du SMTP comme des API : ne
+        désactive jamais leur vérification ;
       - s'il te manque un outil ou un accès, appelle « Demander une
         nouvelle capacité ».
 
@@ -8005,6 +8009,43 @@ changes:
     invocation: paiement_test
     add_tools:
       - {tool: boite_mail, mode: callable, params: {task_id: {source: task, value: task_id}}}
+
+  - id: certificats_tls_construire_poc
+    why: >-
+      Le constructeur avait désactivé la vérification du certificat SMTP
+      (rejectUnauthorized à false) : les e-mails de la prod pouvaient être
+      lus en chemin (16 novembre 2026).
+    table: invocations
+    where: {id: construire_poc}
+    set:
+      prompt:
+        replace:
+          - old: |-
+              - s'il te manque un outil ou un accès, appelle « Demander une
+                nouvelle capacité ».
+            new: |-
+              - vérifie toujours les certificats TLS, du SMTP comme des API : ne
+                désactive jamais leur vérification ;
+              - s'il te manque un outil ou un accès, appelle « Demander une
+                nouvelle capacité ».
+  - id: certificats_tls_construire_produit
+    why: >-
+      Le constructeur avait désactivé la vérification du certificat SMTP
+      (rejectUnauthorized à false) : les e-mails de la prod pouvaient être
+      lus en chemin (16 novembre 2026).
+    table: invocations
+    where: {id: construire_produit}
+    set:
+      prompt:
+        replace:
+          - old: |-
+              - s'il te manque un outil ou un accès, appelle « Demander une
+                nouvelle capacité ».
+            new: |-
+              - vérifie toujours les certificats TLS, du SMTP comme des API : ne
+                désactive jamais leur vérification ;
+              - s'il te manque un outil ou un accès, appelle « Demander une
+                nouvelle capacité ».
 
 deleted:
   invocations: [demo_ouvrir_cycle, demo_formuler, demo_choisir]

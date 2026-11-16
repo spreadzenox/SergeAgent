@@ -181,14 +181,15 @@ Le runner tourne en continu, en deux copies, une par file
 - Une tâche s'arrête en plein travail, avant son appel au modèle ou son
   outil suivant : si Serge est coupé (elle repart du début au
   redémarrage) ; si elle a dépensé son plafond (« Dépense maximale d'une
-  tâche », page Policy, 5 € au départ : elle échoue et un ticket prévient
-  Julien et Clem) ; si elle demande quelque chose à Julien (« Demander une
+  tâche », page Policy, 5 € au départ, compté sur sa tentative en cours :
+  elle échoue et un ticket prévient Julien et Clem) ; si elle demande quelque chose à Julien (« Demander une
   nouvelle capacité » : elle est gelée, statut `blocked`, jusqu'à sa
   réponse, puis repart du début avec la réponse dans ses paramètres,
   `reponses_de_julien`). Sans crédit chez OpenRouter, elle attend une
   demi-heure au lieu d'échouer, et un ticket prévient. Chaque appel
   d'outil est noté au journal (`tool.call` : l'outil, ses paramètres en
-  court, s'il a marché).
+  court, s'il a marché). Un appel aux paramètres illisibles ne part pas
+  et ne compte pas dans la limite d'appels de son outil.
 - Deux plafonds de dépense, réglés sur la page Policy : celui du jour (par
   exemple 5 €) et celui du mois (par exemple 50 €), qui borne ce que Serge
   nous coûte en IA ; les achats de Serge pour ses business n'y comptent pas.
