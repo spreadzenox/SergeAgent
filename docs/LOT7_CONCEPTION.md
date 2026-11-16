@@ -45,11 +45,12 @@ cycle ouvert) ont de la place. Les invocations s'enchaînent par des liens
 jamais utilisés » les pages « besoin nouveau » de plus de 60 jours. Une
 page qui sert de preuve (« preuve » ou « enrichit ») n'est jamais visée.
 
-**Deux boutons de plus** sur la page Écoute : « Abandonner le cycle en
+**Un bouton de plus** sur la page Écoute : « Abandonner le cycle en
 cours » (ferme un cycle resté ouvert et annule ses tâches en attente : sa
-chaîne s'arrête après la tâche en cours) et « Effacer les idées (test) »,
-temporaire, qui détruit les business candidats ou choisis et leurs
-preuves. Les deux demandent une confirmation.
+chaîne s'arrête après la tâche en cours), après confirmation. Le bouton
+temporaire « Effacer les idées (test) » a été retiré le 16 novembre 2026 :
+l'essai total (page Système) essaie l'étape 1 sans toucher aux vrais
+business.
 
 ---
 
@@ -179,7 +180,7 @@ Chaque ajout est général : il sert à toutes les invocations.
 - **Sur le serveur de Julien**, après la mise à jour : si la démo a laissé
   un cycle ouvert, le bouton du cycle reste grisé (« Cycle d'écoute en
   cours : 1 sur 1 ») jusqu'à un clic sur « Abandonner le cycle en
-  cours » ; « Effacer les idées (test) » détruit les business de la démo.
+  cours ».
 
 ---
 
@@ -224,5 +225,4 @@ changes:
 - Couper automatiquement un flux qui ne ramène que du bruit (après 5
   cycles) : à la main pour l'instant, depuis la page Écoute.
 - Le lancement automatique du cycle.
-- Le bouton « Effacer les idées (test) » est à retirer avant le vrai
-  lancement de Serge (le lister dans `deleted`).
+- Le bouton « Effacer les idées (test) » : retiré le 16 novembre 2026.

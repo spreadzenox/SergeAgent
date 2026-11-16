@@ -34,9 +34,9 @@ que Serge n'a pas été démarré dans Mission Control.
   idées écrites, note du choix), les business candidats et choisis avec
   la raison du choix, et les flux suivis (pages ramenées, pages utiles),
   avec un bouton pour en couper un.
-- **Deux boutons de plus** : « Abandonner le cycle en cours » et
-  « Effacer les idées (test) », temporaire, pour tester autant de fois
-  qu'on veut.
+- **Un bouton de plus** : « Abandonner le cycle en cours ». Pour essayer
+  l'étape autant de fois qu'on veut sans toucher aux vrais business, il y
+  a l'essai total (page Système).
 
 ### Ce qui manque
 
