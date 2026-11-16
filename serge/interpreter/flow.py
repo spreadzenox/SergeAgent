@@ -28,7 +28,12 @@ from typing import Any
 from serge.db.store import utcnow
 from serge.interpreter.rules import condition_met
 from serge.interpreter.settings import load_settings
-from serge.interpreter.tasks import enqueue_task, task_lane, task_params
+from serge.interpreter.tasks import (
+    enqueue_task,
+    task_key,
+    task_lane,
+    task_params,
+)
 from serge.interpreter.writer import Written
 from serge.policy_store import setting_value
 from serge.tickets.passage import clore_ticket_de_passage, ticket_de_passage
@@ -146,6 +151,10 @@ def _mark_passed(
     from_task: str = '',
     trial_run: str = '',
 ) -> str | None:
+    # Une tâche par passage : deux résultats différents qui passent le
+    # même lien avec les mêmes paramètres donnent deux tâches. Exemple :
+    # « Suivre une campagne » relance « Trouver des prospects » une
+    # deuxième fois, pour la même campagne.
     task_id = enqueue_task(
         conn,
         to_invocation,
@@ -153,6 +162,9 @@ def _mark_passed(
         origin='link',
         origin_ref=link_id,
         not_before=not_before,
+        key=task_key(
+            to_invocation, 'link', f'{link_id}:{source_ref}', dict(params)
+        ),
         trial_run=trial_run,
         parent=from_task,
         rerun=task_lane(conn, from_task)[1] if from_task else '',

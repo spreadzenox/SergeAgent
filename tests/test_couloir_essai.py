@@ -17,6 +17,8 @@ Scénarios :
   tâche qui a ouvert le ticket ;
 - un déclencheur ne part que si ses nombres de lignes sont bons, comptés
   dans son couloir ;
+- deux résultats qui passent le même lien avec les mêmes paramètres
+  donnent deux tâches ;
 - relancer l'essai arrête le précédent : ses tâches en attente, ses
   tickets, son business ; la suite d'une vieille tâche ne part plus ;
 - « Repartir d'ici » : l'ancienne suite en attente est annulée, une tâche
@@ -128,6 +130,7 @@ PIPELINE = {
             'capability': 'echo',
         },
         {'id': 't_suite', 'type': 'capability', 'capability': 'echo'},
+        {'id': 't_regulier', 'type': 'capability', 'capability': 'echo'},
         # Ferme tous les cycles ouverts (comme « Abandonner le cycle »).
         {
             'id': 't_fermer',
@@ -148,6 +151,12 @@ PIPELINE = {
         },
     ],
     'links': [
+        {
+            'id': 't_regulier_vers_suite',
+            'from': 't_regulier',
+            'to': 't_suite',
+            'params': {'campagne': _v('fixed', 'c1')},
+        },
         {
             'id': 't_cree_vers_choix',
             'from': 't_creer',
@@ -360,6 +369,16 @@ class ChaineTests(CouloirCase):
         self.assertEqual(
             trigger_refusal(self.conn, 't_bouton_compte', trial=True), ''
         )
+
+
+class PassageTests(CouloirCase):
+    def test_deux_passages_du_meme_lien_donnent_deux_taches(self) -> None:
+        # Comme « Suivre une campagne », qui relance la recherche de
+        # prospects d'une même campagne, heure après heure.
+        for heure in ('10', '11'):
+            enqueue_task(self.conn, 't_regulier', {'heure': heure})
+        self._vider()
+        self.assertEqual(self._taches('t_suite'), [('done', ''), ('done', '')])
 
 
 class ArretTests(CouloirCase):

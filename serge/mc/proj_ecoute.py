@@ -80,10 +80,14 @@ def boutons_de_etape(
 
 
 def _dernier_cycle(conn: sqlite3.Connection) -> dict[str, Any] | None:
-    """Le dernier cycle : ses pages par étiquette, ses fiches, sa note."""
+    """Le dernier cycle : ses pages par étiquette, ses fiches, sa note.
+
+    Le cycle d'écoute d'un essai n'est pas ici : il se suit sur la page
+    Système (« L'essai total »)."""
     row = conn.execute(
         'SELECT id, guide, status, created_at, finished_at, choice_note'
-        ' FROM listen_cycles ORDER BY created_at DESC, rowid DESC LIMIT 1'
+        ' FROM listen_cycles WHERE trial=0'
+        ' ORDER BY created_at DESC, rowid DESC LIMIT 1'
     ).fetchone()
     if row is None:
         return None
@@ -148,7 +152,7 @@ def project_ecoute(
     del policy, now_iso
     candidates = conn.execute(
         'SELECT id, name, lifecycle, choice_reason FROM ventures'
-        " WHERE lifecycle IN ('CANDIDATE', 'POC_SELECTED')"
+        " WHERE lifecycle IN ('CANDIDATE', 'POC_SELECTED') AND trial=0"
         ' ORDER BY updated_at DESC LIMIT 100'
     ).fetchall()
     return {

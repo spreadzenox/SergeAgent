@@ -110,10 +110,11 @@ export const FUNNEL = {
 };
 
 export const ETATS_CAMPAGNE = {
-  RUNNING: 'En cours',
-  PAUSED: 'En pause',
-  DONE: 'Terminé',
   DRAFT: 'Brouillon',
+  READY: 'Prête',
+  RUNNING: 'En cours',
+  FINISHED: 'Terminée',
+  CANCELLED: 'Annulée',
 };
 
 export const ETATS_TICKET = {
