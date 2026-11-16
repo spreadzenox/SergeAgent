@@ -19,6 +19,8 @@ Scénarios :
   dans son couloir ;
 - deux résultats qui passent le même lien avec les mêmes paramètres
   donnent deux tâches ;
+- une modification qui vise plusieurs lignes juge chacune pour elle-même,
+  et chaque ligne modifiée réveille la suite ;
 - relancer l'essai arrête le précédent : ses tâches en attente, ses
   tickets, son business ; la suite d'une vieille tâche ne part plus ;
 - « Repartir d'ici » : l'ancienne suite en attente est annulée, une tâche
@@ -369,6 +371,73 @@ class ChaineTests(CouloirCase):
         self.assertEqual(
             trigger_refusal(self.conn, 't_bouton_compte', trial=True), ''
         )
+
+
+class PlusieursLignesTests(CouloirCase):
+    def test_une_modification_juge_chaque_ligne(self) -> None:
+        """Deux business visés par la même modification : celui qui peut
+        changer de statut change et réveille la suite ; l'autre est refusé,
+        et c'est noté."""
+        import json
+
+        for ident, statut in (('v_a', 'CANDIDATE'), ('v_b', 'KILLED')):
+            self.conn.execute(
+                'INSERT INTO ventures(id, name, family, lifecycle,'
+                " created_at, updated_at) VALUES(?, ?, 'lot', ?, 't', 't')",
+                (ident, ident, statut),
+            )
+        seed_pipeline(
+            self.conn,
+            {
+                'schema_version': 1,
+                'invocations': [
+                    {
+                        'id': 't_choisir_le_lot',
+                        'type': 'capability',
+                        'capability': 'echo',
+                        'writes': [
+                            {
+                                'table': 'ventures',
+                                'operation': 'update',
+                                'key': {
+                                    'column': 'family',
+                                    'source': 'fixed',
+                                    'value': 'lot',
+                                },
+                                'values': {
+                                    'lifecycle': _v('fixed', 'POC_SELECTED')
+                                },
+                            }
+                        ],
+                    }
+                ],
+                'links': [
+                    {
+                        'id': 't_lot_vers_suite',
+                        'from': 't_choisir_le_lot',
+                        'to': 't_suite',
+                        'mode': 'per_row',
+                        'write': 0,
+                        'params': {'venture_id': _v('row', 'id')},
+                    }
+                ],
+            },
+        )
+        enqueue_task(self.conn, 't_choisir_le_lot', {})
+        self._vider()
+        self.assertEqual(
+            dict(self.conn.execute('SELECT id, lifecycle FROM ventures')),
+            {'v_a': 'POC_SELECTED', 'v_b': 'KILLED'},
+        )
+        self.assertEqual(self._taches('t_suite'), [('done', '')])
+        refus = [
+            json.loads(r[0])
+            for r in self.conn.execute(
+                "SELECT payload_json FROM events WHERE type='write.refused'"
+            )
+        ]
+        self.assertEqual([r['id'] for r in refus], ['v_b'])
+        self.assertIn('KILLED à POC_SELECTED non permis', refus[0]['reason'])
 
 
 class PassageTests(CouloirCase):

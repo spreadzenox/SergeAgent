@@ -177,14 +177,10 @@ def _in_lane(conn: sqlite3.Connection, table: str) -> str:
 
 
 def _row(
-    conn: sqlite3.Connection,
-    table: str,
-    key: str,
-    value: Any,
-    lane: str = '',
+    conn: sqlite3.Connection, table: str, key: str, value: Any
 ) -> dict | None:
     cursor = conn.execute(
-        f'SELECT * FROM "{table}" WHERE "{safe_name(key)}"=?{lane}', (value,)
+        f'SELECT * FROM "{table}" WHERE "{safe_name(key)}"=?', (value,)
     )
     row = cursor.fetchone()
     if row is None:
@@ -284,18 +280,20 @@ def write_answer(
                 else str(key_val)
             )
             if operation == 'insert':
-                row = _insert(
-                    conn,
-                    invocation_id,
-                    task_id,
-                    table,
-                    values,
-                    dedup=not skip_dedup,
-                )
+                rows = [
+                    _insert(
+                        conn,
+                        invocation_id,
+                        task_id,
+                        table,
+                        values,
+                        dedup=not skip_dedup,
+                    )
+                ]
             elif operation == 'delete':
-                row = _delete(conn, table, str(key_col), key)
+                rows = [_delete(conn, table, str(key_col), key)]
             else:
-                row = _update(
+                rows = _update(
                     conn,
                     invocation_id,
                     task_id,
@@ -304,9 +302,10 @@ def write_answer(
                     key,
                     values,
                 )
-            done.by_item[pos] = row
-            if row is not None:
-                done.rows.append(row)
+            # Chaque ligne modifiée réveille ses liens et déclencheurs.
+            rows = [r for r in rows if r is not None]
+            done.by_item[pos] = rows[0] if rows else None
+            done.rows.extend(rows)
         if operation == 'delete' and done.rows:
             ids = [str(r.get('id', '')) for r in done.rows]
             _journal(
@@ -408,10 +407,20 @@ def _update(
     key_column: str,
     key: Any,
     values: dict[str, Any],
-) -> dict[str, Any] | None:
+) -> list[dict[str, Any]]:
+    """Modifie chaque ligne visée (une clé peut en viser plusieurs) ; rend
+    les lignes modifiées. Chaque ligne est jugée pour elle-même : un refus
+    est noté, et les autres sont modifiées. Exemple : le POC en ligne passe
+    ses deux campagnes à « prête », et les deux démarrent.
+    """
     lane = _in_lane(conn, table)
-    current = _row(conn, table, key_column, key, lane)
-    if current is None:
+    column = safe_name(key_column)
+    cursor = conn.execute(
+        f'SELECT rowid, * FROM "{table}" WHERE "{column}"=?{lane}', (key,)
+    )
+    names = [d[0] for d in cursor.description][1:]
+    targets = [(r[0], dict(zip(names, r[1:], strict=True))) for r in cursor]
+    if not targets:
         _journal(
             conn,
             invocation_id,
@@ -422,42 +431,40 @@ def _update(
                 'reason': f'aucune ligne où {key_column} = {key}',
             },
         )
-        return None
-    refusal = transition_refusal(
-        conn, table, values, current
-    ) or quota_refusal(conn, table, values, current)
-    if refusal:
-        _journal(
-            conn,
-            invocation_id,
-            task_id,
-            'refused',
-            {'table': table, 'id': key, 'reason': refusal},
-        )
-        return None
+        return []
     changes = dict(values)
     colonnes = table_columns(conn, table)
     if 'updated_at' in colonnes and 'updated_at' not in changes:
         changes['updated_at'] = utcnow()
-    # Toutes les lignes visées (une clé comme « status = OPEN » peut en
-    # viser plusieurs), pour les règles d'annulation des tâches.
-    ids = (
-        [
-            r[0]
-            for r in conn.execute(
-                f'SELECT id FROM "{table}"'
-                f' WHERE "{safe_name(key_column)}"=?{lane}',
-                (key,),
-            )
-        ]
-        if 'id' in colonnes
-        else []
-    )
     sets = ', '.join(f'"{safe_name(c)}"=?' for c in changes)
-    conn.execute(
-        f'UPDATE "{table}" SET {sets} WHERE "{safe_name(key_column)}"=?{lane}',
-        [*changes.values(), key],
-    )
+    done: list[int] = []
+    ids: list[Any] = []
+    for rowid, current in targets:
+        refusal = transition_refusal(
+            conn, table, values, current
+        ) or quota_refusal(conn, table, values, current)
+        if refusal:
+            _journal(
+                conn,
+                invocation_id,
+                task_id,
+                'refused',
+                {
+                    'table': table,
+                    'id': current.get('id', key),
+                    'reason': refusal,
+                },
+            )
+            continue
+        conn.execute(
+            f'UPDATE "{table}" SET {sets} WHERE rowid=?',
+            [*changes.values(), rowid],
+        )
+        done.append(rowid)
+        if 'id' in colonnes:
+            ids.append(current['id'])
+    if not done:
+        return []
     annulees = cancel_tasks_on_change(conn, table, ids, values, utcnow())
     if annulees:
         append_event(
@@ -479,7 +486,13 @@ def _update(
         'updated',
         {'table': table, 'id': key, 'values': values},
     )
-    return _row(conn, table, key_column, key, lane)
+    holes = ','.join('?' * len(done))
+    cursor = conn.execute(
+        f'SELECT * FROM "{table}" WHERE rowid IN ({holes}) ORDER BY rowid',
+        done,
+    )
+    names = [d[0] for d in cursor.description]
+    return [dict(zip(names, r, strict=True)) for r in cursor.fetchall()]
 
 
 class DuplicateRefused(ValueError):
