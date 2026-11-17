@@ -600,8 +600,8 @@ tools:
     doc: >-
       Ouvrir une adresse, cliquer, taper, choisir, appuyer sur une touche,
       faire défiler, revenir, attendre, passer en écran ordinateur ou
-      mobile. Rend la page relue en version courte, avec un repère par
-      élément ([e7]).
+      mobile, répondre à une boîte de dialogue du navigateur. Rend la page
+      relue en version courte, avec un repère par élément ([e7]).
     capability: browser_action
   - id: navigateur_lire
     title: Lire la page

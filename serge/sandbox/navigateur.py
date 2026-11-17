@@ -26,6 +26,10 @@ constructeur essaie ainsi le serveur qu'il vient de lancer. L'action
 un fichier de secret, ou un champ de la carte chiffrée de Serge
 (``payment-card.enc#pan``). Le modèle ne nomme que le secret, parmi ceux
 figés en base, et la page relue cache la valeur.
+
+Une boîte de dialogue du navigateur (message, question, saisie) n'est pas
+dans la page : Serge y répond lui-même et le dit dans le résultat de
+l'action (``dialogues.py``).
 """
 
 from __future__ import annotations
@@ -45,6 +49,7 @@ from serge.paths import config_root, files_root
 from serge.policy_store import policy_en_vigueur
 from serge.sandbox import chrome
 from serge.sandbox.chantier import chantier_id, container_name
+from serge.sandbox.dialogues import Dialogues
 from serge.sandbox.docker import journal
 from serge.secrets import read_secret_value
 
@@ -64,6 +69,7 @@ class _Session:
     champs_secrets: list[Any] = field(default_factory=list)
     # Le vrai Chrome prête son profil : seul l'onglet est à fermer.
     profil_prete: bool = False
+    dialogues: Dialogues = field(default_factory=Dialogues)
 
 
 @dataclass
@@ -156,6 +162,7 @@ def _session(
         lambda m: erreur(f'console : {m.text}') if m.type == 'error' else None,
     )
     page.on('pageerror', lambda e: erreur(f'JavaScript : {e}'))
+    page.on('dialog', session.dialogues.repondre)
     page.on(
         'requestfailed',
         lambda r: erreur(f'requête ratée : {r.method} {r.url} ({r.failure})'),
@@ -331,6 +338,8 @@ def _agir(session: _Session, args: dict[str, Any]) -> str:
     elif action == 'ecran':
         largeur, hauteur = ECRANS.get(texte, ECRANS['ordinateur'])
         page.set_viewport_size({'width': largeur, 'height': hauteur})
+    elif action in ('accepter_dialogue', 'refuser_dialogue'):
+        session.dialogues.preparer(action == 'accepter_dialogue', texte)
     else:
         return f'action inconnue : {action}'
     _attendre(page)
@@ -365,6 +374,9 @@ def browser_action(
     nouvelles = session.errors[erreurs:]
     if nouvelles:
         result['nouvelles_erreurs'] = nouvelles[:10]
+    dialogues = session.dialogues.raconter()
+    if dialogues:
+        result['dialogues'] = [masquer(d, session.masques) for d in dialogues]
     return result
 
 

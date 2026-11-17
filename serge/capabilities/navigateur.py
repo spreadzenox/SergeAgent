@@ -23,7 +23,8 @@ _ACTION = (
         'text',
         True,
         'ouvrir, cliquer, taper, taper_secret, choisir, touche,'
-        ' defiler, revenir, attendre ou ecran.',
+        ' defiler, revenir, attendre, ecran, accepter_dialogue ou'
+        ' refuser_dialogue.',
     ),
     Param('ref', 'text', False, 'Le repère de l’élément : e7.'),
     Param(
@@ -33,7 +34,8 @@ _ACTION = (
         'L’adresse (ouvrir), le texte (taper), le nom du secret'
         ' (taper_secret), l’option (choisir),'
         ' la touche (Enter, Escape, Tab), haut ou bas (defiler), le'
-        ' texte attendu (attendre), ordinateur ou mobile (ecran).',
+        ' texte attendu (attendre), ordinateur ou mobile (ecran), le'
+        ' texte à taper dans une boîte de saisie (accepter_dialogue).',
     ),
     Param('submit', 'bool', False, 'Taper puis valider avec Entrée.'),
     Param(
@@ -65,7 +67,15 @@ NAVIGATEUR: tuple[Capability, ...] = (
         ' ordinateur ou mobile. Rend la page relue en version courte (une'
         ' ligne par titre, texte, champ, bouton ou lien, avec son repère'
         ' [e7]) et les nouvelles erreurs de la page. L’adresse'
-        ' http://chantier:<port> mène au chantier du business.',
+        ' http://chantier:<port> mène au chantier du business. Une boîte'
+        ' de dialogue du navigateur (un message, une question OK ou'
+        ' Annuler, la saisie d’un texte) n’est pas dans la page : Serge y'
+        ' répond lui-même et le dit dans le résultat (« dialogues »). Sans'
+        ' réponse préparée, un message est fermé et une question ou une'
+        ' saisie est refermée par « Annuler ». Pour y répondre, prépare ta'
+        ' réponse avec accepter_dialogue (text : le texte à taper, pour une'
+        ' saisie) ou refuser_dialogue, puis fais l’action qui ouvre la'
+        ' boîte : la réponse sert une fois.',
         'serge/sandbox/navigateur.py',
         _ACTION,
     ),

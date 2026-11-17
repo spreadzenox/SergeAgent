@@ -178,6 +178,21 @@ remise en forme par la page (`4242 4242 4242 4242`), comme les erreurs
 de la page ; le temps d'une capture, le champ qui l'a reçue montre des
 points, comme un mot de passe. Il sert au paiement test de l'étape 5.
 
+**Répondre à une boîte de dialogue** (actions `accepter_dialogue` et
+`refuser_dialogue`, demandées par le relecteur d'un produit le 17 novembre
+2026). Une page peut ouvrir une boîte du navigateur lui-même : un message,
+une question « OK ou Annuler », la saisie d'un texte. Cette boîte n'est pas
+dans la page : le modèle ne la voit ni dans la page lue ni sur une capture,
+et la page ne fait plus rien tant qu'elle est ouverte. Serge y répond donc
+tout de suite et le dit dans le résultat de l'action (`dialogues`). Sans
+réponse préparée, un message est fermé par « OK », une question ou une
+saisie par « Annuler », et le résultat dit comment y répondre. Le modèle
+prépare alors sa réponse (`accepter_dialogue`, avec le texte à taper pour
+une saisie, ou `refuser_dialogue`), puis refait l'action qui ouvre la
+boîte ; une réponse préparée sert une fois. Exemple : `accepter_dialogue`
+avec « Devis Dupont », puis `cliquer` sur « Enregistrer »
+(`serge/sandbox/dialogues.py`).
+
 Le business, le livrable et la tâche sont des paramètres figés de ces
 outils. Une session (un onglet et ses cookies) par tâche, fermée à la fin
 de la tâche. Le navigateur (profil « navigateur » de la page Policy :
