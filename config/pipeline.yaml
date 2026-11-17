@@ -598,10 +598,13 @@ tools:
   - id: navigateur_agir
     title: Agir dans une page
     doc: >-
-      Ouvrir une adresse, cliquer, taper, choisir, appuyer sur une touche,
-      faire défiler, revenir, attendre, passer en écran ordinateur ou
-      mobile, répondre à une boîte de dialogue du navigateur. Rend la page
-      relue en version courte, avec un repère par élément ([e7]).
+      Agir dans une page comme une personne avec une souris et un clavier :
+      ouvrir une adresse, cliquer, survoler, glisser et déposer, taper,
+      choisir, appuyer sur une touche, faire défiler, revenir, recharger,
+      attendre, déposer un fichier, passer en écran ordinateur ou mobile.
+      Rend la page relue en version courte, avec un repère par élément
+      ([e7]), et ce qui arrive hors de la page : un fichier téléchargé, un
+      nouvel onglet, une boîte de dialogue du navigateur.
     capability: browser_action
   - id: navigateur_lire
     title: Lire la page

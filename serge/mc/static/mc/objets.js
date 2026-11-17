@@ -58,6 +58,19 @@ function renderCadre(cadre, apres) {
     }
     bloc.append(galerie);
   }
+  if ((cadre.fichiers || []).length) {
+    // Des fichiers téléchargés par une page pendant la tâche.
+    const ul = el('ul', 'liste-materiel');
+    for (const fichier of cadre.fichiers) {
+      const lien = el('a', '', fichier.nom);
+      lien.href = fichier.src;
+      lien.download = fichier.nom;
+      const li = el('li');
+      li.append(lien);
+      ul.append(li);
+    }
+    bloc.append(ul);
+  }
   if (cadre.todo) {
     const note = el('p', 'todo-mc', cadre.todo);
     bloc.append(note);

@@ -2203,3 +2203,30 @@ Décidé :
 5. Quand un besoin reviendra (une question de Serge, une alerte), il sera
    décrit en base avec son invocation, comme les types du lot 8 bis.
 
+### Q103 — Le navigateur de Serge sait faire ce que fait une personne (demandé par Clem, 17 novembre 2026)
+Constat : dans l'essai total, le relecteur d'un produit a ouvert trois
+demandes de suite. Il ne pouvait pas répondre à une boîte de saisie du
+navigateur ; il ne voyait pas des boutons placés dans un titre (le
+lecteur de page s'arrêtait au titre) ; il ne pouvait pas lire le fichier
+qu'un lien faisait télécharger. Clem : « élargir la palette », avec
+« quelque chose de largement général », pas seulement pour ce cas, et
+pouvoir passer au vrai Chrome.
+Décidé :
+1. **Tout ce sur quoi on peut agir a un repère**, où qu'il soit, y compris
+   ce qui se clique sans être un vrai bouton, le contenu d'un cadre
+   intégré, d'un composant web, d'une fenêtre modale. Un repère reste le
+   même d'une lecture à l'autre.
+2. **Viser sans repère** : par un texte visible, ou par un point de
+   l'écran lu sur une capture.
+3. **Les gestes d'une souris et d'un clavier** : double clic, clic droit,
+   survol, glisser et déposer, taper au clavier, recharger, déposer un
+   fichier.
+4. **Ce qui arrive hors de la page est dit au modèle** : une boîte de
+   dialogue, un fichier téléchargé (gardé avec le livrable, lisible), un
+   nouvel onglet (suivi).
+5. **Passer au vrai Chrome en cours de tâche**, avec la même adresse et la
+   même connexion. Le navigateur sans écran reste celui de départ d'un
+   relecteur : une session neuve à chaque tâche, comme un nouveau
+   visiteur.
+Le détail est dans la conception du lot 10 (« L'interface web »).
+

@@ -20,7 +20,16 @@ Scénarios :
   relue, même remise en forme, et une capture ne montrent jamais sa valeur ;
 - une boîte de dialogue du navigateur (saisie, question, message) : sans
   réponse préparée, elle est refermée et le résultat dit comment y
-  répondre ; une réponse préparée sert une fois, à la boîte suivante.
+  répondre ; une réponse préparée sert une fois, à la boîte suivante ;
+- tout ce qui se clique a un repère, où qu'il soit : un bouton dans un
+  titre, un bloc cliquable, un composant web, une fenêtre modale, et le
+  contenu d'un cadre intégré ;
+- viser sans repère : par un texte visible, par un point de l'écran ;
+  double clic, clic droit, survol, glisser et déposer, taper au clavier ;
+- un fichier téléchargé est gardé avec le livrable et se lit ; un fichier
+  se dépose dans un champ ou par le bouton qui ouvre le choix ;
+- un nouvel onglet est suivi, et fermé on revient au précédent ;
+- passer au vrai Chrome en cours de tâche garde l'adresse et la connexion.
 """
 
 from __future__ import annotations
@@ -78,10 +87,102 @@ PAGE_DIALOGUES = """<!doctype html><html lang="fr"><head><title>Calculs
 <p id="liste">Aucun calcul</p></body></html>"""
 
 
+# Un produit qui a tout ce qu'une page peut avoir de difficile à lire ou à
+# manier : des boutons dans des titres, un bloc cliquable, un composant
+# web, une fenêtre modale dans une racine haute de 0, un menu au survol, un
+# cadre intégré, un dessin, un champ fichier caché, un lien qui télécharge,
+# un fichier fabriqué par la page, un lien qui ouvre un autre onglet.
+PAGE_ATELIER = """<!doctype html><html lang="fr"><head><title>Atelier</title>
+<style>.carte{cursor:pointer;width:200px} #menu{width:200px}
+#menu ul{display:none} #menu:hover ul{display:block} #racine{height:0}
+#fenetre{position:fixed;top:10px;right:10px;width:200px;height:40px}
+.zone{width:120px;height:40px;border:1px solid}</style></head><body>
+<h1>Atelier</h1>
+<canvas id="dessin" width="200" height="60" style="border:1px solid"></canvas>
+<h2>Mes calculs <button onclick="note('enregistré')">Enregistrer</button></h2>
+<h2>Historique <span><a href="/export.csv">Exporter en CSV</a>
+<button onclick="note('vidé')">Vider l'historique</button></span></h2>
+<h2><a href="/autre">Un titre qui est un lien</a></h2>
+<p id="journal">rien</p>
+<div class="carte" id="carte">Carte cliquable</div>
+<div style="display:contents"><button onclick="note('sans boîte')"
+>Dans un bloc sans boîte</button></div>
+<div id="racine"><div id="fenetre"><button onclick="note('fenêtre')"
+>Fermer la fenêtre</button></div></div>
+<div id="menu">Menu<ul><li><button onclick="note('survol')">Entrée cachée
+</button></li></ul></div>
+<a href="/autre" target="_blank">Ouvrir ailleurs</a>
+<button onclick="fabriquer()">Exporter un fichier fabriqué</button>
+<label for="f">Pièce jointe</label><input id="f" type="file"
+onchange="note('reçu ' + this.files[0].name + ' ' + this.files[0].size)">
+<input id="cache" type="file" style="display:none"
+onchange="this.files[0].text().then(t => note('importé ' + t))">
+<button onclick="document.getElementById('cache').click()">Importer</button>
+<div id="colis" class="zone" draggable="true"
+ondragstart="event.dataTransfer.setData('text', 'colis')">Colis</div>
+<div id="depot" class="zone" ondragover="event.preventDefault()"
+ondrop="event.preventDefault();
+note('déposé ' + event.dataTransfer.getData('text'))">Dépôt</div>
+<div id="editeur" contenteditable="true" aria-label="Note libre"
+style="min-height:20px;width:200px;border:1px solid"></div>
+<span role="tab" onclick="note('onglet')">Réglages</span>
+<mon-bouton></mon-bouton>
+<iframe src="/cadre" title="Paiement" width="300" height="90"></iframe>
+<script>
+const note = (t) => { document.getElementById('journal').textContent = t; };
+const carte = document.getElementById('carte');
+carte.addEventListener('click', () => note('carte'));
+carte.addEventListener('dblclick', () => note('double'));
+carte.addEventListener('contextmenu', (e) => {
+  e.preventDefault(); note('droit'); });
+document.getElementById('dessin').addEventListener('click', (e) =>
+  note('dessin ' + Math.round(e.offsetX) + ',' + Math.round(e.offsetY)));
+document.getElementById('editeur').addEventListener('input', (e) =>
+  note('écrit ' + e.target.innerText));
+function fabriquer() {
+  const adresse = URL.createObjectURL(
+    new Blob(['a;b\\n1;2\\n'], {type: 'text/csv'}));
+  const lien = document.createElement('a');
+  lien.href = adresse; lien.download = 'fabrique.csv'; lien.click();
+  URL.revokeObjectURL(adresse);
+}
+customElements.define('mon-bouton', class extends HTMLElement {
+  connectedCallback() {
+    const racine = this.attachShadow({mode: 'open'});
+    racine.innerHTML = '<button>Dans un composant</button>';
+    racine.querySelector('button').onclick = () => note('composant');
+  }
+});
+</script></body></html>"""
+CADRE = """<!doctype html><html lang="fr"><body><p>Carte bancaire</p>
+<input aria-label="Numéro"><button onclick="document.getElementById('r')
+.textContent = 'payé ' + document.querySelector('input').value">Payer
+</button><p id="r"></p></body></html>"""
+AUTRE = """<!doctype html><html lang="fr"><head><title>Autre</title></head>
+<body><h1>Autre page</h1></body></html>"""
+EXPORT = ''.join(f'ligne;{n}\n' for n in range(1, 61))
+PAGES = {
+    '/dialogues': PAGE_DIALOGUES,
+    '/atelier': PAGE_ATELIER,
+    '/cadre': CADRE,
+    '/autre': AUTRE,
+}
+
+
 class _Page(http.server.BaseHTTPRequestHandler):
     def do_GET(self) -> None:  # noqa: N802
-        page = PAGE_DIALOGUES if self.path == '/dialogues' else PAGE
-        corps = page.encode('utf-8')
+        if self.path == '/export.csv':
+            corps = EXPORT.encode('utf-8')
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/csv; charset=utf-8')
+            self.send_header(
+                'Content-Disposition', 'attachment; filename="export.csv"'
+            )
+            self.send_header('Content-Length', str(len(corps)))
+            self.end_headers()
+            self.wfile.write(corps)
+            return
+        corps = PAGES.get(self.path, PAGE).encode('utf-8')
         self.send_response(200)
         self.send_header('Content-Type', 'text/html; charset=utf-8')
         self.send_header('Content-Length', str(len(corps)))
@@ -310,6 +411,294 @@ class NavigateurTests(unittest.TestCase):
         clic = cliquer('Féliciter')
         self.assertEqual(clic['dialogues'], ['message « Bravo » : fermé (OK)'])
         self.assertIn('Vu', clic['page'])
+
+    def _atelier(self) -> str:
+        return self._outil(
+            'browser_action', action='ouvrir', text=f'{self.site}/atelier'
+        )['page']
+
+    def _repere(self, page: str, ligne: str) -> str:
+        """Le repère de la ligne « [e7] <ligne> » de la page lue."""
+        trouve = re.search(rf'\[([e\d.]+)\] {re.escape(ligne)}', page)
+        assert trouve, f'{ligne} absent de :\n{page}'
+        return trouve[1]
+
+    def _journal(self, resultat: dict[str, Any]) -> str:
+        """Ce que la page d'essai dit du dernier geste."""
+        self.assertTrue(resultat['ok'], resultat.get('detail'))
+        lignes = resultat['page'].splitlines()
+        return lignes[lignes.index('## Un titre qui est un lien') + 2]
+
+    def test_tout_ce_qui_se_clique_a_un_repere(self) -> None:
+        """Le relecteur d'un produit, le 17 novembre 2026 : « Enregistrer »,
+        dans un titre, n'avait pas de repère. Tout ce sur quoi on peut agir
+        en a un, où qu'il soit, et le contenu d'un cadre intégré se lit sous
+        la ligne du cadre."""
+        page = self._atelier()
+        self.assertIn('## Mes calculs\n', page)
+        self.assertIn('## Historique\n', page)
+        self.assertIn('lien « Exporter en CSV » → /export.csv', page)
+        # Un titre qui n'est qu'un lien garde son texte, et le lien son repère.
+        self.assertIn('## Un titre qui est un lien\n', page)
+        self._repere(page, 'lien « Un titre qui est un lien » → /autre')
+        self.assertIn('zone de dessin, de (', page)
+        self._repere(page, 'champ fichier « Pièce jointe » (vide)')
+        self._repere(page, 'lien « Ouvrir ailleurs » → /autre')
+        for ligne, effet in (
+            ('bouton « Enregistrer »', 'enregistré'),
+            ("bouton « Vider l'historique »", 'vidé'),
+            ('élément cliquable « Carte cliquable »', 'carte'),
+            ('bouton « Dans un bloc sans boîte »', 'sans boîte'),
+            ('bouton « Fermer la fenêtre »', 'fenêtre'),
+            ('onglet « Réglages »', 'onglet'),
+            ('bouton « Dans un composant »', 'composant'),
+        ):
+            clic = self._outil(
+                'browser_action',
+                action='cliquer',
+                ref=self._repere(self._outil('browser_read')['page'], ligne),
+            )
+            self.assertEqual(self._journal(clic), effet, ligne)
+        # Une zone qu'on édite dans la page se remplit comme un champ.
+        zone = self._repere(page, 'zone de texte « Note libre » (vide)')
+        tape = self._outil(
+            'browser_action', action='taper', ref=zone, text='bonjour'
+        )
+        self.assertEqual(self._journal(tape), 'écrit bonjour')
+        # Le cadre intégré : son contenu sous sa ligne, ses repères à lui.
+        cadre = self._repere(page, 'cadre « Paiement »')
+        self.assertIn(f'  [{cadre}.e1] champ text « Numéro » (vide)', page)
+        self._outil(
+            'browser_action', action='taper', ref=f'{cadre}.e1', text='4242'
+        )
+        paye = self._outil(
+            'browser_action', action='cliquer', ref=f'{cadre}.e2'
+        )
+        self.assertTrue(paye['ok'], paye.get('detail'))
+        self.assertIn('  payé 4242', paye['page'])
+
+    def test_viser_par_un_texte_ou_par_un_point(self) -> None:
+        """Sans repère : un texte visible, ou un point de l'écran lu sur
+        une capture. Et les autres gestes d'une souris et d'un clavier."""
+        page = self._atelier()
+
+        def geste(action: str, **args: Any) -> str:
+            return self._journal(
+                self._outil('browser_action', action=action, **args)
+            )
+
+        self.assertEqual(geste('cliquer', text="Vider l'historique"), 'vidé')
+        self.assertEqual(
+            geste('double_cliquer', text='Carte cliquable'), 'double'
+        )
+        self.assertEqual(geste('clic_droit', text='Carte cliquable'), 'droit')
+        # Le dessin n'a pas de repère : la page dit où il est à l'écran.
+        coin = re.search(r'zone de dessin, de \((\d+), (\d+)\)', page)
+        assert coin, page
+        gauche, haut = int(coin[1]), int(coin[2])
+        self.assertEqual(
+            geste('cliquer', x=gauche + 50, y=haut + 20), 'dessin 49,19'
+        )
+        capture = self._outil('browser_screenshot')
+        self.assertEqual(capture['ecran'], '1280 x 800')
+        # Le menu ne montre son entrée qu'au survol.
+        self.assertNotIn('Entrée cachée', page)
+        survol = self._outil('browser_action', action='survoler', text='Menu')
+        self.assertIn('bouton « Entrée cachée »', survol['page'])
+        # Un élément de plus dans la page : les autres gardent leur repère.
+        self.assertEqual(
+            self._repere(survol['page'], 'bouton « Enregistrer »'),
+            self._repere(page, 'bouton « Enregistrer »'),
+        )
+        self.assertEqual(geste('cliquer', text='Entrée cachée'), 'survol')
+        # Taper au clavier, là où est le curseur.
+        zone = self._repere(page, 'zone de texte « Note libre » (vide)')
+        self._outil('browser_action', action='cliquer', ref=zone)
+        self.assertEqual(geste('taper', text='au clavier'), 'écrit au clavier')
+        self.assertEqual(geste('recharger'), 'rien')
+        # Glisser et déposer : d'un point à un point, puis d'un repère à un
+        # texte visible.
+        page = self._outil('browser_read')['page']
+        colis = self._repere(page, 'élément à glisser « Colis »')
+        self.assertEqual(geste('cliquer', text='Enregistrer'), 'enregistré')
+        boites = navigateur._session(self.conn, 't1').page.evaluate(
+            """() => ['colis', 'depot'].map((nom) => {
+                const b = document.getElementById(nom).getBoundingClientRect();
+                return [b.left + b.width / 2, b.top + b.height / 2];
+            })"""
+        )
+        depot = f'{boites[1][0]},{boites[1][1]}'
+        self.assertEqual(
+            geste('glisser', x=boites[0][0], y=boites[0][1], to=depot),
+            'déposé colis',
+        )
+        geste('cliquer', text='Enregistrer')
+        self.assertEqual(
+            geste('glisser', ref=colis, to='Dépôt'), 'déposé colis'
+        )
+        # Un geste qui ne vise rien le dit.
+        rien = self._outil('browser_action', action='cliquer')
+        self.assertFalse(rien['ok'])
+        self.assertIn(
+            'un repère (ref), un texte visible (text)', rien['detail']
+        )
+
+    def test_un_fichier_telecharge_se_lit_et_se_depose(self) -> None:
+        """« Exporter en CSV » : le fichier est gardé avec le livrable, son
+        début revient au modèle, la suite se lit. Un fichier fabriqué par
+        la page aussi. Un fichier se dépose dans un champ, ou par le bouton
+        qui ouvre le choix d'un fichier."""
+        page = self._atelier()
+        clic = self._outil(
+            'browser_action',
+            action='cliquer',
+            ref=self._repere(page, 'lien « Exporter en CSV » → /export.csv'),
+        )
+        self.assertTrue(clic['ok'], clic.get('detail'))
+        (recu,) = clic['telechargements']
+        self.assertEqual(
+            (recu['nom'], recu['taille'], recu['lignes']),
+            ('export.csv', f'{len(EXPORT)} octets', 60),
+        )
+        self.assertEqual(recu['debut'].splitlines()[0], 'ligne;1')
+        self.assertEqual(len(recu['debut'].splitlines()), 40)
+        self.assertIn('line 41', recu['suite'])
+        garde = files_root() / 'ven_t/poc/telechargements/t1/export.csv'
+        self.assertEqual(garde.read_text(encoding='utf-8'), EXPORT)
+        self.assertEqual(
+            tuple(
+                self.conn.execute(
+                    'SELECT task_id, size_bytes FROM artifacts'
+                    " WHERE kind='telechargement'"
+                ).fetchone()
+            ),
+            ('t1', len(EXPORT)),
+        )
+        suite = self._outil(
+            'browser_action',
+            action='lire_telechargement',
+            text='export.csv',
+            line=41,
+        )['fichier']
+        self.assertEqual(
+            suite['a_partir_de_la_ligne_41'].splitlines(),
+            [f'ligne;{n}' for n in range(41, 61)],
+        )
+        self.assertNotIn('suite', suite)
+        inconnu = self._outil(
+            'browser_action', action='lire_telechargement', text='absent.csv'
+        )['fichier']
+        self.assertIn('connus : export.csv', inconnu['echec'])
+        # Un fichier fabriqué par la page, dont l'adresse ne vit qu'un instant.
+        fabrique = self._outil(
+            'browser_action',
+            action='cliquer',
+            text='Exporter un fichier fabriqué',
+        )
+        (recu,) = fabrique['telechargements']
+        self.assertEqual(
+            (recu['nom'], recu['debut']), ('fabrique.csv', 'a;b\n1;2')
+        )
+        # Déposer : un fichier écrit par le modèle, puis un fichier téléchargé.
+        champ = self._repere(page, 'champ fichier « Pièce jointe » (vide)')
+        depot = self._outil(
+            'browser_action',
+            action='deposer_fichier',
+            ref=champ,
+            text='devis.txt',
+            content='bonjour',
+        )
+        self.assertEqual(self._journal(depot), 'reçu devis.txt 7')
+        self.assertIn(
+            'champ fichier « Pièce jointe » = devis.txt', depot['page']
+        )
+        depot = self._outil(
+            'browser_action',
+            action='deposer_fichier',
+            ref=champ,
+            text='export.csv',
+        )
+        self.assertEqual(
+            self._journal(depot), f'reçu export.csv {len(EXPORT)}'
+        )
+        # Par le bouton qui ouvre le choix d'un fichier (le champ est caché).
+        bouton = self._repere(depot['page'], 'bouton « Importer »')
+        importe = self._outil(
+            'browser_action',
+            action='deposer_fichier',
+            ref=bouton,
+            text='liste.csv',
+            content='x;y',
+        )
+        self.assertEqual(self._journal(importe), 'importé x;y')
+        refus = self._outil(
+            'browser_action',
+            action='deposer_fichier',
+            ref=champ,
+            text='rien.txt',
+        )
+        self.assertFalse(refus['ok'])
+
+    def test_un_nouvel_onglet_est_suivi(self) -> None:
+        """Un lien qui ouvre un autre onglet : la session y passe, et le
+        résultat le dit ; fermé, elle revient au précédent."""
+        page = self._atelier()
+        seul = self._outil('browser_action', action='fermer_onglet')
+        self.assertFalse(seul['ok'])
+        clic = self._outil(
+            'browser_action',
+            action='cliquer',
+            ref=self._repere(page, 'lien « Ouvrir ailleurs » → /autre'),
+        )
+        self.assertTrue(clic['ok'], clic.get('detail'))
+        self.assertIn('un nouvel onglet s’est ouvert', clic['onglets'][0])
+        self.assertIn('# Autre page', clic['page'])
+        self.assertIn('# Autre page', self._outil('browser_read')['page'])
+        retour = self._outil('browser_action', action='fermer_onglet')
+        self.assertTrue(retour['ok'], retour.get('detail'))
+        self.assertIn('revenu au précédent', retour['onglets'][0])
+        self.assertIn('# Atelier', retour['page'])
+        self.assertEqual(len(navigateur._session(self.conn, 't1').pages), 1)
+
+    def test_passer_au_vrai_chrome_en_cours_de_tache(self) -> None:
+        """Une page qui refuse le navigateur sans écran : la tâche passe
+        au vrai Chrome, à la même adresse, avec ses cookies et ce que la
+        page gardait dans le navigateur. La suite s'y fait, avec les mêmes
+        outils."""
+        self._atelier()
+        navigateur._session(self.conn, 't1').page.evaluate(
+            """() => { document.cookie = 'session=abc';
+                localStorage.setItem('panier', '3'); }"""
+        )
+        passe = self._outil('browser_action', action='passer_au_vrai_chrome')
+        self.assertTrue(passe['ok'], passe.get('detail'))
+        self.assertIn('# Atelier', passe['page'])
+        self.assertNotIn('t1', navigateur._ETAT.sessions)
+        vrai = navigateur._ETAT_VRAI.sessions['t1']
+        self.assertIs(vrai.context, navigateur._ETAT_VRAI.browser.contexts[0])
+        self.assertEqual(
+            vrai.page.evaluate(
+                '() => [document.cookie, localStorage.getItem("panier")]'
+            ),
+            ['session=abc', '3'],
+        )
+        # Les outils du navigateur sans écran agissent maintenant là-bas.
+        clic = self._outil(
+            'browser_action', action='cliquer', text='Enregistrer'
+        )
+        self.assertEqual(self._journal(clic), 'enregistré')
+        self.assertEqual(
+            vrai.page.evaluate(
+                '() => document.getElementById("journal").textContent'
+            ),
+            'enregistré',
+        )
+        self.assertIn('enregistré', self._outil('browser_read')['page'])
+        self.assertNotIn('t1', navigateur._ETAT.sessions)
+        deja = self._outil('browser_action', action='passer_au_vrai_chrome')
+        self.assertFalse(deja['ok'])
+        navigateur.close_sessions()
+        self.assertEqual(navigateur._PASSEES, set())
 
     def test_le_vrai_chrome_garde_son_profil_et_montre_l_onglet(self) -> None:
         """Le vrai Chrome (Q97) : mêmes actions, dans le profil du
@@ -542,6 +931,21 @@ class NavigateurTests(unittest.TestCase):
         self.assertEqual(len(images), 3)
         self.assertTrue(
             images[0]['src'].startswith('/owner/api/fichier?id=art_')
+        )
+        # Un fichier téléchargé pendant la tâche est sur sa fiche aussi.
+        self.conn.execute(
+            'INSERT INTO artifacts(id, venture_id, kind, version,'
+            ' path_or_url, hash, size_bytes, task_id, created_at)'
+            " VALUES('art_csv', 'ven_t', 'telechargement', 1,"
+            " '/x/telechargements/export.csv', 'h', 5, ?, ?)",
+            (str(tache), utcnow()),
+        )
+        fiche = fiche_tache(self.conn, str(tache))
+        assert fiche is not None
+        cadres = {c['titre']: c for c in fiche['cadres']}
+        self.assertEqual(
+            cadres['Fichiers téléchargés']['fichiers'],
+            [{'src': '/owner/api/fichier?id=art_csv', 'nom': 'export.csv'}],
         )
 
     def test_l_adresse_du_chantier(self) -> None:

@@ -10,15 +10,26 @@ Serge les pilote avec Playwright, par le protocole de débogage de Chrome.
 Ils ne tournent jamais dans le programme de Serge : une page inconnue ne
 peut pas l'atteindre.
 
-Une session (un onglet, ses cookies) par tâche, fermée à la fin de la
+Une session (ses onglets, ses cookies) par tâche, fermée à la fin de la
 tâche. Dans le vrai Chrome, l'onglet s'ouvre dans son profil, qui garde
-ses cookies d'une tâche à l'autre, comme celui d'une personne. Après chaque action, l'outil rend la page relue, en version courte :
-le modèle voit l'effet de son clic sans appel de plus. Une page se lit
-comme un lecteur d'écran la lirait (``page.js``) : une ligne par titre,
-texte, champ, bouton ou lien, avec un repère (``[e7]``) pour agir. Une
-capture d'écran revient au modèle comme une image ; gardée, elle est rangée
-avec le livrable (``files/<business>/<livrable>/captures/``) et a sa fiche
-dans ``artifacts``.
+ses cookies d'une tâche à l'autre, comme celui d'une personne. Après
+chaque action, l'outil rend la page relue, en version courte : le modèle
+voit l'effet de son geste sans appel de plus. Une page se lit comme un
+lecteur d'écran la lirait (``lecture.py``, ``page.js``) ; les gestes sont
+ceux d'une personne (``gestes.py``). Une capture d'écran revient au modèle
+comme une image ; gardée, elle est rangée avec le livrable
+(``files/<business>/<livrable>/captures/``) et a sa fiche dans
+``artifacts``.
+
+Ce qui arrive hors de la page est dit dans le résultat de l'action : une
+boîte de dialogue du navigateur (``dialogues.py``), un fichier téléchargé
+(``telechargements.py``), un nouvel onglet (la session y passe ; fermé, elle
+revient au précédent).
+
+Une tâche qui a commencé dans le navigateur sans écran peut passer au vrai
+Chrome (action ``passer_au_vrai_chrome``), quand une page refuse le
+premier : elle y retrouve la même adresse et sa connexion (ses cookies, et
+ce que la page gardait dans le navigateur).
 
 L'adresse ``http://chantier:<port>`` mène au chantier du business : le
 constructeur essaie ainsi le serveur qu'il vient de lancer. L'action
@@ -26,10 +37,6 @@ constructeur essaie ainsi le serveur qu'il vient de lancer. L'action
 un fichier de secret, ou un champ de la carte chiffrée de Serge
 (``payment-card.enc#pan``). Le modèle ne nomme que le secret, parmi ceux
 figés en base, et la page relue cache la valeur.
-
-Une boîte de dialogue du navigateur (message, question, saisie) n'est pas
-dans la page : Serge y répond lui-même et le dit dans le résultat de
-l'action (``dialogues.py``).
 """
 
 from __future__ import annotations
@@ -37,24 +44,23 @@ from __future__ import annotations
 import base64
 import hashlib
 import importlib.util
-import re
 import sqlite3
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any
-from urllib.parse import urlsplit, urlunsplit
 
 from serge.db.store import append_event, utcnow
-from serge.paths import config_root, files_root
+from serge.paths import files_root
 from serge.policy_store import policy_en_vigueur
 from serge.sandbox import chrome
-from serge.sandbox.chantier import chantier_id, container_name
+from serge.sandbox.chantier import chantier_id
 from serge.sandbox.dialogues import Dialogues
 from serge.sandbox.docker import journal
-from serge.secrets import read_secret_value
+from serge.sandbox.gestes import ECRANS, OUI, agir
+from serge.sandbox.lecture import lire, masquer
+from serge.sandbox.lecture import vers_chantier as _vers_chantier
+from serge.sandbox.telechargements import DOSSIER, Telechargements
 
-SNAPSHOT_JS = (Path(__file__).with_name('page.js')).read_text(encoding='utf-8')
-ECRANS = {'ordinateur': (1280, 800), 'mobile': (390, 844)}
+__all__ = ['_vers_chantier', 'masquer']
 
 
 @dataclass
@@ -67,9 +73,17 @@ class _Session:
     # reçus : jamais rendus au modèle, ni en texte ni sur une capture.
     masques: set[str] = field(default_factory=set)
     champs_secrets: list[Any] = field(default_factory=list)
-    # Le vrai Chrome prête son profil : seul l'onglet est à fermer.
+    # Le vrai Chrome prête son profil : seuls les onglets sont à fermer.
     profil_prete: bool = False
+    # Le conteneur du navigateur : un fichier téléchargé en est sorti.
+    conteneur: str = ''
+    # Les onglets de la session, du premier au dernier ouvert ; ``page``
+    # est celui où elle agit.
+    pages: list[Any] = field(default_factory=list)
+    # Ce qui est arrivé aux onglets depuis le dernier résultat rendu.
+    onglets: list[str] = field(default_factory=list)
     dialogues: Dialogues = field(default_factory=Dialogues)
+    telechargements: Telechargements = field(default_factory=Telechargements)
 
 
 @dataclass
@@ -82,6 +96,8 @@ class _Etat:
 _ETAT = _Etat(chrome.SANS_ECRAN)
 _ETAT_VRAI = _Etat(chrome.VRAI)
 _PLAYWRIGHT: dict[str, Any] = {}
+# Les tâches passées du navigateur sans écran au vrai Chrome.
+_PASSEES: set[str] = set()
 
 
 def _endpoint(conn: sqlite3.Connection, nom: str) -> str:
@@ -119,7 +135,11 @@ def _browser(conn: sqlite3.Connection, etat: _Etat) -> Any:
         _PLAYWRIGHT['pw'] = sync_playwright().start()
     endpoint = _endpoint(conn, etat.nom)
     try:
-        etat.browser = _PLAYWRIGHT['pw'].chromium.connect_over_cdp(endpoint)
+        # Le navigateur écrit ses téléchargements dans ce dossier de son
+        # conteneur (``telechargements.py``).
+        etat.browser = _PLAYWRIGHT['pw'].chromium.connect_over_cdp(
+            endpoint, artifacts_dir=DOSSIER
+        )
     except Exception as exc:
         journal(f'navigateur injoignable ({endpoint}) : {exc}')
         raise
@@ -150,19 +170,48 @@ def _session(
     except Exception:  # noqa: BLE001 — une connexion perdue (navigateur relancé)
         etat.browser = None
         context = _contexte(conn, etat)
-    page = context.new_page()
-    session = _Session(context, page, profil_prete=etat is _ETAT_VRAI)
+    session = _Session(
+        context,
+        context.new_page(),
+        profil_prete=etat is _ETAT_VRAI,
+        conteneur=etat.nom,
+    )
+    _ecouter(session, session.page)
+    etat.sessions[task_id] = session
+    return session
+
+
+def _ecouter(session: _Session, page: Any) -> None:
+    """Suit un onglet de la session : ses erreurs, et ce qu'il fait hors de
+    la page (une boîte de dialogue, un téléchargement, un nouvel onglet)."""
+    session.pages.append(page)
 
     def erreur(texte: str) -> None:
         session.errors.append(masquer(texte, session.masques)[:300])
         del session.errors[:-50]
+
+    def ouvert(nouveau: Any) -> None:
+        session.page = nouveau
+        _ecouter(session, nouveau)
+        session.onglets.append(
+            'un nouvel onglet s’est ouvert : tu y es (fermer_onglet revient'
+            ' au précédent)'
+        )
+
+    def ferme(_page: Any) -> None:
+        if page in session.pages:
+            session.pages.remove(page)
+        if session.page is page and session.pages:
+            session.page = session.pages[-1]
+            session.onglets.append(
+                'l’onglet s’est fermé : tu es revenu au précédent'
+            )
 
     page.on(
         'console',
         lambda m: erreur(f'console : {m.text}') if m.type == 'error' else None,
     )
     page.on('pageerror', lambda e: erreur(f'JavaScript : {e}'))
-    page.on('dialog', session.dialogues.repondre)
     page.on(
         'requestfailed',
         lambda r: erreur(f'requête ratée : {r.method} {r.url} ({r.failure})'),
@@ -173,8 +222,46 @@ def _session(
             erreur(f'HTTP {r.status} : {r.url}') if r.status >= 400 else None
         ),
     )
-    etat.sessions[task_id] = session
-    return session
+    page.on('dialog', session.dialogues.repondre)
+    page.on('download', session.telechargements.recevoir)
+    page.on('popup', ouvert)
+    page.on('close', ferme)
+
+
+def _passer_au_vrai_chrome(conn: sqlite3.Connection, task_id: str) -> str:
+    """Fait passer la tâche du navigateur sans écran au vrai Chrome : même
+    adresse, mêmes cookies, et ce que la page gardait dans le navigateur.
+    Rend ``''``, ou ce qui l'a empêché."""
+    if task_id in _PASSEES:
+        return 'tu es déjà dans le vrai Chrome'
+    avant = _ETAT.sessions.get(task_id)
+    adresse = avant.page.url if avant else ''
+    cookies = avant.context.cookies() if avant else []
+    garde: list[Any] = []
+    if avant is not None:
+        try:
+            garde = avant.page.evaluate('() => Object.entries(localStorage)')
+        except Exception:  # noqa: BLE001 — une page sans stockage
+            pass
+    apres = _session(conn, task_id, _ETAT_VRAI)
+    _PASSEES.add(task_id)
+    if avant is not None:
+        apres.masques |= avant.masques
+        apres.telechargements.fichiers.update(avant.telechargements.fichiers)
+        del _ETAT.sessions[task_id]
+        avant.context.close()
+    if cookies:
+        apres.context.add_cookies(cookies)
+    if adresse and adresse != 'about:blank':
+        apres.page.goto(adresse, wait_until='domcontentloaded', timeout=30000)
+        if garde:
+            apres.page.evaluate(
+                '(lignes) => { for (const [cle, valeur] of lignes)'
+                ' localStorage.setItem(cle, valeur); }',
+                garde,
+            )
+            apres.page.reload(wait_until='domcontentloaded', timeout=30000)
+    return ''
 
 
 def close_sessions() -> None:
@@ -183,12 +270,14 @@ def close_sessions() -> None:
         for session in list(etat.sessions.values()):
             try:
                 if session.profil_prete:
-                    session.page.close()
+                    for page in list(session.pages):
+                        page.close()
                 else:
                     session.context.close()
             except Exception:  # noqa: BLE001 — une session déjà perdue
                 pass
         etat.sessions.clear()
+    _PASSEES.clear()
 
 
 def montrer(task_id: str) -> bool:
@@ -202,62 +291,6 @@ def montrer(task_id: str) -> bool:
     except Exception:  # noqa: BLE001 — un onglet perdu
         return False
     return True
-
-
-def _chantier(args: dict[str, Any]) -> str:
-    return container_name(
-        chantier_id(
-            str(args.get('venture_id') or ''),
-            str(args.get('deliverable') or ''),
-        )
-    )
-
-
-def _vers_chantier(url: str, args: dict[str, Any]) -> str:
-    """``http://chantier:3000/x`` mène au conteneur du chantier de la tâche."""
-    parts = urlsplit(url)
-    if parts.hostname != 'chantier':
-        return url
-    port = f':{parts.port}' if parts.port else ''
-    return urlunsplit(parts._replace(netloc=f'{_chantier(args)}{port}'))
-
-
-def _releve(page: Any, lignes: int) -> dict[str, Any]:
-    """La page vue comme un lecteur d'écran. Une navigation en cours (un
-    clic qui charge une autre page) coupe la lecture : on attend que la
-    page se pose, puis on relit."""
-    for _ in range(2):
-        try:
-            return page.evaluate(SNAPSHOT_JS, {'maxLines': lignes})
-        except Exception as exc:  # noqa: BLE001 — Playwright, une navigation
-            if 'context was destroyed' not in str(exc):
-                raise
-            _attendre(page)
-    return page.evaluate(SNAPSHOT_JS, {'maxLines': lignes})
-
-
-def _lire(session: _Session, lignes: int, args: dict[str, Any]) -> str:
-    data = _releve(session.page, lignes)
-    texte = '\n'.join(
-        [f'Page : {data["title"]} — {data["url"]}', *data['lines']]
-    )
-    if data['truncated']:
-        texte += f'\n(page coupée à {lignes} lignes : fais défiler)'
-    texte = masquer(texte, session.masques)
-    # Le conteneur du chantier garde son nom court pour le modèle.
-    return texte.replace(_chantier(args), 'chantier')
-
-
-def masquer(texte: str, secrets: set[str]) -> str:
-    """Remplace chaque secret par ``••••``, même remis en forme par la
-    page : ``4242 4242 4242 4242`` ou ``12 / 34``."""
-    for secret in secrets:
-        motif = r'[\s/.\-]*'.join(
-            re.escape(c) for c in secret if not c.isspace()
-        )
-        if motif:
-            texte = re.sub(motif, '••••', texte)
-    return texte
 
 
 def _cacher_secrets(session: _Session, cacher: bool) -> None:
@@ -274,76 +307,9 @@ def _cacher_secrets(session: _Session, cacher: bool) -> None:
             pass
 
 
-def _attendre(page: Any) -> None:
-    try:
-        page.wait_for_load_state('networkidle', timeout=3000)
-    except Exception:  # noqa: BLE001 — une page qui ne se calme pas
-        pass
-
-
-def _element(page: Any, ref: Any) -> Any:
-    return page.locator(f'[data-serge-ref="{str(ref).strip("[]")}"]').first
-
-
-def _agir(session: _Session, args: dict[str, Any]) -> str:
-    """Fait l'action ; rend ``''``, ou ce qui l'a empêchée."""
-    page = session.page
-    action = str(args.get('action') or '')
-    texte = str(args.get('text') or '')
-    if action == 'ouvrir':
-        page.goto(
-            _vers_chantier(texte, args),
-            wait_until='domcontentloaded',
-            timeout=30000,
-        )
-    elif action == 'cliquer':
-        _element(page, args.get('ref')).click(timeout=10000)
-    elif action == 'taper':
-        element = _element(page, args.get('ref'))
-        element.fill(texte, timeout=10000)
-        if args.get('submit') in (True, 'true', '1', 'oui'):
-            element.press('Enter')
-    elif action == 'taper_secret':
-        # Le modèle nomme le secret ; Serge tape sa valeur, que le modèle ne
-        # voit jamais. Seuls les secrets figés en base sont permis.
-        permis = {
-            n.strip() for n in str(args.get('secrets') or '').split(',')
-        } - {''}
-        if texte not in permis:
-            return f'secret non permis : {texte}'
-        valeur = read_secret_value(config_root() / 'secrets', texte)
-        if not valeur:
-            return f'secret absent sur ce serveur : {texte}'
-        session.masques.add(valeur)
-        element = _element(page, args.get('ref'))
-        element.fill(valeur, timeout=10000)
-        session.champs_secrets.append(element)
-    elif action == 'choisir':
-        element = _element(page, args.get('ref'))
-        try:
-            element.select_option(label=texte, timeout=5000)
-        except Exception:  # noqa: BLE001 — sinon par sa valeur
-            element.select_option(value=texte, timeout=5000)
-    elif action == 'touche':
-        page.keyboard.press(texte or 'Enter')
-    elif action == 'defiler':
-        page.mouse.wheel(0, -700 if texte == 'haut' else 700)
-    elif action == 'revenir':
-        page.go_back(wait_until='domcontentloaded', timeout=15000)
-    elif action == 'attendre':
-        if texte:
-            page.get_by_text(texte).first.wait_for(timeout=15000)
-        else:
-            page.wait_for_timeout(3000)
-    elif action == 'ecran':
-        largeur, hauteur = ECRANS.get(texte, ECRANS['ordinateur'])
-        page.set_viewport_size({'width': largeur, 'height': hauteur})
-    elif action in ('accepter_dialogue', 'refuser_dialogue'):
-        session.dialogues.preparer(action == 'accepter_dialogue', texte)
-    else:
-        return f'action inconnue : {action}'
-    _attendre(page)
-    return ''
+def _etat_de(task_id: str, etat: _Etat) -> _Etat:
+    """Le navigateur de la tâche : le vrai Chrome si elle y est passée."""
+    return _ETAT_VRAI if task_id in _PASSEES else etat
 
 
 def _reglages(conn: sqlite3.Connection) -> dict[str, Any]:
@@ -357,17 +323,36 @@ def browser_action(
     _invocation_id: str,
     etat: _Etat = _ETAT,
 ) -> dict[str, Any]:
-    """Une action dans la page, puis la page relue en version courte."""
-    session = _session(conn, str(args.get('task_id') or ''), etat)
+    """Une action dans la page, puis la page relue en version courte, et
+    ce qui est arrivé hors de la page."""
+    task_id = str(args.get('task_id') or '')
+    action = str(args.get('action') or '')
+    refus = ''
+    if action == 'passer_au_vrai_chrome':
+        try:
+            refus = _passer_au_vrai_chrome(conn, task_id)
+        except Exception as exc:  # noqa: BLE001 — l'échec est rendu au modèle
+            refus = str(exc).splitlines()[0][:300]
+    session = _session(conn, task_id, _etat_de(task_id, etat))
     erreurs = len(session.errors)
-    try:
-        refus = _agir(session, args)
-    except Exception as exc:  # noqa: BLE001 — l'échec est rendu au modèle
-        refus = str(exc).splitlines()[0][:300]
+    fichier = None
+    if action == 'lire_telechargement':
+        try:
+            ligne = int(float(args.get('line') or 1))
+        except (TypeError, ValueError):
+            ligne = 1
+        fichier = session.telechargements.lire(
+            str(args.get('text') or ''), ligne
+        )
+    elif action != 'passer_au_vrai_chrome':
+        try:
+            refus = agir(session, args)
+        except Exception as exc:  # noqa: BLE001 — l'échec est rendu au modèle
+            refus = str(exc).splitlines()[0][:300]
     lignes = int(_reglages(conn)['browser_lines_after_action'])
     result: dict[str, Any] = {
         'ok': not refus,
-        'page': _lire(session, lignes, args),
+        'page': lire(session, lignes, args),
     }
     if refus:
         result['detail'] = masquer(refus, session.masques)
@@ -377,6 +362,13 @@ def browser_action(
     dialogues = session.dialogues.raconter()
     if dialogues:
         result['dialogues'] = [masquer(d, session.masques) for d in dialogues]
+    if session.onglets:
+        result['onglets'], session.onglets = session.onglets, []
+    recus = session.telechargements.ramasser(conn, args, session.conteneur)
+    if recus:
+        result['telechargements'] = recus
+    if fichier is not None:
+        result['fichier'] = fichier
     return result
 
 
@@ -388,11 +380,12 @@ def browser_read(
     etat: _Etat = _ETAT,
 ) -> dict[str, Any]:
     """La page entière, et les dernières erreurs de la page."""
-    session = _session(conn, str(args.get('task_id') or ''), etat)
+    task_id = str(args.get('task_id') or '')
+    session = _session(conn, task_id, _etat_de(task_id, etat))
     lignes = int(_reglages(conn)['browser_lines_read'])
     return {
         'ok': True,
-        'page': _lire(session, lignes, args),
+        'page': lire(session, lignes, args),
         'erreurs': session.errors[-20:],
     }
 
@@ -410,8 +403,8 @@ def browser_screenshot(
     comme une image, pas comme du texte.
     """
     task_id = str(args.get('task_id') or '')
-    session = _session(conn, task_id, etat)
-    entiere = args.get('full_page') in (True, 'true', '1', 'oui')
+    session = _session(conn, task_id, _etat_de(task_id, etat))
+    entiere = args.get('full_page') in OUI
     _cacher_secrets(session, True)
     try:
         image = session.page.screenshot(
@@ -424,7 +417,13 @@ def browser_screenshot(
         'ok': True,
         'image': 'data:image/jpeg;base64,' + base64.b64encode(image).decode(),
     }
-    if args.get('keep') in (True, 'true', '1', 'oui'):
+    if not entiere:
+        # Un point de cette image se vise tel quel (x, y) pour agir.
+        largeur, hauteur = session.page.evaluate(
+            '() => [innerWidth, innerHeight]'
+        )
+        result['ecran'] = f'{largeur} x {hauteur}'
+    if args.get('keep') in OUI:
         result['gardee'] = _garder(conn, args, task_id, session, image)
         append_event(
             conn,
