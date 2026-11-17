@@ -9,10 +9,10 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+import serge.voice.consents as _canon
 from serge.coupe_circuit import serge_demarre
 from serge.db.store import default_canon_path, open_db
 from serge.e164 import E164_RE
-from serge.voice import consents as _canon
 from serge.voice.policy import (
     VoiceBrokerDenied,
     VoicePolicy,
