@@ -214,13 +214,7 @@ class ReviewApiTests(McServerCase):
         types = load_ticket_types()
         for typ, spec in types.items():
             with open_db(self.db_path) as conn:
-                tid = create_ticket(
-                    conn,
-                    types,
-                    typ,
-                    'Question',
-                    {'options_qcm': ['Oui', 'Non']},
-                )
+                tid = create_ticket(conn, types, typ, 'Question', {})
                 publish(conn, tid)
             st, _, body = self._request(
                 'GET',
