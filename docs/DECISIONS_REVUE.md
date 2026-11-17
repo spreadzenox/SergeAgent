@@ -2176,3 +2176,30 @@ Décidé :
 2. **Un bouton « Débloquer les appels »**, page Voix, ferme tout de suite
    les appels restés « en cours » au journal. Il ne raccroche pas un appel
    vraiment en cours : son issue sera écrite à la fin, comme d'habitude.
+
+### Q102 — Les types de tickets que rien ne crée sont retirés (validé par Clem, 16 novembre 2026)
+Constat : dix types de tickets venaient d'anciennes conceptions et
+n'étaient ouverts par aucune invocation : « Idée de business »
+(`HYPOTHESIS`), « Veto amont », « Publication », « Mémoire », « Policy »,
+« Dépassement R1 », « Ordre owner », « Question » (`QNA`), « Alerte » et
+`COLLECT_READINESS`. Ils encombraient la page Décisions (types, blocs
+toujours vides) et le code (les lignes d'un ticket, le QCM).
+Décidé :
+1. **Ces dix types sont retirés** du fichier de départ et effacés de la
+   base au démarrage (section `deleted` de `config/ticket-types.yaml`,
+   comme pour un réglage). Un nom retiré n'est jamais redonné à un
+   nouveau type. Un vieux ticket ouvert sous un de ces noms reste lisible,
+   sans boutons.
+2. **Ce qui ne servait qu'à eux part aussi** : les lignes d'un ticket
+   (table `ticket_items`, version 54), le QCM, les boutons « Tout
+   approuver », « Bien reçu », « Confirmer », « Annuler », « Ouvrir »,
+   « Refuser » et « Approuver la version », le bloc « Propositions de
+   leçons » de la page Décisions.
+3. **« Approuver », « Rejeter » et « Éditer » restent** : ce sont les
+   boutons neutres qu'on peut donner à un type dans Mission Control.
+4. **Seul un guichet qui expire dans le quart d'heure est « urgent »**
+   (page En direct, page Décisions). Les deux autres cas (un veto, une
+   alerte) n'existent plus.
+5. Quand un besoin reviendra (une question de Serge, une alerte), il sera
+   décrit en base avec son invocation, comme les types du lot 8 bis.
+
