@@ -21,14 +21,19 @@
   const clean = (text) => (text || '').replace(/\s+/g, ' ').trim().slice(0, maxChars);
   // « non » : rien à lire ; « enfants » : l'élément n'a pas de boîte à lui
   // (display: contents, ou une racine de fenêtre modale haute de 0), mais
-  // ses enfants peuvent se voir.
+  // ses enfants peuvent se voir. Un volet replié (haut de 0, et qui coupe
+  // ce qui dépasse) cache aussi ses enfants.
   const visible = (el) => {
     const style = getComputedStyle(el);
     if (style.visibility === 'hidden' || style.display === 'none') {
       return 'non';
     }
     const box = el.getBoundingClientRect();
-    return box.width > 0 && box.height > 0 ? 'oui' : 'enfants';
+    if (box.width > 0 && box.height > 0) {
+      return 'oui';
+    }
+    const coupe = style.overflowX !== 'visible' || style.overflowY !== 'visible';
+    return coupe && style.display !== 'contents' ? 'non' : 'enfants';
   };
   const label = (el) => {
     if (el.id) {

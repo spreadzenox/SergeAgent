@@ -164,7 +164,12 @@ def _session(
 ) -> _Session:
     session = etat.sessions.get(task_id)
     if session is not None:
-        return session
+        if not session.page.is_closed():
+            return session
+        # Son dernier onglet s'est fermé (la page l'a fermé) : on repart
+        # d'un onglet neuf.
+        if not session.profil_prete:
+            session.context.close()
     try:
         context = _contexte(conn, etat)
     except Exception:  # noqa: BLE001 — une connexion perdue (navigateur relancé)
@@ -349,6 +354,7 @@ def browser_action(
             refus = agir(session, args)
         except Exception as exc:  # noqa: BLE001 — l'échec est rendu au modèle
             refus = str(exc).splitlines()[0][:300]
+        session = _session(conn, task_id, _etat_de(task_id, etat))
     lignes = int(_reglages(conn)['browser_lines_after_action'])
     result: dict[str, Any] = {
         'ok': not refus,

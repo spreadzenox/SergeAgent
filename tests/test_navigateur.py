@@ -107,6 +107,8 @@ PAGE_ATELIER = """<!doctype html><html lang="fr"><head><title>Atelier</title>
 <div class="carte" id="carte">Carte cliquable</div>
 <div style="display:contents"><button onclick="note('sans boîte')"
 >Dans un bloc sans boîte</button></div>
+<div style="height:0;overflow:hidden"><button>Dans un volet replié</button>
+</div>
 <div id="racine"><div id="fenetre"><button onclick="note('fenêtre')"
 >Fermer la fenêtre</button></div></div>
 <div id="menu">Menu<ul><li><button onclick="note('survol')">Entrée cachée
@@ -442,6 +444,8 @@ class NavigateurTests(unittest.TestCase):
         self.assertIn('## Un titre qui est un lien\n', page)
         self._repere(page, 'lien « Un titre qui est un lien » → /autre')
         self.assertIn('zone de dessin, de (', page)
+        # Ce qu'un volet replié cache ne se lit pas.
+        self.assertNotIn('Dans un volet replié', page)
         self._repere(page, 'champ fichier « Pièce jointe » (vide)')
         self._repere(page, 'lien « Ouvrir ailleurs » → /autre')
         for ligne, effet in (
@@ -659,6 +663,14 @@ class NavigateurTests(unittest.TestCase):
         self.assertIn('revenu au précédent', retour['onglets'][0])
         self.assertIn('# Atelier', retour['page'])
         self.assertEqual(len(navigateur._session(self.conn, 't1').pages), 1)
+        # Une page qui ferme son dernier onglet : la suite repart d'un
+        # onglet neuf, au lieu d'échouer.
+        navigateur._session(self.conn, 't1').page.close()
+        neuf = self._outil(
+            'browser_action', action='ouvrir', text=f'{self.site}/autre'
+        )
+        self.assertTrue(neuf['ok'], neuf.get('detail'))
+        self.assertIn('# Autre page', neuf['page'])
 
     def test_passer_au_vrai_chrome_en_cours_de_tache(self) -> None:
         """Une page qui refuse le navigateur sans écran : la tâche passe
