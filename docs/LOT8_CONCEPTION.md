@@ -341,6 +341,13 @@ plafonds) puis compose. Le canal est branché quand le fichier d'instance a
   Q83). Les jours et heures d'appel sont des réglages de la page Policy
   (« Pays et appels ») ; le pont qui refuse pour un temps (un appel déjà en
   cours, le plafond du jour) fait attendre aussi.
+- **Un appel jamais refermé ne bloque pas pour toujours** (décision Q101).
+  Un appel reste « en cours » au journal tant que son issue n'est pas
+  écrite ; pendant ce temps, aucun autre ne part vers ce numéro. Si le pont
+  s'arrête pendant l'appel, l'issue n'est jamais écrite. Un appel dure 30
+  minutes au plus : à la demande d'appel suivante, un appel « en cours »
+  depuis plus d'une heure est fermé (issue « échec »). « Débloquer les
+  appels », page Voix, ferme tout de suite ceux qui restent.
 - **L'agent vocal est une invocation** (« Parler au téléphone », file
   « Appels », qui n'a pas de runner) : son prompt, ses réglages
   (fournisseurs, modèles, voix, durée maximale), ce qu'il reçoit au

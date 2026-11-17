@@ -52,6 +52,8 @@ def _setting(body: dict, key: str, low: float, high: float) -> float | None:
 
 
 class _PipelineHandler(Protocol):
+    app_config: Any
+
     def _require_owner(self) -> bool: ...
     def _json_body(self) -> dict | None: ...
     def _refus(self, http: int, erreur: str, code: str, aide: str) -> None: ...
@@ -138,6 +140,27 @@ class PipelineActionsMixin(_Base):
         with self._db() as conn:
             fait = stop_trial(conn, 'arrêté dans Mission Control')
         self._send_json(200, {'ok': True, **fait})
+
+    def _api_voice_debloquer(self) -> None:
+        """« Débloquer les appels » : ferme les appels restés « en cours »
+        au journal des appels. Un appel jamais refermé (le pont arrêté
+        pendant l'appel) bloque tout nouvel appel vers ce numéro."""
+        if not self._require_owner():
+            return
+        from serge.voice.ledger import VoiceLedger
+        from serge.voice.policy import default_ledger_path
+
+        fermes = VoiceLedger(
+            default_ledger_path(), self.app_config.db_path
+        ).close_pending()
+        with self._db() as conn:
+            append_event(
+                conn,
+                actor='owner',
+                type='mc_act',
+                payload={'acte': 'appels_debloques', 'fermes': fermes},
+            )
+        self._send_json(200, {'ok': True, 'fermes': fermes})
 
     def _api_tache_annuler(self) -> None:
         """Annule une tâche en attente : ``{task_id}``."""
