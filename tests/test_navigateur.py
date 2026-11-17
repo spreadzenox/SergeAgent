@@ -17,7 +17,10 @@ Scénarios :
   de files/ ;
 - l'adresse http://chantier:3000 mène au conteneur du chantier de la tâche ;
 - taper un secret : seuls les secrets figés en base sont permis ; la page
-  relue, même remise en forme, et une capture ne montrent jamais sa valeur.
+  relue, même remise en forme, et une capture ne montrent jamais sa valeur ;
+- une boîte de dialogue du navigateur (saisie, question, message) : sans
+  réponse préparée, elle est refermée et le résultat dit comment y
+  répondre ; une réponse préparée sert une fois, à la boîte suivante.
 """
 
 from __future__ import annotations
@@ -61,9 +64,24 @@ PAGE = """<!doctype html><html lang="fr"><head><title>Devis</title></head>
 </body></html>"""
 
 
+# Un produit qui demande un nom dans une boîte de saisie du navigateur,
+# confirme avant d'effacer, et félicite par un message.
+PAGE_DIALOGUES = """<!doctype html><html lang="fr"><head><title>Calculs
+</title></head><body><h1>Mes calculs</h1>
+<button onclick="const n = prompt('Nom du calcul ?', 'Sans nom');
+  if (n) document.getElementById('liste').textContent = 'Enregistré : ' + n;"
+>Enregistrer</button>
+<button onclick="if (confirm('Tout effacer ?'))
+  document.getElementById('liste').textContent = 'Effacé';">Effacer</button>
+<button onclick="alert('Bravo');
+  document.getElementById('liste').textContent = 'Vu';">Féliciter</button>
+<p id="liste">Aucun calcul</p></body></html>"""
+
+
 class _Page(http.server.BaseHTTPRequestHandler):
     def do_GET(self) -> None:  # noqa: N802
-        corps = PAGE.encode('utf-8')
+        page = PAGE_DIALOGUES if self.path == '/dialogues' else PAGE
+        corps = page.encode('utf-8')
         self.send_response(200)
         self.send_header('Content-Type', 'text/html; charset=utf-8')
         self.send_header('Content-Length', str(len(corps)))
@@ -224,6 +242,74 @@ class NavigateurTests(unittest.TestCase):
         self.assertTrue(any('oups' in e for e in lue['erreurs']))
         navigateur.close_sessions()
         self.assertEqual(navigateur._ETAT.sessions, {})
+
+    def test_repondre_a_une_boite_de_dialogue_du_navigateur(self) -> None:
+        """Le relecteur d'un produit, le 17 novembre 2026 : « Enregistrer »
+        ouvre une saisie du navigateur, qu'il ne voit pas et où il ne peut
+        rien taper. Serge la referme et dit comment y répondre ; la réponse
+        préparée est tapée dans la boîte suivante, une fois."""
+        page = self._outil(
+            'browser_action', action='ouvrir', text=f'{self.site}/dialogues'
+        )['page']
+        self.assertIn('Aucun calcul', page)
+
+        def cliquer(bouton: str) -> dict[str, Any]:
+            vue = self._outil('browser_read')['page']
+            repere = re.search(rf'\[(e\d+)\] bouton « {bouton} »', vue)
+            assert repere, vue
+            return self._outil(
+                'browser_action', action='cliquer', ref=repere[1]
+            )
+
+        # Sans réponse préparée : refermée, rien n'est enregistré.
+        clic = cliquer('Enregistrer')
+        self.assertTrue(clic['ok'])
+        (boite,) = clic['dialogues']
+        self.assertTrue(
+            boite.startswith(
+                'saisie « Nom du calcul ? » : refermée sans réponse.'
+            ),
+            boite,
+        )
+        self.assertIn('accepter_dialogue', boite)
+        self.assertIn('Aucun calcul', clic['page'])
+        # La réponse préparée est tapée, une seule fois.
+        prete = self._outil(
+            'browser_action', action='accepter_dialogue', text='Devis Dupont'
+        )
+        self.assertTrue(prete['ok'])
+        self.assertNotIn('dialogues', prete)
+        clic = cliquer('Enregistrer')
+        self.assertEqual(
+            clic['dialogues'],
+            ['saisie « Nom du calcul ? » : répondu « Devis Dupont »'],
+        )
+        self.assertIn('Enregistré : Devis Dupont', clic['page'])
+        self.assertIn(
+            'refermée sans réponse', cliquer('Enregistrer')['dialogues'][0]
+        )
+        # Une question : refusée, puis acceptée.
+        self.assertIn(
+            'question « Tout effacer ? » : refermée sans réponse',
+            cliquer('Effacer')['dialogues'][0],
+        )
+        self._outil('browser_action', action='refuser_dialogue')
+        clic = cliquer('Effacer')
+        self.assertEqual(
+            clic['dialogues'],
+            ['question « Tout effacer ? » : refusée (Annuler)'],
+        )
+        self.assertIn('Enregistré : Devis Dupont', clic['page'])
+        self._outil('browser_action', action='accepter_dialogue')
+        clic = cliquer('Effacer')
+        self.assertEqual(
+            clic['dialogues'], ['question « Tout effacer ? » : acceptée (OK)']
+        )
+        self.assertIn('Effacé', clic['page'])
+        # Un message est fermé, et la page continue.
+        clic = cliquer('Féliciter')
+        self.assertEqual(clic['dialogues'], ['message « Bravo » : fermé (OK)'])
+        self.assertIn('Vu', clic['page'])
 
     def test_le_vrai_chrome_garde_son_profil_et_montre_l_onglet(self) -> None:
         """Le vrai Chrome (Q97) : mêmes actions, dans le profil du
