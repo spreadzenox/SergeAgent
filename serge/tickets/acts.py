@@ -4,11 +4,7 @@
 APPROVE = frozenset(
     {
         'approuver',
-        'approuver_version',
         'cest_fait',
-        'confirmer',
-        'ouvrir',
-        'tout_approuver',
         'envoyer_brouillon',
         'passer',
         'valider',
@@ -20,8 +16,6 @@ REJECT = frozenset(
     {
         'rejeter',
         'abandonner',
-        'refuser',
-        'annuler',
         'ne_rien_envoyer',
         'ne_pas_passer',
         'arreter_business',
@@ -33,12 +27,11 @@ REJECT = frozenset(
 # en discuter sans le trancher (« Réécrire » : Serge réécrit, puis le
 # nouveau brouillon revient dans le même ticket, décision Q85).
 EDITER = frozenset({'editer', 'ma_reponse', 'a_corriger', 'choisir_autre'})
-REPONDRE = frozenset({'reponse_libre', 'choix_qcm'})
+REPONDRE = frozenset({'reponse_libre'})
 DISCUTER = frozenset({'discuter', 'discuter_fil', 'reecrire'})
 
 # Tous les boutons qu'un type de ticket peut avoir, sur Discord comme dans
-# Mission Control (les boutons d'une leçon, garder / modifier / jeter, sont
-# propres aux lignes d'un ticket).
+# Mission Control.
 BOUTONS = frozenset(
     APPROVE
     | REJECT
@@ -46,9 +39,7 @@ BOUTONS = frozenset(
         'editer',
         'discuter',
         'discuter_fil',
-        'accuse_reception',
         'reponse_libre',
-        'choix_qcm',
         'ma_reponse',
         'reecrire',
         'a_corriger',

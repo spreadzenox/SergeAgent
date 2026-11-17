@@ -63,7 +63,6 @@ GET_API = {
     '/owner/api/trace': '_api_trace',
     '/owner/api/objet': '_api_objet',
     '/owner/api/ticket/carte': '_api_ticket_carte',
-    '/owner/api/memory/items': '_api_memory_items',
     '/owner/api/memory/search': '_api_memory_search',
     '/owner/api/voice/audio': '_api_voice_audio',
     '/owner/api/fichier': '_api_fichier',
@@ -355,7 +354,6 @@ class McHandler(
         apis = {
             '/owner/api/invocation': self._api_invocation,
             '/owner/api/ticket/acte': self._api_ticket_acte,
-            '/owner/api/ticket/item': self._api_ticket_item,
             '/owner/api/ticket/discuter': self._api_ticket_discuter,
             '/owner/api/ticket/type': self._api_ticket_type,
             '/owner/api/discord/admin': self._api_discord_admin,

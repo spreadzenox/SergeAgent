@@ -79,3 +79,27 @@ def load_ticket_type_changes(directory: Path | None = None) -> list[dict]:
     ):
         raise PolicyError('ticket-types.changes : {id, type, set} attendus')
     return changes
+
+
+def load_ticket_types_deleted(directory: Path | None = None) -> list[str]:
+    """Les types retirés du fichier, à effacer de la base (section
+    ``deleted``).
+
+    Raises:
+        PolicyError: Une section mal écrite, ou un type à la fois déclaré
+            et retiré.
+    """
+    data = _load_registry('ticket-types.yaml', directory)
+    deleted = data.get('deleted')
+    if deleted is None:
+        return []
+    if not isinstance(deleted, list) or not all(
+        isinstance(name, str) and name for name in deleted
+    ):
+        raise PolicyError('ticket-types.deleted : une liste de noms attendue')
+    encore = sorted(set(deleted) & set(data.get('types') or {}))
+    if encore:
+        raise PolicyError(
+            f'ticket-types.deleted : {", ".join(encore)} est encore déclaré'
+        )
+    return deleted

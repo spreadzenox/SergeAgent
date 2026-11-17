@@ -13,13 +13,7 @@ from typing import TYPE_CHECKING, Any, Protocol
 
 from serge.db.store import append_event
 from serge.memory.lessons import delete_lesson, update_lesson
-from serge.tickets import (
-    already_applied,
-    decide,
-    discuss,
-    set_item,
-    tout_approuver,
-)
+from serge.tickets import already_applied, decide, discuss
 from serge.tickets.acts import APPROVE, EDITER, REJECT, REPONDRE
 from serge.tickets.reponses import noter_reponse
 from serge.tickets.shared import TicketError, fetch_ticket, record_event
@@ -38,12 +32,9 @@ ACTES_TICKET = {
     # « Réécrire » ne tranche pas : le ticket passe en discussion, et le
     # nouveau brouillon y revient (Q85).
     'reecrire': 'DISCUSSING',
-    'accuse_reception': 'ACK',
 }
 # Les actes qui demandent un texte (la note).
 ACTES_TEXTE = EDITER | REPONDRE | {'reecrire'}
-
-ACTES_ITEM = {'garder': 'keep', 'modifier': 'edit', 'jeter': 'drop'}
 
 
 class _Handler(Protocol):
@@ -162,30 +153,12 @@ class ActionsMixin(_Base):
                     return
                 if ticket['state'] not in {'OPEN', 'DISCUSSING'}:
                     raise TicketError('État incompatible.')
-                if acte == 'choix_qcm':
-                    options = json.loads(ticket['payload_json'] or '{}').get(
-                        'options_qcm', []
-                    )
-                    if note not in options:
-                        self._refus(
-                            400,
-                            'Choix inconnu.',
-                            'choix',
-                            'Choisis une option proposée.',
-                        )
-                        return
-                if outcome == 'ACK':
-                    record_event(
-                        conn, ticket_id, 'owner', 'mc.accuse_reception'
-                    )
-                elif outcome == 'DISCUSSING':
+                if outcome == 'DISCUSSING':
                     discuss(conn, ticket_id)
                     record_event(
                         conn, ticket_id, 'owner', 'mc.fil', {'message': note}
                     )
                 else:
-                    if acte == 'tout_approuver':
-                        tout_approuver(conn, ticket_id)
                     decide(conn, ticket_id, outcome, actor='owner', note=note)
             except TicketError as exc:
                 self._refus_ticket(exc, 'Ticket')
@@ -213,136 +186,6 @@ class ActionsMixin(_Base):
                 },
             )
         self._send_json(200, {'ok': True, 'outcome': outcome})
-
-    def _api_ticket_item(self) -> None:
-        if not self._require_owner():
-            return
-        body = self._json_body()
-        if body is None:
-            self._refus(
-                400,
-                'Corps JSON requis.',
-                'json',
-                'Envoie {"item_id": "ti..", "acte": "garder"}.',
-            )
-            return
-        acte = str(body.get('acte') or '')
-        decision = str(body.get('decision_id') or '')
-        if acte == 'tout_approuver':
-            self._item_tout_approuver(body, decision)
-            return
-        item_id = str(body.get('item_id') or '')
-        if not item_id:
-            self._refus(
-                400, 'item_id requis.', 'item', 'Identifiant de l’item.'
-            )
-            return
-        etat = ACTES_ITEM.get(acte)
-        if etat is None:
-            self._refus(
-                400,
-                f'Acte inconnu : {acte}.',
-                'acte',
-                'Actes : garder, modifier, jeter, tout_approuver.',
-            )
-            return
-        valeur = str(body.get('valeur') or '')
-        if acte == 'modifier' and not valeur.strip():
-            self._refus(
-                400,
-                'Valeur requise pour modifier.',
-                'valeur',
-                'Donne le nouveau libellé.',
-            )
-            return
-        with self._db() as conn:
-            row = conn.execute(
-                'SELECT ticket_id FROM ticket_items WHERE id=?', (item_id,)
-            ).fetchone()
-            if row is None:
-                self._refus(
-                    404,
-                    'Item introuvable.',
-                    'ticket',
-                    'Vérifie l’identifiant.',
-                )
-                return
-            ticket_id = str(row[0])
-            if decision and already_applied(conn, ticket_id, decision):
-                self._send_json(200, {'ok': True, 'duplicata': 'true'})
-                return
-            set_item(
-                conn,
-                item_id,
-                etat,
-                {'label': valeur} if acte == 'modifier' else None,
-            )
-            if decision:
-                record_event(
-                    conn,
-                    ticket_id,
-                    'owner',
-                    'mc.item',
-                    {
-                        'decision_id': decision,
-                        'item_id': item_id,
-                        'acte': acte,
-                    },
-                )
-            append_event(
-                conn,
-                actor='owner',
-                type='mc_act',
-                payload={
-                    'acte': 'ticket_item',
-                    'ticket_id': ticket_id,
-                    'item_id': item_id,
-                    'etat': etat,
-                    'decision_id': decision,
-                },
-            )
-        self._send_json(200, {'ok': True, 'etat': etat})
-
-    def _item_tout_approuver(self, body: dict, decision: str) -> None:
-        ticket_id = str(body.get('ticket_id') or '')
-        if not ticket_id:
-            self._refus(
-                400,
-                'ticket_id requis.',
-                'ticket',
-                'Pour tout-approuver, vise un ticket.',
-            )
-            return
-        with self._db() as conn:
-            if decision and already_applied(conn, ticket_id, decision):
-                self._send_json(200, {'ok': True, 'duplicata': 'true'})
-                return
-            try:
-                count = tout_approuver(conn, ticket_id)
-            except TicketError as exc:
-                self._refus_ticket(exc, 'Ticket')
-                return
-            if decision:
-                record_event(
-                    conn,
-                    ticket_id,
-                    'owner',
-                    'mc.tout_approuver',
-                    {'decision_id': decision, 'count': count},
-                )
-            append_event(
-                conn,
-                actor='owner',
-                type='mc_act',
-                payload={
-                    'acte': 'ticket_item',
-                    'ticket_id': ticket_id,
-                    'outcome': 'tout_approuver',
-                    'count': count,
-                    'decision_id': decision,
-                },
-            )
-        self._send_json(200, {'ok': True, 'bascules': count})
 
     def _api_ticket_discuter(self) -> None:
         if not self._require_owner():

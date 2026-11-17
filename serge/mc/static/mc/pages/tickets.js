@@ -1,7 +1,7 @@
-// Page P3 Décisions : liste, filtres, carte (actes), diffs, MEMORY, E5,
+// Page P3 Décisions : liste, filtres, carte (actes), révisions, E5,
 // administrateurs Discord et types de tickets.
-import {fillList, li, rel} from '../components.js';
-import {TYPES_TICKET, allerObjet} from '../libelles.js';
+import {li, rel} from '../components.js';
+import {TYPES_TICKET} from '../libelles.js';
 import {chargerCarte} from './tickets_actes.js';
 import {
   brancherAjoutAdmin,
@@ -113,26 +113,10 @@ function renderDiffs(main, payload, sig) {
   const section = main.querySelector('[data-section="diffs"]');
   const conteneur = main.querySelector('[data-diffs="contenu"]');
   conteneur.replaceChildren();
-  const aDesDiffs =
-    payload.policy.length > 0
-    || payload.versions.length > 0
-    || payload.items.length > 0;
-  if (!aDesDiffs) {
+  if (payload.versions.length === 0) {
     const p = document.createElement('p');
-    p.textContent = 'Aucun diff en attente ni révision récente.';
+    p.textContent = 'Aucune révision récente.';
     conteneur.append(p);
-  }
-  if (payload.policy.length > 0) {
-    const titre = document.createElement('h3');
-    titre.textContent = 'Propositions de politique (POLICY)';
-    conteneur.append(titre);
-    const liste = document.createElement('ul');
-    for (const p of payload.policy) {
-      const ligne = document.createElement('li');
-      ligne.textContent = `${p.titre} — ${p.diff} (${p.justification})`;
-      liste.append(ligne);
-    }
-    conteneur.append(liste);
   }
   if (payload.versions.length > 0) {
     const titre = document.createElement('h3');
@@ -142,16 +126,6 @@ function renderDiffs(main, payload, sig) {
     for (const v of payload.versions) {
       const notes = v.versions.map((n) => `v${n.n}: ${n.note}`).join(', ');
       liste.append(li(`${v.titre} — ${notes}`));
-    }
-    conteneur.append(liste);
-  }
-  if (payload.items.length > 0) {
-    const titre = document.createElement('h3');
-    titre.textContent = 'Modifications d’items (MEMORY)';
-    conteneur.append(titre);
-    const liste = document.createElement('ul');
-    for (const it of payload.items) {
-      liste.append(li(`${it.avant} → ${it.apres}`));
     }
     conteneur.append(liste);
   }
@@ -188,58 +162,6 @@ function renderMetriques(main, payload, sig) {
   section.dataset.sig = sig;
 }
 
-function initMemory(main) {
-  let page = 1;
-  const taille = 10;
-  const liste = main.querySelector('[data-list="memory-items"]');
-  const info = main.querySelector('[data-memory="info"]');
-  const btnPrev = main.querySelector('[data-memory="prev"]');
-  const btnNext = main.querySelector('[data-memory="next"]');
-
-  async function charger(p) {
-    try {
-      const res = await fetch(
-        `/owner/api/memory/items?page=${p}&size=${taille}`,
-        {
-          cache: 'no-store',
-        },
-      );
-      if (!res.ok) {
-        return;
-      }
-      const data = await res.json();
-      page = data.page;
-      info.textContent = `Page ${data.page} / ${data.pages} (${data.total} propositions)`;
-      btnPrev.disabled = page <= 1;
-      btnNext.disabled = page >= data.pages;
-      fillList(liste, data.items, 'Aucune proposition de leçon.', (it) => {
-        const node = li('');
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'clic-ligne';
-        btn.textContent = `${it.label} [${it.etat}]`;
-        if (it.id) {
-          btn.addEventListener('click', () => allerObjet('ticket', it.ticket_id));
-        }
-        node.append(btn);
-        return node;
-      });
-    } catch {
-      // réessai ultérieur
-    }
-  }
-
-  btnPrev.addEventListener('click', () => {
-    if (page > 1) {
-      charger(page - 1);
-    }
-  });
-  btnNext.addEventListener('click', () => {
-    charger(page + 1);
-  });
-  charger(1);
-}
-
 export function mount(main, store) {
   const tpl = document.getElementById('page-tickets');
   main.replaceChildren(tpl.content.cloneNode(true));
@@ -271,7 +193,6 @@ export function mount(main, store) {
       rendus[section](main, env.payload, env.sig, store);
     }
   }
-  initMemory(main);
   brancherAjoutAdmin(main, store);
   return () => {
     unsubs.forEach((unsub) => unsub());

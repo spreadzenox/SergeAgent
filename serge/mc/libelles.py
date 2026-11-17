@@ -48,17 +48,8 @@ EVENTS = {
 
 TYPES_TICKET = {
     'GUICHET': 'Guichet',
-    'VETO_AMONT': 'Veto amont',
-    'ALERT': 'Alerte',
-    'HYPOTHESIS': 'Idée de business',
-    'MEMORY': 'Mémoire',
-    'POLICY': 'Policy',
     'FYI': 'Pour info',
-    'QNA': 'Question',
-    'PUBLICATION': 'Publication',
-    'R1_OVERRIDE': 'Dépassement R1',
     'REQUESTED': 'Demande d’évolution',
-    'OWNER_ORDER': 'Ordre owner',
 }
 
 LIFECYCLE = {

@@ -399,25 +399,25 @@ class ReviewBrowserTests(McBrowserCase):
         page.keyboard.press('Enter')
         expect(page.locator('.fiche-objet')).to_be_visible()
 
-    def test_qcm_et_session_revoquee(self):
+    def test_reponse_libre_et_session_revoquee(self):
         with open_db(self.db_path) as conn:
             tid = create_ticket(
                 conn,
                 load_ticket_types(),
-                'QNA',
+                'REQUESTED',
                 'Quel canal ?',
-                {'options_qcm': ['Email', 'Voix']},
+                {'en_bref': 'Quel canal ?'},
             )
             publish(conn, tid)
         context = self._auth_context()
         page = context.new_page()
         self._watch_errors(page)
         page.goto(self.base + '/owner#/objet/ticket/' + tid)
-        page.get_by_role('button', name='Choisir une réponse').click()
-        page.locator('.modale select').select_option('Email')
+        page.get_by_role('button', name='Répondre librement').click()
+        page.locator('.modale input').fill('Email')
         with page.expect_response('**/owner/api/ticket/acte') as response:
             page.locator('.modale').get_by_role(
-                'button', name='Choisir une réponse'
+                'button', name='Répondre librement'
             ).click()
         self.assertEqual(response.value.status, 200)
         with open_db(self.db_path) as conn:

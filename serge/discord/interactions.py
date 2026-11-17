@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """Interactions Discord → actes tickets (boutons = actes typés).
 
-Un bouton a pour custom_id ``t:<ticket>:<action>[:<item>]``, une fenêtre de
-saisie ``m:<ticket>:<action>``. Seul un administrateur de Serge (en base,
+Un bouton a pour custom_id ``t:<ticket>:<action>``, une fenêtre de saisie
+``m:<ticket>:<action>``. Seul un administrateur de Serge (en base,
 décision Q86) peut agir ; l'acte est noté à son nom (``discord:<id>``), et
 dédoublonné par l'id de l'interaction. Un bouton qui demande un texte
-(« Éditer », « Réponse libre », « Discuter », « Autre » d'un choix) ouvre
-une fenêtre de saisie. Le LLM n'est jamais sur le chemin d'une décision.
+(« Éditer », « Réponse libre », « Discuter ») ouvre une fenêtre de
+saisie. Le LLM n'est jamais sur le chemin d'une décision.
 Un refus est un message éphémère, en français. « Voir en entier » ne
 tranche rien : le bot poste tout le texte du ticket dans son fil.
 """
@@ -19,7 +19,6 @@ from typing import Any
 
 from serge.tickets.acts import APPROVE, DISCUTER, EDITER, REJECT, REPONDRE
 from serge.tickets.admins import is_admin
-from serge.tickets.items import set_item, tout_approuver
 from serge.tickets.lifecycle import decide, discuss
 from serge.tickets.reponses import message_du_ticket, noter_reponse
 from serge.tickets.shared import (
@@ -30,13 +29,11 @@ from serge.tickets.shared import (
 )
 from serge.tickets.types import ticket_types
 
-ITEM_STATES = {'garder': 'keep', 'modifier': 'edit', 'jeter': 'drop'}
 # Les boutons qui demandent un texte : le titre de leur fenêtre de saisie,
 # et celui de son champ.
 SAISIES = {
     'editer': ('Modifier', 'Ce qu’il faut changer'),
     'reponse_libre': ('Ta réponse', 'Ta réponse'),
-    'choix_qcm': ('Autre réponse', 'Ta réponse'),
     'discuter': ('Discuter', 'Ton message'),
     'discuter_fil': ('Discuter', 'Ton message'),
     'ma_reponse': ('Ta réponse au contact', 'Le message qui partira'),
@@ -51,23 +48,23 @@ FENETRE = 5
 
 def parse_custom_id(
     custom_id: str, prefix: str = 't'
-) -> tuple[str, str, str] | None:
-    """Parse ``<prefix>:<ticket>:<action>[:<item>]`` (None si malformé).
+) -> tuple[str, str] | None:
+    """Parse ``<prefix>:<ticket>:<action>`` (None si malformé).
 
     Args:
         custom_id: custom_id du composant ou de la fenêtre Discord.
         prefix: ``t`` pour un bouton, ``m`` pour une fenêtre de saisie.
 
     Returns:
-        Tuple (ticket_id, action, item_id?) ou None.
+        Tuple (ticket_id, action) ou None.
     """
     parts = (custom_id or '').split(':')
-    if len(parts) not in {3, 4} or parts[0] != prefix:
+    if len(parts) != 3 or parts[0] != prefix:
         return None
     ticket_id, action = parts[1], parts[2]
     if not ticket_id or not action:
         return None
-    return (ticket_id, action, parts[3] if len(parts) == 4 else '')
+    return (ticket_id, action)
 
 
 def actor_id(interaction: Mapping[str, Any]) -> str:
@@ -145,14 +142,13 @@ def _stamp(
     action: str,
     actor: str,
     decision_id: str,
-    extra: dict[str, Any] | None = None,
 ) -> None:
     record_event(
         connection,
         ticket_id,
         actor,
         f'discord.{action}',
-        {'decision_id': decision_id, **(extra or {})},
+        {'decision_id': decision_id},
     )
 
 
@@ -182,39 +178,15 @@ def _saisie(
 
 def _bouton(
     connection: sqlite3.Connection,
-    data: Mapping[str, Any],
     ticket_id: str,
     action: str,
-    item_id: str,
     actor: str,
 ) -> dict[str, Any] | None:
     """Applique un bouton ; rend une fenêtre à ouvrir, une erreur, ou None."""
     if action in APPROVE:
-        if action == 'tout_approuver':
-            tout_approuver(connection, ticket_id)
         decide(connection, ticket_id, 'APPROVED', actor=actor)
     elif action in REJECT:
         decide(connection, ticket_id, 'REJECTED', actor=actor)
-    elif action in ITEM_STATES:
-        if not item_id:
-            return {'status': 'error', 'error': 'item_manquant'}
-        set_item(connection, item_id, ITEM_STATES[action])
-    elif action == 'accuse_reception':
-        pass
-    elif action == 'choix_qcm':
-        values = data.get('values') or []
-        choice = str(values[0]) if values else ''
-        if not choice:
-            return {'status': 'error', 'error': 'choix_manquant'}
-        if choice == '__autre__':
-            return {'status': 'modal', 'modal': fenetre(ticket_id, action)}
-        decide(
-            connection,
-            ticket_id,
-            'APPROVED',
-            actor=actor,
-            note=f'QCM : {choice}',
-        )
     elif action in SAISIES:
         return {'status': 'modal', 'modal': fenetre(ticket_id, action)}
     else:
@@ -267,23 +239,21 @@ def premiere_reponse(
             'type': 4,
             'data': ephemere('Réservé aux administrateurs de Serge.'),
         }
-    ticket_id, action, _item = parsed
-    choix = str((data.get('values') or [''])[0])
+    ticket_id, action = parsed
     if not saisie and action in SAISIES:
-        if action != 'choix_qcm' or choix == '__autre__':
-            message = (
-                message_du_ticket(connection, ticket_id)
-                if action in EDITER
-                else None
-            )
-            return {'type': 9, 'data': fenetre(ticket_id, action, message)}
+        message = (
+            message_du_ticket(connection, ticket_id)
+            if action in EDITER
+            else None
+        )
+        return {'type': 9, 'data': fenetre(ticket_id, action, message)}
     return None
 
 
 def route_interaction(
     connection: sqlite3.Connection, interaction: Mapping[str, Any]
 ) -> dict[str, Any]:
-    """Route un bouton, un choix ou une fenêtre envoyée vers un acte ticket.
+    """Route un bouton ou une fenêtre envoyée vers un acte ticket.
 
     Args:
         connection: Connexion canon (commit par l'appelant).
@@ -300,7 +270,7 @@ def route_interaction(
     )
     if parsed is None:
         return {'status': 'error', 'error': 'custom_id_malforme'}
-    ticket_id, action, item_id = parsed
+    ticket_id, action = parsed
     user = actor_id(interaction)
     if not user or not is_admin(connection, user):
         return {
@@ -318,7 +288,7 @@ def route_interaction(
         result = (
             _saisie(connection, ticket_id, action, _texte(data), actor)
             if saisie
-            else _bouton(connection, data, ticket_id, action, item_id, actor)
+            else _bouton(connection, ticket_id, action, actor)
         )
     except TicketError as exc:
         return {'status': 'error', 'error': str(exc)}
@@ -326,17 +296,8 @@ def route_interaction(
         return {**result, 'ticket_id': ticket_id, 'action': action}
     # La réponse réveille les invocations réglées en base (Q85).
     texte = _texte(data) if saisie else ''
-    if not saisie and action == 'choix_qcm':
-        texte = str((data.get('values') or [''])[0])
     objet = _texte(data, 'objet') if saisie else ''
     noter_reponse(connection, ticket_id, action, texte, actor, objet)
     if decision_id:
-        _stamp(
-            connection,
-            ticket_id,
-            action,
-            actor,
-            decision_id,
-            {'item': item_id} if item_id else None,
-        )
+        _stamp(connection, ticket_id, action, actor, decision_id)
     return {'status': 'applied', 'ticket_id': ticket_id, 'action': action}

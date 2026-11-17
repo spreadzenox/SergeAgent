@@ -82,10 +82,10 @@ class ProjLiveTests(unittest.TestCase):
         tache(self.conn, 'classer', {'venture_id': 'v1'}, key='k-r2')
         for tid, typ, title, expiry in (
             ('t-guichet', 'GUICHET', 'Captcha', '2026-09-10T12:10:00+00:00'),
-            ('t-veto30', 'VETO_AMONT', 'Prix', '2026-09-10T12:30:00+00:00'),
-            ('t-veto2h', 'VETO_AMONT', 'Tard', '2026-09-10T14:00:00+00:00'),
-            ('t-alert', 'ALERT', 'Quota', ''),
-            ('t-hypo', 'HYPOTHESIS', 'H1', ''),
+            ('t-guichet2h', 'GUICHET', 'Tard', '2026-09-10T14:00:00+00:00'),
+            ('t-plan', 'PLAN_POC', 'Prix', '2026-09-10T12:05:00+00:00'),
+            ('t-info', 'FYI', 'Quota', ''),
+            ('t-test', 'TEST_POC', 'H1', ''),
         ):
             self.conn.execute(
                 'INSERT INTO tickets(id, type, title, state, expiry_at,'
@@ -132,10 +132,8 @@ class ProjLiveTests(unittest.TestCase):
 
     def test_urgents_ordonnes(self) -> None:
         items = project_urgents(self.conn, POLICY, NOW)['items']
-        self.assertEqual(
-            [item['id'] for item in items],
-            ['t-guichet', 't-veto30', 't-alert'],
-        )
+        # Seul un guichet qui expire dans le quart d'heure est urgent.
+        self.assertEqual([item['id'] for item in items], ['t-guichet'])
 
     def test_file_next_fifo(self) -> None:
         file = project_file(self.conn, POLICY, NOW)

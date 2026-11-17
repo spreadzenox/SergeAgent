@@ -17,19 +17,12 @@ from serge.tickets.shared import champs_carte
 
 BUTTONS: dict[str, dict[str, Any]] = {
     'approuver': {'label': 'Approuver', 'style': 3, 'emoji': '✅'},
-    'approuver_version': {'label': 'Approuver', 'style': 3, 'emoji': '✅'},
     'rejeter': {'label': 'Rejeter', 'style': 4, 'emoji': '❌'},
     'discuter': {'label': 'Discuter', 'style': 2, 'emoji': '💬'},
     'discuter_fil': {'label': 'Discuter', 'style': 2, 'emoji': '🧵'},
     'editer': {'label': 'Éditer', 'style': 2, 'emoji': '✏️'},
     'cest_fait': {'label': "C'est fait", 'style': 3, 'emoji': '✅'},
     'abandonner': {'label': 'Abandonner', 'style': 4, 'emoji': '❌'},
-    'tout_approuver': {'label': 'Tout approuver', 'style': 3, 'emoji': '✅'},
-    'confirmer': {'label': 'Confirmer', 'style': 3, 'emoji': '✅'},
-    'annuler': {'label': 'Annuler', 'style': 2, 'emoji': '❌'},
-    'ouvrir': {'label': 'Ouvrir', 'style': 3, 'emoji': '🔓'},
-    'refuser': {'label': 'Refuser', 'style': 4, 'emoji': '❌'},
-    'accuse_reception': {'label': 'Bien reçu', 'style': 2, 'emoji': '👀'},
     'reponse_libre': {'label': 'Réponse libre', 'style': 2, 'emoji': '✍️'},
     'envoyer_brouillon': {
         'label': 'Envoyer le brouillon',
@@ -58,9 +51,6 @@ BUTTONS: dict[str, dict[str, Any]] = {
         'emoji': '🛑',
     },
     'ne_pas_passer': {'label': 'Ne pas passer', 'style': 4, 'emoji': '⏹️'},
-    'garder': {'label': 'Garder', 'style': 3, 'emoji': '✅'},
-    'modifier': {'label': 'Modifier', 'style': 2, 'emoji': '✏️'},
-    'jeter': {'label': 'Jeter', 'style': 4, 'emoji': '🗑️'},
     'faire_sans': {'label': 'Faire sans', 'style': 2, 'emoji': '⏭️'},
     'pret': {'label': 'Je suis prêt', 'style': 3, 'emoji': '🙋'},
     # Ajouté de lui-même quand un champ de la carte est coupé : poste tout
@@ -79,7 +69,6 @@ TERMINAL = frozenset(
         'CANCELLED',
     }
 )
-MAX_ITEM_ROWS = 4
 
 
 def remaining_fr(expiry_at: str, now_iso: str) -> str:
@@ -110,47 +99,18 @@ def remaining_fr(expiry_at: str, now_iso: str) -> str:
     return f'dans {seconds // 86400} j'
 
 
-def _button(
-    ticket_id: str, action: str, disabled: bool, item_id: str = ''
-) -> dict[str, Any]:
+def _button(ticket_id: str, action: str, disabled: bool) -> dict[str, Any]:
     spec = BUTTONS.get(action, {'label': action, 'style': 2, 'emoji': ''})
-    custom_id = f't:{ticket_id}:{action}'
-    if item_id:
-        custom_id += f':{item_id}'
     button: dict[str, Any] = {
         'type': 2,
         'label': spec['label'][:80],
         'style': spec['style'],
-        'custom_id': custom_id[:100],
+        'custom_id': f't:{ticket_id}:{action}'[:100],
         'disabled': disabled,
     }
     if spec.get('emoji'):
         button['emoji'] = {'name': spec['emoji']}
     return button
-
-
-def _qcm_row(ticket_id: str, options: list[str], disabled: bool) -> dict:
-    choices = [
-        {'label': str(item)[:100], 'value': str(item)[:100]}
-        for item in options[:24]
-    ]
-    choices.append(
-        {'label': 'Autre (écrire ma réponse)', 'value': '__autre__'}
-    )
-    return {
-        'type': 1,
-        'components': [
-            {
-                'type': 3,
-                'custom_id': f't:{ticket_id}:choix_qcm',
-                'placeholder': 'Choisir…',
-                'min_values': 1,
-                'max_values': 1,
-                'disabled': disabled,
-                'options': choices,
-            }
-        ],
-    }
 
 
 # Ce qu'une carte Discord montre au plus : 1 024 caractères par champ, et
@@ -236,11 +196,11 @@ def render_card(
     *,
     now_iso: str = '',
 ) -> dict[str, Any]:
-    """Carte de décision (embed + boutons/select).
+    """Carte de décision (embed + boutons).
 
     Args:
         ticket: Ticket (id, type, title, state, payload, expiry_at,
-            default_action, items?, tranche? : qui l'a tranché et comment).
+            default_action, tranche? : qui l'a tranché et comment).
         spec: Type du ticket en base (buttons, render...).
         now_iso: Maintenant ISO (compte à rebours).
 
@@ -285,69 +245,14 @@ def render_card(
         embed['timestamp'] = str(ticket.get('expiry_at'))
     dead = str(ticket.get('state') or '') in TERMINAL
     components: list[dict[str, Any]] = []
-    buttons = [
-        name
+    row = [
+        _button(ticket_id, name, dead)
         for name in (spec.get('buttons') or [])
-        if name in BUTTONS or name == 'choix_qcm'
+        if name in BUTTONS
     ]
-    if ticket.get('type') == 'MEMORY':
-        items = ticket.get('items') or []
-        rows: list[dict[str, Any]] = []
-        for rank, item in enumerate(items[:MAX_ITEM_ROWS], start=1):
-            item_id = str(item.get('id') or '')
-            embed['fields'].append(
-                {
-                    'name': f'Leçon {rank} [{item.get("state") or "open"}]',
-                    'value': strip_ids(str(item.get('label') or ''))[:1024],
-                    'inline': False,
-                }
-            )
-            rows.append(
-                {
-                    'type': 1,
-                    'components': [
-                        _button(ticket_id, 'garder', dead, item_id),
-                        _button(ticket_id, 'modifier', dead, item_id),
-                        _button(ticket_id, 'jeter', dead, item_id),
-                    ],
-                }
-            )
-        leftover = len(items) - len(rows)
-        rows.append(
-            {
-                'type': 1,
-                'components': [
-                    _button(ticket_id, name, dead) for name in buttons
-                ],
-            }
-        )
-        components = rows[:5]
-        if leftover > 0:
-            embed['fields'].append(
-                {
-                    'name': 'Suite',
-                    'value': f'+{leftover} leçon(s) sur Mission Control',
-                    'inline': False,
-                }
-            )
-    else:
-        row: list[dict[str, Any]] = []
-        for name in buttons:
-            if name == 'choix_qcm':
-                options = []
-                payload = ticket.get('payload')
-                if isinstance(payload, dict):
-                    options = payload.get('options_qcm') or []
-                components.append(
-                    _qcm_row(ticket_id, [str(item) for item in options], dead)
-                )
-                continue
-            row.append(_button(ticket_id, name, dead))
-        if coupe:
-            # Lire tout le ticket reste possible une fois tranché.
-            row.append(_button(ticket_id, TOUT, False))
-        for debut in range(0, len(row), 5):
-            components.append(
-                {'type': 1, 'components': row[debut : debut + 5]}
-            )
+    if coupe:
+        # Lire tout le ticket reste possible une fois tranché.
+        row.append(_button(ticket_id, TOUT, False))
+    for debut in range(0, len(row), 5):
+        components.append({'type': 1, 'components': row[debut : debut + 5]})
     return {'embeds': [embed], 'components': components[:5]}

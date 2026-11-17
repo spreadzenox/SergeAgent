@@ -9,8 +9,7 @@ import {
 import {allerObjet} from '../libelles.js';
 import {fetchState} from '../sse.js';
 
-const OUTCOME_FR = {APPROVED: 'approuvé', REJECTED: 'rejeté', EDITED: 'édité', ACK: 'accusé réception', DISCUSSING: 'en réécriture'};
-const ETAT_ITEM_FR = {keep: 'gardé', edit: 'à modifier', drop: 'jeté'};
+const OUTCOME_FR = {APPROVED: 'approuvé', REJECTED: 'rejeté', EDITED: 'édité', DISCUSSING: 'en réécriture'};
 
 export async function poster(chemin, charge) {
   const res = await fetch(chemin, {
@@ -36,11 +35,11 @@ export async function rafraichir(main, store) {
   }
 }
 
-export async function agirTicket(main, store, ticketId, acte, options = [], message = {}) {
+export async function agirTicket(main, store, ticketId, acte, message = {}) {
   let charge = {ticket_id: ticketId, acte};
   if (acte === 'discuter_fil') acte = 'discuter';
   charge.acte = acte;
-  if (['editer','discuter','reponse_libre','choix_qcm','ma_reponse','reecrire','a_corriger','choisir_autre'].includes(acte)) {
+  if (['editer','discuter','reponse_libre','ma_reponse','reecrire','a_corriger','choisir_autre'].includes(acte)) {
     const estEdit = acte !== 'discuter';
     const consignes = {
       editer: ['Décris la modification.', 'Note : '],
@@ -55,7 +54,7 @@ export async function agirTicket(main, store, ticketId, acte, options = [], mess
     const valeurs = await promptModal(document.body, {
       title: libelleActe(acte),
       message: consignes ? consignes[0] :
-        (estEdit ? 'Choisis ou saisis ta réponse.' : 'Écris ton message.'),
+        (estEdit ? 'Écris ta réponse.' : 'Écris ton message.'),
       fields: [
         ...(reprend && message.objet
           ? [{nom: 'objet', label: 'Objet : ', defaut: message.objet, requis: true}]
@@ -67,7 +66,6 @@ export async function agirTicket(main, store, ticketId, acte, options = [], mess
           defaut: reprend ? message.texte : '',
           requis: true,
           multiligne: reprend,
-          ...(acte === 'choix_qcm' ? {options} : {}),
         },
       ],
       confirm: estEdit ? libelleActe(acte) : 'Envoyer',
@@ -99,7 +97,7 @@ export async function agirTicket(main, store, ticketId, acte, options = [], mess
       title: `${libelleActe(acte)} ?`,
       message: `Ticket ${ticketId} — acte irréversible côté état.`,
       confirm: libelleActe(acte),
-      danger: ['rejeter','abandonner','refuser','annuler','ne_rien_envoyer','arreter_business','aucun'].includes(acte),
+      danger: ['rejeter','abandonner','ne_rien_envoyer','arreter_business','aucun'].includes(acte),
     });
     if (!confirmer) {
       return;
@@ -123,47 +121,6 @@ export async function agirTicket(main, store, ticketId, acte, options = [], mess
   }
 }
 
-export async function agirItem(main, store, ticketId, item, acte) {
-  let charge = {item_id: item.id, acte};
-  if (acte === 'modifier') {
-    const valeurs = await promptModal(document.body, {
-      title: 'Modifier ?',
-      message: `Item actuel : ${item.label}`,
-      fields: [
-        {
-          nom: 'valeur',
-          label: 'Nouveau : ',
-          defaut: item.label,
-          requis: true,
-        },
-      ],
-      confirm: 'Modifier',
-    });
-    if (!valeurs) {
-      return;
-    }
-    charge = {...charge, valeur: valeurs.valeur};
-  }
-  try {
-    const {ok, data} = await poster('/owner/api/ticket/item', {
-      ...charge,
-      decision_id: `mc-${Date.now()}-${item.id}`,
-    });
-    if (!ok) {
-      toast(document.body, `Échec : ${data.erreur || 'refusé'}.`, 'erreur');
-      return;
-    }
-    toast(
-      document.body,
-      `Item ${ETAT_ITEM_FR[data.etat] || data.etat}.`,
-      'succes',
-    );
-    await rafraichir(main, store);
-  } catch {
-    toast(document.body, 'Acte injoignable.', 'erreur');
-  }
-}
-
 export function libelleActe(acte) {
   return (
     {
@@ -171,11 +128,8 @@ export function libelleActe(acte) {
       rejeter: 'Rejeter',
       editer: 'Éditer',
       discuter: 'Discuter', discuter_fil: 'Discuter',
-      approuver_version: 'Approuver la version', cest_fait: 'C’est fait',
-      confirmer: 'Confirmer', ouvrir: 'Ouvrir',
-      abandonner: 'Abandonner', refuser: 'Refuser', annuler: 'Annuler',
-      accuse_reception: 'Accuser réception', choix_qcm: 'Choisir une réponse',
-      reponse_libre: 'Répondre librement', tout_approuver: 'Tout approuver',
+      cest_fait: 'C’est fait', abandonner: 'Abandonner',
+      reponse_libre: 'Répondre librement',
       envoyer_brouillon: 'Envoyer le brouillon', ma_reponse: 'Ma réponse',
       reecrire: 'Réécrire', ne_rien_envoyer: 'Ne rien envoyer',
       passer: 'Passer à la suite', ne_pas_passer: 'Ne pas passer',
@@ -210,7 +164,6 @@ export function renderCarte(main, store, carte) {
   const barre = document.createElement('div');
   barre.className = 'carte-actes';
   for (const acte of carte.boutons) {
-    if (acte === 'tout_approuver' && carte.items.length) continue;
     const bouton = document.createElement('button');
     bouton.type = 'button';
     bouton.textContent = libelleActe(acte);
@@ -220,16 +173,11 @@ export function renderCarte(main, store, carte) {
     bouton.addEventListener('click', async () => {
       if (bouton.disabled) return;
       bouton.disabled = true;
-      try { await agirTicket(main, store, carte.ticket.id, acte, carte.options, carte.message); }
+      try { await agirTicket(main, store, carte.ticket.id, acte, carte.message); }
       catch { toast(document.body, 'Acte injoignable.', 'erreur'); }
       finally { bouton.disabled = false; }
     });
     barre.append(bouton);
-  }
-  if (carte.options?.length) {
-    const options = document.createElement('p');
-    options.textContent = `Réponses proposées : ${carte.options.join(' ; ')}`;
-    corps.append(options);
   }
   const fiche = document.createElement('button');
   fiche.type = 'button';
@@ -237,39 +185,6 @@ export function renderCarte(main, store, carte) {
   fiche.addEventListener('click', () => allerObjet('ticket', carte.ticket.id));
   barre.append(fiche);
   corps.append(barre);
-  if (carte.items.length > 0) {
-    const titre = document.createElement('h3');
-    titre.textContent = 'Items';
-    corps.append(titre);
-    const liste = document.createElement('ul');
-    for (const item of carte.items) {
-      const ligne = document.createElement('li');
-      ligne.textContent = `${item.label} [${item.etat}] `;
-      for (const acte of carte.items_actes) {
-        const bouton = document.createElement('button');
-        bouton.type = 'button';
-        bouton.textContent = acte;
-        bouton.dataset.item = item.id;
-        bouton.addEventListener('click', () =>
-          agirItem(main, store, carte.ticket.id, item, acte)
-        );
-        ligne.append(bouton);
-      }
-      liste.append(ligne);
-    }
-    corps.append(liste);
-    if (carte.boutons.includes('tout_approuver')) {
-      const tous = document.createElement('button');
-      tous.type = 'button';
-      tous.textContent = 'Tout approuver';
-      tous.addEventListener('click', async () => {
-        tous.disabled = true;
-        try { await agirTicket(main, store, carte.ticket.id, 'tout_approuver'); }
-        finally { tous.disabled = false; }
-      });
-      corps.append(tous);
-    }
-  }
   if (carte.events.length > 0) {
     const titre = document.createElement('h3');
     titre.textContent = 'Historique';

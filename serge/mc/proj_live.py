@@ -17,7 +17,8 @@ from serge.tickets.lifecycle import OPENISH
 def project_urgents(
     conn: sqlite3.Connection, policy: Mapping[str, Any], now: str
 ) -> dict[str, Any]:
-    """Tickets urgents : GUICHET <15min, veto <1h, ALERT (P0 urgents).
+    """Tickets urgents : un guichet qui expire dans le quart d'heure (P0
+    urgents).
 
     Args:
         conn: Connexion canon (lecture).
@@ -28,24 +29,12 @@ def project_urgents(
         Dict {items: [{id, type, titre, expiry_at}]} (cap 20, expiries first).
     """
     _ = policy
-    soon_15 = apres_iso(now, minutes=15)
-    soon_60 = apres_iso(now, minutes=60)
     placeholders = ','.join('?' * len(OPENISH))
     rows = conn.execute(
         'SELECT id, type, title, expiry_at FROM tickets WHERE state IN'
-        f' ({placeholders}) AND ((type=? AND expiry_at<>? AND expiry_at<?)'
-        " OR (type=? AND expiry_at<>? AND expiry_at<?) OR type='ALERT')"
-        " ORDER BY CASE WHEN expiry_at='' THEN 1 ELSE 0 END, expiry_at"
-        ' LIMIT 20',
-        (
-            *sorted(OPENISH),
-            'GUICHET',
-            '',
-            soon_15,
-            'VETO_AMONT',
-            '',
-            soon_60,
-        ),
+        f" ({placeholders}) AND type='GUICHET' AND expiry_at<>''"
+        ' AND expiry_at<? ORDER BY expiry_at LIMIT 20',
+        (*sorted(OPENISH), apres_iso(now, minutes=15)),
     ).fetchall()
     return {
         'items': [

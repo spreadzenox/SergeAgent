@@ -105,7 +105,7 @@ class ForumTests(unittest.TestCase):
         ticket_id = create_ticket(
             self.conn,
             ticket_types(self.conn),
-            'VETO_AMONT',
+            'PLAN_POC',
             'Créer le business',
             {'decision': 'x'},
             now=quand,

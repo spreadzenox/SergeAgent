@@ -24,7 +24,7 @@ POLICY: dict = {}
 
 TYPES = """schema_version: 1
 types:
-  VETO_AMONT:
+  PLAN_POC:
     role: x
     urgency: haute
     default: pas_de_changement
@@ -39,28 +39,20 @@ types:
     fields: [captcha]
     buttons: [approuver, rejeter]
     expiry_minutes: 15
-  ALERT:
-    role: x
-    urgency: haute
-    default: rien
-    fields: []
-    buttons: [approuver]
-    expiry_hours: 24
-  POLICY:
+  TEST_POC:
     role: x
     urgency: normale
     default: pas_de_changement
-    default_detail: La policy actuelle reste.
-    fields: [diff_avant_apres, justification, impact]
+    default_detail: Rien ne change.
+    fields: [justification, impact]
     buttons: [approuver, rejeter, discuter]
     expiry_hours: 72
-  MEMORY:
+  FYI:
     role: x
-    urgency: fenetre
-    default: auto
-    fields: [lecons]
+    urgency: aucune
+    default: rien
+    fields: [contenu]
     buttons: []
-    items_per_lesson: [garder, modifier, jeter]
     expiry_hours: 48
 """
 
@@ -84,7 +76,7 @@ class ProjTicketsTests(unittest.TestCase):
         tickets = (
             (
                 't1',
-                'VETO_AMONT',
+                'PLAN_POC',
                 'Ticket t_abc123def456 soldé',
                 'OPEN',
                 '{"decision": "augmenter"}',
@@ -102,26 +94,25 @@ class ProjTicketsTests(unittest.TestCase):
             ),
             (
                 't3',
-                'ALERT',
-                'Quota',
+                'GUICHET',
+                'Tard',
                 'OPEN',
                 '{}',
-                '',
+                '2026-09-10T14:00:00+00:00',
                 '2026-09-10T10:00:00+00:00',
             ),
             (
                 't4',
-                'POLICY',
+                'TEST_POC',
                 'Plafond',
                 'DISCUSSING',
-                '{"diff_avant_apres": "5->7", "justification": "pic",'
-                ' "impact": "faible"}',
+                '{"justification": "pic", "impact": "faible"}',
                 '2026-09-13T12:00:00+00:00',
                 '2026-09-10T11:45:00+00:00',
             ),
             (
                 't5',
-                'MEMORY',
+                'FYI',
                 'Leçons',
                 'OPEN',
                 '{}',
@@ -130,7 +121,7 @@ class ProjTicketsTests(unittest.TestCase):
             ),
             (
                 't6',
-                'VETO_AMONT',
+                'PLAN_POC',
                 'Vieux',
                 'APPROVED',
                 '{}',
@@ -138,8 +129,9 @@ class ProjTicketsTests(unittest.TestCase):
                 '2026-09-09T11:00:00+00:00',
             ),
             (
+                # Un vieux ticket dont le type n'est plus en base.
                 't7',
-                'HYPOTHESIS',
+                'ANCIEN_TYPE',
                 'Piste',
                 'OPEN',
                 '{}',
@@ -154,11 +146,6 @@ class ProjTicketsTests(unittest.TestCase):
                 ' VALUES(?,?,?,?,?,?,?,?)',
                 (tid, typ, titre, etat, charge, expiry, updated, updated),
             )
-        conn.execute(
-            'INSERT INTO ticket_items(id, ticket_id, kind, label, state)'
-            " VALUES('i1','t5','MEMORY','Leçon A','open'),"
-            "('i2','t5','MEMORY','Leçon B','keep')"
-        )
         conn.execute(
             'INSERT INTO ticket_events(ticket_id, ts, actor, kind)'
             " VALUES('t1','2026-09-10T11:00:00+00:00','serge',"
@@ -181,8 +168,8 @@ class ProjTicketsTests(unittest.TestCase):
                 ('t2', True),
                 ('t5', False),
                 ('t7', False),
-                ('t1', True),
-                ('t3', True),
+                ('t1', False),
+                ('t3', False),
                 ('t4', False),
                 ('t6', False),
             ],
@@ -201,7 +188,7 @@ class ProjTicketsTests(unittest.TestCase):
             carte['ticket'],
             {
                 'id': 't1',
-                'type': 'VETO_AMONT',
+                'type': 'PLAN_POC',
                 'titre': 'Ticket  soldé',
                 'etat': 'OPEN',
                 'expiry_at': '2026-09-10T12:30:00+00:00',
@@ -216,7 +203,7 @@ class ProjTicketsTests(unittest.TestCase):
         self.assertEqual(
             carte['boutons'], ['approuver', 'rejeter', 'discuter']
         )
-        self.assertEqual(carte['items'], [])
+        self.assertNotIn('items', carte)
         self.assertEqual(
             carte['events'],
             [
@@ -232,16 +219,6 @@ class ProjTicketsTests(unittest.TestCase):
             [{'n': 1, 'note': 'v1', 'at': '2026-09-10T11:30:00+00:00'}],
         )
 
-    def test_carte_memory(self) -> None:
-        carte = project_carte(self.conn, 't5')
-        self.assertEqual(carte['boutons'], [])
-        self.assertEqual(carte['items_actes'], ['garder', 'modifier', 'jeter'])
-        self.assertEqual(
-            [(i['id'], i['etat']) for i in carte['items']],
-            [('i1', 'open'), ('i2', 'keep')],
-        )
-        self.assertEqual(carte['champs'], [{'titre': 'lecons', 'texte': '—'}])
-
     def test_carte_inconnue(self) -> None:
         self.assertIsNone(project_carte(self.conn, 't-zzz'))
 
@@ -255,7 +232,7 @@ class CarteEndpointTests(McServerCase):
             conn.execute(
                 'INSERT INTO tickets(id, type, title, state, payload_json,'
                 " expiry_at, created_at, updated_at) VALUES('t1',"
-                "'VETO_AMONT','Prix','OPEN','{\"decision\": \"x\"}','',"
+                "'PLAN_POC','Prix','OPEN','{\"decision\": \"x\"}','',"
                 "'t','t')"
             )
             conn.commit()

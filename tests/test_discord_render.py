@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Rendu Discord : carte FR, boutons registre, IDs strippés, QCM, MEMORY."""
+"""Rendu Discord : carte FR, boutons registre, IDs strippés."""
 
 from __future__ import annotations
 
@@ -146,46 +146,24 @@ class DiscordRenderTests(unittest.TestCase):
         noms = [f['name'] for f in ouvert['embeds'][0]['fields']]
         self.assertNotIn('Tranché', noms)
 
-    def test_qcm_select(self) -> None:
+    def test_un_ticket_d_un_type_retire_garde_sa_carte_sans_boutons(
+        self,
+    ) -> None:
+        """Un vieux ticket dont le type n'est plus en base : sa carte se
+        lit encore, sans champ ni bouton."""
         ticket = {
-            'id': 't_qcm000000001',
+            'id': 't_qna000000001',
             'type': 'QNA',
             'title': 'Choisir le canal ?',
             'state': 'OPEN',
-            'payload': {'question': '?', 'options_qcm': ['Email', 'Voix']},
+            'payload': {'question': '?'},
             'expiry_at': '',
-            'default_action': 'serge_decide_seul_logue',
+            'default_action': '',
         }
-        card = render_card(ticket, self.types['QNA'], now_iso=NOW)
-        select = card['components'][0]['components'][0]
-        self.assertEqual(select['type'], 3)
-        values = [item['value'] for item in select['options']]
-        self.assertEqual(values, ['Email', 'Voix', '__autre__'])
-
-    def test_memory_items(self) -> None:
-        ticket = {
-            'id': 't_mem000000001',
-            'type': 'MEMORY',
-            'title': 'Consolidation',
-            'state': 'OPEN',
-            'payload': {'lecons': []},
-            'expiry_at': '',
-            'default_action': 'auto_accepte_sauf_veto',
-            'items': [
-                {'id': 'ti_1', 'label': 'Relancer J+3', 'state': 'open'},
-                {
-                    'id': 'ti_2',
-                    'label': 'Ne pas appeler lundi',
-                    'state': 'open',
-                },
-            ],
-        }
-        card = render_card(ticket, self.types['MEMORY'], now_iso=NOW)
-        self.assertEqual(len(card['components']), 3)
-        first = card['components'][0]['components']
-        self.assertTrue(first[0]['custom_id'].endswith(':ti_1'))
-        last = card['components'][-1]['components']
-        self.assertEqual(last[0]['label'], 'Tout approuver')
+        card = render_card(ticket, {}, now_iso=NOW)
+        self.assertIn('Choisir le canal', card['embeds'][0]['title'])
+        self.assertEqual(card['embeds'][0]['fields'], [])
+        self.assertEqual(card['components'], [])
 
 
 if __name__ == '__main__':

@@ -189,16 +189,10 @@ CATALOGUE: dict[str, tuple[str, str, str, str]] = {
         'type + payload_json. Chaque écriture et chaque refus y sont notés.',
     ),
     'tickets': (
-        'Ce que toi seul peux trancher (veto, guichet, hypothèse).',
+        'Ce que toi seul peux trancher (un plan, un brouillon, un guichet).',
         'Gardes, LLM hors bornes, owner.',
         'Discord, page Décisions, actes MC.',
         'state OPEN/APPROVED… expiry_at pour l’urgence.',
-    ),
-    'ticket_items': (
-        'Lignes d’un ticket (garder / modifier / jeter).',
-        'Création de ticket, discussion.',
-        'Actes item, tout-approuver.',
-        'Une décision granulaire dans un ticket.',
     ),
     'ticket_events': (
         'Fil d’un ticket : qui a dit quoi, quand.',

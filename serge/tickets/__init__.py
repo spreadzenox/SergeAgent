@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-from serge.tickets.items import add_item, get_ticket, set_item, tout_approuver
 from serge.tickets.lifecycle import (
     cancel,
     close,
@@ -19,11 +18,11 @@ from serge.tickets.shared import (
     TicketError,
     already_applied,
     champs_carte,
+    get_ticket,
 )
 
 __all__ = [
     'TicketError',
-    'add_item',
     'already_applied',
     'cancel',
     'champs_carte',
@@ -36,6 +35,4 @@ __all__ = [
     'get_ticket',
     'publish',
     'reopen',
-    'set_item',
-    'tout_approuver',
 ]
