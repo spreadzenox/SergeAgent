@@ -58,6 +58,22 @@ def fetch_ticket(
     return row
 
 
+def get_ticket(
+    connection: sqlite3.Connection, ticket_id: str
+) -> dict[str, Any]:
+    """Le ticket et ses événements (carte de Mission Control)."""
+    ticket = dict(fetch_ticket(connection, ticket_id))
+    ticket['events'] = [
+        dict(event)
+        for event in connection.execute(
+            'SELECT ticket_id, ts, actor, kind, payload_json'
+            ' FROM ticket_events WHERE ticket_id=? ORDER BY id',
+            (ticket_id,),
+        )
+    ]
+    return ticket
+
+
 def already_applied(
     connection: sqlite3.Connection, ticket_id: str, decision_id: str
 ) -> bool:

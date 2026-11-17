@@ -377,7 +377,8 @@ aussi à la prospection lourde sont marquées *(3 et 6)*.
     réponse au ticket. Le business choisi passe à `PRODUCT_BUILDING` ;
     les autres business retenus passent à `PARKED`. Avec « Aucun », tous
     passent à `PARKED`. Un nom qui ne désigne aucun business du ticket
-    rouvre le ticket, avec la raison. Lien : « Concevoir le produit »
+    rouvre le ticket, avec la raison, et lui seul : une réponse appliquée
+    n'en rouvre pas. Lien : « Concevoir le produit »
     (étape 5, lot 10), qui remplace le bouton de la fiche du business.
 
 14. **Oublier les vieux tests** — sans LLM, une fois par jour. Un business

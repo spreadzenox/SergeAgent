@@ -1103,3 +1103,32 @@ class VraiChromeTests(unittest.TestCase):
             ).fetchone()[0],
             'anthropic/claude-sonnet-5.5',
         )
+
+
+class InstanceDuLot12Tests(unittest.TestCase):
+    """Le serveur du 17 novembre 2026 : le lien qui rouvre le ticket
+    « Choix du principal » passait après chaque réponse, même « Valider »."""
+
+    def test_le_choix_n_est_redemande_que_pour_un_nom_inconnu(self) -> None:
+        conn = sqlite3.connect(':memory:')
+        self.addCleanup(conn.close)
+        init_schema(conn)
+        conn.executescript(
+            """
+            UPDATE links SET condition_field='choice_id',
+                condition_op='non_vide', condition_value=''
+                WHERE id='choix_a_redemander';
+            DELETE FROM pipeline_changes
+                WHERE id='lot12_choix_redemande_si_nom_inconnu';
+            """
+        )
+        seed_pipeline(conn, read_yaml_file(config_dir() / 'pipeline.yaml'))
+        self.assertEqual(
+            tuple(
+                conn.execute(
+                    'SELECT condition_field, condition_op, condition_value'
+                    " FROM links WHERE id='choix_a_redemander'"
+                ).fetchone()
+            ),
+            ('redemander', '=', 'oui'),
+        )

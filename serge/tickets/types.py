@@ -12,6 +12,10 @@ comme dans ``pipeline.yaml`` : une seule fois par instance, et seulement
 si la valeur en base est encore celle d'origine (``from``). Exemple : les
 boutons du ticket d'une demande, de « Discuter » à « Répondre » et « Faire
 sans ».
+
+Retirer un type passe par la section ``deleted`` du fichier : il est effacé
+de la base au démarrage (comme un réglage de ``policy.yaml``). Les tickets
+déjà ouverts sous ce nom restent lisibles, sans boutons.
 """
 
 from __future__ import annotations
@@ -43,13 +47,14 @@ def _minutes(spec: dict[str, Any]) -> int | None:
 def ensure_ticket_types(
     conn: sqlite3.Connection, directory: Path | None = None
 ) -> None:
-    """Ajoute en base les types de tickets nouveaux du fichier de départ.
+    """Ajoute en base les types de tickets nouveaux du fichier de départ,
+    et efface ceux de sa section ``deleted``.
 
     Sans fichier (un dossier de config de test, par exemple), il n'y a rien
     à ajouter.
     """
     from serge.policy import config_dir
-    from serge.registry import load_ticket_types
+    from serge.registry import load_ticket_types, load_ticket_types_deleted
 
     if not ((directory or config_dir()) / 'ticket-types.yaml').is_file():
         return
@@ -75,6 +80,8 @@ def ensure_ticket_types(
         )
 
     _apply_changes(conn, directory)
+    for name in load_ticket_types_deleted(directory):
+        conn.execute('DELETE FROM ticket_types WHERE id=?', (name,))
 
 
 def _apply_changes(conn: sqlite3.Connection, directory: Path | None) -> None:

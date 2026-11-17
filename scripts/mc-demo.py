@@ -189,13 +189,18 @@ def main() -> None:
             now + timedelta(minutes=10),
         ),
         (
-            't-veto',
-            'VETO_AMONT',
-            'Valider le prix 180 €',
+            't-plan',
+            'PLAN_POC',
+            'Le plan du POC « atelier chrono » attend ton avis',
             now + timedelta(minutes=30),
         ),
-        ('t-alert', 'ALERT', 'Quota e-mail à 80 %', None),
-        ('t-hypo', 'HYPOTHESIS', 'Piste atelier chrono', None),
+        ('t-info', 'FYI', 'Quota e-mail à 80 %', None),
+        (
+            't-test',
+            'TEST_POC',
+            'Le POC « atelier chrono » attend ton essai',
+            None,
+        ),
     ):
         conn.execute(
             'INSERT INTO tickets(id, type, title, state, expiry_at,'

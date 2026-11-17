@@ -50,7 +50,8 @@ def apply_principal(
 
     Rend ``ok`` (« oui », ou « non » avec ``raison``), ``chosen`` (le
     business choisi, ou vide) et ``parked`` (les autres tests retenus, à
-    mettre de côté).
+    mettre de côté). ``redemander`` vaut « oui » dans un seul cas : le nom
+    écrit ne désigne aucun business qui attend, et le ticket est à rouvrir.
     """
     choice = str(args.get('choice_id') or '')
     acte = str(args.get('acte') or '')
@@ -68,6 +69,7 @@ def apply_principal(
         if not chosen:
             return {
                 'ok': 'non',
+                'redemander': 'oui',
                 'choice_id': choice,
                 'raison': f'« {str(args.get("texte") or "").strip()} » ne'
                 ' désigne aucun business de ce ticket : écris son nom tel'

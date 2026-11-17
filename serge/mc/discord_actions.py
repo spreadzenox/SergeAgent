@@ -98,8 +98,8 @@ class DiscordActionsMixin(_Base):
                 400,
                 'Type de ticket requis.',
                 'id',
-                'Envoie {"id": "QNA", "expiry_minutes": 4320,'
-                ' "default_detail": "…", "buttons": ["approuver"]}.',
+                'Envoie {"id": "PLAN_POC", "expiry_minutes": 4320,'
+                ' "default_detail": "…", "buttons": ["valider"]}.',
             )
             return
         delai = body.get('expiry_minutes', '')

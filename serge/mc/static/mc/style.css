@@ -545,13 +545,6 @@ main.login button {
   margin: 0.5rem 0;
 }
 
-.memory-nav {
-  align-items: center;
-  display: flex;
-  gap: 1rem;
-  margin-bottom: 0.5rem;
-}
-
 kbd {
   background: var(--fond-2);
   border: 1px solid var(--bordure);

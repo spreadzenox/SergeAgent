@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Projecteurs P3 Décisions : liste, carte, diffs, MEMORY, métriques."""
+"""Projecteurs P3 Décisions : la liste des tickets et la carte d'un ticket."""
 
 from __future__ import annotations
 
@@ -18,18 +18,11 @@ from serge.tickets.types import ticket_types
 
 
 def _est_urgent(typ: str, etat: str, expiry: str, now: str) -> bool:
-    # Miroir project_urgents (règle) : GUICHET <15min, veto <1h, ALERT.
-    if etat not in OPENISH:
+    # Même règle que project_urgents : un guichet qui expire dans le quart
+    # d'heure.
+    if etat not in OPENISH or not expiry or typ != 'GUICHET':
         return False
-    if typ == 'ALERT':
-        return True
-    if not expiry:
-        return False
-    if typ == 'GUICHET':
-        return expiry < apres_iso(now, minutes=15)
-    if typ == 'VETO_AMONT':
-        return expiry < apres_iso(now, minutes=60)
-    return False
+    return expiry < apres_iso(now, minutes=15)
 
 
 def _boutons(spec: Any) -> list[str]:
@@ -83,7 +76,7 @@ def project_tickets(
 def project_carte(
     conn: sqlite3.Connection, ticket_id: str
 ) -> dict[str, Any] | None:
-    """Carte §17 : champs registre + boutons + items + historique (P3).
+    """Carte §17 : champs registre + boutons + historique (P3).
 
     Args:
         conn: Connexion canon (lecture).
@@ -124,9 +117,6 @@ def project_carte(
             'defaut': str(ticket.get('default_action') or ''),
             'defaut_detail': str(spec.get('default_detail') or ''),
         },
-        'options': json.loads(ticket.get('payload_json') or '{}').get(
-            'options_qcm', []
-        ),
         # Le message dont parle le ticket : « Ma réponse » s'ouvre avec.
         'message': message_du_ticket(conn, ticket_id),
         'champs': [
@@ -136,18 +126,6 @@ def project_carte(
         'boutons': _boutons(spec)
         if ticket.get('state') in {'OPEN', 'DISCUSSING'}
         else [],
-        'items_actes': list(spec.get('items_per_lesson') or [])
-        if ticket.get('state') in {'OPEN', 'DISCUSSING'}
-        else [],
-        'items': [
-            {
-                'id': str(item.get('id')),
-                'kind': str(item.get('kind')),
-                'label': strip_ids(str(item.get('label'))),
-                'etat': str(item.get('state')),
-            }
-            for item in ticket.get('items') or []
-        ],
         'events': [
             {
                 'ts': str(event.get('ts')),

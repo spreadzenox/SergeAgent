@@ -18,7 +18,7 @@ from serge.discord.interactions import (  # noqa: E402
     parse_custom_id,
     route_interaction,
 )
-from serge.tickets import add_item, create_ticket, publish  # noqa: E402
+from serge.tickets import create_ticket, publish  # noqa: E402
 from serge.tickets.admins import add_admin  # noqa: E402
 from serge.tickets.types import ticket_types  # noqa: E402
 
@@ -31,12 +31,8 @@ def _interaction(
     custom_id: str,
     user_id: str = OWNER,
     interaction_id: str = '1001',
-    values: list[str] | None = None,
 ) -> dict:
     data: dict = {'custom_id': custom_id, 'component_type': 2}
-    if values is not None:
-        data['values'] = values
-        data['component_type'] = 3
     return {
         'id': interaction_id,
         'type': 3,
@@ -85,7 +81,7 @@ class DiscordInteractionsTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.conn.close()
 
-    def _ticket(self, kind: str = 'VETO_AMONT') -> str:
+    def _ticket(self, kind: str = 'PLAN_POC') -> str:
         ticket_id = create_ticket(
             self.conn, self.types, kind, 'Titre', {'decision': 'x'}, now=NOW
         )
@@ -101,12 +97,9 @@ class DiscordInteractionsTests(unittest.TestCase):
 
     def test_parse_et_acteur(self) -> None:
         self.assertEqual(
-            parse_custom_id('t:t_abc:approuver'),
-            ('t_abc', 'approuver', ''),
+            parse_custom_id('t:t_abc:approuver'), ('t_abc', 'approuver')
         )
-        self.assertEqual(
-            parse_custom_id('t:t_abc:jeter:ti_1'), ('t_abc', 'jeter', 'ti_1')
-        )
+        self.assertIsNone(parse_custom_id('t:t_abc:jeter:ti_1'))
         self.assertIsNone(parse_custom_id('nope'))
         self.assertIsNone(parse_custom_id('x:t:a'))
         self.assertEqual(actor_id(_interaction('t:t:a')), OWNER)
@@ -168,54 +161,6 @@ class DiscordInteractionsTests(unittest.TestCase):
         self.assertEqual(result['status'], 'refused')
         self.assertEqual(self._state(ticket_id), 'OPEN')
 
-    def test_items_memory(self) -> None:
-        ticket_id = self._ticket('MEMORY')
-        keep = add_item(self.conn, ticket_id, 'lesson', 'L1')
-        drop = add_item(self.conn, ticket_id, 'lesson', 'L2')
-        route_interaction(
-            self.conn,
-            _interaction(
-                f't:{ticket_id}:garder:{keep}', interaction_id='6001'
-            ),
-        )
-        route_interaction(
-            self.conn,
-            _interaction(f't:{ticket_id}:jeter:{drop}', interaction_id='6002'),
-        )
-        states = {
-            row[0]: row[1]
-            for row in self.conn.execute(
-                'SELECT id, state FROM ticket_items WHERE ticket_id=?',
-                (ticket_id,),
-            )
-        }
-        self.assertEqual(states, {keep: 'keep', drop: 'drop'})
-        self.assertEqual(self._state(ticket_id), 'OPEN')
-
-    def test_tout_approuver_et_qcm(self) -> None:
-        memory_id = self._ticket('MEMORY')
-        add_item(self.conn, memory_id, 'lesson', 'L1')
-        approved = route_interaction(
-            self.conn,
-            _interaction(f't:{memory_id}:tout_approuver'),
-        )
-        self.assertEqual(approved['status'], 'applied')
-        self.assertEqual(self._state(memory_id), 'APPROVED')
-        state = self.conn.execute(
-            'SELECT state FROM ticket_items WHERE ticket_id=?', (memory_id,)
-        ).fetchone()[0]
-        self.assertEqual(state, 'keep')
-        qna_id = self._ticket('QNA')
-        route_interaction(
-            self.conn,
-            _interaction(
-                f't:{qna_id}:choix_qcm',
-                values=['Email'],
-                interaction_id='4001',
-            ),
-        )
-        self.assertEqual(self._state(qna_id), 'APPROVED')
-
     def test_deja_decide_erreur_propre(self) -> None:
         ticket_id = self._ticket()
         route_interaction(
@@ -268,17 +213,16 @@ class DiscordInteractionsTests(unittest.TestCase):
             (ticket_id,),
         ).fetchone()[0]
         self.assertIn('Baisse le prix', note)
-        # « Autre » d'un choix ouvre aussi une fenêtre, qui tranche.
-        qna_id = self._ticket('QNA')
-        autre = route_interaction(
-            self.conn,
-            _interaction(f't:{qna_id}:choix_qcm', values=['__autre__']),
+        # « Réponse libre » ouvre aussi une fenêtre, qui tranche.
+        demande = self._ticket('REQUESTED')
+        libre = route_interaction(
+            self.conn, _interaction(f't:{demande}:reponse_libre')
         )
-        self.assertEqual(autre['status'], 'modal')
+        self.assertEqual(libre['status'], 'modal')
         route_interaction(
-            self.conn, _fenetre(f'm:{qna_id}:choix_qcm', 'Par SMS')
+            self.conn, _fenetre(f'm:{demande}:reponse_libre', 'Par SMS')
         )
-        self.assertEqual(self._state(qna_id), 'APPROVED')
+        self.assertEqual(self._state(demande), 'APPROVED')
 
     def test_voir_en_entier_ne_tranche_rien(self) -> None:
         ticket_id = create_ticket(

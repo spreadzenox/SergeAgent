@@ -51,7 +51,7 @@ class DiscordBotTests(unittest.TestCase):
     def _bot(self) -> Bot:
         return Bot(self.conn, {}, dict(CFG), 'tok-fake-40')
 
-    def _ticket(self, kind: str = 'VETO_AMONT') -> str:
+    def _ticket(self, kind: str = 'PLAN_POC') -> str:
         ticket_id = create_ticket(
             self.conn,
             ticket_types(self.conn),
@@ -131,7 +131,7 @@ class DiscordBotTests(unittest.TestCase):
 
     def test_un_texte_ouvre_une_fenetre_puis_est_confirme(self) -> None:
         bot = self._bot()
-        ticket_id = self._ticket('QNA')
+        ticket_id = self._ticket('REQUESTED')
         with mock.patch('serge.discord.bot.interaction_callback') as acked:
             bot.on_interaction(
                 {

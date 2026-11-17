@@ -3,7 +3,7 @@
 
 draft → [quote_draft → quote_sent → quote_signed] → issued → sent →
 paid | overdue | cancelled. Pas de prix → CollectError (le caller ouvre
-un ticket QNA). Refund < seuil → auto + FYI ; ≥ seuil → ticket (caller).
+un ticket). Refund < seuil → auto + FYI ; ≥ seuil → ticket (caller).
 Exécution rail (Stripe) séparée : ici = le ledger qui fait foi.
 """
 
@@ -76,12 +76,12 @@ def create_intent(
     """Crée un intent draft (prix owné exigé, jamais inventé).
 
     Raises:
-        CollectError: Kind inconnu, montant <= 0 (→ ticket QNA caller).
+        CollectError: Kind inconnu, montant <= 0 (→ ticket caller).
     """
     if kind not in KINDS:
         raise CollectError(f'kind inconnu : {kind}')
     if amount_eur <= 0:
-        raise CollectError('prix requis (jamais de défaut, ticket QNA)')
+        raise CollectError('prix requis (jamais de défaut, un ticket)')
     row_id = _new_id('tx')
     moment = utcnow()
     conn.execute(

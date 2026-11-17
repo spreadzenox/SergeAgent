@@ -7493,7 +7493,7 @@ links:
     title: Le nom écrit ne désigne aucun business du ticket
     from: appliquer_choix_principal
     to: demander_choix_principal
-    condition: {field: choice_id, op: non_vide}
+    condition: {field: redemander, op: '=', value: oui}
     params:
       choice_id: {source: field, value: choice_id}
       raison: {source: field, value: raison}
@@ -9382,6 +9382,17 @@ changes:
           Temporaire, pour essayer « Appeler un humain » depuis Mission Control (Q97) : ouvre dans le vrai Chrome une page d'essai qui tient lieu de captcha, appelle un humain, attend qu'il ait cliqué dans l'écran, puis rend le code que la page montre alors.
         to: >-
           Une étape de l'essai total, après le paiement test (Q97, Q99) : ouvre dans le vrai Chrome une page d'essai qui tient lieu de captcha, appelle un humain, attend qu'il ait cliqué dans l'écran, puis rend le code que la page montre alors.
+  # Le ticket « Choix du principal » n'est rouvert que si le nom écrit ne
+  # désigne aucun business : il l'était après chaque réponse, même
+  # « Valider » (essai total du 17 novembre 2026).
+  - id: lot12_choix_redemande_si_nom_inconnu
+    why: Après « Valider », Serge ouvrait un second ticket « Choix du principal ».
+    table: links
+    where: {id: choix_a_redemander}
+    set:
+      condition_field: {from: choice_id, to: redemander}
+      condition_op: {from: non_vide, to: '='}
+      condition_value: {from: '', to: oui}
 deleted:
   invocations:
     - demo_ouvrir_cycle

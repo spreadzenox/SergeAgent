@@ -132,7 +132,7 @@ def project_graphe(
     urgents = _count(
         conn,
         'SELECT COUNT(*) FROM tickets WHERE state IN'
-        f" ({placeholders}) AND type IN ('GUICHET','VETO_AMONT','ALERT')",
+        f" ({placeholders}) AND type='GUICHET'",
         tuple(sorted(OPENISH)),
     )
     failed = _count(conn, "SELECT COUNT(*) FROM tasks WHERE status='failed'")
@@ -230,7 +230,7 @@ def project_business(
     urgents = _count(
         conn,
         "SELECT COUNT(*) FROM tickets WHERE state IN ('OPEN','DRAFT')"
-        " AND type IN ('GUICHET','VETO_AMONT','ALERT')",
+        " AND type='GUICHET'",
     )
     return {
         'venture': venture,

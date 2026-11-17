@@ -6,6 +6,8 @@ Scénarios :
   jamais écrasé au démarrage ;
 - un ticket prend le délai de son type en base ;
 - un changement refusé (délai, boutons) ne laisse rien à moitié fait ;
+- un type retiré du fichier (section ``deleted``) est effacé d'une instance
+  en place ; un ticket ouvert sous ce nom reste lisible, sans boutons ;
 - un administrateur s'ajoute par un identifiant Discord valide, une fois.
 """
 
@@ -41,15 +43,18 @@ class TicketTypesTests(unittest.TestCase):
 
     def test_les_types_viennent_du_fichier_sans_etre_ecrases(self) -> None:
         types = ticket_types(self.conn)
-        self.assertEqual(types['QNA']['expiry_minutes'], 72 * 60)
+        self.assertEqual(types['PLAN_POC']['expiry_minutes'], 48 * 60)
         self.assertIsNone(types['FYI']['expiry_minutes'])
         self.assertEqual(types['GUICHET']['expiry_minutes'], 10)
-        self.assertIn('choix_qcm', types['QNA']['buttons'])
+        self.assertIn('a_corriger', types['PLAN_POC']['buttons'])
         self.assertEqual(
-            set_ticket_type(self.conn, 'QNA', 'clem', expiry_minutes=120), ''
+            set_ticket_type(self.conn, 'PLAN_POC', 'clem', expiry_minutes=120),
+            '',
         )
         ensure_ticket_types(self.conn)
-        self.assertEqual(ticket_types(self.conn)['QNA']['expiry_minutes'], 120)
+        self.assertEqual(
+            ticket_types(self.conn)['PLAN_POC']['expiry_minutes'], 120
+        )
 
     def test_une_instance_en_place_recoit_les_changements_des_types(
         self,
@@ -105,10 +110,64 @@ class TicketTypesTests(unittest.TestCase):
             )['contenu'][2]['fin']
         )
 
+    def test_une_instance_en_place_perd_les_types_retires(self) -> None:
+        """Une instance d'avant le nettoyage : « Mémoire » et « Question »
+        sont en base, et un vieux ticket « Question » est ouvert. Au
+        démarrage, ces types sont effacés ; les autres ne bougent pas, le
+        vieux ticket reste lisible, sans boutons, et on ne peut plus en
+        ouvrir de pareil."""
+        from serge.mc.proj_tickets import project_carte
+        from serge.registry import load_ticket_types_deleted
+        from serge.tickets import TicketError, publish
+
+        c = self.conn
+        retires = load_ticket_types_deleted()
+        self.assertIn('MEMORY', retires)
+        self.assertEqual(set(retires) & set(ticket_types(c)), set())
+        for nom in ('MEMORY', 'QNA'):
+            c.execute(
+                'INSERT INTO ticket_types(id, expiry_minutes, default_detail,'
+                ' buttons_json, spec_json, updated_by, updated_at)'
+                ' VALUES(?,?,?,?,?,?,?)',
+                (
+                    nom,
+                    4320,
+                    '',
+                    '["reponse_libre", "discuter"]',
+                    '{"fields": ["question"], "default": "rien"}',
+                    'ticket-types.yaml',
+                    NOW,
+                ),
+            )
+        vieux = create_ticket(
+            c,
+            ticket_types(c),
+            'QNA',
+            'Q',
+            {'question': 'Quel prix ?'},
+            now=NOW,
+        )
+        publish(c, vieux)
+        set_ticket_type(c, 'PLAN_POC', 'clem', expiry_minutes=120)
+        avant = len(ticket_types(c))
+        ensure_ticket_types(c)
+        types = ticket_types(c)
+        self.assertEqual(len(types), avant - 2)
+        self.assertNotIn('MEMORY', types)
+        self.assertNotIn('QNA', types)
+        self.assertEqual(types['PLAN_POC']['expiry_minutes'], 120)
+        carte = project_carte(c, vieux)
+        assert carte is not None
+        self.assertEqual(carte['ticket']['type'], 'QNA')
+        self.assertEqual(carte['ticket']['etat'], 'OPEN')
+        self.assertEqual(carte['boutons'], [])
+        with self.assertRaises(TicketError):
+            create_ticket(c, types, 'QNA', 'Q', {}, now=NOW)
+
     def test_un_ticket_prend_le_delai_de_son_type(self) -> None:
-        set_ticket_type(self.conn, 'QNA', 'clem', expiry_minutes=120)
+        set_ticket_type(self.conn, 'PLAN_POC', 'clem', expiry_minutes=120)
         ticket_id = create_ticket(
-            self.conn, ticket_types(self.conn), 'QNA', 'Q', {}, now=NOW
+            self.conn, ticket_types(self.conn), 'PLAN_POC', 'Q', {}, now=NOW
         )
         expiry = self.conn.execute(
             'SELECT expiry_at FROM tickets WHERE id=?', (ticket_id,)
@@ -117,9 +176,9 @@ class TicketTypesTests(unittest.TestCase):
             datetime.fromisoformat(expiry) - datetime.fromisoformat(NOW),
             timedelta(minutes=120),
         )
-        set_ticket_type(self.conn, 'QNA', 'clem', expiry_minutes=None)
+        set_ticket_type(self.conn, 'PLAN_POC', 'clem', expiry_minutes=None)
         sans = create_ticket(
-            self.conn, ticket_types(self.conn), 'QNA', 'Q', {}, now=NOW
+            self.conn, ticket_types(self.conn), 'PLAN_POC', 'Q', {}, now=NOW
         )
         self.assertEqual(
             self.conn.execute(
@@ -129,30 +188,30 @@ class TicketTypesTests(unittest.TestCase):
         )
 
     def test_un_changement_refuse_ne_laisse_rien(self) -> None:
-        avant = ticket_types(self.conn)['QNA']
+        avant = ticket_types(self.conn)['PLAN_POC']
         for changement in (
             {'expiry_minutes': 0},
             {'expiry_minutes': 120, 'buttons': ['lancer_fusee']},
             {'expiry_minutes': 120, 'buttons': []},
         ):
             self.assertNotEqual(
-                set_ticket_type(self.conn, 'QNA', 'clem', **changement),
+                set_ticket_type(self.conn, 'PLAN_POC', 'clem', **changement),
                 '',
                 changement,
             )
-        self.assertEqual(ticket_types(self.conn)['QNA'], avant)
+        self.assertEqual(ticket_types(self.conn)['PLAN_POC'], avant)
         self.assertIn('inconnu', set_ticket_type(self.conn, 'NOPE', 'clem'))
         self.assertEqual(
             set_ticket_type(
                 self.conn,
-                'QNA',
+                'PLAN_POC',
                 'clem',
                 default_detail='Serge tranche seul.',
                 buttons=['approuver', 'discuter'],
             ),
             '',
         )
-        apres = ticket_types(self.conn)['QNA']
+        apres = ticket_types(self.conn)['PLAN_POC']
         self.assertEqual(apres['buttons'], ['approuver', 'discuter'])
         self.assertEqual(apres['default_detail'], 'Serge tranche seul.')
 

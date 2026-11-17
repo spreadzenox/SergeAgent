@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Projecteurs P3 analyse : diffs, MEMORY paginé, métriques."""
+"""Projecteurs P3 analyse : révisions des tickets, métriques."""
 
 from __future__ import annotations
 
@@ -12,50 +12,6 @@ from typing import Any
 
 from serge.mc.proj_outils import avant_iso, charge_json
 from serge.text_ids import strip_ids
-
-
-def project_memory_items(
-    conn: sqlite3.Connection, page: int, taille: int
-) -> dict[str, Any]:
-    """Items MEMORY paginés serveur : TOUS (E12, endpoint).
-
-    Args:
-        conn: Connexion canon (lecture).
-        page: Page 1-based (hors bornes = items vides).
-        taille: Taille page (clampée 1..100).
-
-    Returns:
-        Dict {items: [{id, ticket_id, label, etat}], page, taille,
-        total, pages}.
-    """
-    page = max(1, page)
-    taille = min(max(1, taille), 100)
-    row = conn.execute(
-        "SELECT COUNT(*) FROM ticket_items WHERE kind='MEMORY'"
-    ).fetchone()
-    total = int(row[0]) if row else 0
-    pages = max(1, (total + taille - 1) // taille)
-    items = []
-    for ligne in conn.execute(
-        'SELECT id, ticket_id, label, state FROM ticket_items'
-        " WHERE kind='MEMORY' ORDER BY rowid DESC LIMIT ? OFFSET ?",
-        (taille, (page - 1) * taille),
-    ).fetchall():
-        items.append(
-            {
-                'id': str(ligne[0]),
-                'ticket_id': str(ligne[1]),
-                'label': strip_ids(str(ligne[2])),
-                'etat': str(ligne[3]),
-            }
-        )
-    return {
-        'items': items,
-        'page': page,
-        'taille': taille,
-        'total': total,
-        'pages': pages,
-    }
 
 
 def project_metriques_tickets(
@@ -175,7 +131,7 @@ def project_metriques_tickets(
 def project_diffs(
     conn: sqlite3.Connection, policy: Mapping[str, Any], now: str
 ) -> dict[str, Any]:
-    """Vue diff : POLICY ouvertes + versions EDITED + items edit (P3).
+    """Les révisions des tickets tranchés en les modifiant (P3).
 
     Args:
         conn: Connexion canon (lecture).
@@ -183,24 +139,9 @@ def project_diffs(
         now: Maintenant ISO (ignoré, uniformité).
 
     Returns:
-        Dict {policy: [...], versions: [...], items: [...]}.
+        Dict {versions: [{ticket_id, titre, versions: [{n, note, at}]}]}.
     """
     _ = (policy, now)
-    policy_items = []
-    for row in conn.execute(
-        "SELECT id, title, payload_json FROM tickets WHERE type='POLICY'"
-        " AND state IN ('OPEN','DISCUSSING') ORDER BY updated_at DESC"
-    ).fetchall():
-        charge = charge_json(row[2])
-        policy_items.append(
-            {
-                'ticket_id': str(row[0]),
-                'titre': strip_ids(str(row[1])),
-                'diff': str(charge.get('diff_avant_apres') or ''),
-                'justification': str(charge.get('justification') or ''),
-                'impact': str(charge.get('impact') or ''),
-            }
-        )
     versions = []
     for row in conn.execute(
         "SELECT id, title, versions_json FROM tickets WHERE versions_json<>''"
@@ -228,18 +169,4 @@ def project_diffs(
                 'versions': notes,
             }
         )
-    items = []
-    for row in conn.execute(
-        'SELECT id, ticket_id, label, payload_json FROM ticket_items'
-        " WHERE state='edit' ORDER BY rowid DESC LIMIT 50"
-    ).fetchall():
-        charge = charge_json(row[3])
-        items.append(
-            {
-                'item_id': str(row[0]),
-                'ticket_id': str(row[1]),
-                'avant': strip_ids(str(row[2])),
-                'apres': strip_ids(str(charge.get('label') or '')),
-            }
-        )
-    return {'policy': policy_items, 'versions': versions, 'items': items}
+    return {'versions': versions}

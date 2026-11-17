@@ -8,7 +8,6 @@ from pathlib import Path
 from sqlite3 import Connection
 from typing import TYPE_CHECKING, Any, Protocol
 
-from serge.mc.proj_analyse import project_memory_items
 from serge.mc.proj_objet import project_objet
 from serge.mc.proj_tickets import project_carte
 from serge.mc.proj_trace import project_trace
@@ -103,27 +102,6 @@ class ApiViewsMixin(_Base):
             )
             return
         self._send_json(200, carte)
-
-    def _api_memory_items(self) -> None:
-        if not self._require_owner():
-            return
-        query = self._query()
-        try:
-            page = int(query.get('page', '1'))
-            taille = int(query.get('size', '20'))
-        except (TypeError, ValueError):
-            page, taille = -1, -1
-        if page < 1 or taille < 1:
-            self._refus(
-                400,
-                'Pagination invalide.',
-                'page',
-                'page et size : entiers >= 1.',
-            )
-            return
-        with self._db() as conn:
-            resultat = project_memory_items(conn, page, taille)
-        self._send_json(200, resultat)
 
     def _api_memory_search(self) -> None:
         if not self._require_owner():

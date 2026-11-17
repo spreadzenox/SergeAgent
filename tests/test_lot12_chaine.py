@@ -50,6 +50,7 @@ from serge.interpreter.triggers import notify_rows_written  # noqa: E402
 from serge.llm.client import ChatResult, ToolCall  # noqa: E402
 from serge.pipeline_seed import seed_pipeline  # noqa: E402
 from serge.policy_store import set_setting  # noqa: E402
+from serge.tickets import decide  # noqa: E402
 from serge.tickets.reponses import noter_reponse  # noqa: E402
 
 T = '2026-11-01T09:00:00+00:00'
@@ -390,6 +391,9 @@ class ChaineTests(ChaineCase):
         )
         self.assertEqual(etat_ticket, 'OPEN')
         self.assertEqual(self._statut('v1'), 'SMOKE_DONE')
+        # Comme un clic sur « Valider » : le ticket est tranché, puis sa
+        # réponse réveille « Appliquer le choix ».
+        decide(self.conn, ticket, 'APPROVED')
         noter_reponse(self.conn, ticket, 'valider', '', 'owner')
         self._vider()
         self.assertEqual(self._statut('v1'), 'PRODUCT_BUILDING')
@@ -398,6 +402,14 @@ class ChaineTests(ChaineCase):
                 'SELECT status, decision, chosen_venture_id FROM principal_choices'
             ),
             ('DECIDED', 'valider', 'v1'),
+        )
+        # Une réponse appliquée ne rouvre pas de ticket (essai total du 17
+        # novembre 2026 : un second ticket arrivait après « Valider »).
+        self.assertEqual(
+            self._un(
+                "SELECT COUNT(*) FROM tickets WHERE type='CHOIX_PRINCIPAL'"
+            ),
+            (1,),
         )
         # La conception du produit fini attend (l'étape 5 est éteinte ici).
         self.assertEqual(self._taches('concevoir_produit'), ['ready'])
@@ -462,6 +474,89 @@ class ChaineTests(ChaineCase):
                 "La prospection lourde d'un business est lancée",
                 "Première vente d'un business",
             ],
+        )
+
+    def test_choisir_un_autre_business_que_la_proposition(self) -> None:
+        """Deux tests retenus, Serge propose le premier. « Choisir un
+        autre » avec un nom qui ne désigne aucun business : rien ne change,
+        le ticket est rouvert avec la raison. Avec le bon nom : ce business
+        entre en construction, l'autre est mis de côté, et aucun ticket de
+        plus n'est ouvert. Une réponse qui arrive après ne rouvre rien."""
+        self.conn.executescript(
+            f"""
+            INSERT INTO ventures(id, name, description, lifecycle,
+                created_at, updated_at)
+            VALUES('v1', 'Devis v1', 'Des devis.', 'SMOKE_DONE', '{T}', '{T}'),
+                ('v2', 'Factures v2', 'Des factures.', 'SMOKE_DONE',
+                '{T}', '{T}');
+            INSERT INTO principal_choices(id, proposed_venture_id, notes,
+                status, created_at, updated_at)
+            VALUES('pc1', 'v1', 'v1 : le meilleur test.', 'PROPOSED',
+                '{T}', '{T}');
+            """
+        )
+        enqueue_task(
+            self.conn, 'demander_choix_principal', {'choice_id': 'pc1'}
+        )
+        self._vider()
+
+        def tickets() -> list[str]:
+            return [
+                str(r[0])
+                for r in self.conn.execute(
+                    "SELECT id FROM tickets WHERE type='CHOIX_PRINCIPAL'"
+                    ' ORDER BY created_at, rowid'
+                )
+            ]
+
+        def repondre(ticket: str, acte: str, texte: str) -> None:
+            """Comme un clic dans Mission Control : le ticket est tranché,
+            puis sa réponse réveille « Appliquer le choix »."""
+            decide(
+                self.conn,
+                ticket,
+                'EDITED' if acte == 'choisir_autre' else 'APPROVED',
+                note=texte,
+            )
+            noter_reponse(self.conn, ticket, acte, texte, 'owner')
+            self._vider()
+
+        (premier,) = tickets()
+        repondre(premier, 'choisir_autre', 'Plomberie')
+        self.assertEqual(
+            (self._statut('v1'), self._statut('v2')),
+            ('SMOKE_DONE', 'SMOKE_DONE'),
+        )
+        self.assertEqual(
+            self._un('SELECT status FROM principal_choices'), ('PROPOSED',)
+        )
+        _, second = tickets()
+        self.assertIn(
+            '« Plomberie » ne désigne aucun business',
+            self._un('SELECT payload_json FROM tickets WHERE id=?', second)[0],
+        )
+        repondre(second, 'choisir_autre', 'factures v2')
+        self.assertEqual(
+            (self._statut('v1'), self._statut('v2')),
+            ('PARKED', 'PRODUCT_BUILDING'),
+        )
+        self.assertEqual(
+            self._un(
+                'SELECT status, decision, chosen_venture_id'
+                ' FROM principal_choices'
+            ),
+            ('DECIDED', 'choisir_autre', 'v2'),
+        )
+        self.assertEqual(tickets(), [premier, second])
+        # Une réponse de plus (le délai du premier ticket qui expire, par
+        # exemple) : le choix n'attend plus rien ; rien ne change et aucun
+        # ticket n'est ouvert.
+        noter_reponse(self.conn, premier, 'valider', '', 'owner')
+        self._vider()
+        self.assertEqual(tickets(), [premier, second])
+        self.assertEqual(
+            (self._statut('v1'), self._statut('v2')),
+            ('PARKED', 'PRODUCT_BUILDING'),
         )
 
     def test_un_test_sous_les_seuils_arrete_le_business(self) -> None:

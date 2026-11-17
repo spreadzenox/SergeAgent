@@ -17,7 +17,6 @@ from serge.db.boot import init_schema  # noqa: E402
 from serge.registry import load_ticket_types  # noqa: E402
 from serge.tickets import (  # noqa: E402
     TicketError,
-    add_item,
     cancel,
     close,
     create_ticket,
@@ -28,7 +27,6 @@ from serge.tickets import (  # noqa: E402
     get_ticket,
     publish,
     reopen,
-    set_item,
 )
 
 NOW = '2026-09-09T19:00:00+00:00'
@@ -57,16 +55,14 @@ class TicketTests(unittest.TestCase):
             create_ticket(self.connection, self.types, 'NOPE', 'x')
 
     def test_expiry_issue_du_registre(self) -> None:
-        hypo = create_ticket(
-            self.connection, self.types, 'HYPOTHESIS', 'h', now=NOW
+        plan = create_ticket(
+            self.connection, self.types, 'PLAN_POC', 'h', now=NOW
         )
         expected = (
             datetime.fromisoformat(NOW) + timedelta(hours=48)
         ).isoformat()
-        self.assertEqual(self._col(hypo, 'expiry_at'), expected)
-        self.assertEqual(
-            self._col(hypo, 'default_action'), 'refus_conservateur'
-        )
+        self.assertEqual(self._col(plan, 'expiry_at'), expected)
+        self.assertEqual(self._col(plan, 'default_action'), 'valider')
         fyi = create_ticket(self.connection, self.types, 'FYI', 'f', now=NOW)
         self.assertEqual(self._col(fyi, 'expiry_at'), '')
 
@@ -93,7 +89,7 @@ class TicketTests(unittest.TestCase):
 
     def test_lifecycle_nominal(self) -> None:
         ticket_id = create_ticket(
-            self.connection, self.types, 'VETO_AMONT', 'v', now=NOW
+            self.connection, self.types, 'CHOIX_PRINCIPAL', 'v', now=NOW
         )
         self.assertEqual(self._col(ticket_id, 'state'), 'DRAFT')
         publish(self.connection, ticket_id)
@@ -125,7 +121,7 @@ class TicketTests(unittest.TestCase):
 
     def test_transitions_interdites(self) -> None:
         ticket_id = create_ticket(
-            self.connection, self.types, 'POLICY', 'p', now=NOW
+            self.connection, self.types, 'TEST_POC', 'p', now=NOW
         )
         with self.assertRaises(TicketError):
             decide(self.connection, ticket_id, 'APPROVED')
@@ -141,7 +137,7 @@ class TicketTests(unittest.TestCase):
 
     def test_edited_versionne(self) -> None:
         ticket_id = create_ticket(
-            self.connection, self.types, 'PUBLICATION', 'p', now=NOW
+            self.connection, self.types, 'PLAN_PRODUIT', 'p', now=NOW
         )
         publish(self.connection, ticket_id)
         decide(self.connection, ticket_id, 'EDITED', note='v2')
@@ -153,17 +149,17 @@ class TicketTests(unittest.TestCase):
         ticket_id = create_ticket(
             self.connection,
             self.types,
-            'HYPOTHESIS',
+            'PLAN_POC',
             'h',
             now='2026-09-01T00:00:00+00:00',
         )
         publish(self.connection, ticket_id)
         future = create_ticket(
-            self.connection, self.types, 'HYPOTHESIS', 'h2', now=NOW
+            self.connection, self.types, 'PLAN_POC', 'h2', now=NOW
         )
         publish(self.connection, future)
         expired = expire_due(self.connection, NOW)
-        self.assertEqual(expired, [(ticket_id, 'refus_conservateur')])
+        self.assertEqual(expired, [(ticket_id, 'valider')])
         self.assertEqual(self._col(ticket_id, 'state'), 'EXPIRED')
         self.assertEqual(self._col(future, 'state'), 'OPEN')
         last = self.connection.execute(
@@ -172,34 +168,16 @@ class TicketTests(unittest.TestCase):
             (ticket_id,),
         ).fetchone()
         self.assertEqual(last[0], 'transition.expired')
-        self.assertEqual(
-            json.loads(last[1])['default_applied'], 'refus_conservateur'
-        )
-
-    def test_items_memory(self) -> None:
-        ticket_id = create_ticket(
-            self.connection, self.types, 'MEMORY', 'm', now=NOW
-        )
-        item = add_item(self.connection, ticket_id, 'lesson', 'L1')
-        set_item(self.connection, item, 'keep')
-        ticket = get_ticket(self.connection, ticket_id)
-        self.assertEqual(len(ticket['items']), 1)
-        self.assertEqual(ticket['items'][0]['state'], 'keep')
-        with self.assertRaises(TicketError):
-            set_item(self.connection, 'ti_nope', 'keep')
-        with self.assertRaises(TicketError):
-            add_item(self.connection, 't_nope', 'lesson', 'x')
+        self.assertEqual(json.loads(last[1])['default_applied'], 'valider')
 
     def test_get_ticket_assemble_vue(self) -> None:
         ticket_id = create_ticket(
-            self.connection, self.types, 'QNA', 'q', now=NOW
+            self.connection, self.types, 'REQUESTED', 'q', now=NOW
         )
         publish(self.connection, ticket_id)
-        add_item(self.connection, ticket_id, 'option', 'A')
         ticket = get_ticket(self.connection, ticket_id)
         self.assertEqual(ticket['id'], ticket_id)
         self.assertEqual(ticket['state'], 'OPEN')
-        self.assertEqual(len(ticket['items']), 1)
         self.assertEqual(
             [event['kind'] for event in ticket['events']],
             ['transition.draft', 'transition.open'],
