@@ -195,8 +195,8 @@ imap_port = 993                 # 993 SSL | 143 STARTTLS
 
 La taille des essais et le nombre d’appels par jour ne sont pas dans ce
 fichier : ce sont des réglages en base, modifiables sur la page Policy
-(familles « Taille des essais » et « Plafonds par canal »), remplis au
-départ par `config/policy.yaml`. Un ancien fichier qui contient encore
+(les réglages de « Démarrer une campagne » et la famille « Canaux »),
+remplis au départ par `config/pipeline.yaml` et `config/policy.yaml`. Un ancien fichier qui contient encore
 `[testing]` ou `max_calls_per_day` se charge : ces clés sont ignorées
 (pas de réglage en double, Q78).
 

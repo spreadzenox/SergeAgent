@@ -330,7 +330,7 @@ function renderJauges(main, payload, sig, gauges) {
   updateGauge(gauges.mois.node, mois.ratio || 0, mois.ratio > 0.8 ? 'alerte' : '');
   gauges.mois.label.textContent =
     `${mois.libelle || 'Ce mois'} : ${format(mois.eur)} € / ${mois.plafond_eur || 0} €`;
-  for (const nom of ['email', 'voix', 'linkedin']) {
+  for (const nom of ['email', 'voix']) {
     const barre = payload[nom] || {};
     const slot = gauges[nom];
     if (!slot) {
@@ -370,7 +370,7 @@ export function mount(main, store) {
   const tpl = document.getElementById('page-live');
   main.replaceChildren(tpl.content.cloneNode(true));
   const gauges = {};
-  for (const name of ['llm', 'mois', 'email', 'voix', 'linkedin']) {
+  for (const name of ['llm', 'mois', 'email', 'voix']) {
     const slot = main.querySelector(`[data-gauge="${name}"]`);
     const label = document.createElement('p');
     const node = createGauge();

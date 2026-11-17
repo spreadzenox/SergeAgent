@@ -2163,3 +2163,16 @@ Décidé :
 3. Dans l'essai total, le contact tapé au lancement a donné son accord
    (« test ») : son appel part.
 
+### Q101 — Un appel jamais refermé ne bloque plus les suivants (demandé par Clem, 17 novembre 2026)
+Constat : dans l'essai total du 17 novembre 2026, l'appel ne partait pas.
+Le pont le refusait (« un appel est déjà en cours vers ce numéro ») et
+Serge réessayait toutes les 10 minutes, sans fin : un appel du 8 octobre
+vers ce numéro était resté « en cours » au journal des appels, son issue
+n'ayant jamais été écrite.
+Décidé :
+1. **Au bout d'une heure, un appel « en cours » est fermé** (issue
+   « échec ») à la demande d'appel suivante. Un appel dure 30 minutes au
+   plus (réglage de « Parler au téléphone »).
+2. **Un bouton « Débloquer les appels »**, page Voix, ferme tout de suite
+   les appels restés « en cours » au journal. Il ne raccroche pas un appel
+   vraiment en cours : son issue sera écrite à la fin, comme d'habitude.

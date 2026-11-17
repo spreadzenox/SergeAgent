@@ -328,8 +328,8 @@ CATALOGUE: dict[str, tuple[str, str, str, str]] = {
     'policy_sections': (
         'Les familles de réglages généraux de la page Policy (Argent…).',
         'policy.yaml au départ.',
-        'La page Policy ; le verrou d’une famille (taille des essais).',
-        'Verrou : pas tant qu’une ligne de lock_table a lock_column = lock_value.',
+        'La page Policy.',
+        'Les colonnes lock_* ne servent plus (le verrou d’une famille a été retiré).',
     ),
     'policy_settings': (
         'Les réglages généraux : une ligne par réglage, avec sa valeur.',

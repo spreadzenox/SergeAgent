@@ -47,9 +47,10 @@ class PolicyTests(unittest.TestCase):
         self.assertEqual(policy['channels']['voice']['max_per_day'], 50)
         self.assertEqual(policy['calling_zones']['default'], 'FR')
         self.assertEqual(policy['calling_zones']['FR']['contact_per_30d'], 4)
-        self.assertEqual(policy['testing']['n_smoke_min'], 30)
-        self.assertEqual(policy['standing']['cout_usage'], 0.10)
-        self.assertEqual(policy['standing']['capital_min'], 0.20)
+        self.assertEqual(
+            policy['consent']['opt_in_channels'], ['voice', 'sms', 'whatsapp']
+        )
+        self.assertEqual(policy['quotas']['sms_global_per_min'], 60)
 
     def test_test_overlay_applies_plancher(self) -> None:
         with mock.patch.dict(os.environ, {'SERGE_ENV': 'test'}):
@@ -58,7 +59,7 @@ class PolicyTests(unittest.TestCase):
         self.assertEqual(policy['budget']['monthly_eur'], 2.0)
         self.assertEqual(policy['channels']['email']['max_per_day'], 2)
         self.assertEqual(policy['channels']['voice']['max_per_day'], 0)
-        self.assertEqual(policy['quotas']['linkedin_connect_per_day'], 0)
+        self.assertEqual(policy['quotas']['sms_global_per_min'], 4)
         # Non surchargé = valeur prod conservée.
         self.assertEqual(policy['budget']['eur_per_usd'], 0.9)
 
@@ -91,10 +92,11 @@ class PolicyTests(unittest.TestCase):
             shutil.copy(ROOT / 'config/policy.test.yaml', dossier)
             for avant, apres in (
                 ('value: 50.0', 'value: 900.0'),  # au-delà du maximum
-                # arrêt à 5 réponses positives = élargir à 5 : refusé
+                # le moteur rendrait moins de résultats (1) que ce qu'une
+                # recherche en demande (5) : refusé
                 (
-                    'value: 1\n        title: Arrêt',
-                    'value: 5\n        title: Arrêt',
+                    'value: 10\n        title: Résultats d’une recherche, au plus',
+                    'value: 1\n        title: Résultats d’une recherche, au plus',
                 ),
                 ('kind: eur', 'kind: inconnue'),
                 ('schema_version: 2', 'schema_version: 1'),

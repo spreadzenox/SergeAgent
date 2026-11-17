@@ -450,8 +450,8 @@ ses quotas en base (règle de tous les lots).
   d'un test, la raison de sa fin, et le compte des recherches de
   prospects restées vides. Sa colonne `family` devient `phase`. Les
   colonnes que le pipeline n'écrit pas (`budget_cap_eur`,
-  `thresholds_json`, `window_start`, `window_end`) restent pour l'ancien
-  code de la page Policy, à retirer avec lui (partie 13).
+  `thresholds_json`, `window_start`, `window_end`) restent en base,
+  vides : plus rien ne les lit depuis le nettoyage du 16 novembre 2026.
 - **`contact_addresses`** (existe) : reçoit la page où l'adresse a été
   trouvée (Q36). Les prospects d'une campagne sont ceux qui ont un
   premier message dans cette campagne : la table des contacts ne change
@@ -590,11 +590,11 @@ invocation.
 - Les modules `serge/funnels/lifecycle.py` et `contact_tool.py`, que plus
   rien n'appelait : le premier imposait en dur « un seul business actif »
   et d'anciens statuts. Les statuts et les places sont en base.
-- **Pas encore retirés**, à faire à part (TODO) : la famille « Taille des
-  essais » de la page Policy et l'ancien code qui la lit
-  (`serge/funnels/campaigns.py`, `essai.py`, `rules.py`), que plus rien
-  n'appelle dans le pipeline, avec les colonnes des campagnes qu'il est
-  seul à écrire (partie 8).
+- La famille « Taille des essais » de la page Policy et l'ancien code qui
+  la lisait (`serge/funnels/campaigns.py`, `essai.py`, `rules.py`),
+  retirés juste après le lot, au nettoyage du 16 novembre 2026. Les
+  colonnes des campagnes que ce code était seul à écrire restent en base,
+  vides (partie 8).
 - Les invocations écrites mais jamais appelées que ce lot remplace (TODO,
   « Brancher ou supprimer les invocations jamais appelées ») : la
   découverte de contacts (→ « Trouver des prospects »), le résumé d'un

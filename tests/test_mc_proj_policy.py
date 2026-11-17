@@ -49,19 +49,12 @@ class ProjPolicyTests(unittest.TestCase):
         canaux = self._section('consent')['reglages'][0]
         self.assertIn(['email', 'E-mail'], canaux['choix'])
 
-    def test_valeur_precedente_et_verrou(self) -> None:
+    def test_valeur_precedente(self) -> None:
         set_setting(self.conn, 'budget.monthly_eur', 80.0, 'mc')
         mois = self._section('budget')['reglages'][0]
         self.assertEqual(mois['valeur'], 80.0)
         self.assertEqual(mois['precedent']['valeur'], 50.0)
         self.assertEqual(mois['precedent']['par'], 'mc')
-        self.assertEqual(self._section('testing')['verrou'], '')
-        self.conn.execute(
-            'INSERT INTO campaigns(id, venture_id, phase, channel, state,'
-            " n_target, created_at, updated_at) VALUES('c1', 'v1', 'named',"
-            " 'email', 'RUNNING', 10, 't', 't')"
-        )
-        self.assertIn('Un essai tourne', self._section('testing')['verrou'])
 
     def test_reglages_d_invocation_avec_valeur_precedente(self) -> None:
         res = project_reglages(self.conn, {}, NOW)

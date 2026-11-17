@@ -14,7 +14,6 @@ ne reçoit plus cette page. « Choisir » prend l'idée de A et ferme le cycle.
 from __future__ import annotations
 
 import json
-import re
 import sqlite3
 import sys
 import unittest
@@ -340,26 +339,6 @@ class CycleEtape1Tests(unittest.TestCase):
             "SELECT payload_json FROM events WHERE type='task.cancelled'"
         ).fetchone()
         self.assertEqual(json.loads(note[0])['count'], 1)
-
-    def test_effacer_les_idees(self) -> None:
-        self._cycle()
-        fire_button(self.conn, 'bouton_effacer_idees', {})
-        process_one(self.conn, 'works', now=NOW, caller=self.modele)
-        self.assertEqual(
-            self.conn.execute('SELECT id FROM ventures').fetchall(),
-            [('v_test',)],
-        )
-        self.assertEqual(
-            self.conn.execute(
-                'SELECT venture_id FROM venture_sources'
-            ).fetchall(),
-            [('v_test',)],
-        )
-        note = self.conn.execute(
-            "SELECT payload_json FROM events WHERE type='write.deleted'"
-        ).fetchone()
-        self.assertEqual(json.loads(note[0])['count'], 1)
-        self.assertTrue(re.search(r'"table": "ventures"', note[0]))
 
 
 if __name__ == '__main__':

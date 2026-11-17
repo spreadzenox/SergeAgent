@@ -187,9 +187,6 @@ Ce que chaque lot a vraiment livré :
     « Accord des gens », c'est le cas au départ), une campagne par
     téléphone ne démarre pas pour des prospects jamais contactés. C'est
     voulu (décision Q100) ; la voix sera reprise dans un lot suivant ;
-  - **retirer la famille « Taille des essais » de la page Policy** et
-    l'ancien code qui la lit (`serge/funnels/campaigns.py`, `essai.py`,
-    `rules.py`, `metrics.py`), que plus rien n'appelle dans le pipeline ;
   - **Mission Control** : les campagnes sur la page Système, les places
     sur la page En direct, le compte rendu d'un test sur la fiche de son
     business ; aujourd'hui, une campagne se lit sur sa fiche.
@@ -297,10 +294,10 @@ discutable, qui peut un jour changer, se règle depuis Mission Control.**
   modifiable sur la page Policy. Le lot 7 lui fait compter aussi les
   statuts des étapes 2 et 3 (Q65). Il restera la place de prospection lourde, l'affichage « 3 places
   sur 3 occupées » et l'arrêt du cycle quand tout est pris. Par ailleurs,
-  un ancien module, `serge/funnels/lifecycle.py`, impose encore en dur
-  les statuts d'un business et « un seul business actif à la fois », ce
-  qui ne correspond plus à ce qu'on veut : ses règles doivent passer en
-  base (`status_transitions`, `table_quotas`) et le module disparaître.
+  l'ancien module `serge/funnels/lifecycle.py`, qui imposait en dur les
+  statuts d'un business et « un seul business actif à la fois », a été
+  retiré au lot 12 : ses règles sont en base (`status_transitions`,
+  `table_quotas`).
 
 - [ ] **Remplir l'index de recherche dans la mémoire.** Le tool qui
   permet à une invocation de chercher dans la mémoire de Serge (leçons,
@@ -352,11 +349,12 @@ discutable, qui peut un jour changer, se règle depuis Mission Control.**
   grâce à une règle d'écriture « validation par Julien », qui sera
   ajoutée au catalogue d'écriture à ce moment-là.
 
-- [ ] **Brancher la garde de santé des comptes.** Un compte web trop
-  sollicité se fait bannir. Le code d'une garde existe déjà : avant chaque
-  action faite avec un compte, elle dit si c'est autorisé, et après, elle
-  compte l'action. Mais personne ne l'appelle. Il faut que chaque action
-  faite avec un compte web passe par elle. Cette tâche vient avec le web.
+- [ ] **Écrire la garde de santé des comptes.** Un compte web trop
+  sollicité se fait bannir. Il faut une garde : avant chaque action faite
+  avec un compte, elle dit si c'est autorisé, et après, elle compte
+  l'action. Une première version existait, que personne n'appelait ; elle
+  a été retirée au nettoyage du 16 novembre 2026, avec ses réglages
+  (l'historique git la garde). Cette tâche vient avec le web.
 
 - [ ] **La page Identité de MC.** La fonction qui modifie l'identité de
   Serge (son nom, sa présentation) existe dans le code, mais aucun bouton
@@ -463,10 +461,8 @@ discutable, qui peut un jour changer, se règle depuis Mission Control.**
   place, mais ils peuvent être repris plus tard. La comparaison inclut
   aussi les business mis de côté dont le test date de moins de 60 jours ;
   au-delà, ils redeviennent de simples candidats. Cette tâche a besoin des
-  places de test et de la grille de points. Les seuils d'un essai (page
-  Policy, « Taille des essais ») comptent encore les signaux « veut
-  acheter » des anciennes campagnes, que plus rien n'écrit : ils doivent
-  passer aux points.
+  places de test et de la grille de points. Les seuils d'un test sont
+  passés aux points au lot 12 (réglages de « Mesurer le test »).
 
 ---
 
@@ -587,9 +583,8 @@ système complet (Q92, Q93).
 - [ ] **Couper tout seul un flux qui ne ramène que du bruit.** Au lot 7,
   un flux se coupe à la main. Plus tard : la coupure automatique d'un flux
   après 5 cycles de bruit (Q65). Le cycle qui repart tout seul quand une
-  place se libère est au lot 12 (Q92). Avant
-  le vrai lancement de Serge, retirer le bouton « Effacer les idées
-  (test) » (le lister dans la section `deleted` de `pipeline.yaml`).
+  place se libère est fait au lot 12 (Q92). Le bouton « Effacer les
+  idées (test) » est retiré (nettoyage du 16 novembre 2026).
 
 - [ ] **Avant le vrai lancement : retirer le kit d'essai des canaux.** Le
   bouton « Lancer un essai » et ses invocations temporaires (« Lancer un

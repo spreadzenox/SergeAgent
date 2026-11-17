@@ -208,7 +208,7 @@ def check_relations(
 ) -> str:
     """La première relation que ``values`` ne respecte pas, en clair, ou ``''``.
 
-    Exemple : « standing.capital_min doit rester ≤ standing.capital_max ».
+    Exemple : « tools.search_results doit rester ≤ web.search_max_results ».
     """
     for rel in relations:
         low, high = (

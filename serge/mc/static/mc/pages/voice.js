@@ -1,5 +1,12 @@
 // Page P7 Voix : CDR, audio signée (E7), pont, journaux du serveur.
-import {afficherJournaux, fillList, li, rel} from '../components.js';
+import {
+  afficherJournaux,
+  confirmModal,
+  fillList,
+  li,
+  rel,
+  toast,
+} from '../components.js';
 
 function libelleIssue(c) {
   if (c.decision === 'denied') {
@@ -24,7 +31,47 @@ function renderBridge(main, payload, sig) {
     ? payload.bridge.status
     : 'ok';
   info.textContent = `Pont : ${etat}. Pour arrêter les appels, coupe « Appel sortant » ou Serge en bas / en haut de En direct.`;
+  direEnCours(main, payload.bridge && payload.bridge.ledger ? payload.bridge.ledger.pending : null);
   main.querySelector('[data-section="bridge_statut"]').dataset.sig = sig;
+}
+
+// Un appel « en cours » au journal bloque tout nouvel appel vers ce numéro.
+function direEnCours(main, combien) {
+  const nombre = Number.isInteger(combien) ? `${combien}` : 'inconnu';
+  main.querySelector('#voice-en-cours').textContent =
+    `Appels « en cours » au journal : ${nombre}. Tant qu’un appel y reste « en cours », aucun autre ne part vers ce numéro ; au bout d’une heure, Serge le ferme de lui-même.`;
+}
+
+// « Débloquer les appels » : ferme au journal les appels restés « en cours ».
+function brancherDeblocage(main) {
+  const bouton = main.querySelector('[data-voice="debloquer"]');
+  bouton.addEventListener('click', async () => {
+    const oui = await confirmModal(document.body, {
+      title: 'Débloquer les appels ?',
+      message: 'Les appels restés « en cours » au journal sont fermés (issue : échec). À faire quand un appel est reporté parce qu’un autre serait « déjà en cours » vers ce numéro, alors que personne n’est en ligne. Un appel vraiment en cours n’est pas raccroché.',
+      confirm: 'Débloquer les appels',
+    });
+    if (!oui) return;
+    bouton.disabled = true;
+    try {
+      const res = await fetch('/owner/api/voice/debloquer', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: '{}',
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast(document.body, `Échec : ${data.erreur || 'refusé'}.`, 'erreur');
+        return;
+      }
+      direEnCours(main, 0);
+      toast(document.body, `${data.fermes} appel(s) fermé(s).`, 'succes');
+    } catch {
+      toast(document.body, 'Action injoignable. Réessaie.', 'erreur');
+    } finally {
+      bouton.disabled = false;
+    }
+  });
 }
 
 function renderCdr(main, payload, sig) {
@@ -71,6 +118,7 @@ function renderJournaux(main, payload, sig) {
 export function mount(main, store) {
   const tpl = document.getElementById('page-voice');
   main.replaceChildren(tpl.content.cloneNode(true));
+  brancherDeblocage(main);
 
   const unsubs = [
     store.subscribe('bridge_statut', (p, s) => renderBridge(main, p, s)),

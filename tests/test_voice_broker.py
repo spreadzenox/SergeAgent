@@ -303,6 +303,61 @@ class VoiceBrokerTests(unittest.TestCase):
         )
         self.assertEqual(second['reason'], 'already_in_progress')
 
+    def test_un_appel_jamais_referme_ne_bloque_pas_pour_toujours(self) -> None:
+        """Le serveur, le 17 novembre 2026 : un appel du 8 octobre resté
+        « en cours » (jamais refermé) faisait refuser tout appel vers ce
+        numéro. Un appel « en cours » depuis moins d'une heure bloque
+        encore ; au-delà, il est fermé (« failed ») et l'appel part."""
+        from datetime import timedelta
+
+        vieux = self._allowed_call()
+        self.assertEqual(vieux['decision'], 'allowed')
+
+        def demande(numero: str, apres: timedelta) -> dict:
+            return self.ledger.request_call(
+                _policy(),
+                request_id=numero,
+                to_e164=TO,
+                cli=CLI,
+                purpose='contract',
+                now=TUESDAY_NOON + apres,
+            )
+
+        tot = demande('req_tot', timedelta(minutes=20))
+        self.assertEqual(tot['reason'], 'already_in_progress')
+        tard = demande('req_tard', timedelta(minutes=100))
+        self.assertEqual(tard['decision'], 'allowed')
+        issues = {
+            c['request_id']: c['outcome']
+            for c in self.ledger.calls_for_task('')
+        }
+        self.assertEqual(issues['req_1'], 'failed')
+        self.assertEqual(issues['req_tard'], 'pending')
+
+    def test_debloquer_ferme_tous_les_appels_restes_en_cours(self) -> None:
+        """« Débloquer les appels » (Mission Control) : tous les appels
+        restés « en cours » sont fermés, même récents ; un appel refusé ou
+        déjà terminé ne change pas."""
+        fini = self._allowed_call()
+        self.ledger.record_outcome(fini['cdr_id'], outcome='completed')
+        self._allowed_call(to='+33612345670', request_id='req_2')
+        self._allowed_call(to='+33612345671', request_id='req_3')
+        self.assertEqual(self.ledger.doctor()['pending'], 2)
+        self.assertEqual(self.ledger.close_pending(), 2)
+        self.assertEqual(self.ledger.close_pending(), 0)
+        self.assertEqual(self.ledger.doctor()['pending'], 0)
+        issues = {
+            c['request_id']: c['outcome']
+            for c in self.ledger.calls_for_task('')
+        }
+        self.assertEqual(
+            issues,
+            {'req_1': 'completed', 'req_2': 'failed', 'req_3': 'failed'},
+        )
+        # Le numéro est de nouveau libre.
+        suivant = self._allowed_call(to='+33612345670', request_id='req_4')
+        self.assertEqual(suivant['decision'], 'allowed')
+
     def test_idempotent_replay_and_divergent_replay(self) -> None:
         first = self._allowed_call()
         replay = self.ledger.request_call(

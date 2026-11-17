@@ -27,7 +27,7 @@ export function boutonPrecedent(charge, texte, precedent) {
   return btn;
 }
 
-function champReglage(r, verrou) {
+function champReglage(r) {
   const field = champPolicy(r.id, r, r.valeur);
   field.querySelectorAll('input,select,textarea').forEach((f, i) => draftField(f, `${r.id}.${i}`));
   const actes = el('div', 'actes-champ');
@@ -43,11 +43,6 @@ function champReglage(r, verrou) {
     ));
   }
   field.append(actes);
-  if (verrou) {
-    field.querySelectorAll('input,select,textarea,button').forEach((n) => {
-      n.disabled = true;
-    });
-  }
   return field;
 }
 
@@ -85,14 +80,9 @@ export function afficherFamilles(host, sections) {
     if (sec.pourquoi) {
       art.append(el('p', 'pourquoi-regle', sec.pourquoi));
     }
-    if (sec.verrou) {
-      const verrou = el('p', 'verrou-regle', `Verrouillé : ${sec.verrou}`);
-      verrou.dataset.verrou = sec.id;
-      art.append(verrou);
-    }
     const grille = el('div', 'grille-champs');
     for (const r of sec.reglages) {
-      grille.append(champReglage(r, sec.verrou));
+      grille.append(champReglage(r));
     }
     art.append(grille);
     corps.append(art);

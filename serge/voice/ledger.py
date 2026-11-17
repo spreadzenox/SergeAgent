@@ -9,30 +9,10 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+import serge.voice.consents as _canon
 from serge.coupe_circuit import serge_demarre
 from serge.db.store import default_canon_path, open_db
 from serge.e164 import E164_RE
-from serge.voice.consents import (
-    block as _canon_block,
-)
-from serge.voice.consents import (
-    consent_basis as _canon_basis,
-)
-from serge.voice.consents import (
-    counts as _canon_counts,
-)
-from serge.voice.consents import (
-    grant_consent as _canon_grant,
-)
-from serge.voice.consents import (
-    is_blocked as _canon_is_blocked,
-)
-from serge.voice.consents import (
-    revoke_consent as _canon_revoke,
-)
-from serge.voice.consents import (
-    unblock as _canon_unblock,
-)
 from serge.voice.policy import (
     VoiceBrokerDenied,
     VoicePolicy,
@@ -56,6 +36,13 @@ def assurer_colonnes_calls(connection: sqlite3.Connection) -> None:
         connection.execute(
             "ALTER TABLE calls ADD COLUMN transcript TEXT NOT NULL DEFAULT ''"
         )
+
+
+# Un appel sortant accepté dont l'issue n'est pas encore écrite.
+PENDING = "direction='outbound' AND decision='allowed' AND outcome='pending'"
+# Aucun appel ne dure une heure : au-delà, un appel resté « en cours » n'a
+# jamais été refermé, et ne doit plus bloquer les appels vers ce numéro.
+STALE_AFTER = timedelta(hours=1)
 
 
 def _hash(value: str) -> str:
@@ -106,22 +93,22 @@ class VoiceLedger:
         return sqlite3.connect(self.db_path, timeout=30)
 
     def grant_consent(self, to_e164: str, basis: str) -> dict[str, Any]:
-        return _canon_grant(self.canon_path, to_e164, basis)
+        return _canon.grant_consent(self.canon_path, to_e164, basis)
 
     def revoke_consent(self, to_e164: str) -> dict[str, Any]:
-        return _canon_revoke(self.canon_path, to_e164)
+        return _canon.revoke_consent(self.canon_path, to_e164)
 
     def consent_basis(self, to_e164: str) -> str | None:
-        return _canon_basis(self.canon_path, to_e164)
+        return _canon.consent_basis(self.canon_path, to_e164)
 
     def block(self, to_e164: str, reason: str) -> dict[str, Any]:
-        return _canon_block(self.canon_path, to_e164, reason)
+        return _canon.block(self.canon_path, to_e164, reason)
 
     def unblock(self, to_e164: str) -> dict[str, Any]:
-        return _canon_unblock(self.canon_path, to_e164)
+        return _canon.unblock(self.canon_path, to_e164)
 
     def is_blocked(self, to_e164: str) -> bool:
-        return _canon_is_blocked(self.canon_path, to_e164)
+        return _canon.is_blocked(self.canon_path, to_e164)
 
     def _count_allowed(
         self,
@@ -170,13 +157,37 @@ class VoiceLedger:
         connection = self._connect()
         try:
             row = connection.execute(
-                "SELECT 1 FROM calls WHERE direction='outbound'"
-                " AND to_hash=? AND decision='allowed' AND outcome='pending'",
+                f'SELECT 1 FROM calls WHERE {PENDING} AND to_hash=?',
                 (_hash(to_e164),),
             ).fetchone()
         finally:
             connection.close()
         return row is not None
+
+    def close_pending(
+        self, older: timedelta = timedelta(0), now: datetime | None = None
+    ) -> int:
+        """Ferme les appels sortants restés « en cours » depuis plus de
+        ``older`` (leur issue devient ``failed``) ; rend leur nombre.
+
+        Exemple : le pont s'arrête pendant un appel. L'appel reste « en
+        cours » au journal, et tout nouvel appel vers ce numéro serait
+        refusé (``already_in_progress``).
+        """
+        limit = (
+            (now or datetime.now(UTC)).astimezone(UTC) - older
+        ).isoformat()
+        connection = self._connect()
+        try:
+            done = connection.execute(
+                f"UPDATE calls SET outcome='failed' WHERE {PENDING}"
+                ' AND created_at<=?',
+                (limit,),
+            ).rowcount
+            connection.commit()
+        finally:
+            connection.close()
+        return done
 
     def request_call(
         self,
@@ -193,6 +204,7 @@ class VoiceLedger:
         """Decide an outbound call. Denials are recorded, never raised."""
         created = (now or datetime.now(UTC)).astimezone(UTC)
         created_iso = created.isoformat()
+        self.close_pending(STALE_AFTER, created)
         cdr_id = (
             f'cdr_{created.strftime("%Y%m%dT%H%M%S")}_{_hash(request_id)[:12]}'
         )
@@ -472,7 +484,7 @@ class VoiceLedger:
             ).fetchone()
         finally:
             connection.close()
-        stored = _canon_counts(self.canon_path)
+        stored = _canon.counts(self.canon_path)
         return {
             'status': 'ok',
             'db': str(self.db_path),

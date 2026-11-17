@@ -30,8 +30,9 @@ Identifiant : `caisse`.
   remplacé.
 - **Ce qui manque** : Serge ne crée pas encore lui-même ses prix Stripe ;
   il faudra qu'il y inscrive `venture_id` en les créant.
-- **Relances d'impayés** (`serge/collect/dunning.py`) : polie à J+7, ferme
-  à J+14, puis arrêt et ticket. **Codées mais jamais programmées.**
+- **Relances d'impayés** : polie à J+7, ferme à J+14, puis arrêt et
+  ticket. **À écrire** (lot 16) : une première version, jamais programmée,
+  a été retirée au nettoyage du 16 novembre 2026, avec ses réglages.
 
 ---
 
