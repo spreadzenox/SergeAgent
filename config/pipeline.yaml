@@ -646,6 +646,40 @@ tools:
       vrai Chrome pendant que la tâche attend, puis elle continue.
     capability: human_help
 
+  # --- Les comptes web (lot 13, Q104) ---
+  - id: compte_web
+    title: Le compte web
+    doc: >-
+      Un compte de Serge sur un site : son nom, l'adresse du site, son
+      identifiant de connexion, son nom public et son état. Jamais son mot
+      de passe ni sa session, que Serge utilise à ta place.
+    capability: db_read
+    read:
+      tables: [web_accounts]
+      columns:
+        - {table: web_accounts, name: id, as: compte}
+        - {table: web_accounts, name: url, as: site}
+        - {table: web_accounts, name: login, as: identifiant}
+        - {table: web_accounts, name: handle, as: nom_public}
+        - {table: web_accounts, name: status, as: etat}
+      filters:
+        - {id: compte, table: web_accounts, column: id, param: account}
+      params:
+        - {name: account, required: true, description: Le nom du compte.}
+  - id: identite_de_serge
+    title: L'identité de Serge
+    doc: >-
+      Ce que Serge donne à un site pour s'y inscrire : prénom, nom, pseudo,
+      adresse e-mail, numéro pour les SMS.
+    capability: serge_identity
+  - id: messages_de_verification
+    title: Mes messages de vérification
+    doc: >-
+      Les e-mails et les SMS reçus depuis le début de la tâche : le code ou
+      le lien de confirmation d'une inscription ou d'une connexion. Attend
+      qu'un message arrive, quelques minutes au plus.
+    capability: verification_messages
+
   # --- L'étape 2 : concevoir, critiquer, construire, relire (lot 10, Q91) ---
   - id: capacites_de_serge
     title: Ce que Serge sait faire
@@ -853,6 +887,22 @@ tools:
       params:
         - {name: product, required: true, description: Le produit (prod_…).}
         - {name: limit, type: number, description: Le nombre de prix (100 au plus).}
+  - id: stripe_prix_par_cle
+    title: Trouver un prix Stripe par sa clé de recherche
+    doc: >-
+      Le prix actif qui porte une clé de recherche (lookup_key), avec son
+      produit (le champ product). Un prix créé à l'instant y est déjà : la
+      recherche de produits, elle, ne voit un produit qu'une minute
+      environ après sa création. Exemple : la clé d'un business est son
+      numéro, figé en base.
+    capability: call_api
+    api:
+      service: stripe_test
+      method: GET
+      path: /v1/prices
+      params:
+        - {name: 'lookup_keys[0]', required: true, description: La clé de recherche (figée en base).}
+        - {name: active, type: bool, description: 'true : seulement les prix actifs (figé en base).'}
   - id: stripe_archiver_prix
     title: Archiver un prix Stripe
     doc: Archive un prix (Stripe ne permet pas de le supprimer) ; il ne peut plus être payé.
@@ -1559,6 +1609,14 @@ writable_tables:
       - {name: status, description: 'Rattaché, non rattaché, ou ignoré (une absence).'}
       - {name: reaction, description: 'Ce que fait le message (question, refus…).'}
       - {name: received_at, description: Quand Serge l'a reçu.}
+  - table: web_accounts
+    update: true
+    description: Les comptes web de Serge. Son mot de passe et sa session ne s'écrivent pas par ici.
+    columns:
+      - {name: login, description: L'identifiant de connexion.}
+      - {name: handle, description: Le nom public du compte.}
+      - {name: status, description: 'En création, en service, fermé par le site.'}
+      - {name: note, description: Le dernier compte rendu.}
   - table: touches
     insert: true
     update: true
@@ -1753,6 +1811,9 @@ status_transitions:
   # Un envoi naît à rédiger (une relance) ou à envoyer ; seul un envoi à
   # rédiger passe à envoyer : une relance annulée entre-temps ne repart pas.
   # Ensuite, seule « Envoyer un message » change son statut.
+  - {table: web_accounts, column: status, from: creating, to: active}
+  - {table: web_accounts, column: status, from: active, to: blocked}
+  - {table: web_accounts, column: status, from: creating, to: blocked}
   - {table: touches, column: status, from: '', to: pending}
   - {table: touches, column: status, from: '', to: to_write}
   - {table: touches, column: status, from: to_write, to: pending}
@@ -3440,6 +3501,247 @@ invocations:
       - {path: code, type: text, required: false, description: Le code à quatre chiffres que montre la page.}
       - {path: compte_rendu, type: text, description: 'Ce qui s''est passé, en deux phrases.'}
 
+  # --- Les comptes web (lot 13, Q104) ---
+  # Serge a un compte par site (web_accounts). « Créer un compte web » et
+  # « Vérifier un compte web » sont lancées par leur bouton de la page
+  # Système ; une invocation à qui on donne le compte sur ses outils de
+  # navigateur navigue connectée (paramètre account).
+  - id: ouvrir_compte_web
+    title: Ouvrir un compte web
+    role: >-
+      Prépare en base la ligne d'un compte de Serge sur un site, avec le
+      nom et l'adresse tapés dans le bouton « Créer un compte web » de la
+      page Système ; la création sur le site vient ensuite. Sans LLM.
+    type: capability
+    capability: open_web_account
+    queue: works
+    priority: 30
+    params:
+      account: {source: task, value: compte}
+      url: {source: task, value: lien}
+
+  - id: creer_compte_web
+    title: Créer un compte web
+    role: >-
+      Crée sur un site le compte de Serge : remplit l'inscription dans le
+      vrai Chrome avec son identité, fait taper le mot de passe par Serge,
+      lit le code ou le lien de confirmation reçu par e-mail ou par SMS,
+      appelle un humain devant un captcha. À la fin, l'identifiant, le mot
+      de passe et la session du compte sont en base, chiffrés.
+    type: llm
+    model_tier: web
+    queue: works
+    priority: 30
+    max_tool_turns: 80
+    prompt: |
+      Tu crées le compte de Serge sur un site. Le nom du compte et l'adresse
+      du site sont dans les paramètres de la tâche (« compte », « url »),
+      avec la date de naissance à donner si le site la demande
+      (« naissance »). Tu reçois l'identité à utiliser et l'état du compte.
+
+      Ce compte est celui de Serge, un agent IA. Tu agis pour la personne
+      dont tu reçois l'identité, qui l'a demandé et qui en répond : c'est
+      son compte, pas celui d'un inconnu. Trois règles, sans exception :
+
+      - **Tu ne mens pas.** Tu donnes l'identité reçue, telle quelle. Dans
+        un champ libre (une biographie, une présentation), tu écris que
+        Serge est un agent IA. Tu ne coches jamais une case qui affirme
+        le contraire à ta place.
+      - **Un captcha n'est pas pour toi.** « Je ne suis pas un robot »,
+        des images à choisir, un puzzle : tu n'y touches pas et tu
+        n'essaies pas de le contourner. Appelle « Appeler un humain » : la
+        première fois, la tâche s'arrête et repartira du début quand un
+        humain sera prêt ; la fois suivante, au même endroit, il le résout
+        dans l'écran pendant que tu attends, puis tu relis la page et tu
+        continues.
+      - **Tu ne vois jamais le mot de passe.** Pour le taper, fais l'action
+        taper_secret sur le champ, avec text « mot_de_passe_du_compte » :
+        Serge le tape à ta place. Ne l'invente pas, ne le demande pas.
+
+      Comment faire :
+
+      1. Ouvre le site et trouve son inscription. Si le site te montre
+         déjà connecté à ce compte (une tâche précédente l'avait créé),
+         vérifie-le et rends tout de suite cree « oui ».
+      2. Remplis le formulaire avec l'identité reçue : l'adresse e-mail,
+         le prénom et le nom, le pseudo comme nom d'utilisateur (s'il est
+         pris, ajoute « -ia », puis un chiffre). Pour un numéro de
+         téléphone, donne celui des SMS. Refuse tout ce qui est facultatif
+         (carnet d'adresses, notifications, abonnement payant, lettre
+         d'information).
+      3. Après l'envoi, le site envoie souvent un code ou un lien : appelle
+         « Mes messages de vérification » (rappelle-le s'il ne rend rien,
+         jusqu'à trois fois), puis tape le code ou ouvre le lien.
+      4. Vérifie que tu es connecté : la page montre le compte (son nom,
+         son profil, un menu « Déconnexion »).
+
+      Si le site demande une date de naissance et que « naissance » est
+      vide, ou une information que tu n'as pas (un numéro de téléphone
+      quand celui des SMS est vide, une pièce d'identité), arrête-toi :
+      demande-la avec « Demander une nouvelle capacité », la tâche
+      repartira avec la réponse.
+
+      Rends cree « oui » seulement si tu es connecté au compte à la fin ;
+      l'identifiant qui sert à se connecter (l'e-mail ou le nom
+      d'utilisateur) ; le nom public du compte ; et un compte rendu de
+      trois phrases : ce qui a été fait, ce qui a bloqué, ce qu'il reste à
+      un humain à faire.
+    tools:
+      - tool: compte_web
+        mode: given
+        label: Le compte
+        params:
+          account: {source: task, value: compte}
+      - tool: identite_de_serge
+        mode: given
+        label: L'identité à utiliser
+      - tool: vrai_chrome_agir
+        mode: callable
+        params: &vrai_chrome_du_compte
+          venture_id: {source: fixed, value: comptes}
+          deliverable: {source: task, value: compte}
+          task_id: {source: task, value: task_id}
+          account: {source: task, value: compte}
+      - tool: vrai_chrome_lire
+        mode: callable
+        params: *vrai_chrome_du_compte
+      - tool: vrai_chrome_capture
+        mode: callable
+        params: *vrai_chrome_du_compte
+      - tool: messages_de_verification
+        mode: callable
+        params: &tache_de_verification
+          task_id: {source: task, value: task_id}
+      - tool: appeler_un_humain
+        mode: callable
+        params:
+          task_id: {source: task, value: task_id}
+    output:
+      - {path: cree, type: choice, choices: [oui, non], description: 'Es-tu connecté au compte, à la fin ?'}
+      - {path: identifiant, type: text, required: false, description: "Ce qui sert à se connecter : l'e-mail ou le nom d'utilisateur."}
+      - {path: nom_public, type: text, required: false, description: Le nom public du compte sur le site.}
+      - {path: compte_rendu, type: text, description: 'Ce qui a été fait, ce qui a bloqué, ce qu''il reste à faire.'}
+    writes:
+      - table: web_accounts
+        operation: update
+        key: {column: id, source: task, value: compte}
+        condition: {field: cree, op: '=', value: oui}
+        values:
+          login: {source: field, value: identifiant}
+          handle: {source: field, value: nom_public}
+          status: {source: fixed, value: active}
+          note: {source: field, value: compte_rendu}
+      - table: web_accounts
+        operation: update
+        key: {column: id, source: task, value: compte}
+        condition: {field: cree, op: '!=', value: oui}
+        values:
+          note: {source: field, value: compte_rendu}
+
+  - id: verifier_compte_web
+    title: Vérifier un compte web
+    role: >-
+      Ouvre le site d'un compte de Serge et vérifie qu'il y est connecté ;
+      sinon s'y connecte (identifiant, mot de passe tapé par Serge, code
+      reçu par e-mail ou SMS, humain devant un captcha). Sert après avoir
+      enregistré à la main un compte qui existait déjà, ou quand un compte
+      semble déconnecté.
+    type: llm
+    model_tier: web
+    queue: works
+    priority: 30
+    max_tool_turns: 40
+    prompt: |
+      Tu vérifies que Serge est connecté à l'un de ses comptes. Le nom du
+      compte est dans les paramètres de la tâche (« compte ») ; tu reçois
+      son site et son identifiant.
+
+      Ce compte est celui de Serge, un agent IA. Tu agis pour la personne
+      dont tu reçois l'identité, qui l'a demandé et qui en répond : c'est
+      son compte, pas celui d'un inconnu. Trois règles, sans exception :
+
+      - **Tu ne mens pas.** Tu donnes l'identité reçue, telle quelle. Dans
+        un champ libre (une biographie, une présentation), tu écris que
+        Serge est un agent IA. Tu ne coches jamais une case qui affirme
+        le contraire à ta place.
+      - **Un captcha n'est pas pour toi.** « Je ne suis pas un robot »,
+        des images à choisir, un puzzle : tu n'y touches pas et tu
+        n'essaies pas de le contourner. Appelle « Appeler un humain » : la
+        première fois, la tâche s'arrête et repartira du début quand un
+        humain sera prêt ; la fois suivante, au même endroit, il le résout
+        dans l'écran pendant que tu attends, puis tu relis la page et tu
+        continues.
+      - **Tu ne vois jamais le mot de passe.** Pour le taper, fais l'action
+        taper_secret sur le champ, avec text « mot_de_passe_du_compte » :
+        Serge le tape à ta place. Ne l'invente pas, ne le demande pas.
+
+      Comment faire :
+
+      1. Ouvre le site. Si la page montre le compte connecté (son nom, son
+         profil, un menu « Déconnexion »), c'est fini.
+      2. Sinon, trouve la connexion : tape l'identifiant reçu, fais taper
+         le mot de passe, valide. Si le site envoie un code ou un lien,
+         appelle « Mes messages de vérification ».
+      3. Si le site dit que le compte est suspendu, fermé ou banni, ne
+         cherche pas à en créer un autre : rends etat « ferme ».
+
+      Rends etat « connecte », « deconnecte » (tu n'as pas pu te
+      connecter) ou « ferme » (le site a fermé le compte), le nom public
+      que montre la page, et un compte rendu de deux phrases.
+    tools:
+      - tool: compte_web
+        mode: given
+        label: Le compte
+        params:
+          account: {source: task, value: compte}
+      - tool: vrai_chrome_agir
+        mode: callable
+        params: *vrai_chrome_du_compte
+      - tool: vrai_chrome_lire
+        mode: callable
+        params: *vrai_chrome_du_compte
+      - tool: vrai_chrome_capture
+        mode: callable
+        params: *vrai_chrome_du_compte
+      - tool: messages_de_verification
+        mode: callable
+        params: *tache_de_verification
+      - tool: appeler_un_humain
+        mode: callable
+        params:
+          task_id: {source: task, value: task_id}
+    output:
+      - {path: etat, type: choice, choices: [connecte, deconnecte, ferme], description: 'Où en est le compte, à la fin.'}
+      - {path: nom_public, type: text, required: false, description: Le nom public que montre la page.}
+      - {path: compte_rendu, type: text, description: 'Ce qui s''est passé, en deux phrases.'}
+    writes:
+      - table: web_accounts
+        operation: update
+        key: {column: id, source: task, value: compte}
+        condition: {field: etat, op: '=', value: ferme}
+        values:
+          status: {source: fixed, value: blocked}
+          note: {source: field, value: compte_rendu}
+      - table: web_accounts
+        operation: update
+        key: {column: id, source: task, value: compte}
+        condition: {field: etat, op: '!=', value: ferme}
+        values:
+          note: {source: field, value: compte_rendu}
+
+  - id: prevenir_compte_web
+    title: Prévenir pour un compte web
+    role: >-
+      Un ticket d'information à Julien et Clem : un compte web est créé, ou
+      sa création a raté, avec le compte rendu. Sans LLM.
+    type: capability
+    capability: inform_owners
+    queue: conversations
+    priority: 80
+    params:
+      title: {source: task, value: titre}
+      text: {source: task, value: raison}
+
   # --- L'étape 2 : concevoir, critiquer, construire, relire (lot 10, Q91) ---
   # Un business choisi pour un POC est conçu, critiqué (3 tours au plus),
   # validé par un humain (ticket « Plan », 48 heures), construit dans son
@@ -4630,10 +4932,14 @@ invocations:
       prix (exemple : « 19 € par mois »), et la fiche du business.
 
       1. Cherche d'abord si le produit existe déjà dans Stripe pour ce
-         business (recherche : metadata['venture_id']:'<numéro du
-         business>', le numéro est dans les paramètres de la tâche). S'il
-         existe, garde-le ; sinon, crée-le avec le nom du business et une
-         phrase qui dit ce qu'il fait.
+         business. « Trouver un prix Stripe par sa clé de recherche » rend
+         son prix s'il en a un : son produit est le champ product. Sans
+         prix rendu, la recherche (metadata['venture_id']:'<numéro du
+         business>', le numéro est dans les paramètres de la tâche) dit
+         s'il a un produit sans prix ; elle ne voit un produit qu'une
+         minute environ après sa création. S'il existe, garde-le ; sinon,
+         crée-le avec le nom du business et une phrase qui dit ce qu'il
+         fait.
       2. Crée son prix : le montant en centimes (19 € : 1900), eur, et
          l'intervalle de l'abonnement (month ou year). L'identifiant du
          business et la clé de recherche sont ajoutés tout seuls.
@@ -4651,6 +4957,13 @@ invocations:
         label: Le business
         params:
           venture_id: {source: task, value: venture_id}
+      - tool: stripe_prix_par_cle
+        mode: callable
+        params:
+          service: {source: fixed, value: stripe_test}
+          'lookup_keys[0]': {source: task, value: venture_id}
+          active: {source: fixed, value: 'true'}
+          task_id: {source: task, value: task_id}
       - tool: stripe_chercher_produits
         mode: callable
         params:
@@ -5301,6 +5614,13 @@ invocations:
         label: Le business
         params:
           venture_id: {source: task, value: venture_id}
+      - tool: stripe_prix_par_cle
+        mode: callable
+        params:
+          service: {source: fixed, value: stripe_live}
+          'lookup_keys[0]': {source: task, value: venture_id}
+          active: {source: fixed, value: 'true'}
+          task_id: {source: task, value: task_id}
       - tool: stripe_chercher_produits
         mode: callable
         params:
@@ -5364,8 +5684,11 @@ invocations:
       Le numéro du business est dans les paramètres de la tâche
       (venture_id), son adresse aussi (« url »).
 
-      1. Retrouve le produit du business dans Stripe (recherche :
-         metadata['venture_id']:'<numéro du business>').
+      1. Retrouve le produit du business dans Stripe : « Trouver un prix
+         Stripe par sa clé de recherche » rend le prix de son abonnement
+         (la clé, le numéro du business, est ajoutée toute seule) ; son
+         produit est le champ product (prod_…). Si aucun prix n'est
+         rendu, arrête-toi : paye « non ».
       2. Crée un prix de 1 € (100 centimes, eur, un paiement unique, sans
          intervalle) pour ce produit, avec le nom court « paiement test »,
          puis un lien de paiement pour ce prix, quantité 1.
@@ -5395,10 +5718,12 @@ invocations:
       dit, en deux phrases, l'adresse du produit, ce qui s'est passé et ce
       qui a raté.
     tools:
-      - tool: stripe_chercher_produits
+      - tool: stripe_prix_par_cle
         mode: callable
         params:
           service: {source: fixed, value: stripe_live}
+          'lookup_keys[0]': {source: task, value: venture_id}
+          active: {source: fixed, value: 'true'}
           task_id: {source: task, value: task_id}
       - tool: stripe_creer_prix
         mode: callable
@@ -7635,6 +7960,41 @@ links:
     params:
       titre: {source: fixed, value: Il manque le domaine commun des produits}
       raison: {source: fixed, value: "Un essai n'achète jamais de domaine. Règle « Le domaine commun des produits finis » (page Policy, « Choisir le domaine du produit »), puis fais repartir l'essai de la tâche « Choisir le domaine du produit »."}
+  # --- Les comptes web (lot 13, Q104) ---
+  - id: compte_ouvert_vers_creation
+    title: Le compte est prêt en base ; le créer sur le site
+    from: ouvrir_compte_web
+    to: creer_compte_web
+    condition: {field: ok, op: '=', value: 'True'}
+    params:
+      compte: {source: field, value: compte}
+      url: {source: field, value: url}
+      naissance: {source: task, value: naissance}
+  - id: compte_refuse_vers_ticket
+    title: Un compte web qui ne peut pas être ouvert
+    from: ouvrir_compte_web
+    to: prevenir_compte_web
+    condition: {field: ok, op: '!=', value: 'True'}
+    params:
+      titre: {source: fixed, value: "Un compte web n'a pas pu être ouvert"}
+      raison: {source: field, value: detail}
+  - id: compte_cree_vers_ticket
+    title: Prévenir qu'un compte web est créé
+    from: creer_compte_web
+    to: prevenir_compte_web
+    condition: {field: cree, op: '=', value: oui}
+    params:
+      titre: {source: fixed, value: Un compte web est créé}
+      raison: {source: field, value: compte_rendu}
+  - id: compte_pas_cree_vers_ticket
+    title: Prévenir qu'un compte web n'a pas pu être créé
+    from: creer_compte_web
+    to: prevenir_compte_web
+    condition: {field: cree, op: '!=', value: oui}
+    params:
+      titre: {source: fixed, value: "Un compte web n'a pas pu être créé"}
+      raison: {source: field, value: compte_rendu}
+
 triggers:
   - id: lancer_cycle
     title: Lancer un cycle d'écoute
@@ -8016,6 +8376,32 @@ triggers:
       phone: {source: form, value: téléphone (+33…)}
       depart: {source: form, value: 'étape de départ (1, 2, 3, 5 ou 6)'}
       valider: {source: form_case, value: Valider chaque brouillon}
+
+  # --- Les comptes web (lot 13, Q104) : deux boutons de la page Système ---
+  - id: bouton_creer_compte_web
+    title: Créer un compte web
+    invocation: ouvrir_compte_web
+    event: button
+    confirm: >-
+      Serge crée lui-même un compte sur ce site, dans le vrai Chrome, avec
+      son identité et son adresse e-mail. Il choisit le mot de passe et le
+      garde en base, chiffré, avec la session. Devant un captcha, un
+      ticket t'appelle. À la fin, un ticket d'information dit comment ça
+      s'est passé. Compter quelques dizaines de centimes de modèle.
+    params:
+      compte: {source: form, value: 'nom du compte, un mot (reddit, linkedin, x…)'}
+      lien: {source: form, value: 'adresse du site (https://www.reddit.com)'}
+      naissance: {source: form, value: 'date de naissance, si le site la demande (JJ/MM/AAAA)'}
+  - id: bouton_verifier_compte_web
+    title: Vérifier un compte web
+    invocation: verifier_compte_web
+    event: button
+    confirm: >-
+      Serge ouvre le site de ce compte dans le vrai Chrome et vérifie qu'il
+      y est connecté ; sinon il s'y connecte, et t'appelle devant un
+      captcha. Le résultat est noté sur la fiche du compte.
+    params:
+      compte: {source: form, value: 'nom du compte (reddit, linkedin, x…)'}
 
 # Les modifications d'objets déjà en base sur une instance existante (le
 # fichier ne les écrase jamais) : chacune n'est appliquée qu'une fois, et
@@ -9396,6 +9782,76 @@ changes:
       condition_field: {from: choice_id, to: redemander}
       condition_op: {from: non_vide, to: '='}
       condition_value: {from: '', to: oui}
+  # La recherche de Stripe ne voit un produit qu'une minute environ après
+  # sa création. Le 19 novembre 2026, le paiement test a cherché le
+  # produit 9 secondes après sa mise en vente et ne l'a pas trouvé. Le
+  # produit se retrouve par la clé de recherche de son prix, à jour tout
+  # de suite ; la mise en vente regarde aussi cette clé avant de créer.
+  - id: lot13_paiement_test_par_cle
+    why: Le paiement test retrouve le produit par la clé de son prix, à jour tout de suite.
+    invocation: paiement_test
+    add_tools:
+      - {tool: stripe_prix_par_cle, mode: callable, params: {service: {source: fixed, value: stripe_live}, 'lookup_keys[0]': {source: task, value: venture_id}, active: {source: fixed, value: 'true'}, task_id: {source: task, value: task_id}}}
+  - id: lot13_paiement_test_sans_recherche
+    why: La recherche de Stripe ne voit pas un produit créé à l'instant.
+    invocation: paiement_test
+    remove_tools: [stripe_chercher_produits]
+  - id: lot13_paiement_test_consigne
+    why: Le paiement test retrouve le produit par la clé de son prix, à jour tout de suite.
+    table: invocations
+    where: {id: paiement_test}
+    set:
+      prompt:
+        replace:
+          - old: |-
+              1. Retrouve le produit du business dans Stripe (recherche :
+                 metadata['venture_id']:'<numéro du business>').
+            new: |-
+              1. Retrouve le produit du business dans Stripe : « Trouver un prix
+                 Stripe par sa clé de recherche » rend le prix de son abonnement
+                 (la clé, le numéro du business, est ajoutée toute seule) ; son
+                 produit est le champ product (prod_…). Si aucun prix n'est
+                 rendu, arrête-toi : paye « non ».
+  - id: lot13_vendre_test_par_cle
+    why: Relancée aussitôt, la mise en vente ne voyait pas le produit qu'elle venait de créer.
+    invocation: vendre_en_mode_test
+    add_tools:
+      - {tool: stripe_prix_par_cle, mode: callable, params: {service: {source: fixed, value: stripe_test}, 'lookup_keys[0]': {source: task, value: venture_id}, active: {source: fixed, value: 'true'}, task_id: {source: task, value: task_id}}}
+  - id: lot13_vendre_par_cle
+    why: Relancée aussitôt, la mise en vente ne voyait pas le produit qu'elle venait de créer.
+    invocation: mettre_en_vente
+    add_tools:
+      - {tool: stripe_prix_par_cle, mode: callable, params: {service: {source: fixed, value: stripe_live}, 'lookup_keys[0]': {source: task, value: venture_id}, active: {source: fixed, value: 'true'}, task_id: {source: task, value: task_id}}}
+  - id: lot13_vendre_test_consigne
+    why: La mise en vente regarde la clé du prix avant la recherche de Stripe.
+    table: invocations
+    where: {id: vendre_en_mode_test}
+    set:
+      prompt:
+        replace: &consigne_vendre_par_cle
+          - old: |-
+              1. Cherche d'abord si le produit existe déjà dans Stripe pour ce
+                 business (recherche : metadata['venture_id']:'<numéro du
+                 business>', le numéro est dans les paramètres de la tâche). S'il
+                 existe, garde-le ; sinon, crée-le avec le nom du business et une
+                 phrase qui dit ce qu'il fait.
+            new: |-
+              1. Cherche d'abord si le produit existe déjà dans Stripe pour ce
+                 business. « Trouver un prix Stripe par sa clé de recherche » rend
+                 son prix s'il en a un : son produit est le champ product. Sans
+                 prix rendu, la recherche (metadata['venture_id']:'<numéro du
+                 business>', le numéro est dans les paramètres de la tâche) dit
+                 s'il a un produit sans prix ; elle ne voit un produit qu'une
+                 minute environ après sa création. S'il existe, garde-le ; sinon,
+                 crée-le avec le nom du business et une phrase qui dit ce qu'il
+                 fait.
+  - id: lot13_vendre_consigne
+    why: La mise en vente regarde la clé du prix avant la recherche de Stripe.
+    table: invocations
+    where: {id: mettre_en_vente}
+    set:
+      prompt:
+        replace: *consigne_vendre_par_cle
 deleted:
   invocations:
     - demo_ouvrir_cycle

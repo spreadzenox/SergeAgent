@@ -40,7 +40,7 @@ from serge.interpreter.tasks import freeze_task, next_task
 from serge.interpreter.triggers import fire_due_triggers
 from serge.llm.runtime import budget_reached
 from serge.policy_store import policy_en_vigueur
-from serge.sandbox.navigateur import close_sessions
+from serge.sandbox.sessions import close_sessions
 from serge.tickets import expire_due
 from serge.tickets.reponses import noter_reponse
 from serge.tickets.types import ticket_types
@@ -118,8 +118,9 @@ def process_one(
     finally:
         conn.commit()
         EN_COURS['tache'] = ''
-        # Une session de navigateur ne survit pas à sa tâche.
-        close_sessions()
+        # Une session de navigateur ne survit pas à sa tâche ; celle d'un
+        # compte web garde ses cookies en base.
+        close_sessions(conn)
     return task_id
 
 

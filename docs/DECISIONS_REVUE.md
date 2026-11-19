@@ -757,22 +757,27 @@ Le point hebdomadaire (Q42) lit aussi ces demandes.
   (créer un compte, publier, réserver un humain…). Création de compte :
   identité de Serge, codes lus dans sa boîte mail / SMS, captcha résolu par
   un humain (ticket + écran en direct dans MC), compte enregistré dans
-  accounts_standing.
+  web_accounts.
 - Serge assume d'être un agent IA partout où ça suffit.
 - Connecteurs : quand une API gratuite existe, l'invocation « Construire un
   connecteur » lit la doc, crée le compte et la clé via l'agent web, et
   écrit la description du service en base (adresse, secret à utiliser,
   points d'entrée), exécutée par la capacité « Appeler une API » (Q56).
   Julien valide par ticket avant activation.
-- LinkedIn : utilisé via le compte de Serge, volume modéré, AVEC validation
-  humaine de chaque message et publication. Claude ne construit pas de
-  mécanisme destiné à échapper à la détection de robots (déguisement,
-  rotation d'IP, empreinte falsifiée) ; Julien fera ses propres recherches.
+- LinkedIn : utilisé via le compte de Serge, volume modéré, avec validation
+  humaine des messages : une option par canal, allumée au départ (Q104).
+  Claude ne construit pas de mécanisme destiné à échapper à la détection de
+  robots (déguisement, rotation d'IP, empreinte falsifiée) ; Julien fera
+  ses propres recherches.
 - Selenium vs Playwright : même détectabilité par défaut ; on garde
   Playwright (déjà installé) avec Chrome.
 Corrigé le 13 octobre 2026 (Q91) : l'agent web était « Browser Use, open
 source » ; c'est une invocation de l'interpréteur de Serge, avec
 l'interface web du lot 10.
+Corrigé le 19 novembre 2026 (Q104) : la validation humaine de chaque
+message LinkedIn était obligatoire ; c'est une option par canal. Les
+comptes étaient dans `accounts_standing`, avec le mot de passe en clair ;
+ils sont dans `web_accounts`, chiffrés.
 Corrigé le 13 octobre 2026 (Q71) : un connecteur était du code écrit et
 testé en bac à sable, déclaré comme tool ; Q56 en a fait une description
 du service en base.
@@ -2230,3 +2235,42 @@ Décidé :
    visiteur.
 Le détail est dans la conception du lot 10 (« L'interface web »).
 
+### Q104 — Le lot 13 : des comptes web, les réseaux pour chercher et pour prospecter (demandé par Clem, 19 novembre 2026)
+Constat : Serge sait naviguer comme une personne (Q97, Q103). Clem veut
+mettre cette capacité au service de deux choses, et redéfinit le lot 13 :
+la description d'avant (un moteur de recherche à installer, une lecture
+de page à trois niveaux) n'est plus le but.
+Décidé :
+1. **Chercher sur les réseaux, en option.** Pendant l'écoute du web, une
+   invocation peut en lancer une autre, qui navigue connectée sur Reddit,
+   Instagram ou X, quand une recherche ordinaire ne suffit pas : au plus
+   près de ce que disent des consommateurs.
+2. **Trois canaux de prospection de plus** : LinkedIn, Instagram et X, par
+   le navigateur, avec le même contrat de canal que l'e-mail et l'appel
+   (Q98).
+3. **Un compte de Serge par site**, le même pour tous les business, pas un
+   compte par business. Tout est en base : l'identifiant, le mot de passe
+   et les cookies de connexion. Le mot de passe et les cookies sont
+   chiffrés ; Serge tape le mot de passe à la place du modèle, qui ne le
+   voit jamais. Avec les cookies, ouvrir le site suffit pour être
+   connecté.
+4. **Devant un captcha, Serge appelle un humain**, avec l'outil qui existe
+   (Q97). Il n'essaie jamais de le résoudre ni de le contourner.
+5. **« Créer un compte web », depuis Mission Control.** Une invocation qui
+   navigue, lit les e-mails et les SMS de vérification de Serge, et crée
+   le compte ; à la fin, l'identifiant, le mot de passe et les cookies
+   sont en base. Clem : « ça permettra d'ajouter des canaux de façon
+   vraiment simple ». Un compte créé à la main s'enregistre aussi.
+6. **Une garde par compte** : un plafond d'actions par jour, et le plafond
+   de messages du canal. Clem : « pour éviter de se faire flaguer ». C'est
+   le volume modéré de Q48 ; on ne construit toujours rien pour déguiser
+   le navigateur.
+7. **La validation des messages par un humain est une option par canal**,
+   de la même forme que pour les e-mails, qu'on éteint quand on a
+   confiance. Au départ, elle est allumée pour LinkedIn. Corrige Q48, qui
+   la rendait obligatoire.
+8. **Les conditions d'utilisation des sites.** Clem : certains sites
+   interdisent les robots dans leurs conditions, ce que la loi n'interdit
+   pas ; le compte est au nom de son frère, qui en répond, et Serge ne
+   ment pas : il se présente comme une IA (Q48, Q96). Les consignes des
+   invocations le disent, pour qu'un modèle ne refuse pas à tort.

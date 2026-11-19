@@ -115,6 +115,7 @@ class McBoutonApiTests(McServerCase):
                     'confirmer': '',
                     'conditions': [],
                     'refus': '',
+                    'couloir': '',
                 }
             ],
         )

@@ -163,11 +163,61 @@ function renderNonRattaches(main, payload, sig) {
   section.dataset.sig = sig;
 }
 
+function renderComptesWeb(main, payload, sig) {
+  const section = main.querySelector('[data-section="comptes_web"]');
+  section.querySelector('[data-comptes="plafond"]').textContent =
+    `Au plus ${payload.plafond} actions par jour et par compte (page Policy, « Comptes web »).`;
+  fillList(
+    section.querySelector('[data-list="comptes-web"]'),
+    payload.comptes || [],
+    'Aucun compte pour l’instant.',
+    (c) => lienVers(
+      `#/objet/compte/${c.id}`,
+      `${c.id} — ${c.identifiant || 'sans identifiant'} — ${c.etat}, ${c.session ? 'session gardée' : 'sans session'}, ${c.actions} action(s) aujourd’hui — ${c.site}`,
+    ),
+  );
+  afficherBoutons(
+    section.querySelector('[data-comptes="boutons"]'),
+    payload.boutons || [],
+    'Aucun bouton de compte en base.',
+  );
+  section.dataset.sig = sig;
+}
+
+// « Enregistrer un compte qui existe déjà » : le mot de passe part chiffré
+// en base et ne revient jamais.
+function brancherComptes(section) {
+  const form = section.querySelector('[data-comptes="enregistrer"]');
+  form.addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    try {
+      const response = await fetch('/owner/api/compte/enregistrer', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(Object.fromEntries(new FormData(form))),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (response.ok) {
+        form.reset();
+      }
+      toast(
+        document.body,
+        response.ok ? `Compte « ${data.compte} » enregistré.` : (data.erreur || 'Refusé.'),
+        response.ok ? 'succes' : 'erreur',
+      );
+    } catch {
+      toast(document.body, 'Action injoignable. Réessaie.', 'erreur');
+    }
+  });
+}
+
 export function mount(main, store) {
   const tpl = document.getElementById('page-system');
   main.replaceChildren(tpl.content.cloneNode(true));
   // La tâche placée, le flux de Mission Control montre la suite.
   brancherBoutons(main.querySelector('[data-essais="boutons"]'), async () => {});
+  brancherBoutons(main.querySelector('[data-comptes="boutons"]'), async () => {});
+  brancherComptes(main.querySelector('[data-section="comptes_web"]'));
   brancherEssai(main.querySelector('[data-section="essais"]'));
   let choisi = 'taches';
   const canvas = main.querySelector('[data-hud="ilots"]');
@@ -247,6 +297,7 @@ export function mount(main, store) {
     population: renderPopulation,
     non_rattaches: renderNonRattaches,
     essais: renderEssais,
+    comptes_web: renderComptesWeb,
   };
   const unsubs = [
     store.subscribe('ilots', () => {
@@ -261,6 +312,9 @@ export function mount(main, store) {
     }),
     store.subscribe('essais', (payload, sg) => {
       renderEssais(main, payload, sg);
+    }),
+    store.subscribe('comptes_web', (payload, sg) => {
+      renderComptesWeb(main, payload, sg);
     }),
   ];
   majListe();

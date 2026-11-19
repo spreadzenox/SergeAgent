@@ -193,13 +193,61 @@ def project_essais(
     """Le bouton de l'essai total, et le dernier essai (décision Q99).
 
     Returns:
-        Dict {boutons: les boutons sans étape (comme la page Écoute),
+        Dict {boutons: les boutons sans étape qui lancent un essai,
         essai: où en est le dernier essai (ou None)}.
     """
-    from serge.mc.proj_ecoute import boutons_de_etape
-
     _ = (policy, now)
     return {
-        'boutons': boutons_de_etape(conn, ''),
+        'boutons': _boutons_sans_etape(conn, essai=True),
         'essai': _essai_total(conn),
+    }
+
+
+def _boutons_sans_etape(
+    conn: sqlite3.Connection, *, essai: bool
+) -> list[dict[str, Any]]:
+    from serge.mc.proj_ecoute import boutons_de_etape
+
+    return [
+        b
+        for b in boutons_de_etape(conn, '')
+        if (b['couloir'] == 'trial') == essai
+    ]
+
+
+def project_comptes_web(
+    conn: sqlite3.Connection, policy: Mapping[str, Any], now: str
+) -> dict[str, Any]:
+    """Les comptes web de Serge et leurs boutons (lot 13, Q104).
+
+    Returns:
+        Dict {comptes: un par compte, sans aucun secret (son site, son
+        identifiant, son état, s'il a une session gardée, ses actions du
+        jour), plafond: les actions permises par jour, boutons: les
+        boutons sans étape qui ne lancent pas un essai}. Exemple de
+        compte : ``{id: 'reddit', site: 'https://www.reddit.com',
+        identifiant: 'serge-ia', etat: 'en service', session: True,
+        actions: 12}``.
+    """
+    from serge.mc.proj_compte import ETATS
+    from serge.web_accounts import actions_today
+
+    _ = now
+    return {
+        'comptes': [
+            {
+                'id': str(ident),
+                'site': str(url),
+                'identifiant': str(login),
+                'etat': ETATS.get(str(etat), str(etat)),
+                'session': bool(garde),
+                'actions': actions_today(conn, str(ident)),
+            }
+            for ident, url, login, etat, garde in conn.execute(
+                'SELECT id, url, login, status, session_enc FROM web_accounts'
+                ' ORDER BY id'
+            ).fetchall()
+        ],
+        'plafond': int(policy['web_accounts']['max_actions_per_day']),
+        'boutons': _boutons_sans_etape(conn, essai=False),
     }

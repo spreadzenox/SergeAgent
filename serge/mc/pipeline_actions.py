@@ -162,6 +162,36 @@ class PipelineActionsMixin(_Base):
             )
         self._send_json(200, {'ok': True, 'fermes': fermes})
 
+    def _api_compte_enregistrer(self) -> None:
+        """« Enregistrer un compte qui existe déjà » : ``{compte, url,
+        identifiant, mot_de_passe}``. Le mot de passe est chiffré en base
+        aussitôt ; il n'est écrit ni au journal ni dans la réponse."""
+        if not self._require_owner():
+            return
+        from serge.web_accounts import AccountError, register
+
+        body = self._json_body() or {}
+        compte = str(body.get('compte') or '').strip().lower()
+        try:
+            with self._db() as conn:
+                register(
+                    conn,
+                    compte,
+                    str(body.get('url') or ''),
+                    str(body.get('identifiant') or ''),
+                    str(body.get('mot_de_passe') or ''),
+                )
+                append_event(
+                    conn,
+                    actor='owner',
+                    type='mc_act',
+                    payload={'acte': 'compte_enregistre', 'compte': compte},
+                )
+        except AccountError as exc:
+            self._refus(400, f'Compte pas enregistré : {exc}.', 'compte', '')
+            return
+        self._send_json(200, {'ok': True, 'compte': compte})
+
     def _api_tache_annuler(self) -> None:
         """Annule une tâche en attente : ``{task_id}``."""
         if not self._require_owner():

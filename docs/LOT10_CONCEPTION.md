@@ -262,6 +262,46 @@ est prêt, puis, repartie, envoie le lien de l'écran et attend « C'est
 fait ». Le bouton « Essayer le captcha avec un humain » de la page
 Système essaie ce passage de main sur une page d'essai.
 
+**Les comptes web (lot 13, décision Q104).** Serge a un compte par site
+(`web_accounts`), nommé d'un mot : `reddit`, `linkedin`. Une invocation à
+qui la base donne ce nom sur ses outils de navigateur (le paramètre
+`account`) navigue connectée :
+
+- sa session s'ouvre **à part**, dans le vrai Chrome ou dans le navigateur
+  sans écran, avec les cookies gardés de ce compte, et eux seuls. Le
+  profil du vrai Chrome, que les autres tâches partagent, ne les a
+  jamais ;
+- à la fin de la tâche, ses cookies sont **gardés de nouveau**, chiffrés,
+  même si la tâche a échoué ou attend un humain : la tâche suivante ouvre
+  le site et y est connectée ;
+- pour taper le mot de passe, le modèle fait `taper_secret` avec le nom
+  `mot_de_passe_du_compte` : **Serge le tape à sa place**. À la première
+  demande d'un compte qui n'en a pas (une inscription), Serge le choisit
+  (24 caractères au hasard) et le garde aussitôt ;
+- **la garde** : chaque action qui touche le site est comptée (ouvrir,
+  cliquer, taper, défiler ; lire la page et prendre une capture ne
+  comptent pas). Au-delà du plafond du jour (page Policy, « Comptes
+  web », 200 au départ), l'action est refusée et le modèle doit
+  s'arrêter. Un compte ne sert qu'à une tâche à la fois ; un compte
+  marqué fermé par le site ne s'ouvre plus.
+
+Le compte et les secrets permis (`secrets`) sont des paramètres
+**réservés à la base** : un modèle ne les voit pas dans son outil, et s'il
+les donne lui-même, ils sont ignorés. Le mot de passe et la session sont
+chiffrés par la clé du coffre de l'instance
+(`secrets/credential-vault.key`, celle de la carte de Serge) ; ni un
+outil de lecture ni Mission Control ne les montrent
+(`serge/web_accounts.py`, `serge/sandbox/sessions.py`).
+
+« Créer un compte web » et « Vérifier un compte web » (page Système) sont
+deux invocations ordinaires, qui ont ces outils, l'identité de Serge
+(« L'identité de Serge » : prénom, nom, pseudo, e-mail, numéro des SMS),
+« Mes messages de vérification » (les e-mails que la relève n'a rattachés
+à aucun contact et les SMS, reçus depuis le début de la tâche : un code,
+un lien de confirmation) et « Appeler un humain ». Leurs consignes disent
+trois règles : ne pas mentir (Serge dit qu'il est un agent IA), ne jamais
+toucher à un captcha, ne jamais voir le mot de passe.
+
 Après chaque action, l'outil rend la page relue, en version courte : le
 modèle voit l'effet de son clic sans appel de plus.
 

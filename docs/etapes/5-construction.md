@@ -50,6 +50,9 @@ de son produit » (`PRODUCT_BUILDING`) et lance « Concevoir le produit ».
    (`metadata[venture_id]`) et une clé de recherche (`lookup_key`) égale
    au numéro du business : le produit retrouve son prix par cette clé, en
    mode test comme en vrai mode, sans rien changer à son code.
+   Avant de créer quoi que ce soit, l'invocation regarde si le business a
+   déjà un prix, par cette clé, puis un produit sans prix, par la
+   recherche de Stripe.
 5. **Construire le produit** (niveau « code ») : comptes, e-mails,
    abonnement par une page de paiement Stripe, le service. Son chantier
    reçoit la clé du mode test (`STRIPE_SECRET_KEY`). Le constructeur
@@ -80,7 +83,11 @@ de son produit » (`PRODUCT_BUILDING`) et lance « Concevoir le produit ».
    prod** sur le domaine, avec une clé Stripe restreinte du vrai mode
    (`stripe-produits-live.key`) : le produit n'a jamais la clé complète de
    Serge.
-9. **Le paiement test de 1 €** (niveau « web ») : un prix de 1 € et un
+9. **Le paiement test de 1 €** (niveau « web ») : il retrouve le produit
+   par la clé de recherche de son prix, à jour tout de suite (la
+   recherche de Stripe ne voit un produit qu'une minute environ après sa
+   création : le 19 novembre 2026, 9 secondes après la mise en vente,
+   elle ne le trouvait pas). Puis un prix de 1 € et un
    lien de paiement, payé dans le **vrai Chrome** (un Chromium normal, sur
    un écran virtuel : le captcha de Stripe ne se chargeait pas dans le
    navigateur sans écran, décision Q97) avec la carte de Serge et

@@ -23,11 +23,12 @@ def boutons_de_etape(
     de source ``form``) et ses cases à cocher (``form_case``), la question
     posée avant de le lancer, et où en sont les quotas dont il dépend.
     Exemple : ``{id, titre, champs: ['guide'], cases: [], conditions:
-    [{texte: 'Places de test occupées', occupe: 2, max: 3}], refus: ''}``.
+    [{texte: 'Places de test occupées', occupe: 2, max: 3}], refus: '',
+    couloir: ''}`` (``trial`` : un bouton qui lance un essai).
     """
     boutons = []
-    for trig_id, titre, inv_id, inv_titre, confirmer in conn.execute(
-        'SELECT t.id, t.title, t.invocation_id, i.title, t.confirm_text'
+    for trig_id, titre, inv_id, inv_titre, confirmer, couloir in conn.execute(
+        'SELECT t.id, t.title, t.invocation_id, i.title, t.confirm_text, t.lane'
         ' FROM triggers t JOIN invocations i ON i.id=t.invocation_id'
         " WHERE t.event='button' AND t.enabled=1 AND t.deleted_at=''"
         " AND i.step_id=? AND i.deleted_at=''"
@@ -74,6 +75,7 @@ def boutons_de_etape(
                 'confirmer': str(confirmer or ''),
                 'conditions': conditions,
                 'refus': trigger_refusal(conn, str(trig_id)),
+                'couloir': str(couloir or ''),
             }
         )
     return boutons

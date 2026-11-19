@@ -20,7 +20,6 @@ def init_schema(connection: sqlite3.Connection) -> None:
     """
     from serge.canaux import ensure_canaux
     from serge.capabilities import ensure_capabilities
-    from serge.comptes import ensure_account_columns
     from serge.db.migrate import apply_pending
     from serge.etapes import ensure_pipeline_steps
     from serge.objet_sha import poser_shas
@@ -29,7 +28,6 @@ def init_schema(connection: sqlite3.Connection) -> None:
     from serge.tickets.types import ensure_ticket_types
 
     apply_pending(connection)
-    ensure_account_columns(connection)
     ensure_pipeline_steps(connection)
     ensure_canaux(connection)
     ensure_capabilities(connection)

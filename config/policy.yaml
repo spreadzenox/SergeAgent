@@ -831,6 +831,40 @@ sections:
         max: 65535
         step: 1
 
+  - id: web_accounts
+    title: Comptes web
+    why: >-
+      Les comptes de Serge sur des sites (Reddit, LinkedIn, X, Instagram),
+      avec lesquels une invocation navigue connectée (lot 13, décision
+      Q104). Un compte trop sollicité se fait fermer par le site : chaque
+      action faite avec un compte est comptée. Les messages envoyés ont en
+      plus leur plafond par canal (famille « Canaux »).
+    settings:
+      - id: max_actions_per_day
+        value: 200
+        title: Actions par jour et par compte
+        help: >-
+          Une action : ouvrir une page, cliquer, taper, faire défiler.
+          Envoyer un message en demande 5 à 10, fouiller un sujet 20 à 40.
+          Au-delà du plafond, Serge refuse toute action avec ce compte
+          jusqu’au lendemain (jour UTC).
+        kind: curseur
+        min: 10
+        max: 2000
+        step: 10
+      - id: verification_wait_s
+        value: 150
+        title: Attente d’un message de vérification, en secondes
+        help: >-
+          Après une inscription ou une connexion, combien de temps Serge
+          attend l’e-mail ou le SMS qui porte le code ou le lien, à chaque
+          appel de « Mes messages de vérification ». La boîte e-mail est
+          relevée toutes les 2 minutes.
+        kind: curseur
+        min: 10
+        max: 600
+        step: 10
+
   - id: courriel
     title: E-mails des produits
     why: >-

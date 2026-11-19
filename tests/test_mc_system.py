@@ -26,7 +26,14 @@ class SystemRegistryTests(unittest.TestCase):
         sections = PAGE_SECTIONS['p1']
         self.assertEqual(
             sections,
-            ['meta', 'ilots', 'essais', 'population', 'non_rattaches'],
+            [
+                'meta',
+                'ilots',
+                'essais',
+                'comptes_web',
+                'population',
+                'non_rattaches',
+            ],
         )
         for section in sections:
             self.assertIn(section, PROJECTORS)
@@ -143,6 +150,106 @@ class McSystemTests(McBrowserCase):
             'inconnu@ailleurs.fr · Une question'
         )
         self.assertTrue(page.url.endswith('#/system'))
+
+    def test_les_comptes_web(self) -> None:
+        """La section « Comptes web » (lot 13, Q104) : ses deux boutons,
+        et un compte qui existe déjà s'enregistre avec son mot de passe,
+        chiffré en base et jamais remontré."""
+        import os
+        import sqlite3
+        from unittest import mock
+
+        from cryptography.fernet import Fernet
+        from playwright.sync_api import expect
+
+        from serge.web_accounts import unseal
+
+        page = self._page_home()
+        page.goto(f'{self.base}/owner#/system')
+        section = page.locator('[data-section="comptes_web"]')
+        expect(section).to_contain_text('Aucun compte pour l’instant.')
+        expect(section).to_contain_text('Au plus 200 actions par jour')
+        expect(section.locator('[data-bouton-base]')).to_have_text(
+            ['Créer un compte web', 'Vérifier un compte web']
+        )
+        formulaire = section.locator('[data-comptes="enregistrer"]')
+
+        def enregistrer() -> None:
+            formulaire.locator('[name="compte"]').fill('Reddit')
+            formulaire.locator('[name="url"]').fill('https://www.reddit.com')
+            formulaire.locator('[name="identifiant"]').fill('serge-ia')
+            formulaire.locator('[name="mot_de_passe"]').fill('s3cret-de-test')
+            formulaire.locator('button[type="submit"]').click()
+
+        # Sans la clé du coffre, rien n'est gardé : le refus dit pourquoi.
+        config = Path(self.tmp.name) / 'config'
+        instance = Path(self.tmp.name) / 'instance.toml'
+        instance.write_text(f'[paths]\nconfig_root = "{config}"\n')
+        patcher = mock.patch.dict(
+            os.environ, {'SERGE_INSTANCE_FILE': str(instance)}
+        )
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        enregistrer()
+        expect(page.locator('.toast-erreur').last).to_contain_text(
+            'la clé du coffre manque'
+        )
+        (config / 'secrets').mkdir(parents=True)
+        (config / 'secrets/credential-vault.key').write_bytes(
+            Fernet.generate_key()
+        )
+        enregistrer()
+        expect(page.locator('.toast-succes').last).to_contain_text(
+            'Compte « reddit » enregistré.'
+        )
+        expect(section.locator('[data-list="comptes-web"]')).to_contain_text(
+            'reddit — serge-ia — en service, sans session, 0 action(s)'
+        )
+        expect(formulaire.locator('[name="mot_de_passe"]')).to_have_value('')
+        conn = sqlite3.connect(self.db_path)
+        try:
+            chiffre = conn.execute(
+                "SELECT password_enc FROM web_accounts WHERE id='reddit'"
+            ).fetchone()[0]
+            journal = ' '.join(
+                str(r[0])
+                for r in conn.execute('SELECT payload_json FROM events')
+            )
+        finally:
+            conn.close()
+        self.assertNotIn('s3cret-de-test', chiffre)
+        self.assertEqual(unseal(chiffre), 's3cret-de-test')
+        self.assertIn('compte_enregistre', journal)
+        self.assertNotIn('s3cret-de-test', journal)
+        # Sa fiche dit qu'il a un mot de passe, jamais lequel.
+        section.locator('[data-list="comptes-web"] a').click()
+        fiche = page.locator('#page')
+        expect(fiche).to_contain_text('gardé, chiffré')
+        expect(fiche).not_to_contain_text('s3cret-de-test')
+        # « Créer un compte web » lance sa tâche avec ce qui est tapé.
+        page.goto(f'{self.base}/owner#/system')
+        bloc = section.locator('.ecoute-bouton').first
+        bloc.locator('textarea').nth(0).fill('x')
+        bloc.locator('textarea').nth(1).fill('https://x.com')
+        bloc.get_by_role('button', name='Créer un compte web').click()
+        page.locator('.modale').get_by_role(
+            'button', name='Créer un compte web'
+        ).click()
+        expect(page.locator('.toast-succes').last).to_contain_text(
+            'Tâche placée dans la file.'
+        )
+        conn = sqlite3.connect(self.db_path)
+        try:
+            lancee = dict(
+                conn.execute(
+                    'SELECT p.name, p.value FROM task_params p JOIN tasks t'
+                    " ON t.id=p.task_id WHERE t.invocation_id='ouvrir_compte_web'"
+                ).fetchall()
+            )
+        finally:
+            conn.close()
+        self.assertEqual(lancee['compte'], 'x')
+        self.assertEqual(lancee['lien'], 'https://x.com')
 
     def test_l_essai_total_se_suit_et_s_arrete(self) -> None:
         """Un essai lancé : la page montre où il en est et ses tâches ;
