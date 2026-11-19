@@ -412,6 +412,25 @@ def fiche_tache(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
                 ],
             }
         )
+    # Ce que les pages ont fait télécharger pendant la tâche.
+    fichiers = conn.execute(
+        'SELECT id, path_or_url FROM artifacts WHERE task_id=?'
+        " AND kind='telechargement' ORDER BY created_at, path_or_url",
+        (ident,),
+    ).fetchall()
+    if fichiers:
+        cadres.append(
+            {
+                'titre': 'Fichiers téléchargés',
+                'fichiers': [
+                    {
+                        'src': f'/owner/api/fichier?id={f[0]}',
+                        'nom': str(f[1]).rsplit('/', 1)[-1],
+                    }
+                    for f in fichiers
+                ],
+            }
+        )
     return {
         'type': 'task',
         'id': ident,

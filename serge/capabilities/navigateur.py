@@ -22,20 +22,59 @@ _ACTION = (
         'action',
         'text',
         True,
-        'ouvrir, cliquer, taper, taper_secret, choisir, touche,'
-        ' defiler, revenir, attendre, ecran, accepter_dialogue ou'
-        ' refuser_dialogue.',
+        'ouvrir, cliquer, double_cliquer, clic_droit, survoler, glisser,'
+        ' taper, taper_secret, choisir, touche, defiler, revenir,'
+        ' recharger, attendre, ecran, deposer_fichier, lire_telechargement,'
+        ' fermer_onglet, accepter_dialogue, refuser_dialogue ou'
+        ' passer_au_vrai_chrome.',
     ),
-    Param('ref', 'text', False, 'Le repère de l’élément : e7.'),
+    Param(
+        'ref',
+        'text',
+        False,
+        'Le repère de l’élément visé : e7 (e7.e2 dans un cadre intégré).',
+    ),
     Param(
         'text',
         'text',
         False,
-        'L’adresse (ouvrir), le texte (taper), le nom du secret'
-        ' (taper_secret), l’option (choisir),'
-        ' la touche (Enter, Escape, Tab), haut ou bas (defiler), le'
-        ' texte attendu (attendre), ordinateur ou mobile (ecran), le'
-        ' texte à taper dans une boîte de saisie (accepter_dialogue).',
+        'L’adresse (ouvrir) ; le texte visible de ce qui est visé, quand il'
+        ' n’a pas de repère (cliquer, double_cliquer, clic_droit,'
+        ' survoler) ; le texte (taper) ; le nom du secret (taper_secret) ;'
+        ' l’option (choisir) ; la touche ou le raccourci (Enter, Escape,'
+        ' Tab, Control+A) ; haut ou bas (defiler) ; le texte attendu'
+        ' (attendre) ; ordinateur ou mobile (ecran) ; le nom du fichier'
+        ' (deposer_fichier, lire_telechargement) ; le texte à taper dans'
+        ' une boîte de saisie (accepter_dialogue).',
+    ),
+    Param(
+        'x',
+        'number',
+        False,
+        'Avec y : un point de l’écran, en pixels depuis le coin en haut à'
+        ' gauche, lu sur une capture de l’écran. Pour viser ce qui n’a ni'
+        ' repère ni texte (un dessin, une carte).',
+    ),
+    Param('y', 'number', False, 'Voir x.'),
+    Param(
+        'to',
+        'text',
+        False,
+        'Où déposer ce qu’on glisse : un repère (e9), un texte visible ou un'
+        ' point (640,300).',
+    ),
+    Param(
+        'content',
+        'text',
+        False,
+        'Le contenu du fichier à déposer (deposer_fichier) ; sans lui, un'
+        ' fichier téléchargé dans la session, par son nom.',
+    ),
+    Param(
+        'line',
+        'number',
+        False,
+        'La première ligne à lire (lire_telechargement).',
     ),
     Param('submit', 'bool', False, 'Taper puis valider avec Entrée.'),
     Param(
@@ -61,21 +100,33 @@ NAVIGATEUR: tuple[Capability, ...] = (
     Capability(
         'browser_action',
         'Agir dans une page',
-        'Une action dans la page, comme un humain : ouvrir une adresse,'
-        ' cliquer, taper, choisir dans une liste, appuyer sur une touche,'
-        ' faire défiler, revenir, attendre un texte, passer en écran'
-        ' ordinateur ou mobile. Rend la page relue en version courte (une'
-        ' ligne par titre, texte, champ, bouton ou lien, avec son repère'
-        ' [e7]) et les nouvelles erreurs de la page. L’adresse'
-        ' http://chantier:<port> mène au chantier du business. Une boîte'
-        ' de dialogue du navigateur (un message, une question OK ou'
-        ' Annuler, la saisie d’un texte) n’est pas dans la page : Serge y'
-        ' répond lui-même et le dit dans le résultat (« dialogues »). Sans'
-        ' réponse préparée, un message est fermé et une question ou une'
-        ' saisie est refermée par « Annuler ». Pour y répondre, prépare ta'
-        ' réponse avec accepter_dialogue (text : le texte à taper, pour une'
-        ' saisie) ou refuser_dialogue, puis fais l’action qui ouvre la'
-        ' boîte : la réponse sert une fois.',
+        'Une action dans la page, comme une personne avec une souris et un'
+        ' clavier : ouvrir une adresse, cliquer (aussi double clic et clic'
+        ' droit), survoler, glisser et déposer, taper, choisir dans une'
+        ' liste, appuyer sur une touche, faire défiler, revenir, recharger,'
+        ' attendre un texte, déposer un fichier, passer en écran ordinateur'
+        ' ou mobile. Ce qui est visé se désigne par son repère (ref), sinon'
+        ' par son texte visible (text), sinon par un point de l’écran (x,'
+        ' y) lu sur une capture. Sans repère, taper écrit au clavier, là où'
+        ' est le curseur. Rend la page relue en version courte (une'
+        ' ligne par titre, texte, champ, bouton, lien ou élément cliquable,'
+        ' avec son repère [e7] ; le contenu d’un cadre intégré est sous sa'
+        ' ligne) et les nouvelles erreurs de la page. L’adresse'
+        ' http://chantier:<port> mène au chantier du business. Le résultat'
+        ' dit aussi ce qui arrive hors de la page. « telechargements » :'
+        ' un fichier téléchargé, son nom, sa taille et son début ;'
+        ' lire_telechargement lit la suite. « onglets » : un nouvel onglet'
+        ' s’est ouvert, tu y es ; fermer_onglet revient au précédent.'
+        ' « dialogues » : une boîte de dialogue du navigateur (un message,'
+        ' une question OK ou Annuler, la saisie d’un texte), à laquelle'
+        ' Serge a répondu. Sans réponse préparée, un message est fermé et'
+        ' une question ou une saisie est refermée par « Annuler ». Pour y'
+        ' répondre, prépare ta réponse avec accepter_dialogue (text : le'
+        ' texte à taper, pour une saisie) ou refuser_dialogue, puis fais'
+        ' l’action qui ouvre la boîte : la réponse sert une fois. Si une'
+        ' page refuse ce navigateur sans écran (page blanche, captcha),'
+        ' passer_au_vrai_chrome continue la session dans le vrai Chrome, à'
+        ' la même adresse et avec la même connexion.',
         'serge/sandbox/navigateur.py',
         _ACTION,
     ),

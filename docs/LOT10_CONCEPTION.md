@@ -146,22 +146,43 @@ compte, qui garde ses cookies.
 
 **Trois outils**, chacun une capacité générale (lot 10, PR 2) :
 
-- **Agir dans une page** (`browser_action`), avec une action :
-  `ouvrir` une adresse, `cliquer` sur un repère, `taper` du texte dans un
-  champ (en validant ou non avec Entrée), `choisir` une option dans une
-  liste, appuyer sur une `touche` (Entrée, Échap, Tab), `defiler` vers le
-  haut ou le bas, `revenir` à la page précédente, `attendre` qu'un texte
-  apparaisse, passer l'`ecran` en ordinateur (1280 × 800) ou mobile
+- **Agir dans une page** (`browser_action`), avec une action, celles
+  d'une personne avec une souris et un clavier (décision Q103,
+  `serge/sandbox/gestes.py`) : `ouvrir` une adresse, `cliquer`,
+  `double_cliquer`, `clic_droit`, `survoler` (un menu qui s'ouvre au
+  survol), `glisser` et déposer, `taper` du texte (dans un champ, en
+  validant ou non avec Entrée ; sans repère, au clavier, là où est le
+  curseur), `choisir` une option dans une liste, appuyer sur une `touche`
+  ou un raccourci (Entrée, Échap, Tab, Control+A), `defiler`, `revenir` à
+  la page précédente, `recharger`, `attendre` qu'un texte apparaisse,
+  `deposer_fichier` (dans un champ fichier, ou par le bouton qui ouvre le
+  choix d'un fichier ; le modèle écrit le contenu, ou nomme un fichier
+  téléchargé), passer l'`ecran` en ordinateur (1280 × 800) ou mobile
   (390 × 844). Une seule capacité plutôt qu'une par action : chaque outil
   proposé au modèle repart à chaque tour, et coûte à chaque fois.
+  **Ce qui est visé se désigne de trois façons** : son repère dans la page
+  lue (`ref`), sinon un texte visible ou le nom qu'un lecteur d'écran lui
+  donne (`text`), sinon un point de l'écran (`x`, `y`) lu sur une capture.
+  Un point marche sur tout ce qui se voit, même ce que la lecture ne
+  décrit pas : un dessin, une carte.
 - **Lire la page** (`browser_read`) : la page entière décrite comme la lit
-  un lecteur d'écran (`serge/sandbox/page.js`), ligne par ligne (titres,
-  textes, champs, boutons, liens), chaque élément avec un repère court
-  qu'on cite pour agir. Exemple : `[e7] bouton « Créer un compte »`,
-  `[e9] champ email « E-mail » (vide)`. C'est l'idée de Playwright MCP,
-  l'outil libre de Microsoft : bien moins cher qu'une capture, et plus sûr
-  que de viser des pixels. Avec la page, les dernières erreurs : erreurs
-  JavaScript, requêtes ratées, réponses HTTP 400 et plus.
+  un lecteur d'écran (`serge/sandbox/page.js`, `lecture.py`), ligne par
+  ligne (titres, textes, champs, boutons, liens), chaque élément avec un
+  repère court qu'on cite pour agir. Exemple : `[e7] bouton « Créer un
+  compte »`, `[e9] champ email « E-mail » (vide)`. C'est l'idée de
+  Playwright MCP, l'outil libre de Microsoft : bien moins cher qu'une
+  capture, et plus sûr que de viser des pixels. Avec la page, les
+  dernières erreurs : erreurs JavaScript, requêtes ratées, réponses HTTP
+  400 et plus. **Tout ce sur quoi on peut agir a un repère, où qu'il
+  soit** (Q103) : dans un titre, un paragraphe, un composant web, une
+  fenêtre modale ; et aussi ce qui se clique sans être un vrai bouton (un
+  bloc avec un clic, un onglet, une entrée de menu, un élément qu'on peut
+  glisser). Le contenu d'un cadre intégré (un formulaire de paiement) se
+  lit sous la ligne de son cadre, avec des repères qui commencent par le
+  sien (`e7.e2`). Un élément garde son repère d'une lecture à l'autre :
+  un repère lu plus tôt ne désigne jamais un autre élément. Un dessin
+  (`canvas`) est dit avec sa place à l'écran : on le voit sur une capture
+  et on y agit par un point.
 - **Prendre une capture** (`browser_screenshot`) : l'écran, ou la page
   entière ; l'image est envoyée au modèle (partie 3), et gardée comme
   preuve si l'invocation le demande, sous
@@ -178,23 +199,43 @@ remise en forme par la page (`4242 4242 4242 4242`), comme les erreurs
 de la page ; le temps d'une capture, le champ qui l'a reçue montre des
 points, comme un mot de passe. Il sert au paiement test de l'étape 5.
 
-**Répondre à une boîte de dialogue** (actions `accepter_dialogue` et
-`refuser_dialogue`, demandées par le relecteur d'un produit le 17 novembre
-2026). Une page peut ouvrir une boîte du navigateur lui-même : un message,
-une question « OK ou Annuler », la saisie d'un texte. Cette boîte n'est pas
-dans la page : le modèle ne la voit ni dans la page lue ni sur une capture,
-et la page ne fait plus rien tant qu'elle est ouverte. Serge y répond donc
-tout de suite et le dit dans le résultat de l'action (`dialogues`). Sans
-réponse préparée, un message est fermé par « OK », une question ou une
-saisie par « Annuler », et le résultat dit comment y répondre. Le modèle
-prépare alors sa réponse (`accepter_dialogue`, avec le texte à taper pour
-une saisie, ou `refuser_dialogue`), puis refait l'action qui ouvre la
-boîte ; une réponse préparée sert une fois. Exemple : `accepter_dialogue`
-avec « Devis Dupont », puis `cliquer` sur « Enregistrer »
-(`serge/sandbox/dialogues.py`).
+**Ce qui arrive hors de la page** est dit dans le résultat de l'action
+(demandé par le relecteur d'un produit le 17 novembre 2026, Q103) : sans
+cela, le modèle ne le verrait ni dans la page lue ni sur une capture.
+
+- **Une boîte de dialogue du navigateur** (un message, une question « OK
+  ou Annuler », la saisie d'un texte). La page ne fait plus rien tant
+  qu'elle est ouverte : Serge y répond tout de suite et le dit
+  (`dialogues`). Sans réponse préparée, un message est fermé par « OK »,
+  une question ou une saisie par « Annuler », et le résultat dit comment y
+  répondre. Le modèle prépare alors sa réponse (`accepter_dialogue`, avec
+  le texte à taper pour une saisie, ou `refuser_dialogue`), puis refait
+  l'action qui ouvre la boîte ; une réponse préparée sert une fois.
+  Exemple : `accepter_dialogue` avec « Devis Dupont », puis `cliquer` sur
+  « Enregistrer » (`serge/sandbox/dialogues.py`).
+- **Un fichier téléchargé** (« Exporter en CSV », une facture). Le
+  navigateur l'écrit dans son conteneur ; Serge l'en sort, le range sous
+  `files/<business>/<livrable>/telechargements/<tâche>/`, lui fait une
+  fiche dans `artifacts`, et rend au modèle son nom, sa taille et ses 40
+  premières lignes (`telechargements`). `lire_telechargement` lit la
+  suite. Un fichier qui n'est pas du texte (un PDF, une image) est gardé,
+  sans être lu. La fiche de la tâche, dans Mission Control, liste ces
+  fichiers (`serge/sandbox/telechargements.py`).
+- **Un nouvel onglet** (un lien qui s'ouvre ailleurs). La session y
+  passe, et le résultat le dit (`onglets`) ; `fermer_onglet`, ou la page
+  qui se ferme d'elle-même, la ramène au précédent.
+
+**Passer au vrai Chrome en cours de tâche** (action
+`passer_au_vrai_chrome`, Q103). Quand une page refuse le navigateur sans
+écran (une page blanche, un captcha), la tâche continue dans le vrai
+Chrome : même adresse, mêmes cookies, et ce que la page gardait dans le
+navigateur (stockage local). Les outils de l'invocation ne changent pas :
+ils agissent là-bas jusqu'à la fin de la tâche. Le navigateur sans écran
+reste celui de départ : il donne à chaque tâche une session neuve, comme
+un nouveau visiteur.
 
 Le business, le livrable et la tâche sont des paramètres figés de ces
-outils. Une session (un onglet et ses cookies) par tâche, fermée à la fin
+outils. Une session (ses onglets et ses cookies) par tâche, fermée à la fin
 de la tâche. Le navigateur (profil « navigateur » de la page Policy :
 image `chromedp/headless-shell`, 2 Go de mémoire) et les chantiers sont
 sur un même réseau Docker, `serge-chantiers` : l'adresse
