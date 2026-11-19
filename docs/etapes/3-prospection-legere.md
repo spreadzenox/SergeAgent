@@ -17,9 +17,10 @@ au statut `SMOKE_DONE` ; un test sous les seuils, à `KILLED`.
 ## Aujourd'hui
 
 **L'étape est en base depuis le lot 12** (16 novembre 2026), par e-mail et
-par appel. Elle n'est pas encore essayée sur le serveur : c'est le rôle de
-l'essai total (page Système). Le détail est dans
-[`LOT12_CONCEPTION.md`](../LOT12_CONCEPTION.md), parties 3 à 5.
+par appel, et depuis le lot 13 par LinkedIn, Instagram et X, avec le
+compte de Serge sur chaque réseau (décision Q104). Le détail est dans
+[`LOT12_CONCEPTION.md`](../LOT12_CONCEPTION.md), parties 3 à 5, et 17
+pour les canaux du navigateur.
 
 1. **Démarrer une campagne**, dès qu'elle est prête (le POC est en
    ligne) : son volume vient des réglages de son canal (40 prospects par
@@ -31,11 +32,16 @@ l'essai total (page Système). Le détail est dans
    directe et la page où elle a été trouvée. Son outil « Ajouter un
    prospect » vérifie tout de suite et dit pourquoi il refuse : adresse
    générique (`contact@`, `info@`…), domaine qui ne reçoit pas d'e-mails,
-   personne déjà contactée ou désinscrite. Au plus 10 prospects par
-   passage.
+   adresse qui n'est pas un profil du réseau de la campagne, personne
+   déjà contactée ou désinscrite. Au plus 10 prospects par passage. Pour
+   LinkedIn, Instagram ou X, elle peut fouiller le réseau lui-même, au
+   plus 2 fois par réseau (« Fouiller LinkedIn »…).
 3. **Rédiger un premier message**, par le canal de la campagne : « Écrire
-   le premier e-mail » ou « Préparer le premier appel », puis « Envoyer un
-   message ». Les relances et les réponses sont celles des lots 8 et
+   le premier e-mail », « Préparer le premier appel » ou « Écrire le
+   premier message d'un réseau » (280 caractères pour une note LinkedIn),
+   puis « Envoyer un message ». Sur un réseau, le message attend d'abord
+   la validation d'un humain (réglage du canal), puis part par le
+   navigateur. Les relances et les réponses sont celles des lots 8 et
    8 bis.
 4. **Suivre une campagne**, toutes les heures : la clore (elle a son
    compte et rien n'est parti depuis 8 jours, ou sa durée est atteinte, ou
@@ -122,5 +128,8 @@ parle. Tout est décrit dans
 
 ### LinkedIn
 
-Serge utilise LinkedIn avec son propre compte, à un volume modéré. **Chaque
-message et chaque publication est validé par Julien.**
+Serge utilise LinkedIn avec son propre compte, à un volume modéré (10
+messages par jour au départ, et les actions du jour du compte). **Chaque
+message est validé par un humain**, tant que le réglage du canal le
+demande (page Policy, « Canaux » ; décision Q104). Serge n'y publie rien
+pour le moment.

@@ -149,7 +149,8 @@ def _ilot_canal(
     parti et arrivé en 24 h, sa dernière relève, et son service s'il en a
     un (le pont vocal pour la voix)."""
     row = conn.execute(
-        'SELECT etat, polls, polled_at FROM canaux WHERE id=?', (canal,)
+        'SELECT etat, polls, polled_at, poll_pace FROM canaux WHERE id=?',
+        (canal,),
     ).fetchone()
     if row is None or str(row[0]) != 'branche':
         return _ilot(
@@ -176,14 +177,17 @@ def _ilot_canal(
     resume += f', {echecs} en échec' if echecs else ''
     sante = 'erreur' if echecs else 'ok'
     details = []
-    # Un canal qui se relève : une boîte pas relevée depuis une heure est
-    # le signe d'une panne (accès, réseau).
+    # Un canal qui se relève toutes les 2 minutes : une boîte pas relevée
+    # depuis une heure est le signe d'une panne (accès, réseau). La
+    # messagerie d'un réseau, elle, n'est relevée que quelques fois par
+    # jour, et seulement s'il y a une conversation en cours.
     if int(row[1]):
         relevee = str(row[2] or '')
         resume += (
             f', relevé à {relevee[11:16]}' if relevee else ', jamais relevé'
         )
-        if not relevee or relevee < avant_iso(now, hours=1):
+        rapide = str(row[3]) != 'slow'
+        if rapide and (not relevee or relevee < avant_iso(now, hours=1)):
             sante = 'degrade' if sante == 'ok' else sante
     if service:
         etat = etat_service(service[1])
@@ -396,6 +400,15 @@ def project_ilots(
                 depuis,
                 ('Pont vocal', 'serge-voice-bridge.service'),
             ),
+            # Un canal du navigateur a son îlot dès que son compte est en
+            # service (lot 13).
+            *[
+                _ilot_canal(conn, str(canal), str(titre), now, depuis)
+                for canal, titre in conn.execute(
+                    "SELECT id, titre FROM canaux WHERE account<>''"
+                    " AND etat='branche' ORDER BY id"
+                ).fetchall()
+            ],
             _ilot_discord(conn, depuis),
             _ilot_ecoute(conn, depuis),
             _ilot_garde_fous(conn, depuis),

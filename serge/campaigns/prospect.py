@@ -40,6 +40,31 @@ def _refuse(raison: str) -> dict[str, Any]:
     return {'ok': False, 'refus': raison}
 
 
+def _profile_refusal(conn: sqlite3.Connection, kind: str, address: str) -> str:
+    """Pour un canal du navigateur, l'adresse d'un prospect est celle de
+    son profil sur le site du canal. Rend le refus, ou ``''``."""
+    row = conn.execute(
+        'SELECT a.url FROM canaux k JOIN web_accounts a ON a.id=k.account'
+        ' WHERE k.address_channel=?',
+        (kind,),
+    ).fetchone()
+    if row is None:
+        return ''
+    site = normalise_value(kind, str(row[0])).split('/', 1)[0]
+    profil = normalise_value(kind, address)
+    hote, _, chemin = profil.partition('/')
+    if (
+        not address.casefold().startswith(('http://', 'https://'))
+        or not chemin
+        or not (hote == site or hote.endswith(f'.{site}'))
+    ):
+        return (
+            f'adresse d’un profil attendue : celle de la personne sur'
+            f' {site} (https://{site}/…), pas « {address} »'
+        )
+    return ''
+
+
 def _address_refusal(
     conn: sqlite3.Connection,
     kind: str,
@@ -120,7 +145,12 @@ def add_prospect(
     name = str(args.get('name') or '').strip()
     source = str(args.get('source_url') or '').strip()
     kind = str(row['address_kind'])
-    address = normalise_value(kind, str(args.get('address') or ''))
+    brute = str(args.get('address') or '').strip()
+    address = normalise_value(kind, brute)
+    # L'adresse d'un profil s'ouvre telle qu'elle est écrite ; sa forme
+    # comparable ne sert qu'à reconnaître la personne.
+    profil = brute.casefold().startswith(('http://', 'https://'))
+    usable = brute if profil else address
     left = int(row['n_target']) - found(conn, str(row['id']))
     cap = str(load_settings(conn, inv).get('prospects_par_passage') or '')
     if left <= 0:
@@ -131,7 +161,9 @@ def add_prospect(
         return _refuse('un nom et une adresse sont requis')
     if not source.startswith(('http://', 'https://')):
         return _refuse('la page où l’adresse a été trouvée est requise')
-    raison = _address_refusal(conn, kind, address, resolver, inv)
+    raison = _profile_refusal(conn, kind, brute) or _address_refusal(
+        conn, kind, address, resolver, inv
+    )
     if raison:
         return _refuse(raison)
     if conn.execute(
@@ -156,7 +188,7 @@ def add_prospect(
     conn.execute(
         'INSERT INTO contact_addresses(contact_id, channel, value,'
         ' value_norm, active, created_at, source_url) VALUES(?,?,?,?,1,?,?)',
-        (contact, kind, address, address, now, source),
+        (contact, kind, usable, address, now, source),
     )
     touch = f'tou_{uuid.uuid4().hex[:12]}'
     conn.execute(
@@ -169,7 +201,7 @@ def add_prospect(
             contact,
             venture,
             row['channel'],
-            address,
+            usable,
             touch,
             now,
             now,

@@ -678,8 +678,8 @@ particulier : il ne connaît que ce contrat.
 1. **Son adaptateur** (`serge/channels/`) : envoyer un message à une
    adresse, et relever ce qui arrive. C'est le seul code d'un canal. Le
    catalogue `canaux` dit s'il est branché sur ce serveur. Un canal qui
-   passe par un navigateur (LinkedIn, lot 13) aura le même adaptateur,
-   qui pilotera le vrai Chrome.
+   passe par le navigateur (LinkedIn, Instagram, X, lot 13) n'a même pas
+   de code à lui : voir « Un canal par le navigateur », plus bas.
 2. **Sa sorte d'adresse** (`canaux.address_channel`) : une adresse
    e-mail, un numéro de téléphone, un profil. « Trouver des prospects »
    cherche cette sorte d'adresse pour la campagne du canal.
@@ -716,6 +716,57 @@ naviguer) suit la même idée : c'est un outil de plus donné à « Trouver
 des prospects ». Quel que soit l'outil, elle écrit au même endroit : des
 contacts, leurs adresses avec leur source, et un premier message à
 rédiger.
+
+### Un canal par le navigateur (lot 13, décision Q104)
+
+LinkedIn, Instagram et X n'ont ni API ouverte ni protocole : on y écrit
+comme une personne, dans un navigateur, connecté à un compte. Un tel
+canal est **décrit en base**, et son adaptateur est le même pour tous
+(`serge/channels/web.py`) :
+
+- sa ligne de `canaux` (section `web_channels` de `config/pipeline.yaml`)
+  dit le **compte web** de Serge qui lui sert (`account`), l'invocation
+  qui **envoie** (`send_invocation`) et celle qui **relève**
+  (`poll_invocation`). Il est branché, et se relève, quand ce compte est
+  en service : la base tient cet état à jour toute seule, dès qu'un compte
+  est créé, fermé ou retiré ;
+- **envoyer** : « Envoyer un message » applique ses garde-fous comme pour
+  un e-mail (validation par un humain, désinscription, accord, plafond du
+  jour), puis l'adaptateur **confie l'envoi** à l'invocation « Envoyer un
+  message par le navigateur » (`serge/missions.py`). Elle ouvre le profil
+  dans le vrai Chrome, regarde d'abord si le message est déjà dans la
+  conversation (pour ne jamais l'envoyer deux fois), l'envoie tel quel et
+  rend « oui », « déjà » ou « non » avec la raison. Sur LinkedIn, le
+  premier message à un inconnu est la note d'une demande de connexion ;
+- un envoi **attend** au lieu d'échouer quand le compte sert à une autre
+  tâche (10 minutes), a fait ses actions du jour, ou quand le plafond de
+  dépense du jour est atteint (le lendemain) ;
+- **relever** : toutes les 4 heures, « Relever les messages » confie la
+  lecture à « Lire la messagerie d'un réseau », seulement si un message
+  est parti par ce canal depuis moins de 30 jours (réglage). Les réponses
+  rendues sont rattachées à leur contact par l'adresse de son profil,
+  comparée sans `https://`, `www.`, barre de fin ni majuscules ;
+- **l'adresse d'un prospect** est celle de son profil sur le site du
+  compte : « Ajouter un prospect » refuse tout le reste. « Trouver des
+  prospects » peut fouiller le réseau lui-même (« Fouiller LinkedIn »…) ;
+- **le premier message** est écrit par une seule invocation, « Écrire le
+  premier message d'un réseau », qui connaît la longueur permise par
+  chaque réseau (280 caractères pour une note LinkedIn) ; un lien par
+  canal y mène ;
+- **la validation par un humain** est un réglage de chaque canal (page
+  Policy, « Canaux », « valider chaque message ») : allumée au départ pour
+  LinkedIn, Instagram et X, éteinte pour l'e-mail et l'appel. Le message
+  attend alors un administrateur sur Discord, comme un brouillon.
+
+Ajouter un canal de ce genre (TikTok, un forum), c'est donc : un compte
+(« Créer un compte web »), une ligne dans `web_channels`, ses réglages
+(plafond du jour, validation, relève récente, points, volumes), et un lien
+vers l'invocation de premier message. Aucun code.
+
+Deux boutons de la page Système essaient un canal sans contact ni
+campagne : « Envoyer un message d'essai sur un réseau » et « Lire une
+conversation d'essai sur un réseau ». Ils lancent les deux mêmes
+invocations.
 
 ---
 

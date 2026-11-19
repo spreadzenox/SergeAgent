@@ -27,9 +27,9 @@ from __future__ import annotations
 import sqlite3
 from typing import Any
 
-from serge.channels.adapters import adapter
 from serge.channels.auto_reply import AUTO_REPLY
 from serge.channels.base import Incoming
+from serge.channels.web import transport
 from serge.conversations.send import silent_states
 from serge.funnels.contacts import normalise_value
 
@@ -109,7 +109,7 @@ def receive_messages(
     réveille le pipeline. Un message déjà relevé n'est pas rendu deux fois.
     """
     channel = str(args.get('channel') or '')
-    poll = adapter(channel).poll
+    poll = transport(conn, channel).poll
     if poll is None:
         return {'ok': False, 'code': 'sans_releve', 'rows': []}
     row = conn.execute(

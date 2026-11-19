@@ -4,7 +4,10 @@
 Un canal est branché quand son adaptateur est ici **et** qu'il est
 configuré sur ce serveur. Exemple : l'e-mail est dans le code, mais une
 instance sans boîte Gmail ni SMTP/IMAP ne l'a pas branché. Le catalogue
-``canaux`` le dit (``serge/canaux.py``).
+``canaux`` le dit (``serge/canaux.py``). Un canal du navigateur (LinkedIn,
+lot 13) n'est pas ici : il est décrit en base, et son adaptateur, le même
+pour tous, est ``serge/channels/web.py``, qui sait trouver l'adaptateur
+de n'importe quel canal (``transport``).
 """
 
 from __future__ import annotations
@@ -16,7 +19,7 @@ ADAPTERS: dict[str, Adapter] = {a.id: a for a in (mail.ADAPTER, voice.ADAPTER)}
 
 
 def adapter(channel: str) -> Adapter:
-    """L'adaptateur d'un canal branché.
+    """L'adaptateur d'un canal du code, s'il est branché.
 
     Raises:
         ChannelError: Canal absent du code, ou pas configuré ici.

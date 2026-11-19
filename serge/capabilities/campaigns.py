@@ -54,7 +54,9 @@ CAMPAIGNS: tuple[Capability, ...] = (
                 'text',
                 True,
                 'Son adresse directe sur le canal de la campagne : un'
-                ' e-mail à son nom, ou un numéro au format +33….',
+                ' e-mail à son nom, un numéro au format +33…, ou'
+                ' l’adresse de son profil sur le réseau'
+                ' (https://www.linkedin.com/in/…).',
             ),
             Param(
                 'source_url',

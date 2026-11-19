@@ -64,8 +64,11 @@ Policy), un groupe par canal. Exemple pour l'e-mail :
 jour ; au-delà, ils attendent le lendemain).
 
 **Ajouter un canal**, c'est donc écrire son adaptateur, ajouter sa ligne et
-ses réglages : le pipeline ne change pas. Un canal par machine virtuelle
-(LinkedIn, lot 13) aura un adaptateur qui confie l'envoi à l'agent web.
+ses réglages : le pipeline ne change pas. Un canal qui passe par le
+navigateur (LinkedIn, Instagram, X, lot 13) n'a pas d'adaptateur à lui :
+il est décrit en base, et un adaptateur commun confie l'envoi et la relève
+à des invocations qui naviguent avec le compte de Serge
+(`serge/channels/web.py` ; conception du lot 12, partie 17).
 
 ---
 

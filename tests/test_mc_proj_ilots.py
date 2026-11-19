@@ -324,6 +324,30 @@ class ProjIlotsTests(ProjSystemFixtures):
         )
         self.assertEqual(self._ilot('email')['sante'], 'degrade')
 
+    def test_un_canal_du_navigateur_a_son_ilot_quand_il_est_branche(
+        self,
+    ) -> None:
+        """LinkedIn n'apparaît que si son compte est en service ; sa
+        messagerie, relevée quelques fois par jour, n'est pas « dégradée »
+        après une heure sans relève (lot 13)."""
+        self.assertNotIn(
+            'linkedin',
+            [i['id'] for i in project_ilots(self.conn, POLICY, NOW)['items']],
+        )
+        self.conn.execute(
+            "INSERT INTO web_accounts(id, url, status) VALUES('linkedin',"
+            " 'https://www.linkedin.com', 'active')"
+        )
+        self.conn.execute(
+            "UPDATE canaux SET polled_at='2026-09-10T08:00:00+00:00'"
+            " WHERE id='linkedin'"
+        )
+        linkedin = self._ilot('linkedin')
+        self.assertEqual(
+            (linkedin['label'], linkedin['sante'], linkedin['resume']),
+            ('LinkedIn', 'ok', '0 partis, 0 reçus (24 h), relevé à 08:00'),
+        )
+
     def test_la_voix_dit_l_etat_du_pont_vocal(self) -> None:
         self.conn.execute("UPDATE canaux SET etat='branche' WHERE id='voice'")
         self.services['serge-voice-bridge.service'] = 'active'

@@ -275,7 +275,9 @@ et modifier un fichier) sont des capacités générales ; le business, le
 livrable et le profil du chantier sont des paramètres figés en base sur
 l'invocation, et les chiffres du profil sont sur la page Policy. La
 navigation sur le web et les connecteurs vers des services suivent la
-même règle depuis le lot 10 ; les canaux la suivront. Depuis le lot 11
+même règle depuis le lot 10, les canaux du navigateur depuis le lot 13
+(un canal comme LinkedIn est une ligne en base, sans code à lui). Depuis
+le lot 11
 (décision Q97), une invocation navigue soit dans le navigateur sans
 écran, soit dans le vrai Chrome (un Chromium normal, sur un écran
 virtuel, pour les pages qui refusent le premier) : on lui donne les
@@ -457,10 +459,12 @@ même de l'envoi.
 
 Le circuit est décrit en base (lot 8, décision Q79) :
 
-- toutes les 2 minutes, chaque canal qui se relève (l'e-mail) est relevé ;
-  un message reçu est rattaché à son contact par le fil, sinon par son
-  adresse. Le message d'un inconnu n'est pas traité : il apparaît dans
-  Mission Control (page Système) ;
+- toutes les 2 minutes, chaque canal qui se relève vite (l'e-mail) est
+  relevé ; toutes les 4 heures, la messagerie de chaque canal du
+  navigateur (LinkedIn, Instagram, X), tant qu'une conversation y est en
+  cours. Un message reçu est rattaché à son contact par le fil, sinon par
+  son adresse. Le message d'un inconnu n'est pas traité : il apparaît
+  dans Mission Control (page Système) ;
 - un message rattaché lance « Traiter une réponse », une seule tâche en
   attente par contact ;
 - la réponse part entre 5 et 20 minutes plus tard, à toute heure et tous
@@ -491,9 +495,11 @@ Julien dans la conversation (lot 8 bis, décisions Q50, Q85 et Q86) :
   qu'elle parte, et pourquoi : une question que la fiche produit ne
   couvre pas, un prix ou une date qu'il ne peut pas promettre, une
   proposition faite à Serge, un doute. Un business peut aussi demander
-  qu'on valide chaque brouillon (interrupteur sur sa fiche). L'envoi
-  attend alors un humain, et un ticket « Conversation » ouvre un fil dans
-  le forum « tickets » du serveur Discord ;
+  qu'on valide chaque brouillon (interrupteur sur sa fiche), et un canal
+  aussi (page Policy, « Canaux », « valider chaque message » : LinkedIn,
+  Instagram et X au départ, décision Q104). L'envoi attend alors un
+  humain, et un ticket « Conversation » ouvre un fil dans le forum
+  « tickets » du serveur Discord ;
 - quatre boutons : « Envoyer le brouillon » ; « Ma réponse », qui s'ouvre
   avec le brouillon et son objet, à modifier, part tel quel et rejoint
   les questions fréquentes de la fiche produit quand le contact avait

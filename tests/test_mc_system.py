@@ -172,7 +172,9 @@ class McSystemTests(McBrowserCase):
         expect(section.locator('[data-bouton-base]')).to_have_text(
             [
                 'Créer un compte web',
+                "Envoyer un message d'essai sur un réseau",
                 'Fouiller un réseau',
+                "Lire une conversation d'essai sur un réseau",
                 'Vérifier un compte web',
             ]
         )
