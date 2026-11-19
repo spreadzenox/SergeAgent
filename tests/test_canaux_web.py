@@ -269,7 +269,7 @@ class CanauxWebTests(ChaineCase):
         self.assertIsNotNone(
             fire_button(
                 self.conn,
-                'bouton_essayer_envoi_reseau',
+                'bouton_message_d_essai_reseau',
                 {
                     'nom du compte (linkedin, instagram, x…)': 'linkedin',
                     'adresse du profil à qui écrire (https://…)': ANA,

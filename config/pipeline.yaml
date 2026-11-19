@@ -4033,7 +4033,7 @@ invocations:
           task_id: {source: task, value: task_id}
     output:
       - {path: envoye, type: choice, choices: [oui, deja, non], description: 'Le message est-il dans la conversation ?'}
-      - {path: reference, type: text, required: false, description: L'adresse de la conversation, si le site en donne une.}
+      - {path: reference, type: text, required: false, description: "L'adresse de la conversation, si le site en donne une."}
       - {path: raison, type: text, required: false, description: "Pourquoi il n'est pas parti, en une phrase."}
 
   - id: lire_messagerie
@@ -4129,7 +4129,7 @@ invocations:
       - {path: messages, type: list, required: false, description: Les réponses reçues.}
       - {path: messages.de, type: text, description: "L'adresse du profil de la personne, telle que Serge la connaît."}
       - {path: messages.texte, type: text, description: 'Son texte entier, mot pour mot.'}
-      - {path: resume, type: text, description: Ce que tu as vu, en une phrase.}
+      - {path: resume, type: text, description: 'Ce que tu as vu, en une phrase.'}
 
   - id: prevenir_compte_web
     title: Prévenir pour un compte web
@@ -8996,7 +8996,7 @@ triggers:
       compte: {source: form, value: 'nom du compte (reddit, instagram, x…)'}
       mission: {source: form, value: 'ce que tu cherches (« ce que les gens disent des calculatrices en ligne »)'}
 
-  - id: bouton_essayer_envoi_reseau
+  - id: bouton_message_d_essai_reseau
     title: Envoyer un message d'essai sur un réseau
     invocation: envoyer_par_le_web
     event: button
