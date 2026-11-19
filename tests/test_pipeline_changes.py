@@ -23,7 +23,9 @@ Scénarios :
 - une instance du lot 11 reçoit le lot 12 : le plan d'un POC perd son
   nombre de prospects et choisit un canal branché, les valeurs d'essai et
   les couloirs des liens arrivent, les boutons d'essai de la page Système
-  sont retirés ; sa base renomme la phase des campagnes.
+  sont retirés ; sa base renomme la phase des campagnes ;
+- le serveur du 19 novembre 2026 retrouve le produit d'un business dans
+  Stripe par la clé de recherche de son prix, plus par la recherche.
 """
 
 from __future__ import annotations
@@ -1131,4 +1133,123 @@ class InstanceDuLot12Tests(unittest.TestCase):
                 ).fetchone()
             ),
             ('redemander', '=', 'oui'),
+        )
+
+
+class StripeParCleTests(unittest.TestCase):
+    """Le serveur du 19 novembre 2026 : le paiement test cherchait le
+    produit par la recherche de Stripe, 9 secondes après sa mise en vente,
+    et ne le trouvait pas. Au démarrage, il le retrouve par la clé de
+    recherche de son prix, et la mise en vente regarde aussi cette clé."""
+
+    IDS = (
+        'lot13_paiement_test_par_cle',
+        'lot13_paiement_test_sans_recherche',
+        'lot13_paiement_test_consigne',
+        'lot13_vendre_test_par_cle',
+        'lot13_vendre_par_cle',
+        'lot13_vendre_test_consigne',
+        'lot13_vendre_consigne',
+    )
+    CONSIGNES = {
+        'paiement_test': 'lot13_paiement_test_consigne',
+        'vendre_en_mode_test': 'lot13_vendre_test_consigne',
+        'mettre_en_vente': 'lot13_vendre_consigne',
+    }
+
+    def setUp(self) -> None:
+        self.conn = sqlite3.connect(':memory:')
+        self.addCleanup(self.conn.close)
+        init_schema(self.conn)
+        self.data = read_yaml_file(config_dir() / 'pipeline.yaml')
+        changements = {c['id']: c for c in self.data['changes']}
+        c = self.conn
+        # L'instance d'avant : pas de clé, la recherche partout.
+        c.execute(
+            'DELETE FROM invocation_tool_params WHERE invocation_tool_id IN'
+            " (SELECT id FROM invocation_tools WHERE tool_id='stripe_prix_par_cle')"
+            " AND param_name IN ('lookup_keys[0]', 'active')"
+        )
+        c.execute(
+            "UPDATE invocation_tools SET tool_id='stripe_chercher_produits'"
+            " WHERE invocation_id='paiement_test'"
+            " AND tool_id='stripe_prix_par_cle'"
+        )
+        c.execute(
+            'DELETE FROM invocation_tool_params WHERE invocation_tool_id IN'
+            " (SELECT id FROM invocation_tools WHERE tool_id='stripe_prix_par_cle')"
+        )
+        c.execute(
+            "DELETE FROM invocation_tools WHERE tool_id='stripe_prix_par_cle'"
+        )
+        for invocation, ident in self.CONSIGNES.items():
+            prompt = c.execute(
+                'SELECT prompt FROM invocations WHERE id=?', (invocation,)
+            ).fetchone()[0]
+            for passage in changements[ident]['set']['prompt']['replace']:
+                self.assertIn(passage['new'], prompt)
+                prompt = prompt.replace(passage['new'], passage['old'])
+            c.execute(
+                'UPDATE invocations SET prompt=? WHERE id=?',
+                (prompt, invocation),
+            )
+        c.executemany(
+            'DELETE FROM pipeline_changes WHERE id=?', [(i,) for i in self.IDS]
+        )
+
+    def _outils(self, invocation: str) -> list[str]:
+        return [
+            str(r[0])
+            for r in self.conn.execute(
+                'SELECT tool_id FROM invocation_tools WHERE invocation_id=?',
+                (invocation,),
+            )
+        ]
+
+    def test_le_produit_se_retrouve_par_la_cle_de_son_prix(self) -> None:
+        self.assertNotIn('stripe_prix_par_cle', self._outils('paiement_test'))
+        seed_pipeline(self.conn, self.data)
+        paiement = self._outils('paiement_test')
+        self.assertIn('stripe_prix_par_cle', paiement)
+        self.assertNotIn('stripe_chercher_produits', paiement)
+        for invocation in ('vendre_en_mode_test', 'mettre_en_vente'):
+            outils = self._outils(invocation)
+            self.assertIn('stripe_prix_par_cle', outils)
+            self.assertIn('stripe_chercher_produits', outils)
+        # La clé est le numéro du business, figé en base : le modèle ne la
+        # choisit pas. Le mode de Stripe suit l'invocation.
+        figes = {
+            (str(r[0]), str(r[1])): (str(r[2]), str(r[3]))
+            for r in self.conn.execute(
+                'SELECT t.invocation_id, p.param_name, p.source, p.value'
+                ' FROM invocation_tool_params p'
+                ' JOIN invocation_tools t ON t.id=p.invocation_tool_id'
+                " WHERE t.tool_id='stripe_prix_par_cle'"
+            )
+        }
+        for invocation, service in (
+            ('paiement_test', 'stripe_live'),
+            ('mettre_en_vente', 'stripe_live'),
+            ('vendre_en_mode_test', 'stripe_test'),
+        ):
+            self.assertEqual(
+                figes[invocation, 'lookup_keys[0]'], ('task', 'venture_id')
+            )
+            self.assertEqual(figes[invocation, 'active'], ('fixed', 'true'))
+            self.assertEqual(figes[invocation, 'service'], ('fixed', service))
+        for invocation in self.CONSIGNES:
+            prompt = self.conn.execute(
+                'SELECT prompt FROM invocations WHERE id=?', (invocation,)
+            ).fetchone()[0]
+            self.assertIn(
+                'Trouver un prix\n   Stripe par sa clé de recherche'
+                if invocation == 'paiement_test'
+                else '« Trouver un prix Stripe par sa clé de recherche »',
+                prompt,
+            )
+        self.assertNotIn(
+            "(recherche :\n   metadata['venture_id']",
+            self.conn.execute(
+                "SELECT prompt FROM invocations WHERE id='paiement_test'"
+            ).fetchone()[0],
         )

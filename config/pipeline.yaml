@@ -853,6 +853,22 @@ tools:
       params:
         - {name: product, required: true, description: Le produit (prod_…).}
         - {name: limit, type: number, description: Le nombre de prix (100 au plus).}
+  - id: stripe_prix_par_cle
+    title: Trouver un prix Stripe par sa clé de recherche
+    doc: >-
+      Le prix actif qui porte une clé de recherche (lookup_key), avec son
+      produit (le champ product). Un prix créé à l'instant y est déjà : la
+      recherche de produits, elle, ne voit un produit qu'une minute
+      environ après sa création. Exemple : la clé d'un business est son
+      numéro, figé en base.
+    capability: call_api
+    api:
+      service: stripe_test
+      method: GET
+      path: /v1/prices
+      params:
+        - {name: 'lookup_keys[0]', required: true, description: La clé de recherche (figée en base).}
+        - {name: active, type: bool, description: 'true : seulement les prix actifs (figé en base).'}
   - id: stripe_archiver_prix
     title: Archiver un prix Stripe
     doc: Archive un prix (Stripe ne permet pas de le supprimer) ; il ne peut plus être payé.
@@ -4630,10 +4646,14 @@ invocations:
       prix (exemple : « 19 € par mois »), et la fiche du business.
 
       1. Cherche d'abord si le produit existe déjà dans Stripe pour ce
-         business (recherche : metadata['venture_id']:'<numéro du
-         business>', le numéro est dans les paramètres de la tâche). S'il
-         existe, garde-le ; sinon, crée-le avec le nom du business et une
-         phrase qui dit ce qu'il fait.
+         business. « Trouver un prix Stripe par sa clé de recherche » rend
+         son prix s'il en a un : son produit est le champ product. Sans
+         prix rendu, la recherche (metadata['venture_id']:'<numéro du
+         business>', le numéro est dans les paramètres de la tâche) dit
+         s'il a un produit sans prix ; elle ne voit un produit qu'une
+         minute environ après sa création. S'il existe, garde-le ; sinon,
+         crée-le avec le nom du business et une phrase qui dit ce qu'il
+         fait.
       2. Crée son prix : le montant en centimes (19 € : 1900), eur, et
          l'intervalle de l'abonnement (month ou year). L'identifiant du
          business et la clé de recherche sont ajoutés tout seuls.
@@ -4651,6 +4671,13 @@ invocations:
         label: Le business
         params:
           venture_id: {source: task, value: venture_id}
+      - tool: stripe_prix_par_cle
+        mode: callable
+        params:
+          service: {source: fixed, value: stripe_test}
+          'lookup_keys[0]': {source: task, value: venture_id}
+          active: {source: fixed, value: 'true'}
+          task_id: {source: task, value: task_id}
       - tool: stripe_chercher_produits
         mode: callable
         params:
@@ -5301,6 +5328,13 @@ invocations:
         label: Le business
         params:
           venture_id: {source: task, value: venture_id}
+      - tool: stripe_prix_par_cle
+        mode: callable
+        params:
+          service: {source: fixed, value: stripe_live}
+          'lookup_keys[0]': {source: task, value: venture_id}
+          active: {source: fixed, value: 'true'}
+          task_id: {source: task, value: task_id}
       - tool: stripe_chercher_produits
         mode: callable
         params:
@@ -5364,8 +5398,11 @@ invocations:
       Le numéro du business est dans les paramètres de la tâche
       (venture_id), son adresse aussi (« url »).
 
-      1. Retrouve le produit du business dans Stripe (recherche :
-         metadata['venture_id']:'<numéro du business>').
+      1. Retrouve le produit du business dans Stripe : « Trouver un prix
+         Stripe par sa clé de recherche » rend le prix de son abonnement
+         (la clé, le numéro du business, est ajoutée toute seule) ; son
+         produit est le champ product (prod_…). Si aucun prix n'est
+         rendu, arrête-toi : paye « non ».
       2. Crée un prix de 1 € (100 centimes, eur, un paiement unique, sans
          intervalle) pour ce produit, avec le nom court « paiement test »,
          puis un lien de paiement pour ce prix, quantité 1.
@@ -5395,10 +5432,12 @@ invocations:
       dit, en deux phrases, l'adresse du produit, ce qui s'est passé et ce
       qui a raté.
     tools:
-      - tool: stripe_chercher_produits
+      - tool: stripe_prix_par_cle
         mode: callable
         params:
           service: {source: fixed, value: stripe_live}
+          'lookup_keys[0]': {source: task, value: venture_id}
+          active: {source: fixed, value: 'true'}
           task_id: {source: task, value: task_id}
       - tool: stripe_creer_prix
         mode: callable
@@ -9396,6 +9435,76 @@ changes:
       condition_field: {from: choice_id, to: redemander}
       condition_op: {from: non_vide, to: '='}
       condition_value: {from: '', to: oui}
+  # La recherche de Stripe ne voit un produit qu'une minute environ après
+  # sa création. Le 19 novembre 2026, le paiement test a cherché le
+  # produit 9 secondes après sa mise en vente et ne l'a pas trouvé. Le
+  # produit se retrouve par la clé de recherche de son prix, à jour tout
+  # de suite ; la mise en vente regarde aussi cette clé avant de créer.
+  - id: lot13_paiement_test_par_cle
+    why: Le paiement test retrouve le produit par la clé de son prix, à jour tout de suite.
+    invocation: paiement_test
+    add_tools:
+      - {tool: stripe_prix_par_cle, mode: callable, params: {service: {source: fixed, value: stripe_live}, 'lookup_keys[0]': {source: task, value: venture_id}, active: {source: fixed, value: 'true'}, task_id: {source: task, value: task_id}}}
+  - id: lot13_paiement_test_sans_recherche
+    why: La recherche de Stripe ne voit pas un produit créé à l'instant.
+    invocation: paiement_test
+    remove_tools: [stripe_chercher_produits]
+  - id: lot13_paiement_test_consigne
+    why: Le paiement test retrouve le produit par la clé de son prix, à jour tout de suite.
+    table: invocations
+    where: {id: paiement_test}
+    set:
+      prompt:
+        replace:
+          - old: |-
+              1. Retrouve le produit du business dans Stripe (recherche :
+                 metadata['venture_id']:'<numéro du business>').
+            new: |-
+              1. Retrouve le produit du business dans Stripe : « Trouver un prix
+                 Stripe par sa clé de recherche » rend le prix de son abonnement
+                 (la clé, le numéro du business, est ajoutée toute seule) ; son
+                 produit est le champ product (prod_…). Si aucun prix n'est
+                 rendu, arrête-toi : paye « non ».
+  - id: lot13_vendre_test_par_cle
+    why: Relancée aussitôt, la mise en vente ne voyait pas le produit qu'elle venait de créer.
+    invocation: vendre_en_mode_test
+    add_tools:
+      - {tool: stripe_prix_par_cle, mode: callable, params: {service: {source: fixed, value: stripe_test}, 'lookup_keys[0]': {source: task, value: venture_id}, active: {source: fixed, value: 'true'}, task_id: {source: task, value: task_id}}}
+  - id: lot13_vendre_par_cle
+    why: Relancée aussitôt, la mise en vente ne voyait pas le produit qu'elle venait de créer.
+    invocation: mettre_en_vente
+    add_tools:
+      - {tool: stripe_prix_par_cle, mode: callable, params: {service: {source: fixed, value: stripe_live}, 'lookup_keys[0]': {source: task, value: venture_id}, active: {source: fixed, value: 'true'}, task_id: {source: task, value: task_id}}}
+  - id: lot13_vendre_test_consigne
+    why: La mise en vente regarde la clé du prix avant la recherche de Stripe.
+    table: invocations
+    where: {id: vendre_en_mode_test}
+    set:
+      prompt:
+        replace: &consigne_vendre_par_cle
+          - old: |-
+              1. Cherche d'abord si le produit existe déjà dans Stripe pour ce
+                 business (recherche : metadata['venture_id']:'<numéro du
+                 business>', le numéro est dans les paramètres de la tâche). S'il
+                 existe, garde-le ; sinon, crée-le avec le nom du business et une
+                 phrase qui dit ce qu'il fait.
+            new: |-
+              1. Cherche d'abord si le produit existe déjà dans Stripe pour ce
+                 business. « Trouver un prix Stripe par sa clé de recherche » rend
+                 son prix s'il en a un : son produit est le champ product. Sans
+                 prix rendu, la recherche (metadata['venture_id']:'<numéro du
+                 business>', le numéro est dans les paramètres de la tâche) dit
+                 s'il a un produit sans prix ; elle ne voit un produit qu'une
+                 minute environ après sa création. S'il existe, garde-le ; sinon,
+                 crée-le avec le nom du business et une phrase qui dit ce qu'il
+                 fait.
+  - id: lot13_vendre_consigne
+    why: La mise en vente regarde la clé du prix avant la recherche de Stripe.
+    table: invocations
+    where: {id: mettre_en_vente}
+    set:
+      prompt:
+        replace: *consigne_vendre_par_cle
 deleted:
   invocations:
     - demo_ouvrir_cycle
