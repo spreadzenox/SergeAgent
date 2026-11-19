@@ -17,7 +17,7 @@ recrée jamais ensuite.
 1. **Les migrations** (`serge/db/migrate.py`). Chaque changement de
    structure est une fonction `apply_v0NN` (fichiers `serge/db/v0NN.py`).
    Serge applique celles qui manquent, dans l'ordre. Version actuelle :
-   **54**.
+   **55**.
    - Une base neuve saute directement à la version 7 (le socle,
      `serge/db/schema.py`), puis applique 8, 9, … 34.
    - Une base **plus récente** que le code refuse de démarrer
@@ -108,7 +108,8 @@ catalogue et la mécanique.
 | `inbound_events` | Ce que Serge reçoit d'un contact, une ligne par message : canal, expéditeur, objet, texte, sa référence pour lui répondre dans le même fil (`message_ref`), sa référence chez le canal (`external_ref` : un message n'est jamais écrit deux fois), le contact et le business auxquels il est rattaché, son statut (`attached` ; `unattached` : d'un inconnu, pas traité, montré dans Mission Control ; `ignored` : une réponse automatique d'absence, qui n'arrête pas les relances, ou le message d'un contact arrêté, rangé dans son fil sans être traité) et sa réaction (`question`, `refus`…). Sa sorte (`native_type`) : `email`, ou `auto_reply` pour une réponse automatique reconnue à ses en-têtes (lot 10 bis). La moitié « contact » du fil (version 35). |
 | `product_sheets`, `product_faq` | La fiche produit d'un business (ce que fait le produit et pour qui, ce qu'il ne fait pas, son prix, ses délais habituels, comment on l'utilise) et ses questions fréquentes. « Traiter une réponse » les lit pour répondre (version 35). |
 | `customer_requests` | Les demandes des contacts sur le produit : `bug`, `insatisfaction` ou `idée`, avec le contact et le message d'où elles viennent (version 35). Leur état (`status`) : `new`, `kept` (retenue par le plan du produit fini), `refused` (avec sa raison, `reason`) ou `delivered` ; le plan qui en a décidé (`plan_id`) et la version qui l'a livrée (`delivered_version`) (version 49, lot 10). |
-| `accounts_standing` | Les comptes web que Serge a créés : lieu, identifiant, mot de passe en clair, dossier de session, santé du compte. |
+| `web_accounts` | Les comptes de Serge sur des sites (version 55, lot 13, décision Q104) : un par site, nommé d'un mot (`id` : `reddit`). L'adresse du site (`url`), l'identifiant de connexion (`login`), le nom public (`handle`), l'état (`status` : `creating`, `active`, `blocked` : fermé par le site), le dernier compte rendu (`note`). Deux secrets chiffrés par la clé du coffre de l'instance (`secrets/credential-vault.key`), que ni un modèle ni Mission Control ne lisent : le mot de passe (`password_enc`) et la session du navigateur (`session_enc` : ses cookies, gardés le `session_saved_at`). `used_by`, `used_since` : la tâche qui s'en sert ; un compte ne sert qu'à une tâche à la fois. Remplace `accounts_standing`, qui gardait le mot de passe en clair et n'a jamais été remplie. |
+| `web_account_days` | Les actions faites avec un compte web, jour par jour (UTC) : la garde des comptes refuse au-delà du plafond du jour (page Policy, « Comptes web »). |
 | `consents`, `blocklist` | Consentements et personnes à ne plus contacter. Un accord a une sorte (`basis`) : `contract`, `consent`, ou `test` (un membre de l'équipe qui essaie Serge : l'appel part à toute heure et hors du plafond par personne, Q79). |
 | `transactions` | Les paiements. Le paiement test de 1 € d'un produit fini (étape 5, lot 10) y est noté par l'invocation qui le fait : `kind` = `canary`, son paiement chez Stripe (`intent_id`), `status` = `succeeded`. |
 | `subscriptions` | Les abonnements Stripe, chacun rattaché à son business (lu dans le champ `metadata.venture_id` du prix ou de l'abonnement Stripe). `venture_id` vide : business inconnu, signalé au journal. |

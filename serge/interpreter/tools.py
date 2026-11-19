@@ -34,6 +34,7 @@ from serge.conversations.send import send_message
 from serge.conversations.stop import stop_contact
 from serge.conversations.thread import contact_thread
 from serge.conversations.unsubscribe import unsubscribe_contact
+from serge.identite import identity_read
 from serge.ingress.adresse import product_address, server_address
 from serge.interpreter.seen import CHOICES, read_seen_table, row_history
 from serge.interpreter.settings import load_settings
@@ -54,6 +55,8 @@ from serge.sandbox.navigateur import (
 )
 from serge.sandbox.publier import publish_version
 from serge.tickets.inform import inform_owners
+from serge.verification import received_since_task
+from serge.web_accounts import open_account
 
 Runner = Callable[
     [sqlite3.Connection, str, dict[str, Any], str], dict[str, Any]
@@ -278,6 +281,9 @@ RUNNERS: dict[str, Runner] = {
     'measure_test': measure_test,
     'apply_principal': apply_principal,
     'record_sale': record_sale,
+    'open_web_account': open_account,
+    'serge_identity': identity_read,
+    'verification_messages': received_since_task,
 }
 
 

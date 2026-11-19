@@ -67,6 +67,25 @@ def identite_serge(
     return {cle: tous[cle] for cle in cles}
 
 
+def identity_read(
+    _conn: Any, _tool: str, _args: dict[str, Any], _invocation_id: str
+) -> dict[str, Any]:
+    """Capacité « L'identité de Serge » : ce qu'il donne à un site pour
+    s'y inscrire. Ni son SIRET, ni son IBAN, ni son adresse."""
+    try:
+        qui = identite_serge()
+    except (IdentiteError, OSError, ValueError) as exc:
+        return {'ok': False, 'detail': f'identité illisible : {exc}'}
+    return {
+        'ok': True,
+        'prenom': qui['prenom'],
+        'nom': qui['nom'],
+        'pseudo': qui['pseudo'],
+        'email': qui['email'],
+        'telephone_pour_les_sms': qui['tel_2fa'],
+    }
+
+
 def _quote(value: str) -> str:
     escaped = value.replace('\\', '\\\\').replace('"', '\\"')
     return f'"{escaped}"'

@@ -190,22 +190,27 @@ Ce que chaque lot a vraiment livré :
   - **Mission Control** : les campagnes sur la page Système, les places
     sur la page En direct, le compte rendu d'un test sur la fiche de son
     business ; aujourd'hui, une campagne se lit sur sa fiche.
-- [ ] **Lot 13 « Web ».** On donne à Serge de quoi chercher, lire des
-  pages et agir sur n'importe quel site : créer un compte, publier,
-  écrire. On le met tard parce que c'est un gros chantier, mais plusieurs
-  tâches des étapes 3 et 6 en dépendent. Il part de ce qui existe : le
-  bac à sable, l'interface web et « Appeler une API » (lot 10, Q91), le
-  vrai Chrome, son écran dans Mission Control et « Appeler un humain »
-  pour les captchas (lot 11, Q97). Il reste le moteur de recherche, la
-  lecture d'une page qui monte d'un cran, les comptes et leurs sessions,
-  la garde de santé des comptes et « Construire un connecteur » (partie
-  « Pour tout Serge », « Le web »).
-  L'agent web et les connecteurs y sont des capacités générales réglées en
-  base, jamais du code écrit pour une invocation. C'est aussi ce qui ouvre
-  les canaux de conversation par machine virtuelle : un LLM qui se connecte
-  à LinkedIn, Instagram, Facebook ou n'importe quel site, avec une
-  invocation temporaire « Envoyer le premier LinkedIn » pour le tester
-  (Q79).
+- [ ] **Lot 13 « Web » : des comptes, les réseaux pour chercher et pour
+  prospecter** (décision Q104). Serge sait déjà naviguer comme une
+  personne : le bac à sable, l'interface web et « Appeler une API »
+  (lot 10, Q91), le vrai Chrome, son écran dans Mission Control et
+  « Appeler un humain » pour les captchas (lot 11, Q97), les gestes d'une
+  souris et d'un clavier (Q103). Ce lot met cette capacité au service de
+  deux choses : chercher sur Reddit, Instagram et X pendant l'écoute du
+  web, en option ; et prospecter par LinkedIn, Instagram et X.
+  **Fait** : les comptes web, un par site, avec leur mot de passe et leur
+  session chiffrés en base, une session de navigateur par compte et la
+  garde du jour ; « Créer un compte web » et « Vérifier un compte web »,
+  depuis la page Système.
+  **Reste** : une invocation qui confie une mission à une autre et reçoit
+  sa réponse ; « Fouiller un réseau », donnée en option à « Explorer le
+  web » ; les trois canaux, avec la validation des messages par un humain
+  réglée par canal ; leurs essais dans l'essai total.
+  Tout y est une capacité générale réglée en base, jamais du code écrit
+  pour une invocation ou pour un site. Le moteur de recherche à installer
+  sur le serveur, la lecture d'une page à trois niveaux et « Construire un
+  connecteur » ne sont plus dans ce lot (partie « Pour tout Serge »,
+  « Le web »).
 - [ ] **Lot 14 « L'éditeur sans code ».** Une page de Mission Control
   pour modifier le pipeline en direct et créer une invocation de toutes
   pièces : ajouter ou retirer des invocations, changer leur ordre, leur
@@ -309,52 +314,26 @@ discutable, qui peut un jour changer, se règle depuis Mission Control.**
   (`everywhere` dans `pipeline.yaml`), comme « Lire les tables que je
   vois » ; aujourd'hui, il est donné invocation par invocation.
 
-- [ ] **Le web.** Serge doit pouvoir tout faire sur le web avec son
-  e-mail, son téléphone et sa carte, sans qu'un humain intervienne à
-  chaque nouveau site. C'est le chantier où la tentation d'écrire du code
-  pour un cas précis sera la plus forte ; la règle de ce fichier s'y
-  applique entièrement. Il faut d'abord installer sur le serveur un
-  moteur de recherche gratuit et sans clé (SearXNG), et s'en servir à la
-  place de la page de résultats de DuckDuckGo. Il faut ensuite une
-  capacité « Lire une page » qui monte d'un cran seulement si nécessaire :
-  une simple requête, puis le navigateur sans écran si la page a besoin
-  de JavaScript, puis le vrai Chrome, avec son écran, si le site bloque
-  (Q97) ; chaque montée est écrite au journal. **Le bac à sable et
-  l'interface web viennent du lot 10** (Q91) : des profils de bac à sable
-  en base (ce qui y est installé, la mémoire, le temps et le réseau
-  permis), et des outils pour lire une page comme un lecteur d'écran,
-  cliquer, taper, taper un secret sans le montrer au modèle, prendre une
-  capture. **Le vrai Chrome et « Appeler un humain » viennent du lot 11**
-  (Q97) : les mêmes outils dans un Chromium normal, et un humain qui
-  résout un captcha dans son écran, montré par Mission Control. Ce lot y
-  ajoute les secrets et les comptes auxquels un profil a
-  accès, et une session de navigateur par compte, qui garde ses cookies.
-  **L'« Agent web » n'est donc pas du code** : c'est une invocation LLM
-  réglée en base, qui reçoit une mission en paramètre (par exemple « crée
-  un compte sur ce forum ») et l'interface web. Créer un compte de bout en
-  bout est un enchaînement d'invocations en base : l'agent web remplit le
-  formulaire, une invocation lit le code de confirmation dans la boîte
-  mail ou les SMS, « Appeler un humain » fait résoudre un captcha par
-  un humain, et le compte est écrit en
-  base par la capacité d'écriture générique ; les colonnes secrètes des
-  comptes (mot de passe, cookies) ne sont jamais marquées lisibles dans
-  leur vue de table. **Un connecteur n'est pas du
-  code non plus** : quand un site a une API gratuite, le service est
-  décrit en base (son adresse, le secret à utiliser, ses points d'entrée
-  et leurs paramètres), et une seule capacité « Appeler une API »,
-  construite au lot 10 pour Stripe et l'achat des domaines, sait appeler
-  n'importe quel service décrit ainsi. L'invocation « Construire un
-  connecteur » lit la documentation du service et écrit cette description
-  en base ; Julien la valide par ticket avant qu'elle soit utilisable,
-  grâce à une règle d'écriture « validation par Julien », qui sera
-  ajoutée au catalogue d'écriture à ce moment-là.
-
-- [ ] **Écrire la garde de santé des comptes.** Un compte web trop
-  sollicité se fait bannir. Il faut une garde : avant chaque action faite
-  avec un compte, elle dit si c'est autorisé, et après, elle compte
-  l'action. Une première version existait, que personne n'appelait ; elle
-  a été retirée au nettoyage du 16 novembre 2026, avec ses réglages
-  (l'historique git la garde). Cette tâche vient avec le web.
+- [ ] **Le web : ce qui reste après le lot 13.** Serge navigue comme une
+  personne, avec ses comptes (lots 10, 11 et 13 : le bac à sable,
+  l'interface web, le vrai Chrome, « Appeler un humain », les comptes web
+  et leur garde). Il reste trois choses, à faire seulement quand un
+  besoin réel les demande ; la règle de ce fichier s'y applique
+  entièrement. **Un moteur de recherche gratuit et sans clé** sur le
+  serveur (SearXNG), à la place de la page de résultats de DuckDuckGo.
+  **« Lire une page » qui monte d'un cran** seulement si nécessaire : une
+  simple requête, puis le navigateur sans écran si la page a besoin de
+  JavaScript, puis le vrai Chrome si le site bloque (Q97) ; chaque montée
+  est écrite au journal. **« Construire un connecteur »** : quand un site
+  a une API gratuite, le service est décrit en base (son adresse, le
+  secret à utiliser, ses points d'entrée et leurs paramètres), et la
+  capacité « Appeler une API », construite au lot 10 pour Stripe et
+  l'achat des domaines, sait appeler n'importe quel service décrit
+  ainsi. L'invocation « Construire un connecteur » lit la documentation
+  du service et écrit cette description en base ; Julien la valide par
+  ticket avant qu'elle soit utilisable, grâce à une règle d'écriture
+  « validation par Julien », qui sera ajoutée au catalogue d'écriture à
+  ce moment-là.
 
 - [ ] **La page Identité de MC.** La fonction qui modifie l'identité de
   Serge (son nom, sa présentation) existe dans le code, mais aucun bouton
@@ -425,7 +404,7 @@ discutable, qui peut un jour changer, se règle depuis Mission Control.**
   recherche web et l'interface web du lot 10, et rend ses prospects par
   paquets de 10 (voir
   [`docs/LOT12_CONCEPTION.md`](docs/LOT12_CONCEPTION.md), partie 4) ; le
-  lot 13 lui donnera SearXNG et les comptes.
+  lot 13 lui donne les comptes de Serge sur les réseaux.
 
 - [ ] **Prospecter sur LinkedIn.** LinkedIn est un canal important pour
   vendre à des professionnels. Serge l'utilise avec son propre compte, à

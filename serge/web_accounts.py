@@ -29,6 +29,7 @@ connectée d'emblée, fait 40 actions, et le compteur du jour passe de 12 à
 from __future__ import annotations
 
 import json
+import re
 import secrets
 import sqlite3
 import string
@@ -172,6 +173,52 @@ def register(
         " status='active', updated_at=excluded.updated_at",
         (name, url, login, seal(secret), now, now),
     )
+
+
+def open_account(
+    conn: sqlite3.Connection,
+    _tool: str,
+    args: dict[str, Any],
+    _invocation_id: str,
+) -> dict[str, Any]:
+    """Capacité « Ouvrir un compte web » : la ligne du compte, avant que
+    quelqu'un le crée sur le site. Un compte en service n'est pas rouvert ;
+    une création ratée se reprend sur la même ligne."""
+    name = str(args.get('account') or '').strip().lower()
+    url = str(args.get('url') or '').strip()
+    if not re.fullmatch(r'[a-z0-9][a-z0-9_-]{0,30}', name):
+        return {
+            'ok': False,
+            'detail': 'le nom du compte est un mot en minuscules, celui du'
+            f' site : reddit, linkedin, x. Reçu : « {name} »',
+        }
+    if not re.match(r'https?://\S+\.\S+|https?://(localhost|127\.)', url):
+        return {
+            'ok': False,
+            'detail': 'l’adresse du site commence par https:// :'
+            f' https://www.reddit.com. Reçu : « {url} »',
+        }
+    try:
+        _fernet()
+    except AccountError as exc:
+        return {'ok': False, 'detail': str(exc)}
+    row = conn.execute(
+        'SELECT status FROM web_accounts WHERE id=?', (name,)
+    ).fetchone()
+    if row is not None and row[0] == 'active':
+        return {
+            'ok': False,
+            'detail': f'le compte « {name} » existe déjà et sert : donne un'
+            ' autre nom pour un second compte sur ce site',
+        }
+    now = utcnow()
+    conn.execute(
+        'INSERT INTO web_accounts(id, url, created_at, updated_at)'
+        ' VALUES(?,?,?,?) ON CONFLICT(id) DO UPDATE SET url=excluded.url,'
+        " status='creating', updated_at=excluded.updated_at",
+        (name, url, now, now),
+    )
+    return {'ok': True, 'compte': name, 'url': url}
 
 
 def take(conn: sqlite3.Connection, name: str, task_id: str) -> dict[str, Any]:

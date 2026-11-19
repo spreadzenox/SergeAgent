@@ -852,6 +852,18 @@ sections:
         min: 10
         max: 2000
         step: 10
+      - id: verification_wait_s
+        value: 150
+        title: Attente d’un message de vérification, en secondes
+        help: >-
+          Après une inscription ou une connexion, combien de temps Serge
+          attend l’e-mail ou le SMS qui porte le code ou le lien, à chaque
+          appel de « Mes messages de vérification ». La boîte e-mail est
+          relevée toutes les 2 minutes.
+        kind: curseur
+        min: 10
+        max: 600
+        step: 10
 
   - id: courriel
     title: E-mails des produits

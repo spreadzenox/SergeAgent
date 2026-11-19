@@ -55,6 +55,7 @@ from serge.mc.proj_policy import (
     project_reglages,
 )
 from serge.mc.proj_systeme import (
+    project_comptes_web,
     project_essais,
     project_non_rattaches,
     project_population,
@@ -194,6 +195,7 @@ PROJECTORS: dict[str, Callable[..., dict[str, Any]]] = {
     'population': project_population,
     'non_rattaches': project_non_rattaches,
     'essais': project_essais,
+    'comptes_web': project_comptes_web,
     'decisions': project_decisions,
     'matrice': project_matrice,
     'signaux': project_signaux,
@@ -234,7 +236,14 @@ PAGE_SECTIONS: dict[str, list[str]] = {
         'feed',
         'jauges',
     ],
-    'p1': ['meta', 'ilots', 'essais', 'population', 'non_rattaches'],
+    'p1': [
+        'meta',
+        'ilots',
+        'essais',
+        'comptes_web',
+        'population',
+        'non_rattaches',
+    ],
     'p2': ['meta', 'decisions', 'matrice', 'signaux'],
     'p3': [
         'meta',

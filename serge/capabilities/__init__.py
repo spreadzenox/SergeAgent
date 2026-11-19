@@ -22,6 +22,7 @@ from serge.capabilities.courriel import COURRIEL
 from serge.capabilities.model import Capability
 from serge.capabilities.navigateur import NAVIGATEUR
 from serge.capabilities.publier import PUBLIER
+from serge.capabilities.web_accounts import WEB_ACCOUNTS
 
 CAPABILITIES: tuple[Capability, ...] = (
     *BASE,
@@ -32,6 +33,7 @@ CAPABILITIES: tuple[Capability, ...] = (
     *CONNECTEURS,
     *COURRIEL,
     *CAMPAIGNS,
+    *WEB_ACCOUNTS,
 )
 
 
