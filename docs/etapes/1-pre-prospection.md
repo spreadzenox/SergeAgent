@@ -27,6 +27,16 @@ que Serge n'a pas été démarré dans Mission Control.
   s'il reste une place de test et qu'aucun cycle n'est ouvert : Explorer
   le web, Rattacher les pages, Trier (par paquets), Formuler A puis B,
   Choisir, comme décrit plus bas.
+- **Fouiller un réseau** (lot 13, décision Q104), en option : quand ses
+  recherches ne montrent pas ce que disent les gens eux-mêmes, « Explorer
+  le web » confie une fouille de Reddit, d'Instagram ou de X à
+  « Fouiller un réseau », au plus 1 fois par réseau et par cycle
+  (réglage). Celle-ci navigue dans le vrai Chrome avec le compte de Serge
+  sur ce réseau, lit seulement (elle ne publie, ne commente et n'écrit à
+  personne), et rend au plus 8 discussions avec un extrait, que
+  l'exploratrice retient comme des pages. Sans compte en service sur un
+  réseau, la fouille est refusée tout de suite, sans appel au modèle. Le
+  bouton « Fouiller un réseau » de la page Système l'essaie seule.
 - **Chaque jour**, les pages inutiles sont oubliées (supprimées), jamais
   une preuve.
 - **La page Écoute** montre les boutons et leurs conditions (« Places de
@@ -41,9 +51,12 @@ que Serge n'a pas été démarré dans Mission Control.
 ### Ce qui manque
 
 - **La recherche web lit la page de résultats de DuckDuckGo** (quelques
-  résultats, un extrait) et peut être bloquée. SearXNG viendra au lot 13.
+  résultats, un extrait) et peut être bloquée. Un moteur de recherche
+  installé sur le serveur (SearXNG) reste à faire (TODO, « Le web »).
 - **Une page qui a besoin d'un navigateur** (JavaScript, protection) ne se
-  lit pas : seule une simple requête est faite.
+  lit pas : seule une simple requête est faite. « Formuler » ne peut donc
+  pas relire en entier une discussion rendue par une fouille, si le
+  réseau demande d'être connecté : elle n'en a que l'extrait.
 - **Un flux qui ne ramène que du bruit** se coupe à la main.
 - **Le cycle ne se lance pas tout seul.**
 
@@ -71,7 +84,7 @@ cycle resté ouvert et annule ses tâches en attente. Les invocations tournent l
 | # | Invocation | Type | Entrée | Sortie |
 |---|---|---|---|---|
 | 1 | Ouvrir un cycle | sans LLM | le texte de guidage de Julien | le cycle |
-| 2 | Explorer le web | LLM moyen | le texte de guidage + les business connus | au plus 30 pages retenues (aperçu seulement) + au plus 2 flux RSS |
+| 2 | Explorer le web | LLM moyen | le texte de guidage + les business connus ; en option, une fouille de Reddit, d'Instagram ou de X confiée à « Fouiller un réseau » (LLM « web », vrai Chrome, compte de Serge) | au plus 30 pages retenues (aperçu seulement) + au plus 2 flux RSS |
 | 3 | Rattacher les pages au cycle | sans LLM | les pages pas encore triées (flux et web) | au plus 60 pages pour ce cycle, les plus récentes d'abord |
 | 4 | Trier les pages | LLM rapide, par paquets de 20 | l'aperçu des pages | une étiquette par page : enrichit un business existant (rattachée comme preuve) / besoin nouveau / bruit |
 | 5 | Formuler des business A | LLM intelligent | l'aperçu des pages « besoin nouveau » pas encore utilisées ; les pages qu'elle veut, lues en entier | 3 fiches (réglage), chacune avec ses preuves et sa famille |

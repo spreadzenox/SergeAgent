@@ -290,6 +290,20 @@ capacité « Appeler une API ». Exemple : l'outil « Créer un prix Stripe »
 est le point d'entrée `POST /v1/prices` du service `stripe_test` ou
 `stripe_live`, et l'identifiant du business y est un paramètre figé.
 
+Depuis le lot 13 (décision Q104), Serge a **des comptes web**, un par
+site (`web_accounts`) : une invocation à qui la base donne un compte sur
+ses outils de navigateur navigue connectée, et chaque action passe par la
+garde du compte (un plafond par jour). Et une invocation peut **confier
+une mission à une autre** (capacité « Confier une mission ») : la seconde
+a son propre rôle, son niveau de modèle et ses outils, travaille dans la
+même tâche, et lui rend sa réponse comme le résultat d'un outil. La base
+fige l'invocation qui fait la mission et le compte qu'elle peut ouvrir ;
+le modèle n'écrit que sa demande. Exemple : « Explorer le web » appelle
+« Fouiller Reddit », et « Fouiller un réseau » navigue avec le compte
+`reddit` puis lui rend 5 discussions avec un extrait. Une mission ne
+confie pas de mission, et ne fait que répondre : ses écritures et ses
+liens ne jouent pas (`serge/missions.py`).
+
 Le code, lui, est rangé par **capacité**, jamais par invocation : lire la
 base, écrire dans la base, appeler un modèle, chercher sur le web, agir
 dans un bac à sable, appeler une API décrite en base, envoyer ou relever

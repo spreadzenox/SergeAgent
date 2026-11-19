@@ -201,11 +201,12 @@ Ce que chaque lot a vraiment livré :
   **Fait** : les comptes web, un par site, avec leur mot de passe et leur
   session chiffrés en base, une session de navigateur par compte et la
   garde du jour ; « Créer un compte web » et « Vérifier un compte web »,
-  depuis la page Système.
-  **Reste** : une invocation qui confie une mission à une autre et reçoit
-  sa réponse ; « Fouiller un réseau », donnée en option à « Explorer le
-  web » ; les trois canaux, avec la validation des messages par un humain
-  réglée par canal ; leurs essais dans l'essai total.
+  depuis la page Système ; une invocation qui confie une mission à une
+  autre et reçoit sa réponse ; « Fouiller un réseau », donnée en option à
+  « Explorer le web » pour Reddit, Instagram et X, avec son bouton
+  d'essai.
+  **Reste** : les trois canaux, avec la validation des messages par un
+  humain réglée par canal ; leurs essais dans l'essai total.
   Tout y est une capacité générale réglée en base, jamais du code écrit
   pour une invocation ou pour un site. Le moteur de recherche à installer
   sur le serveur, la lecture d'une page à trois niveaux et « Construire un

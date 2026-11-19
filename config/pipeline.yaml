@@ -679,6 +679,30 @@ tools:
       le lien de confirmation d'une inscription ou d'une connexion. Attend
       qu'un message arrive, quelques minutes au plus.
     capability: verification_messages
+  - id: fouiller_reddit
+    title: Fouiller Reddit
+    doc: >-
+      Confie à une autre invocation une recherche sur Reddit, connectée au
+      compte de Serge : ce que des gens y demandent, y conseillent ou y reprochent, dans les communautés d'un métier ou d'un sujet. Rend des discussions, chacune avec son
+      adresse, son titre et un extrait. Plus lent et plus cher qu'une
+      recherche sur le web : pour quand elle ne suffit pas.
+    capability: mission
+  - id: fouiller_instagram
+    title: Fouiller Instagram
+    doc: >-
+      Confie à une autre invocation une recherche sur Instagram, connectée au
+      compte de Serge : ce que des comptes publient sur un sujet et ce que leurs abonnés en disent en commentaire. Rend des discussions, chacune avec son
+      adresse, son titre et un extrait. Plus lent et plus cher qu'une
+      recherche sur le web : pour quand elle ne suffit pas.
+    capability: mission
+  - id: fouiller_x
+    title: Fouiller X
+    doc: >-
+      Confie à une autre invocation une recherche sur X, connectée au
+      compte de Serge : ce que des gens y écrivent sur un sujet, leurs plaintes et leurs questions. Rend des discussions, chacune avec son
+      adresse, son titre et un extrait. Plus lent et plus cher qu'une
+      recherche sur le web : pour quand elle ne suffit pas.
+    capability: mission
 
   # --- L'étape 2 : concevoir, critiquer, construire, relire (lot 10, Q91) ---
   - id: capacites_de_serge
@@ -2223,6 +2247,7 @@ invocations:
       lignes_apercu: {value: 5, min: 1, max: 30, policy: true, description: Les lignes lues dans l'aperçu d'une page.}
       pages_max: {value: 30, min: 1, max: 100, policy: true, trial: 5, description: Le nombre maximum de pages retenues par cycle.}
       flux_max: {value: 2, min: 0, max: 10, policy: true, trial: 0, description: Le nombre maximum de nouveaux flux RSS par cycle.}
+      fouilles_par_reseau: {value: 1, min: 0, max: 5, policy: true, description: 'Le nombre maximum de fouilles de chaque réseau social par cycle (0 : aucune).'}
     compare:
       ventures: true
     prompt: &consigne_explorer |
@@ -2262,6 +2287,14 @@ invocations:
         besoins (un forum, une rubrique, un site d'annonces), ajoute-le :
         au plus {flux_max} nouveaux flux, jamais un flux que Serge suit
         déjà.
+      - Tu peux aussi fouiller un réseau social (Reddit, Instagram, X), au
+        plus {fouilles_par_reseau} fois par réseau : une autre invocation
+        y navigue avec le compte de Serge et te rend des discussions. C'est
+        plus lent et plus cher qu'une recherche : fais-le seulement quand
+        tes recherches ne montrent pas ce que disent les gens eux-mêmes
+        (des consommateurs, une communauté, un métier), et écris une
+        demande précise. Une discussion rendue se retient comme une page :
+        son adresse, son titre, et son extrait pour aperçu.
     tools:
       - tool: current_listen_cycle
         mode: given
@@ -2277,6 +2310,27 @@ invocations:
           max_lines: {source: setting, value: lignes_apercu}
           table: {source: fixed, value: ''}
           id: {source: fixed, value: ''}
+      - tool: fouiller_reddit
+        mode: callable
+        max_calls: fouilles_par_reseau
+        params:
+          invocation: {source: fixed, value: fouiller_reseau}
+          account: {source: fixed, value: reddit}
+          task_id: {source: task, value: task_id}
+      - tool: fouiller_instagram
+        mode: callable
+        max_calls: fouilles_par_reseau
+        params:
+          invocation: {source: fixed, value: fouiller_reseau}
+          account: {source: fixed, value: instagram}
+          task_id: {source: task, value: task_id}
+      - tool: fouiller_x
+        mode: callable
+        max_calls: fouilles_par_reseau
+        params:
+          invocation: {source: fixed, value: fouiller_reseau}
+          account: {source: fixed, value: x}
+          task_id: {source: task, value: task_id}
     output:
       - {path: pages, type: list, max_items: pages_max, description: Les pages retenues.}
       - {path: pages.url, type: text, description: L'adresse de la page.}
@@ -3728,6 +3782,95 @@ invocations:
         condition: {field: etat, op: '!=', value: ferme}
         values:
           note: {source: field, value: compte_rendu}
+
+  - id: fouiller_reseau
+    title: Fouiller un réseau
+    role: >-
+      Cherche sur un réseau social (Reddit, Instagram, X), connectée au
+      compte de Serge dans le vrai Chrome, ce que de vraies personnes
+      disent d'un sujet, et rend les discussions utiles avec un extrait.
+      C'est une mission : « Explorer le web » la confie quand une recherche
+      ordinaire ne suffit pas ; le bouton « Fouiller un réseau » de la page
+      Système l'essaie sur un sujet sans enjeu.
+    type: llm
+    model_tier: web
+    queue: works
+    priority: 30
+    max_tool_turns: 40
+    settings:
+      trouvailles_max: {value: 8, min: 1, max: 30, policy: true, description: Le nombre maximum de discussions rendues par une fouille.}
+    prompt: |
+      Tu fouilles un réseau social pour Serge. Ce qu'on te demande est dans
+      les paramètres de la tâche (« mission »), avec le nom du compte de
+      Serge sur ce réseau (« compte ») ; tu reçois son site et son
+      identifiant. Tu navigues dans le vrai Chrome, connecté à ce compte.
+
+      Ce compte est celui de Serge, un agent IA ; la personne qui en
+      répond l'a demandé. Tes règles, sans exception :
+
+      - **Tu lis, c'est tout.** Tu ne publies rien, tu ne commentes pas,
+        tu ne votes pas, tu n'écris à personne, tu ne t'abonnes à rien.
+      - **Un captcha n'est pas pour toi.** Tu n'y touches pas et tu
+        n'essaies pas de le contourner : appelle « Appeler un humain ».
+        La première fois, la tâche s'arrête et repartira du début quand un
+        humain sera prêt ; la fois suivante, il le résout dans l'écran
+        pendant que tu attends.
+      - **Tu ne vois jamais le mot de passe.** Si le site te montre
+        déconnecté, connecte-toi : l'identifiant reçu, puis l'action
+        taper_secret sur le champ du mot de passe, avec text
+        « mot_de_passe_du_compte ». Si le site envoie un code, appelle
+        « Mes messages de vérification ».
+      - **Tu t'arrêtes quand on te le dit.** Si une action est refusée
+        parce que le compte a fait ses actions du jour, ou si le site dit
+        que le compte est limité ou suspendu, n'insiste pas : rends ce que
+        tu as, et dis-le dans ton résumé.
+
+      Comment faire :
+
+      1. Ouvre le site et cherche avec sa propre recherche, sous deux ou
+         trois angles : les mots que les gens emploient, pas un mot-clé
+         de professionnel. Sur Reddit, cherche aussi les communautés du
+         sujet.
+      2. Ouvre les discussions qui montrent un besoin concret : quelqu'un
+         qui demande une solution, se plaint, compare, ou dit ce qu'il
+         paie. Lis la discussion et ses réponses. Écarte la publicité.
+      3. Fais peu d'actions : une vingtaine suffit. Lire la page ne coûte
+         rien ; chaque clic et chaque défilement comptent dans les actions
+         du jour du compte.
+
+      Rends au plus {trouvailles_max} discussions. Pour chacune : son
+      adresse exacte, son titre, et un extrait de quelques lignes avec les
+      mots des gens (ce qu'ils demandent, ce qui leur manque, ce qu'ils
+      paient). Puis un résumé de trois phrases : ce qui revient le plus,
+      et ce que tu n'as pas pu voir.
+    tools:
+      - tool: compte_web
+        mode: given
+        label: Le compte
+        params:
+          account: {source: task, value: compte}
+      - tool: vrai_chrome_agir
+        mode: callable
+        params: *vrai_chrome_du_compte
+      - tool: vrai_chrome_lire
+        mode: callable
+        params: *vrai_chrome_du_compte
+      - tool: vrai_chrome_capture
+        mode: callable
+        params: *vrai_chrome_du_compte
+      - tool: messages_de_verification
+        mode: callable
+        params: *tache_de_verification
+      - tool: appeler_un_humain
+        mode: callable
+        params:
+          task_id: {source: task, value: task_id}
+    output:
+      - {path: trouvailles, type: list, required: false, max_items: trouvailles_max, description: Les discussions utiles.}
+      - {path: trouvailles.url, type: text, description: L'adresse exacte de la discussion.}
+      - {path: trouvailles.titre, type: text, description: Son titre.}
+      - {path: trouvailles.extrait, type: text, description: 'Ce qui y est dit, en quelques lignes, avec les mots des gens.'}
+      - {path: resume, type: text, description: 'Ce qui revient le plus, et ce que tu n''as pas pu voir.'}
 
   - id: prevenir_compte_web
     title: Prévenir pour un compte web
@@ -8403,6 +8546,19 @@ triggers:
     params:
       compte: {source: form, value: 'nom du compte (reddit, linkedin, x…)'}
 
+  - id: bouton_fouiller_reseau
+    title: Fouiller un réseau
+    invocation: fouiller_reseau
+    event: button
+    confirm: >-
+      Serge navigue sur ce réseau avec son compte, dans le vrai Chrome,
+      cherche ce sujet et rend quelques discussions ; le résultat est sur
+      la fiche de la tâche. Pour essayer un compte sur un sujet sans
+      enjeu. Compter quelques dizaines de centimes de modèle.
+    params:
+      compte: {source: form, value: 'nom du compte (reddit, instagram, x…)'}
+      mission: {source: form, value: 'ce que tu cherches (« ce que les gens disent des calculatrices en ligne »)'}
+
 # Les modifications d'objets déjà en base sur une instance existante (le
 # fichier ne les écrase jamais) : chacune n'est appliquée qu'une fois, et
 # seulement si la valeur en base est encore celle d'origine (`from`) ; une
@@ -9852,6 +10008,41 @@ changes:
     set:
       prompt:
         replace: *consigne_vendre_par_cle
+  # « Explorer le web » peut confier une fouille de Reddit, d'Instagram ou
+  # de X à une autre invocation, connectée au compte de Serge (lot 13,
+  # décision Q104).
+  - id: lot13_explorer_fouille_les_reseaux
+    why: Explorer le web peut fouiller un réseau social quand une recherche ne suffit pas (Q104).
+    invocation: explorer_web
+    add_tools:
+      - {tool: fouiller_reddit, mode: callable, max_calls: fouilles_par_reseau, params: {invocation: {source: fixed, value: fouiller_reseau}, account: {source: fixed, value: reddit}, task_id: {source: task, value: task_id}}}
+      - {tool: fouiller_instagram, mode: callable, max_calls: fouilles_par_reseau, params: {invocation: {source: fixed, value: fouiller_reseau}, account: {source: fixed, value: instagram}, task_id: {source: task, value: task_id}}}
+      - {tool: fouiller_x, mode: callable, max_calls: fouilles_par_reseau, params: {invocation: {source: fixed, value: fouiller_reseau}, account: {source: fixed, value: x}, task_id: {source: task, value: task_id}}}
+  - id: lot13_explorer_consigne_des_reseaux
+    why: La consigne dit quand fouiller un réseau social, et combien de fois (Q104).
+    table: invocations
+    where: {id: explorer_web}
+    set:
+      prompt:
+        replace:
+          - old: |-
+              - Si tu trouves un flux RSS qui publie régulièrement ce genre de
+                besoins (un forum, une rubrique, un site d'annonces), ajoute-le :
+                au plus {flux_max} nouveaux flux, jamais un flux que Serge suit
+                déjà.
+            new: |-
+              - Si tu trouves un flux RSS qui publie régulièrement ce genre de
+                besoins (un forum, une rubrique, un site d'annonces), ajoute-le :
+                au plus {flux_max} nouveaux flux, jamais un flux que Serge suit
+                déjà.
+              - Tu peux aussi fouiller un réseau social (Reddit, Instagram, X), au
+                plus {fouilles_par_reseau} fois par réseau : une autre invocation
+                y navigue avec le compte de Serge et te rend des discussions. C'est
+                plus lent et plus cher qu'une recherche : fais-le seulement quand
+                tes recherches ne montrent pas ce que disent les gens eux-mêmes
+                (des consommateurs, une communauté, un métier), et écris une
+                demande précise. Une discussion rendue se retient comme une page :
+                son adresse, son titre, et son extrait pour aperçu.
 deleted:
   invocations:
     - demo_ouvrir_cycle

@@ -170,7 +170,11 @@ class McSystemTests(McBrowserCase):
         expect(section).to_contain_text('Aucun compte pour l’instant.')
         expect(section).to_contain_text('Au plus 200 actions par jour')
         expect(section.locator('[data-bouton-base]')).to_have_text(
-            ['Créer un compte web', 'Vérifier un compte web']
+            [
+                'Créer un compte web',
+                'Fouiller un réseau',
+                'Vérifier un compte web',
+            ]
         )
         formulaire = section.locator('[data-comptes="enregistrer"]')
 

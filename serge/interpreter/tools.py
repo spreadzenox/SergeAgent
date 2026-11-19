@@ -38,6 +38,7 @@ from serge.identite import identity_read
 from serge.ingress.adresse import product_address, server_address
 from serge.interpreter.seen import CHOICES, read_seen_table, row_history
 from serge.interpreter.settings import load_settings
+from serge.missions import mission
 from serge.policy_store import policy_en_vigueur
 from serge.sandbox.captures import browser_screenshot, real_browser_screenshot
 from serge.sandbox.chantier import (
@@ -281,6 +282,7 @@ RUNNERS: dict[str, Runner] = {
     'measure_test': measure_test,
     'apply_principal': apply_principal,
     'record_sale': record_sale,
+    'mission': mission,
     'open_web_account': open_account,
     'serge_identity': identity_read,
     'verification_messages': received_since_task,
