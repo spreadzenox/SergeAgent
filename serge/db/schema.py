@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import sqlite3
 
-SCHEMA_VERSION = 54
+SCHEMA_VERSION = 55
 
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS schema_version (
@@ -266,7 +266,8 @@ TABLES = (
     'summaries',
     'artifacts',
     'subscriptions',
-    'accounts_standing',
+    'web_accounts',
+    'web_account_days',
     'policy_sections',
     'policy_settings',
     'policy_relations',
@@ -343,12 +344,9 @@ TABLES = (
 
 
 def apply_v007(connection: sqlite3.Connection) -> None:
-    """Socle v7 : tables + colonnes comptes manquantes.
+    """Socle v7 : les tables de départ.
 
     Args:
         connection: Connexion (commit par l’appelant).
     """
     connection.executescript(SCHEMA_SQL)
-    from serge.comptes import ensure_account_columns
-
-    ensure_account_columns(connection)

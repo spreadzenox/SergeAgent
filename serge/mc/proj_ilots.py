@@ -22,7 +22,7 @@ from typing import Any
 from serge.discord.forum import ECHEC, ECHEC_MODIF, forum_tickets
 from serge.mc.proj_outils import avant_iso
 from serge.mc.proj_taches import compte_taches, plafond_atteint, prochaines
-from serge.sandbox.navigateur import MANQUE, navigateur_installe
+from serge.sandbox.sessions import MANQUE, navigateur_installe
 
 ETATS_SERVICE = {
     'active': 'en marche',

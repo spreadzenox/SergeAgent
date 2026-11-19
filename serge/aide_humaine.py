@@ -29,7 +29,7 @@ from serge.coupe_circuit import heartbeat_marche
 from serge.db.store import append_event
 from serge.ingress.caddy import public_hostname
 from serge.policy_store import policy_en_vigueur
-from serge.sandbox.navigateur import montrer
+from serge.sandbox.sessions import montrer
 from serge.tickets.lifecycle import cancel, create_ticket, publish
 from serge.tickets.types import ticket_types
 

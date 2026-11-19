@@ -338,7 +338,7 @@ def _fiche_compte(conn: sqlite3.Connection, ident: str) -> dict | None:
 
 def _plateforme(conn: sqlite3.Connection, ident: str) -> dict | None:
     comptes = conn.execute(
-        'SELECT id, handle, status FROM accounts_standing WHERE venue=?',
+        'SELECT id, login, status FROM web_accounts WHERE id=?',
         (ident,),
     ).fetchall()
     docs = conn.execute(

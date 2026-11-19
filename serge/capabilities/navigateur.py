@@ -14,6 +14,15 @@ _OU = (
     Param('venture_id', 'text', True, 'Le business.'),
     Param('deliverable', 'text', True, 'Le livrable : poc, produit…'),
     Param('task_id', 'text', True, 'La tâche : une session par tâche.'),
+    Param(
+        'account',
+        'text',
+        False,
+        'Le compte web de la session : elle s’ouvre connectée à ce compte'
+        ' (ses cookies gardés en base), et chaque action passe par la'
+        ' garde du compte. Figé en base.',
+        frozen=True,
+    ),
 )
 
 _ACTION = (
@@ -82,6 +91,7 @@ _ACTION = (
         'text',
         False,
         'Les secrets permis pour taper_secret (figé en base).',
+        frozen=True,
     ),
 )
 _CAPTURE = (
@@ -145,7 +155,7 @@ NAVIGATEUR: tuple[Capability, ...] = (
         'Prend une capture de ce que montre l’écran (ou de la page entière)'
         ' et la montre au modèle comme une image. Gardée, elle est rangée'
         ' avec le livrable et a sa fiche dans les livrables (artifacts).',
-        'serge/sandbox/navigateur.py',
+        'serge/sandbox/captures.py',
         _CAPTURE,
     ),
     Capability(
@@ -166,7 +176,7 @@ NAVIGATEUR: tuple[Capability, ...] = (
         'real_browser_screenshot',
         'Capture du vrai Chrome',
         'Comme « Prendre une capture ».' + _VRAI,
-        'serge/sandbox/navigateur.py',
+        'serge/sandbox/captures.py',
         _CAPTURE,
     ),
     Capability(

@@ -17,6 +17,10 @@ class Param:
     type: str
     required: bool
     description: str
+    # Seulement figé en base, sur l'outil d'une invocation : le modèle ne
+    # le voit pas et ne peut pas le donner. Exemple : les secrets permis,
+    # le compte web de la session.
+    frozen: bool = False
 
 
 @dataclass(frozen=True)

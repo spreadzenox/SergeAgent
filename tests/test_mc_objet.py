@@ -131,15 +131,11 @@ class ProjObjetTests(unittest.TestCase):
         add_address(self.conn, 'p1', 'email', 'a@x.io')
         add_address(self.conn, 'p2', 'email', 'c@x.io')
         self.conn.execute(
-            'INSERT INTO accounts_standing(id, venue, handle, cooldown_until,'
-            ' updated_at, role, profile_path, secret_ref, login_url,'
-            ' targets_json, login, password) VALUES'
-            "('s1','reddit','u/serge','',?,"
-            "'ecoute','/tmp/profil-reddit','reddit.session',"
-            "'https://www.reddit.com/login',"
-            '\'["https://www.reddit.com/r/freelance/"]\','
-            "'u/serge','pw-demo')",
-            (NOW,),
+            'INSERT INTO web_accounts(id, url, login, handle, password_enc,'
+            " status, created_at, updated_at) VALUES('reddit',"
+            " 'https://www.reddit.com', 'u/serge', 'u/serge', 'chiffre-demo',"
+            " 'active', ?, ?)",
+            (NOW, NOW),
         )
         sans_pipeline_de_depart(self.conn)
         seed_pipeline(self.conn, PIPELINE)
@@ -268,16 +264,17 @@ class ProjObjetTests(unittest.TestCase):
         self.assertIn('Jetons lus', [c['k'] for c in fiche['champs']])
 
     def test_compte_web(self) -> None:
-        fiche = project_objet(self.conn, 'compte', 's1')
+        """La fiche d'un compte dit qu'il a un mot de passe, jamais lequel."""
+        fiche = project_objet(self.conn, 'compte', 'reddit')
         assert fiche is not None
-        self.assertEqual(fiche['titre'], 'reddit · u/serge')
+        self.assertEqual(fiche['titre'], 'Compte reddit')
         vals = {c['k']: c['v'] for c in fiche['champs']}
-        self.assertEqual(vals['Sert à'], 'Écouter')
-        self.assertEqual(vals['Login'], 'u/serge')
-        self.assertEqual(vals['Mot de passe'], 'pw-demo')
-        self.assertEqual(vals['Nom du secret'], 'reddit.session')
-        self.assertIn('freelance', vals['Cibles'])
-        self.assertIn('en clair', fiche['pourquoi'])
+        self.assertEqual(vals['Identifiant'], 'u/serge')
+        self.assertEqual(vals['État'], 'en service')
+        self.assertEqual(vals['Mot de passe'], 'gardé, chiffré')
+        self.assertIn('aucune', vals['Session'])
+        self.assertEqual(vals['Actions aujourd’hui'], '0 sur 200')
+        self.assertNotIn('chiffre-demo', str(fiche))
 
     def test_inconnu(self) -> None:
         self.assertIsNone(project_objet(self.conn, 'dragon', 'x'))

@@ -29,7 +29,12 @@ Scénarios :
 - un fichier téléchargé est gardé avec le livrable et se lit ; un fichier
   se dépose dans un champ ou par le bouton qui ouvre le choix ;
 - un nouvel onglet est suivi, et fermé on revient au précédent ;
-- passer au vrai Chrome en cours de tâche garde l'adresse et la connexion.
+- passer au vrai Chrome en cours de tâche garde l'adresse et la connexion ;
+- un compte web (lot 13) : sa session s'ouvre à part, Serge tape son mot de
+  passe sans que le modèle le voie, ses cookies sont gardés chiffrés en
+  base et reconnectent la tâche suivante ; un compte ne sert qu'à une
+  tâche à la fois, et pas au-delà de ses actions du jour ; un modèle ne
+  peut se donner ni un compte ni des secrets.
 """
 
 from __future__ import annotations
@@ -51,16 +56,23 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from serge import web_accounts  # noqa: E402
 from serge.coupe_circuit import set_heartbeat  # noqa: E402
 from serge.db.store import default_canon_path, open_db, utcnow  # noqa: E402
 from serge.interpreter.queue import process_one  # noqa: E402
-from serge.interpreter.tools import run_capability  # noqa: E402
+from serge.interpreter.tools import (  # noqa: E402
+    RUNNERS,
+    run_capability,
+    run_tool,
+    tool_schema,
+)
 from serge.interpreter.triggers import fire_button  # noqa: E402
 from serge.llm.client import ChatResult, ToolCall  # noqa: E402
 from serge.mc.proj_taches import fiche_tache  # noqa: E402
 from serge.paths import files_root  # noqa: E402
 from serge.policy_store import set_setting  # noqa: E402
-from serge.sandbox import navigateur  # noqa: E402
+from serge.sandbox import navigateur, sessions  # noqa: E402
+from serge.web_accounts import PASSWORD_NAME  # noqa: E402
 from tests.boutons_d_essai import poser  # noqa: E402
 from tests.mc_server_case import McServerCase, _ci, browser_ok  # noqa: E402
 
@@ -163,6 +175,17 @@ CADRE = """<!doctype html><html lang="fr"><body><p>Carte bancaire</p>
 AUTRE = """<!doctype html><html lang="fr"><head><title>Autre</title></head>
 <body><h1>Autre page</h1></body></html>"""
 EXPORT = ''.join(f'ligne;{n}\n' for n in range(1, 61))
+# Un site où il faut un compte : sans son cookie, il demande de se
+# connecter ; le bouton pose le cookie, comme un vrai site après le mot de
+# passe.
+COMPTE_A_CONNECTER = """<!doctype html><html lang="fr"><head>
+<title>Forum</title></head><body><h1>Connectez-vous</h1>
+<label for="mdp">Mot de passe</label><input id="mdp" type="password">
+<button onclick="document.cookie = 'forum=jeton-de-session; path=/';
+  location.reload()">Se connecter</button></body></html>"""
+COMPTE_CONNECTE = """<!doctype html><html lang="fr"><head>
+<title>Forum</title></head><body><h1>Bonjour serge-ia</h1>
+<p>Vos messages privés</p></body></html>"""
 PAGES = {
     '/dialogues': PAGE_DIALOGUES,
     '/atelier': PAGE_ATELIER,
@@ -184,7 +207,12 @@ class _Page(http.server.BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(corps)
             return
-        corps = PAGES.get(self.path, PAGE).encode('utf-8')
+        if self.path == '/compte':
+            connecte = 'forum=' in (self.headers.get('Cookie') or '')
+            page = COMPTE_CONNECTE if connecte else COMPTE_A_CONNECTER
+        else:
+            page = PAGES.get(self.path, PAGE)
+        corps = page.encode('utf-8')
         self.send_response(200)
         self.send_header('Content-Type', 'text/html; charset=utf-8')
         self.send_header('Content-Length', str(len(corps)))
@@ -294,12 +322,10 @@ class NavigateurTests(unittest.TestCase):
         proc, endpoint = _chrome(self.dossier)
         self.addCleanup(proc.wait, 10)
         self.addCleanup(proc.terminate)
-        point = mock.patch.object(
-            navigateur, '_endpoint', return_value=endpoint
-        )
+        point = mock.patch.object(sessions, '_endpoint', return_value=endpoint)
         point.start()
         self.addCleanup(point.stop)
-        self.addCleanup(navigateur.close_sessions)
+        self.addCleanup(sessions.close_sessions)
         serveur, self.site = _site()
         self.addCleanup(serveur.shutdown)
 
@@ -343,8 +369,8 @@ class NavigateurTests(unittest.TestCase):
         self.assertTrue(Path(chemin).is_file())
         lue = self._outil('browser_read')
         self.assertTrue(any('oups' in e for e in lue['erreurs']))
-        navigateur.close_sessions()
-        self.assertEqual(navigateur._ETAT.sessions, {})
+        sessions.close_sessions()
+        self.assertEqual(sessions._ETAT.sessions, {})
 
     def test_repondre_a_une_boite_de_dialogue_du_navigateur(self) -> None:
         """Le relecteur d'un produit, le 17 novembre 2026 : « Enregistrer »
@@ -525,7 +551,7 @@ class NavigateurTests(unittest.TestCase):
         page = self._outil('browser_read')['page']
         colis = self._repere(page, 'élément à glisser « Colis »')
         self.assertEqual(geste('cliquer', text='Enregistrer'), 'enregistré')
-        boites = navigateur._session(self.conn, 't1').page.evaluate(
+        boites = sessions._session(self.conn, 't1').page.evaluate(
             """() => ['colis', 'depot'].map((nom) => {
                 const b = document.getElementById(nom).getBoundingClientRect();
                 return [b.left + b.width / 2, b.top + b.height / 2];
@@ -662,10 +688,10 @@ class NavigateurTests(unittest.TestCase):
         self.assertTrue(retour['ok'], retour.get('detail'))
         self.assertIn('revenu au précédent', retour['onglets'][0])
         self.assertIn('# Atelier', retour['page'])
-        self.assertEqual(len(navigateur._session(self.conn, 't1').pages), 1)
+        self.assertEqual(len(sessions._session(self.conn, 't1').pages), 1)
         # Une page qui ferme son dernier onglet : la suite repart d'un
         # onglet neuf, au lieu d'échouer.
-        navigateur._session(self.conn, 't1').page.close()
+        sessions._session(self.conn, 't1').page.close()
         neuf = self._outil(
             'browser_action', action='ouvrir', text=f'{self.site}/autre'
         )
@@ -678,16 +704,16 @@ class NavigateurTests(unittest.TestCase):
         page gardait dans le navigateur. La suite s'y fait, avec les mêmes
         outils."""
         self._atelier()
-        navigateur._session(self.conn, 't1').page.evaluate(
+        sessions._session(self.conn, 't1').page.evaluate(
             """() => { document.cookie = 'session=abc';
                 localStorage.setItem('panier', '3'); }"""
         )
         passe = self._outil('browser_action', action='passer_au_vrai_chrome')
         self.assertTrue(passe['ok'], passe.get('detail'))
         self.assertIn('# Atelier', passe['page'])
-        self.assertNotIn('t1', navigateur._ETAT.sessions)
-        vrai = navigateur._ETAT_VRAI.sessions['t1']
-        self.assertIs(vrai.context, navigateur._ETAT_VRAI.browser.contexts[0])
+        self.assertNotIn('t1', sessions._ETAT.sessions)
+        vrai = sessions._ETAT_VRAI.sessions['t1']
+        self.assertIs(vrai.context, sessions._ETAT_VRAI.browser.contexts[0])
         self.assertEqual(
             vrai.page.evaluate(
                 '() => [document.cookie, localStorage.getItem("panier")]'
@@ -706,11 +732,11 @@ class NavigateurTests(unittest.TestCase):
             'enregistré',
         )
         self.assertIn('enregistré', self._outil('browser_read')['page'])
-        self.assertNotIn('t1', navigateur._ETAT.sessions)
+        self.assertNotIn('t1', sessions._ETAT.sessions)
         deja = self._outil('browser_action', action='passer_au_vrai_chrome')
         self.assertFalse(deja['ok'])
-        navigateur.close_sessions()
-        self.assertEqual(navigateur._PASSEES, set())
+        sessions.close_sessions()
+        self.assertEqual(sessions._PASSEES, set())
 
     def test_le_vrai_chrome_garde_son_profil_et_montre_l_onglet(self) -> None:
         """Le vrai Chrome (Q97) : mêmes actions, dans le profil du
@@ -719,20 +745,192 @@ class NavigateurTests(unittest.TestCase):
             'real_browser_action', action='ouvrir', text=f'{self.site}/'
         )['page']
         self.assertIn('# Créez votre devis', page)
-        session = navigateur._ETAT_VRAI.sessions['t1']
-        profil = navigateur._ETAT_VRAI.browser.contexts[0]
+        session = sessions._ETAT_VRAI.sessions['t1']
+        profil = sessions._ETAT_VRAI.profil
         self.assertIs(session.context, profil)
-        self.assertEqual(navigateur._ETAT.sessions, {}, 'pas l’autre')
+        self.assertEqual(sessions._ETAT.sessions, {}, 'pas l’autre')
         capture = self._outil('real_browser_screenshot')
         self.assertTrue(capture['image'].startswith('data:image/jpeg;base64,'))
         self.assertIn(
             'Créez votre devis', self._outil('real_browser_read')['page']
         )
-        self.assertTrue(navigateur.montrer('t1'))
-        self.assertFalse(navigateur.montrer('t2'))
-        navigateur.close_sessions()
+        self.assertTrue(sessions.montrer('t1'))
+        self.assertFalse(sessions.montrer('t2'))
+        sessions.close_sessions()
         self.assertTrue(session.page.is_closed())
-        self.assertIn(profil, navigateur._ETAT_VRAI.browser.contexts)
+        self.assertIn(profil, sessions._ETAT_VRAI.browser.contexts)
+
+    def _coffre(self) -> None:
+        """Une instance avec la clé du coffre, qui chiffre les secrets."""
+        from cryptography.fernet import Fernet
+
+        secrets = self.dossier / 'config/secrets'
+        secrets.mkdir(parents=True)
+        (secrets / 'credential-vault.key').write_bytes(
+            Fernet.generate_key() + b'\n'
+        )
+        instance = self.dossier / 'instance.toml'
+        instance.write_text(
+            f'[paths]\nconfig_root = "{self.dossier / "config"}"\n'
+        )
+        patcher = mock.patch.dict(
+            os.environ, {'SERGE_INSTANCE_FILE': str(instance)}
+        )
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def _avec_le_compte(self, tache: str, **args: Any) -> dict[str, Any]:
+        return self._outil(
+            'real_browser_action', task_id=tache, account='forum', **args
+        )
+
+    def test_un_compte_web_garde_sa_connexion(self) -> None:
+        """Un compte web (lot 13, Q104) : la première tâche se connecte,
+        Serge tape le mot de passe ; la suivante est connectée d'emblée."""
+        self._coffre()
+        adresse = f'{self.site}/compte'
+        self.conn.execute(
+            'INSERT INTO web_accounts(id, url, login, created_at, updated_at)'
+            " VALUES('forum', ?, 'serge-ia', ?, ?)",
+            (self.site, utcnow(), utcnow()),
+        )
+        page = self._avec_le_compte('t1', action='ouvrir', text=adresse)[
+            'page'
+        ]
+        self.assertIn('# Connectez-vous', page)
+        session = sessions._ETAT_VRAI.sessions['t1@forum']
+        profil = sessions._ETAT_VRAI.profil
+        self.assertIsNotNone(profil)
+        self.assertIsNot(session.context, profil, 'une session à part')
+        # Serge choisit le mot de passe et le tape : le modèle ne nomme que
+        # « mot_de_passe_du_compte », sans avoir à y être autorisé.
+        champ = re.search(r'\[(e\d+)\] champ password', page)
+        assert champ, page
+        tape = self._avec_le_compte(
+            't1', action='taper_secret', ref=champ[1], text=PASSWORD_NAME
+        )
+        self.assertTrue(tape['ok'], tape)
+        choisi = web_accounts.password(self.conn, 'forum')
+        self.assertEqual(len(choisi), 24)
+        self.assertEqual(session.page.input_value('#mdp'), choisi)
+        self.assertNotIn(choisi, json.dumps(tape))
+        connecte = self._avec_le_compte(
+            't1', action='cliquer', text='Se connecter'
+        )
+        self.assertIn('# Bonjour serge-ia', connecte['page'])
+        self.assertEqual(web_accounts.actions_today(self.conn, 'forum'), 3)
+        sessions.close_sessions(self.conn)
+        # En base : tout est chiffré, et le compte est rendu.
+        mdp, garde, pris = self.conn.execute(
+            'SELECT password_enc, session_enc, used_by FROM web_accounts'
+        ).fetchone()
+        self.assertTrue(mdp and garde)
+        self.assertNotIn(choisi, mdp)
+        self.assertNotIn('jeton-de-session', garde)
+        self.assertEqual(pris, '')
+        # La tâche suivante est connectée sans rien taper.
+        suite = self._avec_le_compte('t2', action='ouvrir', text=adresse)
+        self.assertIn('# Bonjour serge-ia', suite['page'])
+        # Une tâche sans ce compte n'a pas ses cookies : ni dans le profil
+        # du vrai Chrome, ni dans le navigateur sans écran.
+        for capacite in ('real_browser_action', 'browser_action'):
+            sans = self._outil(
+                capacite, task_id='t3', action='ouvrir', text=adresse
+            )
+            self.assertIn('# Connectez-vous', sans['page'], capacite)
+        # Hors de la session d'un compte, son mot de passe n'existe pas.
+        champ = re.search(r'\[(e\d+)\] champ password', sans['page'])
+        assert champ, sans['page']
+        refus = self._outil(
+            'browser_action',
+            task_id='t3',
+            action='taper_secret',
+            ref=champ[1],
+            text=PASSWORD_NAME,
+        )
+        self.assertIn('secret non permis', refus['detail'])
+
+    def test_la_garde_d_un_compte_web(self) -> None:
+        """Un compte ne sert qu'à une tâche à la fois, pas au-delà de ses
+        actions du jour, et pas s'il est fermé par le site."""
+        self._coffre()
+        adresse = f'{self.site}/compte'
+        self.conn.execute(
+            'INSERT INTO web_accounts(id, url, login, created_at, updated_at)'
+            " VALUES('forum', ?, 'serge-ia', ?, ?)",
+            (self.site, utcnow(), utcnow()),
+        )
+        self.assertTrue(
+            self._avec_le_compte('t1', action='ouvrir', text=adresse)['ok']
+        )
+        pris = self._avec_le_compte('t2', action='ouvrir', text=adresse)
+        self.assertEqual((pris['ok'], pris['code']), (False, 'compte'))
+        self.assertIn('sert déjà à une autre tâche', pris['detail'])
+        self.assertNotIn('t2@forum', sessions._ETAT_VRAI.sessions)
+        # Au plafond du jour, plus aucune action : la page ne bouge pas.
+        self.conn.execute(
+            'UPDATE web_account_days SET actions=?',
+            (web_accounts.daily_cap(self.conn),),
+        )
+        plein = self._avec_le_compte(
+            't1', action='cliquer', text='Se connecter'
+        )
+        self.assertFalse(plein['ok'])
+        self.assertIn('200 actions du jour', plein['detail'])
+        self.assertIn('# Connectez-vous', plein['page'])
+        # Lire la page ne coûte rien : elle reste lisible.
+        lue = self._outil('real_browser_read', task_id='t1', account='forum')
+        self.assertIn('# Connectez-vous', lue['page'])
+        sessions.close_sessions(self.conn)
+        self.conn.execute("UPDATE web_accounts SET status='blocked'")
+        ferme = self._avec_le_compte('t3', action='ouvrir', text=adresse)
+        self.assertIn('fermé par le site', ferme['detail'])
+        # Un compte qui n'existe pas est dit, sans rien ouvrir.
+        inconnu = self._outil(
+            'real_browser_action',
+            task_id='t4',
+            account='ailleurs',
+            action='ouvrir',
+            text=adresse,
+        )
+        self.assertIn('pas de compte « ailleurs »', inconnu['detail'])
+
+    def test_un_modele_ne_se_donne_ni_compte_ni_secrets(self) -> None:
+        """Le compte et les secrets permis ne viennent que de la base :
+        un modèle qui les donne lui-même n'est pas écouté, et son outil ne
+        les lui propose pas."""
+        recus: list[dict[str, Any]] = []
+
+        def note(_conn: Any, _tool: str, args: dict[str, Any], _inv: str):
+            recus.append(args)
+            return {'ok': True}
+
+        lien = self.conn.execute(
+            'SELECT id, invocation_id FROM invocation_tools'
+            " WHERE tool_id='navigateur_agir' ORDER BY id LIMIT 1"
+        ).fetchone()
+        with mock.patch.dict(RUNNERS, {'browser_action': note}):
+            run_tool(
+                self.conn,
+                str(lien[1]),
+                int(lien[0]),
+                'navigateur_agir',
+                {
+                    'action': 'taper_secret',
+                    'account': 'forum',
+                    'secrets': 'stripe-live.key',
+                },
+                {'task_id': 't1', 'venture_id': 'ven_t'},
+            )
+        self.assertEqual(recus[0]['action'], 'taper_secret')
+        self.assertNotIn('account', recus[0])
+        self.assertNotIn('secrets', recus[0])
+        schema = tool_schema(self.conn, 'navigateur_agir', set())
+        assert schema is not None
+        montres = schema['function']['parameters']['properties']
+        self.assertIn('action', montres)
+        self.assertNotIn('account', montres)
+        self.assertNotIn('secrets', montres)
 
     def test_taper_un_secret_sans_le_montrer(self) -> None:
         config = self.dossier / 'config'
@@ -811,7 +1009,7 @@ class NavigateurTests(unittest.TestCase):
         champ = re.search(r'\[(e\d+)\] champ email « E-mail »', page)
         assert champ, page
         permis = 'payment-card.enc#pan,payment-card.enc#expiration'
-        onglet = navigateur._session(self.conn, 't1').page
+        onglet = sessions._session(self.conn, 't1').page
         for nom, attendu in (
             ('payment-card.enc#pan', '4000002500003155'),
             ('payment-card.enc#expiration', '08/29'),
@@ -858,7 +1056,7 @@ class NavigateurTests(unittest.TestCase):
             text='carte-a.key',
             secrets='carte-a.key',
         )
-        onglet = navigateur._session(self.conn, 't1').page
+        onglet = sessions._session(self.conn, 't1').page
         style = (
             '() => getComputedStyle(document.getElementById("email"))'
             '.webkitTextSecurity'
@@ -881,11 +1079,11 @@ class NavigateurTests(unittest.TestCase):
         # Un serveur où le paquet Python manque : l'outil le dit clairement,
         # et la raison va au journal.
         with (
-            mock.patch.object(navigateur._ETAT, 'browser', None),
+            mock.patch.object(sessions._ETAT, 'browser', None),
             mock.patch.dict(sys.modules, {'playwright.sync_api': None}),
-            self.assertRaises(navigateur.NavigateurAbsent) as refus,
+            self.assertRaises(sessions.NavigateurAbsent) as refus,
         ):
-            navigateur._browser(self.conn, navigateur._ETAT)
+            sessions._browser(self.conn, sessions._ETAT)
         self.assertIn('playwright manque sur ce serveur', str(refus.exception))
 
     def test_essayer_l_interface_web(self) -> None:
@@ -1014,9 +1212,9 @@ class FichierMcTests(McServerCase):
 
 
 def tearDownModule() -> None:
-    if 'pw' in navigateur._PLAYWRIGHT:
-        navigateur._PLAYWRIGHT.pop('pw').stop()
-    navigateur._ETAT.browser = navigateur._ETAT_VRAI.browser = None
+    if 'pw' in sessions._PLAYWRIGHT:
+        sessions._PLAYWRIGHT.pop('pw').stop()
+    sessions._ETAT.browser = sessions._ETAT_VRAI.browser = None
 
 
 if __name__ == '__main__':

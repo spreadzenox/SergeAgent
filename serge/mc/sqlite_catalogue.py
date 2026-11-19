@@ -311,13 +311,17 @@ CATALOGUE: dict[str, tuple[str, str, str, str]] = {
         'Économie (MRR).',
         'period + renews_at + status.',
     ),
-    'accounts_standing': (
-        'Comptes web de Serge : santé + comment crawler'
-        ' (rôle, profil navigateur, cibles). Login et mot de passe'
-        ' en clair (comptes créés par Serge).',
-        'Writer enregistrer_compte, écoute, publication.',
-        'Jauges, allocator, pauses, tools web.',
-        'role ecoute/publication/les_deux. login + password en clair.',
+    'web_accounts': (
+        'Les comptes de Serge sur des sites : un par site (reddit…).',
+        '« Créer un compte », ou la page Système de Mission Control.',
+        'Les outils de navigateur d’une invocation à qui la base le donne.',
+        'password_enc et session_enc : chiffrés par la clé du coffre.',
+    ),
+    'web_account_days': (
+        'Les actions faites avec un compte web, jour par jour (UTC).',
+        'La garde des comptes, à chaque action du navigateur.',
+        'La même garde : refus au-delà du plafond du jour.',
+        'Le plafond : page Policy, « Comptes web ».',
     ),
     'policy_sections': (
         'Les familles de réglages généraux de la page Policy (Argent…).',

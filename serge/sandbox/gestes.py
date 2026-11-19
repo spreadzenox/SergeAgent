@@ -33,6 +33,7 @@ from serge.sandbox.lecture import (
     viser,
 )
 from serge.secrets import read_secret_value
+from serge.web_accounts import PASSWORD_NAME
 
 ECRANS = {'ordinateur': (1280, 800), 'mobile': (390, 844)}
 OUI = (True, 'true', '1', 'oui')
@@ -132,14 +133,18 @@ def _taper(session: Any, args: dict[str, Any]) -> str:
 
 def _taper_secret(session: Any, args: dict[str, Any]) -> str:
     # Le modèle nomme le secret ; Serge tape sa valeur, que le modèle ne
-    # voit jamais. Seuls les secrets figés en base sont permis.
+    # voit jamais. Seuls les secrets figés en base sont permis, et, dans
+    # la session d'un compte web, le mot de passe de ce compte.
     nom = str(args.get('text') or '')
     permis = {n.strip() for n in str(args.get('secrets') or '').split(',')} - {
         ''
     }
-    if nom not in permis:
+    if nom == PASSWORD_NAME and session.mot_de_passe is not None:
+        valeur = session.mot_de_passe()
+    elif nom not in permis:
         return f'secret non permis : {nom}'
-    valeur = read_secret_value(config_root() / 'secrets', nom)
+    else:
+        valeur = read_secret_value(config_root() / 'secrets', nom)
     if not valeur:
         return f'secret absent sur ce serveur : {nom}'
     session.masques.add(valeur)

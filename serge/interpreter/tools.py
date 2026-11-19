@@ -21,6 +21,7 @@ from serge.campaigns.principal import apply_principal
 from serge.campaigns.prospect import add_prospect
 from serge.campaigns.sale import record_sale
 from serge.campaigns.start import start_campaign
+from serge.capabilities import CAPABILITIES
 from serge.connecteurs.appel import api_schema, call_api, nom_pour_le_modele
 from serge.conversations.contact import (
     add_contact,
@@ -37,6 +38,7 @@ from serge.ingress.adresse import product_address, server_address
 from serge.interpreter.seen import CHOICES, read_seen_table, row_history
 from serge.interpreter.settings import load_settings
 from serge.policy_store import policy_en_vigueur
+from serge.sandbox.captures import browser_screenshot, real_browser_screenshot
 from serge.sandbox.chantier import (
     sandbox_command,
     sandbox_edit_file,
@@ -47,10 +49,8 @@ from serge.sandbox.courriel import boite_relecteur
 from serge.sandbox.navigateur import (
     browser_action,
     browser_read,
-    browser_screenshot,
     real_browser_action,
     real_browser_read,
-    real_browser_screenshot,
 )
 from serge.sandbox.publier import publish_version
 from serge.tickets.inform import inform_owners
@@ -285,6 +285,17 @@ class ToolError(ValueError):
     """Un outil ne peut pas être exécuté."""
 
 
+def _frozen(capability_id: str) -> set[str]:
+    """Les paramètres d'une capacité qui ne viennent que de la base."""
+    return {
+        p.name
+        for cap in CAPABILITIES
+        if cap.id == capability_id
+        for p in cap.params
+        if p.frozen
+    }
+
+
 def tool_capability(conn: sqlite3.Connection, tool_id: str) -> str:
     """La capacité qu'utilise un outil."""
     row = conn.execute(
@@ -350,15 +361,17 @@ def run_tool(
     Un outil donné partout (sans lien, donc sans paramètre figé) reçoit le
     numéro de la tâche : « Demander une nouvelle capacité » gèle sa tâche.
     """
+    capability = tool_capability(conn, tool_id)
+    # Un paramètre réservé à la base n'est jamais pris du modèle : sans
+    # cela, il nommerait lui-même les secrets permis ou le compte à ouvrir.
+    reserves = _frozen(capability)
     args = {
-        **dict(model_args),
+        **{k: v for k, v in model_args.items() if k not in reserves},
         **fixed_params(conn, invocation_id, invocation_tool_id, task),
     }
     if invocation_tool_id is None and task.get('task_id'):
         args['task_id'] = task['task_id']
-    return run_capability(
-        conn, tool_capability(conn, tool_id), tool_id, args, invocation_id
-    )
+    return run_capability(conn, capability, tool_id, args, invocation_id)
 
 
 def tool_schema(
@@ -431,7 +444,8 @@ def tool_schema(
     # Un paramètre figé d'« Appeler une API » est aussi retiré sous son nom
     # du schéma (des points au lieu des crochets).
     return _without_fixed(
-        schema, fixed | {nom_pour_le_modele(f) for f in fixed}
+        schema,
+        fixed | {nom_pour_le_modele(f) for f in fixed} | _frozen(capability),
     )
 
 
