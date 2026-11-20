@@ -304,6 +304,19 @@ un lien de confirmation) et « Appeler un humain ». Leurs consignes disent
 trois règles : ne pas mentir (Serge dit qu'il est un agent IA), ne jamais
 toucher à un captcha, ne jamais voir le mot de passe.
 
+Serge s'inscrit avec son adresse e-mail, et ne donne son numéro de
+téléphone que si le site l'exige (décision Q107). Un SMS n'arrive à
+Serge que si le téléphone qui porte la carte SIM le transmet au serveur
+(`https://sms.<domaine>/hooks/sms`, `serge/sms/receiver.py`) : chaque SMS
+reçu et chaque envoi refusé sont au journal (`sms.received`,
+`sms.refused` avec la raison), sans le texte ni le code. Tant qu'aucun
+SMS n'est jamais arrivé, « Mes messages de vérification » le dit à
+l'invocation, qui s'arrête au lieu d'attendre.
+
+Exemple : X envoie « Confirmez votre numéro : https://x.com/i/v?t=… ».
+L'outil rend le texte et le lien ; l'invocation l'ouvre dans le vrai
+Chrome, dans la session du compte.
+
 Après chaque action, l'outil rend la page relue, en version courte : le
 modèle voit l'effet de son clic sans appel de plus.
 

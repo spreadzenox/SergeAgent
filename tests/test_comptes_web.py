@@ -18,11 +18,17 @@ Scénarios :
 - le pseudo voulu, tapé dans le bouton, arrive à l'invocation qui crée le
   compte ;
 - une ligne ouverte par erreur se retire, pas un compte en service ni un
-  compte qu'une tâche utilise.
+  compte qu'une tâche utilise ;
+- « Mes messages de vérification » rend un SMS reçu pendant la tâche avec
+  son code et son lien ; tant qu'aucun SMS n'est jamais arrivé sur le
+  serveur, il le dit, pour que l'invocation n'attende pas un code qui ne
+  viendra pas (inscription sur X, le 20 novembre 2026).
 """
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import json
 import os
 import re
@@ -40,9 +46,12 @@ from serge import web_accounts  # noqa: E402
 from serge.coupe_circuit import set_heartbeat  # noqa: E402
 from serge.db.store import default_canon_path, open_db, utcnow  # noqa: E402
 from serge.interpreter.queue import process_one  # noqa: E402
+from serge.interpreter.tasks import enqueue_task  # noqa: E402
 from serge.interpreter.triggers import fire_button  # noqa: E402
 from serge.llm.client import ChatResult  # noqa: E402
 from serge.sandbox import sessions  # noqa: E402
+from serge.sms import SmsInbox  # noqa: E402
+from serge.verification import received_since_task  # noqa: E402
 from tests.mc_server_case import browser_ok  # noqa: E402
 from tests.test_navigateur import _chrome, _site, appel  # noqa: E402
 
@@ -401,6 +410,79 @@ class RetirerUnCompteTests(unittest.TestCase):
         ):
             with self.assertRaisesRegex(web_accounts.AccountError, raison):
                 web_accounts.remove(conn, nom)
+
+
+class MessagesDeVerificationTests(unittest.TestCase):
+    def test_un_sms_avec_son_code_et_son_lien(self) -> None:
+        dossier = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
+        self.addCleanup(dossier.cleanup)
+        patcher = mock.patch.dict(
+            os.environ, {'SERGE_SYSTEM_ROOT': dossier.name}
+        )
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        conn = open_db(default_canon_path())
+        self.addCleanup(conn.close)
+        conn.execute(
+            "UPDATE tasks SET started_at='2026-11-20T15:42:00+00:00'"
+            ' WHERE id=?',
+            (enqueue_task(conn, 'creer_compte_web', {'compte': 'x'}),),
+        )
+        tache = conn.execute('SELECT id FROM tasks').fetchone()[0]
+
+        def lire() -> dict[str, Any]:
+            return received_since_task(
+                conn, '', {'task_id': tache, 'wait': False}, ''
+            )
+
+        # Rien n'est jamais arrivé : la base des SMS n'existe pas, puis
+        # elle est vide.
+        self.assertIn('aucun SMS', lire()['sms_jamais_recu'])
+        boite = SmsInbox(Path(dossier.name) / 'state/sms/inbound.db')
+        vide = lire()
+        self.assertEqual(vide['sms'], [])
+        self.assertIn('ne redonne pas le numéro', vide['sms_jamais_recu'])
+
+        secret = b'0123456789abcdef0123456789abcdef'
+        for ident, quand, texte in (
+            (
+                'sms_avant',
+                '2026-11-20T15:00:00Z',
+                'Un code d’hier : 111111',
+            ),
+            (
+                'sms_code',
+                '2026-11-20T15:43:00Z',
+                'Votre code de confirmation X : 482931',
+            ),
+            (
+                'sms_lien',
+                '2026-11-20T15:44:00Z',
+                'Confirmez votre numéro : https://x.com/i/v?t=abc',
+            ),
+        ):
+            brut = json.dumps(
+                {
+                    'id': ident,
+                    'from': 'X',
+                    'body': texte,
+                    'received_at': quand,
+                },
+                sort_keys=True,
+            ).encode()
+            boite.ingest(
+                brut,
+                hmac.new(secret, brut, hashlib.sha256).hexdigest(),
+                secret,
+                purpose='ACCOUNT_VERIFICATION',
+            )
+        rendu = lire()
+        self.assertNotIn('sms_jamais_recu', rendu)
+        # Les SMS de la tâche seulement, le plus récent d'abord.
+        self.assertEqual(
+            [(m['code'], m['liens']) for m in rendu['sms']],
+            [('', ['https://x.com/i/v?t=abc']), ('482931', [])],
+        )
 
 
 def tearDownModule() -> None:

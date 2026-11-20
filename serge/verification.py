@@ -10,7 +10,10 @@ reçu depuis le début de la tâche, et rien d'autre :
   (``inbound_events``, état ``unattached``) : l'e-mail d'un prospect ou
   d'un client ne passe donc jamais par ici ;
 - **les SMS** reçus sur son numéro (``state/sms/inbound.db``), avec le code
-  que Serge y a repéré.
+  que Serge y a repéré et les liens de leur texte. Ils n'arrivent que si
+  le téléphone qui porte la carte SIM les transmet au serveur : quand
+  aucun n'est jamais arrivé, la capacité le dit, pour que l'invocation
+  n'attende pas un code qui ne viendra pas.
 
 La boîte est relevée toutes les 2 minutes : la capacité attend qu'un
 message arrive, au plus le temps réglé (page Policy, « Comptes web »).
@@ -24,7 +27,9 @@ from __future__ import annotations
 
 import sqlite3
 import time
+from contextlib import closing
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 from serge.db.store import utcnow
@@ -54,13 +59,28 @@ def _emails(conn: sqlite3.Connection, since: str) -> list[dict[str, Any]]:
     ]
 
 
+def _base_sms() -> Path:
+    return system_root() / 'state/sms/inbound.db'
+
+
+def _jamais_de_sms() -> bool:
+    """Vrai tant qu'aucun SMS n'est arrivé sur ce serveur."""
+    base = _base_sms()
+    if not base.is_file():
+        return True
+    with closing(sqlite3.connect(f'file:{base}?mode=ro', uri=True)) as sms:
+        return (
+            sms.execute('SELECT 1 FROM inbound_sms LIMIT 1').fetchone() is None
+        )
+
+
 def _sms(since: str) -> list[dict[str, Any]]:
-    base = system_root() / 'state/sms/inbound.db'
+    base = _base_sms()
     if not base.is_file():
         return []
     debut = datetime.fromisoformat(since)
     messages = []
-    with sqlite3.connect(f'file:{base}?mode=ro', uri=True) as sms:
+    with closing(sqlite3.connect(f'file:{base}?mode=ro', uri=True)) as sms:
         for sender, body, otp, received in sms.execute(
             'SELECT sender, body, otp, received_at FROM inbound_sms'
             ' ORDER BY received_at DESC LIMIT 50'
@@ -74,6 +94,7 @@ def _sms(since: str) -> list[dict[str, Any]]:
                         'de': str(sender),
                         'texte': str(body),
                         'code': str(otp or ''),
+                        'liens': list(dict.fromkeys(LIENS.findall(str(body)))),
                         'date': str(received),
                     }
                 )
@@ -112,5 +133,12 @@ def received_since_task(
             'rien reçu depuis le début de la tâche ; la boîte e-mail est'
             ' relevée toutes les 2 minutes : rappelle cet outil pour'
             ' attendre encore'
+        )
+    if not sms and _jamais_de_sms():
+        resultat['sms_jamais_recu'] = (
+            'aucun SMS n’est encore arrivé sur ce serveur : si tu attends'
+            ' un code par SMS, le téléphone qui porte la carte SIM ne l’a'
+            ' pas transmis ; ne redonne pas le numéro, dis-le dans ton'
+            ' compte rendu'
         )
     return resultat

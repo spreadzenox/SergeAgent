@@ -2305,3 +2305,30 @@ choses. Clem a validé leur correction.
 3. **Une ligne ouverte par erreur se retire** de la section « Comptes
    web », tant que le compte n'est pas en service.
 
+### Q107 — Le téléphone seulement si le site l'exige, un pseudo pour les essais (validé par Clem, 20 novembre 2026)
+
+Le 20 novembre 2026, l'inscription sur X a raté : Serge a donné son
+numéro de téléphone alors que l'e-mail suffisait, le formulaire n'a plus
+réagi, et il l'a rempli quatre fois. Aucun SMS n'était jamais arrivé sur
+le serveur. Clem a décidé :
+
+1. **Serge s'inscrit avec son adresse e-mail.** Il ne donne son numéro
+   de téléphone que si le site l'exige, sans autre moyen de continuer.
+2. **Un code reçu par SMS se tape, un lien reçu par SMS s'ouvre** dans
+   le vrai Chrome : « Mes messages de vérification » rend le texte du
+   SMS, son code et ses liens. Si le message attendu n'arrive pas, Serge
+   s'arrête et le dit ; il ne redonne pas le numéro.
+3. **Un formulaire qui ne réagit plus ne se remplit pas en boucle** : un
+   second essai, une capture gardée, puis l'arrêt. Une capture est aussi
+   gardée avant d'appeler un humain.
+4. **Les SMS se voient dans Mission Control** : un SMS reçu et un envoi
+   refusé sont au journal, avec la raison du refus.
+5. **Pas d'inscription « avec Google »** : il faudrait connecter le
+   compte Google de Serge dans le vrai Chrome, et un verrouillage par
+   Google lui ferait perdre sa boîte e-mail.
+6. **Un essai de message se donne un pseudo** : Serge trouve le profil
+   par la recherche du site, vérifie que le pseudo est exactement
+   celui-là, et n'écrit à personne dans le doute. L'adresse du profil
+   reste acceptée, et reste nécessaire sur LinkedIn, où un nom ne désigne
+   personne.
+

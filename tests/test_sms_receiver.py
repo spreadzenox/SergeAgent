@@ -8,9 +8,14 @@ import hmac
 import json
 import sys
 import tempfile
+import threading
 import unittest
+import urllib.error
+import urllib.request
 from contextlib import closing
+from http.server import ThreadingHTTPServer
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -19,6 +24,8 @@ from serge.db.store import open_db  # noqa: E402
 from serge.policy_store import set_setting  # noqa: E402
 from serge.sms import SmsInbox  # noqa: E402
 from serge.sms.receiver import (  # noqa: E402
+    Handler,
+    Journal,
     RateLimiter,
     SmsReceiverError,
     check_auth,
@@ -185,6 +192,131 @@ class SmsReceiverTests(unittest.TestCase):
         limiter = RateLimiter()
         self.assertTrue(limiter.allow('a', limits, now=1000.0))
         self.assertFalse(limiter.allow('a', limits, now=1001.0))
+
+    def _canon(self) -> Path:
+        canon = Path(self.tmp.name) / 'serge.db'
+        with closing(open_db(canon)) as conn:
+            conn.commit()
+        return canon
+
+    def _journal(self, canon: Path) -> list[tuple[str, dict]]:
+        with closing(open_db(canon)) as conn:
+            return [
+                (str(kind), json.loads(payload))
+                for kind, payload in conn.execute(
+                    'SELECT type, payload_json FROM events WHERE type LIKE'
+                    " 'sms.%' ORDER BY id"
+                )
+            ]
+
+    def test_un_sms_recu_et_un_refus_sont_au_journal(self) -> None:
+        """Mission Control montre qu'un SMS est arrivé, sans son texte ni
+        son code, et pourquoi un envoi a été refusé : une fois par raison
+        toutes les dix minutes."""
+        canon = self._canon()
+        journal = Journal(canon)
+        raw = json.dumps(
+            {
+                'id': 'sms_j1',
+                'from': 'X',
+                'body': 'Ton code : 482931 https://x.com/i/v?t=abc',
+                'received_at': '2026-11-20T15:43:00Z',
+            }
+        ).encode()
+        entetes = {
+            'X-SMS-Signature': hmac.new(
+                SECRET, raw, hashlib.sha256
+            ).hexdigest()
+        }
+        # Le second envoi du même SMS est un doublon : noté une seule fois.
+        for _ in range(2):
+            ingest_payload(
+                raw,
+                entetes,
+                {},
+                secret=SECRET,
+                inbox=self.inbox,
+                limiter=self.limiter,
+                limits=(60, 10),
+                journal=journal,
+            )
+        journal.refuse('missing or invalid auth', now=1000.0)
+        journal.refuse('missing or invalid auth', now=1300.0)
+        journal.refuse('rate_limited', now=1300.0)
+        journal.refuse('missing or invalid auth', now=1700.0)
+        vus = self._journal(canon)
+        self.assertEqual(
+            vus[0],
+            ('sms.received', {'de': 'X', 'code': 'oui', 'lien': 'oui'}),
+        )
+        self.assertEqual([kind for kind, _ in vus[1:]], ['sms.refused'] * 3)
+        self.assertIn('pas le bon secret', vus[1][1]['raison'])
+        self.assertIn('trop de SMS', vus[2][1]['raison'])
+        self.assertNotIn('482931', json.dumps(vus))
+
+    def test_le_serveur_note_ce_qu_il_recoit(self) -> None:
+        """Le téléphone frappe à la vraie porte : un mauvais secret est
+        refusé et noté avec sa raison, un SMS bien signé est noté reçu."""
+        canon = self._canon()
+        reglages = mock.patch.multiple(
+            Handler,
+            secret=SECRET,
+            inbox=self.inbox,
+            limiter=RateLimiter(),
+            canon=canon,
+            journal=Journal(canon),
+        )
+        reglages.start()
+        self.addCleanup(reglages.stop)
+        serveur = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+        self.addCleanup(serveur.server_close)
+        self.addCleanup(serveur.shutdown)
+        threading.Thread(target=serveur.serve_forever, daemon=True).start()
+        adresse = f'http://127.0.0.1:{serveur.server_port}/hooks/sms'
+        corps = json.dumps(
+            {
+                'id': 'msg_7',
+                'phoneNumber': '38698',
+                'message': 'Votre code de confirmation : 112233',
+                'timestamp': 1795189380000,
+            }
+        ).encode()
+
+        def poster(jeton: str) -> int:
+            requete = urllib.request.Request(
+                adresse,
+                data=corps,
+                headers={
+                    'X-SMS-Token': jeton,
+                    'Content-Type': 'application/json',
+                },
+            )
+            try:
+                with urllib.request.urlopen(requete, timeout=10) as reponse:
+                    return int(reponse.status)
+            except urllib.error.HTTPError as exc:
+                exc.close()
+                return int(exc.code)
+
+        with mock.patch('sys.stderr'):
+            self.assertEqual(poster('pas-le-bon'), 401)
+            self.assertEqual(poster(SECRET.decode()), 200)
+        self.assertEqual(
+            self._journal(canon),
+            [
+                (
+                    'sms.refused',
+                    {
+                        'raison': 'jeton absent ou faux : le téléphone'
+                        ' n’a pas le bon secret'
+                    },
+                ),
+                (
+                    'sms.received',
+                    {'de': '38698', 'code': 'oui', 'lien': 'non'},
+                ),
+            ],
+        )
 
 
 if __name__ == '__main__':

@@ -4,7 +4,12 @@
 The Android phone pushes inbound SMS here (via Caddy sms.<domain> route).
 This process authenticates, rate-limits, normalizes the provider payload
 into the broker envelope, and ingests. It stores nothing itself: SmsInbox
-keeps OTP hashes only, never raw bodies.
+keeps each SMS (sender, body, the code found in it).
+
+Chaque SMS reçu et chaque envoi refusé sont notés dans le journal de Serge
+(``sms.received``, ``sms.refused``), que Mission Control montre : un
+téléphone mal réglé (mauvais secret, mauvais format) s'y voit avec sa
+raison, et un téléphone qui ne transmet rien n'y laisse aucune ligne.
 
 Auth (any one, in preference order):
   1. X-SMS-Signature: HMAC-SHA256(secret, raw_body) hex
@@ -18,6 +23,7 @@ import hashlib
 import hmac
 import json
 import os
+import re
 import sqlite3
 import sys
 import time
@@ -30,7 +36,11 @@ from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from serge.db.store import default_canon_path, open_db  # noqa: E402
+from serge.db.store import (  # noqa: E402
+    append_event,
+    default_canon_path,
+    open_db,
+)
 from serge.policy import PolicyError  # noqa: E402
 from serge.policy_store import policy_en_vigueur  # noqa: E402
 from serge.sms.inbox import SmsBrokerDenied, SmsInbox  # noqa: E402
@@ -39,8 +49,63 @@ DEFAULT_LISTEN = '127.0.0.1:8787'
 MAX_BODY = 65536
 
 
+# Un refus est noté au plus une fois par raison dans cet écart : un inconnu
+# qui frappe à la porte ne remplit pas le journal.
+REFUS_ECART_S = 600.0
+RAISONS = {
+    'bad signature': 'signature refusée : le téléphone n’a pas le bon secret',
+    'missing or invalid auth': (
+        'jeton absent ou faux : le téléphone n’a pas le bon secret'
+    ),
+    'rate_limited': 'trop de SMS à la minute (plafonds de la page Policy)',
+    'unmappable SMS payload shape': (
+        'format inconnu : ni identifiant, ni expéditeur, ni texte reconnus'
+    ),
+    'invalid JSON': 'le téléphone n’a pas envoyé du JSON',
+    'policy_unreadable': 'plafonds de la page Policy illisibles',
+}
+
+
 class SmsReceiverError(ValueError):
     pass
+
+
+class Journal:
+    """Le journal de Serge, pour les SMS : un SMS reçu, un envoi refusé.
+
+    Le texte et le code d'un SMS n'y sont pas : seulement qui l'envoie, et
+    s'il porte un code ou un lien. Une panne du journal ne fait pas perdre
+    le SMS, déjà gardé par ``SmsInbox``.
+    """
+
+    def __init__(self, canon: Path) -> None:
+        self.canon = canon
+        self._refus: dict[str, float] = {}
+
+    def _noter(self, kind: str, payload: dict[str, Any]) -> None:
+        try:
+            with closing(open_db(self.canon)) as conn:
+                append_event(conn, actor='sms', type=kind, payload=payload)
+                conn.commit()
+        except (OSError, sqlite3.Error) as exc:
+            sys.stderr.write(f'sms-receiver: journal: {exc}\n')
+
+    def recu(self, expediteur: str, corps: str, code: bool) -> None:
+        self._noter(
+            'sms.received',
+            {
+                'de': expediteur,
+                'code': 'oui' if code else 'non',
+                'lien': 'oui' if re.search(r'https?://', corps) else 'non',
+            },
+        )
+
+    def refuse(self, raison: str, now: float | None = None) -> None:
+        moment = time.time() if now is None else now
+        if moment - self._refus.get(raison, -REFUS_ECART_S) < REFUS_ECART_S:
+            return
+        self._refus[raison] = moment
+        self._noter('sms.refused', {'raison': RAISONS.get(raison, raison)})
 
 
 def _as_iso(value: Any) -> str:
@@ -214,6 +279,7 @@ def ingest_payload(
     inbox: SmsInbox,
     limiter: RateLimiter,
     limits: tuple[int, int],
+    journal: Journal | None = None,
 ) -> dict[str, Any]:
     method = check_auth(raw_body, headers, query, secret)
     try:
@@ -232,6 +298,10 @@ def ingest_payload(
         )
     except SmsBrokerDenied as exc:
         raise SmsReceiverError(str(exc)) from exc
+    if journal is not None and result['status'] == 'accepted':
+        journal.recu(
+            envelope['from'], envelope['body'], result.get('otp') is not None
+        )
     return {
         'status': result['status'],
         'provider_message_id': result['provider_message_id'],
@@ -245,6 +315,11 @@ class Handler(BaseHTTPRequestHandler):
     inbox: SmsInbox | None = None
     limiter: RateLimiter = RateLimiter()
     canon: Path = Path()
+    journal: Journal | None = None
+
+    def _refuser(self, raison: str) -> None:
+        if self.journal is not None:
+            self.journal.refuse(raison)
 
     # Param name `format` matches BaseHTTPRequestHandler (Liskov).
     def log_message(self, format: str, *args: Any) -> None:  # noqa: N802, A002
@@ -284,6 +359,7 @@ class Handler(BaseHTTPRequestHandler):
             limits = read_limits(self.canon)
         except (OSError, sqlite3.Error, PolicyError, KeyError, ValueError):
             # Sans plafonds lisibles, rien n'entre ; la passerelle réessaie.
+            self._refuser('policy_unreadable')
             self._send(503, {'error': 'policy_unreadable'})
             return
         try:
@@ -295,9 +371,11 @@ class Handler(BaseHTTPRequestHandler):
                 inbox=self.inbox,
                 limiter=self.limiter,
                 limits=limits,
+                journal=self.journal,
             )
         except SmsReceiverError as exc:
             message = str(exc)
+            self._refuser(message)
             if message == 'rate_limited':
                 self._send(429, {'error': message})
             elif message in {'bad signature', 'missing or invalid auth'}:
@@ -325,6 +403,7 @@ def serve(listen: str = DEFAULT_LISTEN) -> int:
     Handler.inbox = inbox
     Handler.limiter = RateLimiter()
     Handler.canon = default_canon_path()
+    Handler.journal = Journal(Handler.canon)
     server = ThreadingHTTPServer(
         (host or '127.0.0.1', int(port_raw or '8787')), Handler
     )
