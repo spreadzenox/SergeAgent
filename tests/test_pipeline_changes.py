@@ -25,7 +25,9 @@ Scénarios :
   les couloirs des liens arrivent, les boutons d'essai de la page Système
   sont retirés ; sa base renomme la phase des campagnes ;
 - le serveur du 19 novembre 2026 retrouve le produit d'un business dans
-  Stripe par la clé de recherche de son prix, plus par la recherche.
+  Stripe par la clé de recherche de son prix, plus par la recherche ;
+- le serveur du 20 novembre 2026 reçoit le bouton « Créer un compte web »
+  corrigé : le libellé du site, le pseudo voulu, et sa consigne.
 """
 
 from __future__ import annotations
@@ -1392,3 +1394,100 @@ class CanauxDuNavigateurTests(unittest.TestCase):
                 "SELECT prompt FROM invocations WHERE id='trouver_prospects'"
             ).fetchone()[0],
         )
+
+
+class CreationDeCompteTests(unittest.TestCase):
+    """Le serveur du 20 novembre 2026 : le bouton « Créer un compte web »
+    demande un « nom du compte » (le pseudo y a été tapé), ne demande pas
+    le pseudo, et la consigne ne dit rien d'une identité incomplète."""
+
+    IDS = (
+        'lot13_compte_libelle_du_site',
+        'lot13_compte_pseudo_du_bouton',
+        'lot13_compte_pseudo_du_lien',
+        'lot13_compte_consigne_du_pseudo',
+    )
+    ANCIEN = 'nom du compte, un mot (reddit, linkedin, x…)'
+
+    def _bouton(self, conn: sqlite3.Connection) -> dict[str, str]:
+        return {
+            str(r[0]): str(r[1])
+            for r in conn.execute(
+                'SELECT param_name, value FROM trigger_params'
+                " WHERE trigger_id='bouton_creer_compte_web'"
+            )
+        }
+
+    def test_il_recoit_le_bouton_corrige(self) -> None:
+        conn = sqlite3.connect(':memory:')
+        self.addCleanup(conn.close)
+        init_schema(conn)
+        data = read_yaml_file(config_dir() / 'pipeline.yaml')
+        changes = {c['id']: c for c in data['changes']}
+        prompt = conn.execute(
+            "SELECT prompt FROM invocations WHERE id='creer_compte_web'"
+        ).fetchone()[0]
+        for passage in changes[self.IDS[3]]['set']['prompt']['replace']:
+            self.assertIn(passage['new'], prompt)
+            prompt = prompt.replace(passage['new'], passage['old'])
+        conn.execute(
+            "UPDATE invocations SET prompt=? WHERE id='creer_compte_web'",
+            (prompt,),
+        )
+        conn.execute(
+            'UPDATE trigger_params SET value=? WHERE'
+            " trigger_id='bouton_creer_compte_web' AND param_name='compte'",
+            (self.ANCIEN,),
+        )
+        conn.executescript(
+            """
+            DELETE FROM trigger_params WHERE param_name='pseudo'
+                AND trigger_id='bouton_creer_compte_web';
+            DELETE FROM link_params WHERE param_name='pseudo'
+                AND link_id='compte_ouvert_vers_creation';
+            """
+        )
+        conn.executemany(
+            'DELETE FROM pipeline_changes WHERE id=?', [(i,) for i in self.IDS]
+        )
+        self.assertEqual(
+            sorted(self._bouton(conn)), ['compte', 'lien', 'naissance']
+        )
+        seed_pipeline(conn, data)
+        bouton = self._bouton(conn)
+        self.assertEqual(
+            bouton['compte'],
+            'le site, en un mot : reddit, linkedin, instagram ou x'
+            ' (pas le pseudo)',
+        )
+        self.assertIn('pseudo voulu sur ce site', bouton['pseudo'])
+        self.assertEqual(
+            tuple(
+                conn.execute(
+                    'SELECT source, value FROM link_params WHERE'
+                    " link_id='compte_ouvert_vers_creation'"
+                    " AND param_name='pseudo'"
+                ).fetchone()
+            ),
+            ('task', 'pseudo'),
+        )
+        prompt = conn.execute(
+            "SELECT prompt FROM invocations WHERE id='creer_compte_web'"
+        ).fetchone()[0]
+        self.assertIn('avec le pseudo voulu sur ce site', prompt)
+        self.assertIn(
+            "arrête-toi tout de suite, avant d'ouvrir le site", prompt
+        )
+        self.assertNotIn('ajoute « -ia »', prompt)
+
+    def test_un_libelle_change_dans_mission_control_est_garde(self) -> None:
+        conn = sqlite3.connect(':memory:')
+        self.addCleanup(conn.close)
+        init_schema(conn)
+        conn.execute(
+            "UPDATE trigger_params SET value='le site' WHERE"
+            " trigger_id='bouton_creer_compte_web' AND param_name='compte'"
+        )
+        conn.execute('DELETE FROM pipeline_changes WHERE id=?', (self.IDS[0],))
+        seed_pipeline(conn, read_yaml_file(config_dir() / 'pipeline.yaml'))
+        self.assertEqual(self._bouton(conn)['compte'], 'le site')

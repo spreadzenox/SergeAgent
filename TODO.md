@@ -333,11 +333,6 @@ discutable, qui peut un jour changer, se règle depuis Mission Control.**
   « validation par Julien », qui sera ajoutée au catalogue d'écriture à
   ce moment-là.
 
-- [ ] **La page Identité de MC.** La fonction qui modifie l'identité de
-  Serge (son nom, sa présentation) existe dans le code, mais aucun bouton
-  de MC ne l'appelle. Il faut soit ajouter ce bouton, soit supprimer la
-  fonction.
-
 - [ ] **Réécrire les commentaires qui renvoient à des documents
   supprimés.** Une centaine de commentaires dans le code citent des
   repères d'anciens documents qui n'existent plus, comme « P2 »,

@@ -171,10 +171,21 @@ function renderComptesWeb(main, payload, sig) {
     section.querySelector('[data-list="comptes-web"]'),
     payload.comptes || [],
     'Aucun compte pour l’instant.',
-    (c) => lienVers(
-      `#/objet/compte/${c.id}`,
-      `${c.id} — ${c.identifiant || 'sans identifiant'} — ${c.etat}, ${c.session ? 'session gardée' : 'sans session'}, ${c.actions} action(s) aujourd’hui — ${c.site}`,
-    ),
+    (c) => {
+      const item = lienVers(
+        `#/objet/compte/${c.id}`,
+        `${c.id} — ${c.identifiant || 'sans identifiant'} — ${c.etat}, ${c.session ? 'session gardée' : 'sans session'}, ${c.actions} action(s) aujourd’hui — ${c.site}`,
+      );
+      if (c.retirable) {
+        const bouton = document.createElement('button');
+        bouton.type = 'button';
+        bouton.className = 'btn-doux';
+        bouton.dataset.retirer = c.id;
+        bouton.textContent = 'Retirer';
+        item.append(' ', bouton);
+      }
+      return item;
+    },
   );
   afficherBoutons(
     section.querySelector('[data-comptes="boutons"]'),
@@ -187,6 +198,18 @@ function renderComptesWeb(main, payload, sig) {
 // « Enregistrer un compte qui existe déjà » : le mot de passe part chiffré
 // en base et ne revient jamais.
 function brancherComptes(section) {
+  section.addEventListener('click', (ev) => {
+    const bouton = ev.target.closest('[data-retirer]');
+    if (bouton) {
+      const compte = bouton.dataset.retirer;
+      poster('/owner/api/compte/retirer', {compte}, {
+        title: `Retirer le compte « ${compte} » ?`,
+        message: 'Sa ligne, son mot de passe et sa session gardés par Serge sont effacés. Le compte lui-même, s’il existe sur le site, n’est pas touché.',
+        confirm: 'Retirer le compte',
+        danger: true,
+      });
+    }
+  });
   const form = section.querySelector('[data-comptes="enregistrer"]');
   form.addEventListener('submit', async (ev) => {
     ev.preventDefault();

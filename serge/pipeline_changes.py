@@ -16,7 +16,9 @@ la section ``changes`` du fichier :
 Chaque modification est appliquée une seule fois par instance, et
 seulement si la valeur en base est encore celle d'origine (``from``) : une
 valeur changée dans Mission Control est gardée. Le résultat est noté dans
-``pipeline_changes`` (visible dans Mission Control, page SQLite).
+``pipeline_changes`` (visible dans Mission Control, page SQLite). Le
+libellé d'un champ d'un bouton change de la même façon (table
+``trigger_params``, avec ``where: {trigger_id, param_name}``).
 
 Un outil nouveau d'une invocation déjà en base s'ajoute de la même façon,
 une seule fois, à la fin de ses outils (un outil retiré ensuite ne revient
@@ -73,6 +75,7 @@ TABLES = frozenset(
         'invocation_output_fields',
         'links',
         'triggers',
+        'trigger_params',
         'table_quotas',
         'table_views',
         'table_view_columns',

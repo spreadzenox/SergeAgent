@@ -175,6 +175,27 @@ def register(
     )
 
 
+def remove(conn: sqlite3.Connection, name: str) -> None:
+    """Retire la ligne d'un compte qui n'est pas en service : ouvert par
+    erreur (un nom mal choisi), jamais créé sur le site, ou fermé.
+
+    Raises:
+        AccountError: Pas de compte de ce nom, compte en service, ou
+            compte pris par une tâche.
+    """
+    name = name.strip().lower()
+    status, _, _, used_by, used_since = _row(conn, name)
+    if status == 'active':
+        raise AccountError(
+            f'le compte « {name} » est en service : il ne se retire pas'
+        )
+    limit = (datetime.now(UTC) - LEASE).isoformat()
+    if used_by and str(used_since) > limit:
+        raise AccountError(f'le compte « {name} » sert à une tâche en cours')
+    conn.execute('DELETE FROM web_account_days WHERE account_id=?', (name,))
+    conn.execute('DELETE FROM web_accounts WHERE id=?', (name,))
+
+
 def open_account(
     conn: sqlite3.Connection,
     _tool: str,

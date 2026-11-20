@@ -3658,8 +3658,12 @@ invocations:
     prompt: |
       Tu crées le compte de Serge sur un site. Le nom du compte et l'adresse
       du site sont dans les paramètres de la tâche (« compte », « url »),
-      avec la date de naissance à donner si le site la demande
+      avec le pseudo voulu sur ce site (« pseudo » ; vide : celui de
+      l'identité) et la date de naissance à donner si le site la demande
       (« naissance »). Tu reçois l'identité à utiliser et l'état du compte.
+      Si l'identité dit qu'il lui manque un champ que le site demande,
+      arrête-toi tout de suite, avant d'ouvrir le site : demande-le avec
+      « Demander une nouvelle capacité », en disant où le remplir.
 
       Ce compte est celui de Serge, un agent IA. Tu agis pour la personne
       dont tu reçois l'identité, qui l'a demandé et qui en répond : c'est
@@ -3686,8 +3690,8 @@ invocations:
          déjà connecté à ce compte (une tâche précédente l'avait créé),
          vérifie-le et rends tout de suite cree « oui ».
       2. Remplis le formulaire avec l'identité reçue : l'adresse e-mail,
-         le prénom et le nom, le pseudo comme nom d'utilisateur (s'il est
-         pris, ajoute « -ia », puis un chiffre). Pour un numéro de
+         le prénom et le nom, le pseudo voulu comme nom d'utilisateur (s'il
+         est pris, ajoute « _ia », puis un chiffre). Pour un numéro de
          téléphone, donne celui des SMS. Refuse tout ce qui est facultatif
          (carnet d'adresses, notifications, abonnement payant, lettre
          d'information).
@@ -8540,6 +8544,7 @@ links:
       compte: {source: field, value: compte}
       url: {source: field, value: url}
       naissance: {source: task, value: naissance}
+      pseudo: {source: task, value: pseudo}
   - id: compte_refuse_vers_ticket
     title: Un compte web qui ne peut pas être ouvert
     from: ouvrir_compte_web
@@ -8969,9 +8974,10 @@ triggers:
       ticket t'appelle. À la fin, un ticket d'information dit comment ça
       s'est passé. Compter quelques dizaines de centimes de modèle.
     params:
-      compte: {source: form, value: 'nom du compte, un mot (reddit, linkedin, x…)'}
+      compte: {source: form, value: 'le site, en un mot : reddit, linkedin, instagram ou x (pas le pseudo)'}
       lien: {source: form, value: 'adresse du site (https://www.reddit.com)'}
       naissance: {source: form, value: 'date de naissance, si le site la demande (JJ/MM/AAAA)'}
+      pseudo: {source: form, value: 'pseudo voulu sur ce site (vide : celui de la page Identité)'}
   - id: bouton_verifier_compte_web
     title: Vérifier un compte web
     invocation: verifier_compte_web
@@ -10546,6 +10552,49 @@ changes:
                 canaux, tu peux fouiller le réseau lui-même, au plus
                 {fouilles_max} fois : une autre invocation y navigue avec le
                 compte de Serge et te rend des profils.
+  # Création d'un compte web : le 20 novembre 2026, le pseudo a été tapé
+  # dans « nom du compte », et l'identité de Serge était illisible.
+  - id: lot13_compte_libelle_du_site
+    why: Le nom d'un compte est le mot du site, pas le pseudo.
+    table: trigger_params
+    where: {trigger_id: bouton_creer_compte_web, param_name: compte}
+    set:
+      value:
+        from: 'nom du compte, un mot (reddit, linkedin, x…)'
+        to: 'le site, en un mot : reddit, linkedin, instagram ou x (pas le pseudo)'
+  - id: lot13_compte_pseudo_du_bouton
+    why: Le pseudo voulu sur le site se tape dans le bouton.
+    trigger: bouton_creer_compte_web
+    add_trigger_params:
+      pseudo: {source: form, value: 'pseudo voulu sur ce site (vide : celui de la page Identité)'}
+  - id: lot13_compte_pseudo_du_lien
+    why: Le pseudo voulu passe à l'invocation qui crée le compte.
+    link: compte_ouvert_vers_creation
+    add_link_params:
+      pseudo: {source: task, value: pseudo}
+  - id: lot13_compte_consigne_du_pseudo
+    why: La consigne dit d'où vient le pseudo, et quoi faire d'une identité incomplète.
+    table: invocations
+    where: {id: creer_compte_web}
+    set:
+      prompt:
+        replace:
+          - old: |-
+              avec la date de naissance à donner si le site la demande
+              (« naissance »). Tu reçois l'identité à utiliser et l'état du compte.
+            new: |-
+              avec le pseudo voulu sur ce site (« pseudo » ; vide : celui de
+              l'identité) et la date de naissance à donner si le site la demande
+              (« naissance »). Tu reçois l'identité à utiliser et l'état du compte.
+              Si l'identité dit qu'il lui manque un champ que le site demande,
+              arrête-toi tout de suite, avant d'ouvrir le site : demande-le avec
+              « Demander une nouvelle capacité », en disant où le remplir.
+          - old: |-
+              le prénom et le nom, le pseudo comme nom d'utilisateur (s'il est
+                 pris, ajoute « -ia », puis un chiffre). Pour un numéro de
+            new: |-
+              le prénom et le nom, le pseudo voulu comme nom d'utilisateur (s'il
+                 est pris, ajoute « _ia », puis un chiffre). Pour un numéro de
 deleted:
   invocations:
     - demo_ouvrir_cycle

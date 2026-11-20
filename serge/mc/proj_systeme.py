@@ -227,7 +227,7 @@ def project_comptes_web(
         boutons sans étape qui ne lancent pas un essai}. Exemple de
         compte : ``{id: 'reddit', site: 'https://www.reddit.com',
         identifiant: 'serge-ia', etat: 'en service', session: True,
-        actions: 12}``.
+        actions: 12, retirable: False}``.
     """
     from serge.mc.proj_compte import ETATS
     from serge.web_accounts import actions_today
@@ -242,6 +242,8 @@ def project_comptes_web(
                 'etat': ETATS.get(str(etat), str(etat)),
                 'session': bool(garde),
                 'actions': actions_today(conn, str(ident)),
+                # Un compte qui n'est pas en service peut être retiré.
+                'retirable': str(etat) != 'active',
             }
             for ident, url, login, etat, garde in conn.execute(
                 'SELECT id, url, login, status, session_enc FROM web_accounts'
