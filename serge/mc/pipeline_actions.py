@@ -192,6 +192,51 @@ class PipelineActionsMixin(_Base):
             return
         self._send_json(200, {'ok': True, 'compte': compte})
 
+    def _api_compte_retirer(self) -> None:
+        """Retire la ligne d'un compte qui n'est pas en service :
+        ``{compte}``."""
+        if not self._require_owner():
+            return
+        from serge.web_accounts import AccountError, remove
+
+        compte = str((self._json_body() or {}).get('compte') or '')
+        compte = compte.strip().lower()
+        try:
+            with self._db() as conn:
+                remove(conn, compte)
+                append_event(
+                    conn,
+                    actor='owner',
+                    type='mc_act',
+                    payload={'acte': 'compte_retire', 'compte': compte},
+                )
+        except AccountError as exc:
+            self._refus(400, f'Compte pas retiré : {exc}.', 'compte', '')
+            return
+        self._send_json(200, {'ok': True, 'compte': compte})
+
+    def _api_identite(self) -> None:
+        """Page Identité : ``{email, prenom, nom, pseudo}``, écrits dans le
+        fichier d'instance, la seule source de l'identité."""
+        if not self._require_owner():
+            return
+        from serge.identite import IdentiteError, modifier_inscription
+        from serge.mc.proj_identite import project_identite
+
+        try:
+            ecrits = modifier_inscription(self._json_body() or {})
+        except (IdentiteError, OSError) as exc:
+            self._refus(400, f'Identité pas changée : {exc}.', 'identite', '')
+            return
+        with self._db() as conn:
+            append_event(
+                conn,
+                actor='owner',
+                type='mc_act',
+                payload={'acte': 'identite_changee', 'champs': sorted(ecrits)},
+            )
+        self._send_json(200, {'ok': True, 'fiche': project_identite('serge')})
+
     def _api_tache_annuler(self) -> None:
         """Annule une tâche en attente : ``{task_id}``."""
         if not self._require_owner():

@@ -2274,3 +2274,34 @@ Décidé :
    pas ; le compte est au nom de son frère, qui en répond, et Serge ne
    ment pas : il se présente comme une IA (Q48, Q96). Les consignes des
    invocations le disent, pour qu'un modèle ne refuse pas à tort.
+
+### Q105 — Les essais des réseaux restent des boutons à part (validé par Clem, 20 novembre 2026)
+
+Q99 dit qu'un seul essai, l'essai total, remplace les boutons d'essai de
+la page Système. Le lot 13 a quand même ajouté trois boutons à part :
+« Fouiller un réseau », « Envoyer un message d'essai sur un réseau » et
+« Lire une conversation d'essai sur un réseau ». Clem : « laisse les tests
+à part, c'est très bien ».
+
+Pourquoi : un essai de réseau se fait avec un vrai compte, sur un vrai
+site, vers un de ses propres profils ; il ne se rejoue pas à chaque essai
+total. C'est une exception à Q99, pas un retour aux boutons d'avant.
+
+### Q106 — Créer un compte web : le site, le pseudo, l'identité (validé par Clem, 20 novembre 2026)
+
+Le 20 novembre 2026, la première création d'un compte a buté sur trois
+choses. Clem a validé leur correction.
+
+1. **Le nom d'un compte est le mot du site**, pas le pseudo : `reddit`,
+   `linkedin`, `instagram`, `x`. C'est par ce nom que les outils et les
+   canaux retrouvent le compte. Le bouton le dit, et demande à part le
+   **pseudo voulu** sur ce site (vide : celui de l'identité).
+2. **L'identité que Serge donne à un site se remplit dans Mission
+   Control**, page Identité : adresse e-mail, prénom, nom, pseudo. Elle
+   reste écrite dans le fichier d'instance, la seule source de
+   l'identité. L'outil « L'identité de Serge » la lit sans les secrets
+   de l'instance, qu'un service ne sait pas déchiffrer, et dit ce qui
+   reste à remplir.
+3. **Une ligne ouverte par erreur se retire** de la section « Comptes
+   web », tant que le compte n'est pas en service.
+

@@ -295,7 +295,9 @@ outil de lecture ni Mission Control ne les montrent
 
 « Créer un compte web » et « Vérifier un compte web » (page Système) sont
 deux invocations ordinaires, qui ont ces outils, l'identité de Serge
-(« L'identité de Serge » : prénom, nom, pseudo, e-mail, numéro des SMS),
+(« L'identité de Serge » : prénom, nom, pseudo, e-mail, numéro des SMS,
+lus dans le fichier d'instance sans ses secrets et remplis depuis la page
+Identité de Mission Control ; l'outil dit ce qui reste à remplir),
 « Mes messages de vérification » (les e-mails que la relève n'a rattachés
 à aucun contact et les SMS, reçus depuis le début de la tâche : un code,
 un lien de confirmation) et « Appeler un humain ». Leurs consignes disent

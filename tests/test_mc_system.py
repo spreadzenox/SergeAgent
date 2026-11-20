@@ -232,11 +232,36 @@ class McSystemTests(McBrowserCase):
         fiche = page.locator('#page')
         expect(fiche).to_contain_text('gardé, chiffré')
         expect(fiche).not_to_contain_text('s3cret-de-test')
-        # « Créer un compte web » lance sa tâche avec ce qui est tapé.
+        # Une ligne ouverte par erreur (le pseudo tapé à la place du site,
+        # le 20 novembre 2026) se retire ; un compte en service, non.
         page.goto(f'{self.base}/owner#/system')
+        conn = sqlite3.connect(self.db_path)
+        try:
+            conn.execute(
+                'INSERT INTO web_accounts(id, url, status, created_at,'
+                " updated_at) VALUES('serge_chevalier_ia',"
+                " 'https://www.reddit.com', 'creating', '2026-11-20',"
+                " '2026-11-20')"
+            )
+            conn.commit()
+        finally:
+            conn.close()
+        liste = section.locator('[data-list="comptes-web"]')
+        expect(liste.locator('[data-retirer]')).to_have_count(1)
+        liste.locator('[data-retirer="serge_chevalier_ia"]').click()
+        page.locator('.modale').get_by_role(
+            'button', name='Retirer le compte'
+        ).click()
+        expect(page.locator('.toast-succes').last).to_contain_text(
+            'C’est fait.'
+        )
+        expect(liste).not_to_contain_text('serge_chevalier_ia')
+        expect(liste).to_contain_text('reddit — serge-ia')
+        # « Créer un compte web » lance sa tâche avec ce qui est tapé.
         bloc = section.locator('.ecoute-bouton').first
         bloc.locator('textarea').nth(0).fill('x')
         bloc.locator('textarea').nth(1).fill('https://x.com')
+        bloc.locator('textarea').nth(3).fill('serge_ia')
         bloc.get_by_role('button', name='Créer un compte web').click()
         page.locator('.modale').get_by_role(
             'button', name='Créer un compte web'
@@ -256,6 +281,7 @@ class McSystemTests(McBrowserCase):
             conn.close()
         self.assertEqual(lancee['compte'], 'x')
         self.assertEqual(lancee['lien'], 'https://x.com')
+        self.assertEqual(lancee['pseudo'], 'serge_ia')
 
     def test_l_essai_total_se_suit_et_s_arrete(self) -> None:
         """Un essai lancé : la page montre où il en est et ses tâches ;

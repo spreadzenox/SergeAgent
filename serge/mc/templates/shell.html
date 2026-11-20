@@ -172,14 +172,14 @@
 </section>
 <section class="panneau" data-section="comptes_web" data-sig="">
 <h2>Comptes web</h2>
-<p class="page-intro">Les comptes de Serge sur des sites : un par site, nommé d’un mot. Une invocation à qui la base donne un compte navigue connectée. Son mot de passe et sa session sont chiffrés en base : ni un modèle ni cette page ne les voient.</p>
+<p class="page-intro">Les comptes de Serge sur des sites : un par site, nommé du mot du site (reddit, linkedin, instagram, x), pas du pseudo. Une invocation à qui la base donne un compte navigue connectée. Son mot de passe et sa session sont chiffrés en base : ni un modèle ni cette page ne les voient.</p>
 <p data-comptes="plafond"></p>
 <ul data-list="comptes-web"></ul>
 <div data-comptes="boutons"></div>
 <h3>Enregistrer un compte qui existe déjà</h3>
 <p class="page-intro">Pour un compte créé à la main : Serge garde son identifiant et son mot de passe, puis « Vérifier un compte web » le connecte.</p>
 <form class="grille-champs" data-comptes="enregistrer">
-<label>Nom du compte, un mot (reddit) <input name="compte" required maxlength="31" autocomplete="off"></label>
+<label>Le site, en un mot : reddit, linkedin, instagram ou x <input name="compte" required maxlength="31" autocomplete="off"></label>
 <label>Adresse du site <input name="url" required maxlength="300" placeholder="https://www.reddit.com" autocomplete="off"></label>
 <label>Identifiant de connexion <input name="identifiant" required maxlength="200" autocomplete="off"></label>
 <label>Mot de passe <input name="mot_de_passe" type="password" required maxlength="200" autocomplete="new-password"></label>
@@ -387,6 +387,15 @@
 <section class="panneau" data-section="identite" data-sig="">
 <h2>Identité</h2>
 <ul data-list="champs"></ul>
+<h3>Ce que Serge donne à un site pour s’y inscrire</h3>
+<p class="page-intro">« Créer un compte web » remplit l’inscription avec ces quatre champs. L’adresse e-mail est celle de la boîte de Serge : le site y envoie son message de confirmation. Écrits dans le fichier d’instance.</p>
+<form class="grille-champs" data-identite="inscription">
+<label>Adresse e-mail <input name="email" type="email" maxlength="200" autocomplete="off"></label>
+<label>Prénom <input name="prenom" maxlength="200" autocomplete="off"></label>
+<label>Nom <input name="nom" maxlength="200" autocomplete="off"></label>
+<label>Pseudo <input name="pseudo" maxlength="200" autocomplete="off"></label>
+<div class="barre-policy"><button type="submit" class="btn-doux">Enregistrer l’identité</button></div>
+</form>
 </section>
 </template>
 <script type="module" src="/static/mc/app.js"></script>

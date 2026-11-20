@@ -14,7 +14,11 @@ Scénarios :
 - « Vérifier un compte web », ensuite : la session gardée connecte
   d'emblée ;
 - un nom de compte mal écrit est refusé avant toute navigation, et un
-  ticket le dit.
+  ticket le dit ;
+- le pseudo voulu, tapé dans le bouton, arrive à l'invocation qui crée le
+  compte ;
+- une ligne ouverte par erreur se retire, pas un compte en service ni un
+  compte qu'une tâche utilise.
 """
 
 from __future__ import annotations
@@ -42,9 +46,11 @@ from serge.sandbox import sessions  # noqa: E402
 from tests.mc_server_case import browser_ok  # noqa: E402
 from tests.test_navigateur import _chrome, _site, appel  # noqa: E402
 
+SITE = 'le site, en un mot : reddit, linkedin, instagram ou x (pas le pseudo)'
 CREER = {
-    'nom du compte, un mot (reddit, linkedin, x…)': 'Forum',
+    SITE: 'Forum',
     'date de naissance, si le site la demande (JJ/MM/AAAA)': '',
+    'pseudo voulu sur ce site (vide : celui de la page Identité)': 'serge_ia',
 }
 
 
@@ -265,6 +271,13 @@ class ComptesWebTests(unittest.TestCase):
         ).fetchone()
         self.assertTrue(all(chiffres))
         self.assertNotIn('jeton-de-session', chiffres[1])
+        # Le pseudo tapé dans le bouton est arrivé jusqu'à lui.
+        self.assertIn(
+            '"pseudo": "serge_ia"',
+            json.dumps(inscrit.messages[0], ensure_ascii=False).replace(
+                '\\"', '"'
+            ),
+        )
         # Le modèle n'a jamais vu le mot de passe, et son outil ne lui
         # propose ni compte ni secrets.
         vu = json.dumps(inscrit.messages, ensure_ascii=False)
@@ -317,7 +330,7 @@ class ComptesWebTests(unittest.TestCase):
                 self.conn,
                 'bouton_creer_compte_web',
                 {
-                    'nom du compte, un mot (reddit, linkedin, x…)': 'Mon compte',
+                    SITE: 'Mon compte',
                     'adresse du site (https://www.reddit.com)': self.site,
                 },
             )
@@ -334,6 +347,60 @@ class ComptesWebTests(unittest.TestCase):
             ],
             0,
         )
+
+
+class RetirerUnCompteTests(unittest.TestCase):
+    def test_seul_un_compte_hors_service_se_retire(self) -> None:
+        import sqlite3
+
+        from serge.db.boot import init_schema
+
+        conn = sqlite3.connect(':memory:')
+        self.addCleanup(conn.close)
+        init_schema(conn)
+        for nom, etat, pris in (
+            ('serge_chevalier_ia', 'creating', ''),
+            ('reddit', 'active', ''),
+            ('x', 'creating', 't_en_cours'),
+        ):
+            conn.execute(
+                'INSERT INTO web_accounts(id, url, status, used_by,'
+                ' used_since, created_at, updated_at) VALUES(?, ?, ?, ?, ?,'
+                ' ?, ?)',
+                (
+                    nom,
+                    'https://exemple.fr',
+                    etat,
+                    pris,
+                    utcnow(),
+                    utcnow(),
+                    utcnow(),
+                ),
+            )
+        web_accounts.count_action(conn, 'serge_chevalier_ia')
+        web_accounts.remove(conn, ' Serge_Chevalier_IA ')
+        self.assertEqual(
+            [
+                r[0]
+                for r in conn.execute(
+                    'SELECT id FROM web_accounts ORDER BY id'
+                )
+            ],
+            ['reddit', 'x'],
+        )
+        self.assertEqual(
+            conn.execute('SELECT COUNT(*) FROM web_account_days').fetchone()[
+                0
+            ],
+            0,
+        )
+        for nom, raison in (
+            ('reddit', 'est en service'),
+            ('x', 'sert à une tâche en cours'),
+            ('inconnu', 'pas de compte « inconnu »'),
+        ):
+            with self.assertRaisesRegex(web_accounts.AccountError, raison):
+                web_accounts.remove(conn, nom)
 
 
 def tearDownModule() -> None:
