@@ -32,7 +32,11 @@ def normalise_value(channel: str, value: str) -> str:
     """Forme comparable d'une adresse.
 
     E-mail : sans majuscules. Téléphone : le ``+`` de tête et les chiffres.
-    Autre canal : le texte tel quel (un pseudo distingue les majuscules).
+    L'adresse d'un profil sur un site : sans ``https://``, ``www.``, ce qui
+    suit un ``?`` ou un ``#``, la barre de fin ni les majuscules (exemple :
+    ``https://www.linkedin.com/in/Ana-Roux/?x=1`` et
+    ``linkedin.com/in/ana-roux`` sont la même personne). Autre : le texte
+    tel quel (un pseudo distingue les majuscules).
     """
     text = unicodedata.normalize('NFKC', str(value or '')).strip()
     if channel == 'email':
@@ -40,6 +44,9 @@ def normalise_value(channel: str, value: str) -> str:
     if channel == 'phone':
         digits = ''.join(ch for ch in text if ch.isdigit())
         return f'+{digits}' if text.startswith('+') and digits else digits
+    if text.casefold().startswith(('http://', 'https://')):
+        sans = text.split('://', 1)[1].split('?', 1)[0].split('#', 1)[0]
+        return sans.casefold().removeprefix('www.').rstrip('/')
     return text
 
 

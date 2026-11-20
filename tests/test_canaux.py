@@ -26,8 +26,22 @@ class CanauxTests(unittest.TestCase):
         init_schema(self.conn)
 
     def test_semence_ecriture_seulement(self) -> None:
-        ids = {str(r[0]) for r in self.conn.execute('SELECT id FROM canaux')}
-        self.assertEqual(ids, {'email', 'voice'})
+        """Les canaux du code, et ceux du navigateur décrits dans le
+        pipeline de départ (lot 13)."""
+        canaux = {
+            str(r[0]): str(r[1])
+            for r in self.conn.execute('SELECT id, account FROM canaux')
+        }
+        self.assertEqual(
+            canaux,
+            {
+                'email': '',
+                'voice': '',
+                'linkedin': 'linkedin',
+                'instagram': 'instagram',
+                'x': 'x',
+            },
+        )
 
     def test_fiche(self) -> None:
         fiche = project_objet(self.conn, 'canal', 'email')
@@ -66,8 +80,38 @@ class CanauxTests(unittest.TestCase):
         )
 
     def test_fiche_absente(self) -> None:
-        self.assertIsNone(fiche_canal(self.conn, 'linkedin'))
+        self.assertIsNone(fiche_canal(self.conn, 'tiktok'))
         self.assertIsNone(fiche_canal(self.conn, 'discord'))
+
+    def test_un_canal_du_navigateur_suit_son_compte(self) -> None:
+        """Sans compte en service, sa fiche dit ce qui manque ; dès que le
+        compte est en service, le canal est branché et se relève, sans rien
+        relancer ; il survit au remplissage du catalogue."""
+        fiche = fiche_canal(self.conn, 'linkedin')
+        assert fiche is not None
+        self.assertEqual(
+            {c['k']: c['v'] for c in fiche['champs']}['Compte web'], 'linkedin'
+        )
+        self.assertIn(
+            'pas de compte « linkedin » en service', fiche['cadres'][0]['todo']
+        )
+        self.conn.execute(
+            "INSERT INTO web_accounts(id, url, status) VALUES('linkedin',"
+            " 'https://www.linkedin.com', 'active')"
+        )
+        ensure_canaux(self.conn)
+        self.assertEqual(
+            tuple(
+                self.conn.execute(
+                    'SELECT etat, connected, polls, poll_pace FROM canaux'
+                    " WHERE id='linkedin'"
+                ).fetchone()
+            ),
+            ('branche', 1, 1, 'slow'),
+        )
+        fiche = fiche_canal(self.conn, 'linkedin')
+        assert fiche is not None
+        self.assertEqual(fiche['cadres'], [])
 
     def test_retire_canal_owner(self) -> None:
         self.conn.execute(

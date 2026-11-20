@@ -361,6 +361,7 @@ def seed_pipeline(conn: sqlite3.Connection, data: Mapping[str, Any]) -> None:
     Raises:
         PipelineSeedError: Fichier mal formé.
     """
+    from serge.canaux import seed_web_channels
     from serge.interpreter.seen import seed_table_views
     from serge.interpreter.settings import seed_settings
     from serge.pipeline_changes import apply_changes
@@ -368,6 +369,10 @@ def seed_pipeline(conn: sqlite3.Connection, data: Mapping[str, Any]) -> None:
     if data.get('schema_version') != SCHEMA_VERSION:
         raise PipelineSeedError('schema_version doit valoir 1')
     _seed_simple(conn, data)
+    try:
+        seed_web_channels(conn, list_of(data, 'web_channels'))
+    except ValueError as exc:
+        raise PipelineSeedError(str(exc)) from exc
     _seed_tools(conn, data)
     _seed_rules(conn, data)
     seed_table_views(conn, list_of(data, 'table_views'))

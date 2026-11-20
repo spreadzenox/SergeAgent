@@ -1253,3 +1253,142 @@ class StripeParCleTests(unittest.TestCase):
                 "SELECT prompt FROM invocations WHERE id='paiement_test'"
             ).fetchone()[0],
         )
+
+
+class FouillesDesReseauxTests(unittest.TestCase):
+    """Une instance du lot 12 : « Explorer le web » ne sait que chercher
+    et lire un aperçu. Au démarrage, elle peut confier une fouille de
+    Reddit, d'Instagram ou de X, et sa consigne dit quand (Q104)."""
+
+    IDS = (
+        'lot13_explorer_fouille_les_reseaux',
+        'lot13_explorer_consigne_des_reseaux',
+    )
+
+    def test_explorer_recoit_les_fouilles(self) -> None:
+        conn = sqlite3.connect(':memory:')
+        self.addCleanup(conn.close)
+        init_schema(conn)
+        data = read_yaml_file(config_dir() / 'pipeline.yaml')
+        consigne = {c['id']: c for c in data['changes']}[self.IDS[1]]
+        prompt = conn.execute(
+            "SELECT prompt FROM invocations WHERE id='explorer_web'"
+        ).fetchone()[0]
+        for passage in consigne['set']['prompt']['replace']:
+            self.assertIn(passage['new'], prompt)
+            prompt = prompt.replace(passage['new'], passage['old'])
+        conn.execute(
+            "UPDATE invocations SET prompt=? WHERE id='explorer_web'",
+            (prompt,),
+        )
+        conn.execute(
+            'DELETE FROM invocation_tool_params WHERE invocation_tool_id IN'
+            " (SELECT id FROM invocation_tools WHERE tool_id LIKE 'fouiller_%')"
+        )
+        conn.execute(
+            "DELETE FROM invocation_tools WHERE tool_id LIKE 'fouiller_%'"
+        )
+        conn.executemany(
+            'DELETE FROM pipeline_changes WHERE id=?', [(i,) for i in self.IDS]
+        )
+        seed_pipeline(conn, data)
+        figes = {
+            (str(r[0]), str(r[1])): (str(r[2]), str(r[3]), str(r[4]))
+            for r in conn.execute(
+                'SELECT t.tool_id, p.param_name, p.source, p.value,'
+                ' t.max_calls FROM invocation_tool_params p'
+                ' JOIN invocation_tools t ON t.id=p.invocation_tool_id'
+                " WHERE t.invocation_id='explorer_web'"
+                " AND t.tool_id LIKE 'fouiller_%'"
+            )
+        }
+        for reseau in ('reddit', 'instagram', 'x'):
+            outil = f'fouiller_{reseau}'
+            self.assertEqual(
+                figes[outil, 'invocation'],
+                ('fixed', 'fouiller_reseau', 'fouilles_par_reseau'),
+            )
+            self.assertEqual(figes[outil, 'account'][:2], ('fixed', reseau))
+            self.assertEqual(figes[outil, 'task_id'][:2], ('task', 'task_id'))
+        self.assertIn(
+            'au\n  plus {fouilles_par_reseau} fois par réseau',
+            conn.execute(
+                "SELECT prompt FROM invocations WHERE id='explorer_web'"
+            ).fetchone()[0],
+        )
+
+
+class CanauxDuNavigateurTests(unittest.TestCase):
+    """Une instance du lot 12 : la relève toutes les 2 minutes prend tout
+    canal qui se relève, et « Trouver des prospects » ne connaît que
+    l'e-mail et le téléphone. Au démarrage, la relève rapide ne prend plus
+    que les canaux rapides, et la recherche de prospects sait ce qu'est un
+    profil (Q104)."""
+
+    IDS = (
+        'lot13_releve_rapide_par_rythme',
+        'lot13_prospects_fouille_les_reseaux',
+        'lot13_prospects_consigne_des_profils',
+    )
+
+    def test_elle_recoit_les_canaux_du_navigateur(self) -> None:
+        conn = sqlite3.connect(':memory:')
+        self.addCleanup(conn.close)
+        init_schema(conn)
+        data = read_yaml_file(config_dir() / 'pipeline.yaml')
+        consigne = {c['id']: c for c in data['changes']}[self.IDS[2]]
+        prompt = conn.execute(
+            "SELECT prompt FROM invocations WHERE id='trouver_prospects'"
+        ).fetchone()[0]
+        for passage in consigne['set']['prompt']['replace']:
+            self.assertIn(passage['new'], prompt)
+            prompt = prompt.replace(passage['new'], passage['old'])
+        conn.execute(
+            "UPDATE invocations SET prompt=? WHERE id='trouver_prospects'",
+            (prompt,),
+        )
+        conn.executescript(
+            """
+            UPDATE triggers SET filter_column='polls', filter_value='1'
+                WHERE id='releve_des_canaux';
+            DELETE FROM invocation_tool_params WHERE invocation_tool_id IN
+                (SELECT id FROM invocation_tools
+                 WHERE invocation_id='trouver_prospects'
+                 AND tool_id LIKE 'fouiller_%');
+            DELETE FROM invocation_tools
+                WHERE invocation_id='trouver_prospects'
+                AND tool_id LIKE 'fouiller_%';
+            """
+        )
+        conn.executemany(
+            'DELETE FROM pipeline_changes WHERE id=?', [(i,) for i in self.IDS]
+        )
+        seed_pipeline(conn, data)
+        self.assertEqual(
+            {
+                str(r[0]): (str(r[1]), str(r[2]), int(r[3]))
+                for r in conn.execute(
+                    'SELECT id, filter_column, filter_value, every_minutes'
+                    " FROM triggers WHERE id LIKE 'releve_des_%'"
+                )
+            },
+            {
+                'releve_des_canaux': ('poll_pace', 'fast', 2),
+                'releve_des_messageries': ('poll_pace', 'slow', 240),
+            },
+        )
+        outils = [
+            str(r[0])
+            for r in conn.execute(
+                'SELECT tool_id FROM invocation_tools'
+                " WHERE invocation_id='trouver_prospects'"
+            )
+        ]
+        for reseau in ('linkedin', 'instagram', 'x'):
+            self.assertIn(f'fouiller_{reseau}', outils)
+        self.assertIn(
+            'canal linkedin, instagram ou x',
+            conn.execute(
+                "SELECT prompt FROM invocations WHERE id='trouver_prospects'"
+            ).fetchone()[0],
+        )

@@ -237,6 +237,45 @@ api_services:
       Envoie les e-mails des produits en prod (par SMTP, avec une clé par
       produit) et reçoit ceux du relecteur. Gratuit jusqu'à 100 e-mails par
       jour et 3 000 par mois, réception comprise.
+# Les canaux qui passent par le navigateur (lot 13, décision Q104). Chacun
+# dit le compte web de Serge qui lui sert, l'invocation qui envoie un
+# message et celle qui relève la messagerie : ce sont des missions
+# (serge/missions.py), les mêmes pour tous. Un canal de plus, c'est : une
+# ligne ici, ses réglages dans policy.yaml (plafond du jour, validation,
+# relève, points), ses volumes dans « Démarrer une campagne », et le lien
+# vers son invocation de premier message. Un canal déjà en base n'est pas
+# modifié par ce fichier.
+web_channels:
+  - id: linkedin
+    title: LinkedIn
+    account: linkedin
+    send: envoyer_par_le_web
+    poll: lire_messagerie
+    doc: >-
+      Écrire à un professionnel sur LinkedIn, avec le compte de Serge, dans
+      le vrai Chrome : une demande de connexion avec une note pour un
+      inconnu, un message pour une relation. Sa messagerie est relevée
+      toutes les 4 heures, tant qu'une conversation est en cours.
+  - id: instagram
+    title: Instagram
+    account: instagram
+    send: envoyer_par_le_web
+    poll: lire_messagerie
+    doc: >-
+      Écrire à un compte professionnel sur Instagram, avec le compte de
+      Serge, dans le vrai Chrome : un message privé. Sa messagerie est
+      relevée toutes les 4 heures, tant qu'une conversation est en cours.
+  - id: x
+    title: X
+    account: x
+    send: envoyer_par_le_web
+    poll: lire_messagerie
+    doc: >-
+      Écrire à quelqu'un sur X, avec le compte de Serge, dans le vrai
+      Chrome : un message privé, si la personne en accepte. Sa messagerie
+      est relevée toutes les 4 heures, tant qu'une conversation est en
+      cours.
+
 tools:
   - id: web_search
     title: Chercher sur le web public
@@ -679,6 +718,59 @@ tools:
       le lien de confirmation d'une inscription ou d'une connexion. Attend
       qu'un message arrive, quelques minutes au plus.
     capability: verification_messages
+  - id: fouiller_reddit
+    title: Fouiller Reddit
+    doc: >-
+      Confie à une autre invocation une recherche sur Reddit, connectée au
+      compte de Serge : ce que des gens y demandent, y conseillent ou y reprochent, dans les communautés d'un métier ou d'un sujet. Rend des discussions, chacune avec son
+      adresse, son titre et un extrait. Plus lent et plus cher qu'une
+      recherche sur le web : pour quand elle ne suffit pas.
+    capability: mission
+  - id: fouiller_instagram
+    title: Fouiller Instagram
+    doc: >-
+      Confie à une autre invocation une recherche sur Instagram, connectée au
+      compte de Serge : ce que des comptes publient sur un sujet et ce que leurs abonnés en disent en commentaire. Rend des discussions, chacune avec son
+      adresse, son titre et un extrait. Plus lent et plus cher qu'une
+      recherche sur le web : pour quand elle ne suffit pas.
+    capability: mission
+  - id: fouiller_x
+    title: Fouiller X
+    doc: >-
+      Confie à une autre invocation une recherche sur X, connectée au
+      compte de Serge : ce que des gens y écrivent sur un sujet, leurs plaintes et leurs questions. Rend des discussions, chacune avec son
+      adresse, son titre et un extrait. Plus lent et plus cher qu'une
+      recherche sur le web : pour quand elle ne suffit pas.
+    capability: mission
+  - id: fouiller_linkedin
+    title: Fouiller LinkedIn
+    doc: >-
+      Confie à une autre invocation une recherche sur LinkedIn, connectée
+      au compte de Serge : des personnes par métier, entreprise ou ville,
+      ou ce qu'un métier y publie. Rend des profils ou des publications,
+      chacun avec son adresse exacte, son titre et un extrait. Plus lent
+      et plus cher qu'une recherche sur le web.
+    capability: mission
+  - id: conversations_du_canal
+    title: Les conversations en cours sur un canal
+    doc: >-
+      Les messages que Serge a envoyés par un canal depuis un nombre de
+      jours : à qui (son adresse sur le canal), quand, et le texte.
+    capability: db_read
+    read:
+      tables: [touches]
+      columns:
+        - {table: touches, name: address, as: adresse}
+        - {table: touches, name: sent_at, as: envoye_le}
+        - {table: touches, name: kind, as: sorte}
+        - {table: touches, name: body, as: message}
+      filters:
+        - {id: canal, table: touches, column: channel, param: channel}
+        - {id: parti, table: touches, column: status, fixed: sent}
+        - {id: recents, table: touches, column: sent_at, operator: '>=', days_ago: jours}
+      params:
+        - {name: channel, required: true, description: Le canal.}
+        - {name: jours, type: integer, required: true, description: 'Depuis combien de jours, au plus.'}
 
   # --- L'étape 2 : concevoir, critiquer, construire, relire (lot 10, Q91) ---
   - id: capacites_de_serge
@@ -2223,6 +2315,7 @@ invocations:
       lignes_apercu: {value: 5, min: 1, max: 30, policy: true, description: Les lignes lues dans l'aperçu d'une page.}
       pages_max: {value: 30, min: 1, max: 100, policy: true, trial: 5, description: Le nombre maximum de pages retenues par cycle.}
       flux_max: {value: 2, min: 0, max: 10, policy: true, trial: 0, description: Le nombre maximum de nouveaux flux RSS par cycle.}
+      fouilles_par_reseau: {value: 1, min: 0, max: 5, policy: true, description: 'Le nombre maximum de fouilles de chaque réseau social par cycle (0 : aucune).'}
     compare:
       ventures: true
     prompt: &consigne_explorer |
@@ -2262,6 +2355,14 @@ invocations:
         besoins (un forum, une rubrique, un site d'annonces), ajoute-le :
         au plus {flux_max} nouveaux flux, jamais un flux que Serge suit
         déjà.
+      - Tu peux aussi fouiller un réseau social (Reddit, Instagram, X), au
+        plus {fouilles_par_reseau} fois par réseau : une autre invocation
+        y navigue avec le compte de Serge et te rend des discussions. C'est
+        plus lent et plus cher qu'une recherche : fais-le seulement quand
+        tes recherches ne montrent pas ce que disent les gens eux-mêmes
+        (des consommateurs, une communauté, un métier), et écris une
+        demande précise. Une discussion rendue se retient comme une page :
+        son adresse, son titre, et son extrait pour aperçu.
     tools:
       - tool: current_listen_cycle
         mode: given
@@ -2277,6 +2378,27 @@ invocations:
           max_lines: {source: setting, value: lignes_apercu}
           table: {source: fixed, value: ''}
           id: {source: fixed, value: ''}
+      - tool: fouiller_reddit
+        mode: callable
+        max_calls: fouilles_par_reseau
+        params:
+          invocation: {source: fixed, value: fouiller_reseau}
+          account: {source: fixed, value: reddit}
+          task_id: {source: task, value: task_id}
+      - tool: fouiller_instagram
+        mode: callable
+        max_calls: fouilles_par_reseau
+        params:
+          invocation: {source: fixed, value: fouiller_reseau}
+          account: {source: fixed, value: instagram}
+          task_id: {source: task, value: task_id}
+      - tool: fouiller_x
+        mode: callable
+        max_calls: fouilles_par_reseau
+        params:
+          invocation: {source: fixed, value: fouiller_reseau}
+          account: {source: fixed, value: x}
+          task_id: {source: task, value: task_id}
     output:
       - {path: pages, type: list, max_items: pages_max, description: Les pages retenues.}
       - {path: pages.url, type: text, description: L'adresse de la page.}
@@ -3728,6 +3850,286 @@ invocations:
         condition: {field: etat, op: '!=', value: ferme}
         values:
           note: {source: field, value: compte_rendu}
+
+  - id: fouiller_reseau
+    title: Fouiller un réseau
+    role: >-
+      Cherche sur un réseau social (Reddit, Instagram, X), connectée au
+      compte de Serge dans le vrai Chrome, ce que de vraies personnes
+      disent d'un sujet, et rend les discussions utiles avec un extrait.
+      C'est une mission : « Explorer le web » la confie quand une recherche
+      ordinaire ne suffit pas ; le bouton « Fouiller un réseau » de la page
+      Système l'essaie sur un sujet sans enjeu.
+    type: llm
+    model_tier: web
+    queue: works
+    priority: 30
+    max_tool_turns: 40
+    settings:
+      trouvailles_max: {value: 8, min: 1, max: 30, policy: true, description: Le nombre maximum de discussions rendues par une fouille.}
+    prompt: |
+      Tu fouilles un réseau social pour Serge. Ce qu'on te demande est dans
+      les paramètres de la tâche (« mission »), avec le nom du compte de
+      Serge sur ce réseau (« compte ») ; tu reçois son site et son
+      identifiant. Tu navigues dans le vrai Chrome, connecté à ce compte.
+
+      Ce compte est celui de Serge, un agent IA ; la personne qui en
+      répond l'a demandé. Tes règles, sans exception :
+
+      - **Tu lis, c'est tout.** Tu ne publies rien, tu ne commentes pas,
+        tu ne votes pas, tu n'écris à personne, tu ne t'abonnes à rien.
+      - **Un captcha n'est pas pour toi.** Tu n'y touches pas et tu
+        n'essaies pas de le contourner : appelle « Appeler un humain ».
+        La première fois, la tâche s'arrête et repartira du début quand un
+        humain sera prêt ; la fois suivante, il le résout dans l'écran
+        pendant que tu attends.
+      - **Tu ne vois jamais le mot de passe.** Si le site te montre
+        déconnecté, connecte-toi : l'identifiant reçu, puis l'action
+        taper_secret sur le champ du mot de passe, avec text
+        « mot_de_passe_du_compte ». Si le site envoie un code, appelle
+        « Mes messages de vérification ».
+      - **Tu t'arrêtes quand on te le dit.** Si une action est refusée
+        parce que le compte a fait ses actions du jour, ou si le site dit
+        que le compte est limité ou suspendu, n'insiste pas : rends ce que
+        tu as, et dis-le dans ton résumé.
+
+      Comment faire :
+
+      1. Ouvre le site et cherche avec sa propre recherche, sous deux ou
+         trois angles : les mots que les gens emploient, pas un mot-clé
+         de professionnel. Sur Reddit, cherche aussi les communautés du
+         sujet.
+      2. Si on te demande ce que disent les gens : ouvre les discussions
+         qui montrent un besoin concret (quelqu'un qui demande une
+         solution, se plaint, compare, ou dit ce qu'il paie), et lis la
+         discussion et ses réponses. Écarte la publicité.
+         Si on te demande des personnes : rends leur profil (son adresse
+         exacte, celle qui s'ouvre sur la personne), son nom et son rôle
+         pour titre, et pour extrait ce qui montre qu'elle correspond.
+      3. Fais peu d'actions : une vingtaine suffit. Lire la page ne coûte
+         rien ; chaque clic et chaque défilement comptent dans les actions
+         du jour du compte.
+
+      Rends au plus {trouvailles_max} discussions. Pour chacune : son
+      adresse exacte, son titre, et un extrait de quelques lignes avec les
+      mots des gens (ce qu'ils demandent, ce qui leur manque, ce qu'ils
+      paient). Puis un résumé de trois phrases : ce qui revient le plus,
+      et ce que tu n'as pas pu voir.
+    tools:
+      - tool: compte_web
+        mode: given
+        label: Le compte
+        params:
+          account: {source: task, value: compte}
+      - tool: vrai_chrome_agir
+        mode: callable
+        params: *vrai_chrome_du_compte
+      - tool: vrai_chrome_lire
+        mode: callable
+        params: *vrai_chrome_du_compte
+      - tool: vrai_chrome_capture
+        mode: callable
+        params: *vrai_chrome_du_compte
+      - tool: messages_de_verification
+        mode: callable
+        params: *tache_de_verification
+      - tool: appeler_un_humain
+        mode: callable
+        params:
+          task_id: {source: task, value: task_id}
+    output:
+      - {path: trouvailles, type: list, required: false, max_items: trouvailles_max, description: Les discussions utiles.}
+      - {path: trouvailles.url, type: text, description: L'adresse exacte de la discussion.}
+      - {path: trouvailles.titre, type: text, description: Son titre.}
+      - {path: trouvailles.extrait, type: text, description: 'Ce qui y est dit, en quelques lignes, avec les mots des gens.'}
+      - {path: resume, type: text, description: 'Ce qui revient le plus, et ce que tu n''as pas pu voir.'}
+
+  - id: envoyer_par_le_web
+    title: Envoyer un message par le navigateur
+    role: >-
+      Envoie un message à une personne sur un réseau (LinkedIn, Instagram,
+      X), connectée au compte de Serge dans le vrai Chrome. C'est une
+      mission : « Envoyer un message » la confie, après ses garde-fous,
+      pour un canal du navigateur. Elle regarde d'abord si le message est
+      déjà parti, pour ne jamais l'envoyer deux fois.
+    type: llm
+    model_tier: web
+    queue: conversations
+    priority: 50
+    max_tool_turns: 30
+    prompt: |
+      Tu envoies un message de Serge à une personne, sur un réseau. Tout
+      est dans les paramètres de la tâche : le réseau (« canal » ; sans
+      lui, c'est celui du compte), le compte de Serge (« compte »),
+      l'adresse du profil de la personne
+      (« adresse »), le texte à envoyer (« message ») et sa sorte
+      (« sorte » : first, un premier message ; reply, une réponse ;
+      followup, une relance). Tu reçois le site et l'identifiant du compte.
+
+      Ce compte est celui de Serge, un agent IA ; la personne qui en
+      répond l'a demandé. Tes règles, sans exception :
+
+      - **Tu ne mens pas.** Tu ne te fais jamais passer pour un humain.
+      - **Un captcha n'est pas pour toi.** Tu n'y touches pas et tu
+        n'essaies pas de le contourner : appelle « Appeler un humain ».
+        La première fois, la tâche s'arrête et repartira du début quand un
+        humain sera prêt ; la fois suivante, il le résout dans l'écran
+        pendant que tu attends.
+      - **Tu ne vois jamais le mot de passe.** Si le site te montre
+        déconnecté, connecte-toi : l'identifiant reçu, puis l'action
+        taper_secret sur le champ du mot de passe, avec text
+        « mot_de_passe_du_compte ». Si le site envoie un code, appelle
+        « Mes messages de vérification ».
+      - **Tu t'arrêtes quand on te le dit.** Si une action est refusée
+        parce que le compte a fait ses actions du jour, ou si le site dit
+        que le compte est limité ou suspendu, n'insiste pas.
+      - **Tu envoies ce texte, et rien d'autre** : tel qu'il est, à cette
+        personne seulement. Tu ne le réécris pas, tu n'ajoutes rien, tu
+        n'écris à personne d'autre, tu ne publies rien.
+
+      Comment faire :
+
+      1. Ouvre le profil de la personne (« adresse »). Vérifie que c'est
+         bien un profil, pas une page d'erreur.
+      2. Ouvre la conversation avec elle. Si ton texte y est déjà, il est
+         parti : n'envoie rien et rends envoye « deja ».
+      3. Envoie le texte :
+         - **LinkedIn** : à une relation, par « Message ». À un inconnu,
+           par « Se connecter », puis « Ajouter une note » : le texte est
+           la note. Si le site refuse la note (trop longue, ou plus de
+           notes permises ce mois-ci), n'envoie pas la demande sans note :
+           rends envoye « non », avec la raison ;
+         - **Instagram** : par « Message » (ou « Envoyer un message »)
+           sur le profil ;
+         - **X** : par l'enveloppe du profil. Si le profil ne l'a pas, la
+           personne n'accepte pas de message : rends envoye « non ».
+      4. Vérifie que le texte apparaît dans la conversation, ou que la
+         demande est « en attente ».
+
+      Rends envoye « oui » (parti), « deja » (il y était déjà) ou « non »
+      (pas parti), l'adresse de la conversation si le site en donne une,
+      et, s'il n'est pas parti, la raison en une phrase.
+    tools:
+      - tool: compte_web
+        mode: given
+        label: Le compte
+        params:
+          account: {source: task, value: compte}
+      - tool: vrai_chrome_agir
+        mode: callable
+        params: *vrai_chrome_du_compte
+      - tool: vrai_chrome_lire
+        mode: callable
+        params: *vrai_chrome_du_compte
+      - tool: vrai_chrome_capture
+        mode: callable
+        params: *vrai_chrome_du_compte
+      - tool: messages_de_verification
+        mode: callable
+        params: *tache_de_verification
+      - tool: appeler_un_humain
+        mode: callable
+        params:
+          task_id: {source: task, value: task_id}
+    output:
+      - {path: envoye, type: choice, choices: [oui, deja, non], description: 'Le message est-il dans la conversation ?'}
+      - {path: reference, type: text, required: false, description: "L'adresse de la conversation, si le site en donne une."}
+      - {path: raison, type: text, required: false, description: "Pourquoi il n'est pas parti, en une phrase."}
+
+  - id: lire_messagerie
+    title: Lire la messagerie d'un réseau
+    role: >-
+      Lit, dans le vrai Chrome, la messagerie du compte de Serge sur un
+      réseau, et rend ce que les personnes à qui il a écrit ont répondu.
+      C'est une mission : « Relever les messages » la confie pour un canal
+      du navigateur, toutes les 4 heures, tant qu'une conversation est en
+      cours ; elle rattache ensuite chaque message à son contact.
+    type: llm
+    model_tier: web
+    queue: conversations
+    priority: 80
+    max_tool_turns: 30
+    settings:
+      jours_de_suivi: {value: 30, min: 1, max: 180, policy: true, description: Les conversations suivies sont celles où Serge a écrit depuis moins de jours que ce réglage.}
+    prompt: |
+      Tu relèves la messagerie du compte de Serge sur un réseau. Le réseau
+      (« canal ») et le compte (« compte ») sont dans les paramètres de la
+      tâche. Tu reçois le site et l'identifiant du compte, et les messages
+      que Serge a envoyés par ce canal ces {jours_de_suivi} derniers
+      jours : à qui, quand, et le texte.
+
+      Ce compte est celui de Serge, un agent IA ; la personne qui en
+      répond l'a demandé. Tes règles, sans exception :
+
+      - **Tu ne mens pas.** Tu ne te fais jamais passer pour un humain.
+      - **Un captcha n'est pas pour toi.** Tu n'y touches pas et tu
+        n'essaies pas de le contourner : appelle « Appeler un humain ».
+        La première fois, la tâche s'arrête et repartira du début quand un
+        humain sera prêt ; la fois suivante, il le résout dans l'écran
+        pendant que tu attends.
+      - **Tu ne vois jamais le mot de passe.** Si le site te montre
+        déconnecté, connecte-toi : l'identifiant reçu, puis l'action
+        taper_secret sur le champ du mot de passe, avec text
+        « mot_de_passe_du_compte ». Si le site envoie un code, appelle
+        « Mes messages de vérification ».
+      - **Tu t'arrêtes quand on te le dit.** Si une action est refusée
+        parce que le compte a fait ses actions du jour, ou si le site dit
+        que le compte est limité ou suspendu, n'insiste pas.
+      - **Tu lis, c'est tout.** Tu ne réponds à personne, tu n'acceptes
+        et ne refuses rien, tu ne publies rien : la réponse de Serge sera
+        écrite ensuite, par une autre invocation.
+
+      Comment faire :
+
+      1. Ouvre la messagerie du site (sur LinkedIn, regarde aussi les
+         invitations acceptées : une personne qui accepte sans écrire n'a
+         pas répondu).
+      2. Pour chaque personne à qui Serge a écrit, ouvre sa conversation
+         et lis ce qu'elle a écrit **après** le dernier message de Serge.
+         Si les paramètres de la tâche donnent une « adresse » (un essai
+         depuis la page Système), lis seulement la conversation de cette
+         personne.
+      3. Ne rends rien pour une conversation sans réponse, ni pour un
+         message d'une personne à qui Serge n'a pas écrit.
+
+      Rends un message par réponse reçue : l'adresse du profil de la
+      personne, telle que Serge la connaît (reprends-la de la liste), et
+      son texte entier, mot pour mot. Si plusieurs messages se suivent,
+      réunis-les en un seul texte. Puis un résumé d'une phrase.
+    tools:
+      - tool: compte_web
+        mode: given
+        label: Le compte
+        params:
+          account: {source: task, value: compte}
+      - tool: vrai_chrome_agir
+        mode: callable
+        params: *vrai_chrome_du_compte
+      - tool: vrai_chrome_lire
+        mode: callable
+        params: *vrai_chrome_du_compte
+      - tool: vrai_chrome_capture
+        mode: callable
+        params: *vrai_chrome_du_compte
+      - tool: messages_de_verification
+        mode: callable
+        params: *tache_de_verification
+      - tool: appeler_un_humain
+        mode: callable
+        params:
+          task_id: {source: task, value: task_id}
+      - tool: conversations_du_canal
+        mode: given
+        label: Ce que Serge a envoyé par ce canal
+        max_rows: 100
+        params:
+          channel: {source: task, value: canal}
+          jours: {source: setting, value: jours_de_suivi}
+    output:
+      - {path: messages, type: list, required: false, description: Les réponses reçues.}
+      - {path: messages.de, type: text, description: "L'adresse du profil de la personne, telle que Serge la connaît."}
+      - {path: messages.texte, type: text, description: 'Son texte entier, mot pour mot.'}
+      - {path: resume, type: text, description: 'Ce que tu as vu, en une phrase.'}
 
   - id: prevenir_compte_web
     title: Prévenir pour un compte web
@@ -5859,6 +6261,15 @@ invocations:
       voice_semaine: {value: 50, min: 1, max: 5000, policy: true, description: 'Appel : les prospects par semaine, en prospection lourde.'}
       email_total: {value: 1000, min: 1, max: 50000, policy: true, trial: 1, description: 'E-mail : les prospects au total, en prospection lourde.'}
       voice_total: {value: 250, min: 1, max: 50000, policy: true, trial: 1, description: 'Appel : les prospects au total, en prospection lourde.'}
+      linkedin_test: {value: 10, min: 1, max: 500, policy: true, trial: 1, description: "LinkedIn : les prospects d'un test léger."}
+      linkedin_semaine: {value: 30, min: 1, max: 5000, policy: true, description: 'LinkedIn : les prospects par semaine, en prospection lourde.'}
+      linkedin_total: {value: 100, min: 1, max: 50000, policy: true, trial: 1, description: 'LinkedIn : les prospects au total, en prospection lourde.'}
+      instagram_test: {value: 10, min: 1, max: 500, policy: true, trial: 1, description: "Instagram : les prospects d'un test léger."}
+      instagram_semaine: {value: 30, min: 1, max: 5000, policy: true, description: 'Instagram : les prospects par semaine, en prospection lourde.'}
+      instagram_total: {value: 100, min: 1, max: 50000, policy: true, trial: 1, description: 'Instagram : les prospects au total, en prospection lourde.'}
+      x_test: {value: 10, min: 1, max: 500, policy: true, trial: 1, description: "X : les prospects d'un test léger."}
+      x_semaine: {value: 30, min: 1, max: 5000, policy: true, description: 'X : les prospects par semaine, en prospection lourde.'}
+      x_total: {value: 100, min: 1, max: 50000, policy: true, trial: 1, description: 'X : les prospects au total, en prospection lourde.'}
       duree_max_jours: {value: 30, min: 1, max: 90, policy: true, description: "La durée d'un test léger, en jours, au plus."}
     params:
       campaign_id: {source: task, value: campaign_id}
@@ -5901,6 +6312,7 @@ invocations:
       pages_max: {value: 20, min: 1, max: 80, policy: true, description: 'Le nombre maximum de pages lues par passage.'}
       lignes_page: {value: 120, min: 10, max: 2000, policy: true, description: 'Les lignes lues au plus dans une page.'}
       ajouts_max: {value: 30, min: 1, max: 150, description: "Les essais d'ajout au plus par passage, refus compris."}
+      fouilles_max: {value: 2, min: 0, max: 10, policy: true, description: 'Le nombre maximum de fouilles de chaque réseau par passage (0 : aucune).'}
     prompt: |
       Tu trouves des prospects pour une campagne de Serge : de vraies
       personnes, à qui il va écrire ou téléphoner.
@@ -5916,7 +6328,14 @@ invocations:
         une adresse générique (contact@, info@, accueil@…) : une entreprise
         dont tu ne trouves que celle-là est laissée de côté ;
       - canal voice : son numéro professionnel, au format international
-        (+33…).
+        (+33…) ;
+      - canal linkedin, instagram ou x : l'adresse de son profil sur ce
+        réseau (https://www.linkedin.com/in/…), jamais celle d'une
+        recherche ni d'une publication. Sur Instagram et X, seulement un
+        compte professionnel, tenu au nom de son activité. Pour ces
+        canaux, tu peux fouiller le réseau lui-même, au plus
+        {fouilles_max} fois : une autre invocation y navigue avec le
+        compte de Serge et te rend des profils.
 
       Où chercher : le site de l'entreprise (sa page équipe, ses mentions
       légales), les annuaires professionnels, les fiches d'entreprise, les
@@ -5973,6 +6392,27 @@ invocations:
           table: {source: fixed, value: ''}
           id: {source: fixed, value: ''}
           max_lines: {source: setting, value: lignes_page}
+      - tool: fouiller_linkedin
+        mode: callable
+        max_calls: fouilles_max
+        params:
+          invocation: {source: fixed, value: fouiller_reseau}
+          account: {source: fixed, value: linkedin}
+          task_id: {source: task, value: task_id}
+      - tool: fouiller_instagram
+        mode: callable
+        max_calls: fouilles_max
+        params:
+          invocation: {source: fixed, value: fouiller_reseau}
+          account: {source: fixed, value: instagram}
+          task_id: {source: task, value: task_id}
+      - tool: fouiller_x
+        mode: callable
+        max_calls: fouilles_max
+        params:
+          invocation: {source: fixed, value: fouiller_reseau}
+          account: {source: fixed, value: x}
+          task_id: {source: task, value: task_id}
       - tool: ajouter_prospect
         mode: callable
         max_calls: ajouts_max
@@ -6110,6 +6550,100 @@ invocations:
         key: {column: id, source: task, value: touch_id}
         values:
           subject: {source: field, value: subject}
+          body: {source: field, value: body}
+          status: {source: fixed, value: pending}
+      - table: contacts
+        operation: update
+        key: {column: id, source: task, value: contact_id}
+        values:
+          funnel_state: {source: fixed, value: CONTACTING}
+
+  - id: premier_message_reseau
+    title: Écrire le premier message d'un réseau
+    role: >-
+      Rédige le premier message de Serge à un prospect sur un réseau
+      (LinkedIn, Instagram, X) : court, à la mesure de ce que le réseau
+      permet à un inconnu. Pendant le test, le lien est celui du POC ;
+      ensuite, celui du produit fini.
+    step: prospection_light
+    type: llm
+    model_tier: mid
+    queue: conversations
+    priority: 50
+    gets_serge_intro: true
+    max_tool_turns: 3
+    compare:
+      touches: false
+      contacts: false
+    prompt: |
+      Tu écris le premier message de Serge à une personne qu'il ne connaît
+      pas encore, sur un réseau, pour lui présenter un business. Le réseau
+      est dans les paramètres de la tâche (« canal »).
+
+      Tu reçois la fiche du business, la fiche produit et ses questions
+      fréquentes, le plan (la cible et ce qu'on veut vérifier), la fiche de
+      la personne (qui elle est, pourquoi elle est visée), la page où son
+      profil a été trouvé, et ce qui est en ligne.
+
+      La longueur dépend du réseau, et elle ne se dépasse pas :
+      - **linkedin** : 280 caractères au plus, espaces compris. C'est la
+        note d'une demande de connexion ;
+      - **instagram** et **x** : 500 caractères au plus.
+
+      Dans cet ordre, sans formule de politesse inutile :
+      - qui écrit : « Serge, un agent IA » ;
+      - pourquoi à elle (son métier, son entreprise), sans flatterie ;
+      - ce que fait le produit, en une phrase ;
+      - où l'essayer : l'adresse de ce qui est en ligne, précédée de
+        https://, si elle tient dans la longueur. Si rien n'est en ligne,
+        aucun lien ;
+      - une question simple pour l'inviter à répondre.
+
+      Ne promets rien qui ne soit pas dans la fiche produit. Pas d'objet,
+      pas de signature d'humain, pas de mot-dièse.
+    tools:
+      - tool: fiche_business
+        mode: given
+        label: La fiche du business
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: fiche_produit
+        mode: given
+        label: La fiche produit
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: questions_produit
+        mode: given
+        label: Les questions fréquentes
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: plan_valide_du_poc
+        mode: given
+        label: Le plan du POC
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: fiche_prospect
+        mode: given
+        label: La fiche de la personne
+        params:
+          contact_id: {source: task, value: contact_id}
+      - tool: adresses_du_prospect
+        mode: given
+        label: Où son profil a été trouvé
+        params:
+          contact_id: {source: task, value: contact_id}
+      - tool: en_ligne_du_business
+        mode: given
+        label: Ce qui est en ligne
+        params:
+          venture_id: {source: task, value: venture_id}
+    output:
+      - {path: body, type: text, description: 'Le texte du message, dans la longueur du réseau.'}
+    writes:
+      - table: touches
+        operation: update
+        key: {column: id, source: task, value: touch_id}
+        values:
           body: {source: field, value: body}
           status: {source: fixed, value: pending}
       - table: contacts
@@ -7769,6 +8303,42 @@ links:
     to: premier_appel
     condition: {field: channel, op: '=', value: voice}
     params: *premier_message
+  - id: premier_message_par_linkedin
+    title: Un premier message par LinkedIn
+    from: rediger_premier_message
+    to: premier_message_reseau
+    condition: {field: channel, op: '=', value: linkedin}
+    params:
+      touch_id: {source: task, value: touch_id}
+      contact_id: {source: task, value: contact_id}
+      venture_id: {source: task, value: venture_id}
+      canal: {source: fixed, value: linkedin}
+  - id: premier_message_par_instagram
+    title: Un premier message par Instagram
+    from: rediger_premier_message
+    to: premier_message_reseau
+    condition: {field: channel, op: '=', value: instagram}
+    params:
+      touch_id: {source: task, value: touch_id}
+      contact_id: {source: task, value: contact_id}
+      venture_id: {source: task, value: venture_id}
+      canal: {source: fixed, value: instagram}
+  - id: premier_message_par_x
+    title: Un premier message par X
+    from: rediger_premier_message
+    to: premier_message_reseau
+    condition: {field: channel, op: '=', value: x}
+    params:
+      touch_id: {source: task, value: touch_id}
+      contact_id: {source: task, value: contact_id}
+      venture_id: {source: task, value: venture_id}
+      canal: {source: fixed, value: x}
+  - id: premier_message_reseau_part
+    title: Le premier message d'un réseau est écrit
+    from: premier_message_reseau
+    to: envoyer_message
+    params:
+      touch_id: {source: task, value: touch_id}
   - id: premier_email_part
     title: Le premier e-mail est écrit
     from: premier_email
@@ -8038,8 +8608,18 @@ triggers:
     event: every
     every_minutes: 2
     table: canaux
-    filter_column: polls
-    filter_value: '1'
+    filter_column: poll_pace
+    filter_value: fast
+    params:
+      channel: {source: row, value: id}
+  - id: releve_des_messageries
+    title: Relever la messagerie de chaque canal du navigateur
+    invocation: relever_messages
+    event: every
+    every_minutes: 240
+    table: canaux
+    filter_column: poll_pace
+    filter_value: slow
     params:
       channel: {source: row, value: id}
   - id: message_recu
@@ -8402,6 +8982,47 @@ triggers:
       captcha. Le résultat est noté sur la fiche du compte.
     params:
       compte: {source: form, value: 'nom du compte (reddit, linkedin, x…)'}
+
+  - id: bouton_fouiller_reseau
+    title: Fouiller un réseau
+    invocation: fouiller_reseau
+    event: button
+    confirm: >-
+      Serge navigue sur ce réseau avec son compte, dans le vrai Chrome,
+      cherche ce sujet et rend quelques discussions ; le résultat est sur
+      la fiche de la tâche. Pour essayer un compte sur un sujet sans
+      enjeu. Compter quelques dizaines de centimes de modèle.
+    params:
+      compte: {source: form, value: 'nom du compte (reddit, instagram, x…)'}
+      mission: {source: form, value: 'ce que tu cherches (« ce que les gens disent des calculatrices en ligne »)'}
+
+  - id: bouton_message_d_essai_reseau
+    title: Envoyer un message d'essai sur un réseau
+    invocation: envoyer_par_le_web
+    event: button
+    confirm: >-
+      Serge envoie ce texte à ce profil, avec son compte, dans le vrai
+      Chrome : par la même invocation que les vrais messages du canal,
+      mais sans contact ni campagne. À faire vers un de tes comptes. Le
+      résultat est sur la fiche de la tâche. Compter quelques dizaines de
+      centimes de modèle.
+    params:
+      compte: {source: form, value: 'nom du compte (linkedin, instagram, x…)'}
+      adresse: {source: form, value: 'adresse du profil à qui écrire (https://…)'}
+      message: {source: form, value: 'texte du message (280 caractères au plus pour LinkedIn)'}
+      sorte: {source: fixed, value: first}
+  - id: bouton_lire_conversation_reseau
+    title: Lire une conversation d'essai sur un réseau
+    invocation: lire_messagerie
+    event: button
+    confirm: >-
+      Serge ouvre la messagerie de ce compte, dans le vrai Chrome, et rend
+      ce que ce profil a répondu : par la même invocation que la relève
+      des vrais canaux. À faire après un message d'essai auquel tu as
+      répondu. Le résultat est sur la fiche de la tâche.
+    params:
+      compte: {source: form, value: 'nom du compte (linkedin, instagram, x…)'}
+      adresse: {source: form, value: 'adresse du profil dont lire la réponse (https://…)'}
 
 # Les modifications d'objets déjà en base sur une instance existante (le
 # fichier ne les écrase jamais) : chacune n'est appliquée qu'une fois, et
@@ -9852,6 +10473,79 @@ changes:
     set:
       prompt:
         replace: *consigne_vendre_par_cle
+  # « Explorer le web » peut confier une fouille de Reddit, d'Instagram ou
+  # de X à une autre invocation, connectée au compte de Serge (lot 13,
+  # décision Q104).
+  - id: lot13_explorer_fouille_les_reseaux
+    why: Explorer le web peut fouiller un réseau social quand une recherche ne suffit pas (Q104).
+    invocation: explorer_web
+    add_tools:
+      - {tool: fouiller_reddit, mode: callable, max_calls: fouilles_par_reseau, params: {invocation: {source: fixed, value: fouiller_reseau}, account: {source: fixed, value: reddit}, task_id: {source: task, value: task_id}}}
+      - {tool: fouiller_instagram, mode: callable, max_calls: fouilles_par_reseau, params: {invocation: {source: fixed, value: fouiller_reseau}, account: {source: fixed, value: instagram}, task_id: {source: task, value: task_id}}}
+      - {tool: fouiller_x, mode: callable, max_calls: fouilles_par_reseau, params: {invocation: {source: fixed, value: fouiller_reseau}, account: {source: fixed, value: x}, task_id: {source: task, value: task_id}}}
+  - id: lot13_explorer_consigne_des_reseaux
+    why: La consigne dit quand fouiller un réseau social, et combien de fois (Q104).
+    table: invocations
+    where: {id: explorer_web}
+    set:
+      prompt:
+        replace:
+          - old: |-
+              - Si tu trouves un flux RSS qui publie régulièrement ce genre de
+                besoins (un forum, une rubrique, un site d'annonces), ajoute-le :
+                au plus {flux_max} nouveaux flux, jamais un flux que Serge suit
+                déjà.
+            new: |-
+              - Si tu trouves un flux RSS qui publie régulièrement ce genre de
+                besoins (un forum, une rubrique, un site d'annonces), ajoute-le :
+                au plus {flux_max} nouveaux flux, jamais un flux que Serge suit
+                déjà.
+              - Tu peux aussi fouiller un réseau social (Reddit, Instagram, X), au
+                plus {fouilles_par_reseau} fois par réseau : une autre invocation
+                y navigue avec le compte de Serge et te rend des discussions. C'est
+                plus lent et plus cher qu'une recherche : fais-le seulement quand
+                tes recherches ne montrent pas ce que disent les gens eux-mêmes
+                (des consommateurs, une communauté, un métier), et écris une
+                demande précise. Une discussion rendue se retient comme une page :
+                son adresse, son titre, et son extrait pour aperçu.
+  # Les canaux du navigateur (lot 13, décision Q104) : la relève rapide ne
+  # prend que les canaux qui se relèvent toutes les 2 minutes (l'e-mail),
+  # pas la messagerie d'un réseau ; « Trouver des prospects » sait
+  # chercher un profil.
+  - id: lot13_releve_rapide_par_rythme
+    why: La messagerie d'un réseau ne se relève pas toutes les 2 minutes (Q104).
+    table: triggers
+    where: {id: releve_des_canaux}
+    set:
+      filter_column: {from: polls, to: poll_pace}
+      filter_value: {from: '1', to: fast}
+  - id: lot13_prospects_fouille_les_reseaux
+    why: Trouver des prospects peut chercher des profils sur un réseau (Q104).
+    invocation: trouver_prospects
+    add_tools:
+      - {tool: fouiller_linkedin, mode: callable, max_calls: fouilles_max, params: {invocation: {source: fixed, value: fouiller_reseau}, account: {source: fixed, value: linkedin}, task_id: {source: task, value: task_id}}}
+      - {tool: fouiller_instagram, mode: callable, max_calls: fouilles_max, params: {invocation: {source: fixed, value: fouiller_reseau}, account: {source: fixed, value: instagram}, task_id: {source: task, value: task_id}}}
+      - {tool: fouiller_x, mode: callable, max_calls: fouilles_max, params: {invocation: {source: fixed, value: fouiller_reseau}, account: {source: fixed, value: x}, task_id: {source: task, value: task_id}}}
+  - id: lot13_prospects_consigne_des_profils
+    why: La consigne dit ce qu'est l'adresse d'un prospect sur un réseau (Q104).
+    table: invocations
+    where: {id: trouver_prospects}
+    set:
+      prompt:
+        replace:
+          - old: |-
+              - canal voice : son numéro professionnel, au format international
+                (+33…).
+            new: |-
+              - canal voice : son numéro professionnel, au format international
+                (+33…) ;
+              - canal linkedin, instagram ou x : l'adresse de son profil sur ce
+                réseau (https://www.linkedin.com/in/…), jamais celle d'une
+                recherche ni d'une publication. Sur Instagram et X, seulement un
+                compte professionnel, tenu au nom de son activité. Pour ces
+                canaux, tu peux fouiller le réseau lui-même, au plus
+                {fouilles_max} fois : une autre invocation y navigue avec le
+                compte de Serge et te rend des profils.
 deleted:
   invocations:
     - demo_ouvrir_cycle

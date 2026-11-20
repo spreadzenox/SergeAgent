@@ -18,6 +18,7 @@ from __future__ import annotations
 import json
 import sqlite3
 from collections.abc import Mapping
+from contextvars import ContextVar
 from pathlib import Path
 from typing import Any
 
@@ -44,6 +45,8 @@ from serge.interpreter.triggers import fire_row_triggers
 from serge.interpreter.writer import write_answer
 from serge.llm.client import ChatResult
 from serge.llm.runtime import budget_reached
+from serge.missions import MissionError
+from serge.missions import register as register_missions
 from serge.policy_store import policy_en_vigueur
 from serge.trial import lane
 
@@ -286,6 +289,39 @@ def run_task(
     return True
 
 
+# Ce avec quoi la tâche en cours appelle le modèle. Une mission confiée à
+# une autre invocation s'en sert aussi : le faux modèle d'un test, par
+# exemple.
+_APPEL: ContextVar[tuple[Caller | None, Path | None]] = ContextVar(
+    'appel_au_modele', default=(None, None)
+)
+
+
+def _run_mission(
+    conn: sqlite3.Connection,
+    invocation_id: str,
+    task_id: str,
+    params: Mapping[str, str],
+) -> Any:
+    """Une invocation LLM exécutée dans la tâche d'une autre
+    (``serge/missions.py``) : sa réponse, sans écriture ni lien."""
+    caller, root = _APPEL.get()
+    try:
+        return _llm_answer(
+            conn,
+            load_invocation(conn, invocation_id),
+            task_id,
+            {**params, 'task_id': task_id},
+            caller=caller,
+            root=root,
+        )
+    except AnswerError as exc:
+        raise MissionError(f'réponse au mauvais format ({exc})') from exc
+
+
+register_missions(_run_mission)
+
+
 def _run(
     conn: sqlite3.Connection,
     task_id: str,
@@ -297,6 +333,7 @@ def _run(
         'SELECT invocation_id FROM tasks WHERE id=?', (task_id,)
     ).fetchone()
     inv = load_invocation(conn, str(row[0]))
+    _APPEL.set((caller, root))
     # Chaque tâche connaît son numéro : un outil peut le recevoir figé
     # (une session de navigateur par tâche, une capture rangée par tâche).
     task = {**task_params(conn, task_id), 'task_id': task_id}

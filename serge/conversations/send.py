@@ -59,8 +59,9 @@ import sqlite3
 from datetime import datetime, timedelta
 from typing import Any
 
-from serge.channels.adapters import ADAPTERS, adapter
+from serge.channels.adapters import ADAPTERS
 from serge.channels.base import ChannelError, ChannelLater, Outgoing
+from serge.channels.web import transport
 from serge.conversations.stop import stop
 from serge.db.store import append_event, utcnow
 from serge.funnels.contacts import normalise_value
@@ -181,10 +182,13 @@ def _set(
 WAITING_OR_PENDING = frozenset({'pending', 'waiting_owner'})
 
 
-def _besoin_humain(touch: dict[str, Any]) -> str:
+def _besoin_humain(conn: sqlite3.Connection, touch: dict[str, Any]) -> str:
     """Pourquoi un humain doit voir l'envoi avant qu'il parte, ou ``''``.
 
-    Un envoi déjà validé (``owner_ok_at``) part sans attendre.
+    Un envoi déjà validé (``owner_ok_at``) part sans attendre. Sinon un
+    humain le voit d'abord si la réponse le demande, si son business
+    demande de valider chaque brouillon, ou si son canal le demande (page
+    Policy, « Canaux » : LinkedIn au départ, décision Q104).
     """
     if touch.get('owner_ok_at'):
         return ''
@@ -192,6 +196,12 @@ def _besoin_humain(touch: dict[str, Any]) -> str:
         return str(touch['needs_owner']).strip()
     if int(touch.get('validate_drafts') or 0):
         return 'Ce business demande de valider chaque brouillon avant l’envoi.'
+    canal = str(touch['channel'])
+    if setting_value(conn, f'channels.{canal}.validate_messages') == 'oui':
+        return (
+            f'Le canal « {canal} » demande de valider chaque message avant'
+            ' l’envoi (page Policy, « Canaux »).'
+        )
     if touch.get('status') == 'waiting_owner':
         return str(touch.get('last_error') or 'En attente d’un humain.')
     return ''
@@ -355,7 +365,9 @@ def _send(
     status = str(touch['status'])
     if status in ('sent', 'cancelled'):
         return {'ok': True, 'status': status}
-    raison = _besoin_humain(touch) if status in WAITING_OR_PENDING else ''
+    raison = (
+        _besoin_humain(conn, touch) if status in WAITING_OR_PENDING else ''
+    )
     if raison:
         # Un humain doit le voir : le pipeline en base ouvre (ou met à jour)
         # son ticket (décisions Q85 et Q86).
@@ -371,7 +383,7 @@ def _send(
         touch = _reply_route(conn, touch)
     elif status != 'sending':
         return {'ok': False, 'code': f'statut_{status}'}
-    channel = adapter(str(touch['channel']))
+    channel = transport(conn, str(touch['channel']))
     message = _outgoing(conn, touch)
     if status == 'sending':
         ref = channel.confirm(message)

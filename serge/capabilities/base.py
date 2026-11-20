@@ -132,6 +132,42 @@ BASE: tuple[Capability, ...] = (
         ),
     ),
     Capability(
+        'mission',
+        'Confier une mission',
+        'Confie un travail à une autre invocation LLM, qui a son propre'
+        ' rôle, son niveau de modèle et ses outils, et rend sa réponse.'
+        ' Exemple : fouiller un réseau social avec le compte de Serge. La'
+        ' mission tourne dans la même tâche : sa dépense compte dans le'
+        ' plafond de la tâche. L’invocation qui la fait et le compte web'
+        ' qu’elle peut ouvrir sont figés en base ; le modèle écrit'
+        ' seulement sa demande.',
+        'serge/missions.py',
+        (
+            Param(
+                'invocation',
+                'text',
+                True,
+                'L’invocation qui fait la mission.',
+                frozen=True,
+            ),
+            Param('task_id', 'text', True, 'La tâche.', frozen=True),
+            Param(
+                'account',
+                'text',
+                False,
+                'Le compte web que la mission peut ouvrir.',
+                frozen=True,
+            ),
+            Param(
+                'mission',
+                'text',
+                True,
+                'Ta demande, en une ou deux phrases précises : ce que tu'
+                ' cherches, et ce que tu veux recevoir.',
+            ),
+        ),
+    ),
+    Capability(
         'request_capability',
         'Demander une nouvelle capacité',
         'Ouvre une demande à Julien quand il manque à Serge un outil, un'

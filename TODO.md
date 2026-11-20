@@ -104,8 +104,9 @@ remplir la base, dans `config/pipeline.yaml` (le détail est dans
 On avance par lots. Un lot est un ensemble de tâches qui vont ensemble ;
 chaque lot se termine par des tests verts et un commit, puis Julien ou
 Clem regarde le résultat avant qu'on attaque le suivant. **Les lots 1 à
-12, le 8 bis et le 10 bis sont faits** (l'historique git en garde la
-trace). **Le lot 12 reste à essayer sur le serveur**, avec l'essai total.
+13, le 8 bis et le 10 bis sont faits** (l'historique git en garde la
+trace). **Le lot 12 reste à essayer sur le serveur**, avec l'essai total,
+et le lot 13 avec de vrais comptes sur les réseaux.
 Ce que chaque lot a vraiment livré :
 
 - **Lots 1 à 7** : le runner, le pipeline en base (lot 6 : un seul
@@ -190,27 +191,24 @@ Ce que chaque lot a vraiment livré :
   - **Mission Control** : les campagnes sur la page Système, les places
     sur la page En direct, le compte rendu d'un test sur la fiche de son
     business ; aujourd'hui, une campagne se lit sur sa fiche.
-- [ ] **Lot 13 « Web » : des comptes, les réseaux pour chercher et pour
-  prospecter** (décision Q104). Serge sait déjà naviguer comme une
-  personne : le bac à sable, l'interface web et « Appeler une API »
-  (lot 10, Q91), le vrai Chrome, son écran dans Mission Control et
-  « Appeler un humain » pour les captchas (lot 11, Q97), les gestes d'une
-  souris et d'un clavier (Q103). Ce lot met cette capacité au service de
-  deux choses : chercher sur Reddit, Instagram et X pendant l'écoute du
-  web, en option ; et prospecter par LinkedIn, Instagram et X.
-  **Fait** : les comptes web, un par site, avec leur mot de passe et leur
+- [x] **Lot 13 « Web » : des comptes, les réseaux pour chercher et pour
+  prospecter** (décision Q104). Serge savait déjà naviguer comme une
+  personne (lots 10 et 11, Q103). Ce lot a mis cette capacité au service
+  de deux choses : chercher sur Reddit, Instagram et X pendant l'écoute
+  du web, en option ; et prospecter par LinkedIn, Instagram et X. Il a
+  livré : les comptes web, un par site, avec leur mot de passe et leur
   session chiffrés en base, une session de navigateur par compte et la
-  garde du jour ; « Créer un compte web » et « Vérifier un compte web »,
-  depuis la page Système.
-  **Reste** : une invocation qui confie une mission à une autre et reçoit
-  sa réponse ; « Fouiller un réseau », donnée en option à « Explorer le
-  web » ; les trois canaux, avec la validation des messages par un humain
-  réglée par canal ; leurs essais dans l'essai total.
-  Tout y est une capacité générale réglée en base, jamais du code écrit
-  pour une invocation ou pour un site. Le moteur de recherche à installer
-  sur le serveur, la lecture d'une page à trois niveaux et « Construire un
-  connecteur » ne sont plus dans ce lot (partie « Pour tout Serge »,
-  « Le web »).
+  garde du jour ; « Créer un compte web » et « Vérifier un compte web » ;
+  une invocation qui confie une mission à une autre ; « Fouiller un
+  réseau », en option dans « Explorer le web » et « Trouver des
+  prospects » ; les trois canaux, décrits en base, sans code à eux, avec
+  la validation des messages par un humain réglée par canal ; cinq
+  boutons d'essai sur la page Système. Le détail :
+  [`docs/LOT12_CONCEPTION.md`](docs/LOT12_CONCEPTION.md), partie 17, et
+  [`docs/LOT10_CONCEPTION.md`](docs/LOT10_CONCEPTION.md), partie 2.
+  **Reste à essayer sur le serveur**, avec de vrais comptes : les créer,
+  fouiller un réseau, envoyer un message d'essai. Les réseaux ne sont pas
+  dans l'essai total : leurs boutons d'essai sont à part.
 - [ ] **Lot 14 « L'éditeur sans code ».** Une page de Mission Control
   pour modifier le pipeline en direct et créer une invocation de toutes
   pièces : ajouter ou retirer des invocations, changer leur ordre, leur
@@ -406,25 +404,19 @@ discutable, qui peut un jour changer, se règle depuis Mission Control.**
   [`docs/LOT12_CONCEPTION.md`](docs/LOT12_CONCEPTION.md), partie 4) ; le
   lot 13 lui donne les comptes de Serge sur les réseaux.
 
-- [ ] **Prospecter sur LinkedIn.** LinkedIn est un canal important pour
-  vendre à des professionnels. Serge l'utilise avec son propre compte, à
-  un volume modéré, et Julien valide chaque message et chaque publication
-  avant qu'ils partent. Cette validation n'est pas du code propre à
-  LinkedIn : c'est un réglage en base sur l'invocation d'envoi, « validation
-  par Julien avant d'agir », que n'importe quelle invocation peut avoir.
-  Les garde-fous d'envoi doivent connaître ce canal. Cette tâche a besoin
-  du web.
+- [ ] **Publier sur LinkedIn.** Serge écrit à des prospects sur LinkedIn,
+  Instagram et X depuis le lot 13, avec la validation d'un humain réglée
+  par canal. Il n'y publie rien : une publication (un post, un
+  commentaire) reste à faire, avec la même validation.
 
 - [ ] **Les autres canaux.** Chaque type de business n'a pas le même bon
-  canal. Il faut ajouter WhatsApp, la publication sur des forums ou
-  Reddit, la publicité (Google, Meta, LinkedIn, Reddit) et l'envoi de SMS.
-  Pour chaque canal, il faut une façon d'envoyer et de relever, son barème
-  de points et sa fiche dans le catalogue de MC. Envoyer et relever passent
-  soit par un service décrit en base et la capacité « Appeler une API »,
-  soit par l'agent web ; on n'écrit un adaptateur de code que si le canal
-  ne peut vraiment pas passer par là (le téléphone, par exemple), et cet
-  adaptateur sert alors toutes les invocations, jamais une seule. Cette
-  tâche a besoin du web et de la grille de points.
+  canal. Il reste WhatsApp, la publication sur des forums ou Reddit, la
+  publicité (Google, Meta, LinkedIn, Reddit) et l'envoi de SMS. Un canal
+  qui passe par le navigateur s'ajoute sans code : un compte, une ligne
+  en base, ses réglages et son lien (conception du lot 12, partie 17). Un
+  service qui a une API passe par « Appeler une API ». On n'écrit un
+  adaptateur de code que si le canal ne peut vraiment pas passer par là
+  (le téléphone, par exemple).
 
 ---
 

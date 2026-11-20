@@ -421,8 +421,9 @@ sections:
   - id: channels
     title: Canaux
     why: >-
-      Comment Serge répond sur chaque canal : le délai avant de répondre, et
-      ce qu'il faut pour relancer sans risque.
+      Comment Serge répond sur chaque canal : le délai avant de répondre,
+      ce qu'il faut pour relancer sans risque, le plafond du jour, et si un
+      humain valide chaque message avant qu'il parte.
     settings:
       - id: email.reply_delay_min_minutes
         value: 5
@@ -500,6 +501,122 @@ sections:
         min: 5
         max: 1440
         step: 5
+      - id: email.validate_messages
+        value: non
+        title: E-mail, valider chaque message
+        help: >-
+          Oui : chaque message qui part par ce canal attend d’abord qu’un
+          administrateur le valide sur Discord, comme un brouillon (décision
+          Q104). Non : il part seul ; un business peut encore demander de
+          valider ses brouillons (sa fiche).
+        kind: liste
+        choices: [oui, non]
+      - id: voice.validate_messages
+        value: non
+        title: Appel, valider chaque message
+        help: >-
+          Oui : chaque message qui part par ce canal attend d’abord qu’un
+          administrateur le valide sur Discord, comme un brouillon (décision
+          Q104). Non : il part seul ; un business peut encore demander de
+          valider ses brouillons (sa fiche).
+        kind: liste
+        choices: [oui, non]
+      - id: linkedin.max_per_day
+        value: 10
+        title: Messages LinkedIn envoyés au plus, par jour
+        help: >-
+          Au-delà, les messages attendent le lendemain (0 : aucun ne part).
+          Un compte qui écrit beaucoup à des inconnus se fait fermer : ce
+          plafond reste bas.
+        kind: curseur
+        min: 0
+        max: 100
+        step: 1
+      - id: linkedin.validate_messages
+        value: oui
+        title: LinkedIn, valider chaque message
+        help: >-
+          Oui : chaque message qui part par ce canal attend d’abord qu’un
+          administrateur le valide sur Discord, comme un brouillon (décision
+          Q104). Non : il part seul ; un business peut encore demander de
+          valider ses brouillons (sa fiche).
+        kind: liste
+        choices: [oui, non]
+      - id: linkedin.max_poll_age_minutes
+        value: 600
+        title: LinkedIn, relève récente (minutes)
+        help: >-
+          Une relance ne part que si la messagerie a été relevée il y a
+          moins de ce délai. Elle est relevée toutes les 4 heures, tant
+          qu’une conversation est en cours.
+        kind: curseur
+        min: 30
+        max: 2880
+        step: 30
+      - id: instagram.max_per_day
+        value: 10
+        title: Messages Instagram envoyés au plus, par jour
+        help: >-
+          Au-delà, les messages attendent le lendemain (0 : aucun ne part).
+          Un compte qui écrit beaucoup à des inconnus se fait fermer : ce
+          plafond reste bas.
+        kind: curseur
+        min: 0
+        max: 100
+        step: 1
+      - id: instagram.validate_messages
+        value: oui
+        title: Instagram, valider chaque message
+        help: >-
+          Oui : chaque message qui part par ce canal attend d’abord qu’un
+          administrateur le valide sur Discord, comme un brouillon (décision
+          Q104). Non : il part seul ; un business peut encore demander de
+          valider ses brouillons (sa fiche).
+        kind: liste
+        choices: [oui, non]
+      - id: instagram.max_poll_age_minutes
+        value: 600
+        title: Instagram, relève récente (minutes)
+        help: >-
+          Une relance ne part que si la messagerie a été relevée il y a
+          moins de ce délai. Elle est relevée toutes les 4 heures, tant
+          qu’une conversation est en cours.
+        kind: curseur
+        min: 30
+        max: 2880
+        step: 30
+      - id: x.max_per_day
+        value: 10
+        title: Messages X envoyés au plus, par jour
+        help: >-
+          Au-delà, les messages attendent le lendemain (0 : aucun ne part).
+          Un compte qui écrit beaucoup à des inconnus se fait fermer : ce
+          plafond reste bas.
+        kind: curseur
+        min: 0
+        max: 100
+        step: 1
+      - id: x.validate_messages
+        value: oui
+        title: X, valider chaque message
+        help: >-
+          Oui : chaque message qui part par ce canal attend d’abord qu’un
+          administrateur le valide sur Discord, comme un brouillon (décision
+          Q104). Non : il part seul ; un business peut encore demander de
+          valider ses brouillons (sa fiche).
+        kind: liste
+        choices: [oui, non]
+      - id: x.max_poll_age_minutes
+        value: 600
+        title: X, relève récente (minutes)
+        help: >-
+          Une relance ne part que si la messagerie a été relevée il y a
+          moins de ce délai. Elle est relevée toutes les 4 heures, tant
+          qu’une conversation est en cours.
+        kind: curseur
+        min: 30
+        max: 2880
+        step: 30
 
   - id: contacts
     title: Contacts
@@ -700,6 +817,198 @@ sections:
         min: 0
         max: 10
         step: 0.5
+      - id: linkedin.rendez-vous
+        value: 10
+        title: LinkedIn, rendez-vous
+        help: Le prospect propose ou accepte un rendez-vous.
+        kind: nombre
+        min: 0
+        max: 10
+        step: 0.5
+      - id: linkedin.intéressé
+        value: 8
+        title: LinkedIn, intéressé
+        help: Le prospect dit son intérêt pour l’offre.
+        kind: nombre
+        min: 0
+        max: 10
+        step: 0.5
+      - id: linkedin.question
+        value: 4
+        title: LinkedIn, question
+        help: Le prospect pose une question sur l’offre.
+        kind: nombre
+        min: 0
+        max: 10
+        step: 0.5
+      - id: linkedin.objection
+        value: 3
+        title: LinkedIn, objection
+        help: Le prospect oppose une objection (prix, moment, besoin).
+        kind: nombre
+        min: 0
+        max: 10
+        step: 0.5
+      - id: linkedin.refus
+        value: 1
+        title: LinkedIn, refus
+        help: Un refus poli, qui montre que le besoin intéresse un peu.
+        kind: nombre
+        min: 0
+        max: 10
+        step: 0.5
+      - id: linkedin.absence
+        value: 0
+        title: LinkedIn, absence
+        help: Une réponse automatique (congés, absence).
+        kind: nombre
+        min: 0
+        max: 10
+        step: 0.5
+      - id: linkedin.hors sujet
+        value: 0
+        title: LinkedIn, hors sujet
+        help: Un message sans rapport avec l’offre.
+        kind: nombre
+        min: 0
+        max: 10
+        step: 0.5
+      - id: linkedin.désinscription
+        value: 0
+        title: LinkedIn, désinscription
+        help: Le prospect demande à ne plus être contacté.
+        kind: nombre
+        min: 0
+        max: 10
+        step: 0.5
+      - id: instagram.rendez-vous
+        value: 10
+        title: Instagram, rendez-vous
+        help: Le prospect propose ou accepte un rendez-vous.
+        kind: nombre
+        min: 0
+        max: 10
+        step: 0.5
+      - id: instagram.intéressé
+        value: 8
+        title: Instagram, intéressé
+        help: Le prospect dit son intérêt pour l’offre.
+        kind: nombre
+        min: 0
+        max: 10
+        step: 0.5
+      - id: instagram.question
+        value: 4
+        title: Instagram, question
+        help: Le prospect pose une question sur l’offre.
+        kind: nombre
+        min: 0
+        max: 10
+        step: 0.5
+      - id: instagram.objection
+        value: 3
+        title: Instagram, objection
+        help: Le prospect oppose une objection (prix, moment, besoin).
+        kind: nombre
+        min: 0
+        max: 10
+        step: 0.5
+      - id: instagram.refus
+        value: 1
+        title: Instagram, refus
+        help: Un refus poli, qui montre que le besoin intéresse un peu.
+        kind: nombre
+        min: 0
+        max: 10
+        step: 0.5
+      - id: instagram.absence
+        value: 0
+        title: Instagram, absence
+        help: Une réponse automatique (congés, absence).
+        kind: nombre
+        min: 0
+        max: 10
+        step: 0.5
+      - id: instagram.hors sujet
+        value: 0
+        title: Instagram, hors sujet
+        help: Un message sans rapport avec l’offre.
+        kind: nombre
+        min: 0
+        max: 10
+        step: 0.5
+      - id: instagram.désinscription
+        value: 0
+        title: Instagram, désinscription
+        help: Le prospect demande à ne plus être contacté.
+        kind: nombre
+        min: 0
+        max: 10
+        step: 0.5
+      - id: x.rendez-vous
+        value: 10
+        title: X, rendez-vous
+        help: Le prospect propose ou accepte un rendez-vous.
+        kind: nombre
+        min: 0
+        max: 10
+        step: 0.5
+      - id: x.intéressé
+        value: 8
+        title: X, intéressé
+        help: Le prospect dit son intérêt pour l’offre.
+        kind: nombre
+        min: 0
+        max: 10
+        step: 0.5
+      - id: x.question
+        value: 4
+        title: X, question
+        help: Le prospect pose une question sur l’offre.
+        kind: nombre
+        min: 0
+        max: 10
+        step: 0.5
+      - id: x.objection
+        value: 3
+        title: X, objection
+        help: Le prospect oppose une objection (prix, moment, besoin).
+        kind: nombre
+        min: 0
+        max: 10
+        step: 0.5
+      - id: x.refus
+        value: 1
+        title: X, refus
+        help: Un refus poli, qui montre que le besoin intéresse un peu.
+        kind: nombre
+        min: 0
+        max: 10
+        step: 0.5
+      - id: x.absence
+        value: 0
+        title: X, absence
+        help: Une réponse automatique (congés, absence).
+        kind: nombre
+        min: 0
+        max: 10
+        step: 0.5
+      - id: x.hors sujet
+        value: 0
+        title: X, hors sujet
+        help: Un message sans rapport avec l’offre.
+        kind: nombre
+        min: 0
+        max: 10
+        step: 0.5
+      - id: x.désinscription
+        value: 0
+        title: X, désinscription
+        help: Le prospect demande à ne plus être contacté.
+        kind: nombre
+        min: 0
+        max: 10
+        step: 0.5
 
   - id: sandbox
     title: Bac à sable
@@ -864,6 +1173,18 @@ sections:
         min: 10
         max: 600
         step: 10
+      - id: inbox_days
+        value: 30
+        title: Messagerie d’un réseau, jours de suivi
+        help: >-
+          La messagerie d’un canal du navigateur (LinkedIn, Instagram, X)
+          n’est relevée que si un message est parti par ce canal depuis
+          moins de jours que ce réglage : sans conversation en cours, Serge
+          n’ouvre pas le site.
+        kind: curseur
+        min: 1
+        max: 180
+        step: 1
 
   - id: courriel
     title: E-mails des produits
