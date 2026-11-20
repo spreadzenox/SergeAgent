@@ -42,7 +42,9 @@ WEB_ACCOUNTS: tuple[Capability, ...] = (
         'Les e-mails et les SMS que Serge a reçus depuis le début de la'
         ' tâche : un code ou un lien de confirmation après une inscription'
         ' ou une connexion. Pour un e-mail : l’expéditeur, l’objet, le'
-        ' texte et ses liens ; pour un SMS : son texte et le code repéré.'
+        ' texte et ses liens ; pour un SMS : son texte, le code repéré et'
+        ' ses liens. Si aucun SMS n’est jamais arrivé sur ce serveur, le'
+        ' résultat le dit.'
         ' Seuls les e-mails qui ne viennent d’aucun contact sont rendus.'
         ' La boîte est relevée toutes les 2 minutes : l’outil attend'
         ' qu’un message arrive, quelques minutes au plus.',

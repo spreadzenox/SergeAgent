@@ -27,7 +27,10 @@ Scénarios :
 - le serveur du 19 novembre 2026 retrouve le produit d'un business dans
   Stripe par la clé de recherche de son prix, plus par la recherche ;
 - le serveur du 20 novembre 2026 reçoit le bouton « Créer un compte web »
-  corrigé : le libellé du site, le pseudo voulu, et sa consigne.
+  corrigé : le libellé du site, le pseudo voulu, et sa consigne ;
+- le même serveur, après l'inscription ratée sur X : le téléphone ne se
+  donne que si le site l'exige, et les essais de message acceptent un
+  pseudo ; un libellé changé dans Mission Control est gardé.
 """
 
 from __future__ import annotations
@@ -1491,3 +1494,121 @@ class CreationDeCompteTests(unittest.TestCase):
         conn.execute('DELETE FROM pipeline_changes WHERE id=?', (self.IDS[0],))
         seed_pipeline(conn, read_yaml_file(config_dir() / 'pipeline.yaml'))
         self.assertEqual(self._bouton(conn)['compte'], 'le site')
+
+
+class TelephoneEtPseudoTests(unittest.TestCase):
+    """Le serveur du 20 novembre 2026, après l'inscription ratée sur X :
+    « Créer un compte web » donne le téléphone d'office, et les essais de
+    message demandent l'adresse d'un profil."""
+
+    IDS = (
+        'lot13_compte_telephone_si_exige',
+        'lot13_essai_message_par_pseudo',
+        'lot13_essai_lecture_par_pseudo',
+        'lot13_envoi_web_par_pseudo',
+        'lot13_lecture_web_par_pseudo',
+    )
+
+    def _prompt(self, conn: sqlite3.Connection, invocation: str) -> str:
+        return str(
+            conn.execute(
+                'SELECT prompt FROM invocations WHERE id=?', (invocation,)
+            ).fetchone()[0]
+        )
+
+    def _libelles(self, conn: sqlite3.Connection) -> list[str]:
+        return [
+            str(r[0])
+            for r in conn.execute(
+                "SELECT value FROM trigger_params WHERE param_name='adresse'"
+                ' AND trigger_id IN (?, ?) ORDER BY trigger_id',
+                (
+                    'bouton_lire_conversation_reseau',
+                    'bouton_message_d_essai_reseau',
+                ),
+            )
+        ]
+
+    def _serveur(self) -> tuple[sqlite3.Connection, dict, dict[str, str]]:
+        """Une base comme celle du serveur avant ces modifications, le
+        fichier, et les consignes d'une instance neuve."""
+        conn = sqlite3.connect(':memory:')
+        self.addCleanup(conn.close)
+        init_schema(conn)
+        data = read_yaml_file(config_dir() / 'pipeline.yaml')
+        changes = {c['id']: c for c in data['changes']}
+        neuves = {}
+        for ident in self.IDS:
+            change = changes[ident]
+            where = change['where']
+            if change['table'] == 'trigger_params':
+                conn.execute(
+                    'UPDATE trigger_params SET value=? WHERE trigger_id=?'
+                    ' AND param_name=?',
+                    (
+                        change['set']['value']['from'],
+                        where['trigger_id'],
+                        where['param_name'],
+                    ),
+                )
+                continue
+            prompt = neuves[where['id']] = self._prompt(conn, where['id'])
+            for passage in reversed(change['set']['prompt']['replace']):
+                self.assertEqual(prompt.count(passage['new']), 1, ident)
+                prompt = prompt.replace(passage['new'], passage['old'])
+            conn.execute(
+                'UPDATE invocations SET prompt=? WHERE id=?',
+                (prompt, where['id']),
+            )
+        conn.executemany(
+            'DELETE FROM pipeline_changes WHERE id=?', [(i,) for i in self.IDS]
+        )
+        return conn, data, neuves
+
+    def test_il_recoit_les_consignes_et_les_libelles(self) -> None:
+        conn, data, neuves = self._serveur()
+        avant = self._prompt(conn, 'creer_compte_web')
+        self.assertIn('téléphone, donne celui des SMS.', avant)
+        self.assertNotIn('keep', avant)
+        self.assertIn(
+            '1. Ouvre le profil de la personne (« adresse »).',
+            self._prompt(conn, 'envoyer_par_le_web'),
+        )
+        self.assertEqual(
+            self._libelles(conn),
+            [
+                'adresse du profil dont lire la réponse (https://…)',
+                'adresse du profil à qui écrire (https://…)',
+            ],
+        )
+        seed_pipeline(conn, data)
+        # Les trois consignes sont, au caractère près, celles d'une
+        # instance neuve.
+        self.assertEqual(
+            sorted(neuves),
+            sorted(
+                ['creer_compte_web', 'envoyer_par_le_web', 'lire_messagerie']
+            ),
+        )
+        for invocation, neuve in neuves.items():
+            self.assertEqual(self._prompt(conn, invocation), neuve)
+        apres = neuves['creer_compte_web']
+        self.assertIn("ne le donne que si le site l'exige", apres)
+        self.assertIn("Un lien, tu l'ouvres dans le vrai Chrome", apres)
+        self.assertIn('ne remplis pas le formulaire en boucle', apres)
+        self.assertIn('par la recherche du site', neuves['envoyer_par_le_web'])
+        for libelle in self._libelles(conn):
+            self.assertIn('son pseudo sur ce réseau', libelle)
+        # Une seconde fois ne change rien.
+        seed_pipeline(conn, data)
+        self.assertEqual(self._prompt(conn, 'creer_compte_web'), apres)
+
+    def test_un_libelle_change_dans_mission_control_est_garde(self) -> None:
+        conn, data, _ = self._serveur()
+        conn.execute(
+            "UPDATE trigger_params SET value='le profil' WHERE"
+            " trigger_id='bouton_message_d_essai_reseau'"
+            " AND param_name='adresse'"
+        )
+        seed_pipeline(conn, data)
+        self.assertEqual(self._libelles(conn)[1], 'le profil')

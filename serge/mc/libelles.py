@@ -14,6 +14,8 @@ EVENTS = {
     'email.delivered': 'E-mail livré',
     'email.queued': 'E-mail en file',
     'sms.sent': 'SMS envoyé',
+    'sms.received': 'SMS reçu',
+    'sms.refused': 'SMS refusé à l’arrivée',
     'task.done': 'Tâche terminée',
     'task.failed': 'Tâche échouée',
     'task.restarted': 'Chaîne repartie d’une tâche',

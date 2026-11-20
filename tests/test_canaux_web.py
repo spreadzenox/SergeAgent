@@ -40,6 +40,10 @@ from tests.test_lot12_chaine import (  # noqa: E402
 ANA = 'https://www.linkedin.com/in/ana-roux'
 FIL = 'https://www.linkedin.com/messaging/thread/42'
 NOTE = 'Serge, un agent IA. Vos devis en deux minutes : on essaie ?'
+A_QUI = (
+    "à qui écrire : son pseudo sur ce réseau, ou l'adresse de son profil"
+    " (LinkedIn : l'adresse)"
+)
 
 
 class ModelesDuReseau(FauxModeles):
@@ -263,7 +267,8 @@ class CanauxWebTests(ChaineCase):
     def test_les_deux_boutons_d_essai(self) -> None:
         """Page Système : un message d'essai et la lecture d'une
         conversation passent par les invocations des vrais canaux, sans
-        contact ni campagne."""
+        contact ni campagne ; la personne se donne par l'adresse de son
+        profil ou par son pseudo."""
         from serge.interpreter.triggers import fire_button
 
         self.assertIsNotNone(
@@ -272,7 +277,7 @@ class CanauxWebTests(ChaineCase):
                 'bouton_message_d_essai_reseau',
                 {
                     'nom du compte (linkedin, instagram, x…)': 'linkedin',
-                    'adresse du profil à qui écrire (https://…)': ANA,
+                    A_QUI: ANA,
                     'texte du message (280 caractères au plus pour'
                     ' LinkedIn)': 'Bonjour, ceci est un essai.',
                 },
@@ -285,12 +290,30 @@ class CanauxWebTests(ChaineCase):
                 'bouton_lire_conversation_reseau',
                 {
                     'nom du compte (linkedin, instagram, x…)': 'linkedin',
-                    'adresse du profil dont lire la réponse (https://…)': ANA,
+                    'de qui lire la réponse : son pseudo sur ce réseau, ou'
+                    " l'adresse de son profil": ANA,
+                },
+            )
+        )
+        # Un pseudo suffit : il arrive tel quel à l'invocation, qui trouve
+        # le profil par la recherche du site.
+        self.assertIsNotNone(
+            fire_button(
+                self.conn,
+                'bouton_message_d_essai_reseau',
+                {
+                    'nom du compte (linkedin, instagram, x…)': 'linkedin',
+                    A_QUI: 'ana_roux',
+                    'texte du message (280 caractères au plus pour'
+                    ' LinkedIn)': 'Second essai.',
                 },
             )
         )
         self.conn.commit()
         self._vider()
+        self.assertEqual(
+            [e['adresse'] for e in self.modeles.envois], [ANA, 'ana_roux']
+        )
         envoi = self.modeles.envois[0]
         self.assertEqual(
             (
@@ -309,8 +332,10 @@ class CanauxWebTests(ChaineCase):
                 ' ORDER BY invocation_id'
             )
         ]
-        self.assertEqual(rendus[0]['envoye'], 'oui')
-        self.assertEqual(rendus[1]['messages'][0]['texte'], 'Bien reçu.')
+        self.assertEqual(
+            [r.get('envoye') for r in rendus], ['oui', 'oui', None]
+        )
+        self.assertEqual(rendus[2]['messages'][0]['texte'], 'Bien reçu.')
         # Un essai n'écrit ni envoi ni message reçu.
         self.assertEqual(self._un('SELECT COUNT(*) FROM touches')[0], 0)
         self.assertEqual(self._un('SELECT COUNT(*) FROM inbound_events')[0], 0)

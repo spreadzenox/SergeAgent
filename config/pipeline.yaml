@@ -3679,7 +3679,8 @@ invocations:
         première fois, la tâche s'arrête et repartira du début quand un
         humain sera prêt ; la fois suivante, au même endroit, il le résout
         dans l'écran pendant que tu attends, puis tu relis la page et tu
-        continues.
+        continues. Juste avant de l'appeler, prends une capture avec
+        « keep » à oui : elle est gardée, et montre ce que tu voyais.
       - **Tu ne vois jamais le mot de passe.** Pour le taper, fais l'action
         taper_secret sur le champ, avec text « mot_de_passe_du_compte » :
         Serge le tape à ta place. Ne l'invente pas, ne le demande pas.
@@ -3692,14 +3693,26 @@ invocations:
       2. Remplis le formulaire avec l'identité reçue : l'adresse e-mail,
          le prénom et le nom, le pseudo voulu comme nom d'utilisateur (s'il
          est pris, ajoute « _ia », puis un chiffre). Pour un numéro de
-         téléphone, donne celui des SMS. Refuse tout ce qui est facultatif
-         (carnet d'adresses, notifications, abonnement payant, lettre
-         d'information).
-      3. Après l'envoi, le site envoie souvent un code ou un lien : appelle
-         « Mes messages de vérification » (rappelle-le s'il ne rend rien,
-         jusqu'à trois fois), puis tape le code ou ouvre le lien.
+         téléphone : ne le donne que si le site l'exige, sans autre moyen
+         de continuer, et c'est alors celui des SMS. Si l'inscription
+         propose d'abord le téléphone, cherche son lien « Utiliser un
+         e-mail » et inscris-toi avec l'adresse e-mail. Refuse tout ce qui
+         est facultatif (carnet d'adresses, notifications, abonnement
+         payant, lettre d'information).
+      3. Après l'envoi, le site envoie souvent un code ou un lien, par
+         e-mail ou par SMS : appelle « Mes messages de vérification »
+         (rappelle-le s'il ne rend rien, jusqu'à trois fois). Un code, tu
+         le tapes. Un lien, tu l'ouvres dans le vrai Chrome (écrit sans
+         « https:// », tu l'ajoutes). Si le message attendu n'arrive pas,
+         ne redonne pas l'adresse ni le numéro : arrête-toi, et dis dans
+         ton compte rendu lequel n'est pas arrivé.
       4. Vérifie que tu es connecté : la page montre le compte (son nom,
          son profil, un menu « Déconnexion »).
+
+      Si un bouton ne fait rien, ou si la page ne réagit plus, réessaie une
+      fois, pas plus : ne remplis pas le formulaire en boucle. Prends une
+      capture avec « keep » à oui, arrête-toi, et rends cree « non » en
+      décrivant ce que la page montre.
 
       Si le site demande une date de naissance et que « naissance » est
       vide, ou une information que tu n'as pas (un numéro de téléphone
@@ -3965,8 +3978,8 @@ invocations:
       Tu envoies un message de Serge à une personne, sur un réseau. Tout
       est dans les paramètres de la tâche : le réseau (« canal » ; sans
       lui, c'est celui du compte), le compte de Serge (« compte »),
-      l'adresse du profil de la personne
-      (« adresse »), le texte à envoyer (« message ») et sa sorte
+      la personne (« adresse » : l'adresse de son profil, ou son pseudo
+      sur ce réseau), le texte à envoyer (« message ») et sa sorte
       (« sorte » : first, un premier message ; reply, une réponse ;
       followup, une relance). Tu reçois le site et l'identifiant du compte.
 
@@ -3993,8 +4006,15 @@ invocations:
 
       Comment faire :
 
-      1. Ouvre le profil de la personne (« adresse »). Vérifie que c'est
-         bien un profil, pas une page d'erreur.
+      1. Ouvre le profil de la personne. Si « adresse » est une adresse
+         (https://…), ouvre-la. Si c'est un pseudo, trouve le profil comme
+         le ferait une personne : par la recherche du site, puis le profil
+         dont le pseudo est exactement celui-là. S'il n'y en a pas, ou si
+         tu hésites entre plusieurs, n'écris à personne : rends envoye
+         « non », avec la raison. Sur LinkedIn, un nom ne désigne
+         personne (plusieurs le portent) : sans adresse de profil, rends
+         envoye « non ». Vérifie que c'est bien un profil, pas une page
+         d'erreur.
       2. Ouvre la conversation avec elle. Si ton texte y est déjà, il est
          parti : n'envoie rien et rends envoye « deja ».
       3. Envoie le texte :
@@ -4091,13 +4111,15 @@ invocations:
       2. Pour chaque personne à qui Serge a écrit, ouvre sa conversation
          et lis ce qu'elle a écrit **après** le dernier message de Serge.
          Si les paramètres de la tâche donnent une « adresse » (un essai
-         depuis la page Système), lis seulement la conversation de cette
-         personne.
+         depuis la page Système : l'adresse d'un profil, ou un pseudo),
+         lis seulement la conversation de cette personne, que tu
+         retrouves dans la messagerie par son nom ou son pseudo.
       3. Ne rends rien pour une conversation sans réponse, ni pour un
          message d'une personne à qui Serge n'a pas écrit.
 
       Rends un message par réponse reçue : l'adresse du profil de la
-      personne, telle que Serge la connaît (reprends-la de la liste), et
+      personne, telle que Serge la connaît (reprends-la de la liste ;
+      pour un essai, ce que donne « adresse »), et
       son texte entier, mot pour mot. Si plusieurs messages se suivent,
       réunis-les en un seul texte. Puis un résumé d'une phrase.
     tools:
@@ -9014,7 +9036,7 @@ triggers:
       centimes de modèle.
     params:
       compte: {source: form, value: 'nom du compte (linkedin, instagram, x…)'}
-      adresse: {source: form, value: 'adresse du profil à qui écrire (https://…)'}
+      adresse: {source: form, value: "à qui écrire : son pseudo sur ce réseau, ou l'adresse de son profil (LinkedIn : l'adresse)"}
       message: {source: form, value: 'texte du message (280 caractères au plus pour LinkedIn)'}
       sorte: {source: fixed, value: first}
   - id: bouton_lire_conversation_reseau
@@ -9028,7 +9050,7 @@ triggers:
       répondu. Le résultat est sur la fiche de la tâche.
     params:
       compte: {source: form, value: 'nom du compte (linkedin, instagram, x…)'}
-      adresse: {source: form, value: 'adresse du profil dont lire la réponse (https://…)'}
+      adresse: {source: form, value: "de qui lire la réponse : son pseudo sur ce réseau, ou l'adresse de son profil"}
 
 # Les modifications d'objets déjà en base sur une instance existante (le
 # fichier ne les écrase jamais) : chacune n'est appliquée qu'une fois, et
@@ -10595,6 +10617,126 @@ changes:
             new: |-
               le prénom et le nom, le pseudo voulu comme nom d'utilisateur (s'il
                  est pris, ajoute « _ia », puis un chiffre). Pour un numéro de
+  # Inscription sur X, le 20 novembre 2026 : Serge a donné son numéro de
+  # téléphone alors que l'e-mail suffisait, puis a rempli quatre fois un
+  # formulaire qui ne réagissait plus, sans garder de capture.
+  - id: lot13_compte_telephone_si_exige
+    why: >-
+      Le téléphone ne se donne que si le site l'exige ; un lien reçu par
+      SMS s'ouvre ; un formulaire qui ne réagit plus ne se remplit pas en
+      boucle, et une capture gardée montre ce que le site affichait.
+    table: invocations
+    where: {id: creer_compte_web}
+    set:
+      prompt:
+        replace:
+          - old: |-
+              continues.
+              - **Tu ne vois jamais le mot de passe.** Pour le taper, fais l'action
+            new: |-
+              continues. Juste avant de l'appeler, prends une capture avec
+                « keep » à oui : elle est gardée, et montre ce que tu voyais.
+              - **Tu ne vois jamais le mot de passe.** Pour le taper, fais l'action
+          - old: |-
+              Pour un numéro de
+                 téléphone, donne celui des SMS. Refuse tout ce qui est facultatif
+                 (carnet d'adresses, notifications, abonnement payant, lettre
+                 d'information).
+              3. Après l'envoi, le site envoie souvent un code ou un lien : appelle
+                 « Mes messages de vérification » (rappelle-le s'il ne rend rien,
+                 jusqu'à trois fois), puis tape le code ou ouvre le lien.
+            new: |-
+              Pour un numéro de
+                 téléphone : ne le donne que si le site l'exige, sans autre moyen
+                 de continuer, et c'est alors celui des SMS. Si l'inscription
+                 propose d'abord le téléphone, cherche son lien « Utiliser un
+                 e-mail » et inscris-toi avec l'adresse e-mail. Refuse tout ce qui
+                 est facultatif (carnet d'adresses, notifications, abonnement
+                 payant, lettre d'information).
+              3. Après l'envoi, le site envoie souvent un code ou un lien, par
+                 e-mail ou par SMS : appelle « Mes messages de vérification »
+                 (rappelle-le s'il ne rend rien, jusqu'à trois fois). Un code, tu
+                 le tapes. Un lien, tu l'ouvres dans le vrai Chrome (écrit sans
+                 « https:// », tu l'ajoutes). Si le message attendu n'arrive pas,
+                 ne redonne pas l'adresse ni le numéro : arrête-toi, et dis dans
+                 ton compte rendu lequel n'est pas arrivé.
+          - old: |-
+              4. Vérifie que tu es connecté : la page montre le compte (son nom,
+                 son profil, un menu « Déconnexion »).
+            new: |-
+              4. Vérifie que tu es connecté : la page montre le compte (son nom,
+                 son profil, un menu « Déconnexion »).
+
+              Si un bouton ne fait rien, ou si la page ne réagit plus, réessaie une
+              fois, pas plus : ne remplis pas le formulaire en boucle. Prends une
+              capture avec « keep » à oui, arrête-toi, et rends cree « non » en
+              décrivant ce que la page montre.
+  # Les essais de message de la page Système : un pseudo suffit, Serge
+  # trouve le profil par la recherche du site (demande de Clem, le 20
+  # novembre 2026).
+  - id: lot13_essai_message_par_pseudo
+    why: Un message d'essai se donne un pseudo, pas seulement une adresse.
+    table: trigger_params
+    where: {trigger_id: bouton_message_d_essai_reseau, param_name: adresse}
+    set:
+      value:
+        from: 'adresse du profil à qui écrire (https://…)'
+        to: "à qui écrire : son pseudo sur ce réseau, ou l'adresse de son profil (LinkedIn : l'adresse)"
+  - id: lot13_essai_lecture_par_pseudo
+    why: Une conversation d'essai se retrouve par un pseudo.
+    table: trigger_params
+    where: {trigger_id: bouton_lire_conversation_reseau, param_name: adresse}
+    set:
+      value:
+        from: 'adresse du profil dont lire la réponse (https://…)'
+        to: "de qui lire la réponse : son pseudo sur ce réseau, ou l'adresse de son profil"
+  - id: lot13_envoi_web_par_pseudo
+    why: Avec un pseudo, Serge trouve le profil par la recherche du site.
+    table: invocations
+    where: {id: envoyer_par_le_web}
+    set:
+      prompt:
+        replace:
+          - old: |-
+              l'adresse du profil de la personne
+              (« adresse »), le texte à envoyer (« message ») et sa sorte
+            new: |-
+              la personne (« adresse » : l'adresse de son profil, ou son pseudo
+              sur ce réseau), le texte à envoyer (« message ») et sa sorte
+          - old: |-
+              1. Ouvre le profil de la personne (« adresse »). Vérifie que c'est
+                 bien un profil, pas une page d'erreur.
+            new: |-
+              1. Ouvre le profil de la personne. Si « adresse » est une adresse
+                 (https://…), ouvre-la. Si c'est un pseudo, trouve le profil comme
+                 le ferait une personne : par la recherche du site, puis le profil
+                 dont le pseudo est exactement celui-là. S'il n'y en a pas, ou si
+                 tu hésites entre plusieurs, n'écris à personne : rends envoye
+                 « non », avec la raison. Sur LinkedIn, un nom ne désigne
+                 personne (plusieurs le portent) : sans adresse de profil, rends
+                 envoye « non ». Vérifie que c'est bien un profil, pas une page
+                 d'erreur.
+  - id: lot13_lecture_web_par_pseudo
+    why: Un essai de lecture retrouve la conversation par un pseudo.
+    table: invocations
+    where: {id: lire_messagerie}
+    set:
+      prompt:
+        replace:
+          - old: |-
+              (un essai
+                 depuis la page Système), lis seulement la conversation de cette
+                 personne.
+            new: |-
+              (un essai
+                 depuis la page Système : l'adresse d'un profil, ou un pseudo),
+                 lis seulement la conversation de cette personne, que tu
+                 retrouves dans la messagerie par son nom ou son pseudo.
+          - old: |-
+              personne, telle que Serge la connaît (reprends-la de la liste), et
+            new: |-
+              personne, telle que Serge la connaît (reprends-la de la liste ;
+              pour un essai, ce que donne « adresse »), et
 deleted:
   invocations:
     - demo_ouvrir_cycle
