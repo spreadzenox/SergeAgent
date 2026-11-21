@@ -196,7 +196,10 @@ class ChantierTests(unittest.TestCase):
         self.assertEqual(
             fiche['cadres'][0]['titre'], 'Ce que le modèle a rendu'
         )
-        self.assertIn('Le programme dit bonsoir.', fiche['cadres'][0]['pre'])
+        self.assertIn(
+            'Le programme dit bonsoir.',
+            [c['v'] for c in fiche['cadres'][0]['champs']],
+        )
 
     def test_un_seul_chantier_tourne(self) -> None:
         self._outil('sandbox_write_file', path='a.txt', content='A')

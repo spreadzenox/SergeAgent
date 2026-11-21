@@ -1,6 +1,13 @@
 // Routeur de fiches objet : page parent ou tiroir feuille.
 import {confirmModal, promptModal, toast} from './components.js';
-import {TYPES_OBJET, allerObjet, depuis} from './libelles.js';
+import {
+  TYPES_OBJET,
+  allerObjet,
+  dateLocale,
+  depuis,
+  estDate,
+  heure,
+} from './libelles.js';
 
 const TIROIRS = new Set([
   'task',
@@ -11,6 +18,49 @@ const TIROIRS = new Set([
   'llm_usage',
 ]);
 
+const ADRESSE = /^https?:\/\/\S+$/;
+
+// La valeur d’un champ : une date de la base s’écrit à l’heure d’ici (la
+// date exacte reste au survol), une adresse du web devient un lien qui
+// s’ouvre à part.
+function valeur(texte) {
+  const dd = el('dd');
+  const brut = String(texte ?? '');
+  if (estDate(brut)) {
+    dd.textContent = dateLocale(brut);
+    dd.title = brut;
+  } else if (ADRESSE.test(brut)) {
+    const lien = el('a', '', brut);
+    lien.href = brut;
+    lien.target = '_blank';
+    lien.rel = 'noopener noreferrer';
+    dd.append(lien);
+  } else {
+    dd.textContent = brut;
+  }
+  return dd;
+}
+
+function listeChamps(champs, classe) {
+  const dl = el('dl', classe);
+  for (const champ of champs) {
+    dl.append(el('dt', '', champ.k), valeur(champ.v));
+  }
+  return dl;
+}
+
+// Un journal : un fait par ligne, à l’heure d’ici, ses précisions dessous.
+function texteJournal(journal) {
+  const lignes = [];
+  for (const fait of journal) {
+    lignes.push(`${heure(fait.ts)}  ${fait.texte}`);
+    for (const sous of fait.sous || []) {
+      lignes.push(`          ${sous}`);
+    }
+  }
+  return lignes.join('\n');
+}
+
 function renderCadre(cadre, apres) {
   const bloc = el('div', 'cadre-fiche');
   bloc.append(el('h3', '', cadre.titre || ''));
@@ -18,11 +68,14 @@ function renderCadre(cadre, apres) {
     bloc.append(el('p', 'texte-cadre', cadre.texte));
   }
   if ((cadre.champs || []).length) {
-    const dl = el('dl');
-    for (const champ of cadre.champs) {
-      dl.append(el('dt', '', champ.k), el('dd', '', champ.v));
-    }
-    bloc.append(dl);
+    bloc.append(listeChamps(cadre.champs));
+  }
+  // Une liste rendue par un modèle : un bloc par élément.
+  for (const groupe of cadre.groupes || []) {
+    bloc.append(listeChamps(groupe, 'groupe-fiche'));
+  }
+  if ((cadre.journal || []).length) {
+    bloc.append(el('pre', 'preuve journal', texteJournal(cadre.journal)));
   }
   if ((cadre.liens || []).length) {
     const ul = el('ul', 'liste-materiel');
@@ -81,11 +134,11 @@ function renderCadre(cadre, apres) {
   return bloc;
 }
 
-function cellule(colonne, valeur) {
-  if ((colonne === 'Depuis' || colonne === 'Pause') && valeur && valeur !== '—') {
-    return depuis(valeur) || valeur;
+function cellule(colonne, texte) {
+  if ((colonne === 'Depuis' || colonne === 'Pause') && texte && texte !== '—') {
+    return depuis(texte) || texte;
   }
-  return valeur;
+  return estDate(texte) ? dateLocale(texte) : texte;
 }
 
 function tableau(data) {
@@ -106,9 +159,9 @@ function tableau(data) {
     if (etat === 'Prochain') {
       tr.className = 'rang-prochain';
     }
-    (ligne.cellules || []).forEach((valeur, i) => {
+    (ligne.cellules || []).forEach((texte, i) => {
       const nom = (data.colonnes || [])[i] || '';
-      tr.append(el('td', '', cellule(nom, valeur)));
+      tr.append(el('td', '', cellule(nom, texte)));
     });
     if (ligne.type && ligne.id) {
       const open = () => allerObjet(ligne.type, ligne.id);
@@ -221,11 +274,7 @@ export function renderFiche(data, apres = null) {
     wrap.append(renderActions(data.actions, apres));
   }
   if ((data.champs || []).length) {
-    const dl = el('dl');
-    for (const champ of data.champs || []) {
-      dl.append(el('dt', '', champ.k), el('dd', '', champ.v));
-    }
-    wrap.append(dl);
+    wrap.append(listeChamps(data.champs));
   }
   for (const cadre of data.cadres || []) {
     wrap.append(renderCadre(cadre, apres));

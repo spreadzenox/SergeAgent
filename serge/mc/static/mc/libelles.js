@@ -201,6 +201,31 @@ export function demarre(ts) {
   return r;
 }
 
+const ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/;
+
+// Une date de la base (ISO, UTC) ? Les fiches l’écrivent à l’heure d’ici.
+export function estDate(texte) {
+  return ISO.test(String(texte || ''));
+}
+
+// « 21/11/2026 22:04:42 », à l’heure de celui qui lit.
+export function dateLocale(ts) {
+  const date = new Date(ts);
+  if (Number.isNaN(date.getTime())) {
+    return String(ts || '');
+  }
+  return date.toLocaleString('fr-FR', {dateStyle: 'short', timeStyle: 'medium'});
+}
+
+// « 22:04:42 », à l’heure de celui qui lit.
+export function heure(ts) {
+  const date = new Date(ts);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+  return date.toLocaleTimeString('fr-FR');
+}
+
 export function allerObjet(type, id) {
   if (!type || !id) {
     return;

@@ -13,8 +13,12 @@ def project_objet(
     """Fiche objet {type, id, titre, champs, enfants, preuve} ou None."""
     if typ == 'file':
         from serge.db.store import utcnow
+        from serge.mc.proj_historique import project_taches_finies
         from serge.mc.proj_taches import project_file_detail
 
+        # « finies » : l'historique ; sinon les tâches en cours et prêtes.
+        if ident == 'finies':
+            return project_taches_finies(conn)
         return project_file_detail(conn, utcnow())
     if typ == 'task':
         from serge.mc.proj_taches import fiche_tache

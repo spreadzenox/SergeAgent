@@ -1,8 +1,15 @@
 #!/usr/bin/env python3
-"""Projecteurs P0 : golden sur fixtures (hero, urgents, files, feed, jauges)."""
+"""Projecteurs P0 : golden sur fixtures (hero, urgents, files, feed, jauges).
+
+Le feed est la liste « Activité » : une ligne de tâche y porte le titre de
+son invocation, les détails d'une tâche (ses appels d'outils, ses
+écritures) n'y sont pas, et les tâches de routine pareilles font une
+seule ligne.
+"""
 
 from __future__ import annotations
 
+import json
 import sqlite3
 import sys
 import unittest
@@ -274,6 +281,105 @@ class ProjLiveTests(unittest.TestCase):
                 ('email.recu', 'Ada (question)', 'p1'),
             ],
         )
+
+    def _fait(self, seconde: int, sorte: str, **contenu: object) -> None:
+        self.conn.execute(
+            'INSERT INTO events(actor, type, venture_id, payload_json, ts)'
+            " VALUES('invocation:x', ?, '', ?, ?)",
+            (
+                sorte,
+                json.dumps(contenu),
+                f'2026-09-10T13:00:{seconde:02d}+00:00',
+            ),
+        )
+
+    def test_l_activite_dit_de_quelle_tache_elle_parle(self) -> None:
+        """Une ligne de tâche porte le titre de son invocation ; ce que la
+        tâche a fait en tournant (ses appels d'outils, ses écritures) n'y
+        est pas ; les tâches de routine pareilles font une ligne, celles
+        qu'un bouton a lancées gardent la leur."""
+        invocations(
+            self.conn,
+            ('relever', 'Relever les messages', 'prospection_light'),
+            ('relancer', 'Chercher les relances', 'prospection_light'),
+            ('fouiller', 'Fouiller un réseau', 'prospection_light'),
+        )
+        self.conn.execute(
+            'INSERT INTO triggers(id, title, invocation_id, event)'
+            " VALUES('bouton_fouiller', 'Fouiller un réseau', 'fouiller',"
+            " 'button')"
+        )
+        releves = [
+            tache(self.conn, 'relever', key=f'k-rel{n}', status='done')
+            for n in range(3)
+        ]
+        relance = tache(self.conn, 'relancer', key='k-rl', status='done')
+        fouilles = [
+            tache(self.conn, 'fouiller', key=f'k-fou{n}', status='done')
+            for n in range(2)
+        ]
+        self.conn.execute(
+            "UPDATE tasks SET origin='button' WHERE invocation_id='fouiller'"
+        )
+        rate = tache(
+            self.conn, 'relever', key='k-rate', status='failed', error='x'
+        )
+        for seconde, sorte, contenu in (
+            (
+                1,
+                'mc_act',
+                {
+                    'acte': 'bouton',
+                    'trigger_id': 'bouton_fouiller',
+                    'task': fouilles[0],
+                },
+            ),
+            (2, 'task.done', {'task': releves[0], 'rows_written': 1}),
+            (3, 'tool.call', {'task': fouilles[0], 'tool': 'agir'}),
+            (4, 'write.updated', {'task': releves[1], 'table': 'canaux'}),
+            (5, 'task.done', {'task': releves[1], 'rows_written': 1}),
+            (6, 'task.done', {'task': relance, 'rows_written': 0}),
+            (7, 'task.done', {'task': fouilles[0], 'rows_written': 0}),
+            (8, 'task.done', {'task': releves[2], 'rows_written': 1}),
+            (9, 'task.done', {'task': fouilles[1], 'rows_written': 0}),
+            (10, 'task.failed', {'task': rate, 'error': 'HTTP 429'}),
+            (11, 'write.refused', {'task': rate, 'reason': 'aucune ligne'}),
+            (12, 'sms.received', {'de': 'XApp', 'code': 'oui'}),
+            # Une écriture faite hors d'une tâche reste dans l'activité.
+            (13, 'write.updated', {'table': 'canaux'}),
+        ):
+            self._fait(seconde, sorte, **contenu)
+        items = [
+            item
+            for item in project_feed(self.conn, POLICY, NOW)['items']
+            if item['ts'].startswith('2026-09-10T13:00')
+        ]
+        self.assertEqual(
+            [
+                (item['kind'], item['titre'], item.get('n', 1))
+                for item in items
+            ],
+            [
+                ('write.updated', '', 1),
+                ('sms.received', 'XApp', 1),
+                ('write.refused', 'Relever les messages : aucune ligne', 1),
+                ('task.failed', 'Relever les messages : HTTP 429', 1),
+                ('task.done', 'Fouiller un réseau', 1),
+                ('task.done', 'Relever les messages', 3),
+                ('task.done', 'Fouiller un réseau', 1),
+                ('task.done', 'Chercher les relances', 1),
+                ('mc_act', 'bouton « Fouiller un réseau »', 1),
+            ],
+        )
+        groupe = items[5]
+        # La ligne garde la plus récente des trois relèves, même si
+        # d'autres tâches sont passées entre elles, et dit depuis quand.
+        self.assertEqual(groupe['extra']['task'], releves[2])
+        self.assertEqual(groupe['ts'], '2026-09-10T13:00:08+00:00')
+        self.assertEqual(groupe['depuis'], '2026-09-10T13:00:02+00:00')
+        self.assertEqual(groupe['libelle'], 'Tâche terminée')
+        self.assertNotIn('routine', groupe)
+        self.assertEqual(items[1]['libelle'], 'SMS reçu')
 
     def test_jauges_llm_et_email(self) -> None:
         jauges = project_jauges(self.conn, POLICY, NOW)

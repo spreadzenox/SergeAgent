@@ -21,6 +21,7 @@ import {
   TYPES_TICKET,
   allerObjet,
   depuis,
+  heure,
   rel,
   verbe,
 } from '../libelles.js';
@@ -228,14 +229,20 @@ function renderFeed(main, payload, sig) {
       cible = ['ticket', extra.ticket_id];
     } else if (extra.touch_id) {
       cible = ['touch', extra.touch_id];
+    } else if (extra.task && /^(task\.|mc_act$)/.test(String(item.kind || ''))) {
+      // Une tâche finie, ou le bouton qui l’a lancée : sa fiche, où se
+      // lit ce qu’elle a rendu.
+      cible = ['task', extra.task];
     } else if (extra.event_id) {
       cible = ['event', extra.event_id];
     } else if (extra.contact_id) {
       cible = ['prospect', extra.contact_id];
-    } else if (extra.task && String(item.kind || '').startsWith('task.')) {
-      cible = ['task', extra.task];
     }
-    btn.textContent = `${rel(item.ts)} · ${verbe(item.kind)}${item.titre ? ` — ${item.titre}` : ''}`;
+    // Des tâches pareilles qui se suivent : une ligne, leur nombre.
+    const suite = item.n > 1
+      ? ` · ${item.n} fois depuis ${heure(item.depuis).slice(0, 5)}`
+      : '';
+    btn.textContent = `${rel(item.ts)} · ${item.libelle || verbe(item.kind)}${item.titre ? ` — ${item.titre}` : ''}${suite}`;
     if (cible) {
       btn.addEventListener('click', () => allerObjet(cible[0], cible[1]));
     } else {
@@ -384,6 +391,10 @@ export function mount(main, store) {
     }
     if (cible.dataset.file === 'ouvrir') {
       allerObjet('file', 'canon');
+      return;
+    }
+    if (cible.dataset.file === 'finies') {
+      allerObjet('file', 'finies');
       return;
     }
     if (cible.dataset.file === 'prochain') {

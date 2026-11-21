@@ -762,6 +762,35 @@ h2 .btn-file {
 
 .fiche-objet dd {
   margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.fiche-objet dd a {
+  color: var(--cyan);
+}
+
+/* Les boutons d'une fiche ne collent pas à ses champs. */
+.fiche-objet > .barre-policy {
+  margin-bottom: 0.8rem;
+}
+
+/* Un élément d'une liste rendue par un modèle : un bloc, séparé du suivant. */
+.fiche-objet dl.groupe-fiche {
+  border-top: 1px solid rgb(53 224 255 / 16%);
+  margin-top: 0.7rem;
+  padding-top: 0.7rem;
+}
+
+.fiche-objet h3 + dl.groupe-fiche {
+  border-top: 0;
+  margin-top: 0;
+  padding-top: 0;
+}
+
+/* Le journal d'une tâche : assez haut pour se lire sans défiler sans cesse. */
+.preuve.journal {
+  max-height: 28rem;
 }
 
 .fil-ariane {
