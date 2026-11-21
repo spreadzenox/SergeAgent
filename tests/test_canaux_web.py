@@ -12,6 +12,11 @@ Scénarios :
   bon contact malgré une adresse écrite autrement, sans doublon ;
 - un envoi attend, sans échouer, quand le compte sert à une autre tâche ;
   un message que le site refuse est en échec, avec la raison ;
+- le réseau ne laisse pas encore écrire à la personne (décision Q110) : la
+  mission lui demande le contact et rend « attente » ; l'envoi attend, les
+  rappels s'espacent, et il part quand elle a accepté ; passé le délai
+  réglé, il échoue. Une demande de contact compte dans le plafond du jour.
+  Un message d'essai qui attend repart tout seul, un nombre de fois borné ;
 - sans compte en service, le canal n'est pas branché : la campagne est
   annulée, et rien n'est relevé.
 """
@@ -21,16 +26,19 @@ from __future__ import annotations
 import json
 import sys
 import unittest
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from serge.conversations.send import _day_full  # noqa: E402
 from serge.db.store import utcnow  # noqa: E402
 from serge.funnels.contacts import normalise_value  # noqa: E402
 from serge.interpreter.tasks import enqueue_task  # noqa: E402
 from serge.llm.client import ChatResult  # noqa: E402
+from serge.mc.proj_objet import project_objet  # noqa: E402
 from serge.policy_store import set_setting  # noqa: E402
 from tests.test_lot12_chaine import (  # noqa: E402
     ChaineCase,
@@ -40,6 +48,8 @@ from tests.test_lot12_chaine import (  # noqa: E402
 ANA = 'https://www.linkedin.com/in/ana-roux'
 FIL = 'https://www.linkedin.com/messaging/thread/42'
 NOTE = 'Serge, un agent IA. Vos devis en deux minutes : on essaie ?'
+DEMANDE = 'Demande de connexion envoyée à Ana Roux : elle doit l’accepter.'
+ESSAI = 'texte du message (280 caractères au plus pour LinkedIn)'
 A_QUI = (
     "à qui écrire : son pseudo sur ce réseau, ou l'adresse de son profil"
     " (LinkedIn : l'adresse)"
@@ -243,6 +253,205 @@ class CanauxWebTests(ChaineCase):
         self.assertEqual(
             (statut, raison),
             ('failed', 'LinkedIn ne permet plus de note ce mois-ci.'),
+        )
+
+    def _reprise(self, invocation: str = 'envoyer_message') -> datetime:
+        """L'heure où la tâche en attente repartira."""
+        quand = self._un(
+            'SELECT not_before FROM tasks WHERE invocation_id=?'
+            " AND status='ready'",
+            invocation,
+        )
+        assert quand is not None and quand[0], invocation
+        return datetime.fromisoformat(quand[0])
+
+    def _le_temps_passe(
+        self, jours: float = 0, invocation: str = 'envoyer_message'
+    ) -> None:
+        """La tâche en attente est due ; le contact a été demandé il y a
+        ``jours`` jours."""
+        if jours:
+            self.conn.execute(
+                'UPDATE touches SET contact_asked_at=?',
+                ((datetime.now(UTC) - timedelta(days=jours)).isoformat(),),
+            )
+        self.conn.execute(
+            "UPDATE tasks SET not_before='' WHERE invocation_id=?"
+            " AND status='ready'",
+            (invocation,),
+        )
+        self._vider()
+
+    def _dans(self, quand: datetime) -> float:
+        """Dans combien d'heures, à une minute près."""
+        return round((quand - datetime.now(UTC)).total_seconds() / 3600, 1)
+
+    def test_le_contact_demande_fait_attendre_l_envoi(self) -> None:
+        """Ana n'est pas une relation et LinkedIn refuse la note : Serge
+        lui demande la connexion, l'envoi attend, et il part quand elle a
+        accepté."""
+        self._un_envoi_pret()
+        self.modeles.envoi = {'envoye': 'attente', 'raison': DEMANDE}
+        self._vider()
+        statut, ref, raison, _ = self._envoi()
+        self.assertEqual((statut, ref, raison), ('pending', '', DEMANDE))
+        demande = self._un('SELECT contact_asked_at FROM touches')[0]
+        self.assertTrue(demande)
+        # Premier rappel dans 12 heures (page Policy, « Comptes web »).
+        self.assertEqual(self._dans(self._reprise()), 12.0)
+        self.assertEqual(len(self.modeles.envois), 1)
+        # Mission Control le dit sur la fiche de l'envoi.
+        touche = self._un('SELECT id FROM touches')[0]
+        fiche = project_objet(self.conn, 'touch', touche)
+        assert fiche is not None
+        self.assertEqual(
+            [(c['k'], c['v']) for c in fiche['champs'][3:]],
+            [('Raison', DEMANDE), ('Contact demandé', demande)],
+        )
+        # Ana a accepté : au rappel, le même texte part.
+        self.modeles.envoi = {'envoye': 'oui', 'reference': FIL}
+        self._le_temps_passe()
+        self.assertEqual(self._envoi()[:2], ('sent', FIL))
+        self.assertEqual(
+            [e['message'] for e in self.modeles.envois], [NOTE, NOTE]
+        )
+        # L'heure de la demande reste sur l'envoi.
+        self.assertEqual(
+            self._un('SELECT contact_asked_at FROM touches')[0], demande
+        )
+
+    def test_les_rappels_s_espacent_puis_l_envoi_echoue(self) -> None:
+        """Chaque attente dure autant que tout ce qui a déjà été attendu ;
+        au bout du délai réglé, Serge regarde une dernière fois, puis
+        l'envoi échoue avec sa raison."""
+        self._un_envoi_pret()
+        self.modeles.envoi = {'envoye': 'attente'}
+        self._vider()
+        # Sans raison rendue par la mission, l'envoi dit quand même
+        # pourquoi il attend.
+        self.assertEqual(
+            self._envoi()[2],
+            'contact demandé : le message partira quand la personne'
+            ' l’aura accepté',
+        )
+        self._le_temps_passe(jours=3)
+        self.assertEqual(self._dans(self._reprise()), 72.0)
+        # À 13 jours et demi, le dernier rappel tombe au quatorzième jour.
+        self._le_temps_passe(jours=13.5)
+        self.assertEqual(self._dans(self._reprise()), 12.0)
+        self._le_temps_passe(jours=14.1)
+        statut, _, raison, _ = self._envoi()
+        self.assertEqual(
+            (statut, raison),
+            (
+                'failed',
+                'la personne n’a pas accepté le contact en 14 jours : le'
+                ' message n’est pas parti',
+            ),
+        )
+        self.assertEqual(len(self.modeles.envois), 4)
+        self.assertIsNone(
+            self._un(
+                "SELECT 1 FROM tasks WHERE invocation_id='envoyer_message'"
+                " AND status='ready'"
+            )
+        )
+
+    def test_une_demande_de_contact_compte_dans_le_plafond(self) -> None:
+        """Dix demandes de connexion dans la journée valent dix messages :
+        le plafond du jour du canal les compte, sauf celle de l'envoi qui
+        repart."""
+        self._un_envoi_pret()
+        self._regler_canal('max_per_day', 1)
+        self.modeles.envoi = {'envoye': 'attente', 'raison': DEMANDE}
+        self._vider()
+        touche = self._un('SELECT id FROM touches')[0]
+        self.assertTrue(_day_full(self.conn, 'linkedin', 'un_autre_envoi'))
+        self.assertEqual(_day_full(self.conn, 'linkedin', touche), '')
+        # Demandé hier, il ne prend plus rien au plafond d'aujourd'hui.
+        self.conn.execute(
+            'UPDATE touches SET contact_asked_at=?',
+            ((datetime.now(UTC) - timedelta(days=1)).isoformat(),),
+        )
+        self.assertEqual(
+            _day_full(self.conn, 'linkedin', 'un_autre_envoi'), ''
+        )
+
+    def _essai(self, texte: str) -> None:
+        from serge.interpreter.triggers import fire_button
+
+        self.assertIsNotNone(
+            fire_button(
+                self.conn,
+                'bouton_message_d_essai_reseau',
+                {
+                    'nom du compte (linkedin, instagram, x…)': 'linkedin',
+                    A_QUI: 'ana_roux',
+                    ESSAI: texte,
+                },
+            )
+        )
+        self.conn.commit()
+        self._vider()
+
+    def _essais(self) -> list[tuple[str, str, str]]:
+        """Les passages d'un message d'essai : son état, ce qu'il a rendu,
+        et son numéro de rappel."""
+        return [
+            (
+                str(statut),
+                str(json.loads(reponse or '{}').get('envoye') or ''),
+                str(rappel or ''),
+            )
+            for statut, reponse, rappel in self.conn.execute(
+                'SELECT t.status, t.answer_json, p.value FROM tasks t'
+                ' LEFT JOIN task_params p ON p.task_id=t.id'
+                " AND p.name='rappel'"
+                " WHERE t.invocation_id='envoyer_par_le_web'"
+                ' ORDER BY t.rowid'
+            )
+        ]
+
+    def test_un_message_d_essai_qui_attend_repart_tout_seul(self) -> None:
+        """Le bouton de la page Système : Serge demande le contact, puis
+        retourne voir dix minutes plus tard, avec le même texte."""
+        self.modeles.envoi = {'envoye': 'attente', 'raison': DEMANDE}
+        self._essai('Bonjour, ceci est un essai.')
+        self.assertEqual(
+            self._essais(), [('done', 'attente', ''), ('ready', '', '2')]
+        )
+        quand = self._reprise('envoyer_par_le_web')
+        self.assertEqual(
+            round((quand - datetime.now(UTC)).total_seconds() / 60), 10
+        )
+        # Tu as accepté : au rappel, le texte part, et rien ne suit.
+        self.modeles.envoi = {'envoye': 'oui', 'reference': FIL}
+        self._le_temps_passe(invocation='envoyer_par_le_web')
+        self.assertEqual(
+            self._essais(), [('done', 'attente', ''), ('done', 'oui', '2')]
+        )
+        self.assertEqual(
+            [(e['adresse'], e['message']) for e in self.modeles.envois],
+            [('ana_roux', 'Bonjour, ceci est un essai.')] * 2,
+        )
+        # Un essai n'écrit aucun envoi.
+        self.assertEqual(self._un('SELECT COUNT(*) FROM touches')[0], 0)
+
+    def test_un_message_d_essai_ne_repart_pas_sans_fin(self) -> None:
+        """Personne n'accepte : Serge essaie le nombre de fois réglé (la
+        première comprise), puis s'arrête."""
+        self._regler('compter_rappels_essai', 'essais_max', 3)
+        self.modeles.envoi = {'envoye': 'attente', 'raison': DEMANDE}
+        self._essai('Bonjour.')
+        for _ in range(5):
+            self._le_temps_passe(invocation='envoyer_par_le_web')
+        self.assertEqual(
+            self._essais(),
+            [
+                ('done', 'attente', ''),
+                ('done', 'attente', '2'),
+                ('done', 'attente', '3'),
+            ],
         )
 
     def test_sans_compte_le_canal_n_est_pas_branche(self) -> None:

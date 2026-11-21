@@ -736,11 +736,28 @@ canal est **décrit en base**, et son adaptateur est le même pour tous
   message par le navigateur » (`serge/missions.py`). Elle ouvre le profil
   dans le vrai Chrome, regarde d'abord si le message est déjà dans la
   conversation (pour ne jamais l'envoyer deux fois), l'envoie tel quel et
-  rend « oui », « déjà » ou « non » avec la raison. Sur LinkedIn, le
-  premier message à un inconnu est la note d'une demande de connexion ;
+  rend « oui », « déjà », « attente » ou « non » avec la raison. Sur
+  LinkedIn, le premier message à un inconnu est la note d'une demande de
+  connexion ;
 - un envoi **attend** au lieu d'échouer quand le compte sert à une autre
   tâche (10 minutes), a fait ses actions du jour, ou quand le plafond de
   dépense du jour est atteint (le lendemain) ;
+- **quand le réseau ne laisse pas encore écrire à la personne** (décision
+  Q110) : pas de bouton pour écrire, des messages réservés aux relations
+  ou aux abonnés, une note refusée. L'invocation lui **demande le
+  contact** comme le réseau le propose, une seule fois (la suivre sur X
+  ou Instagram, lui demander la connexion sans note sur LinkedIn), et rend
+  « attente » : c'est le seul autre geste qui lui est permis. L'envoi
+  reste « à envoyer », avec sa raison et l'heure de la demande
+  (`touches.contact_asked_at`), et « Envoyer un message » le reprend plus
+  tard : la même invocation retourne voir, et envoie le même texte dès
+  que le réseau le permet. Le premier rappel vient après 12 heures, les
+  suivants de moins en moins souvent (chaque attente dure autant que tout
+  ce qui a déjà été attendu : 12 heures, 1, 2, 4, 8 jours) ; au bout de
+  14 jours, elle regarde une dernière fois, puis l'envoi échoue avec sa
+  raison. Les deux délais sont des réglages (page Policy, « Comptes
+  web »). Une demande de contact compte dans le plafond du jour du canal,
+  comme un message parti ;
 - **relever** : toutes les 4 heures, « Relever les messages » confie la
   lecture à « Lire la messagerie d'un réseau », seulement si un message
   est parti par ce canal depuis moins de 30 jours (réglage). Les réponses
@@ -767,6 +784,16 @@ Deux boutons de la page Système essaient un canal sans contact ni
 campagne : « Envoyer un message d'essai sur un réseau » et « Lire une
 conversation d'essai sur un réseau ». Ils lancent les deux mêmes
 invocations.
+
+Un message d'essai n'a pas d'envoi en base pour attendre à sa place :
+son attente est écrite dans le pipeline, avec les briques de toutes les
+boucles (un lien sous condition, un délai, « Compter »). Si l'invocation
+rend « attente », le lien « Un message d'essai attend que la personne
+accepte le contact » mène à « Compter les rappels d'un essai » ; tant
+qu'il reste des essais (6 au départ, le premier compris), le lien
+« Retourner voir si le message d'essai peut partir » relance la même
+invocation 10 minutes plus tard, avec le même texte. Ces liens ne jouent
+pas pour un vrai envoi : une mission ne suit pas ses liens.
 
 ---
 
