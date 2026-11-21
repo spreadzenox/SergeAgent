@@ -19,10 +19,25 @@ recrée jamais ensuite.
    Serge applique celles qui manquent, dans l'ordre. Version actuelle :
    **57**.
    - Une base neuve saute directement à la version 7 (le socle,
-     `serge/db/schema.py`), puis applique 8, 9, … 34.
+     `serge/db/schema.py`), puis applique toutes les suivantes.
    - Une base **plus récente** que le code refuse de démarrer
      (`MigrateError`). Revenir à un ancien commit ne défait pas une
      migration.
+   - **Plusieurs services démarrent en même temps** à chaque déploiement,
+     et chacun ouvre la base. Un seul applique les migrations : il prend
+     le verrou d'écriture de SQLite (`BEGIN IMMEDIATE`) avant de lire la
+     version, applique tout ce qui manque dans une seule transaction, puis
+     valide. Les autres attendent leur tour (au plus 30 secondes, le délai
+     de `open_db`), relisent la version, la trouvent à jour et ne font
+     rien. Exemple : au déploiement de la version 57, huit services
+     redémarrent ; le premier ajoute la colonne
+     `touches.contact_asked_at`, les sept autres attendent, puis passent
+     sans rien changer. Sans ce verrou, deux services lisaient « version
+     56 » et ajoutaient tous deux la colonne : le second s'arrêtait sur
+     « duplicate column name » (21 novembre 2026).
+   - Une migration **qui échoue** est annulée en entier, avec celles qui
+     venaient de passer dans la même transaction : la base reste à la
+     version qu'elle avait, et le service ne démarre pas.
 2. **Le remplissage de départ** : les 8 étapes, les canaux, les
    capacités déclarées par le code, puis le pipeline de départ
    (`config/pipeline.yaml` : files, outils, invocations, règles
@@ -233,6 +248,9 @@ maintenance (`MAINTENANCE`) et fermé (`CLOSED`), avec le code qui les pose.
 1. Créer `serge/db/v0NN.py` avec une fonction `apply_v0NN(connection)`.
    Elle doit pouvoir tourner sur une base qui a déjà une partie du
    changement (utiliser `IF NOT EXISTS`, vérifier les colonnes).
+   Elle n'ouvre ni ne valide de transaction (pas de `BEGIN` ni de
+   `COMMIT` dans son SQL) : `apply_pending` la fait passer dans la
+   sienne, avec le numéro de version, et valide le tout.
 2. L'ajouter à `MIGRATIONS` dans `serge/db/migrate.py`, et monter
    `SCHEMA_VERSION` dans `serge/db/schema.py`.
 3. Ajouter un test dans `tests/test_migrate.py`.

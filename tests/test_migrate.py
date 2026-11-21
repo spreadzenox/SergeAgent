@@ -6,6 +6,8 @@ from __future__ import annotations
 import json
 import sqlite3
 import sys
+import tempfile
+import threading
 import unittest
 from pathlib import Path
 
@@ -300,6 +302,74 @@ class MigrateTests(unittest.TestCase):
         ).fetchone()
         self.assertEqual(before[0], after[0])
         self.assertEqual(before[1], after[1])
+
+    def test_deux_services_demarrent_ensemble(self) -> None:
+        """Deux connexions voient la version N-1 : une seule applique N.
+
+        Le 21 novembre 2026, deux services ont appliqué la version 57 en
+        même temps, et le second s'est arrêté sur « duplicate column name ».
+        """
+        dossier = tempfile.TemporaryDirectory()
+        self.addCleanup(dossier.cleanup)
+        path = Path(dossier.name) / 'serge.db'
+        premiere = sqlite3.connect(path)
+        self.addCleanup(premiere.close)
+        avant = SCHEMA_VERSION - 1
+        apply_pending(premiere, _until(avant), head=avant)
+        derniere = _until(SCHEMA_VERSION)[-1][1]
+        passages: list[sqlite3.Connection] = []
+        arrivee: list[object] = []
+
+        def second_service() -> None:
+            seconde = sqlite3.connect(path)
+            try:
+                arrivee.append(read_version(seconde))
+                arrivee.append(apply_pending(seconde, chaine))
+            except Exception as exc:
+                arrivee.append(exc)
+            finally:
+                seconde.close()
+
+        fil = threading.Thread(target=second_service)
+
+        def migration(conn: sqlite3.Connection) -> None:
+            passages.append(conn)
+            if conn is premiere:
+                # Le second service arrive pendant que le premier migre.
+                fil.start()
+                fil.join(0.3)
+                self.assertTrue(fil.is_alive(), 'le second doit attendre')
+            derniere(conn)
+
+        chaine = [*_until(avant), (SCHEMA_VERSION, migration)]
+        self.assertEqual(apply_pending(premiere, chaine), SCHEMA_VERSION)
+        fil.join()
+        self.assertEqual(arrivee, [avant, SCHEMA_VERSION])
+        self.assertEqual(passages, [premiere])
+        self.assertEqual(read_version(premiere), SCHEMA_VERSION)
+
+    def test_migration_ratee_ne_laisse_rien(self) -> None:
+        """Une migration qui échoue est annulée en entier, avec son verrou."""
+        conn = sqlite3.connect(':memory:')
+        self.addCleanup(conn.close)
+        avant = SCHEMA_VERSION - 1
+        apply_pending(conn, _until(avant), head=avant)
+
+        def migration(conn: sqlite3.Connection) -> None:
+            conn.executescript(
+                'CREATE TABLE a_moitie (id TEXT); SELECT * FROM absente;'
+            )
+
+        with self.assertRaises(sqlite3.OperationalError):
+            apply_pending(conn, [*_until(avant), (SCHEMA_VERSION, migration)])
+        self.assertEqual(read_version(conn), avant)
+        self.assertFalse(conn.in_transaction)
+        self.assertIsNone(
+            conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE name='a_moitie'"
+            ).fetchone()
+        )
+        self.assertEqual(apply_pending(conn), SCHEMA_VERSION)
 
     def test_code_plus_vieux_que_la_db_refuse(self) -> None:
         conn = sqlite3.connect(':memory:')
