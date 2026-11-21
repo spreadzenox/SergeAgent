@@ -764,7 +764,14 @@ plus, 3 passages de construction au plus, les tours d'outils de
   refusée, livrée) et sa raison.
 - **La fiche d'une tâche** montre ses captures gardées ; un clic ouvre
   l'image en grand. Mission Control sert un fichier rangé sous `files/`,
-  et rien d'autre, à une session connectée (`/owner/api/fichier`).
+  et rien d'autre, à une session connectée (`/owner/api/fichier`). Elle
+  montre aussi ses appels d'outils, dans l'ordre. Sous un appel du
+  navigateur, ce que la page a signalé pendant qu'il se faisait (une
+  réponse refusée, une requête ratée, une erreur de console) : le journal
+  le garde avec l'appel (`tool.call`, champ `erreurs`), les réponses du
+  site d'abord, sans ce qui suit le « ? » d'une adresse. Exemple : un clic
+  sur « Continuer » qui ne fait rien, et dessous
+  `HTTP 429 : https://api.site.example/inscription`.
 - **La fiche du business** montre ses publications (staging et prod :
   version, adresse, état, raison d'un échec) et ses versions.
 - **Un îlot « Produits en ligne »** sur la page Système, et le bouton

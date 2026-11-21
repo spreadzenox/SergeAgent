@@ -242,6 +242,66 @@ class AppelsTests(unittest.TestCase):
         self.assertNotEqual(resultats[1].get('code'), 'limite_atteinte')
         self.assertIs(resultats[1].get('ok', True), True)
 
+    def _appels_au_journal(self) -> list[dict[str, Any]]:
+        return [
+            json.loads(r[0])
+            for r in self.conn.execute(
+                "SELECT payload_json FROM events WHERE type='tool.call'"
+                ' ORDER BY id'
+            )
+        ]
+
+    def test_le_journal_garde_la_reponse_du_site(self) -> None:
+        """Un clic qui ne fait rien : le journal garde ce que la page a
+        signalé pendant l'appel, les réponses refusées d'abord, sans ce
+        qui suit le « ? » d'une adresse (inscription sur X, le 21
+        novembre 2026). Un appel refusé garde sa raison."""
+        rendus = [
+            {
+                'ok': True,
+                'page': '…',
+                'nouvelles_erreurs': [
+                    'console : Failed to load resource',
+                    'HTTP 429 : https://api.site.example/inscription'
+                    '?flow=abc&jeton=SECRET',
+                    *[f'console : bruit {i}' for i in range(9)],
+                    'requête ratée : POST https://api.site.example/suite'
+                    ' (net::ERR_FAILED)',
+                ],
+            },
+            {
+                'ok': False,
+                'detail': 'plusieurs éléments portent ce texte : vise par'
+                ' un repère',
+            },
+        ]
+        with mock.patch(
+            'serge.interpreter.tool_calls.run_tool',
+            side_effect=lambda *_a, **_k: rendus.pop(0),
+        ):
+            statut, _ = self._tourner(Script(_outil(2), REPONSE))
+        self.assertEqual(statut, 'done')
+        clic, refus = self._appels_au_journal()
+        self.assertEqual(
+            clic['erreurs'][:2],
+            [
+                'HTTP 429 : https://api.site.example/inscription?…',
+                'requête ratée : POST https://api.site.example/suite'
+                ' (net::ERR_FAILED)',
+            ],
+        )
+        self.assertEqual(len(clic['erreurs']), 6)
+        self.assertNotIn('SECRET', json.dumps(clic))
+        self.assertNotIn('detail', clic)
+        self.assertEqual(
+            (refus['ok'], refus['detail']),
+            (
+                False,
+                'plusieurs éléments portent ce texte : vise par un repère',
+            ),
+        )
+        self.assertNotIn('erreurs', refus)
+
     def test_un_resultat_d_outil_geant_est_coupe(self) -> None:
         geant = ToolCall('c1', 'repeter', json.dumps({'x': 'a' * 50000}))
         script = Script(ChatResult('', 1, 1, 'faux', 1, (geant,)), REPONSE)

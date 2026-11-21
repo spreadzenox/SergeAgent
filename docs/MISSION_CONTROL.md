@@ -69,7 +69,10 @@ ajouter une table), ses leçons, ce qu'elle peut appeler, le format de sa
 réponse, où sa réponse est écrite, ce qui la lance, ce qu'elle lance
 ensuite, et ses derniers appels au modèle (tours d'outils, réponses, appels ratés, avec les jetons et le coût réel). La fiche d'une tâche montre ses
 paramètres, ce qu'elle a reçu, ce que le modèle a rendu (la réponse d'une tâche LLM, gardée en base, lot 10) (par exemple « Pour comparer : Les
-business — 20 lignes, 230 laissées de côté »), la tâche qui l'a créée et
+business — 20 lignes, 230 laissées de côté »), ses appels d'outils dans
+l'ordre (l'outil, ses paramètres en court, s'il a marché, la raison d'un
+refus, et sous l'appel ce que la page a signalé : une réponse refusée par
+le site, une erreur ; décision Q108), la tâche qui l'a créée et
 celles qu'elle a créées ; si elle n'attend pas et ne tourne pas (finie,
 en échec, annulée, gelée), un bouton « Repartir d'ici » fait repartir sa
 chaîne : une tâche neuve, copie de celle-ci, part avec toute sa suite, et
