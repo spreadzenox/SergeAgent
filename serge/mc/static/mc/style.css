@@ -361,6 +361,18 @@ main.login button {
   width: calc(100vw - 2rem);
 }
 
+.modale-large {
+  max-width: 60rem;
+}
+
+.modale-large textarea {
+  box-sizing: border-box;
+  display: block;
+  font-family: var(--police-chiffres);
+  margin-top: 0.4rem;
+  width: 100%;
+}
+
 .modale .actions {
   display: flex;
   gap: 0.6rem;

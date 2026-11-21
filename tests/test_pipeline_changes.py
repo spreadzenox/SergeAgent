@@ -30,7 +30,10 @@ Scénarios :
   corrigé : le libellé du site, le pseudo voulu, et sa consigne ;
 - le même serveur, après l'inscription ratée sur X : le téléphone ne se
   donne que si le site l'exige, et les essais de message acceptent un
-  pseudo ; un libellé changé dans Mission Control est gardé.
+  pseudo ; un libellé changé dans Mission Control est gardé ;
+- le serveur du 21 novembre 2026 apprend que le téléphone est exigé quand
+  l'inscription n'offre que lui, et qu'un champ de connexion ne sert pas à
+  s'inscrire.
 """
 
 from __future__ import annotations
@@ -1507,6 +1510,7 @@ class TelephoneEtPseudoTests(unittest.TestCase):
         'lot13_essai_lecture_par_pseudo',
         'lot13_envoi_web_par_pseudo',
         'lot13_lecture_web_par_pseudo',
+        'lot13_compte_telephone_seule_voie',
     )
 
     def _prompt(self, conn: sqlite3.Connection, invocation: str) -> str:
@@ -1529,16 +1533,20 @@ class TelephoneEtPseudoTests(unittest.TestCase):
             )
         ]
 
-    def _serveur(self) -> tuple[sqlite3.Connection, dict, dict[str, str]]:
-        """Une base comme celle du serveur avant ces modifications, le
-        fichier, et les consignes d'une instance neuve."""
+    def _serveur(
+        self, ids: tuple[str, ...] = ()
+    ) -> tuple[sqlite3.Connection, dict, dict[str, str]]:
+        """Une base comme celle du serveur avant ces modifications (toutes,
+        ou seulement ``ids``), le fichier, et les consignes d'une instance
+        neuve. Les modifications se défont de la dernière à la première."""
+        ids = ids or self.IDS
         conn = sqlite3.connect(':memory:')
         self.addCleanup(conn.close)
         init_schema(conn)
         data = read_yaml_file(config_dir() / 'pipeline.yaml')
         changes = {c['id']: c for c in data['changes']}
-        neuves = {}
-        for ident in self.IDS:
+        neuves: dict[str, str] = {}
+        for ident in reversed(ids):
             change = changes[ident]
             where = change['where']
             if change['table'] == 'trigger_params':
@@ -1552,7 +1560,8 @@ class TelephoneEtPseudoTests(unittest.TestCase):
                     ),
                 )
                 continue
-            prompt = neuves[where['id']] = self._prompt(conn, where['id'])
+            prompt = self._prompt(conn, where['id'])
+            neuves.setdefault(where['id'], prompt)
             for passage in reversed(change['set']['prompt']['replace']):
                 self.assertEqual(prompt.count(passage['new']), 1, ident)
                 prompt = prompt.replace(passage['new'], passage['old'])
@@ -1561,7 +1570,7 @@ class TelephoneEtPseudoTests(unittest.TestCase):
                 (prompt, where['id']),
             )
         conn.executemany(
-            'DELETE FROM pipeline_changes WHERE id=?', [(i,) for i in self.IDS]
+            'DELETE FROM pipeline_changes WHERE id=?', [(i,) for i in ids]
         )
         return conn, data, neuves
 
@@ -1597,11 +1606,86 @@ class TelephoneEtPseudoTests(unittest.TestCase):
         self.assertIn("Un lien, tu l'ouvres dans le vrai Chrome", apres)
         self.assertIn('ne remplis pas le formulaire en boucle', apres)
         self.assertIn('par la recherche du site', neuves['envoyer_par_le_web'])
+        self.assertIn(
+            "se connecter à un compte qui existe, pas à s'inscrire", apres
+        )
         for libelle in self._libelles(conn):
             self.assertIn('son pseudo sur ce réseau', libelle)
         # Une seconde fois ne change rien.
         seed_pipeline(conn, data)
         self.assertEqual(self._prompt(conn, 'creer_compte_web'), apres)
+
+    def test_le_serveur_du_21_novembre_recoit_la_seule_voie(self) -> None:
+        """Après l'essai sur X du 21 novembre : seule la dernière
+        modification manque au serveur."""
+        conn, data, neuves = self._serveur(self.IDS[-1:])
+        avant = self._prompt(conn, 'creer_compte_web')
+        self.assertIn("ne le donne que si le site l'exige", avant)
+        self.assertNotIn('Trois précisions', avant)
+        seed_pipeline(conn, data)
+        apres = self._prompt(conn, 'creer_compte_web')
+        self.assertEqual(apres, neuves['creer_compte_web'])
+        self.assertIn("Quand l'inscription n'offre que le téléphone", apres)
+        self.assertIn('le téléphone est exigé : donne celui des SMS', apres)
+        self.assertIn('essaie-la', apres)
+        self.assertEqual(
+            self._resultat(conn, self.IDS[-1]),
+            'prompt : 1 passage(s) remplacé(s)',
+        )
+
+    def _resultat(self, conn: sqlite3.Connection, ident: str) -> str:
+        return str(
+            conn.execute(
+                'SELECT result FROM pipeline_changes WHERE id=?', (ident,)
+            ).fetchone()[0]
+        )
+
+    def test_une_instance_neuve_n_est_pas_touchee(self) -> None:
+        """Les modifications d'une même consigne s'enchaînent sans rien
+        poser deux fois : une instance neuve a déjà le texte du fichier.
+        (Un passage ajouté par une modification ne se réécrit pas dans la
+        suivante : la première le reposerait.)"""
+        conn = sqlite3.connect(':memory:')
+        self.addCleanup(conn.close)
+        init_schema(conn)
+        data = read_yaml_file(config_dir() / 'pipeline.yaml')
+        fichier = {i['id']: i.get('prompt') for i in data['invocations']}
+        for invocation in (
+            'creer_compte_web',
+            'envoyer_par_le_web',
+            'lire_messagerie',
+        ):
+            self.assertEqual(
+                self._prompt(conn, invocation), fichier[invocation].strip()
+            )
+        self.assertEqual(
+            self._prompt(conn, 'creer_compte_web').count(
+                'Si un bouton ne fait rien'
+            ),
+            1,
+        )
+        for ident in (self.IDS[0], *self.IDS[3:]):
+            self.assertEqual(
+                self._resultat(conn, ident), 'prompt déjà à jour', ident
+            )
+
+    def test_une_consigne_changee_dans_mission_control_est_gardee(
+        self,
+    ) -> None:
+        """Clem a réécrit la fin du paragraphe dans Mission Control : la
+        modification du fichier ne trouve plus où se poser, et n'écrase
+        rien."""
+        conn, data, _ = self._serveur(self.IDS[-1:])
+        a_la_main = self._prompt(conn, 'creer_compte_web').replace(
+            'décrivant ce que la page montre.', 'disant ce que tu vois.'
+        )
+        conn.execute(
+            "UPDATE invocations SET prompt=? WHERE id='creer_compte_web'",
+            (a_la_main,),
+        )
+        seed_pipeline(conn, data)
+        self.assertEqual(self._prompt(conn, 'creer_compte_web'), a_la_main)
+        self.assertIn('gardé', self._resultat(conn, self.IDS[-1]))
 
     def test_un_libelle_change_dans_mission_control_est_garde(self) -> None:
         conn, data, _ = self._serveur()

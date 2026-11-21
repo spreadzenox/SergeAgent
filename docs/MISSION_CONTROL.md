@@ -133,8 +133,11 @@ Julien et Clem ont décidé que le code n'est qu'un interpréteur de la base
 où l'on voit et règle tout le pipeline, et pas seulement les prompts.
 
 **Chaque invocation se règle entièrement depuis sa fiche.** Aujourd'hui,
-sa fiche montre tout ce qui la décrit, et l'API
-`POST /owner/api/invocation` modifie son prompt, son niveau de modèle, sa
+sa fiche montre tout ce qui la décrit, et son bouton « Modifier la
+consigne » ouvre le prompt, tel que le modèle le reçoit : enregistré, il
+vaut dès la prochaine tâche, et l'ancien est gardé au journal (« Consigne
+d'une invocation changée », décision Q108). L'API
+`POST /owner/api/invocation` modifie aussi son niveau de modèle, sa
 file, sa priorité et son interrupteur. Demain, la fiche permettra de
 modifier tout le reste (ce qu'elle reçoit, ses outils, le format de sa
 réponse, où elle écrit) : c'est l'éditeur sans code, plus bas.
@@ -270,7 +273,7 @@ Toutes demandent le jeton owner ou une session valide. Les corps JSON sont limit
 | `GET /owner/api/memory/search` | Chercher dans la mémoire. |
 | `GET /owner/api/voice/audio` | Un enregistrement d’appel, réservé à une session owner valide. |
 | `POST /owner/api/coupe` | Couper ou relancer (Serge, étape, file, invocation). |
-| `POST /owner/api/invocation` | Modifier une invocation : prompt, niveau de modèle, file, priorité, allumée. |
+| `POST /owner/api/invocation` | Modifier une invocation : prompt (bouton « Modifier la consigne » de sa fiche ; vide ou de plus de 20 000 caractères, il est refusé ; l'ancien est gardé au journal), niveau de modèle, file, priorité, allumée. |
 | `POST /owner/api/etape` | Allumer ou éteindre une étape. |
 | `POST /owner/api/ticket/acte`, `/ticket/discuter` | Répondre à un ticket. |
 | `POST /owner/api/voice/debloquer` | « Débloquer les appels » (page Voix) : fermer au journal des appels ceux qui sont restés « en cours » ; rend leur nombre (décision Q101). |

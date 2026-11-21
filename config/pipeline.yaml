@@ -3714,6 +3714,15 @@ invocations:
       capture avec « keep » à oui, arrête-toi, et rends cree « non » en
       décrivant ce que la page montre.
 
+      Trois précisions. Quand l'inscription n'offre que le téléphone (avec
+      ou sans « Continuer avec Google » ou « Apple », que tu n'utilises
+      pas), le téléphone est exigé : donne celui des SMS, sans chercher
+      une voie par e-mail. Un champ « E-mail ou nom d'utilisateur » sert à
+      se connecter à un compte qui existe, pas à s'inscrire : ne t'en sers
+      pas pour créer le compte. Et un bouton qui ne fait rien sur une voie
+      ne t'arrête pas tant que le site en propose une autre : essaie-la
+      d'abord.
+
       Si le site demande une date de naissance et que « naissance » est
       vide, ou une information que tu n'as pas (un numéro de téléphone
       quand celui des SMS est vide, une pièce d'identité), arrête-toi :
@@ -10737,6 +10746,35 @@ changes:
             new: |-
               personne, telle que Serge la connaît (reprends-la de la liste ;
               pour un essai, ce que donne « adresse »), et
+  # Inscription sur X, le 21 novembre 2026 : l'inscription n'offrait que le
+  # téléphone ; Serge a pris le champ de connexion pour une voie par
+  # e-mail, puis s'est arrêté sur son bouton muet sans essayer le téléphone.
+  # Le paragraphe s'ajoute après celui du bouton muet, sans toucher aux
+  # passages posés par lot13_compte_telephone_si_exige : modifiés, ils
+  # seraient posés une seconde fois sur une instance neuve.
+  - id: lot13_compte_telephone_seule_voie
+    why: >-
+      Quand l'inscription n'offre que le téléphone, il est exigé ; un champ
+      de connexion ne sert pas à s'inscrire ; un bouton muet n'arrête pas
+      Serge tant que le site propose une autre voie.
+    table: invocations
+    where: {id: creer_compte_web}
+    set:
+      prompt:
+        replace:
+          - old: |-
+              décrivant ce que la page montre.
+            new: |-
+              décrivant ce que la page montre.
+
+              Trois précisions. Quand l'inscription n'offre que le téléphone (avec
+              ou sans « Continuer avec Google » ou « Apple », que tu n'utilises
+              pas), le téléphone est exigé : donne celui des SMS, sans chercher
+              une voie par e-mail. Un champ « E-mail ou nom d'utilisateur » sert à
+              se connecter à un compte qui existe, pas à s'inscrire : ne t'en sers
+              pas pour créer le compte. Et un bouton qui ne fait rien sur une voie
+              ne t'arrête pas tant que le site en propose une autre : essaie-la
+              d'abord.
 deleted:
   invocations:
     - demo_ouvrir_cycle

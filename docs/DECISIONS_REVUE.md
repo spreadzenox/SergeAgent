@@ -2332,3 +2332,21 @@ le serveur. Clem a décidé :
    reste acceptée, et reste nécessaire sur LinkedIn, où un nom ne désigne
    personne.
 
+### Q108 — Une consigne se modifie depuis Mission Control (validé par Clem, 21 novembre 2026)
+
+Le 21 novembre 2026, les SMS arrivent à Serge (le téléphone les transmet
+par un flow Automate, RCS coupé sur sa carte SIM), et un nouvel essai sur
+X s'est arrêté pour une raison de consigne : l'inscription n'offrait que
+le téléphone, Serge a pris le champ de connexion pour une voie par
+e-mail, puis s'est arrêté sur son bouton muet. Clem a décidé :
+
+1. **La fiche d'une invocation a un bouton « Modifier la consigne ».**
+   Julien et Clem corrigent une consigne sans attendre une PR. Elle vaut
+   dès la prochaine tâche ; l'ancienne est gardée au journal ; une
+   consigne vide est refusée. Les modifications suivantes du fichier ne
+   remplacent que les passages restés intacts.
+2. **Quand l'inscription n'offre que le téléphone, il est exigé** : Serge
+   donne celui des SMS. Un champ « e-mail ou nom d'utilisateur » sert à
+   se connecter, pas à s'inscrire. Un bouton muet ne l'arrête pas tant
+   que le site propose une autre voie.
+

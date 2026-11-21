@@ -37,6 +37,7 @@ EVENTS = {
     'write.refused': 'Écriture refusée',
     'write.skipped': 'Doublon écarté',
     'invocation.compare': 'Tables à comparer changées',
+    'invocation.prompt': 'Consigne d’une invocation changée',
     'link.passed': 'Passage à la main',
     'link.auto': 'Passage automatique changé',
     'pipeline.model': 'Modèle d’un niveau changé',
