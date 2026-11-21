@@ -2390,3 +2390,39 @@ historique lisible. Ce qui est décidé :
 6. **Une date s'écrit à l'heure de celui qui lit**, sur toutes les
    fiches.
 
+### Q110 — Demander le contact, puis attendre (demandé par Clem, 21 novembre 2026)
+
+Sur un réseau, on ne peut pas toujours écrire à quelqu'un tout de suite :
+X réserve souvent les messages privés aux abonnés, LinkedIn aux
+relations, et un compte gratuit n'y a que quelques notes par mois. Avant,
+l'invocation qui envoie rendait « non » et l'envoi échouait. Clem :
+« il faut des appels conditionnels assez universels pour que les agents
+fassent les choses intelligemment (ajouter une option de follow +
+attente) ». Ce qui est décidé :
+
+1. **L'invocation qui envoie a une quatrième réponse, « attente ».**
+   Quand le réseau ne la laisse pas encore écrire à la personne, elle lui
+   demande le contact comme le réseau le propose (la suivre, lui demander
+   la connexion), une seule fois, et rend « attente » avec ce que la
+   personne doit faire. La consigne ne dit pas la règle de chaque réseau :
+   l'invocation regarde ce que la page lui permet. C'est le seul geste
+   permis en plus du message : ni « j'aime », ni commentaire, et elle ne
+   suit personne d'autre.
+2. **Sur LinkedIn, une demande de connexion peut partir sans note**,
+   quand le site refuse la note. Avant, Serge renonçait. Le texte part
+   ensuite comme un message, une fois la demande acceptée.
+3. **Le pipeline rappelle la même invocation plus tard**, avec le même
+   texte. Pour un vrai envoi, « Envoyer un message » le reprend : après 12
+   heures, puis de moins en moins souvent, et pendant 14 jours au plus ;
+   ensuite l'envoi échoue avec sa raison. Pour un message d'essai, deux
+   liens et « Compter les rappels d'un essai » : toutes les 10 minutes, 6
+   essais au plus. Tous ces nombres sont des réglages.
+4. **Une demande de contact compte dans le plafond du jour du canal**,
+   comme un message parti : dix demandes de connexion dans la journée
+   pèsent autant sur un compte que dix messages.
+5. **Serge ne retire rien.** Passé le délai, il ne se désabonne pas et ne
+   retire pas sa demande : ce serait un geste de plus sur le compte.
+
+Pas fait : réveiller l'envoi dès que la relève de la messagerie voit une
+demande acceptée. Aujourd'hui, c'est le rappel suivant qui le découvre.
+

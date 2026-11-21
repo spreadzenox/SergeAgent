@@ -19,6 +19,17 @@ dépense du jour est atteint (le lendemain). La messagerie n'est relevée
 que s'il y a une conversation en cours : un message parti par ce canal
 depuis moins de jours que le réglage (page Policy, « Comptes web »).
 
+Un envoi attend aussi quand le réseau ne laisse pas encore écrire à la
+personne. La mission demande alors le contact comme le réseau le propose
+(suivre la personne, lui demander la connexion) et rend ``envoye:
+'attente'`` : l'heure est notée sur l'envoi (``contact_asked_at``), et
+l'envoi repart plus tard voir si elle a accepté. Le premier rappel vient
+après le délai réglé, les suivants de moins en moins souvent (chaque
+attente dure autant que tout ce qui a déjà été attendu) ; passé le nombre
+de jours réglé, la mission regarde une dernière fois, puis l'envoi échoue
+avec sa raison. Exemple, avec 12 heures et 14 jours : rappels à 12 h, 1,
+2, 4 et 8 jours, puis au quatorzième jour.
+
 Exemple : un premier message pour ``https://www.linkedin.com/in/ana-roux``
 part par la mission d'envoi du canal ``linkedin``, qui rend ``{envoye:
 'oui', reference: 'https://www.linkedin.com/messaging/thread/42'}``.
@@ -95,11 +106,50 @@ def _send(
         raise ChannelError(
             f'l’envoi par le navigateur a raté : {exc}'
         ) from exc
-    if str(reponse.get('envoye') or '') not in ('oui', 'deja'):
-        raise ChannelError(
-            str(reponse.get('raison') or 'le message n’est pas parti')[:500]
-        )
+    envoye = str(reponse.get('envoye') or '')
+    raison = str(reponse.get('raison') or '').strip()[:500]
+    if envoye == 'attente':
+        raise _contact_demande(conn, message, raison)
+    if envoye not in ('oui', 'deja'):
+        raise ChannelError(raison or 'le message n’est pas parti')
     return str(reponse.get('reference') or f'{canal["id"]}:{message.touch_id}')
+
+
+def _contact_demande(
+    conn: sqlite3.Connection, message: Outgoing, raison: str
+) -> ChannelError:
+    """La mission a demandé le contact et le message attend : l'erreur à
+    lever. ``ChannelLater`` jusqu'au prochain rappel ; ``ChannelError``
+    quand la personne n'a pas accepté dans le délai réglé."""
+    maintenant = datetime.now(UTC)
+    row = conn.execute(
+        'SELECT contact_asked_at FROM touches WHERE id=?', (message.touch_id,)
+    ).fetchone()
+    demande = str(row[0]) if row and row[0] else ''
+    if not demande:
+        demande = maintenant.isoformat()
+        conn.execute(
+            'UPDATE touches SET contact_asked_at=? WHERE id=?',
+            (demande, message.touch_id),
+        )
+    reglages = policy_en_vigueur(conn)['web_accounts']
+    jours = float(reglages['contact_wait_days'])
+    attendu = maintenant - datetime.fromisoformat(demande)
+    fin = datetime.fromisoformat(demande) + timedelta(days=jours)
+    if maintenant >= fin:
+        return ChannelError(
+            'la personne n’a pas accepté le contact en'
+            f' {jours:g} jours : le message n’est pas parti'
+        )
+    pause = max(
+        timedelta(hours=float(reglages['contact_retry_hours'])), attendu
+    )
+    return ChannelLater(
+        raison
+        or 'contact demandé : le message partira quand la personne l’aura'
+        ' accepté',
+        min(maintenant + pause, fin).isoformat(),
+    )
 
 
 def _en_cours(conn: sqlite3.Connection, canal: str) -> bool:

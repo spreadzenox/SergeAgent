@@ -1185,6 +1185,42 @@ sections:
         min: 1
         max: 180
         step: 1
+      - id: contact_retry_hours
+        value: 12
+        title: Demande de contact, premier rappel en heures
+        help: >-
+          Sur un réseau, Serge ne peut pas toujours écrire à quelqu’un tout
+          de suite : la personne doit d’abord accepter sa demande de
+          connexion (LinkedIn) ou le suivre en retour (X). Serge demande
+          alors le contact, et retourne voir après ce délai, puis de moins
+          en moins souvent : chaque attente dure autant que tout ce qu’il a
+          déjà attendu.
+        kind: curseur
+        min: 1
+        max: 72
+        step: 1
+      - id: contact_wait_days
+        value: 14
+        title: Demande de contact, attente au plus en jours
+        help: >-
+          Passé ce délai sans que la personne ait accepté le contact,
+          Serge regarde une dernière fois, puis l’envoi échoue avec sa
+          raison.
+        kind: curseur
+        min: 1
+        max: 60
+        step: 1
+      - id: trial_contact_retry_minutes
+        value: 10
+        title: Message d’essai, rappel en minutes
+        help: >-
+          Un message d’essai (page Système) qui attend que tu acceptes le
+          contact : Serge retourne voir après ce délai, autant de fois que
+          le permet « Compter les rappels d’un essai » (page Policy).
+        kind: curseur
+        min: 1
+        max: 120
+        step: 1
 
   - id: courriel
     title: E-mails des produits

@@ -1702,3 +1702,210 @@ class TelephoneEtPseudoTests(unittest.TestCase):
         )
         seed_pipeline(conn, data)
         self.assertEqual(self._libelles(conn)[1], 'le profil')
+
+
+class DemandeDeContactTests(unittest.TestCase):
+    """Le serveur du 21 novembre 2026 au soir : la mission d'envoi par le
+    navigateur ne sait qu'écrire ou renoncer. Il reçoit de quoi demander le
+    contact et attendre (décision Q110) : la consigne, le rôle, la réponse
+    « attente », le texte du bouton d'essai, et la boucle de l'essai."""
+
+    IDS = (
+        'lot13_envoi_web_demande_le_contact',
+        'lot13_envoi_web_role_contact',
+        'lot13_envoi_web_reponse_attente',
+        'lot13_essai_message_attend_le_contact',
+    )
+    LIENS = ('essai_attend_le_contact', 'essai_rappele_apres_attente')
+    COMPTEUR = 'compter_rappels_essai'
+
+    def _etat(self, conn: sqlite3.Connection) -> dict[str, list]:
+        """Tout ce que ces modifications touchent, tel qu'il est en base."""
+        lus = {
+            'mission': (
+                'SELECT prompt, role FROM invocations WHERE id=?',
+                ('envoyer_par_le_web',),
+            ),
+            'reponse': (
+                'SELECT choices, description FROM invocation_output_fields'
+                ' WHERE invocation_id=? AND path=?',
+                ('envoyer_par_le_web', 'envoye'),
+            ),
+            'bouton': (
+                'SELECT confirm_text FROM triggers WHERE id=?',
+                ('bouton_message_d_essai_reseau',),
+            ),
+            'liens': (
+                'SELECT id, from_invocation_id, to_invocation_id,'
+                ' condition_field, condition_op, condition_value,'
+                ' delay_min_setting, delay_max_setting FROM links'
+                ' WHERE id IN (?, ?) ORDER BY id',
+                self.LIENS,
+            ),
+            'parametres': (
+                'SELECT link_id, param_name, source, value FROM link_params'
+                ' WHERE link_id IN (?, ?) ORDER BY link_id, param_name',
+                self.LIENS,
+            ),
+            'compteur': (
+                'SELECT title, type, queue_id FROM invocations WHERE id=?',
+                (self.COMPTEUR,),
+            ),
+            'essais': (
+                'SELECT name, value FROM invocation_settings'
+                ' WHERE invocation_id=?',
+                (self.COMPTEUR,),
+            ),
+        }
+        return {
+            nom: [tuple(r) for r in conn.execute(sql, args)]
+            for nom, (sql, args) in lus.items()
+        }
+
+    def _serveur(self) -> tuple[sqlite3.Connection, dict, dict[str, list]]:
+        """Une base comme celle du serveur avant ces modifications, le
+        fichier, et l'état d'une instance neuve."""
+        conn = sqlite3.connect(':memory:')
+        self.addCleanup(conn.close)
+        init_schema(conn)
+        neuf = self._etat(conn)
+        data = read_yaml_file(config_dir() / 'pipeline.yaml')
+        changes = {c['id']: c for c in data['changes']}
+        prompt = neuf['mission'][0][0]
+        for passage in reversed(
+            changes[self.IDS[0]]['set']['prompt']['replace']
+        ):
+            self.assertEqual(prompt.count(passage['new']), 1)
+            prompt = prompt.replace(passage['new'], passage['old'])
+        conn.execute(
+            'UPDATE invocations SET prompt=?, role=? WHERE id=?',
+            (
+                prompt,
+                changes[self.IDS[1]]['set']['role']['from'],
+                'envoyer_par_le_web',
+            ),
+        )
+        reponse = changes[self.IDS[2]]['set']
+        conn.execute(
+            'UPDATE invocation_output_fields SET choices=?, description=?'
+            " WHERE invocation_id='envoyer_par_le_web' AND path='envoye'",
+            (reponse['choices']['from'], reponse['description']['from']),
+        )
+        conn.execute(
+            'UPDATE triggers SET confirm_text=? WHERE id=?',
+            (
+                changes[self.IDS[3]]['set']['confirm_text']['from'],
+                'bouton_message_d_essai_reseau',
+            ),
+        )
+        # La boucle de l'essai n'existe pas encore sur le serveur.
+        conn.execute('DELETE FROM links WHERE id IN (?, ?)', self.LIENS)
+        conn.execute(
+            'DELETE FROM link_params WHERE link_id IN (?, ?)', self.LIENS
+        )
+        for table in (
+            'invocation_settings',
+            'invocation_tool_params',
+            'invocation_tools',
+        ):
+            conn.execute(
+                f'DELETE FROM {table} WHERE invocation_id=?', (self.COMPTEUR,)
+            )
+        conn.execute('DELETE FROM invocations WHERE id=?', (self.COMPTEUR,))
+        conn.executemany(
+            'DELETE FROM pipeline_changes WHERE id=?',
+            [(i,) for i in self.IDS],
+        )
+        return conn, data, neuf
+
+    def _resultats(self, conn: sqlite3.Connection) -> list[str]:
+        return [
+            str(
+                conn.execute(
+                    'SELECT result FROM pipeline_changes WHERE id=?', (ident,)
+                ).fetchone()[0]
+            )
+            for ident in self.IDS
+        ]
+
+    def test_il_recoit_la_demande_de_contact_et_l_attente(self) -> None:
+        conn, data, neuf = self._serveur()
+        avant = self._etat(conn)
+        self.assertIn(
+            "n'envoie pas la demande sans note", avant['mission'][0][0]
+        )
+        self.assertEqual(avant['reponse'][0][0], 'oui, deja, non')
+        self.assertEqual((avant['liens'], avant['compteur']), ([], []))
+        seed_pipeline(conn, data)
+        # Tout est, au caractère près, comme sur une instance neuve.
+        apres = self._etat(conn)
+        self.assertEqual(apres, neuf)
+        consigne = apres['mission'][0][0]
+        self.assertIn('« Se connecter » sans note (LinkedIn)', consigne)
+        self.assertIn('rends envoye « attente »', consigne)
+        self.assertIn("tu ne suis personne d'autre", consigne)
+        self.assertNotIn("n'envoie pas la demande sans note", consigne)
+        self.assertEqual(apres['reponse'][0][0], 'oui, deja, attente, non')
+        self.assertEqual(
+            [lien[:6] for lien in apres['liens']],
+            [
+                (
+                    'essai_attend_le_contact',
+                    'envoyer_par_le_web',
+                    self.COMPTEUR,
+                    'envoye',
+                    '=',
+                    'attente',
+                ),
+                (
+                    'essai_rappele_apres_attente',
+                    self.COMPTEUR,
+                    'envoyer_par_le_web',
+                    'suite',
+                    '=',
+                    'encore',
+                ),
+            ],
+        )
+        self.assertEqual(apres['essais'], [('essais_max', '6')])
+        resultats = self._resultats(conn)
+        self.assertEqual(resultats[0], 'prompt : 2 passage(s) remplacé(s)')
+        for resultat in resultats[1:]:
+            self.assertNotIn('gardé', resultat)
+            self.assertNotIn('déjà à jour', resultat)
+        # Une seconde fois ne change rien.
+        seed_pipeline(conn, data)
+        self.assertEqual(self._etat(conn), neuf)
+
+    def test_une_instance_neuve_n_est_pas_touchee(self) -> None:
+        conn = sqlite3.connect(':memory:')
+        self.addCleanup(conn.close)
+        init_schema(conn)
+        self.assertEqual(
+            self._resultats(conn),
+            [
+                'prompt déjà à jour',
+                'role déjà à jour',
+                'choices déjà à jour ; description déjà à jour',
+                'confirm_text déjà à jour',
+            ],
+        )
+
+    def test_une_consigne_changee_dans_mission_control_est_gardee(
+        self,
+    ) -> None:
+        conn, data, _ = self._serveur()
+        a_la_main = str(self._etat(conn)['mission'][0][0]).replace(
+            '3. Envoie le texte :', '3. Envoie le texte, sans te presser :'
+        )
+        conn.execute(
+            "UPDATE invocations SET prompt=? WHERE id='envoyer_par_le_web'",
+            (a_la_main,),
+        )
+        seed_pipeline(conn, data)
+        apres = str(self._etat(conn)['mission'][0][0])
+        # Le passage réécrit à la main est gardé ; l'autre, resté intact,
+        # reçoit sa modification.
+        self.assertIn('3. Envoie le texte, sans te presser :', apres)
+        self.assertIn("tu ne suis personne d'autre", apres)
+        self.assertIn('gardé', self._resultats(conn)[0])

@@ -100,6 +100,14 @@ def _touch(conn: sqlite3.Connection, ident: str) -> dict | None:
                 ('État', row['status']),
                 ('Coût', f'{row["cost_eur"]} €'),
             ]
+            # Un envoi qui attend ou qui a raté dit pourquoi ; sur un
+            # réseau, quand Serge a demandé le contact (décision Q110).
+            + ([('Raison', row['last_error'])] if row['last_error'] else [])
+            + (
+                [('Contact demandé', row['contact_asked_at'])]
+                if row['contact_asked_at']
+                else []
+            )
         ),
         'enfants': _liens(
             [('campagne', row['campaign_id'], 'Campagne')]

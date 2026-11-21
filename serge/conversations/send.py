@@ -42,7 +42,9 @@ partir, dans cet ordre :
    des heures d'appel attend le prochain créneau ;
    le plafond du jour du canal (``channels.<canal>.max_per_day``, page
    Policy) atteint, l'envoi attend le lendemain ; un canal qui ne peut pas
-   maintenant (``ChannelLater``) fait attendre aussi ;
+   maintenant (``ChannelLater``) fait attendre aussi : un réseau où la
+   personne doit d'abord accepter le contact, par exemple
+   (``serge/channels/web.py``) ;
 6. ``sending`` enregistré en base, l'envoi, puis ``sent`` et la référence
    du canal enregistrés. Le texte part avec la phrase de fin du canal
    (``footer_<canal>``, page Pipeline : « Répondez STOP… » pour
@@ -257,18 +259,25 @@ def _outgoing(conn: sqlite3.Connection, touch: dict[str, Any]) -> Outgoing:
     )
 
 
-def _day_full(conn: sqlite3.Connection, channel: str) -> str:
+def _day_full(conn: sqlite3.Connection, channel: str, touch_id: str) -> str:
     """Le moment où l'envoi pourra partir si le plafond du jour du canal
-    est atteint (à minuit, heure UTC), sinon ``''``."""
+    est atteint (à minuit, heure UTC), sinon ``''``.
+
+    Une demande de contact faite ce jour-là pour un autre envoi (suivre la
+    personne, lui demander la connexion, lot 13) compte comme un message
+    parti : c'est aussi un geste vers quelqu'un.
+    """
     cap = setting_value(conn, f'channels.{channel}.max_per_day')
     if cap is None:
         return ''
     now = datetime.fromisoformat(utcnow())
+    jour = f'{now.date().isoformat()}%'
     # Les envois d'un essai ne prennent rien au plafond du vrai pipeline.
     sent = conn.execute(
-        "SELECT COUNT(*) FROM touches WHERE channel=? AND status='sent'"
-        f' AND sent_at LIKE ? AND {lane_clause(conn, "touches")}',
-        (channel, f'{now.date().isoformat()}%'),
+        'SELECT COUNT(*) FROM touches WHERE channel=? AND id<>?'
+        " AND ((status='sent' AND sent_at LIKE ?)"
+        f' OR contact_asked_at LIKE ?) AND {lane_clause(conn, "touches")}',
+        (channel, touch_id, jour, jour),
     ).fetchone()[0]
     if int(sent) < int(cap):
         return ''
@@ -413,7 +422,7 @@ def _send(
             if not verdict.duplicate:
                 _prevenir_blocage(conn, touch, reason, inv)
             return {'ok': True, 'status': 'cancelled', 'reason': reason}
-        later = _day_full(conn, str(touch['channel']))
+        later = _day_full(conn, str(touch['channel']), str(touch['id']))
         if later:
             return _wait(conn, inv, touch, later, 'plafond du jour')
         _set(conn, touch, 'sending')
