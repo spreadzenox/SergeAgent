@@ -1135,7 +1135,8 @@ class NavigateurTests(unittest.TestCase):
         assert fiche is not None
         cadres = {c['titre']: c for c in fiche['cadres']}
         self.assertIn(
-            'Vu, trois captures.', cadres['Ce que le modèle a rendu']['pre']
+            'Vu, trois captures.',
+            [c['v'] for c in cadres['Ce que le modèle a rendu']['champs']],
         )
         images = cadres['Captures gardées']['images']
         self.assertEqual(len(images), 3)

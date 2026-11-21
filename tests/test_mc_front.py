@@ -203,6 +203,84 @@ class McFrontTests(McBrowserCase):
         expect(page.locator('#page')).to_contain_text('Envoyer un e-mail')
         expect(page.locator('#page')).to_contain_text('Appel propre.')
 
+    def test_l_activite_mene_a_ce_qu_une_tache_a_rendu(self) -> None:
+        """« Tâche terminée — Fouiller un réseau » ouvre la fiche de la
+        tâche, où sa réponse se lit champ par champ ; « Toutes les tâches
+        finies » ouvre l'historique, qui y mène aussi."""
+        import json
+        import sqlite3
+
+        from playwright.sync_api import expect
+
+        from serge.db.store import append_event
+
+        conn = sqlite3.connect(self.db_path)
+        try:
+            invocations(
+                conn, ('fouiller', 'Fouiller un réseau', 'prospection_light')
+            )
+            ident = tache(
+                conn, 'fouiller', {'mission': 'avis'}, key='kf', status='done'
+            )
+            conn.execute(
+                'UPDATE tasks SET answer_json=? WHERE id=?',
+                (
+                    json.dumps(
+                        {
+                            'resume': 'Deux avis opposés.',
+                            'trouvailles': [
+                                {
+                                    'url': 'https://site.example/fil',
+                                    'titre': 'Un fil',
+                                }
+                            ],
+                        }
+                    ),
+                    ident,
+                ),
+            )
+            append_event(
+                conn,
+                actor='invocation:fouiller',
+                type='tool.call',
+                payload={'task': ident, 'tool': 'agir', 'ok': True},
+            )
+            append_event(
+                conn,
+                actor='invocation:fouiller',
+                type='task.done',
+                payload={'task': ident, 'rows_written': 0},
+            )
+            conn.commit()
+        finally:
+            conn.close()
+        page = self._auth_context().new_page()
+        self._watch_errors(page)
+        page.goto(f'{self.base}/owner')
+        activite = page.locator('[data-section="feed"]')
+        ligne = activite.locator('.clic-ligne')
+        expect(ligne).to_have_count(1)
+        expect(ligne).to_contain_text('Tâche terminée — Fouiller un réseau')
+        ligne.click()
+        fiche = page.locator('.fiche-objet')
+        expect(fiche).to_contain_text('Deux avis opposés.')
+        expect(fiche).to_contain_text('Trouvailles (1)')
+        expect(fiche.locator('.groupe-fiche a')).to_have_attribute(
+            'href', 'https://site.example/fil'
+        )
+        expect(fiche.locator('.journal')).to_have_count(2)
+        # Une date de la base s'écrit à l'heure d'ici, sans son « T ».
+        finie = fiche.locator('dt', has_text='Finie').locator('+ dd')
+        expect(finie).not_to_contain_text('T')
+        page.goto(f'{self.base}/owner')
+        page.get_by_role('button', name='Toutes les tâches finies').click()
+        rang = page.locator('table.matrice tbody tr')
+        expect(rang).to_have_count(1)
+        expect(rang).to_contain_text('Fouiller un réseau')
+        expect(rang).to_contain_text('Deux avis opposés.')
+        rang.click()
+        expect(page.locator('.fiche-objet')).to_contain_text('Trouvailles (1)')
+
     def test_composants_hud(self) -> None:
         page = self._auth_context().new_page()
         self._watch_errors(page)

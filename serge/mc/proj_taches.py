@@ -17,18 +17,11 @@ from typing import Any
 
 from serge.interpreter.tasks import next_task
 from serge.llm.runtime import budget_reached
+from serge.mc.proj_historique import ETATS_TACHE, Origines, duree
 from serge.mc.proj_objet_base import _champs, _liens, _row
-from serge.mc.proj_trace import cadre_appels
+from serge.mc.proj_reponse import cadres_reponse
+from serge.mc.proj_trace import cadres_journal
 from serge.policy_store import policy_en_vigueur
-
-ETATS_TACHE = {
-    'ready': 'Prête',
-    'running': 'En cours',
-    'done': 'Terminée',
-    'failed': 'Échouée',
-    'cancelled': 'Annulée',
-    'blocked': 'Attend Julien',
-}
 
 # id, titre, business, depuis, file, état, priorité, pas avant, créée,
 # essais, nom du business, invocation allumée, invocation supprimée le,
@@ -296,9 +289,29 @@ def project_file_detail(conn: sqlite3.Connection, now: str) -> dict[str, Any]:
             ],
             'lignes': lignes,
         },
+        'cadres': [
+            {
+                'titre': 'L’historique',
+                'liens': [
+                    {
+                        'type': 'file',
+                        'id': 'finies',
+                        'titre': 'Les tâches finies, la plus récente d’abord',
+                    }
+                ],
+            }
+        ],
         'enfants': enfants,
         'preuve': '',
     }
+
+
+def _reponse_brute(answer_json: str) -> Any:
+    """La réponse du modèle telle qu'elle est en base, pour la preuve."""
+    try:
+        return json.loads(answer_json) if answer_json else None
+    except ValueError:
+        return answer_json
 
 
 def fiche_tache(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
@@ -323,21 +336,29 @@ def fiche_tache(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
         ' WHERE ti.task_id=? ORDER BY it.position',
         (ident,),
     ).fetchall()
+    # L'essentiel d'abord : ce qu'elle est, comment elle a fini, ce qui
+    # l'a lancée, quand ; la file et la priorité viennent après.
     champs = [
         ('Invocation', titre),
-        ('File', row['queue_id']),
         ('État', ETATS_TACHE.get(row['status'], row['status'])),
-        ('Priorité', row['priority']),
-        ('Essais', row['attempts']),
-        ('Lancée par', row['origin'] or '—'),
-        ('Créée', row['created_at']),
+    ]
+    if row['last_error']:
+        champs.append(('Erreur', row['last_error']))
+    champs += [
+        (
+            'Lancée par',
+            Origines(conn).long(row['origin'], row['origin_ref']),
+        ),
         ('Commencée', row['started_at'] or '—'),
         ('Finie', row['finished_at'] or '—'),
+        ('Durée', duree(row['started_at'], row['finished_at']) or '—'),
+        ('File', row['queue_id']),
+        ('Priorité', row['priority']),
+        ('Essais', row['attempts']),
+        ('Créée', row['created_at']),
     ]
     if row['not_before']:
         champs.append(('Pas avant', row['not_before']))
-    if row['last_error']:
-        champs.append(('Erreur', row['last_error']))
     if row['trial_run']:
         champs.append(('Couloir', 'Essai total'))
     if row['rerun']:
@@ -386,18 +407,8 @@ def fiche_tache(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
                 ' tickets) est annulé.',
             }
         )
-    cadres = []
-    if row['answer_json']:
-        try:
-            reponse = json.dumps(
-                json.loads(row['answer_json']), ensure_ascii=False, indent=2
-            )
-        except ValueError:
-            reponse = str(row['answer_json'])
-        cadres.append({'titre': 'Ce que le modèle a rendu', 'pre': reponse})
-    appels = cadre_appels(conn, ident)
-    if appels:
-        cadres.append(appels)
+    cadres = cadres_reponse(str(row['answer_json'] or ''))
+    cadres += cadres_journal(conn, ident)
     captures = conn.execute(
         'SELECT id, path_or_url FROM artifacts WHERE task_id=?'
         " AND kind='capture' ORDER BY created_at, path_or_url",
@@ -473,6 +484,7 @@ def fiche_tache(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
             {
                 'parametres': {str(p[0]): str(p[1]) for p in params},
                 'erreur': row['last_error'],
+                'reponse': _reponse_brute(str(row['answer_json'] or '')),
             },
             ensure_ascii=False,
             indent=2,

@@ -196,13 +196,28 @@ def _event(conn: sqlite3.Connection, ident: str) -> dict | None:
     if row is None:
         return None
     payload = charge_json(row['payload_json'])
+    champs = [('Acteur', row['actor']), ('Quand', row['ts'])]
+    # Un fait d'une tâche mène à sa fiche : c'est là qu'on lit ce qu'elle
+    # a rendu.
+    tache = conn.execute(
+        "SELECT t.id, COALESCE(NULLIF(i.title, ''), t.invocation_id)"
+        ' FROM tasks t LEFT JOIN invocations i ON i.id=t.invocation_id'
+        ' WHERE t.id=?',
+        (str(payload.get('task') or ''),),
+    ).fetchone()
+    if tache:
+        champs.append(('Tâche', tache[1]))
     return {
         'type': 'event',
         'id': ident,
         'titre': verbe(row['type']),
         'pourquoi': 'Un fait enregistré, dans l’ordre. On n’efface pas : on ajoute.',
-        'champs': _champs([('Acteur', row['actor']), ('Quand', row['ts'])]),
-        'enfants': [],
+        'champs': _champs(champs),
+        'enfants': _liens(
+            [('task', str(tache[0]), f'La tâche : {tache[1]}')]
+            if tache
+            else []
+        ),
         'preuve': json.dumps(payload, ensure_ascii=False, indent=2),
     }
 

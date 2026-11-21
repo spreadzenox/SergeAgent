@@ -8,6 +8,7 @@ import sqlite3
 from typing import Any
 
 from serge.funnels.contacts import address_value
+from serge.mc.libelles import verbe
 
 
 def _payload_json(raw: str) -> dict[str, Any]:
@@ -53,51 +54,137 @@ def _item_events(
     return items[:20]
 
 
-def cadre_appels(
+DETAIL_MAX = 200
+# Ce qu'un fait porte, dit en français dans le journal d'une tâche ; une
+# clé qui n'est pas ici s'écrit telle quelle.
+NOMS = {
+    'rows_written': 'lignes écrites',
+    'error': 'erreur',
+    'reason': 'raison',
+    'spent_eur': 'dépensé en euros',
+    'trigger_id': 'déclencheur',
+    'artifact': 'fichier gardé',
+    'from': 'repartie de la tâche',
+    'stopped': 'tâches arrêtées',
+}
+
+
+def _faits(
     conn: sqlite3.Connection, task_id: str
+) -> list[tuple[str, str, dict]]:
+    """Tout ce que le journal garde d'une tâche, dans l'ordre : l'heure,
+    la sorte de fait, son contenu."""
+    return [
+        (str(ts), str(sorte), _payload_json(brut))
+        for ts, sorte, brut in conn.execute(
+            'SELECT ts, type, payload_json FROM events'
+            " WHERE json_extract(payload_json,'$.task')=? ORDER BY id",
+            (task_id,),
+        )
+    ]
+
+
+def _detail(sorte: str, fait: dict[str, Any]) -> str:
+    """Un fait en court : pour une écriture, sa table et sa ligne (et la
+    raison d'un refus) ; sinon ce que le fait porte."""
+    if sorte.startswith('write.'):
+        ligne = ' · '.join(
+            str(fait[cle]) for cle in ('table', 'id') if fait.get(cle)
+        )
+        raison = str(fait.get('reason') or '')
+        return f'{ligne} : {raison}' if raison else ligne
+    reste = ', '.join(
+        f'{NOMS.get(cle, cle)} : {valeur}'
+        for cle, valeur in fait.items()
+        if cle not in ('task', 'values') and valeur not in ('', None)
+    )
+    return reste[:DETAIL_MAX]
+
+
+def cadre_appels(
+    conn: sqlite3.Connection,
+    task_id: str,
+    faits: list[tuple[str, str, dict]] | None = None,
 ) -> dict[str, Any] | None:
     """Le cadre « Ses appels d'outils » de la fiche d'une tâche.
 
     Un appel par ligne, dans l'ordre : l'heure, l'outil, ses paramètres en
     court, et s'il a marché ; un refus garde sa raison. Sous l'appel, ce
-    que la page a signalé pendant qu'il se faisait. Exemple :
+    que la page a signalé pendant qu'il se faisait. La page écrit l'heure
+    à l'heure de celui qui lit. Exemple :
 
-        15:44:20  Agir dans le vrai Chrome  {"action": "cliquer"}  → fait
+        16:44:20  Agir dans le vrai Chrome  {"action": "cliquer"}  → fait
                   la page : HTTP 429 : https://api.site.example/inscription
     """
-    rows = conn.execute(
-        "SELECT ts, payload_json FROM events WHERE type='tool.call'"
-        " AND json_extract(payload_json,'$.task')=? ORDER BY id",
-        (task_id,),
-    ).fetchall()
-    if not rows:
+    if faits is None:
+        faits = _faits(conn, task_id)
+    appels = [(ts, fait) for ts, sorte, fait in faits if sorte == 'tool.call']
+    if not appels:
         return None
     titres = {
         str(ident): str(titre)
         for ident, titre in conn.execute('SELECT id, titre FROM tools')
     }
-    lignes = []
-    for ts, brut in rows:
-        appel = _payload_json(brut)
+    journal = []
+    for ts, appel in appels:
         outil = str(appel.get('tool') or '')
         suite = 'fait'
         if not appel.get('ok'):
             raison = str(appel.get('detail') or appel.get('code') or '')
             suite = f'refusé : {raison}' if raison else 'refusé'
-        lignes.append(
-            f'{str(ts)[11:19]}  {titres.get(outil) or outil}'
-            f'  {appel.get("args") or ""}  → {suite}'
+        journal.append(
+            {
+                'ts': ts,
+                'texte': f'{titres.get(outil) or outil}'
+                f'  {appel.get("args") or ""}  → {suite}',
+                'sous': [
+                    f'la page : {erreur}'
+                    for erreur in appel.get('erreurs') or []
+                ],
+            }
         )
-        lignes += [
-            f'          la page : {erreur}'
-            for erreur in appel.get('erreurs') or []
-        ]
     return {
         'titre': 'Ses appels d’outils',
-        'texte': 'Dans l’ordre, heures UTC. « la page » : ce que le site a'
-        ' signalé pendant l’appel (une réponse refusée, une erreur).',
-        'pre': '\n'.join(lignes),
+        'texte': 'Dans l’ordre. « la page » : ce que le site a signalé'
+        ' pendant l’appel (une réponse refusée, une erreur).',
+        'journal': journal,
     }
+
+
+def cadres_journal(
+    conn: sqlite3.Connection, task_id: str
+) -> list[dict[str, Any]]:
+    """Les deux cadres du journal d'une tâche : « Son journal » (ce
+    qu'elle a écrit, ce qu'on lui a refusé, ce qui lui est arrivé), puis
+    « Ses appels d'outils ». Exemple d'une ligne du premier :
+
+        22:04:18  Ligne modifiée  canaux · email
+    """
+    faits = _faits(conn, task_id)
+    journal = [
+        {
+            'ts': ts,
+            'texte': '  '.join(
+                filter(None, (verbe(sorte), _detail(sorte, fait)))
+            ),
+        }
+        for ts, sorte, fait in faits
+        if sorte != 'tool.call'
+    ]
+    cadres: list[dict[str, Any]] = []
+    if journal:
+        cadres.append(
+            {
+                'titre': 'Son journal',
+                'texte': 'Dans l’ordre : ce qu’elle a écrit, ce qu’on lui'
+                ' a refusé, comment elle a fini.',
+                'journal': journal,
+            }
+        )
+    appels = cadre_appels(conn, task_id, faits)
+    if appels:
+        cadres.append(appels)
+    return cadres
 
 
 def project_trace(

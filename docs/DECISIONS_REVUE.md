@@ -2357,3 +2357,36 @@ e-mail, puis s'est arrêté sur son bouton muet. Clem a décidé :
    consigne demande à Serge de le citer. On ne relance pas en boucle une
    inscription qu'un site refuse.
 
+### Q109 — L'historique des tâches se lit (demandé par Clem, 21 novembre 2026)
+
+Le 21 novembre 2026, le compte X de Serge est créé et sa première fouille
+a rendu six discussions, que Clem n'a pas su retrouver dans Mission
+Control : la ligne « Tâche terminée » de l'activité ne disait pas quelle
+tâche, ouvrait la fiche du fait et pas celle de la tâche, et cette fiche
+montrait la réponse en JSON. L'activité était noyée : ce jour-là, 634
+relèves de messages, et une ligne par appel d'outil. Clem a demandé un
+historique lisible. Ce qui est décidé :
+
+1. **Une ligne de tâche dit de quelle tâche elle parle et ouvre sa
+   fiche** : « Tâche terminée — Fouiller un réseau ». Un échec porte son
+   erreur, un clic sur un bouton le nom du bouton.
+2. **Ce qu'une tâche fait en tournant est sur sa fiche, pas dans
+   l'activité** : ses appels d'outils, ses commandes, ses lignes écrites.
+   La fiche les montre dans deux cadres, « Son journal » et « Ses appels
+   d'outils ». Une écriture refusée reste dans l'activité.
+3. **Les tâches de routine pareilles font une seule ligne**, dans
+   l'activité (« 14 fois depuis 21:41 ») et dans l'historique (« Relever
+   les messages · 634 fois »), à l'heure de la plus récente. Une tâche de
+   routine est lancée par un déclencheur ou par une autre tâche, et aucun
+   modèle n'y a rien rendu. Une tâche lancée par un bouton, ou qui a
+   rendu une réponse, garde toujours sa ligne.
+4. **Une fiche « Tâches finies »** garde l'historique : l'heure, l'état,
+   la durée, ce qui a lancé la tâche, et ce qu'elle a rendu en une
+   phrase.
+5. **La réponse d'un modèle s'écrit pour être lue** : un champ par ligne,
+   un bloc par élément d'une liste, les adresses en liens. Le JSON exact
+   reste dans la « Preuve ». Le nom d'un champ est celui que le pipeline
+   lui donne, sans ses tirets bas.
+6. **Une date s'écrit à l'heure de celui qui lit**, sur toutes les
+   fiches.
+
