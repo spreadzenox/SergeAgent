@@ -134,6 +134,27 @@ Vérifier dans les logs de l'app que le webhook est enregistré, puis
 s'envoyer un SMS de test depuis son téléphone : il doit apparaître
 côté Serge (OTP extrait, pas de body en base).
 
+### Variante : Automate (LlamaLab)
+
+Le serveur de Julien reçoit ses SMS par un flow
+[Automate](https://llamalab.com/automate/) : un bloc « SMS received »,
+puis un bloc « HTTP request ». Le récepteur l'accepte tel quel, avec ces
+réglages du bloc HTTP (vérifié le 21 novembre 2026) :
+
+- Request URL : `https://sms.<domaine>/hooks/sms`, méthode `POST`, contenu
+  `JSON` ;
+- Request headers : `{"X-SMS-Token": "<sms_gateway_token>"}` (pas
+  `Authorization: Bearer`, que le récepteur ne lit pas) ;
+- Request content body :
+  `jsonEncode({"id": sms_timestamp, "sender": sms_sender, "body": sms_body})`.
+  L'`id` doit changer à chaque SMS : avec l'heure du SMS, deux SMS
+  différents reçus à la même seconde se gênent (le second est refusé).
+- Le récepteur répond `200` quand il garde le SMS : un flow qui attend
+  `202` croit à un échec.
+- Sur un téléphone à deux cartes SIM, le champ « Subscription id » du
+  bloc « SMS received » ne garde que la SIM de Serge ; sans lui, tous les
+  SMS du téléphone partent chez Serge.
+
 ### 5. Durcir (5 min)
 
 - [ ] Secret webhook ≥ 32 octets aléatoires, rotation possible sans
@@ -162,7 +183,8 @@ côté Serge (OTP extrait, pas de body en base).
 
 | Symptôme | Cause probable | Fix |
 | --- | --- | --- |
-| SMS reçu sur l'Android, rien sur Serge | Webhook non enregistré / URL fausse / secret faux | Relire les logs app, re-POST le webhook, tester le HMAC avec un payload connu. |
+| SMS reçu sur l'Android, rien sur Serge | Webhook non enregistré / URL fausse / secret faux | Relire les logs app, re-POST le webhook, tester le HMAC avec un payload connu. Mission Control, page « En direct » : « SMS refusé à l'arrivée » dit la raison (secret, format) ; aucune ligne, le téléphone n'a rien envoyé. |
+| Message envoyé depuis un autre téléphone, rien ne se déclenche | Il est parti en RCS (« chat »), pas en SMS : ni Automate ni la passerelle ne le voient | Couper les chats RCS pour la SIM de Serge (Messages → Paramètres → Chats RCS). Les codes des sites sont de vrais SMS. |
 | Tout marchait, plus rien après une nuit | Optimisation batterie a tué l'app | Exemption batterie + verrouiller l'app en mémoire (selon surcouche). |
 | OTP banque jamais reçu | Ligne ou expéditeur filtré | Tester avec un second service ; vérifier que la SIM reçoit bien les SMS courts (certains MVNO filtrent). Changer de MNO si besoin — pas d'app qui répare ça. |
 | Doublons côté Serge | Retry webhook de l'app | Normal : `SmsInbox` est idempotent sur `id`. Ne pas « fixer » en supprimant l'idempotence. |

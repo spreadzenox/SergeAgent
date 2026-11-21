@@ -4,6 +4,11 @@
 Le changement est écrit dans ``invocations`` et noté au journal ; la
 prochaine tâche de l'invocation en tient compte, sans redémarrage. Créer
 une invocation ou changer le reste de ses réglages viendra au lot 14.
+
+La consigne (le prompt) se modifie depuis la fiche de l'invocation, bouton
+« Modifier la consigne ». L'ancienne est gardée au journal (événement
+``invocation.prompt``, champ ``avant``) : une consigne abîmée se retrouve.
+Une consigne vide ou démesurée est refusée.
 """
 
 from __future__ import annotations
@@ -29,13 +34,22 @@ else:
     _Base = object
 
 
+# Une consigne plus longue que cela est une erreur de copier-coller : la
+# plus longue du pipeline fait 5 000 caractères.
+PROMPT_MAX = 20000
+
+
 def _changements(body: dict) -> tuple[dict[str, object], str]:
     """Les colonnes à modifier, ou le champ refusé."""
     updates: dict[str, object] = {}
     if 'prompt' in body:
         if not isinstance(body['prompt'], str):
             return {}, 'prompt'
-        updates['prompt'] = body['prompt']
+        # Rangée sans ses blancs de fin, comme celles du fichier.
+        prompt = body['prompt'].strip()
+        if not prompt or len(prompt) > PROMPT_MAX:
+            return {}, 'prompt'
+        updates['prompt'] = prompt
     if 'model_tier' in body:
         if not isinstance(body['model_tier'], str) or not body['model_tier']:
             return {}, 'model_tier'
@@ -61,7 +75,7 @@ def _changements(body: dict) -> tuple[dict[str, object], str]:
 
 
 AIDES = {
-    'prompt': 'Texte attendu.',
+    'prompt': f'Un texte, pas vide, de {PROMPT_MAX} caractères au plus.',
     'model_tier': 'Un niveau de la page Pipeline : fast, mid, smart, code…',
     'priority': 'Entier de 0 à 100.',
     'enabled': 'Booléen attendu.',
@@ -106,13 +120,11 @@ class LlmActionsMixin(_Base):
             )
             return
         with self._db() as conn:
-            if (
-                conn.execute(
-                    "SELECT 1 FROM invocations WHERE id=? AND deleted_at=''",
-                    (ident,),
-                ).fetchone()
-                is None
-            ):
+            avant = conn.execute(
+                "SELECT prompt FROM invocations WHERE id=? AND deleted_at=''",
+                (ident,),
+            ).fetchone()
+            if avant is None:
                 self._refus(
                     404,
                     'Invocation introuvable.',
@@ -160,4 +172,13 @@ class LlmActionsMixin(_Base):
                     'fields': sorted(updates),
                 },
             )
+            ancienne = str(avant[0] or '')
+            if updates.get('prompt', ancienne) != ancienne:
+                append_event(
+                    conn,
+                    actor='owner',
+                    type='invocation.prompt',
+                    payload={'invocation': ident, 'avant': ancienne},
+                    rows=[('invocations', ident)],
+                )
         self._send_json(200, {'ok': True, 'invocation_id': ident})

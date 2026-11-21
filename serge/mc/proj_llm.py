@@ -288,7 +288,22 @@ def project_llm(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
             {
                 'titre': 'Le texte qu’on lui donne (prompt)',
                 'texte': inv['prompt'] or '—',
-                'todo': 'Modifiable par l’API /owner/api/invocation.',
+                'actions': [
+                    {
+                        'libelle': 'Modifier la consigne',
+                        'route': '/owner/api/invocation',
+                        'charge': {'invocation_id': ident},
+                        'saisie': {
+                            'nom': 'prompt',
+                            'label': 'La consigne, telle que le modèle la'
+                            ' reçoit',
+                            'defaut': str(inv['prompt'] or ''),
+                            'message': 'Elle vaut dès la prochaine tâche de'
+                            ' cette invocation. L’ancienne est gardée au'
+                            ' journal.',
+                        },
+                    }
+                ],
             },
             {
                 'titre': 'Ce qu’elle lit d’office (ce qu’elle doit traiter)',

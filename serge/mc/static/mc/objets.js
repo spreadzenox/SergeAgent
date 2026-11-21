@@ -139,6 +139,31 @@ function el(tag, classe, texte) {
 }
 
 async function agir(action) {
+  const charge = {...(action.charge || {})};
+  if (action.saisie) {
+    // Une action qui demande un texte (la consigne d’une invocation) :
+    // il part avec la charge, sous le nom que dit la fiche.
+    const saisie = action.saisie;
+    const valeurs = await promptModal(document.body, {
+      title: action.libelle,
+      message: saisie.message || '',
+      fields: [
+        {
+          nom: saisie.nom,
+          label: saisie.label || '',
+          defaut: saisie.defaut || '',
+          requis: true,
+          multiligne: true,
+          lignes: 24,
+        },
+      ],
+      confirm: 'Enregistrer',
+    });
+    if (!valeurs) {
+      return false;
+    }
+    charge[saisie.nom] = valeurs[saisie.nom];
+  }
   if (action.confirmer) {
     const ok = await confirmModal(document.body, {
       title: `${action.libelle} ?`,
@@ -152,7 +177,7 @@ async function agir(action) {
   const res = await fetch(action.route, {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify(action.charge || {}),
+    body: JSON.stringify(charge),
   });
   const data = await res.json().catch(() => ({}));
   toast(

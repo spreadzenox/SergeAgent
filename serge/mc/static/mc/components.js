@@ -198,7 +198,11 @@ export function promptModal(
         field.options ? 'select' : field.multiligne ? 'textarea' : 'input',
       );
       if (field.multiligne) {
-        input.rows = 10;
+        input.rows = field.lignes || 10;
+        if (field.lignes) {
+          // Un long texte (une consigne) : la fenêtre s’élargit.
+          node.classList.add('modale-large');
+        }
       }
       if (field.options) {
         const empty = document.createElement('option'); empty.value = ''; empty.textContent = 'Choisir une réponse'; input.append(empty);

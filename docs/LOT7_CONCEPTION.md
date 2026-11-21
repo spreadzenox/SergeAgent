@@ -210,7 +210,18 @@ changes:
 - Seules les tables du pipeline peuvent être visées (invocations, leurs
   outils et réglages, liens, déclencheurs, quotas, vues des tables).
 - Un prompt se change de la même façon : l'ancien texte exact en `from`
-  (une ancre YAML évite de le recopier deux fois).
+  (une ancre YAML évite de le recopier deux fois). Il se change aussi
+  passage par passage (`replace`, une liste de `{old, new}`) : un passage
+  déjà au nouveau texte n'est pas reposé, un passage changé dans Mission
+  Control est gardé.
+- **Un passage ajouté par une modification ne se réécrit pas dans une
+  modification suivante.** Quand `new` contient `old` (un paragraphe
+  ajouté après une phrase), `old` reste dans le texte : si le paragraphe
+  ajouté change ensuite, la première modification ne le reconnaît plus et
+  le repose sur une instance neuve. La suivante ajoute donc son texte à
+  côté, sans toucher au paragraphe (trouvé le 21 novembre 2026, sur la
+  consigne de « Créer un compte web » ; `tests/test_pipeline_changes.py`
+  le vérifie).
 - Un **réglage nouveau** d'une invocation existante n'a pas besoin de
   `changes` : il s'ajoute tout seul, comme une colonne nouvelle d'une vue
   ou un droit d'écriture nouveau. Un réglage existant n'est jamais

@@ -141,6 +141,49 @@ class PipelinePageTests(McBrowserCase):
         finally:
             conn.close()
 
+    def test_modifier_une_consigne_depuis_sa_fiche(self) -> None:
+        """La fiche d'une invocation : « Modifier la consigne » montre le
+        texte actuel, l'enregistre en base, la fiche le montre aussitôt,
+        et l'ancienne consigne est au journal."""
+        from playwright.sync_api import expect
+
+        lire = "SELECT prompt FROM invocations WHERE id='creer_compte_web'"
+        avant = str(self._base(lire)[0][0])
+        page = self._auth_context().new_page()
+        self._watch_errors(page)
+        page.goto(f'{self.base}/owner#/objet/llm/creer_compte_web')
+        bouton = page.get_by_role('button', name='Modifier la consigne')
+        expect(bouton).to_be_visible(timeout=10000)
+        bouton.click()
+        champ = page.locator('.modale-large textarea')
+        expect(champ).to_have_value(avant)
+        champ.fill(avant + '\n\nEt salue la personne.')
+        page.get_by_role('button', name='Enregistrer').click()
+        expect(page.locator('.toast-succes')).to_contain_text(
+            'Modifier la consigne : fait.'
+        )
+        expect(page.locator('.fiche-objet')).to_contain_text(
+            'Et salue la personne.'
+        )
+        self.assertEqual(
+            self._base(lire)[0][0], avant + '\n\nEt salue la personne.'
+        )
+        journal = self._base(
+            "SELECT payload_json FROM events WHERE type='invocation.prompt'"
+        )
+        self.assertEqual(
+            json.loads(journal[0][0]),
+            {'invocation': 'creer_compte_web', 'avant': avant},
+        )
+        # Annuler ne change rien.
+        bouton.click()
+        page.locator('.modale-large textarea').fill('Autre chose.')
+        page.get_by_role('button', name='Annuler').click()
+        expect(page.locator('.modale-large')).to_have_count(0)
+        self.assertTrue(
+            str(self._base(lire)[0][0]).endswith('Et salue la personne.')
+        )
+
     def test_regler_le_modele_et_le_texte(self) -> None:
         from playwright.sync_api import expect
 
