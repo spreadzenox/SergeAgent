@@ -2349,4 +2349,11 @@ e-mail, puis s'est arrêté sur son bouton muet. Clem a décidé :
    donne celui des SMS. Un champ « e-mail ou nom d'utilisateur » sert à
    se connecter, pas à s'inscrire. Un bouton muet ne l'arrête pas tant
    que le site propose une autre voie.
+3. **Ce que le site répond est gardé.** Le même jour, X n'a rien fait du
+   clic sur « Continuer » après le numéro, alors que le même clic avait
+   marché la veille, et sa réponse n'était notée nulle part. Le journal
+   garde maintenant, avec chaque appel d'outil, la raison d'un refus et
+   ce que la page a signalé ; la fiche de la tâche le montre ; la
+   consigne demande à Serge de le citer. On ne relance pas en boucle une
+   inscription qu'un site refuse.
 
