@@ -205,11 +205,20 @@ BASE: tuple[Capability, ...] = (
         'Compte les tours d’une boucle entre invocations (critiquer puis'
         ' corriger un plan, construire puis relire) : rend « encore » et le'
         ' tour suivant tant que le tour est sous le maximum, sinon « fini ».'
-        ' Le tour vient de la tâche, le maximum d’un réglage.',
+        ' Le tour vient de la tâche ; le maximum, d’un réglage, ou d’une'
+        ' liste d’attentes de la Policy (autant de tours que d’attentes,'
+        ' plus le premier).',
         'serge/interpreter/tools.py',
         (
             Param('round', 'number', True, 'Le tour qui vient de finir.'),
-            Param('max', 'number', True, 'Le nombre de tours permis.'),
+            Param('max', 'number', False, 'Le nombre de tours permis.'),
+            Param(
+                'waits',
+                'text',
+                False,
+                'Le nom d’une liste d’attentes de la Policy, à la place du'
+                ' maximum : web_accounts.contact_waits_minutes.',
+            ),
         ),
     ),
 )

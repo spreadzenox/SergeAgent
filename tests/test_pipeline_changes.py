@@ -1716,8 +1716,11 @@ class DemandeDeContactTests(unittest.TestCase):
         'lot13_envoi_web_reponse_attente',
         'lot13_essai_message_attend_le_contact',
     )
-    LIENS = ('essai_attend_le_contact', 'essai_rappele_apres_attente')
-    COMPTEUR = 'compter_rappels_essai'
+    LIENS = ('essai_attend_un_contact', 'essai_retourne_voir')
+    COMPTEUR = 'compter_rappels_contact'
+    # Le compteur et les liens posés le 21 novembre, remplacés le 22.
+    VIEUX_LIENS = ('essai_attend_le_contact', 'essai_rappele_apres_attente')
+    VIEUX_COMPTEUR = 'compter_rappels_essai'
 
     def _etat(self, conn: sqlite3.Connection) -> dict[str, list]:
         """Tout ce que ces modifications touchent, tel qu'il est en base."""
@@ -1751,9 +1754,9 @@ class DemandeDeContactTests(unittest.TestCase):
                 'SELECT title, type, queue_id FROM invocations WHERE id=?',
                 (self.COMPTEUR,),
             ),
-            'essais': (
-                'SELECT name, value FROM invocation_settings'
-                ' WHERE invocation_id=?',
+            'tours': (
+                'SELECT param_name, source, value FROM invocation_tool_params'
+                ' WHERE invocation_id=? ORDER BY param_name',
                 (self.COMPTEUR,),
             ),
         }
@@ -1850,7 +1853,7 @@ class DemandeDeContactTests(unittest.TestCase):
             [lien[:6] for lien in apres['liens']],
             [
                 (
-                    'essai_attend_le_contact',
+                    'essai_attend_un_contact',
                     'envoyer_par_le_web',
                     self.COMPTEUR,
                     'envoye',
@@ -1858,7 +1861,7 @@ class DemandeDeContactTests(unittest.TestCase):
                     'attente',
                 ),
                 (
-                    'essai_rappele_apres_attente',
+                    'essai_retourne_voir',
                     self.COMPTEUR,
                     'envoyer_par_le_web',
                     'suite',
@@ -1867,7 +1870,14 @@ class DemandeDeContactTests(unittest.TestCase):
                 ),
             ],
         )
-        self.assertEqual(apres['essais'], [('essais_max', '6')])
+        # Le délai du rappel et le nombre d'essais viennent de la même
+        # liste d'attentes de la Policy.
+        liste = 'web_accounts.contact_waits_minutes'
+        self.assertEqual(apres['liens'][1][6:], (f'{liste}[{{rappel}}]',) * 2)
+        self.assertEqual(
+            apres['tours'],
+            [('round', 'task', 'rappel'), ('waits', 'fixed', liste)],
+        )
         resultats = self._resultats(conn)
         self.assertEqual(resultats[0], 'prompt : 2 passage(s) remplacé(s)')
         for resultat in resultats[1:]:
@@ -1890,6 +1900,100 @@ class DemandeDeContactTests(unittest.TestCase):
                 'confirm_text déjà à jour',
             ],
         )
+
+    def _copie(
+        self, conn: sqlite3.Connection, table: str, de: str, **change: str
+    ) -> None:
+        """Une ligne de plus dans ``table`` : celle dont l'``id`` est
+        ``de``, avec ces colonnes changées."""
+        cursor = conn.execute(f'SELECT * FROM {table} WHERE id=?', (de,))
+        ligne = dict(
+            zip(
+                [d[0] for d in cursor.description],
+                cursor.fetchone(),
+                strict=True,
+            )
+        )
+        ligne.update(change)
+        conn.execute(
+            f'INSERT INTO {table}({", ".join(ligne)})'
+            f' VALUES({", ".join("?" * len(ligne))})',
+            list(ligne.values()),
+        )
+
+    def test_le_serveur_du_21_novembre_recoit_la_liste_d_attentes(
+        self,
+    ) -> None:
+        """Le 21 novembre au soir, le serveur a un compteur réglé à 6
+        essais, deux liens à 10 minutes et trois réglages de délai. Le
+        lendemain, tout suit une seule liste d'attentes : les anciens
+        objets sont retirés, une boucle d'essai en cours s'arrête là."""
+        from serge.interpreter.tasks import enqueue_task
+        from serge.policy_store import ensure_policy, policy_en_vigueur
+
+        conn = sqlite3.connect(':memory:')
+        self.addCleanup(conn.close)
+        init_schema(conn)
+        neuf = self._etat(conn)
+        self._copie(conn, 'invocations', self.COMPTEUR, id=self.VIEUX_COMPTEUR)
+        conn.execute(
+            'INSERT INTO invocation_settings(invocation_id, name, value)'
+            " VALUES(?, 'essais_max', '6')",
+            (self.VIEUX_COMPTEUR,),
+        )
+        for vieux, modele in zip(self.VIEUX_LIENS, self.LIENS, strict=True):
+            self._copie(conn, 'links', modele, id=vieux)
+        anciens = (
+            'web_accounts.contact_retry_hours',
+            'web_accounts.contact_wait_days',
+            'web_accounts.trial_contact_retry_minutes',
+        )
+        for ident in anciens:
+            self._copie(
+                conn, 'policy_settings', 'web_accounts.inbox_days', id=ident
+            )
+        en_cours = enqueue_task(
+            conn, self.VIEUX_COMPTEUR, {'rappel': '2'}, key='vieux-rappel'
+        )
+        data = read_yaml_file(config_dir() / 'pipeline.yaml')
+        seed_pipeline(conn, data)
+        ensure_policy(conn)
+        # La boucle neuve est intacte ; l'ancienne est retirée.
+        self.assertEqual(self._etat(conn), neuf)
+        self.assertTrue(
+            conn.execute(
+                'SELECT deleted_at FROM invocations WHERE id=?',
+                (self.VIEUX_COMPTEUR,),
+            ).fetchone()[0]
+        )
+        self.assertEqual(
+            [
+                bool(r[0])
+                for r in conn.execute(
+                    'SELECT deleted_at FROM links WHERE id IN (?, ?)',
+                    self.VIEUX_LIENS,
+                )
+            ],
+            [True, True],
+        )
+        self.assertIsNone(
+            conn.execute(
+                'SELECT 1 FROM invocation_settings WHERE invocation_id=?',
+                (self.VIEUX_COMPTEUR,),
+            ).fetchone()
+        )
+        self.assertEqual(
+            conn.execute(
+                'SELECT status, last_error FROM tasks WHERE id=?', (en_cours,)
+            ).fetchone(),
+            ('cancelled', 'invocation retirée du pipeline'),
+        )
+        reglages = policy_en_vigueur(conn)['web_accounts']
+        self.assertEqual(
+            reglages['contact_waits_minutes'], [5, 60, 180, 360, 1440, 10080]
+        )
+        for ident in anciens:
+            self.assertNotIn(ident.split('.')[1], reglages)
 
     def test_une_consigne_changee_dans_mission_control_est_gardee(
         self,

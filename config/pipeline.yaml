@@ -4191,21 +4191,20 @@ invocations:
       - {path: messages.texte, type: text, description: 'Son texte entier, mot pour mot.'}
       - {path: resume, type: text, description: 'Ce que tu as vu, en une phrase.'}
 
-  - id: compter_rappels_essai
-    title: Compter les rappels d'un essai
+  - id: compter_rappels_contact
+    title: Compter les rappels d'un message d'essai
     role: >-
       Un message d'essai (page Système) attend que la personne accepte le
-      contact : Serge retourne voir tant qu'il lui reste des essais, puis
-      s'arrête ; la dernière tâche dit où il en est resté. Sans LLM.
+      contact : Serge retourne voir autant de fois que la Policy a
+      d'attentes (« Demande de contact, attentes avant chaque rappel »),
+      puis s'arrête ; la dernière tâche dit où il en est resté. Sans LLM.
     type: capability
     capability: next_round
     queue: conversations
     priority: 50
-    settings:
-      essais_max: {value: 6, min: 1, max: 30, policy: true, description: "Combien de fois, au plus, Serge essaie d'envoyer un message d'essai qui attend un contact, la première fois comprise."}
     params:
       round: {source: task, value: rappel}
-      max: {source: setting, value: essais_max}
+      waits: {source: fixed, value: web_accounts.contact_waits_minutes}
 
   - id: prevenir_compte_web
     title: Prévenir pour un compte web
@@ -8644,11 +8643,13 @@ links:
   # Un message d'essai qui attend un contact (lot 13, Q110). Ces liens ne
   # jouent que pour une tâche lancée par le bouton : un vrai envoi passe
   # par « Envoyer un message », qui confie l'envoi en mission et fait
-  # attendre l'envoi lui-même (serge/channels/web.py).
-  - id: essai_attend_le_contact
+  # attendre l'envoi lui-même (serge/channels/web.py). Les deux suivent la
+  # même liste d'attentes de la Policy : le délai du second lien prend
+  # celle du rappel en cours.
+  - id: essai_attend_un_contact
     title: Un message d'essai attend que la personne accepte le contact
     from: envoyer_par_le_web
-    to: compter_rappels_essai
+    to: compter_rappels_contact
     condition: {field: envoye, op: '=', value: attente}
     params: &message_d_essai
       compte: {source: task, value: compte}
@@ -8657,14 +8658,14 @@ links:
       message: {source: task, value: message}
       sorte: {source: task, value: sorte}
       rappel: {source: task, value: rappel}
-  - id: essai_rappele_apres_attente
+  - id: essai_retourne_voir
     title: Retourner voir si le message d'essai peut partir
-    from: compter_rappels_essai
+    from: compter_rappels_contact
     to: envoyer_par_le_web
     condition: {field: suite, op: '=', value: encore}
     delay:
-      min: web_accounts.trial_contact_retry_minutes
-      max: web_accounts.trial_contact_retry_minutes
+      min: 'web_accounts.contact_waits_minutes[{rappel}]'
+      max: 'web_accounts.contact_waits_minutes[{rappel}]'
     params:
       <<: *message_d_essai
       rappel: {source: field, value: tour_suivant}
@@ -10998,6 +10999,10 @@ changes:
           de centimes de modèle par passage.
 deleted:
   invocations:
+    # Le compteur du 21 novembre 2026 comptait jusqu'à un réglage à lui ;
+    # « Compter les rappels d'un message d'essai » suit la liste d'attentes
+    # de la Policy (Q110).
+    - compter_rappels_essai
     - demo_ouvrir_cycle
     - demo_formuler
     - demo_choisir
@@ -11023,6 +11028,9 @@ deleted:
   # Le début d'un appel dépend de son sens : deux textes le remplacent.
   serge_texts: [voice_opening]
   links:
+    # Les deux liens du compteur du 21 novembre 2026 (Q110).
+    - essai_attend_le_contact
+    - essai_rappele_apres_attente
     - demo_cycle_vers_formuler
     - demo_formuler_vers_choisir
     - essai_vers_contact
@@ -11051,6 +11059,7 @@ deleted:
   # Le nombre de prospects d'un test n'est plus dans le plan du POC : c'est
   # un réglage par canal de « Démarrer une campagne » (Q93).
   settings:
+    - {invocation: compter_rappels_essai, name: essais_max}
     - {invocation: concevoir_poc, name: prospects_min}
     - {invocation: concevoir_poc, name: prospects_max}
   tools:

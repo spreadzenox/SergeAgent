@@ -2412,11 +2412,15 @@ attente) ». Ce qui est décidé :
    quand le site refuse la note. Avant, Serge renonçait. Le texte part
    ensuite comme un message, une fois la demande acceptée.
 3. **Le pipeline rappelle la même invocation plus tard**, avec le même
-   texte. Pour un vrai envoi, « Envoyer un message » le reprend : après 12
-   heures, puis de moins en moins souvent, et pendant 14 jours au plus ;
-   ensuite l'envoi échoue avec sa raison. Pour un message d'essai, deux
-   liens et « Compter les rappels d'un essai » : toutes les 10 minutes, 6
-   essais au plus. Tous ces nombres sont des réglages.
+   texte, selon une liste d'attentes qui se suivent : 5 minutes, 1 heure,
+   3 heures, 6 heures, 24 heures, 7 jours, puis arrêt (Clem, le 22
+   novembre : « ils doivent être exponentiels »). Pour un vrai envoi,
+   « Envoyer un message » le reprend, et l'envoi échoue avec sa raison au
+   dernier rappel. Pour un message d'essai, deux liens et « Compter les
+   rappels d'un message d'essai ». La liste est un seul réglage de la
+   Policy, le même pour les deux : elle donne les attentes et le nombre
+   de rappels. La première version, du 21 novembre, avait deux rythmes
+   et quatre réglages ; elle n'a tourné qu'une nuit.
 4. **Une demande de contact compte dans le plafond du jour du canal**,
    comme un message parti : dix demandes de connexion dans la journée
    pèsent autant sur un compte que dix messages.
