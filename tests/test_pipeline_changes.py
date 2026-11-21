@@ -1511,7 +1511,10 @@ class TelephoneEtPseudoTests(unittest.TestCase):
         'lot13_envoi_web_par_pseudo',
         'lot13_lecture_web_par_pseudo',
         'lot13_compte_telephone_seule_voie',
+        'lot13_compte_cite_les_erreurs',
     )
+    # Ce qui manquait au serveur le 21 novembre 2026, après l'essai sur X.
+    DU_21 = IDS[-2:]
 
     def _prompt(self, conn: sqlite3.Connection, invocation: str) -> str:
         return str(
@@ -1616,9 +1619,9 @@ class TelephoneEtPseudoTests(unittest.TestCase):
         self.assertEqual(self._prompt(conn, 'creer_compte_web'), apres)
 
     def test_le_serveur_du_21_novembre_recoit_la_seule_voie(self) -> None:
-        """Après l'essai sur X du 21 novembre : seule la dernière
-        modification manque au serveur."""
-        conn, data, neuves = self._serveur(self.IDS[-1:])
+        """Après les essais sur X du 21 novembre : les deux dernières
+        modifications manquent au serveur."""
+        conn, data, neuves = self._serveur(self.DU_21)
         avant = self._prompt(conn, 'creer_compte_web')
         self.assertIn("ne le donne que si le site l'exige", avant)
         self.assertNotIn('Trois précisions', avant)
@@ -1628,10 +1631,12 @@ class TelephoneEtPseudoTests(unittest.TestCase):
         self.assertIn("Quand l'inscription n'offre que le téléphone", apres)
         self.assertIn('le téléphone est exigé : donne celui des SMS', apres)
         self.assertIn('essaie-la', apres)
-        self.assertEqual(
-            self._resultat(conn, self.IDS[-1]),
-            'prompt : 1 passage(s) remplacé(s)',
-        )
+        self.assertIn('cite dans ton compte rendu', apres)
+        for ident in self.DU_21:
+            self.assertEqual(
+                self._resultat(conn, ident),
+                'prompt : 1 passage(s) remplacé(s)',
+            )
 
     def _resultat(self, conn: sqlite3.Connection, ident: str) -> str:
         return str(
@@ -1675,7 +1680,7 @@ class TelephoneEtPseudoTests(unittest.TestCase):
         """Clem a réécrit la fin du paragraphe dans Mission Control : la
         modification du fichier ne trouve plus où se poser, et n'écrase
         rien."""
-        conn, data, _ = self._serveur(self.IDS[-1:])
+        conn, data, _ = self._serveur(self.DU_21)
         a_la_main = self._prompt(conn, 'creer_compte_web').replace(
             'décrivant ce que la page montre.', 'disant ce que tu vois.'
         )
@@ -1685,7 +1690,8 @@ class TelephoneEtPseudoTests(unittest.TestCase):
         )
         seed_pipeline(conn, data)
         self.assertEqual(self._prompt(conn, 'creer_compte_web'), a_la_main)
-        self.assertIn('gardé', self._resultat(conn, self.IDS[-1]))
+        for ident in self.DU_21:
+            self.assertIn('gardé', self._resultat(conn, ident))
 
     def test_un_libelle_change_dans_mission_control_est_garde(self) -> None:
         conn, data, _ = self._serveur()

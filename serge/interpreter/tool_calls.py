@@ -2,14 +2,16 @@
 """Appeler les outils qu'un modèle demande, pendant un tour d'outils.
 
 Chaque appel respecte la limite réglée sur l'outil (« au plus 10
-recherches »), est noté au journal (l'outil, ses paramètres en court, et
-s'il a marché), et rend un résultat borné : il repart au modèle à chaque
-tour suivant. Les vieilles captures d'écran sortent de l'historique.
+recherches »), est noté au journal (l'outil, ses paramètres en court,
+s'il a marché, la raison d'un refus, et ce que la page a signalé pendant
+l'appel), et rend un résultat borné : il repart au modèle à chaque tour
+suivant. Les vieilles captures d'écran sortent de l'historique.
 """
 
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 from collections.abc import Mapping
 from typing import Any
@@ -18,8 +20,16 @@ from serge.db.store import append_event
 from serge.interpreter.settings import load_settings, resolve_count
 from serge.interpreter.tools import run_tool
 
-# Ce que le journal garde des paramètres d'un appel d'outil.
+# Ce que le journal garde des paramètres d'un appel d'outil, et de la
+# raison d'un refus.
 JOURNAL_MAX = 300
+# Ce qu'il garde des erreurs qu'une page a signalées pendant l'appel.
+ERREURS_MAX = 6
+ERREUR_MAX = 240
+# Les erreurs de page qui disent ce que le site a répondu (les premières
+# gardées), telles que les écrit ``serge/sandbox/sessions.py``.
+RESEAU = ('HTTP ', 'requête ratée')
+_APRES_LE_POINT_D_INTERROGATION = re.compile(r'\?[^\s)]*')
 
 
 def drop_old_images(
@@ -98,7 +108,9 @@ def limited_call(
     lui enlève pas ce droit (16 novembre 2026).
 
     Exemple d'événement ``tool.call`` : l'outil ``navigateur_agir``, ses
-    paramètres ``{"action": "cliquer", "ref": "e7"}``, et ``ok`` vrai.
+    paramètres ``{"action": "cliquer", "ref": "e7"}``, et ``ok`` vrai. Un
+    appel refusé garde sa raison (``detail``) ; un appel pendant lequel la
+    page a signalé des erreurs les garde (``erreurs``).
     """
     args = _arguments(call.arguments)
     done = calls.get(call.name, 0)
@@ -122,19 +134,47 @@ def limited_call(
         outcome = _call_tool(
             conn, invocation_id, links[call.name], call.name, args, task
         )
+    payload: dict[str, Any] = {
+        'task': task.get('task_id', ''),
+        'tool': call.name,
+        'args': str(call.arguments or '')[:JOURNAL_MAX],
+        'ok': outcome.get('ok', True) is not False,
+        'code': str(outcome.get('code') or ''),
+    }
+    if not payload['ok'] and outcome.get('detail'):
+        payload['detail'] = str(outcome['detail'])[:JOURNAL_MAX]
+    erreurs = _erreurs_de_page(outcome)
+    if erreurs:
+        payload['erreurs'] = erreurs
     append_event(
         conn,
         actor=f'invocation:{invocation_id}',
         type='tool.call',
-        payload={
-            'task': task.get('task_id', ''),
-            'tool': call.name,
-            'args': str(call.arguments or '')[:JOURNAL_MAX],
-            'ok': outcome.get('ok', True) is not False,
-            'code': str(outcome.get('code') or ''),
-        },
+        payload=payload,
     )
     return outcome
+
+
+def _erreurs_de_page(outcome: Mapping[str, Any]) -> list[str]:
+    """Ce qu'une page a signalé pendant l'appel (outils du navigateur, clé
+    ``nouvelles_erreurs``) : c'est la réponse du site à l'action.
+
+    Les réponses refusées et les requêtes ratées passent avant les erreurs
+    de console, et une adresse perd ce qui suit son « ? » : un jeton de
+    session n'a rien à faire au journal. Exemple : un clic sur
+    « Continuer » qui n'a rien fait, et ``HTTP 429 :
+    https://api.site.example/inscription`` dit pourquoi (inscription sur
+    X, le 21 novembre 2026 : la réponse du site n'était gardée nulle part).
+    """
+    brutes = outcome.get('nouvelles_erreurs')
+    if not isinstance(brutes, list):
+        return []
+    lignes = [
+        _APRES_LE_POINT_D_INTERROGATION.sub('?…', str(brute))[:ERREUR_MAX]
+        for brute in brutes
+    ]
+    lignes.sort(key=lambda ligne: not ligne.startswith(RESEAU))
+    return lignes[:ERREURS_MAX]
 
 
 def _arguments(raw: str) -> dict[str, Any] | None:

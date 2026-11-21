@@ -3721,7 +3721,9 @@ invocations:
       se connecter à un compte qui existe, pas à s'inscrire : ne t'en sers
       pas pour créer le compte. Et un bouton qui ne fait rien sur une voie
       ne t'arrête pas tant que le site en propose une autre : essaie-la
-      d'abord.
+      d'abord. Quand un bouton ne fait rien, cite dans ton compte rendu ce
+      que l'outil t'a rendu dans « nouvelles_erreurs » après le clic (une
+      requête refusée, avec son code HTTP) : c'est la réponse du site.
 
       Si le site demande une date de naissance et que « naissance » est
       vide, ou une information que tu n'as pas (un numéro de téléphone
@@ -10775,6 +10777,25 @@ changes:
               pas pour créer le compte. Et un bouton qui ne fait rien sur une voie
               ne t'arrête pas tant que le site en propose une autre : essaie-la
               d'abord.
+  # Même jour : X n'a rien fait du clic sur « Continuer », et sa réponse
+  # n'était gardée nulle part. Le journal garde maintenant ce que la page
+  # signale ; la consigne demande de le citer. La phrase s'ajoute après la
+  # précédente, sans la réécrire.
+  - id: lot13_compte_cite_les_erreurs
+    why: Quand un bouton ne fait rien, le compte rendu cite ce que le site a répondu.
+    table: invocations
+    where: {id: creer_compte_web}
+    set:
+      prompt:
+        replace:
+          - old: |-
+              essaie-la
+              d'abord.
+            new: |-
+              essaie-la
+              d'abord. Quand un bouton ne fait rien, cite dans ton compte rendu ce
+              que l'outil t'a rendu dans « nouvelles_erreurs » après le clic (une
+              requête refusée, avec son code HTTP) : c'est la réponse du site.
 deleted:
   invocations:
     - demo_ouvrir_cycle

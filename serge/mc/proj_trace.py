@@ -53,6 +53,53 @@ def _item_events(
     return items[:20]
 
 
+def cadre_appels(
+    conn: sqlite3.Connection, task_id: str
+) -> dict[str, Any] | None:
+    """Le cadre « Ses appels d'outils » de la fiche d'une tâche.
+
+    Un appel par ligne, dans l'ordre : l'heure, l'outil, ses paramètres en
+    court, et s'il a marché ; un refus garde sa raison. Sous l'appel, ce
+    que la page a signalé pendant qu'il se faisait. Exemple :
+
+        15:44:20  Agir dans le vrai Chrome  {"action": "cliquer"}  → fait
+                  la page : HTTP 429 : https://api.site.example/inscription
+    """
+    rows = conn.execute(
+        "SELECT ts, payload_json FROM events WHERE type='tool.call'"
+        " AND json_extract(payload_json,'$.task')=? ORDER BY id",
+        (task_id,),
+    ).fetchall()
+    if not rows:
+        return None
+    titres = {
+        str(ident): str(titre)
+        for ident, titre in conn.execute('SELECT id, titre FROM tools')
+    }
+    lignes = []
+    for ts, brut in rows:
+        appel = _payload_json(brut)
+        outil = str(appel.get('tool') or '')
+        suite = 'fait'
+        if not appel.get('ok'):
+            raison = str(appel.get('detail') or appel.get('code') or '')
+            suite = f'refusé : {raison}' if raison else 'refusé'
+        lignes.append(
+            f'{str(ts)[11:19]}  {titres.get(outil) or outil}'
+            f'  {appel.get("args") or ""}  → {suite}'
+        )
+        lignes += [
+            f'          la page : {erreur}'
+            for erreur in appel.get('erreurs') or []
+        ]
+    return {
+        'titre': 'Ses appels d’outils',
+        'texte': 'Dans l’ordre, heures UTC. « la page » : ce que le site a'
+        ' signalé pendant l’appel (une réponse refusée, une erreur).',
+        'pre': '\n'.join(lignes),
+    }
+
+
 def project_trace(
     conn: sqlite3.Connection, item_id: str
 ) -> dict[str, Any] | None:

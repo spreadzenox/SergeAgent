@@ -18,6 +18,7 @@ from typing import Any
 from serge.interpreter.tasks import next_task
 from serge.llm.runtime import budget_reached
 from serge.mc.proj_objet_base import _champs, _liens, _row
+from serge.mc.proj_trace import cadre_appels
 from serge.policy_store import policy_en_vigueur
 
 ETATS_TACHE = {
@@ -394,6 +395,9 @@ def fiche_tache(conn: sqlite3.Connection, ident: str) -> dict[str, Any] | None:
         except ValueError:
             reponse = str(row['answer_json'])
         cadres.append({'titre': 'Ce que le modèle a rendu', 'pre': reponse})
+    appels = cadre_appels(conn, ident)
+    if appels:
+        cadres.append(appels)
     captures = conn.execute(
         'SELECT id, path_or_url FROM artifacts WHERE task_id=?'
         " AND kind='capture' ORDER BY created_at, path_or_url",
