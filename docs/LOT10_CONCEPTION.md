@@ -277,7 +277,8 @@ qui la base donne ce nom sur ses outils de navigateur (le paramètre
 - pour taper le mot de passe, le modèle fait `taper_secret` avec le nom
   `mot_de_passe_du_compte` : **Serge le tape à sa place**. À la première
   demande d'un compte qui n'en a pas (une inscription), Serge le choisit
-  (24 caractères au hasard) et le garde aussitôt ;
+  (20 caractères au hasard ; un autre, à la mesure du site, quand le
+  site le refuse, décision Q112) et le garde aussitôt ;
 - **la garde** : chaque action qui touche le site est comptée (ouvrir,
   cliquer, taper, défiler ; lire la page et prendre une capture ne
   comptent pas). Au-delà du plafond du jour (page Policy, « Comptes
