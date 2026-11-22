@@ -57,7 +57,7 @@ from serge.sandbox.navigateur import (
 from serge.sandbox.publier import publish_version
 from serge.tickets.inform import inform_owners
 from serge.verification import received_since_task
-from serge.web_accounts import open_account
+from serge.web_accounts import change_password, open_account
 
 Runner = Callable[
     [sqlite3.Connection, str, dict[str, Any], str], dict[str, Any]
@@ -294,6 +294,7 @@ RUNNERS: dict[str, Runner] = {
     'record_sale': record_sale,
     'mission': mission,
     'open_web_account': open_account,
+    'change_web_password': change_password,
     'serge_identity': identity_read,
     'verification_messages': received_since_task,
 }

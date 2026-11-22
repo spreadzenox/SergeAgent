@@ -811,7 +811,7 @@ class NavigateurTests(unittest.TestCase):
         )
         self.assertTrue(tape['ok'], tape)
         choisi = web_accounts.password(self.conn, 'forum')
-        self.assertEqual(len(choisi), 24)
+        self.assertEqual(len(choisi), web_accounts.LONGUEUR)
         self.assertEqual(session.page.input_value('#mdp'), choisi)
         self.assertNotIn(choisi, json.dumps(tape))
         connecte = self._avec_le_compte(

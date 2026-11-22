@@ -2013,3 +2013,87 @@ class DemandeDeContactTests(unittest.TestCase):
         self.assertIn('3. Envoie le texte, sans te presser :', apres)
         self.assertIn("tu ne suis personne d'autre", apres)
         self.assertIn('gardé', self._resultats(conn)[0])
+
+
+class MotDePasseDuSiteTests(unittest.TestCase):
+    """Le serveur du 22 novembre 2026 : « Créer un compte web » ne peut pas
+    demander un mot de passe à la mesure du site (décision Q112)."""
+
+    IDS = (
+        'lot13_compte_outil_mot_de_passe',
+        'lot13_compte_mot_de_passe_refuse',
+    )
+    OUTIL = 'changer_mot_de_passe_du_compte'
+
+    def _outil(self, conn: sqlite3.Connection) -> list[tuple]:
+        return [
+            tuple(r)
+            for r in conn.execute(
+                'SELECT it.mode, it.max_calls, p.param_name, p.source, p.value'
+                ' FROM invocation_tools it LEFT JOIN invocation_tool_params p'
+                ' ON p.invocation_tool_id=it.id'
+                " WHERE it.invocation_id='creer_compte_web' AND it.tool_id=?",
+                (self.OUTIL,),
+            )
+        ]
+
+    def _prompt(self, conn: sqlite3.Connection) -> str:
+        return str(
+            conn.execute(
+                "SELECT prompt FROM invocations WHERE id='creer_compte_web'"
+            ).fetchone()[0]
+        )
+
+    def test_il_recoit_l_outil_et_la_consigne(self) -> None:
+        conn = sqlite3.connect(':memory:')
+        self.addCleanup(conn.close)
+        init_schema(conn)
+        data = read_yaml_file(config_dir() / 'pipeline.yaml')
+        changes = {c['id']: c for c in data['changes']}
+        neuf, outil = self._prompt(conn), self._outil(conn)
+        self.assertEqual(
+            outil, [('callable', '3', 'account', 'task', 'compte')]
+        )
+        # Une instance neuve a déjà tout.
+        self.assertEqual(
+            [
+                conn.execute(
+                    'SELECT result FROM pipeline_changes WHERE id=?', (i,)
+                ).fetchone()[0]
+                for i in self.IDS
+            ],
+            [f'{self.OUTIL} déjà là', 'prompt déjà à jour'],
+        )
+        # Le serveur d'avant : ni l'outil, ni le passage de la consigne.
+        passage = changes[self.IDS[1]]['set']['prompt']['replace'][0]
+        self.assertEqual(neuf.count(passage['new']), 1)
+        conn.execute(
+            "UPDATE invocations SET prompt=? WHERE id='creer_compte_web'",
+            (neuf.replace(passage['new'], passage['old']),),
+        )
+        liens = [
+            r[0]
+            for r in conn.execute(
+                'SELECT id FROM invocation_tools WHERE tool_id=?',
+                (self.OUTIL,),
+            )
+        ]
+        for lien in liens:
+            conn.execute(
+                'DELETE FROM invocation_tool_params WHERE'
+                ' invocation_tool_id=?',
+                (lien,),
+            )
+            conn.execute('DELETE FROM invocation_tools WHERE id=?', (lien,))
+        conn.executemany(
+            'DELETE FROM pipeline_changes WHERE id=?',
+            [(i,) for i in self.IDS],
+        )
+        self.assertEqual(self._outil(conn), [])
+        self.assertNotIn('Changer le mot de passe', self._prompt(conn))
+        seed_pipeline(conn, data)
+        self.assertEqual(self._prompt(conn), neuf)
+        self.assertEqual(self._outil(conn), outil)
+        # Une seconde fois ne change rien.
+        seed_pipeline(conn, data)
+        self.assertEqual(self._outil(conn), outil)

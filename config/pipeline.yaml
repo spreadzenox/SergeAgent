@@ -705,6 +705,13 @@ tools:
         - {id: compte, table: web_accounts, column: id, param: account}
       params:
         - {name: account, required: true, description: Le nom du compte.}
+  - id: changer_mot_de_passe_du_compte
+    title: Changer le mot de passe du compte
+    doc: >-
+      Un nouveau mot de passe pour le compte en cours de création, quand le
+      site refuse le premier : la longueur que le site accepte, avec ou
+      sans signes. Tu ne le vois pas : retape-le avec taper_secret.
+    capability: change_web_password
   - id: identite_de_serge
     title: L'identité de Serge
     doc: >-
@@ -3684,6 +3691,11 @@ invocations:
       - **Tu ne vois jamais le mot de passe.** Pour le taper, fais l'action
         taper_secret sur le champ, avec text « mot_de_passe_du_compte » :
         Serge le tape à ta place. Ne l'invente pas, ne le demande pas.
+        Si le site refuse ce mot de passe (trop long, trop court, un signe
+        qu'il n'accepte pas), appelle « Changer le mot de passe du compte »
+        avec la longueur que le site accepte (et signes à non s'il refuse
+        les signes), vide le champ, puis retape-le de la même façon, dans
+        chaque champ qui le demande.
 
       Comment faire :
 
@@ -3766,6 +3778,11 @@ invocations:
         mode: callable
         params:
           task_id: {source: task, value: task_id}
+      - tool: changer_mot_de_passe_du_compte
+        mode: callable
+        max_calls: 3
+        params:
+          account: {source: task, value: compte}
     output:
       - {path: cree, type: choice, choices: [oui, non], description: 'Es-tu connecté au compte, à la fin ?'}
       - {path: identifiant, type: text, required: false, description: "Ce qui sert à se connecter : l'e-mail ou le nom d'utilisateur."}
@@ -10997,6 +11014,31 @@ changes:
           web ») : accepte, ou suis-le en retour, et le message part. Le
           résultat est sur la fiche de chaque tâche. Compter quelques dizaines
           de centimes de modèle par passage.
+  # Création du compte TikTok, le 22 novembre 2026 : le mot de passe de
+  # Serge (24 caractères) dépassait les 20 que le site accepte, et Serge
+  # ne pouvait qu'appeler un humain. Il peut en demander un autre à la
+  # mesure du site, sans le voir (décision Q112).
+  - id: lot13_compte_outil_mot_de_passe
+    why: Créer un compte web peut demander un mot de passe à la mesure du site (Q112).
+    invocation: creer_compte_web
+    add_tools:
+      - {tool: changer_mot_de_passe_du_compte, mode: callable, max_calls: 3, params: {account: {source: task, value: compte}}}
+  - id: lot13_compte_mot_de_passe_refuse
+    why: Quand le site refuse le mot de passe, Serge en demande un autre à sa mesure (Q112).
+    table: invocations
+    where: {id: creer_compte_web}
+    set:
+      prompt:
+        replace:
+          - old: |-
+              Serge le tape à ta place. Ne l'invente pas, ne le demande pas.
+            new: |-
+              Serge le tape à ta place. Ne l'invente pas, ne le demande pas.
+                Si le site refuse ce mot de passe (trop long, trop court, un signe
+                qu'il n'accepte pas), appelle « Changer le mot de passe du compte »
+                avec la longueur que le site accepte (et signes à non s'il refuse
+                les signes), vide le champ, puis retape-le de la même façon, dans
+                chaque champ qui le demande.
 deleted:
   invocations:
     # Le compteur du 21 novembre 2026 comptait jusqu'à un réglage à lui ;
