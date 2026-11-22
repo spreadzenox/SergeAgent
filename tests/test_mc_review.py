@@ -356,8 +356,8 @@ class ReviewBrowserTests(McBrowserCase):
             )
             self.assertFalse(overlaps, width)
         for _ in range(3):
-            page.evaluate("location.hash='#/mind'")
-            expect(page.locator('[data-section="matrice"]')).to_be_visible()
+            page.evaluate("location.hash='#/carte'")
+            expect(page.locator('[data-section="carte"]')).to_be_visible()
             page.evaluate("location.hash='#/live'")
             expect(page.locator('.btn-kill-serge')).to_be_visible()
         page.locator('.btn-kill-serge').click()
@@ -367,9 +367,9 @@ class ReviewBrowserTests(McBrowserCase):
             """() => { const orig = fetch; window.fetch = (...args) => String(args[0]).startsWith('/owner/api/objet') ? new Promise(r => setTimeout(() => r(orig(...args)), 600)) : orig(...args); location.hash = '#/objet/llm/formuler_a'; }"""
         )
         page.wait_for_timeout(100)
-        page.evaluate("location.hash='#/mind'")
+        page.evaluate("location.hash='#/carte'")
         page.wait_for_timeout(1000)
-        expect(page.locator('[data-section="matrice"]')).to_be_visible()
+        expect(page.locator('[data-section="carte"]')).to_be_visible()
         expect(page.locator('.fiche-objet')).to_have_count(0)
         # Quitter aussi la page montée pendant la requête lente : son
         # nettoyage doit rester enregistré une fois l'ancienne fiche finie.
@@ -379,8 +379,8 @@ class ReviewBrowserTests(McBrowserCase):
         page.wait_for_timeout(100)
         page.evaluate("location.hash='#/live'")
         page.wait_for_timeout(1000)
-        page.evaluate("location.hash='#/mind'")
-        expect(page.locator('[data-section="matrice"]')).to_be_visible()
+        page.evaluate("location.hash='#/carte'")
+        expect(page.locator('[data-section="carte"]')).to_be_visible()
         page.evaluate("location.hash='#/live'")
         expect(page.locator('.btn-kill-serge')).to_be_visible()
         page.locator('.btn-kill-serge').click()

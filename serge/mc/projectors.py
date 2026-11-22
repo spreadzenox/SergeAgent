@@ -14,11 +14,7 @@ from serge.mc.proj_analyse import (
     project_diffs,
     project_metriques_tickets,
 )
-from serge.mc.proj_cerveau import (
-    project_decisions,
-    project_matrice,
-    project_signaux,
-)
+from serge.mc.proj_carte import project_carte, project_carte_etat
 from serge.mc.proj_coupes import project_coupes
 from serge.mc.proj_discord import (
     project_admins_discord,
@@ -78,7 +74,6 @@ SLOW_SECTIONS = frozenset(
         'jauges',
         'ilots',
         'population',
-        'matrice',
         'diffs',
         'metriques',
         'couches',
@@ -196,9 +191,8 @@ PROJECTORS: dict[str, Callable[..., dict[str, Any]]] = {
     'non_rattaches': project_non_rattaches,
     'essais': project_essais,
     'comptes_web': project_comptes_web,
-    'decisions': project_decisions,
-    'matrice': project_matrice,
-    'signaux': project_signaux,
+    'carte': project_carte,
+    'carte_etat': project_carte_etat,
     'tickets': project_tickets,
     'diffs': project_diffs,
     'metriques': project_metriques_tickets,
@@ -244,7 +238,7 @@ PAGE_SECTIONS: dict[str, list[str]] = {
         'population',
         'non_rattaches',
     ],
-    'p2': ['meta', 'decisions', 'matrice', 'signaux'],
+    'p2': ['meta', 'carte', 'carte_etat'],
     'p3': [
         'meta',
         'tickets',
