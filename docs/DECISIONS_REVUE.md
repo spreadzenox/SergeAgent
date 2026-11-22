@@ -2430,3 +2430,40 @@ attente) ». Ce qui est décidé :
 Pas fait : réveiller l'envoi dès que la relève de la messagerie voit une
 demande acceptée. Aujourd'hui, c'est le rappel suivant qui le découvre.
 
+### Q111 — Une carte du pipeline remplace la page Cerveau (demandé par Clem, 22 novembre 2026)
+
+Clem veut voir tout le pipeline d'un coup d'œil : « une carte interactive
+de toute la pipeline où on voit les liens entre les invocations, où
+est-ce qu'elles écrivent en base », qu'on tire à la souris, mise à jour
+en direct depuis la base, avec un onglet pour le pipeline principal et un
+pour les essais, et la dernière exécution de chaque invocation. Il laisse
+choisir l'onglet à remplacer. Ce qui est décidé :
+
+1. **La page Carte remplace la page Cerveau.** Son tableau d'invocations
+   faisait doublon avec la carte ; ses décisions récentes sont sur la
+   page Décisions, ses messages reçus dans l'activité et sur la page
+   Économie.
+2. **Rien n'est dessiné à la main.** La carte est lue dans les tables du
+   pipeline (invocations, liens, déclencheurs, outils, règles
+   d'écriture) et posée par le serveur : une bande par étape, les
+   invocations de gauche à droite dans l'ordre de leurs liens.
+3. **Une table est montrée près de chaque invocation qui la touche**, pas
+   une seule fois au milieu de la carte : au-dessus de la carte si elle
+   est lue, en dessous si elle est écrite. Un clic sur une table éclaire
+   toutes les invocations qui la touchent. Une seule icône par table
+   aurait fait des dizaines de traits vers « ventures ».
+4. **Les deux onglets viennent des liens et des déclencheurs**, pas d'une
+   liste : le pipeline principal est ce que les étapes, les horloges et
+   les écritures lancent ; les essais et boutons, ce qu'un bouton lance à
+   part, et le couloir d'essai.
+5. **Les outils sont dans le détail d'une invocation**, pas sur la carte :
+   227 traits de plus la rendraient illisible. Un service du dehors (les
+   SMS reçus, Stripe, un réseau) se lit par l'outil qui y mène ; une
+   mission confiée à une autre invocation est un trait.
+
+Pas fait : les services qui écrivent en base sans passer par une
+invocation (le récepteur de SMS, la relève des e-mails, Stripe) n'ont pas
+leur case. La dernière exécution relit la table des tâches à chaque
+passage (22 millisecondes pour 38 000 tâches le 22 novembre) : un index
+sera à ajouter quand elle aura grossi.
+

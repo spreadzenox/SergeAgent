@@ -7,7 +7,7 @@ import {initCmdk} from './cmdk.js';
 const ROUTES = {
   live: 'p0',
   system: 'p1',
-  mind: 'p2',
+  carte: 'p2',
   tickets: 'p3',
   memory: 'p4',
   policy: 'p5',
@@ -84,7 +84,7 @@ async function render() {
     if (mine !== generation) return;
     unmount = mount(main, store);
   } else if (page === 'p2') {
-    const {mount} = await import('./pages/mind.js');
+    const {mount} = await import('./pages/carte.js');
     if (mine !== generation) {
       return;
     }

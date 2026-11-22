@@ -7,7 +7,7 @@ const COMMANDES_FIXES = [
   {id: 'nav-ecoute', titre: 'Aller à Écoute', hash: '#/ecoute'},
   {id: 'nav-pipeline', titre: 'Aller à Pipeline', hash: '#/pipeline'},
   {id: 'nav-live', titre: 'Aller à En direct', type: 'page', hash: '#/live'},
-  {id: 'nav-mind', titre: 'Aller à Cerveau', type: 'page', hash: '#/mind'},
+  {id: 'nav-carte', titre: 'Aller à Carte', type: 'page', hash: '#/carte'},
   {id: 'nav-tickets', titre: 'Aller à Décisions', type: 'page', hash: '#/tickets'},
   {id: 'nav-memory', titre: 'Aller à Mémoire', type: 'page', hash: '#/memory'},
   {id: 'nav-policy', titre: 'Aller à Policy', type: 'page', hash: '#/policy'},

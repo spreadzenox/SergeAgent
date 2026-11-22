@@ -7,7 +7,7 @@ Scénarios :
   redemandée ;
 - « au plus N pages retenues » limite l'écriture même si le format ne le
   fait plus ; le quota des places de test refuse un choix de trop ;
-- la fiche d'une invocation, la page Cerveau et la page Écoute montrent
+- la fiche d'une invocation, la page Carte et la page Écoute montrent
   l'étape telle qu'elle est en base : boutons, conditions, confirmation,
   flux suivis (et le bouton pour en couper un).
 """
@@ -29,7 +29,7 @@ from serge.db.boot import init_schema  # noqa: E402
 from serge.interpreter.queue import process_one  # noqa: E402
 from serge.interpreter.tasks import enqueue_task  # noqa: E402
 from serge.llm.client import ChatResult  # noqa: E402
-from serge.mc.proj_cerveau import project_matrice  # noqa: E402
+from serge.mc.proj_carte import project_carte  # noqa: E402
 from serge.mc.proj_objet import project_objet  # noqa: E402
 from tests.mc_server_case import McBrowserCase  # noqa: E402
 
@@ -183,7 +183,10 @@ class ReglagesEtProtectionsTests(unittest.TestCase):
         lu = cadres['Ce qu’elle lit d’office (ce qu’elle doit traiter)']
         self.assertEqual(lu['champs'][0]['k'], 'Les pages « besoin nouveau »')
         noms = [
-            p['nom'] for p in project_matrice(self.conn, {}, NOW)['points']
+            case['id']
+            for case in project_carte(self.conn, {}, NOW)['principal'][
+                'noeuds'
+            ]
         ]
         self.assertEqual(
             noms[:7],

@@ -32,14 +32,14 @@ class CmdkTests(McBrowserCase):
         expect(page.locator('.cmdk-input')).to_be_focused()
 
         # Filtrage par recherche
-        page.locator('.cmdk-input').fill('cerveau')
+        page.locator('.cmdk-input').fill('carte')
         items = page.locator('.cmdk-item')
-        expect(items).to_contain_text('Cerveau')
+        expect(items).to_contain_text('Carte')
 
         # Touche Entrée pour exécuter la navigation
         page.keyboard.press('Enter')
         expect(page.locator('.cmdk-boite')).to_have_count(0)
-        expect(page.locator('.barre-laterale a.actif')).to_have_text('Cerveau')
+        expect(page.locator('.barre-laterale a.actif')).to_have_text('Carte')
 
         # Réouverture et fermeture via Escape
         page.keyboard.press('Control+KeyK')

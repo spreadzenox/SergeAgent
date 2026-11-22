@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="/static/mc/style.css">
 <link rel="stylesheet" href="/static/mc/style-hud.css">
 <link rel="stylesheet" href="/static/mc/style-pages.css">
+<link rel="stylesheet" href="/static/mc/style-carte.css">
 </head>
 <body>
 <div id="app" class="coquille">
@@ -14,7 +15,7 @@
 <aside class="barre-laterale">
 <nav aria-label="Pages">
 <a href="#/live" data-page="p0">En direct</a>
-<a href="#/mind" data-page="p2">Cerveau</a>
+<a href="#/carte" data-page="p2">Carte</a>
 <a href="#/tickets" data-page="p3">Décisions</a>
 <a href="#/memory" data-page="p4">Mémoire</a>
 <a href="#/policy" data-page="p5">Policy</a>
@@ -200,19 +201,27 @@
 <ul data-list="messages"></ul>
 </section>
 </template>
-<template id="page-mind">
-<p class="page-intro">Le cerveau : chaque ligne est une invocation, telle qu’elle est décrite en base. Clique pour l’allumer, l’éteindre ou ouvrir sa fiche.</p>
-<section class="panneau" data-section="decisions" data-sig="">
-<h2>Décisions récentes</h2>
-<ul data-list="items"></ul>
-</section>
-<section class="panneau" data-section="matrice" data-sig="">
-<h2>Les invocations</h2>
-<div data-matrice="table"></div>
-</section>
-<section class="panneau" data-section="signaux" data-sig="">
-<h2>Messages reçus</h2>
-<ul data-list="items"></ul>
+<template id="page-carte">
+<section class="carte-page" data-section="carte" data-sig="">
+<header class="carte-barre">
+<div class="carte-onglets" role="tablist" aria-label="Quelle partie du pipeline">
+<button type="button" role="tab" data-onglet="principal" aria-selected="true">Pipeline principal</button>
+<button type="button" role="tab" data-onglet="essais" aria-selected="false">Essais et boutons</button>
+</div>
+<label class="carte-recherche">Chercher <input type="search" data-carte="chercher" placeholder="une invocation, une table"></label>
+<span class="carte-trouvees" data-carte="trouvees"></span>
+<div class="carte-zoom">
+<button type="button" data-carte="moins" aria-label="Dézoomer">−</button>
+<span data-carte="echelle">60 %</span>
+<button type="button" data-carte="plus" aria-label="Zoomer">+</button>
+<button type="button" data-carte="tout">Tout voir</button>
+</div>
+</header>
+<p class="carte-legende" data-carte="legende"><span class="carte-legende-item">Tire le fond pour te déplacer, la molette zoome. Un clic sur une carte, une table ou un trait ouvre son détail.</span></p>
+<div class="carte-scene">
+<div class="carte-vue" data-carte="vue" tabindex="0" aria-label="La carte du pipeline"><div class="carte-plan" data-carte="plan"></div><p class="carte-rien" data-carte="vide" hidden>Aucune invocation en base dans cet onglet.</p></div>
+<aside class="carte-fiche" data-carte="fiche" hidden></aside>
+</div>
 </section>
 </template>
 <template id="page-tickets">

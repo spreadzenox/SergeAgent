@@ -344,7 +344,7 @@ CATALOGUE: dict[str, tuple[str, str, str, str]] = {
     'llm_usage': (
         'Compteur de chaque appel au modèle : jetons, durée, verdict.',
         'L’interpréteur, à chaque appel.',
-        'Cerveau (invocations), jauges €, fiches invocation.',
+        'Économie (coût des invocations), jauges €, fiches invocation.',
         'point = l’invocation. Pas le prompt : juste le mètre.',
     ),
     'episode_archives': (
