@@ -2467,3 +2467,21 @@ leur case. La dernière exécution relit la table des tâches à chaque
 passage (22 millisecondes pour 38 000 tâches le 22 novembre) : un index
 sera à ajouter quand elle aura grossi.
 
+### Q112 — Un mot de passe à la mesure du site (22 novembre 2026)
+
+Le 22 novembre 2026, la création du compte TikTok s'est arrêtée sur le mot
+de passe : Serge en choisit un de 24 caractères, TikTok en veut 8 à 20.
+Le modèle ne voit jamais le mot de passe, donc il ne pouvait ni le
+raccourcir ni en taper un autre : il a appelé un humain. Ce qui est
+décidé :
+
+1. **Serge choisit 20 caractères**, plus 24 : beaucoup de sites n'en
+   acceptent pas plus, et 20 caractères au hasard restent bien assez.
+2. **L'invocation qui crée un compte peut demander un autre mot de
+   passe** quand le site refuse le premier : elle dit la longueur que le
+   site accepte, et s'il refuse les signes. Serge en choisit un, le
+   garde, et le tape à sa place : le modèle ne le voit toujours pas.
+3. **Seulement tant que le compte n'existe pas sur le site.** Un compte en
+   service garde son mot de passe : en changer ici le couperait du site,
+   qui a l'ancien.
+

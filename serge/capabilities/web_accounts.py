@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Les capacités des comptes web (lot 13) : ouvrir un compte, donner
-l'identité de Serge, rendre ses messages de vérification.
+"""Les capacités des comptes web (lot 13) : ouvrir un compte, changer
+son mot de passe tant qu'il n'est pas créé, donner l'identité de Serge,
+rendre ses messages de vérification.
 
 Avec les outils du navigateur et « Appeler un humain », elles suffisent à
 une invocation pour créer un compte sur un site, du formulaire au lien de
@@ -25,6 +26,33 @@ WEB_ACCOUNTS: tuple[Capability, ...] = (
         (
             Param('account', 'text', True, 'Le nom du compte : reddit.'),
             Param('url', 'text', True, 'L’adresse du site.'),
+        ),
+    ),
+    Capability(
+        'change_web_password',
+        'Changer le mot de passe du compte',
+        'Choisit un nouveau mot de passe pour un compte que Serge est en'
+        ' train de créer, quand le site refuse le premier (trop long, un'
+        ' signe qu’il n’accepte pas) : la longueur voulue, avec ou sans'
+        ' signes. Le modèle ne le voit jamais ; il le retape avec « taper'
+        ' un secret ». Refuse pour un compte qui existe déjà sur son site.',
+        'serge/web_accounts.py',
+        (
+            Param('account', 'text', True, 'Le nom du compte.', frozen=True),
+            Param(
+                'longueur',
+                'number',
+                False,
+                'Le nombre de caractères que le site accepte (20 sans rien'
+                ' dire, de 8 à 64).',
+            ),
+            Param(
+                'signes',
+                'bool',
+                False,
+                'Avec des signes (! # % + - = ? @) : oui par défaut ; non'
+                ' si le site les refuse.',
+            ),
         ),
     ),
     Capability(

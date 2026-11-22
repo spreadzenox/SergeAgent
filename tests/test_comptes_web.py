@@ -358,6 +358,123 @@ class ComptesWebTests(unittest.TestCase):
         )
 
 
+class MotDePasseDuSiteTests(unittest.TestCase):
+    """Le 22 novembre 2026, TikTok a refusé le mot de passe de Serge : 24
+    caractères, quand le site en veut 8 à 20 (décision Q112)."""
+
+    SIGNES = '!#%+-=?@'
+
+    def setUp(self) -> None:
+        import sqlite3
+
+        from cryptography.fernet import Fernet
+
+        from serge.db.boot import init_schema
+
+        dossier = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
+        self.addCleanup(dossier.cleanup)
+        racine = Path(dossier.name)
+        secrets = racine / 'config/secrets'
+        secrets.mkdir(parents=True)
+        (secrets / 'credential-vault.key').write_bytes(Fernet.generate_key())
+        instance = racine / 'instance.toml'
+        instance.write_text(f'[paths]\nconfig_root = "{racine / "config"}"\n')
+        patcher = mock.patch.dict(
+            os.environ,
+            {
+                'SERGE_SYSTEM_ROOT': str(racine),
+                'SERGE_INSTANCE_FILE': str(instance),
+            },
+        )
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.conn = sqlite3.connect(':memory:')
+        self.addCleanup(self.conn.close)
+        init_schema(self.conn)
+
+    def _compte(self, etat: str) -> None:
+        self.conn.execute(
+            'INSERT INTO web_accounts(id, url, status, created_at, updated_at)'
+            " VALUES('tiktok', 'https://www.tiktok.com', ?, ?, ?)",
+            (etat, utcnow(), utcnow()),
+        )
+
+    def _changer(self, **args: Any) -> dict[str, Any]:
+        return web_accounts.change_password(
+            self.conn, '', {'account': 'tiktok', **args}, 'creer_compte_web'
+        )
+
+    def test_serge_choisit_vingt_caracteres(self) -> None:
+        self._compte('creating')
+        choisi = web_accounts.password(self.conn, 'tiktok')
+        self.assertEqual(len(choisi), 20)
+        for sorte in (str.islower, str.isupper, str.isdigit):
+            self.assertTrue(any(sorte(c) for c in choisi))
+        self.assertTrue(any(c in self.SIGNES for c in choisi))
+        # Demandé une seconde fois, c'est le même.
+        self.assertEqual(web_accounts.password(self.conn, 'tiktok'), choisi)
+
+    def test_un_autre_a_la_mesure_du_site(self) -> None:
+        """Le site refuse le premier : l'invocation en demande un autre,
+        de la longueur qu'il accepte, sans jamais le voir."""
+        self._compte('creating')
+        premier = web_accounts.password(self.conn, 'tiktok')
+        rendu = self._changer(longueur=12, signes='non')
+        self.assertEqual(
+            (rendu['ok'], rendu['longueur'], rendu['signes']),
+            (True, 12, 'non'),
+        )
+        second = web_accounts.password(self.conn, 'tiktok')
+        self.assertNotEqual(second, premier)
+        self.assertEqual(len(second), 12)
+        self.assertTrue(second.isalnum())
+        # Ce que le modèle reçoit ne contient pas le mot de passe.
+        self.assertNotIn(second, json.dumps(rendu, ensure_ascii=False))
+        self.assertIn('taper_secret', rendu['detail'])
+        # Sans rien préciser : 20 caractères, avec des signes.
+        self.assertEqual(self._changer()['longueur'], 20)
+        self.assertEqual(len(web_accounts.password(self.conn, 'tiktok')), 20)
+
+    def test_il_refuse_ce_qui_n_a_pas_de_sens(self) -> None:
+        self._compte('creating')
+        garde = web_accounts.password(self.conn, 'tiktok')
+        for longueur in (3, 200, 'beaucoup'):
+            rendu = self._changer(longueur=longueur)
+            self.assertFalse(rendu['ok'])
+            self.assertIn('de 8 à 64 caractères', rendu['detail'])
+        self.assertFalse(
+            web_accounts.change_password(
+                self.conn, '', {'account': 'inconnu'}, 'x'
+            )['ok']
+        )
+        self.assertEqual(web_accounts.password(self.conn, 'tiktok'), garde)
+
+    def test_un_compte_en_service_garde_le_sien(self) -> None:
+        """Le site a l'ancien mot de passe : le changer ici couperait
+        Serge de son compte."""
+        self._compte('active')
+        garde = web_accounts.password(self.conn, 'tiktok')
+        rendu = self._changer(longueur=10)
+        self.assertFalse(rendu['ok'])
+        self.assertIn('existe déjà sur son site', rendu['detail'])
+        self.assertEqual(web_accounts.password(self.conn, 'tiktok'), garde)
+
+    def test_creer_un_compte_a_l_outil(self) -> None:
+        outil = self.conn.execute(
+            'SELECT t.capability_id, it.mode, it.max_calls FROM'
+            ' invocation_tools it JOIN tools t ON t.id=it.tool_id'
+            " WHERE it.invocation_id='creer_compte_web'"
+            " AND t.id='changer_mot_de_passe_du_compte'"
+        ).fetchone()
+        self.assertEqual(
+            tuple(outil), ('change_web_password', 'callable', '3')
+        )
+        consigne = self.conn.execute(
+            "SELECT prompt FROM invocations WHERE id='creer_compte_web'"
+        ).fetchone()[0]
+        self.assertIn('« Changer le mot de passe du compte »', consigne)
+
+
 class RetirerUnCompteTests(unittest.TestCase):
     def test_seul_un_compte_hors_service_se_retire(self) -> None:
         import sqlite3

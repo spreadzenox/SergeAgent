@@ -12,7 +12,11 @@ Deux secrets, chiffrés en base par la clé du coffre de l'instance
 Mission Control :
 
 - **le mot de passe** : Serge le choisit lui-même à la première demande
-  (24 caractères au hasard) et le tape dans la page à la place du modèle ;
+  (20 caractères au hasard : beaucoup de sites n'en acceptent pas plus) et
+  le tape dans la page à la place du modèle. Quand un site le refuse
+  quand même (TikTok veut 8 à 20 caractères, un autre refuse les signes),
+  l'invocation qui crée le compte en demande un autre à la mesure du
+  site (``change_password``), toujours sans le voir ;
 - **la session** : les cookies du site, et ce qu'il garde dans le
   navigateur. Avec elle, ouvrir le site suffit pour être connecté.
 
@@ -48,6 +52,11 @@ PASSWORD_NAME = 'mot_de_passe_du_compte'
 # longtemps que ça.
 LEASE = timedelta(minutes=45)
 _SIGNS = '!#%+-=?@'
+# La longueur d'un mot de passe : celle que Serge choisit de lui-même, et
+# les bornes de ce qu'une invocation peut demander pour un site.
+LONGUEUR = 20
+LONGUEUR_MIN = 8
+LONGUEUR_MAX = 64
 
 
 class AccountError(RuntimeError):
@@ -104,18 +113,16 @@ def _row(conn: sqlite3.Connection, name: str) -> tuple[Any, ...]:
     return tuple(row)
 
 
-def new_password() -> str:
-    """Un mot de passe au hasard, qui passe les règles des sites : 24
-    caractères, avec majuscule, minuscule, chiffre et signe."""
-    alphabet = string.ascii_letters + string.digits + _SIGNS
+def new_password(longueur: int = LONGUEUR, signes: bool = True) -> str:
+    """Un mot de passe au hasard, qui passe les règles des sites : 20
+    caractères, avec majuscule, minuscule, chiffre et signe. Un site qui
+    en veut moins, ou sans signe, a le sien (``change_password``)."""
+    kinds = [string.ascii_lowercase, string.ascii_uppercase, string.digits]
+    if signes:
+        kinds.append(_SIGNS)
+    alphabet = ''.join(kinds)
     while True:
-        value = ''.join(secrets.choice(alphabet) for _ in range(24))
-        kinds = (
-            string.ascii_lowercase,
-            string.ascii_uppercase,
-            string.digits,
-            _SIGNS,
-        )
+        value = ''.join(secrets.choice(alphabet) for _ in range(longueur))
         if all(any(c in kind for c in value) for kind in kinds):
             return value
 
@@ -143,6 +150,54 @@ def password(conn: sqlite3.Connection, name: str) -> str:
         # d'inscription ne doit pas se perdre si la tâche s'arrête.
         conn.commit()
     return value
+
+
+def change_password(
+    conn: sqlite3.Connection,
+    _tool: str,
+    args: dict[str, Any],
+    _invocation_id: str,
+) -> dict[str, Any]:
+    """Capacité « Changer le mot de passe du compte » : un nouveau mot de
+    passe pour un compte en cours de création, à la mesure du site
+    (``longueur``, avec ou sans ``signes``). Le modèle ne le voit pas : il
+    le retape avec « taper un secret ».
+
+    Un compte en service garde le sien : le changer ici le couperait du
+    site, qui a l'ancien.
+    """
+    name = str(args.get('account') or '').strip().lower()
+    try:
+        status = _row(conn, name)[0]
+        longueur = int(str(args.get('longueur') or LONGUEUR))
+    except AccountError as exc:
+        return {'ok': False, 'detail': str(exc)}
+    except ValueError:
+        longueur = 0
+    if status != 'creating':
+        return {
+            'ok': False,
+            'detail': f'le compte « {name} » existe déjà sur son site : son'
+            ' mot de passe ne se change pas ici',
+        }
+    if not LONGUEUR_MIN <= longueur <= LONGUEUR_MAX:
+        return {
+            'ok': False,
+            'detail': f'longueur : un nombre de {LONGUEUR_MIN} à'
+            f' {LONGUEUR_MAX} caractères, celui que le site accepte',
+        }
+    signes = args.get('signes') not in (False, 'false', '0', 'non')
+    set_password(conn, name, new_password(longueur, signes))
+    # Gardé tout de suite, comme le premier : il va être tapé dans la page.
+    conn.commit()
+    return {
+        'ok': True,
+        'longueur': longueur,
+        'signes': 'oui' if signes else 'non',
+        'detail': 'le nouveau mot de passe est gardé : vide le champ, puis'
+        ' retape-le avec taper_secret (« mot_de_passe_du_compte »), dans'
+        ' chaque champ qui le demande',
+    }
 
 
 def register(
