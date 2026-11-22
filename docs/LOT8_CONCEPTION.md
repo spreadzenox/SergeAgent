@@ -135,7 +135,10 @@ apprend quatre réglages, utiles à n'importe quelle invocation :
 2. **Un délai sur un lien** : `delay_min_setting` et `delay_max_setting`,
    deux réglages de la policy, entre lesquels un délai est tiré au hasard
    pour la tâche suivante (« pas avant »). Le nom peut contenir le canal de
-   la ligne : `channels.{channel}.reply_delay_min_minutes`. Un délai de 0
+   la ligne : `channels.{channel}.reply_delay_min_minutes`. Un réglage
+   peut aussi être une liste d'attentes, une par tour d'une boucle :
+   `nom[{tour}]` prend celle du tour, la dernière au-delà (lot 13,
+   décision Q110). Un délai de 0
    fait partir tout de suite.
 3. **Une seule tâche en attente par contact** :
    `invocations.single_pending_param` (`contact_id`). Si une tâche de cette

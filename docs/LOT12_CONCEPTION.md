@@ -751,13 +751,14 @@ canal est **décrit en base**, et son adaptateur est le même pour tous
   reste « à envoyer », avec sa raison et l'heure de la demande
   (`touches.contact_asked_at`), et « Envoyer un message » le reprend plus
   tard : la même invocation retourne voir, et envoie le même texte dès
-  que le réseau le permet. Le premier rappel vient après 12 heures, les
-  suivants de moins en moins souvent (chaque attente dure autant que tout
-  ce qui a déjà été attendu : 12 heures, 1, 2, 4, 8 jours) ; au bout de
-  14 jours, elle regarde une dernière fois, puis l'envoi échoue avec sa
-  raison. Les deux délais sont des réglages (page Policy, « Comptes
-  web »). Une demande de contact compte dans le plafond du jour du canal,
-  comme un message parti ;
+  que le réseau le permet. Les rappels suivent une liste d'attentes,
+  l'une après l'autre : 5 minutes, 1 heure, 3 heures, 6 heures, 24 heures,
+  puis 7 jours ; au dernier rappel, si la personne n'a toujours pas
+  accepté, l'envoi échoue avec sa raison. La liste est un seul réglage
+  (page Policy, « Comptes web », « Demande de contact, attentes avant
+  chaque rappel ») : on y ajoute ou on y retire une attente. Une demande
+  de contact compte dans le plafond du jour du canal, comme un message
+  parti ;
 - **relever** : toutes les 4 heures, « Relever les messages » confie la
   lecture à « Lire la messagerie d'un réseau », seulement si un message
   est parti par ce canal depuis moins de 30 jours (réglage). Les réponses
@@ -789,11 +790,15 @@ Un message d'essai n'a pas d'envoi en base pour attendre à sa place :
 son attente est écrite dans le pipeline, avec les briques de toutes les
 boucles (un lien sous condition, un délai, « Compter »). Si l'invocation
 rend « attente », le lien « Un message d'essai attend que la personne
-accepte le contact » mène à « Compter les rappels d'un essai » ; tant
-qu'il reste des essais (6 au départ, le premier compris), le lien
-« Retourner voir si le message d'essai peut partir » relance la même
-invocation 10 minutes plus tard, avec le même texte. Ces liens ne jouent
-pas pour un vrai envoi : une mission ne suit pas ses liens.
+accepte le contact » mène à « Compter les rappels d'un message
+d'essai » ; tant qu'il reste une attente dans la liste de la Policy, le
+lien « Retourner voir si le message d'essai peut partir » relance la même
+invocation après cette attente, avec le même texte. C'est la même liste
+que pour un vrai envoi, lue de deux façons : « Compter les tours » en
+tire son maximum (autant de tours que d'attentes, plus le premier), et le
+délai du lien s'écrit `web_accounts.contact_waits_minutes[{rappel}]`,
+l'attente du rappel en cours. Ces liens ne jouent pas pour un vrai envoi :
+une mission ne suit pas ses liens.
 
 ---
 

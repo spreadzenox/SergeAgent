@@ -39,7 +39,7 @@ from serge.ingress.adresse import product_address, server_address
 from serge.interpreter.seen import CHOICES, read_seen_table, row_history
 from serge.interpreter.settings import load_settings
 from serge.missions import mission
-from serge.policy_store import policy_en_vigueur
+from serge.policy_store import policy_en_vigueur, setting_value
 from serge.sandbox.captures import browser_screenshot, real_browser_screenshot
 from serge.sandbox.chantier import (
     sandbox_command,
@@ -199,14 +199,24 @@ def _echo(
 
 
 def _next_round(
-    _conn: sqlite3.Connection, _tool: str, args: dict[str, Any], _inv: str
+    conn: sqlite3.Connection, _tool: str, args: dict[str, Any], _inv: str
 ) -> dict[str, Any]:
     """Compter les tours d'une boucle : « encore » sous le maximum.
 
-    Exemple : au plus 3 critiques d'un plan ; au tour 3, « fini ».
+    Le maximum est un nombre (``max``), ou vient d'une liste d'attentes de
+    la Policy (``waits``, le nom du réglage) : autant de tours que
+    d'attentes, plus le premier.
+
+    Exemples : au plus 3 critiques d'un plan ; au tour 3, « fini ». Avec
+    six attentes avant chaque rappel, sept essais.
     """
     tour = int(str(args.get('round') or '1') or 1)
-    maximum = int(str(args.get('max') or '1') or 1)
+    attentes = str(args.get('waits') or '').strip()
+    if attentes:
+        liste = setting_value(conn, attentes)
+        maximum = len(liste) + 1 if isinstance(liste, list) else 1
+    else:
+        maximum = int(str(args.get('max') or '1') or 1)
     if tour < maximum:
         return {'suite': 'encore', 'tour_suivant': tour + 1}
     return {'suite': 'fini', 'tour_suivant': tour}

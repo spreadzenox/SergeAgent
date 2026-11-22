@@ -1185,42 +1185,21 @@ sections:
         min: 1
         max: 180
         step: 1
-      - id: contact_retry_hours
-        value: 12
-        title: Demande de contact, premier rappel en heures
+      - id: contact_waits_minutes
+        value: [5, 60, 180, 360, 1440, 10080]
+        title: Demande de contact, attentes avant chaque rappel, en minutes
         help: >-
           Sur un réseau, Serge ne peut pas toujours écrire à quelqu’un tout
           de suite : la personne doit d’abord accepter sa demande de
           connexion (LinkedIn) ou le suivre en retour (X). Serge demande
-          alors le contact, et retourne voir après ce délai, puis de moins
-          en moins souvent : chaque attente dure autant que tout ce qu’il a
-          déjà attendu.
-        kind: curseur
+          alors le contact, puis retourne voir après chacune de ces
+          attentes, l’une après l’autre. Au départ : 5 minutes, 1 heure, 3
+          heures, 6 heures, 24 heures, puis 7 jours. Après le dernier
+          rappel, il s’arrête : un vrai envoi échoue avec sa raison. Vaut
+          pour un vrai envoi comme pour un message d’essai.
+        kind: nombres
         min: 1
-        max: 72
-        step: 1
-      - id: contact_wait_days
-        value: 14
-        title: Demande de contact, attente au plus en jours
-        help: >-
-          Passé ce délai sans que la personne ait accepté le contact,
-          Serge regarde une dernière fois, puis l’envoi échoue avec sa
-          raison.
-        kind: curseur
-        min: 1
-        max: 60
-        step: 1
-      - id: trial_contact_retry_minutes
-        value: 10
-        title: Message d’essai, rappel en minutes
-        help: >-
-          Un message d’essai (page Système) qui attend que tu acceptes le
-          contact : Serge retourne voir après ce délai, autant de fois que
-          le permet « Compter les rappels d’un essai » (page Policy).
-        kind: curseur
-        min: 1
-        max: 120
-        step: 1
+        max: 43200
 
   - id: courriel
     title: E-mails des produits
@@ -1314,6 +1293,11 @@ changes:
 
 # Les réglages retirés de ce fichier, effacés aussi de la base.
 deleted:
+  # Les rappels d'une demande de contact suivent une seule liste d'attentes,
+  # « contact_waits_minutes » (décision Q110, corrigée le 22 novembre 2026).
+  - web_accounts.contact_retry_hours
+  - web_accounts.contact_wait_days
+  - web_accounts.trial_contact_retry_minutes
   # Les tickets partent tout de suite, à toute heure, sans résumé du jour
   # (Q86) : plus rien ne lit ces deux réglages (Q78).
   - tickets.digest_hour

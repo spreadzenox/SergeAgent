@@ -251,6 +251,12 @@ def _delay(
     leur nom est remplacé par le canal de la ligne. Exemple :
     ``channels.{channel}.reply_delay_min_minutes`` pour une réponse par
     e-mail. Sans réglage, ou un délai de 0, la tâche part tout de suite.
+
+    Un réglage peut être une liste d'attentes, une par tour d'une boucle :
+    ``nom[{tour}]`` prend celle du tour (la première sans tour, la dernière
+    au-delà de la liste). Exemple : ``web_accounts.contact_waits_minutes
+    [{rappel}]`` fait attendre 5 minutes avant le premier rappel, 1 heure
+    avant le deuxième.
     """
     if not min_setting:
         return ''
@@ -258,7 +264,15 @@ def _delay(
     def minutes(name: str) -> float:
         for key, value in source.items():
             name = name.replace('{' + str(key) + '}', str(value or ''))
-        return float(setting_value(conn, name) or 0)
+        name, _, rang = name.partition('[')
+        valeur = setting_value(conn, name)
+        if isinstance(valeur, list):
+            chiffres = rang.rstrip(']').strip()
+            tour = int(chiffres) if chiffres.isdigit() else 1
+            valeur = (
+                valeur[min(max(tour, 1), len(valeur)) - 1] if valeur else 0
+            )
+        return float(valeur or 0)
 
     low = minutes(min_setting)
     high = max(low, minutes(max_setting or min_setting))

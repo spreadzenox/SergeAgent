@@ -23,12 +23,12 @@ Un envoi attend aussi quand le réseau ne laisse pas encore écrire à la
 personne. La mission demande alors le contact comme le réseau le propose
 (suivre la personne, lui demander la connexion) et rend ``envoye:
 'attente'`` : l'heure est notée sur l'envoi (``contact_asked_at``), et
-l'envoi repart plus tard voir si elle a accepté. Le premier rappel vient
-après le délai réglé, les suivants de moins en moins souvent (chaque
-attente dure autant que tout ce qui a déjà été attendu) ; passé le nombre
-de jours réglé, la mission regarde une dernière fois, puis l'envoi échoue
-avec sa raison. Exemple, avec 12 heures et 14 jours : rappels à 12 h, 1,
-2, 4 et 8 jours, puis au quatorzième jour.
+l'envoi repart plus tard voir si elle a accepté. Les rappels suivent une
+liste d'attentes, l'une après l'autre (page Policy, « Comptes web » : 5
+minutes, 1 heure, 3 heures, 6 heures, 24 heures, 7 jours) ; au dernier
+rappel, si la personne n'a toujours pas accepté, l'envoi échoue avec sa
+raison. Exemple : contact demandé à 10 h ; rappels à 10 h 05, 11 h 05,
+14 h 05, 20 h 05, le lendemain à 20 h 05, puis sept jours plus tard.
 
 Exemple : un premier message pour ``https://www.linkedin.com/in/ana-roux``
 part par la mission d'envoi du canal ``linkedin``, qui rend ``{envoye:
@@ -120,7 +120,7 @@ def _contact_demande(
 ) -> ChannelError:
     """La mission a demandé le contact et le message attend : l'erreur à
     lever. ``ChannelLater`` jusqu'au prochain rappel ; ``ChannelError``
-    quand la personne n'a pas accepté dans le délai réglé."""
+    quand la personne n'a pas accepté au dernier rappel."""
     maintenant = datetime.now(UTC)
     row = conn.execute(
         'SELECT contact_asked_at FROM touches WHERE id=?', (message.touch_id,)
@@ -132,23 +132,31 @@ def _contact_demande(
             'UPDATE touches SET contact_asked_at=? WHERE id=?',
             (demande, message.touch_id),
         )
-    reglages = policy_en_vigueur(conn)['web_accounts']
-    jours = float(reglages['contact_wait_days'])
-    attendu = maintenant - datetime.fromisoformat(demande)
-    fin = datetime.fromisoformat(demande) + timedelta(days=jours)
-    if maintenant >= fin:
-        return ChannelError(
-            'la personne n’a pas accepté le contact en'
-            f' {jours:g} jours : le message n’est pas parti'
-        )
-    pause = max(
-        timedelta(hours=float(reglages['contact_retry_hours'])), attendu
-    )
-    return ChannelLater(
-        raison
-        or 'contact demandé : le message partira quand la personne l’aura'
-        ' accepté',
-        min(maintenant + pause, fin).isoformat(),
+    attentes = [
+        float(minutes)
+        for minutes in policy_en_vigueur(conn)['web_accounts'][
+            'contact_waits_minutes'
+        ]
+    ]
+    attendu = (
+        maintenant - datetime.fromisoformat(demande)
+    ).total_seconds() / 60
+    # Les attentes se suivent : le prochain rappel est le premier que
+    # l'envoi n'a pas encore atteint, compté depuis la demande.
+    cumul = 0.0
+    for minutes in attentes:
+        cumul += minutes
+        if attendu < cumul:
+            quand = datetime.fromisoformat(demande) + timedelta(minutes=cumul)
+            return ChannelLater(
+                raison
+                or 'contact demandé : le message partira quand la personne'
+                ' l’aura accepté',
+                quand.isoformat(),
+            )
+    return ChannelError(
+        'la personne n’a pas accepté le contact après'
+        f' {len(attentes)} rappels : le message n’est pas parti'
     )
 
 

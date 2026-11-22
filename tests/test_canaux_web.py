@@ -14,9 +14,11 @@ Scénarios :
   un message que le site refuse est en échec, avec la raison ;
 - le réseau ne laisse pas encore écrire à la personne (décision Q110) : la
   mission lui demande le contact et rend « attente » ; l'envoi attend, les
-  rappels s'espacent, et il part quand elle a accepté ; passé le délai
-  réglé, il échoue. Une demande de contact compte dans le plafond du jour.
-  Un message d'essai qui attend repart tout seul, un nombre de fois borné ;
+  rappels suivent la liste d'attentes de la Policy (5 minutes, 1 heure, 3
+  heures, 6 heures, 24 heures, 7 jours), et il part quand elle a accepté ;
+  au dernier rappel, il échoue. Une demande de contact compte dans le
+  plafond du jour. Un message d'essai qui attend repart tout seul, selon
+  la même liste ;
 - sans compte en service, le canal n'est pas branché : la campagne est
   annulée, et rien n'est relevé.
 """
@@ -39,7 +41,7 @@ from serge.funnels.contacts import normalise_value  # noqa: E402
 from serge.interpreter.tasks import enqueue_task  # noqa: E402
 from serge.llm.client import ChatResult  # noqa: E402
 from serge.mc.proj_objet import project_objet  # noqa: E402
-from serge.policy_store import set_setting  # noqa: E402
+from serge.policy_store import policy_en_vigueur, set_setting  # noqa: E402
 from tests.test_lot12_chaine import (  # noqa: E402
     ChaineCase,
     FauxModeles,
@@ -266,14 +268,18 @@ class CanauxWebTests(ChaineCase):
         return datetime.fromisoformat(quand[0])
 
     def _le_temps_passe(
-        self, jours: float = 0, invocation: str = 'envoyer_message'
+        self, minutes: float = 0, invocation: str = 'envoyer_message'
     ) -> None:
         """La tâche en attente est due ; le contact a été demandé il y a
-        ``jours`` jours."""
-        if jours:
+        ``minutes`` minutes."""
+        if minutes:
             self.conn.execute(
                 'UPDATE touches SET contact_asked_at=?',
-                ((datetime.now(UTC) - timedelta(days=jours)).isoformat(),),
+                (
+                    (
+                        datetime.now(UTC) - timedelta(minutes=minutes)
+                    ).isoformat(),
+                ),
             )
         self.conn.execute(
             "UPDATE tasks SET not_before='' WHERE invocation_id=?"
@@ -282,9 +288,10 @@ class CanauxWebTests(ChaineCase):
         )
         self._vider()
 
-    def _dans(self, quand: datetime) -> float:
-        """Dans combien d'heures, à une minute près."""
-        return round((quand - datetime.now(UTC)).total_seconds() / 3600, 1)
+    def _dans(self, invocation: str = 'envoyer_message') -> int:
+        """Dans combien de minutes la tâche en attente repartira."""
+        ecart = self._reprise(invocation) - datetime.now(UTC)
+        return round(ecart.total_seconds() / 60)
 
     def test_le_contact_demande_fait_attendre_l_envoi(self) -> None:
         """Ana n'est pas une relation et LinkedIn refuse la note : Serge
@@ -297,8 +304,8 @@ class CanauxWebTests(ChaineCase):
         self.assertEqual((statut, ref, raison), ('pending', '', DEMANDE))
         demande = self._un('SELECT contact_asked_at FROM touches')[0]
         self.assertTrue(demande)
-        # Premier rappel dans 12 heures (page Policy, « Comptes web »).
-        self.assertEqual(self._dans(self._reprise()), 12.0)
+        # Premier rappel dans 5 minutes (page Policy, « Comptes web »).
+        self.assertEqual(self._dans(), 5)
         self.assertEqual(len(self.modeles.envois), 1)
         # Mission Control le dit sur la fiche de l'envoi.
         touche = self._un('SELECT id FROM touches')[0]
@@ -320,10 +327,17 @@ class CanauxWebTests(ChaineCase):
             self._un('SELECT contact_asked_at FROM touches')[0], demande
         )
 
-    def test_les_rappels_s_espacent_puis_l_envoi_echoue(self) -> None:
-        """Chaque attente dure autant que tout ce qui a déjà été attendu ;
-        au bout du délai réglé, Serge regarde une dernière fois, puis
-        l'envoi échoue avec sa raison."""
+    def test_les_rappels_suivent_la_liste_puis_l_envoi_echoue(self) -> None:
+        """Les attentes de la Policy se suivent, l'une après l'autre : 5
+        minutes, 1 heure, 3 heures, 6 heures, 24 heures, 7 jours. Au
+        dernier rappel, l'envoi échoue avec sa raison."""
+        attentes = [5, 60, 180, 360, 1440, 10080]
+        self.assertEqual(
+            policy_en_vigueur(self.conn)['web_accounts'][
+                'contact_waits_minutes'
+            ],
+            attentes,
+        )
         self._un_envoi_pret()
         self.modeles.envoi = {'envoye': 'attente'}
         self._vider()
@@ -334,22 +348,27 @@ class CanauxWebTests(ChaineCase):
             'contact demandé : le message partira quand la personne'
             ' l’aura accepté',
         )
-        self._le_temps_passe(jours=3)
-        self.assertEqual(self._dans(self._reprise()), 72.0)
-        # À 13 jours et demi, le dernier rappel tombe au quatorzième jour.
-        self._le_temps_passe(jours=13.5)
-        self.assertEqual(self._dans(self._reprise()), 12.0)
-        self._le_temps_passe(jours=14.1)
+        self.assertEqual(self._dans(), 5)
+        # Chaque rappel tombe une minute après son heure : le suivant est
+        # compté depuis la demande, pas depuis ce retard.
+        depuis = 0
+        for attente, suivante in zip(attentes, attentes[1:], strict=False):
+            depuis += attente
+            self._le_temps_passe(minutes=depuis + 1)
+            self.assertEqual(self._envoi()[0], 'pending')
+            self.assertEqual(self._dans(), suivante - 1)
+        self._le_temps_passe(minutes=sum(attentes) + 1)
         statut, _, raison, _ = self._envoi()
         self.assertEqual(
             (statut, raison),
             (
                 'failed',
-                'la personne n’a pas accepté le contact en 14 jours : le'
-                ' message n’est pas parti',
+                'la personne n’a pas accepté le contact après 6 rappels :'
+                ' le message n’est pas parti',
             ),
         )
-        self.assertEqual(len(self.modeles.envois), 4)
+        # Le premier passage, puis les six rappels.
+        self.assertEqual(len(self.modeles.envois), 7)
         self.assertIsNone(
             self._un(
                 "SELECT 1 FROM tasks WHERE invocation_id='envoyer_message'"
@@ -414,16 +433,13 @@ class CanauxWebTests(ChaineCase):
 
     def test_un_message_d_essai_qui_attend_repart_tout_seul(self) -> None:
         """Le bouton de la page Système : Serge demande le contact, puis
-        retourne voir dix minutes plus tard, avec le même texte."""
+        retourne voir 5 minutes plus tard, avec le même texte."""
         self.modeles.envoi = {'envoye': 'attente', 'raison': DEMANDE}
         self._essai('Bonjour, ceci est un essai.')
         self.assertEqual(
             self._essais(), [('done', 'attente', ''), ('ready', '', '2')]
         )
-        quand = self._reprise('envoyer_par_le_web')
-        self.assertEqual(
-            round((quand - datetime.now(UTC)).total_seconds() / 60), 10
-        )
+        self.assertEqual(self._dans('envoyer_par_le_web'), 5)
         # Tu as accepté : au rappel, le texte part, et rien ne suit.
         self.modeles.envoi = {'envoye': 'oui', 'reference': FIL}
         self._le_temps_passe(invocation='envoyer_par_le_web')
@@ -437,13 +453,23 @@ class CanauxWebTests(ChaineCase):
         # Un essai n'écrit aucun envoi.
         self.assertEqual(self._un('SELECT COUNT(*) FROM touches')[0], 0)
 
-    def test_un_message_d_essai_ne_repart_pas_sans_fin(self) -> None:
-        """Personne n'accepte : Serge essaie le nombre de fois réglé (la
-        première comprise), puis s'arrête."""
-        self._regler('compter_rappels_essai', 'essais_max', 3)
+    def test_un_message_d_essai_suit_la_liste_d_attentes(self) -> None:
+        """Personne n'accepte : chaque rappel attend ce que dit la liste
+        de la Policy, et Serge s'arrête après le dernier. La liste est la
+        seule chose à régler : elle donne aussi le nombre d'essais."""
+        self.assertEqual(
+            set_setting(
+                self.conn,
+                'web_accounts.contact_waits_minutes',
+                [5, 60, 180],
+                'test',
+            ),
+            '',
+        )
         self.modeles.envoi = {'envoye': 'attente', 'raison': DEMANDE}
         self._essai('Bonjour.')
-        for _ in range(5):
+        for attente in (5, 60, 180):
+            self.assertEqual(self._dans('envoyer_par_le_web'), attente)
             self._le_temps_passe(invocation='envoyer_par_le_web')
         self.assertEqual(
             self._essais(),
@@ -451,7 +477,31 @@ class CanauxWebTests(ChaineCase):
                 ('done', 'attente', ''),
                 ('done', 'attente', '2'),
                 ('done', 'attente', '3'),
+                ('done', 'attente', '4'),
             ],
+        )
+        self.assertIsNone(
+            self._un(
+                "SELECT 1 FROM tasks WHERE invocation_id='envoyer_par_le_web'"
+                " AND status='ready'"
+            )
+        )
+
+    def test_le_delai_d_un_lien_lit_une_liste_d_attentes(self) -> None:
+        """« nom[tour] » : l'attente du tour ; la première sans tour, la
+        dernière au-delà de la liste."""
+        from serge.interpreter.flow import _delay
+
+        nom = 'web_accounts.contact_waits_minutes[{rappel}]'
+
+        def minutes(rappel: str) -> int:
+            quand = _delay(self.conn, nom, nom, {'rappel': rappel})
+            ecart = datetime.fromisoformat(quand) - datetime.now(UTC)
+            return round(ecart.total_seconds() / 60)
+
+        self.assertEqual(
+            [minutes(r) for r in ('', '1', '2', '6', '9')],
+            [5, 5, 60, 10080, 10080],
         )
 
     def test_sans_compte_le_canal_n_est_pas_branche(self) -> None:

@@ -15,7 +15,8 @@ jour du canal, comme un message parti.
 Exemple : le premier message pour ``https://www.linkedin.com/in/ana-roux``
 ne peut pas partir, Ana n'est pas une relation. Serge lui envoie une
 demande de connexion le 21 novembre à 10 h : ``contact_asked_at`` vaut
-cette heure, et l'envoi repart 12 heures plus tard voir si elle a accepté.
+cette heure, et l'envoi repart 5 minutes plus tard voir si elle a accepté,
+puis de moins en moins souvent.
 """
 
 from __future__ import annotations
