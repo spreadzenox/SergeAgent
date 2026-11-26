@@ -167,8 +167,22 @@ def apply_pending(
     Une base vide (version 0) absorbe la première migration même si
     son numéro n’est pas 1 (socle v7). Ensuite : strictement +1.
 
+    Plusieurs services ouvrent la base en même temps à chaque déploiement.
+    Les migrations manquantes passent donc dans une seule transaction, qui
+    prend dès son début le verrou d'écriture de SQLite
+    (``BEGIN IMMEDIATE``) : un processus qui arrive pendant ce temps attend
+    (le délai de sa connexion, 30 secondes dans ``open_db``), relit la
+    version sous le verrou, la trouve à jour et ne fait rien. Si une
+    migration échoue, toute la transaction est annulée : la base reste à
+    la version qu'elle avait.
+
+    Sans ce verrou (21 novembre 2026) : deux services lisent la version
+    56 avant que l'un ait fini, et tous deux ajoutent la colonne de la
+    version 57. Le second s'arrête sur « duplicate column name ».
+
     Args:
-        connection: Connexion (commit par l’appelant).
+        connection: Connexion. Ce qu'elle avait en cours est validé avant
+            les migrations, et les migrations sont validées ici.
         migrations: Chaîne (défaut : ``MIGRATIONS``).
         head: Version du code (défaut : ``SCHEMA_VERSION``).
 
@@ -180,19 +194,37 @@ def apply_pending(
     """
     chain = tuple(migrations) if migrations is not None else MIGRATIONS
     target = SCHEMA_VERSION if head is None else head
-    have = read_version(connection)
-    if have > target:
-        raise MigrateError(f'canon v{have} plus récent que le code v{target}')
     if chain and chain[-1][0] != target:
         raise MigrateError(
             f'tête des migrations {chain[-1][0]} ≠ code v{target}'
         )
-    for version, apply in chain:
-        if version <= have:
-            continue
-        if have != 0 and version != have + 1:
-            raise MigrateError(f'trou de migration : {have} → {version}')
-        apply(connection)
-        stamp(connection, version)
-        have = version
+    if read_version(connection) == target:
+        return target
+    # En mode « autocommit », Python n'ouvre ni ne valide plus rien de
+    # lui-même : sans cela, ``executescript`` valide la transaction en cours
+    # avant de s'exécuter, et le verrou serait rendu au milieu.
+    mode = connection.autocommit
+    connection.autocommit = True
+    try:
+        connection.execute('BEGIN IMMEDIATE')
+        have = read_version(connection)
+        if have > target:
+            raise MigrateError(
+                f'canon v{have} plus récent que le code v{target}'
+            )
+        for version, apply in chain:
+            if version <= have:
+                continue
+            if have != 0 and version != have + 1:
+                raise MigrateError(f'trou de migration : {have} → {version}')
+            apply(connection)
+            stamp(connection, version)
+            have = version
+        connection.execute('COMMIT')
+    finally:
+        # Après une erreur, la transaction est encore ouverte, sauf si
+        # SQLite l'a déjà annulée lui-même (disque plein, par exemple).
+        if connection.in_transaction:
+            connection.execute('ROLLBACK')
+        connection.autocommit = mode
     return have

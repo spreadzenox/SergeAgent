@@ -16,7 +16,8 @@ def init_schema(connection: sqlite3.Connection) -> None:
     (``config/ticket-types.yaml``), puis calcule les empreintes du code.
 
     Args:
-        connection: Connexion (commit par l'appelant).
+        connection: Connexion. Les migrations sont validées par
+            ``apply_pending`` ; le remplissage, par l'appelant.
     """
     from serge.canaux import ensure_canaux
     from serge.capabilities import ensure_capabilities
