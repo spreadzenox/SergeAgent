@@ -52,6 +52,7 @@ class _Handler(Protocol):
     close_connection: bool
 
     def _is_owner(self) -> bool: ...
+    def _db(self) -> Any: ...
     def _send(self, code: int, body: bytes, content_type: str) -> None: ...
     def send_response(self, code: int, message: str | None = None) -> None: ...
     def send_header(self, keyword: str, value: str) -> None: ...
@@ -82,7 +83,8 @@ class EcranMixin(_Base):
         if reste in ('', '/'):
             self._vers(ACCUEIL)
             return
-        adresse = adresse_ecran()
+        with self._db() as conn:
+            adresse = adresse_ecran(conn)
         if not adresse:
             self._texte(
                 503,

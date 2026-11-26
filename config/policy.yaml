@@ -1108,6 +1108,16 @@ sections:
         min: 512
         max: 8192
         step: 256
+      - id: navigateur.vpn_off
+        value: non
+        title: Désactiver le VPN
+        help: >-
+          oui : les deux Chrome naviguent avec l'IP du serveur ; non (par
+          défaut) : leur trafic web passe par le tunnel VPN de Télécom
+          Paris (le sidecar serge-vpn, serge/sandbox/vpn.py). Le changement
+          vaut au prochain lancement d'un des deux Chrome.
+        kind: liste
+        choices: [oui, non]
       - id: vrai_chrome.attente_minutes
         value: 10
         title: Vrai Chrome, attente d’un humain en minutes

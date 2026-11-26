@@ -51,6 +51,12 @@ def _ps(args: list[str]) -> int:
     return 0
 
 
+def _dossier_volume(volume: str) -> str:
+    """Le dossier d'un volume : un chemin absolu (un montage du VPN)
+    devient un nom de dossier."""
+    return volume.replace('/', '_').lstrip('_')
+
+
 def _run(args: list[str]) -> int:
     if os.environ.get('FAKE_DOCKER_FAIL') == 'run':
         return _refuse(
@@ -76,7 +82,8 @@ def _run(args: list[str]) -> int:
     volume, _, _target = flags.get('-v', f'{flags["--name"]}:/x').partition(
         ':'
     )
-    (ROOT / 'volumes' / volume).mkdir(parents=True, exist_ok=True)
+    store = _dossier_volume(volume)
+    (ROOT / 'volumes' / store).mkdir(parents=True, exist_ok=True)
     _save(
         flags['--name'],
         {
@@ -124,7 +131,7 @@ def _exec(args: list[str]) -> int:
         return _refuse(f'No such container: {name}', 1)
     if state['state'] != 'running':
         return _refuse(f'container {name} is not running', 1)
-    work = str(ROOT / 'volumes' / state['volume'])
+    work = str(ROOT / 'volumes' / _dossier_volume(state['volume']))
     argv = [a.replace('/work', work) for a in argv]
     if argv[:2] == ['du', '-sm'] and os.environ.get('FAKE_DOCKER_DU_MB'):
         print(f'{os.environ["FAKE_DOCKER_DU_MB"]}\t{work}')
@@ -170,13 +177,33 @@ def _network(args: list[str]) -> int:
 
 def _inspect(args: list[str]) -> int:
     """``inspect -f <format> NAME`` : l'image du conteneur
-    (``.Config.Image``), sinon ses réseaux."""
+    (``.Config.Image``), son identifiant (``.Id``), son réseau
+    (``.HostConfig.NetworkMode``), sa santé (``.State.Health.Status``),
+    sinon ses réseaux."""
     state = _state(args[-1])
     if state is None:
         print(f'Error: No such object: {args[-1]}', file=sys.stderr)
         return 1
-    if 'Config.Image' in ' '.join(args):
+    format = ' '.join(args[:-1])
+    if 'Config.Image' in format:
         print(state['image'])
+        return 0
+    if '.Id' in format:
+        print(f'id-{args[-1]}-{state.get("image", "")}'.replace(' ', ''))
+        return 0
+    if 'HostConfig.NetworkMode' in format:
+        print(state.get('flags', {}).get('--network', 'bridge'))
+        return 0
+    if 'State.Health.Status' in format:
+        if os.environ.get('FAKE_DOCKER_HEALTH'):
+            print(os.environ['FAKE_DOCKER_HEALTH'])
+        else:
+            print(
+                state.get(
+                    'health',
+                    'healthy' if state['state'] == 'running' else 'unhealthy',
+                )
+            )
         return 0
     print(' '.join(state.get('networks', [])))
     return 0
@@ -200,7 +227,8 @@ def _port(args: list[str]) -> int:
     state = _state(args[0])
     if state is None:
         return _refuse(f'No such container: {args[0]}', 1)
-    print(state.get('port', '127.0.0.1:49222'))
+    ports = state.get('ports', {})
+    print(ports.get(args[1], state.get('port', '127.0.0.1:49222')))
     return 0
 
 

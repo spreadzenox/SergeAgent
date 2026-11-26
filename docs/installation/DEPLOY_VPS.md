@@ -117,13 +117,16 @@ non vide et les chemins live sans
 
 ## Prérequis VPS encore manuels
 
-Ce PR **n’installe pas** le runner, ne SSH pas, ne fabrique pas le
+Ce PR **n'installe pas** le runner, ne SSH pas, ne fabrique pas le
 couple. Après le merge, on le fait à deux :
 
 - [ ] runner enregistré, labels `linux` + `julien-vps`, Idle
 - [ ] couple live + age + mandat
 - [ ] `system_root` vide
 - [ ] venv Python ≥ 3.12
+- [ ] secrets du VPN Télécom Paris (`telecom-vpn-login`,
+      `telecom-vpn-password`) : tout le trafic web des deux Chrome sort par
+      ce tunnel ([VPN.md](VPN.md))
 - [x] `playwright` dans le Python des services (lot 10) : installé à
       chaque déploiement avec les autres dépendances. Il pilote le
       conteneur Chromium du serveur : pas de `playwright install`, aucun
