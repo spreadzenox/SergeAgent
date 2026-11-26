@@ -2516,3 +2516,29 @@ Mission Control voit cette session dans l'écran du vrai Chrome. Les
 tâches sans compte qui passent par le vrai Chrome (le paiement test, le
 captcha) naviguent dans le même profil.
 
+### Q114 - Tout le trafic des Chrome sort par un VPN Télécom Paris (demandé par Clem, 26 novembre 2026)
+
+LinkedIn et Reddit refusent l'adresse IP du VPS. Clem a fourni un accès
+VPN Télécom Paris (config/vpn/telecom-paris.ovpn) et le compte
+cpesquet-25. Ce qui est décidé :
+
+1. **Le trafic web des deux Chrome de Serge sort par ce VPN, et lui
+   seul.** Un sidecar serge-vpn (gluetun) porte le tunnel ; les deux
+   Chrome partagent son réseau (--network container:). Rien d'autre du
+   serveur ne change : les autres projets, les chantiers, la route de
+   l'hôte ne voient pas le VPN.
+2. **Une panne du VPN ne fuit pas.** Gluetun coupe la sortie du réseau
+   partagé tant que le tunnel n'est pas établi : les pages échouent
+   franchement, l'IP du VPS ne sert pas de repli.
+3. **Un réglage unique, 
+avigateur.vpn_off (page Policy).** « non » par
+   défaut : le VPN sert partout. « oui » : les deux Chrome reprennent
+   leur réseau et publient leurs ports eux-mêmes, comme avant. Le
+   changement vaut au prochain lancement d'un des deux Chrome.
+4. **L'écran du vrai Chrome (noVNC) n'est pas dévié.** Le sidecar publie
+   ses ports sur 127.0.0.1, et Mission Control relaie l'écran par l'IP
+   du VPS : un humain qui vient résoudre un captcha passe par le serveur,
+   pas par le tunnel.
+5. **Les secrets du VPN sont sur le serveur**, jamais dans le dépôt
+   (	elecom-vpn-login, 	elecom-vpn-password). Sans eux, le lancement
+   échoue clairement plutôt que de naviguer en direct sans le dire.
