@@ -20,6 +20,12 @@ Mission Control :
 - **la session** : les cookies du site, et ce qu'il garde dans le
   navigateur. Avec elle, ouvrir le site suffit pour être connecté.
 
+**Un compte connecté avec Google** (``sign_in_with = 'google'``) n'a pas
+de mot de passe : un humain l'a créé avec « Continuer avec Google ». Il
+vit dans le profil du vrai Chrome, où un humain a connecté Google à la
+main (Mission Control, ``/owner/vrai-chrome``) : ses tâches y ouvrent
+leurs onglets, et rien de sa session n'est gardé en base.
+
 **La garde.** Un compte trop sollicité se fait fermer. Chaque action faite
 avec un compte est comptée, et refusée au-delà du plafond du jour (page
 Policy, « Comptes web »). Un compte ne sert qu'à une tâche à la fois : une
@@ -57,6 +63,10 @@ _SIGNS = '!#%+-=?@'
 LONGUEUR = 20
 LONGUEUR_MIN = 8
 LONGUEUR_MAX = 64
+# Les façons de se connecter à un compte : par son identifiant et son mot
+# de passe (vide), ou avec Google, dans le profil du vrai Chrome.
+GOOGLE = 'google'
+CONNEXIONS = ('', GOOGLE)
 
 
 class AccountError(RuntimeError):
@@ -143,6 +153,13 @@ def password(conn: sqlite3.Connection, name: str) -> str:
         AccountError: Pas de compte de ce nom, ou pas de clé du coffre.
     """
     value = unseal(str(_row(conn, name)[1]))
+    if not value and in_profile(conn, name):
+        raise AccountError(
+            f'le compte « {name} » se connecte avec Google, il n’a pas de'
+            ' mot de passe : sur le site, clique « Continuer avec Google »'
+            ' et choisis le compte de Serge ; si Google demande un mot de'
+            ' passe ou un code, appelle un humain'
+        )
     if not value:
         value = new_password()
         set_password(conn, name, value)
@@ -200,33 +217,60 @@ def change_password(
     }
 
 
+def in_profile(conn: sqlite3.Connection, name: str) -> bool:
+    """Ce compte vit-il dans le profil du vrai Chrome (connecté avec
+    Google) ? Ses tâches y ouvrent leurs onglets, sans cookies à elles."""
+    row = conn.execute(
+        'SELECT sign_in_with FROM web_accounts WHERE id=?', (name,)
+    ).fetchone()
+    return bool(row and row[0])
+
+
 def register(
     conn: sqlite3.Connection,
     name: str,
     url: str,
     login: str,
     secret: str,
+    sign_in_with: str = '',
 ) -> None:
-    """Enregistre un compte créé à la main : son identifiant et son mot de
-    passe. Un compte du même nom garde sa session.
+    """Enregistre un compte créé à la main : son identifiant, et son mot
+    de passe ou sa connexion avec Google (``sign_in_with``). Un compte du
+    même nom garde sa session.
 
     Raises:
         AccountError: Un champ manque, ou pas de clé du coffre.
     """
     name, url, login = name.strip().lower(), url.strip(), login.strip()
-    if not name or not url or not login or not secret:
+    sign_in_with = sign_in_with.strip().lower()
+    if sign_in_with not in CONNEXIONS:
+        raise AccountError(
+            'la connexion est « google », ou vide pour un mot de passe'
+        )
+    if not name or not url or not login or not (secret or sign_in_with):
         raise AccountError(
             'le nom du compte, l’adresse du site, l’identifiant et le mot'
-            ' de passe sont tous demandés'
+            ' de passe sont tous demandés (le mot de passe, sauf pour un'
+            ' compte connecté avec Google)'
         )
     now = utcnow()
     conn.execute(
-        'INSERT INTO web_accounts(id, url, login, password_enc, status,'
-        " created_at, updated_at) VALUES(?,?,?,?,'active',?,?)"
+        'INSERT INTO web_accounts(id, url, login, password_enc,'
+        ' sign_in_with, status, created_at, updated_at)'
+        " VALUES(?,?,?,?,?,'active',?,?)"
         ' ON CONFLICT(id) DO UPDATE SET url=excluded.url,'
         ' login=excluded.login, password_enc=excluded.password_enc,'
-        " status='active', updated_at=excluded.updated_at",
-        (name, url, login, seal(secret), now, now),
+        " sign_in_with=excluded.sign_in_with, status='active',"
+        ' updated_at=excluded.updated_at',
+        (
+            name,
+            url,
+            login,
+            seal(secret) if secret else '',
+            sign_in_with,
+            now,
+            now,
+        ),
     )
 
 

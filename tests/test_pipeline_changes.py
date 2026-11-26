@@ -2097,3 +2097,59 @@ class MotDePasseDuSiteTests(unittest.TestCase):
         # Une seconde fois ne change rien.
         seed_pipeline(conn, data)
         self.assertEqual(self._outil(conn), outil)
+
+
+class ConnexionAvecGoogleTests(unittest.TestCase):
+    """Le serveur du 26 novembre 2026 : quatre invocations se reconnectent
+    à un compte par son mot de passe seulement (décision Q113)."""
+
+    IDS = {
+        'lot13_fouille_connexion_google': 'fouiller_reseau',
+        'lot13_envoi_web_connexion_google': 'envoyer_par_le_web',
+        'lot13_lecture_web_connexion_google': 'lire_messagerie',
+        'lot13_verifier_connexion_google': 'verifier_compte_web',
+    }
+
+    def _prompts(self, conn: sqlite3.Connection) -> dict[str, str]:
+        return {
+            str(ident): str(prompt)
+            for ident, prompt in conn.execute(
+                'SELECT id, prompt FROM invocations WHERE id IN (?, ?, ?, ?)',
+                tuple(self.IDS.values()),
+            )
+        }
+
+    def test_elles_recoivent_la_reconnexion_par_google(self) -> None:
+        conn = sqlite3.connect(':memory:')
+        self.addCleanup(conn.close)
+        init_schema(conn)
+        data = read_yaml_file(config_dir() / 'pipeline.yaml')
+        changes = {c['id']: c for c in data['changes']}
+        neufs = self._prompts(conn)
+        for ident, invocation in self.IDS.items():
+            # Une instance neuve a déjà la consigne.
+            self.assertEqual(
+                conn.execute(
+                    'SELECT result FROM pipeline_changes WHERE id=?', (ident,)
+                ).fetchone()[0],
+                'prompt déjà à jour',
+            )
+            passage = changes[ident]['set']['prompt']['replace'][0]
+            self.assertEqual(neufs[invocation].count(passage['new']), 1)
+            conn.execute(
+                'UPDATE invocations SET prompt=? WHERE id=?',
+                (
+                    neufs[invocation].replace(passage['new'], passage['old']),
+                    invocation,
+                ),
+            )
+        conn.executemany(
+            'DELETE FROM pipeline_changes WHERE id=?', [(i,) for i in self.IDS]
+        )
+        for prompt in self._prompts(conn).values():
+            self.assertNotIn('Continuer avec', prompt)
+        seed_pipeline(conn, data)
+        self.assertEqual(self._prompts(conn), neufs)
+        for prompt in neufs.values():
+            self.assertIn('se connecte avec Google', prompt)
+            self.assertIn('« Appeler un humain »', prompt)

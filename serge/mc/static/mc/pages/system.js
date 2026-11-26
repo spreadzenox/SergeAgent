@@ -174,7 +174,7 @@ function renderComptesWeb(main, payload, sig) {
     (c) => {
       const item = lienVers(
         `#/objet/compte/${c.id}`,
-        `${c.id} — ${c.identifiant || 'sans identifiant'} — ${c.etat}, ${c.session ? 'session gardée' : 'sans session'}, ${c.actions} action(s) aujourd’hui — ${c.site}`,
+        `${c.id} — ${c.identifiant || 'sans identifiant'} — ${c.etat}, ${c.connexion || (c.session ? 'session gardée' : 'sans session')}, ${c.actions} action(s) aujourd’hui — ${c.site}`,
       );
       if (c.retirable) {
         const bouton = document.createElement('button');

@@ -850,6 +850,70 @@ class NavigateurTests(unittest.TestCase):
         )
         self.assertIn('secret non permis', refus['detail'])
 
+    def test_un_compte_connecte_avec_google_vit_dans_le_profil(self) -> None:
+        """Un compte créé par un humain avec « Continuer avec Google »
+        (décision Q113) : il s'est connecté à la main dans le vrai Chrome.
+        Les tâches du compte s'ouvrent dans ce profil, déjà connectées ;
+        rien de sa session n'est copié en base ; il n'a pas de mot de
+        passe."""
+        self._coffre()
+        adresse = f'{self.site}/compte'
+        web_accounts.register(
+            self.conn, 'forum', self.site, 'serge-ia', '', 'google'
+        )
+        # L'humain s'est connecté dans le profil du vrai Chrome.
+        avant = self._outil(
+            'real_browser_action', task_id='t0', action='ouvrir', text=adresse
+        )
+        self.assertIn('# Connectez-vous', avant['page'])
+        profil = sessions._ETAT_VRAI.profil
+        assert profil is not None
+        profil.add_cookies(
+            [{'name': 'forum', 'value': 'jeton-de-session', 'url': self.site}]
+        )
+        page = self._avec_le_compte('t1', action='ouvrir', text=adresse)
+        self.assertIn('# Bonjour serge-ia', page['page'])
+        session = sessions._ETAT_VRAI.sessions['t1@forum']
+        self.assertIs(session.context, profil)
+        # Pas de mot de passe : le refus dit comment se reconnecter.
+        refus = self._avec_le_compte(
+            't1', action='taper_secret', ref='e1', text=PASSWORD_NAME
+        )
+        self.assertFalse(refus['ok'])
+        self.assertIn('Continuer avec Google', refus['detail'])
+        sessions.close_sessions(self.conn)
+        self.assertEqual(
+            tuple(
+                self.conn.execute(
+                    'SELECT password_enc, session_enc, used_by'
+                    ' FROM web_accounts'
+                ).fetchone()
+            ),
+            ('', '', ''),
+        )
+        # Le profil est toujours là : la tâche suivante y est connectée.
+        suite = self._avec_le_compte('t2', action='ouvrir', text=adresse)
+        self.assertIn('# Bonjour serge-ia', suite['page'])
+        # Ses actions sont comptées comme celles de tout compte.
+        self.assertEqual(web_accounts.actions_today(self.conn, 'forum'), 3)
+        # Dans le navigateur sans écran, ce compte ne sert pas.
+        sessions.close_sessions(self.conn)
+        ailleurs = self._outil(
+            'browser_action',
+            task_id='t3',
+            account='forum',
+            action='ouvrir',
+            text=adresse,
+        )
+        self.assertFalse(ailleurs['ok'])
+        self.assertIn('il ne sert que dans le vrai Chrome', ailleurs['detail'])
+        self.assertEqual(
+            self.conn.execute('SELECT used_by FROM web_accounts').fetchone()[
+                0
+            ],
+            '',
+        )
+
     def test_la_garde_d_un_compte_web(self) -> None:
         """Un compte ne sert qu'à une tâche à la fois, pas au-delà de ses
         actions du jour, et pas s'il est fermé par le site."""

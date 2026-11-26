@@ -241,13 +241,18 @@ def project_comptes_web(
                 'identifiant': str(login),
                 'etat': ETATS.get(str(etat), str(etat)),
                 'session': bool(garde),
+                # Un compte connecté avec Google vit dans le profil du
+                # vrai Chrome : pas de session en base.
+                'connexion': 'connecté avec Google, dans le vrai Chrome'
+                if avec
+                else '',
                 'actions': actions_today(conn, str(ident)),
                 # Un compte qui n'est pas en service peut être retiré.
                 'retirable': str(etat) != 'active',
             }
-            for ident, url, login, etat, garde in conn.execute(
-                'SELECT id, url, login, status, session_enc FROM web_accounts'
-                ' ORDER BY id'
+            for ident, url, login, etat, garde, avec in conn.execute(
+                'SELECT id, url, login, status, session_enc, sign_in_with'
+                ' FROM web_accounts ORDER BY id'
             ).fetchall()
         ],
         'plafond': int(policy['web_accounts']['max_actions_per_day']),

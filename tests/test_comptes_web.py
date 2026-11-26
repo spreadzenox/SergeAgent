@@ -459,6 +459,76 @@ class MotDePasseDuSiteTests(unittest.TestCase):
         self.assertIn('existe déjà sur son site', rendu['detail'])
         self.assertEqual(web_accounts.password(self.conn, 'tiktok'), garde)
 
+    def test_un_compte_connecte_avec_google_n_a_pas_de_mot_de_passe(
+        self,
+    ) -> None:
+        """Créé à la main avec « Continuer avec Google » (décision Q113) :
+        il s'enregistre sans mot de passe, et Serge n'en invente pas."""
+        web_accounts.register(
+            self.conn,
+            'LinkedIn',
+            'https://www.linkedin.com',
+            'serge@exemple.fr',
+            '',
+            'google',
+        )
+        self.assertEqual(
+            tuple(
+                self.conn.execute(
+                    'SELECT id, status, sign_in_with, password_enc'
+                    ' FROM web_accounts'
+                ).fetchone()
+            ),
+            ('linkedin', 'active', 'google', ''),
+        )
+        self.assertTrue(web_accounts.in_profile(self.conn, 'linkedin'))
+        with self.assertRaises(web_accounts.AccountError) as refus:
+            web_accounts.password(self.conn, 'linkedin')
+        self.assertIn('Continuer avec Google', str(refus.exception))
+        self.assertEqual(
+            self.conn.execute(
+                'SELECT password_enc FROM web_accounts'
+            ).fetchone()[0],
+            '',
+        )
+        # Sans Google, le mot de passe reste demandé ; une connexion
+        # inconnue est refusée.
+        for mot_de_passe, connexion in (('', ''), ('secret', 'facebook')):
+            with self.assertRaises(web_accounts.AccountError):
+                web_accounts.register(
+                    self.conn,
+                    'x',
+                    'https://x.com',
+                    'serge',
+                    mot_de_passe,
+                    connexion,
+                )
+        # Un compte à mot de passe n'est pas dans le profil.
+        web_accounts.register(
+            self.conn, 'x', 'https://x.com', 'serge', 'secret'
+        )
+        self.assertFalse(web_accounts.in_profile(self.conn, 'x'))
+        # Mission Control le dit, sans rien montrer d'autre.
+        from serge.mc.proj_objet import project_objet
+        from serge.mc.proj_systeme import project_comptes_web
+        from serge.policy_store import policy_en_vigueur
+
+        comptes = {
+            c['id']: c['connexion']
+            for c in project_comptes_web(
+                self.conn, policy_en_vigueur(self.conn), ''
+            )['comptes']
+        }
+        self.assertEqual(
+            comptes,
+            {'linkedin': 'connecté avec Google, dans le vrai Chrome', 'x': ''},
+        )
+        self.conn.row_factory = __import__('sqlite3').Row
+        fiche = project_objet(self.conn, 'compte', 'linkedin')
+        assert fiche is not None
+        session = next(c['v'] for c in fiche['champs'] if c['k'] == 'Session')
+        self.assertIn('dans le profil du vrai Chrome', session)
+
     def test_creer_un_compte_a_l_outil(self) -> None:
         outil = self.conn.execute(
             'SELECT t.capability_id, it.mode, it.max_calls FROM'

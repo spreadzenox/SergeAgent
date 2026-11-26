@@ -33,7 +33,7 @@ from serge.sandbox.lecture import (
     viser,
 )
 from serge.secrets import read_secret_value
-from serge.web_accounts import PASSWORD_NAME
+from serge.web_accounts import PASSWORD_NAME, AccountError
 
 ECRANS = {'ordinateur': (1280, 800), 'mobile': (390, 844)}
 OUI = (True, 'true', '1', 'oui')
@@ -140,7 +140,12 @@ def _taper_secret(session: Any, args: dict[str, Any]) -> str:
         ''
     }
     if nom == PASSWORD_NAME and session.mot_de_passe is not None:
-        valeur = session.mot_de_passe()
+        try:
+            valeur = session.mot_de_passe()
+        except AccountError as exc:
+            # Un compte connecté avec Google n'a pas de mot de passe : le
+            # refus dit au modèle comment se connecter.
+            return str(exc)
     elif nom not in permis:
         return f'secret non permis : {nom}'
     else:

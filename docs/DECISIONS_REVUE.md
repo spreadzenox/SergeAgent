@@ -2485,3 +2485,34 @@ décidé :
    service garde son mot de passe : en changer ici le couperait du site,
    qui a l'ancien.
 
+### Q113 — Un compte connecté avec Google vit dans le profil du vrai Chrome (validé par Clem, 26 novembre 2026)
+
+LinkedIn a refusé le numéro de Serge à l'inscription. Clem a créé le
+compte lui-même, avec « Continuer avec Google » et le compte Google de
+Serge : ce compte n'a pas de mot de passe, et LinkedIn ne laisse pas en
+ajouter un. Clem a ensuite connecté Google, puis LinkedIn, à la main dans
+le vrai Chrome de Serge (`/owner/vrai-chrome`) ; Google a demandé un code
+de sécurité, qu'il a pris sur un appareil déjà connecté. Ce qui est
+décidé :
+
+1. **Un compte web peut être « connecté avec Google ».** Il s'enregistre
+   sans mot de passe. Ses tâches ouvrent leurs onglets dans le profil du
+   vrai Chrome, qui garde ses connexions comme le navigateur d'une
+   personne, au lieu d'un espace à part avec des cookies rangés en base.
+   Rien de sa session n'est copié en base.
+2. **C'est un humain qui connecte Google**, dans l'écran du vrai Chrome.
+   Serge ne tape jamais le mot de passe de Google, qui n'est nulle part
+   en base. Déconnecté d'un site, il clique « Continuer avec Google » et
+   choisit le compte déjà connecté ; si Google redemande un mot de passe
+   ou un code, il appelle un humain.
+3. **Serge ne crée toujours pas de compte avec Google** (Q107, point 5,
+   reste) : ces comptes sont créés par un humain.
+4. **On ne déguise rien.** Si Google refuse ce navigateur un jour, on ne
+   le contourne pas (Q48).
+
+Ce qu'on accepte : le compte Google de Serge est aussi sa boîte e-mail ;
+s'il est verrouillé, Serge perd ses e-mails. Toute personne qui a accès à
+Mission Control voit cette session dans l'écran du vrai Chrome. Les
+tâches sans compte qui passent par le vrai Chrome (le paiement test, le
+captcha) naviguent dans le même profil.
+

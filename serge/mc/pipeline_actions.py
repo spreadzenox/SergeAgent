@@ -164,8 +164,10 @@ class PipelineActionsMixin(_Base):
 
     def _api_compte_enregistrer(self) -> None:
         """« Enregistrer un compte qui existe déjà » : ``{compte, url,
-        identifiant, mot_de_passe}``. Le mot de passe est chiffré en base
-        aussitôt ; il n'est écrit ni au journal ni dans la réponse."""
+        identifiant, mot_de_passe, connexion}``. Le mot de passe est chiffré
+        en base aussitôt ; il n'est écrit ni au journal ni dans la réponse.
+        ``connexion`` à ``google`` : un compte sans mot de passe, connecté à
+        la main dans le profil du vrai Chrome."""
         if not self._require_owner():
             return
         from serge.web_accounts import AccountError, register
@@ -180,6 +182,7 @@ class PipelineActionsMixin(_Base):
                     str(body.get('url') or ''),
                     str(body.get('identifiant') or ''),
                     str(body.get('mot_de_passe') or ''),
+                    str(body.get('connexion') or ''),
                 )
                 append_event(
                     conn,
