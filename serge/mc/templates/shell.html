@@ -179,12 +179,13 @@
 <ul data-list="comptes-web"></ul>
 <div data-comptes="boutons"></div>
 <h3>Enregistrer un compte qui existe déjà</h3>
-<p class="page-intro">Pour un compte créé à la main : Serge garde son identifiant et son mot de passe, puis « Vérifier un compte web » le connecte.</p>
+<p class="page-intro">Pour un compte créé à la main : Serge garde son identifiant et son mot de passe, puis « Vérifier un compte web » le connecte. Un compte créé avec « Continuer avec Google » n’a pas de mot de passe : connecte d’abord Google, puis ce site, dans <a href="/owner/vrai-chrome" target="_blank" rel="noopener">l’écran du vrai Chrome</a>, et choisis « avec Google » ; les tâches de ce compte s’ouvriront dans ce Chrome, qui garde ses connexions.</p>
 <form class="grille-champs" data-comptes="enregistrer">
 <label>Le site, en un mot : reddit, linkedin, instagram ou x <input name="compte" required maxlength="31" autocomplete="off"></label>
 <label>Adresse du site <input name="url" required maxlength="300" placeholder="https://www.reddit.com" autocomplete="off"></label>
 <label>Identifiant de connexion <input name="identifiant" required maxlength="200" autocomplete="off"></label>
-<label>Mot de passe <input name="mot_de_passe" type="password" required maxlength="200" autocomplete="new-password"></label>
+<label>Connexion <select name="connexion"><option value="">par identifiant et mot de passe</option><option value="google">avec Google, dans le vrai Chrome (sans mot de passe)</option></select></label>
+<label>Mot de passe <input name="mot_de_passe" type="password" maxlength="200" autocomplete="new-password"></label>
 <div class="barre-policy"><button type="submit" class="btn-doux">Enregistrer le compte</button></div>
 </form>
 </section>

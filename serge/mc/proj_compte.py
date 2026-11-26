@@ -31,7 +31,10 @@ def champs_compte(conn: sqlite3.Connection, row: Any) -> list[dict[str, str]]:
         ('Mot de passe', 'gardé, chiffré' if row['password_enc'] else 'aucun'),
         (
             'Session',
-            f'gardée le {str(row["session_saved_at"])[:16]}'
+            'dans le profil du vrai Chrome, connecté avec Google : rien'
+            ' n’est gardé en base'
+            if row['sign_in_with']
+            else f'gardée le {str(row["session_saved_at"])[:16]}'
             if row['session_enc']
             else 'aucune : la prochaine tâche devra se connecter',
         ),

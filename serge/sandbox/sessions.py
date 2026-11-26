@@ -12,7 +12,9 @@ outil de navigateur d'une tâche et se ferme à la fin de la tâche
   base), un contexte à part, dans l'un ou l'autre navigateur : il s'ouvre
   avec les cookies gardés de ce compte (``serge/web_accounts.py``), et eux
   seuls, et ils sont gardés de nouveau, chiffrés, quand il se ferme. Le
-  compte est pris par la tâche le temps de la session.
+  compte est pris par la tâche le temps de la session. Un compte connecté
+  avec Google fait exception : ses onglets s'ouvrent dans le profil du
+  vrai Chrome, où Google est connecté, et rien n'est gardé en base.
 
 Une tâche qui a commencé dans le navigateur sans écran peut passer au vrai
 Chrome (``passer_au_vrai_chrome``) : même adresse, mêmes cookies.
@@ -180,6 +182,18 @@ def _session(
         # d'un onglet neuf.
         _fermer(conn, session)
     garde = web_accounts.take(conn, account, task_id) if account else None
+    # Un compte connecté avec Google vit dans le profil du vrai Chrome :
+    # ses onglets s'y ouvrent, à côté de la connexion Google, sans cookies
+    # à lui.
+    profil = bool(account) and web_accounts.in_profile(conn, account)
+    if profil:
+        if etat is not _ETAT_VRAI:
+            web_accounts.release(conn, account, task_id, None)
+            raise web_accounts.AccountError(
+                f'le compte « {account} » est connecté avec Google, dans le'
+                ' profil du vrai Chrome : il ne sert que dans le vrai Chrome'
+            )
+        garde = None
     try:
         context = _contexte(conn, etat, garde)
         page = context.new_page()
@@ -187,10 +201,19 @@ def _session(
         etat.browser = None
         context = _contexte(conn, etat, garde)
         page = context.new_page()
+    if profil and context is not etat.profil:
+        # Pas de profil sous la main : un contexte à part n'aurait pas la
+        # connexion Google, et laisserait croire le compte déconnecté.
+        context.close()
+        web_accounts.release(conn, account, task_id, None)
+        raise web_accounts.AccountError(
+            'le profil du vrai Chrome n’est pas disponible pour le compte'
+            f' « {account} » : réessaie dans quelques minutes'
+        )
     session = _Session(
         context,
         page,
-        profil_prete=etat is _ETAT_VRAI and not account,
+        profil_prete=etat is _ETAT_VRAI and (not account or profil),
         conteneur=etat.nom,
         account=account,
         task_id=task_id,
@@ -218,10 +241,14 @@ def _fermer(conn: sqlite3.Connection | None, session: _Session) -> None:
     onglets."""
     try:
         if session.account and conn is not None:
-            try:
-                garde = session.context.storage_state()
-            except Exception:  # noqa: BLE001 — un contexte déjà perdu
-                garde = None
+            garde = None
+            # Le profil du vrai Chrome garde lui-même ses connexions :
+            # rien d'un compte qui y vit n'est copié en base.
+            if not session.profil_prete:
+                try:
+                    garde = session.context.storage_state()
+                except Exception:  # noqa: BLE001 — un contexte déjà perdu
+                    garde = None
             web_accounts.release(conn, session.account, session.task_id, garde)
         if session.profil_prete:
             for page in list(session.pages):

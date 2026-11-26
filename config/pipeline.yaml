@@ -3848,7 +3848,11 @@ invocations:
          profil, un menu « Déconnexion »), c'est fini.
       2. Sinon, trouve la connexion : tape l'identifiant reçu, fais taper
          le mot de passe, valide. Si le site envoie un code ou un lien,
-         appelle « Mes messages de vérification ».
+         appelle « Mes messages de vérification ». Si Serge te répond que
+         ce compte se connecte avec Google, clique plutôt « Continuer avec
+         Google » (ou « Se connecter avec Google ») et choisis le compte
+         de Serge ; si Google demande alors un mot de passe ou un code,
+         appelle « Appeler un humain ».
       3. Si le site dit que le compte est suspendu, fermé ou banni, ne
          cherche pas à en créer un autre : rends etat « ferme ».
 
@@ -3932,7 +3936,11 @@ invocations:
         déconnecté, connecte-toi : l'identifiant reçu, puis l'action
         taper_secret sur le champ du mot de passe, avec text
         « mot_de_passe_du_compte ». Si le site envoie un code, appelle
-        « Mes messages de vérification ».
+        « Mes messages de vérification ». Si Serge te répond que ce compte
+        se connecte avec Google, clique sur le site « Continuer avec
+        Google » (ou « Se connecter avec Google ») et choisis le compte de
+        Serge ; si Google demande alors un mot de passe ou un code,
+        appelle « Appeler un humain ».
       - **Tu t'arrêtes quand on te le dit.** Si une action est refusée
         parce que le compte a fait ses actions du jour, ou si le site dit
         que le compte est limité ou suspendu, n'insiste pas : rends ce que
@@ -4027,7 +4035,11 @@ invocations:
         déconnecté, connecte-toi : l'identifiant reçu, puis l'action
         taper_secret sur le champ du mot de passe, avec text
         « mot_de_passe_du_compte ». Si le site envoie un code, appelle
-        « Mes messages de vérification ».
+        « Mes messages de vérification ». Si Serge te répond que ce compte
+        se connecte avec Google, clique sur le site « Continuer avec
+        Google » (ou « Se connecter avec Google ») et choisis le compte de
+        Serge ; si Google demande alors un mot de passe ou un code,
+        appelle « Appeler un humain ».
       - **Tu t'arrêtes quand on te le dit.** Si une action est refusée
         parce que le compte a fait ses actions du jour, ou si le site dit
         que le compte est limité ou suspendu, n'insiste pas.
@@ -4146,7 +4158,11 @@ invocations:
         déconnecté, connecte-toi : l'identifiant reçu, puis l'action
         taper_secret sur le champ du mot de passe, avec text
         « mot_de_passe_du_compte ». Si le site envoie un code, appelle
-        « Mes messages de vérification ».
+        « Mes messages de vérification ». Si Serge te répond que ce compte
+        se connecte avec Google, clique sur le site « Continuer avec
+        Google » (ou « Se connecter avec Google ») et choisis le compte de
+        Serge ; si Google demande alors un mot de passe ou un code,
+        appelle « Appeler un humain ».
       - **Tu t'arrêtes quand on te le dit.** Si une action est refusée
         parce que le compte a fait ses actions du jour, ou si le site dit
         que le compte est limité ou suspendu, n'insiste pas.
@@ -11039,6 +11055,81 @@ changes:
                 avec la longueur que le site accepte (et signes à non s'il refuse
                 les signes), vide le champ, puis retape-le de la même façon, dans
                 chaque champ qui le demande.
+  # Un compte créé par un humain avec « Continuer avec Google » n'a pas de
+  # mot de passe (LinkedIn, le 24 novembre 2026). Il vit dans le profil du
+  # vrai Chrome, où Google est connecté ; déconnecté du site, Serge s'y
+  # reconnecte par Google, et appelle un humain si Google redemande
+  # quelque chose (décision Q113).
+  - id: lot13_fouille_connexion_google
+    why: &avec_google Un compte connecté avec Google se reconnecte par Google, pas par un mot de passe (Q113).
+    table: invocations
+    where: {id: fouiller_reseau}
+    set:
+      prompt:
+        replace:
+          - old: |-
+              « mot_de_passe_du_compte ». Si le site envoie un code, appelle
+                « Mes messages de vérification ».
+            new: |-
+              « mot_de_passe_du_compte ». Si le site envoie un code, appelle
+                « Mes messages de vérification ». Si Serge te répond que ce compte
+                se connecte avec Google, clique sur le site « Continuer avec
+                Google » (ou « Se connecter avec Google ») et choisis le compte de
+                Serge ; si Google demande alors un mot de passe ou un code,
+                appelle « Appeler un humain ».
+  - id: lot13_envoi_web_connexion_google
+    why: *avec_google
+    table: invocations
+    where: {id: envoyer_par_le_web}
+    set:
+      prompt:
+        replace:
+          - old: |-
+              « mot_de_passe_du_compte ». Si le site envoie un code, appelle
+                « Mes messages de vérification ».
+            new: |-
+              « mot_de_passe_du_compte ». Si le site envoie un code, appelle
+                « Mes messages de vérification ». Si Serge te répond que ce compte
+                se connecte avec Google, clique sur le site « Continuer avec
+                Google » (ou « Se connecter avec Google ») et choisis le compte de
+                Serge ; si Google demande alors un mot de passe ou un code,
+                appelle « Appeler un humain ».
+  - id: lot13_lecture_web_connexion_google
+    why: *avec_google
+    table: invocations
+    where: {id: lire_messagerie}
+    set:
+      prompt:
+        replace:
+          - old: |-
+              « mot_de_passe_du_compte ». Si le site envoie un code, appelle
+                « Mes messages de vérification ».
+            new: |-
+              « mot_de_passe_du_compte ». Si le site envoie un code, appelle
+                « Mes messages de vérification ». Si Serge te répond que ce compte
+                se connecte avec Google, clique sur le site « Continuer avec
+                Google » (ou « Se connecter avec Google ») et choisis le compte de
+                Serge ; si Google demande alors un mot de passe ou un code,
+                appelle « Appeler un humain ».
+  - id: lot13_verifier_connexion_google
+    why: *avec_google
+    table: invocations
+    where: {id: verifier_compte_web}
+    set:
+      prompt:
+        replace:
+          - old: |-
+              2. Sinon, trouve la connexion : tape l'identifiant reçu, fais taper
+                 le mot de passe, valide. Si le site envoie un code ou un lien,
+                 appelle « Mes messages de vérification ».
+            new: |-
+              2. Sinon, trouve la connexion : tape l'identifiant reçu, fais taper
+                 le mot de passe, valide. Si le site envoie un code ou un lien,
+                 appelle « Mes messages de vérification ». Si Serge te répond que
+                 ce compte se connecte avec Google, clique plutôt « Continuer avec
+                 Google » (ou « Se connecter avec Google ») et choisis le compte
+                 de Serge ; si Google demande alors un mot de passe ou un code,
+                 appelle « Appeler un humain ».
 deleted:
   invocations:
     # Le compteur du 21 novembre 2026 comptait jusqu'à un réglage à lui ;
