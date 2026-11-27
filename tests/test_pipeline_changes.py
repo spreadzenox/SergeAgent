@@ -2259,13 +2259,11 @@ class PremierLancementB2BTests(unittest.TestCase):
             'Un rendez-vous : confirme-le',
             dict(avant['consignes'])['traiter_reponse'],
         )
-        # « Trouver des prospects » avait déjà « Fouiller X », pas Apollo.
+        # Seule « Explorer le web » avait déjà « Fouiller X » ; personne
+        # n'avait Apollo.
         self.assertEqual(
             {(o[0], o[1]) for o in avant['outils']},
-            {
-                ('explorer_web', 'fouiller_x'),
-                ('trouver_prospects', 'fouiller_x'),
-            },
+            {('explorer_web', 'fouiller_x')},
         )
         seed_pipeline(conn, data)
         apres = self._etat(conn)
@@ -2326,3 +2324,87 @@ class PremierLancementB2BTests(unittest.TestCase):
         )
         self.assertFalse(rendu['ok'])
         self.assertIn('pas de compte « apollo » en service', rendu['detail'])
+
+
+class SansXEtAvecInstagramTests(unittest.TestCase):
+    """Le serveur du 27 novembre 2026 après-midi : X est encore un canal
+    de campagne, et « Trouver des prospects » passe par Apollo même pour
+    Instagram (décision Q114)."""
+
+    IDS = (
+        'b2b_pas_de_campagne_sur_x',
+        'b2b_prospects_sans_fouille_x',
+        'b2b_prospects_sur_instagram',
+    )
+    VOLUMES = ('x_test', 'x_semaine', 'x_total')
+
+    def _etat(self, conn: sqlite3.Connection) -> dict[str, list]:
+        return {
+            'texte': conn.execute(
+                "SELECT body FROM serge_texts WHERE id='presentation'"
+            ).fetchall(),
+            'consigne': conn.execute(
+                "SELECT prompt FROM invocations WHERE id='trouver_prospects'"
+            ).fetchall(),
+            'outils': conn.execute(
+                'SELECT tool_id FROM invocation_tools WHERE'
+                " invocation_id='trouver_prospects' ORDER BY position"
+            ).fetchall(),
+            'volumes': conn.execute(
+                'SELECT name FROM invocation_settings WHERE'
+                " invocation_id='demarrer_campagne' ORDER BY name"
+            ).fetchall(),
+        }
+
+    def test_il_perd_x_et_cherche_sur_instagram(self) -> None:
+        conn = sqlite3.connect(':memory:')
+        self.addCleanup(conn.close)
+        init_schema(conn)
+        data = read_yaml_file(config_dir() / 'pipeline.yaml')
+        changes = {c['id']: c for c in data['changes']}
+        neuf = self._etat(conn)
+        self.assertNotIn(('fouiller_x',), neuf['outils'])
+        self.assertIn(('fouiller_instagram',), neuf['outils'])
+        for volume in self.VOLUMES:
+            self.assertNotIn((volume,), neuf['volumes'])
+        self.assertIn(('linkedin_test',), neuf['volumes'])
+        # Le serveur d'avant : le texte et la consigne sans leur passage,
+        # « Fouiller X » parmi les outils, et les trois volumes de X.
+        for ident, table, colonne, cle in (
+            (self.IDS[0], 'serge_texts', 'body', 'presentation'),
+            (self.IDS[2], 'invocations', 'prompt', 'trouver_prospects'),
+        ):
+            passage = changes[ident]['set'][colonne]['replace'][0]
+            texte = conn.execute(
+                f'SELECT {colonne} FROM {table} WHERE id=?', (cle,)
+            ).fetchone()[0]
+            self.assertEqual(texte.count(passage['new']), 1, ident)
+            conn.execute(
+                f'UPDATE {table} SET {colonne}=? WHERE id=?',
+                (texte.replace(passage['new'], passage['old']), cle),
+            )
+        conn.execute(
+            'INSERT INTO invocation_tools(invocation_id, tool_id, mode,'
+            " position) VALUES('trouver_prospects', 'fouiller_x',"
+            " 'callable', 99)"
+        )
+        for volume in self.VOLUMES:
+            conn.execute(
+                'INSERT INTO invocation_settings(invocation_id, name, value)'
+                " VALUES('demarrer_campagne', ?, '10')",
+                (volume,),
+            )
+        conn.executemany(
+            'DELETE FROM pipeline_changes WHERE id=?', [(i,) for i in self.IDS]
+        )
+        seed_pipeline(conn, data)
+        apres = self._etat(conn)
+        self.assertEqual(apres, neuf)
+        self.assertIn('Le canal « x » ne se choisit pas', apres['texte'][0][0])
+        self.assertIn(
+            'Exception, pour une campagne sur Instagram',
+            apres['consigne'][0][0],
+        )
+        # Une seconde fois ne change rien.
+        seed_pipeline(conn, data)
+        self.assertEqual(self._etat(conn), neuf)

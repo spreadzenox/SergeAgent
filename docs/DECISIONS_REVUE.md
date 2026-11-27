@@ -2560,6 +2560,16 @@ entreprises, Clem a demandé cinq choses. Ce qui est décidé :
    elle demande du sur-mesure ou une intégration (Serge dit ce que le
    produit fait, note la demande, ne promet rien).
 
+7. **X ne sert pas à prospecter** (ajouté le même jour). X reste pour
+   l'écoute du web et pour vérifier une idée ; ce n'est plus un canal de
+   campagne : le texte « Qui est Serge » le dit, « Démarrer une
+   campagne » n'a plus de volume pour X (une campagne sur X ne démarre
+   pas), et « Trouver des prospects » ne fouille plus X. Serge prospecte
+   par e-mail, sur LinkedIn et sur Instagram.
+8. **Une campagne sur Instagram cherche ses comptes sur Instagram**, avec
+   « Fouiller Instagram », sans passer par Apollo, qui ne connaît que
+   des contacts professionnels.
+
 Pas fait : un test léger sur deux canaux à la fois ; écrire tout seul au
 collègue vers qui un prospect renvoie.
 
