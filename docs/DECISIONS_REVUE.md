@@ -2516,6 +2516,53 @@ Mission Control voit cette session dans l'écran du vrai Chrome. Les
 tâches sans compte qui passent par le vrai Chrome (le paiement test, le
 captcha) naviguent dans le même profil.
 
+### Q114 — Le premier lancement en B2B (demandé par Clem, 27 novembre 2026)
+
+Serge a un compte LinkedIn. Avant de le lancer une première fois vers des
+entreprises, Clem a demandé cinq choses. Ce qui est décidé :
+
+1. **Une idée peut se vérifier sur X avant d'être écrite ou choisie.**
+   Les deux invocations qui formulent les business, et celle qui les
+   choisit, peuvent confier une recherche sur X à « Fouiller un réseau »,
+   deux fois au plus. C'est facultatif ; la preuve d'une idée reste les
+   pages citées.
+2. **Toutes les invocations de décision savent ce que Serge vend.** Le
+   texte « Qui est Serge », qu'elles reçoivent toutes, le dit : des
+   produits web seulement ; Serge les construit et les tient lui-même,
+   un programme, pas une équipe ; chaque service extérieur à brancher
+   lui est long et fragile, donc au strict nécessaire ; ni objet à
+   expédier, ni présence humaine. Ce qui lui manque, il le demande à
+   Julien et Clem plutôt que de le promettre.
+3. **Plus d'appels pour l'instant, et aucun appel promis.** Le même texte
+   dit que le canal « voice » ne se choisit pas pour une campagne. Une
+   campagne d'appels à des inconnus était déjà refusée (le téléphone
+   demande l'accord de la personne, page Policy, « Accord des gens ») ;
+   ce qui change, c'est que les modèles ne le proposent plus, et que
+   « Traiter une réponse » ne confirme plus un rendez-vous : elle propose
+   de tout régler par écrit, et passe la main à Julien si la personne
+   tient à parler à quelqu'un. Le plafond d'appels du jour n'est pas mis
+   à zéro : cela aurait aussi coupé l'appel de l'essai total.
+4. **LinkedIn est un canal de prospection**, depuis que son compte est en
+   service : un test léger se fait sur un canal (l'e-mail ou LinkedIn,
+   celui que choisit le plan) ; la prospection lourde écrit une campagne
+   par canal utile. Chaque message LinkedIn attend la validation d'un
+   humain, comme au départ (Q104).
+5. **Apollo pour trouver des contacts.** « Trouver des prospects »
+   commence par « Chercher des contacts sur Apollo », une mission confiée
+   à « Fouiller un réseau » avec le compte `apollo`. Tant que ce compte
+   n'existe pas, l'outil le dit et elle cherche sur le web, comme avant.
+   Une adresse qu'Apollo affiche en entier compte comme lue sur une
+   page ; une adresse masquée ou « probable » ne compte pas.
+6. **Trois cas d'entreprise ont leur règle dans « Traiter une réponse »** :
+   la personne demande d'où vient son adresse (Serge le dit et propose de
+   ne plus écrire) ; elle renvoie vers un collègue (Julien décide,
+   écrire à une nouvelle personne ne se décide pas dans une réponse) ;
+   elle demande du sur-mesure ou une intégration (Serge dit ce que le
+   produit fait, note la demande, ne promet rien).
+
+Pas fait : un test léger sur deux canaux à la fois ; écrire tout seul au
+collègue vers qui un prospect renvoie.
+
 ### Q114 - Tout le trafic des Chrome sort par un VPN Télécom Paris (demandé par Clem, 26 novembre 2026)
 
 LinkedIn et Reddit refusent l'adresse IP du VPS. Clem a fourni un accès

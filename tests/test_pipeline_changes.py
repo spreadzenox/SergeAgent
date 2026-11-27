@@ -2153,3 +2153,176 @@ class ConnexionAvecGoogleTests(unittest.TestCase):
         for prompt in neufs.values():
             self.assertIn('se connecte avec Google', prompt)
             self.assertIn('« Appeler un humain »', prompt)
+
+
+class PremierLancementB2BTests(unittest.TestCase):
+    """Le serveur du 27 novembre 2026, avant le premier lancement en B2B
+    (décision Q114) : il reçoit le texte de ce que Serge vend, la
+    vérification d'une idée sur X, la réponse sans rendez-vous, et Apollo
+    pour trouver des prospects."""
+
+    CONSIGNES = {
+        'b2b_formuler_a_consigne_x': 'formuler_a',
+        'b2b_formuler_b_consigne_x': 'formuler_b',
+        'b2b_choisir_business_consigne_x': 'choisir_business',
+        'b2b_reponse_sans_rendez_vous': 'traiter_reponse',
+        'b2b_prospects_consigne_apollo': 'trouver_prospects',
+    }
+    OUTILS = {
+        'b2b_formuler_a_fouille_x': ('formuler_a', 'fouiller_x'),
+        'b2b_formuler_b_fouille_x': ('formuler_b', 'fouiller_x'),
+        'b2b_choisir_business_fouille_x': ('choisir_business', 'fouiller_x'),
+        'b2b_prospects_outil_apollo': (
+            'trouver_prospects',
+            'chercher_sur_apollo',
+        ),
+    }
+    TEXTE = 'b2b_ce_que_serge_vend'
+
+    def _etat(self, conn: sqlite3.Connection) -> dict[str, list]:
+        invocations = sorted(set(self.CONSIGNES.values()))
+        return {
+            'consignes': [
+                tuple(r)
+                for r in conn.execute(
+                    'SELECT id, prompt FROM invocations WHERE id IN'
+                    f' ({",".join("?" * len(invocations))}) ORDER BY id',
+                    invocations,
+                )
+            ],
+            'outils': [
+                tuple(r)
+                for r in conn.execute(
+                    'SELECT it.invocation_id, it.tool_id, it.mode,'
+                    ' it.max_calls, p.param_name, p.source, p.value'
+                    ' FROM invocation_tools it JOIN invocation_tool_params p'
+                    ' ON p.invocation_tool_id=it.id WHERE it.tool_id IN'
+                    " ('fouiller_x', 'chercher_sur_apollo')"
+                    ' ORDER BY it.invocation_id, it.tool_id, p.param_name'
+                )
+            ],
+            'texte': [
+                tuple(r)
+                for r in conn.execute(
+                    "SELECT body FROM serge_texts WHERE id='presentation'"
+                )
+            ],
+        }
+
+    def test_il_recoit_tout_le_lancement(self) -> None:
+        conn = sqlite3.connect(':memory:')
+        self.addCleanup(conn.close)
+        init_schema(conn)
+        data = read_yaml_file(config_dir() / 'pipeline.yaml')
+        changes = {c['id']: c for c in data['changes']}
+        neuf = self._etat(conn)
+        prompts = dict(neuf['consignes'])
+        # Le serveur d'avant : sans les passages, sans les outils.
+        for ident, invocation in self.CONSIGNES.items():
+            passage = changes[ident]['set']['prompt']['replace'][0]
+            self.assertEqual(prompts[invocation].count(passage['new']), 1)
+            conn.execute(
+                'UPDATE invocations SET prompt=? WHERE id=?',
+                (
+                    prompts[invocation].replace(
+                        passage['new'], passage['old']
+                    ),
+                    invocation,
+                ),
+            )
+        passage = changes[self.TEXTE]['set']['body']['replace'][0]
+        conn.execute(
+            "UPDATE serge_texts SET body=? WHERE id='presentation'",
+            (neuf['texte'][0][0].replace(passage['new'], passage['old']),),
+        )
+        for invocation, outil in self.OUTILS.values():
+            for (lien,) in conn.execute(
+                'SELECT id FROM invocation_tools WHERE invocation_id=?'
+                ' AND tool_id=?',
+                (invocation, outil),
+            ).fetchall():
+                conn.execute(
+                    'DELETE FROM invocation_tool_params WHERE'
+                    ' invocation_tool_id=?',
+                    (lien,),
+                )
+                conn.execute(
+                    'DELETE FROM invocation_tools WHERE id=?', (lien,)
+                )
+        conn.executemany(
+            'DELETE FROM pipeline_changes WHERE id=?',
+            [(i,) for i in (*self.CONSIGNES, *self.OUTILS, self.TEXTE)],
+        )
+        avant = self._etat(conn)
+        self.assertNotIn('produits web', avant['texte'][0][0])
+        self.assertIn(
+            'Un rendez-vous : confirme-le',
+            dict(avant['consignes'])['traiter_reponse'],
+        )
+        # « Trouver des prospects » avait déjà « Fouiller X », pas Apollo.
+        self.assertEqual(
+            {(o[0], o[1]) for o in avant['outils']},
+            {
+                ('explorer_web', 'fouiller_x'),
+                ('trouver_prospects', 'fouiller_x'),
+            },
+        )
+        seed_pipeline(conn, data)
+        apres = self._etat(conn)
+        self.assertEqual(apres, neuf)
+        texte = apres['texte'][0][0]
+        self.assertIn('des produits web, et seulement cela', texte)
+        self.assertIn('Serge ne téléphone pas', texte)
+        reponse = dict(apres['consignes'])['traiter_reponse']
+        self.assertNotIn('confirme-le', reponse)
+        self.assertIn('ne promets\n  rien de tel', reponse)
+        self.assertIn('voyez avec ma\n  collègue', reponse)
+        self.assertIn(
+            (
+                'formuler_b',
+                'fouiller_x',
+                'callable',
+                '2',
+                'account',
+                'fixed',
+                'x',
+            ),
+            apres['outils'],
+        )
+        self.assertIn(
+            (
+                'trouver_prospects',
+                'chercher_sur_apollo',
+                'callable',
+                'fouilles_max',
+                'account',
+                'fixed',
+                'apollo',
+            ),
+            apres['outils'],
+        )
+        # Une seconde fois ne change rien.
+        seed_pipeline(conn, data)
+        self.assertEqual(self._etat(conn), neuf)
+
+    def test_sans_compte_apollo_la_mission_le_dit(self) -> None:
+        """Le compte Apollo n'existe pas encore : l'outil répond de faire
+        sans, et « Trouver des prospects » cherche sur le web."""
+        from serge.missions import mission
+
+        conn = sqlite3.connect(':memory:')
+        self.addCleanup(conn.close)
+        init_schema(conn)
+        rendu = mission(
+            conn,
+            'chercher_sur_apollo',
+            {
+                'invocation': 'fouiller_reseau',
+                'account': 'apollo',
+                'mission': 'des gérants de PME du bâtiment à Lyon',
+                'task_id': 't_1',
+            },
+            'trouver_prospects',
+        )
+        self.assertFalse(rendu['ok'])
+        self.assertIn('pas de compte « apollo » en service', rendu['detail'])
