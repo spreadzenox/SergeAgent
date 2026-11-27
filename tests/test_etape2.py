@@ -400,6 +400,67 @@ class Etape2Tests(unittest.TestCase):
         )
         self.assertEqual(len(modeles.par_role['construire']), 4)
 
+    def test_revoir_le_plan_au_test_renvoie_a_la_conception(self) -> None:
+        """Une fonctionnalité à changer, vue à l'essai du POC, repasse par
+        la conception, le critique et le ticket « Plan » avant d'être
+        construite (décision Q116)."""
+        modeles = ModelesQuiNotent(['bon', 'bon'], ['bon', 'bon'])
+        venture = self._essai(modeles)
+        premier_ticket = self._ticket('PLAN_POC')
+        self._repondre('PLAN_POC', 'valider')
+        self._vider(modeles)
+        valide = self.conn.execute(
+            "SELECT id FROM product_plans WHERE status='validated'"
+        ).fetchone()[0]
+        self._repondre('TEST_POC', 'revoir_plan', 'Ajoute un export en PDF.')
+        self._vider(modeles)
+        self.assertEqual(self._echecs(), [])
+        # La conception repart du plan déjà construit, avec les consignes.
+        premiere, derniere = modeles.recus['concevoir']
+        self.assertNotIn(valide, premiere)
+        self.assertIn('Le plan validé, déjà construit', derniere)
+        self.assertIn(valide, derniere)
+        self.assertIn('Ajoute un export en PDF.', derniere)
+        # Le nouveau plan passe chez le critique, puis au ticket « Plan ».
+        self.assertEqual(len(modeles.par_role['critiquer']), 2)
+        self.assertEqual(
+            _t(
+                self.conn.execute(
+                    'SELECT round, status, owner_notes FROM product_plans'
+                    ' WHERE venture_id=? AND id<>?',
+                    (venture, valide),
+                ).fetchall()
+            ),
+            [(1, 'challenged', 'Ajoute un export en PDF.')],
+        )
+        second_ticket = self._ticket('PLAN_POC')
+        self.assertNotEqual(second_ticket, premier_ticket)
+        # Rien n'est reconstruit avant que le plan soit validé.
+        self.assertEqual(len(modeles.par_role['construire']), 2)
+        self._repondre('PLAN_POC', 'valider')
+        self._vider(modeles)
+        self.assertEqual(self._echecs(), [])
+        self.assertEqual(len(modeles.par_role['construire']), 4)
+        self.assertEqual(
+            self.conn.execute(
+                "SELECT COUNT(*) FROM tickets WHERE type='TEST_POC'"
+            ).fetchone()[0],
+            2,
+        )
+
+
+class ModelesQuiNotent(FauxModeles):
+    """Garde aussi ce que chaque rôle a reçu (son premier message)."""
+
+    def __init__(self, critiques: list[str], relectures: list[str]) -> None:
+        super().__init__(critiques, relectures)
+        self.recus: dict[str, list[str]] = {}
+
+    def __call__(self, _key, model, messages, tools=None, **_kw):
+        role = self._role(messages[0]['content'])
+        self.recus.setdefault(role, []).append(str(messages[1]['content']))
+        return super().__call__(_key, model, messages, tools, **_kw)
+
 
 if __name__ == '__main__':
     unittest.main()

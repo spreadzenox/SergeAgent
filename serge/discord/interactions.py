@@ -39,6 +39,7 @@ SAISIES = {
     'ma_reponse': ('Ta réponse au contact', 'Le message qui partira'),
     'reecrire': ('Réécrire le brouillon', 'Tes consignes à Serge'),
     'a_corriger': ('À corriger', 'Ce qu’il faut corriger, tes consignes'),
+    'revoir_plan': ('Revoir le plan', 'Ce que le produit doit faire d’autre'),
     'choisir_autre': ('Choisir un autre', 'Le nom du business voulu'),
 }
 # Les types d'interaction Discord : un composant, une fenêtre envoyée.

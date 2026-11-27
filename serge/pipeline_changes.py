@@ -71,6 +71,7 @@ TABLES = frozenset(
     {
         'invocations',
         'invocation_tools',
+        'invocation_tool_params',
         'invocation_settings',
         'invocation_output_fields',
         'links',

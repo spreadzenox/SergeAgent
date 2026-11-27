@@ -673,6 +673,50 @@ class Etape5Tests(unittest.TestCase):
         titres = [c['titre'] for c in fiche['cadres']]
         self.assertIn('Les demandes des clients', titres)
 
+    def test_revoir_le_plan_du_produit_renvoie_a_la_conception(self) -> None:
+        """Une fonctionnalité à changer, vue à l'essai du produit fini,
+        repasse par la conception, le critique et le ticket « Plan »
+        (décision Q116)."""
+        modeles = FauxModeles(['calculatrice-pro.fr'])
+        venture = self._calculatrice(modeles)
+        self._repondre('PLAN_PRODUIT', 'valider')
+        self._vider(modeles)
+        valide = self._un(
+            'SELECT id FROM product_plans WHERE venture_id=?'
+            " AND kind='product' AND status='validated'",
+            venture,
+        )[0]
+        constructions = len(modeles.par_role['construire'])
+        self._repondre(
+            'TEST_PRODUIT', 'revoir_plan', 'Ajoute un historique des calculs.'
+        )
+        self._vider(modeles)
+        self.assertEqual(self._echecs(), [])
+        recu = json.dumps(
+            modeles.par_role['concevoir'][-1], ensure_ascii=False
+        )
+        self.assertIn('Le plan validé du produit, déjà construit', recu)
+        self.assertIn(valide, recu)
+        self.assertIn('Ajoute un historique des calculs.', recu)
+        self.assertEqual(len(modeles.par_role['critiquer']), 2)
+        self.assertEqual(
+            self._un(
+                'SELECT status, owner_notes FROM product_plans WHERE'
+                " venture_id=? AND kind='product' AND id<>?",
+                venture,
+                valide,
+            ),
+            ('challenged', 'Ajoute un historique des calculs.'),
+        )
+        # Un second ticket « Plan » attend ; rien n'est reconstruit avant.
+        self.assertEqual(
+            self.conn.execute(
+                "SELECT COUNT(*) FROM tickets WHERE type='PLAN_PRODUIT'"
+            ).fetchone()[0],
+            2,
+        )
+        self.assertEqual(len(modeles.par_role['construire']), constructions)
+
     def test_un_domaine_pris_ouvre_le_ticket_domaine(self) -> None:
         _Services.pris = {'calculatrice-pro.fr'}
         modeles = FauxModeles(['calculatrice-pro.fr', 'calc-simple.fr'])

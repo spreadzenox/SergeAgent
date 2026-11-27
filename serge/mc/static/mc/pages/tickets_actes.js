@@ -39,13 +39,14 @@ export async function agirTicket(main, store, ticketId, acte, message = {}) {
   let charge = {ticket_id: ticketId, acte};
   if (acte === 'discuter_fil') acte = 'discuter';
   charge.acte = acte;
-  if (['editer','discuter','reponse_libre','ma_reponse','reecrire','a_corriger','choisir_autre'].includes(acte)) {
+  if (['editer','discuter','reponse_libre','ma_reponse','reecrire','a_corriger','revoir_plan','choisir_autre'].includes(acte)) {
     const estEdit = acte !== 'discuter';
     const consignes = {
       editer: ['Décris la modification.', 'Note : '],
       ma_reponse: ['Le message qui partira au contact, tel quel.', 'Réponse : '],
       reecrire: ['Tes consignes : Serge réécrit, et le brouillon revient ici.', 'Consignes : '],
       a_corriger: ['Ce qu’il faut corriger : tes consignes repartent à Serge.', 'Consignes : '],
+      revoir_plan: ['Ce que le produit doit faire d’autre : le plan repart en conception, puis chez le critique.', 'Consignes : '],
       choisir_autre: ['Le nom du business voulu, tel qu’il est écrit dans le ticket.', 'Business : '],
     }[acte];
     // « Ma réponse » et « Éditer » s'ouvrent avec le message dont parle le
@@ -133,7 +134,7 @@ export function libelleActe(acte) {
       envoyer_brouillon: 'Envoyer le brouillon', ma_reponse: 'Ma réponse',
       reecrire: 'Réécrire', ne_rien_envoyer: 'Ne rien envoyer',
       passer: 'Passer à la suite', ne_pas_passer: 'Ne pas passer',
-      valider: 'Valider', a_corriger: 'À corriger',
+      valider: 'Valider', a_corriger: 'À corriger', revoir_plan: 'Revoir le plan',
       arreter_business: 'Arrêter le business', faire_sans: 'Faire sans', pret: 'Je suis prêt',
       choisir_autre: 'Choisir un autre', aucun: 'Aucun',
     }[acte] || acte

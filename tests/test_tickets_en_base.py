@@ -56,6 +56,32 @@ class TicketTypesTests(unittest.TestCase):
             ticket_types(self.conn)['PLAN_POC']['expiry_minutes'], 120
         )
 
+    def test_les_tickets_de_test_proposent_de_revoir_le_plan(self) -> None:
+        """Décision Q116 : depuis un ticket de test, « À corriger » renvoie
+        à la construction et « Revoir le plan » à la conception. Le bouton
+        a son nom sur Discord et demande un texte."""
+        from serge.discord.interactions import SAISIES
+        from serge.discord.render import BUTTONS
+        from serge.tickets.acts import BOUTONS, EDITER
+
+        types = ticket_types(self.conn)
+        for sorte in ('TEST_POC', 'TEST_PRODUIT'):
+            self.assertEqual(
+                types[sorte]['buttons'],
+                [
+                    'valider',
+                    'a_corriger',
+                    'revoir_plan',
+                    'arreter_business',
+                    'discuter',
+                ],
+            )
+        for sorte in ('PLAN_POC', 'PLAN_PRODUIT'):
+            self.assertNotIn('revoir_plan', types[sorte]['buttons'])
+        self.assertIn('revoir_plan', BOUTONS & EDITER)
+        self.assertEqual(BUTTONS['revoir_plan']['label'], 'Revoir le plan')
+        self.assertIn('revoir_plan', SAISIES)
+
     def test_une_instance_en_place_recoit_les_changements_des_types(
         self,
     ) -> None:

@@ -27,7 +27,9 @@ tickets sont dans `config/pipeline.yaml` et `config/ticket-types.yaml`.
    des relances, commun à tous les business (Q37, corrigée par Q92), ni
    le nombre de prospects, qui est un réglage par canal de « Démarrer une
    campagne » (Q93).
-2. **Challenger le POC** (niveau intelligent) rend « bon » ou
+2. **Challenger le POC** (niveau intelligent) se met à la place d'un
+   prospect de la cible et exige un produit complet (décision Q116) ; il
+   rend « bon » ou
    « a_corriger » avec ses remarques (`plan_critiques`). « Compter les
    tours de critique » renvoie le plan à la conception, 3 tours au plus.
 3. **Le ticket « Plan »** (`PLAN_POC`) : « Valider », « À corriger » (les
@@ -49,8 +51,10 @@ tickets sont dans `config/pipeline.yaml` et `config/ticket-types.yaml`.
 7. **Le ticket « Tester le produit »** (`TEST_POC`) n'expire jamais :
    « Valider » met le POC en prod sur `<nom du business>.<domaine>`, sa
    campagne passe à prête et le business au test léger (`SMOKE_READY`) ;
-   « À corriger » relance la construction avec les consignes ; « Arrêter
-   le business » l'arrête.
+   « À corriger » relance la construction avec les consignes (un bug) ;
+   « Revoir le plan » renvoie à la conception avec les consignes, puis au
+   critique et au ticket « Plan » (une fonctionnalité à changer, décision
+   Q116) ; « Arrêter le business » l'arrête.
 
 La fiche du business, dans Mission Control, montre le plan, les
 remarques du critique, les passages avec le verdict du relecteur, les

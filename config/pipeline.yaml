@@ -4401,6 +4401,12 @@ invocations:
       tâche peuvent contenir les consignes d'un humain (« consignes ») :
       corrige d'abord ce qu'ils demandent.
 
+      Si un humain a essayé le POC déjà construit et demande de revoir le
+      plan, tu reçois aussi le plan validé qui a servi à le construire :
+      pars de ce plan, garde ce qui marche et change ce que ses consignes
+      demandent. Le constructeur reprendra le produit existant, il ne
+      repartira pas de zéro.
+
       Pour construire, Serge a un chantier (un conteneur Linux avec Node,
       Python et git, où un modèle code et lance le produit), un navigateur
       pour l'essayer, et la mise en ligne d'un site web sur un sous-domaine
@@ -4470,6 +4476,11 @@ invocations:
       - tool: canaux_branches
         mode: given
         label: Les canaux branchés
+      - tool: plan_valide_du_poc
+        mode: given
+        label: Le plan validé, déjà construit (vide avant la première construction)
+        params:
+          venture_id: {source: task, value: venture_id}
     output:
       - {path: hypothese, type: text, description: Ce qu'on veut vérifier.}
       - {path: cible, type: text, description: Les prospects visés.}
@@ -4560,13 +4571,26 @@ invocations:
       produit, ses questions fréquentes, la fiche du business et ce que
       Serge sait faire.
 
+      Mets-toi à la place d'un prospect de la cible : tu diriges une
+      entreprise, tu n'as pas de temps à perdre, et un inconnu te propose
+      d'essayer cet outil. Demande-toi : « est-ce que ça me sert vraiment,
+      dans mon travail, dès aujourd'hui ? Est-ce que j'y reviendrais
+      demain ? ». Sois exigeant, quitte à être pénible : un produit à
+      moitié utile ne retient personne, et un test raté coûte des jours.
+
       Cherche ce qui empêcherait le POC de marcher :
       - la faisabilité technique : Serge code dans un conteneur Linux avec
         Node, Python et git, essaie dans un navigateur et publie un site
         web ; pas d'humain, pas de compte sur d'autres sites, pas d'API
         payante, pas de connexion au logiciel des prospects ;
-      - les limites du produit : ce qui manque pour qu'un prospect en tire
-        quelque chose ;
+      - le produit est-il complet ? Suis le parcours du prospect du début à
+        la fin : arrive-t-il à un résultat qui lui sert, sans rien avoir à
+        finir à la main ailleurs ? Dis ce qui manque, fonction par
+        fonction : ce qu'un professionnel attend d'office d'un outil de ce
+        genre (retrouver, corriger, sortir son travail, par exemple), et ce
+        qui le ferait revenir. Un POC reste petit, mais ce qu'il fait, il le
+        fait jusqu'au bout. Si une autre façon de répondre au même besoin
+        servirait mieux le prospect, propose-la ;
       - le réalisme commercial : des prospects contactés par e-mail ou par
         téléphone vont-ils vraiment l'essayer ?
       - les scénarios de test : chacun doit pouvoir être suivi pas à pas
@@ -4587,9 +4611,11 @@ invocations:
       changer. S'il manque à Serge un outil ou un accès, n'en fais pas une
       remarque : appelle l'outil « Demander une nouvelle capacité ».
 
-      Rends le verdict « bon » si le plan peut être construit tel quel,
-      sinon « a_corriger » avec tes remarques. Ne cherche pas la petite
-      bête : un plan réaliste et clair est bon.
+      Rends le verdict « bon » seulement si, à la place du prospect, tu te
+      servirais du produit tel que le plan le décrit, et s'il peut être
+      construit tel quel. Sinon « a_corriger », avec tes remarques : un
+      plan clair dont le produit est incomplet ou peu utile n'est pas bon.
+      Ne demande que ce que Serge sait construire.
     tools:
       - tool: plan_par_numero
         mode: given
@@ -4999,7 +5025,17 @@ invocations:
       ticket_type: {source: fixed, value: TEST_POC}
       ref_table: {source: fixed, value: builds}
       ref_id: {source: task, value: build_id}
-      raison: {source: fixed, value: 'Le POC est en ligne en staging : essaie-le comme un prospect, avec les scénarios de test.'}
+      raison:
+        source: fixed
+        value: &raison_test_poc >-
+          Le POC est en ligne en staging : essaie-le comme un prospect, avec
+          les scénarios de test. Ses e-mails ne partent pas : ils restent
+          dans la boîte d'essai, à lire dans Mission Control sur la fiche du
+          business (« E-mails d'essai ») ; en prod, ils partiront vraiment.
+          « À corriger » : un bug ou un détail, la construction reprend avec
+          tes consignes. « Revoir le plan » : une fonctionnalité à changer,
+          le plan repart en conception, passe chez le critique et revient
+          au ticket « Plan ».
       title: {source: fixed, value: Un POC attend que tu l'essaies}
 
   - id: suite_test_poc
@@ -5007,6 +5043,7 @@ invocations:
     role: >-
       La réponse au ticket « Tester le produit » : « Valider » met le POC
       en prod, « À corriger » relance la construction avec les consignes,
+      « Revoir le plan » renvoie à la conception avec les consignes,
       « Arrêter le business » l'arrête et libère sa place de test. Sans
       LLM.
     step: conception_poc
@@ -5168,6 +5205,12 @@ invocations:
       les consignes d'un humain (« consignes ») : corrige d'abord ce
       qu'elles demandent.
 
+      Si un humain a essayé le produit déjà construit et demande de revoir
+      le plan, tu reçois aussi le plan validé qui a servi à le construire :
+      pars de ce plan, garde ce qui marche et change ce que ses consignes
+      demandent. Le constructeur reprendra le produit existant, il ne
+      repartira pas de zéro.
+
       Pour construire, Serge a un chantier (un conteneur Linux avec Node,
       Python et git, où un modèle code et lance le produit), un navigateur
       pour l'essayer, la mise en ligne d'un site web, et Stripe pour les
@@ -5265,6 +5308,11 @@ invocations:
       - tool: web_search
         mode: callable
         max_calls: 3
+      - tool: plan_valide_du_produit
+        mode: given
+        label: Le plan validé du produit, déjà construit (vide avant la première construction)
+        params:
+          venture_id: {source: task, value: venture_id}
     output:
       - {path: hypothese, type: text, description: Ce que le produit doit prouver.}
       - {path: cible, type: text, description: Ses clients.}
@@ -5369,11 +5417,22 @@ invocations:
       demandes des clients avec ce que le plan en a fait, la fiche du
       business et ce que Serge sait faire.
 
+      Mets-toi à la place d'un client de la cible : tu diriges une
+      entreprise, et on te demande de payer ce service chaque mois.
+      Demande-toi : « est-ce que ça vaut ce prix pour mon travail ? Est-ce
+      que je resterais abonné dans trois mois ? ». Sois exigeant, quitte à
+      être pénible : on ne paie pas longtemps un produit à moitié utile.
+
       Cherche ce qui empêcherait le produit de marcher ou de se vendre :
       - la faisabilité technique : Serge code dans un conteneur Linux avec
         Node, Python et git, essaie dans un navigateur, publie un site web
         et encaisse par Stripe ; pas d'humain, pas de compte sur d'autres
         sites, pas d'API payante ;
+      - le produit est-il complet ? Suis le parcours du client du début à
+        la fin : arrive-t-il à un résultat qui lui sert, sans rien avoir à
+        finir à la main ailleurs ? Dis ce qui manque, fonction par
+        fonction : ce qu'un professionnel attend d'office d'un outil payant
+        de ce genre, et ce qui le ferait rester abonné ;
       - le paiement : l'inscription, le paiement de l'abonnement, ce qu'il
         débloque, ce qui se passe quand il s'arrête ;
       - le prix : réaliste pour ces clients ?
@@ -5395,9 +5454,11 @@ invocations:
       S'il manque à Serge un outil ou un accès, n'en fais pas une
       remarque : appelle l'outil « Demander une nouvelle capacité ».
 
-      Rends le verdict « bon » si le plan peut être construit et vendu tel
-      quel, sinon « a_corriger » avec tes remarques. Ne cherche pas la
-      petite bête : un plan réaliste et clair est bon.
+      Rends le verdict « bon » seulement si, à la place du client, tu
+      paierais ce produit tel que le plan le décrit, et s'il peut être
+      construit tel quel. Sinon « a_corriger », avec tes remarques : un
+      plan clair dont le produit est incomplet ou peu utile n'est pas bon.
+      Ne demande que ce que Serge sait construire.
     tools:
       - tool: plan_produit_par_numero
         mode: given
@@ -5950,7 +6011,18 @@ invocations:
       ticket_type: {source: fixed, value: TEST_PRODUIT}
       ref_table: {source: fixed, value: builds}
       ref_id: {source: task, value: build_id}
-      raison: {source: fixed, value: "Le produit est en ligne en staging, avec Stripe en mode test : essaie-le comme un client, jusqu'au paiement avec la carte 4242 4242 4242 4242. Le valider achète son domaine et le met en vente."}
+      raison:
+        source: fixed
+        value: &raison_test_produit >-
+          Le produit est en ligne en staging, avec Stripe en mode test :
+          essaie-le comme un client, jusqu'au paiement avec la carte 4242
+          4242 4242 4242. Le valider achète son domaine et le met en vente.
+          Ses e-mails ne partent pas : ils restent dans la boîte d'essai, à
+          lire dans Mission Control sur la fiche du business (« E-mails
+          d'essai »). « À corriger » : un bug ou un détail, la construction
+          reprend avec tes consignes. « Revoir le plan » : une
+          fonctionnalité à changer, le plan repart en conception, passe
+          chez le critique et revient au ticket « Plan ».
       title: {source: fixed, value: Un produit attend que tu l'essaies}
 
   - id: suite_test_produit
@@ -5958,7 +6030,8 @@ invocations:
     role: >-
       La réponse au ticket « Tester le produit » du produit fini :
       « Valider » achète son domaine puis le met en vente, « À corriger »
-      relance la construction avec les consignes, « Arrêter le business »
+      relance la construction avec les consignes, « Revoir le plan »
+      renvoie à la conception avec les consignes, « Arrêter le business »
       l'arrête. Sans LLM.
     step: build_venture
     type: capability
@@ -8135,6 +8208,17 @@ links:
       passage: {source: fixed, value: '1'}
       reprise: {source: fixed, value: '1'}
       consignes: {source: task, value: texte}
+  # Un changement de fonctionnalité repasse par la conception, le critique
+  # et le ticket « Plan » avant d'être construit (décision Q116).
+  - id: test_a_revoir_vers_conception
+    title: Le plan du POC est à revoir d'après un humain qui l'a essayé
+    from: suite_test_poc
+    to: concevoir_poc
+    condition: {field: acte, op: '=', value: revoir_plan}
+    params:
+      venture_id: {source: task, value: venture_id}
+      tour: {source: fixed, value: '1'}
+      consignes: {source: task, value: texte}
   - id: prod_vers_test_leger
     title: Le POC en prod est prêt pour le test léger
     from: publier_prod_poc
@@ -8370,6 +8454,15 @@ links:
       venture_id: {source: task, value: venture_id}
       passage: {source: fixed, value: '1'}
       reprise: {source: fixed, value: '1'}
+      consignes: {source: task, value: texte}
+  - id: test_produit_a_revoir_vers_conception
+    title: Le plan du produit est à revoir d'après un humain qui l'a essayé
+    from: suite_test_produit
+    to: concevoir_produit
+    condition: {field: acte, op: '=', value: revoir_plan}
+    params:
+      venture_id: {source: task, value: venture_id}
+      tour: {source: fixed, value: '1'}
       consignes: {source: task, value: texte}
   - id: domaine_achete_vers_vente
     title: Le domaine est acheté ; le produit est mis en vente
@@ -11495,6 +11588,196 @@ changes:
                 son adresse, son titre, et son extrait pour aperçu.
               - N'ajoute jamais un flux RSS de Reddit : Reddit refuse de les donner
                 au serveur de Serge. Pour Reddit, sers-toi de la fouille.
+  # Depuis un ticket de test, on choisit où revenir : à la construction
+  # (« À corriger ») ou à la conception (« Revoir le plan »). Les critiques
+  # se mettent à la place du client et exigent un produit complet
+  # (décision Q116). Les deux liens neufs s'ajoutent tout seuls.
+  - id: q116_concevoir_poc_plan_construit
+    why: Revenue du ticket de test, la conception part du plan déjà construit (Q116).
+    invocation: concevoir_poc
+    add_tools:
+      - {tool: plan_valide_du_poc, mode: given, label: 'Le plan validé, déjà construit (vide avant la première construction)', params: {venture_id: {source: task, value: venture_id}}}
+  - id: q116_concevoir_poc_consigne
+    why: La consigne dit quoi faire du plan déjà construit (Q116).
+    table: invocations
+    where: {id: concevoir_poc}
+    set:
+      prompt:
+        replace:
+          - old: |-
+              corrige d'abord ce qu'ils demandent.
+            new: |-
+              corrige d'abord ce qu'ils demandent.
+
+              Si un humain a essayé le POC déjà construit et demande de revoir le
+              plan, tu reçois aussi le plan validé qui a servi à le construire :
+              pars de ce plan, garde ce qui marche et change ce que ses consignes
+              demandent. Le constructeur reprendra le produit existant, il ne
+              repartira pas de zéro.
+  - id: q116_concevoir_produit_plan_construit
+    why: Revenue du ticket de test, la conception du produit part du plan déjà construit (Q116).
+    invocation: concevoir_produit
+    add_tools:
+      - {tool: plan_valide_du_produit, mode: given, label: 'Le plan validé du produit, déjà construit (vide avant la première construction)', params: {venture_id: {source: task, value: venture_id}}}
+  - id: q116_concevoir_produit_consigne
+    why: La consigne dit quoi faire du plan déjà construit (Q116).
+    table: invocations
+    where: {id: concevoir_produit}
+    set:
+      prompt:
+        replace:
+          - old: |-
+              les consignes d'un humain (« consignes ») : corrige d'abord ce
+              qu'elles demandent.
+            new: |-
+              les consignes d'un humain (« consignes ») : corrige d'abord ce
+              qu'elles demandent.
+
+              Si un humain a essayé le produit déjà construit et demande de revoir
+              le plan, tu reçois aussi le plan validé qui a servi à le construire :
+              pars de ce plan, garde ce qui marche et change ce que ses consignes
+              demandent. Le constructeur reprendra le produit existant, il ne
+              repartira pas de zéro.
+  - id: q116_challenger_poc_exigeant
+    why: Le critique était trop indulgent, il se met à la place du prospect et exige un produit complet (Q116).
+    table: invocations
+    where: {id: challenger_poc}
+    set:
+      prompt:
+        replace:
+          - old: |-
+              produit, ses questions fréquentes, la fiche du business et ce que
+              Serge sait faire.
+
+              Cherche ce qui empêcherait le POC de marcher :
+            new: |-
+              produit, ses questions fréquentes, la fiche du business et ce que
+              Serge sait faire.
+
+              Mets-toi à la place d'un prospect de la cible : tu diriges une
+              entreprise, tu n'as pas de temps à perdre, et un inconnu te propose
+              d'essayer cet outil. Demande-toi : « est-ce que ça me sert vraiment,
+              dans mon travail, dès aujourd'hui ? Est-ce que j'y reviendrais
+              demain ? ». Sois exigeant, quitte à être pénible : un produit à
+              moitié utile ne retient personne, et un test raté coûte des jours.
+
+              Cherche ce qui empêcherait le POC de marcher :
+          - old: |-
+              - les limites du produit : ce qui manque pour qu'un prospect en tire
+                quelque chose ;
+            new: |-
+              - le produit est-il complet ? Suis le parcours du prospect du début à
+                la fin : arrive-t-il à un résultat qui lui sert, sans rien avoir à
+                finir à la main ailleurs ? Dis ce qui manque, fonction par
+                fonction : ce qu'un professionnel attend d'office d'un outil de ce
+                genre (retrouver, corriger, sortir son travail, par exemple), et ce
+                qui le ferait revenir. Un POC reste petit, mais ce qu'il fait, il le
+                fait jusqu'au bout. Si une autre façon de répondre au même besoin
+                servirait mieux le prospect, propose-la ;
+          - old: |-
+              Rends le verdict « bon » si le plan peut être construit tel quel,
+              sinon « a_corriger » avec tes remarques. Ne cherche pas la petite
+              bête : un plan réaliste et clair est bon.
+            new: |-
+              Rends le verdict « bon » seulement si, à la place du prospect, tu te
+              servirais du produit tel que le plan le décrit, et s'il peut être
+              construit tel quel. Sinon « a_corriger », avec tes remarques : un
+              plan clair dont le produit est incomplet ou peu utile n'est pas bon.
+              Ne demande que ce que Serge sait construire.
+  - id: q116_challenger_produit_exigeant
+    why: Le critique du produit fini se met à la place du client qui paie (Q116).
+    table: invocations
+    where: {id: challenger_produit}
+    set:
+      prompt:
+        replace:
+          - old: |-
+              demandes des clients avec ce que le plan en a fait, la fiche du
+              business et ce que Serge sait faire.
+
+              Cherche ce qui empêcherait le produit de marcher ou de se vendre :
+            new: |-
+              demandes des clients avec ce que le plan en a fait, la fiche du
+              business et ce que Serge sait faire.
+
+              Mets-toi à la place d'un client de la cible : tu diriges une
+              entreprise, et on te demande de payer ce service chaque mois.
+              Demande-toi : « est-ce que ça vaut ce prix pour mon travail ? Est-ce
+              que je resterais abonné dans trois mois ? ». Sois exigeant, quitte à
+              être pénible : on ne paie pas longtemps un produit à moitié utile.
+
+              Cherche ce qui empêcherait le produit de marcher ou de se vendre :
+          - old: |-
+              - le paiement : l'inscription, le paiement de l'abonnement, ce qu'il
+                débloque, ce qui se passe quand il s'arrête ;
+            new: |-
+              - le produit est-il complet ? Suis le parcours du client du début à
+                la fin : arrive-t-il à un résultat qui lui sert, sans rien avoir à
+                finir à la main ailleurs ? Dis ce qui manque, fonction par
+                fonction : ce qu'un professionnel attend d'office d'un outil payant
+                de ce genre, et ce qui le ferait rester abonné ;
+              - le paiement : l'inscription, le paiement de l'abonnement, ce qu'il
+                débloque, ce qui se passe quand il s'arrête ;
+          - old: |-
+              Rends le verdict « bon » si le plan peut être construit et vendu tel
+              quel, sinon « a_corriger » avec tes remarques. Ne cherche pas la
+              petite bête : un plan réaliste et clair est bon.
+            new: |-
+              Rends le verdict « bon » seulement si, à la place du client, tu
+              paierais ce produit tel que le plan le décrit, et s'il peut être
+              construit tel quel. Sinon « a_corriger », avec tes remarques : un
+              plan clair dont le produit est incomplet ou peu utile n'est pas bon.
+              Ne demande que ce que Serge sait construire.
+  - id: q116_suite_test_poc_role
+    why: Le ticket de test peut renvoyer à la conception (Q116).
+    table: invocations
+    where: {id: suite_test_poc}
+    set:
+      role:
+        from: >-
+          La réponse au ticket « Tester le produit » : « Valider » met le POC
+          en prod, « À corriger » relance la construction avec les consignes,
+          « Arrêter le business » l'arrête et libère sa place de test. Sans
+          LLM.
+        to: >-
+          La réponse au ticket « Tester le produit » : « Valider » met le POC
+          en prod, « À corriger » relance la construction avec les consignes,
+          « Revoir le plan » renvoie à la conception avec les consignes,
+          « Arrêter le business » l'arrête et libère sa place de test. Sans
+          LLM.
+  - id: q116_suite_test_produit_role
+    why: Le ticket de test du produit fini peut renvoyer à la conception (Q116).
+    table: invocations
+    where: {id: suite_test_produit}
+    set:
+      role:
+        from: >-
+          La réponse au ticket « Tester le produit » du produit fini :
+          « Valider » achète son domaine puis le met en vente, « À corriger »
+          relance la construction avec les consignes, « Arrêter le business »
+          l'arrête. Sans LLM.
+        to: >-
+          La réponse au ticket « Tester le produit » du produit fini :
+          « Valider » achète son domaine puis le met en vente, « À corriger »
+          relance la construction avec les consignes, « Revoir le plan »
+          renvoie à la conception avec les consignes, « Arrêter le business »
+          l'arrête. Sans LLM.
+  - id: q116_ticket_test_poc_pourquoi
+    why: Le ticket dit où lire les e-mails du staging et ce que fait chaque bouton (Q116).
+    table: invocation_tool_params
+    where: {invocation_id: demander_test_poc, invocation_tool_id: 0, param_name: raison}
+    set:
+      value:
+        from: 'Le POC est en ligne en staging : essaie-le comme un prospect, avec les scénarios de test.'
+        to: *raison_test_poc
+  - id: q116_ticket_test_produit_pourquoi
+    why: Le ticket dit où lire les e-mails du staging et ce que fait chaque bouton (Q116).
+    table: invocation_tool_params
+    where: {invocation_id: demander_test_produit, invocation_tool_id: 0, param_name: raison}
+    set:
+      value:
+        from: "Le produit est en ligne en staging, avec Stripe en mode test : essaie-le comme un client, jusqu'au paiement avec la carte 4242 4242 4242 4242. Le valider achète son domaine et le met en vente."
+        to: *raison_test_produit
 deleted:
   invocations:
     # Le compteur du 21 novembre 2026 comptait jusqu'à un réglage à lui ;
