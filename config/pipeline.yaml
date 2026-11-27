@@ -92,6 +92,11 @@ serge_texts:
       « voice » ne se choisit pas pour une campagne, et Serge ne propose ni
       ne promet jamais d'appel, de visioconférence ou de rendez-vous
       téléphonique.
+
+      Le canal « x » ne se choisit pas non plus pour une campagne : X sert à
+      chercher ce que disent les gens et à vérifier une idée, pas à
+      prospecter des entreprises. Serge prospecte par e-mail, sur LinkedIn
+      et sur Instagram.
   - id: tools_exhausted
     title: Quand le modèle ne peut plus appeler d’outils
     help: >-
@@ -6454,9 +6459,6 @@ invocations:
       instagram_test: {value: 10, min: 1, max: 500, policy: true, trial: 1, description: "Instagram : les prospects d'un test léger."}
       instagram_semaine: {value: 30, min: 1, max: 5000, policy: true, description: 'Instagram : les prospects par semaine, en prospection lourde.'}
       instagram_total: {value: 100, min: 1, max: 50000, policy: true, trial: 1, description: 'Instagram : les prospects au total, en prospection lourde.'}
-      x_test: {value: 10, min: 1, max: 500, policy: true, trial: 1, description: "X : les prospects d'un test léger."}
-      x_semaine: {value: 30, min: 1, max: 5000, policy: true, description: 'X : les prospects par semaine, en prospection lourde.'}
-      x_total: {value: 100, min: 1, max: 50000, policy: true, trial: 1, description: 'X : les prospects au total, en prospection lourde.'}
       duree_max_jours: {value: 30, min: 1, max: 90, policy: true, description: "La durée d'un test léger, en jours, au plus."}
     params:
       campaign_id: {source: task, value: campaign_id}
@@ -6540,6 +6542,14 @@ invocations:
       de compte Apollo en service, ou s'il ne donne pas assez de monde,
       cherche sur le web comme dit ci-dessus.
 
+      Exception, pour une campagne sur Instagram : ne passe pas par Apollo.
+      Cherche les comptes directement sur Instagram, avec « Fouiller
+      Instagram » : dis à l'autre invocation la cible de la campagne (le
+      métier, le lieu) et demande-lui des comptes professionnels, tenus au
+      nom d'une activité, avec l'adresse exacte de chaque profil. C'est
+      cette adresse que tu donnes à « Ajouter un prospect », avec elle-même
+      pour source.
+
       Méthode :
       - fais au plus {recherches_max} recherches et lis au plus {pages_max}
         pages ;
@@ -6609,13 +6619,6 @@ invocations:
         params:
           invocation: {source: fixed, value: fouiller_reseau}
           account: {source: fixed, value: instagram}
-          task_id: {source: task, value: task_id}
-      - tool: fouiller_x
-        mode: callable
-        max_calls: fouilles_max
-        params:
-          invocation: {source: fixed, value: fouiller_reseau}
-          account: {source: fixed, value: x}
           task_id: {source: task, value: task_id}
       - tool: ajouter_prospect
         mode: callable
@@ -11395,6 +11398,51 @@ changes:
               seulement probable, ne compte pas. Si l'outil répond que Serge n'a pas
               de compte Apollo en service, ou s'il ne donne pas assez de monde,
               cherche sur le web comme dit ci-dessus.
+  # X ne sert plus à prospecter, et une campagne sur Instagram cherche ses
+  # comptes sur Instagram (demande de Clem, 27 novembre 2026, Q114).
+  - id: b2b_pas_de_campagne_sur_x
+    why: X sert à chercher et à vérifier une idée, pas à prospecter des entreprises (Q114).
+    table: serge_texts
+    where: {id: presentation}
+    set:
+      body:
+        replace:
+          - old: |-
+              ne promet jamais d'appel, de visioconférence ou de rendez-vous
+              téléphonique.
+            new: |-
+              ne promet jamais d'appel, de visioconférence ou de rendez-vous
+              téléphonique.
+
+              Le canal « x » ne se choisit pas non plus pour une campagne : X sert à
+              chercher ce que disent les gens et à vérifier une idée, pas à
+              prospecter des entreprises. Serge prospecte par e-mail, sur LinkedIn
+              et sur Instagram.
+  - id: b2b_prospects_sans_fouille_x
+    why: Trouver des prospects ne fouille plus X, qui n'est plus un canal de campagne (Q114).
+    invocation: trouver_prospects
+    remove_tools: [fouiller_x]
+  - id: b2b_prospects_sur_instagram
+    why: Une campagne sur Instagram cherche ses comptes directement sur Instagram (Q114).
+    table: invocations
+    where: {id: trouver_prospects}
+    set:
+      prompt:
+        replace:
+          - old: |-
+              de compte Apollo en service, ou s'il ne donne pas assez de monde,
+              cherche sur le web comme dit ci-dessus.
+            new: |-
+              de compte Apollo en service, ou s'il ne donne pas assez de monde,
+              cherche sur le web comme dit ci-dessus.
+
+              Exception, pour une campagne sur Instagram : ne passe pas par Apollo.
+              Cherche les comptes directement sur Instagram, avec « Fouiller
+              Instagram » : dis à l'autre invocation la cible de la campagne (le
+              métier, le lieu) et demande-lui des comptes professionnels, tenus au
+              nom d'une activité, avec l'adresse exacte de chaque profil. C'est
+              cette adresse que tu donnes à « Ajouter un prospect », avec elle-même
+              pour source.
 deleted:
   invocations:
     # Le compteur du 21 novembre 2026 comptait jusqu'à un réglage à lui ;
@@ -11457,6 +11505,11 @@ deleted:
   # Le nombre de prospects d'un test n'est plus dans le plan du POC : c'est
   # un réglage par canal de « Démarrer une campagne » (Q93).
   settings:
+    # X n'est plus un canal de campagne (Q114) : sans volume, une campagne
+    # sur X ne démarre pas.
+    - {invocation: demarrer_campagne, name: x_test}
+    - {invocation: demarrer_campagne, name: x_semaine}
+    - {invocation: demarrer_campagne, name: x_total}
     - {invocation: compter_rappels_essai, name: essais_max}
     - {invocation: concevoir_poc, name: prospects_min}
     - {invocation: concevoir_poc, name: prospects_max}
