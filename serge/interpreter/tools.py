@@ -74,19 +74,11 @@ def _db_read(
 
 
 def _web_search(
-    conn: sqlite3.Connection, _tool: str, args: dict[str, Any], _inv: str
+    conn: sqlite3.Connection, tool: str, args: dict[str, Any], inv: str
 ) -> dict[str, Any]:
-    from serge.listen.web import search_public
+    from serge.listen.web import web_search
 
-    pol = policy_en_vigueur(conn)
-    limit = int(args.get('limit') or pol['tools']['search_results'])
-    result = dict(
-        search_public(str(args.get('query') or ''), limit, pol['web'])
-    )
-    # Les résultats sous un seul nom : ce que rend un outil repart au
-    # modèle à chaque tour, un doublon coûterait deux fois.
-    rows = result.pop('results', [])
-    return {**result, 'rows': rows}
+    return web_search(conn, tool, args, inv)
 
 
 def _memory_search(

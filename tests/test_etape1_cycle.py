@@ -153,7 +153,7 @@ class FauxModele:
         )
 
 
-def _recherche(query: str, limit: int, _web: object) -> dict:
+def _recherche(query: str, limit: int, _web: object, **_cle: object) -> dict:
     return {
         'ok': True,
         'query': query,
