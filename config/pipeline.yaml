@@ -12227,6 +12227,16 @@ changes:
       description:
         from: 'Le canal du test : le numéro d''un canal branché.'
         to: 'Le ou les canaux du test : des numéros de canaux branchés, séparés par une virgule.'
+  # Sur une instance plus ancienne, ce champ disait « Le canal du test. » :
+  # le changement précédent ne l'a pas reconnu (27 novembre 2026).
+  - id: q117_poc_canaux_reponse_ancien_texte
+    why: Le champ « canal » du plan peut nommer plusieurs canaux, aussi là où son ancien texte était resté (Q117).
+    table: invocation_output_fields
+    where: {invocation_id: concevoir_poc, path: canal}
+    set:
+      description:
+        from: Le canal du test.
+        to: 'Le ou les canaux du test : des numéros de canaux branchés, séparés par une virgule.'
   - id: q117_prospects_une_personne_un_canal
     why: Une même personne n'est contactée que sur un canal (Q117).
     table: invocations
