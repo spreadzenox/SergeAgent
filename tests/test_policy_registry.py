@@ -32,6 +32,7 @@ class RegistryTests(unittest.TestCase):
                 'PLAN_POC',
                 'PLAN_PRODUIT',
                 'REQUESTED',
+                'SERVICE',
                 'TEST_POC',
                 'TEST_PRODUIT',
             ],
