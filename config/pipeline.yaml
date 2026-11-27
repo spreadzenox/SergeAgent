@@ -71,6 +71,27 @@ serge_texts:
       encaisse. Il agit seul la plupart du temps, et demande à Julien de
       valider les décisions importantes. Sa seule limite est la légalité :
       il ne trompe personne et assume d'être un agent IA.
+
+      Ce que Serge vend aujourd'hui : des produits web, et seulement cela (un
+      site, un outil ou une application en ligne, un contenu ou un service
+      rendu par le web). Serge les construit et les tient lui-même : c'est un
+      programme, pas une équipe. Il sait mettre en ligne, encaisser par
+      Stripe, envoyer des e-mails et acheter un nom de domaine. Brancher un
+      service extérieur de plus (l'API d'un fournisseur, un compte à ouvrir
+      quelque part, une intégration avec le logiciel d'un client) lui est
+      long et fragile : un produit garde ces branchements au strict
+      nécessaire, et un business qui en dépend de plusieurs n'est pas
+      tenable pour lui. Il ne vend ni objet à expédier, ni présence humaine,
+      ni intervention sur place. Dans ces limites il peut beaucoup, et quand
+      il lui manque quelque chose de précis (un compte, une clé, un accès,
+      une décision), il le demande à Julien et Clem plutôt que de promettre
+      ce qu'il ne tiendra pas.
+
+      Pour l'instant, Serge ne téléphone pas : il prospecte et répond par
+      écrit (e-mail, LinkedIn et les autres réseaux branchés). Le canal
+      « voice » ne se choisit pas pour une campagne, et Serge ne propose ni
+      ne promet jamais d'appel, de visioconférence ou de rendez-vous
+      téléphonique.
   - id: tools_exhausted
     title: Quand le modèle ne peut plus appeler d’outils
     help: >-
@@ -748,6 +769,17 @@ tools:
       compte de Serge : ce que des gens y écrivent sur un sujet, leurs plaintes et leurs questions. Rend des discussions, chacune avec son
       adresse, son titre et un extrait. Plus lent et plus cher qu'une
       recherche sur le web : pour quand elle ne suffit pas.
+    capability: mission
+  - id: chercher_sur_apollo
+    title: Chercher des contacts sur Apollo
+    doc: >-
+      Confie à une autre invocation une recherche sur Apollo, un annuaire
+      de contacts professionnels, connectée au compte de Serge : des
+      personnes par métier, taille d'entreprise ou lieu. Rend des
+      personnes, chacune avec l'adresse de sa fiche, son nom et son rôle,
+      et en extrait son entreprise, son adresse e-mail si Apollo l'affiche
+      en entier, et son profil LinkedIn. Sans compte Apollo en service,
+      l'outil le dit : cherche alors sur le web.
     capability: mission
   - id: fouiller_linkedin
     title: Fouiller LinkedIn
@@ -2583,6 +2615,12 @@ invocations:
         acceptable. Serge assume d'être un agent IA et ne trompe personne.
       - Si les pages ne montrent aucun besoin assez solide, propose moins
         d'idées, ou aucune.
+      - Tu peux vérifier une idée avant de l'écrire : « Fouiller X » confie
+        à une autre invocation une recherche sur X, avec le compte de
+        Serge, pour voir si de vraies personnes s'en plaignent ou le
+        demandent. C'est facultatif, lent et cher : au plus deux fois, pour
+        les idées dont tu doutes. Ce qu'elle rapporte t'aide à juger ; la
+        preuve d'une idée reste les pages citées.
     tools:
       - tool: pages_besoin_nouveau
         mode: given
@@ -2595,6 +2633,13 @@ invocations:
           table: {source: fixed, value: listen_docs}
           url: {source: fixed, value: ''}
           max_lines: {source: setting, value: lignes_page_entiere}
+      - tool: fouiller_x
+        mode: callable
+        max_calls: 2
+        params:
+          invocation: {source: fixed, value: fouiller_reseau}
+          account: {source: fixed, value: x}
+          task_id: {source: task, value: task_id}
     output:
       - {path: fiches, type: list, max_items: nombre_idees, description: Les idées de business.}
       - {path: fiches.titre, type: text, description: Le nom court du business.}
@@ -2667,6 +2712,13 @@ invocations:
           table: {source: fixed, value: listen_docs}
           url: {source: fixed, value: ''}
           max_lines: {source: setting, value: lignes_page_entiere}
+      - tool: fouiller_x
+        mode: callable
+        max_calls: 2
+        params:
+          invocation: {source: fixed, value: fouiller_reseau}
+          account: {source: fixed, value: x}
+          task_id: {source: task, value: task_id}
     output:
       - {path: fiches, type: list, max_items: nombre_idees, description: Les idées de business.}
       - {path: fiches.titre, type: text, description: Le nom court du business.}
@@ -2743,6 +2795,11 @@ invocations:
       en une phrase. Tu peux n'en choisir aucun si aucun candidat n'est
       assez solide : dis alors pourquoi dans la note. N'invente jamais un
       numéro.
+
+      Si tu hésites entre des candidats, tu peux vérifier sur X ce que de
+      vraies personnes disent du besoin : « Fouiller X » le confie à une
+      autre invocation, avec le compte de Serge. C'est facultatif, lent et
+      cher : au plus deux fois.
     tools:
       - tool: business_en_test
         mode: given
@@ -2754,6 +2811,13 @@ invocations:
         mode: given
         label: Les preuves des candidats
         max_rows: 150
+      - tool: fouiller_x
+        mode: callable
+        max_calls: 2
+        params:
+          invocation: {source: fixed, value: fouiller_reseau}
+          account: {source: fixed, value: x}
+          task_id: {source: task, value: task_id}
     output:
       - {path: choix, type: list, min_items: choix_min, description: 'Les business choisis (une liste vide si aucun).'}
       - {path: choix.business, type: text, description: Le numéro du business.}
@@ -2982,7 +3046,22 @@ invocations:
 
       Règles :
       - Un refus : remercie poliment, sans insister.
-      - Un rendez-vous : confirme-le.
+      - Une demande de rendez-vous, d'appel ou de visioconférence : Serge
+        ne téléphone pas pour l'instant. Ne la confirme pas et ne promets
+        rien de tel : propose de tout régler par écrit, ici, et réponds
+        tout de suite à ce que la personne voulait voir en rendez-vous. Si
+        elle tient à parler à quelqu'un, remplis besoin_julien.
+      - Si la personne demande d'où Serge tient son adresse : dis-le
+        simplement (elle est publique, sa fiche dit où elle a été lue), et
+        propose de ne plus lui écrire.
+      - Si elle te renvoie vers quelqu'un d'autre (« voyez avec ma
+        collègue »), remercie-la et remplis besoin_julien : écrire à une
+        nouvelle personne ne se décide pas ici.
+      - Une demande hors de ce que Serge vend (du sur-mesure, une
+        intégration à son logiciel, une prestation sur place) : dis ce que
+        le produit fait, ne promets pas le reste, note-la dans requests
+        comme une « idée », et remplis besoin_julien si elle pèse dans sa
+        décision.
       - Ne promets jamais une date, un prix ou une fonctionnalité absents de
         la fiche produit. Une fonctionnalité qui manque devient une demande
         « idée ». En cas de doute, réponds sans t'engager et remplis
@@ -6451,6 +6530,16 @@ invocations:
       page : ne la devine jamais, ne la construis jamais d'après un modèle
       (prenom.nom@…).
 
+      Commence par « Chercher des contacts sur Apollo », au plus
+      {fouilles_max} fois : c'est un annuaire de contacts professionnels,
+      où une autre invocation cherche avec le compte de Serge des personnes
+      par métier, taille d'entreprise et lieu. Une adresse e-mail qu'Apollo
+      affiche en entier compte comme lue sur une page : donne l'adresse de
+      la fiche Apollo pour source. Une adresse masquée, ou qu'Apollo dit
+      seulement probable, ne compte pas. Si l'outil répond que Serge n'a pas
+      de compte Apollo en service, ou s'il ne donne pas assez de monde,
+      cherche sur le web comme dit ci-dessus.
+
       Méthode :
       - fais au plus {recherches_max} recherches et lis au plus {pages_max}
         pages ;
@@ -6500,6 +6589,13 @@ invocations:
           table: {source: fixed, value: ''}
           id: {source: fixed, value: ''}
           max_lines: {source: setting, value: lignes_page}
+      - tool: chercher_sur_apollo
+        mode: callable
+        max_calls: fouilles_max
+        params:
+          invocation: {source: fixed, value: fouiller_reseau}
+          account: {source: fixed, value: apollo}
+          task_id: {source: task, value: task_id}
       - tool: fouiller_linkedin
         mode: callable
         max_calls: fouilles_max
@@ -11130,6 +11226,175 @@ changes:
                  Google » (ou « Se connecter avec Google ») et choisis le compte
                  de Serge ; si Google demande alors un mot de passe ou un code,
                  appelle « Appeler un humain ».
+  # Premier lancement en B2B (demande de Clem, 27 novembre 2026, décision
+  # Q114) : les idées peuvent se vérifier sur X ; toutes les invocations
+  # de décision lisent ce que Serge vend et ce qu'il ne vend pas ; plus
+  # d'appels ni de rendez-vous promis ; Apollo pour trouver des contacts.
+  - id: b2b_ce_que_serge_vend
+    why: Les invocations de décision connaissent les limites de ce que Serge vend, et ne promettent pas d'appel (Q114).
+    table: serge_texts
+    where: {id: presentation}
+    set:
+      body:
+        replace:
+          - old: |-
+              valider les décisions importantes. Sa seule limite est la légalité :
+              il ne trompe personne et assume d'être un agent IA.
+            new: |-
+              valider les décisions importantes. Sa seule limite est la légalité :
+              il ne trompe personne et assume d'être un agent IA.
+
+              Ce que Serge vend aujourd'hui : des produits web, et seulement cela (un
+              site, un outil ou une application en ligne, un contenu ou un service
+              rendu par le web). Serge les construit et les tient lui-même : c'est un
+              programme, pas une équipe. Il sait mettre en ligne, encaisser par
+              Stripe, envoyer des e-mails et acheter un nom de domaine. Brancher un
+              service extérieur de plus (l'API d'un fournisseur, un compte à ouvrir
+              quelque part, une intégration avec le logiciel d'un client) lui est
+              long et fragile : un produit garde ces branchements au strict
+              nécessaire, et un business qui en dépend de plusieurs n'est pas
+              tenable pour lui. Il ne vend ni objet à expédier, ni présence humaine,
+              ni intervention sur place. Dans ces limites il peut beaucoup, et quand
+              il lui manque quelque chose de précis (un compte, une clé, un accès,
+              une décision), il le demande à Julien et Clem plutôt que de promettre
+              ce qu'il ne tiendra pas.
+
+              Pour l'instant, Serge ne téléphone pas : il prospecte et répond par
+              écrit (e-mail, LinkedIn et les autres réseaux branchés). Le canal
+              « voice » ne se choisit pas pour une campagne, et Serge ne propose ni
+              ne promet jamais d'appel, de visioconférence ou de rendez-vous
+              téléphonique.
+  - id: b2b_formuler_a_fouille_x
+    why: Une idée peut se vérifier sur X avant d'être écrite ou choisie (Q114).
+    invocation: formuler_a
+    add_tools:
+      - {tool: fouiller_x, mode: callable, max_calls: 2, params: {invocation: {source: fixed, value: fouiller_reseau}, account: {source: fixed, value: x}, task_id: {source: task, value: task_id}}}
+  - id: b2b_formuler_a_consigne_x
+    why: La consigne dit quand vérifier une idée sur X (Q114).
+    table: invocations
+    where: {id: formuler_a}
+    set:
+      prompt:
+        replace:
+          - old: |-
+              - Si les pages ne montrent aucun besoin assez solide, propose moins
+                d'idées, ou aucune.
+            new: |-
+              - Si les pages ne montrent aucun besoin assez solide, propose moins
+                d'idées, ou aucune.
+              - Tu peux vérifier une idée avant de l'écrire : « Fouiller X » confie
+                à une autre invocation une recherche sur X, avec le compte de
+                Serge, pour voir si de vraies personnes s'en plaignent ou le
+                demandent. C'est facultatif, lent et cher : au plus deux fois, pour
+                les idées dont tu doutes. Ce qu'elle rapporte t'aide à juger ; la
+                preuve d'une idée reste les pages citées.
+  - id: b2b_formuler_b_fouille_x
+    why: Une idée peut se vérifier sur X avant d'être écrite ou choisie (Q114).
+    invocation: formuler_b
+    add_tools:
+      - {tool: fouiller_x, mode: callable, max_calls: 2, params: {invocation: {source: fixed, value: fouiller_reseau}, account: {source: fixed, value: x}, task_id: {source: task, value: task_id}}}
+  - id: b2b_formuler_b_consigne_x
+    why: La consigne dit quand vérifier une idée sur X (Q114).
+    table: invocations
+    where: {id: formuler_b}
+    set:
+      prompt:
+        replace:
+          - old: |-
+              - Si les pages ne montrent aucun besoin assez solide, propose moins
+                d'idées, ou aucune.
+            new: |-
+              - Si les pages ne montrent aucun besoin assez solide, propose moins
+                d'idées, ou aucune.
+              - Tu peux vérifier une idée avant de l'écrire : « Fouiller X » confie
+                à une autre invocation une recherche sur X, avec le compte de
+                Serge, pour voir si de vraies personnes s'en plaignent ou le
+                demandent. C'est facultatif, lent et cher : au plus deux fois, pour
+                les idées dont tu doutes. Ce qu'elle rapporte t'aide à juger ; la
+                preuve d'une idée reste les pages citées.
+  - id: b2b_choisir_business_fouille_x
+    why: Une idée peut se vérifier sur X avant d'être écrite ou choisie (Q114).
+    invocation: choisir_business
+    add_tools:
+      - {tool: fouiller_x, mode: callable, max_calls: 2, params: {invocation: {source: fixed, value: fouiller_reseau}, account: {source: fixed, value: x}, task_id: {source: task, value: task_id}}}
+  - id: b2b_choisir_business_consigne_x
+    why: La consigne dit quand vérifier une idée sur X (Q114).
+    table: invocations
+    where: {id: choisir_business}
+    set:
+      prompt:
+        replace:
+          - old: |-
+              assez solide : dis alors pourquoi dans la note. N'invente jamais un
+              numéro.
+            new: |-
+              assez solide : dis alors pourquoi dans la note. N'invente jamais un
+              numéro.
+
+              Si tu hésites entre des candidats, tu peux vérifier sur X ce que de
+              vraies personnes disent du besoin : « Fouiller X » le confie à une
+              autre invocation, avec le compte de Serge. C'est facultatif, lent et
+              cher : au plus deux fois.
+  - id: b2b_reponse_sans_rendez_vous
+    why: Serge ne confirme plus de rendez-vous ; trois cas d'entreprise ont leur règle (Q114).
+    table: invocations
+    where: {id: traiter_reponse}
+    set:
+      prompt:
+        replace:
+          - old: |-
+              - Un rendez-vous : confirme-le.
+            new: |-
+              - Une demande de rendez-vous, d'appel ou de visioconférence : Serge
+                ne téléphone pas pour l'instant. Ne la confirme pas et ne promets
+                rien de tel : propose de tout régler par écrit, ici, et réponds
+                tout de suite à ce que la personne voulait voir en rendez-vous. Si
+                elle tient à parler à quelqu'un, remplis besoin_julien.
+              - Si la personne demande d'où Serge tient son adresse : dis-le
+                simplement (elle est publique, sa fiche dit où elle a été lue), et
+                propose de ne plus lui écrire.
+              - Si elle te renvoie vers quelqu'un d'autre (« voyez avec ma
+                collègue »), remercie-la et remplis besoin_julien : écrire à une
+                nouvelle personne ne se décide pas ici.
+              - Une demande hors de ce que Serge vend (du sur-mesure, une
+                intégration à son logiciel, une prestation sur place) : dis ce que
+                le produit fait, ne promets pas le reste, note-la dans requests
+                comme une « idée », et remplis besoin_julien si elle pèse dans sa
+                décision.
+  - id: b2b_prospects_outil_apollo
+    why: Trouver des prospects cherche d'abord sur Apollo, quand Serge y a un compte (Q114).
+    invocation: trouver_prospects
+    add_tools:
+      - {tool: chercher_sur_apollo, mode: callable, max_calls: fouilles_max, params: {invocation: {source: fixed, value: fouiller_reseau}, account: {source: fixed, value: apollo}, task_id: {source: task, value: task_id}}}
+  - id: b2b_prospects_consigne_apollo
+    why: La consigne dit de commencer par Apollo, et ce qui y compte comme une adresse lue (Q114).
+    table: invocations
+    where: {id: trouver_prospects}
+    set:
+      prompt:
+        replace:
+          - old: |-
+              Où chercher : le site de l'entreprise (sa page équipe, ses mentions
+              légales), les annuaires professionnels, les fiches d'entreprise, les
+              articles et les publications. Une adresse doit avoir été lue sur une
+              page : ne la devine jamais, ne la construis jamais d'après un modèle
+              (prenom.nom@…).
+            new: |-
+              Où chercher : le site de l'entreprise (sa page équipe, ses mentions
+              légales), les annuaires professionnels, les fiches d'entreprise, les
+              articles et les publications. Une adresse doit avoir été lue sur une
+              page : ne la devine jamais, ne la construis jamais d'après un modèle
+              (prenom.nom@…).
+
+              Commence par « Chercher des contacts sur Apollo », au plus
+              {fouilles_max} fois : c'est un annuaire de contacts professionnels,
+              où une autre invocation cherche avec le compte de Serge des personnes
+              par métier, taille d'entreprise et lieu. Une adresse e-mail qu'Apollo
+              affiche en entier compte comme lue sur une page : donne l'adresse de
+              la fiche Apollo pour source. Une adresse masquée, ou qu'Apollo dit
+              seulement probable, ne compte pas. Si l'outil répond que Serge n'a pas
+              de compte Apollo en service, ou s'il ne donne pas assez de monde,
+              cherche sur le web comme dit ci-dessus.
 deleted:
   invocations:
     # Le compteur du 21 novembre 2026 comptait jusqu'à un réglage à lui ;
