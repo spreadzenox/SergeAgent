@@ -86,7 +86,7 @@ class VpnTests(unittest.TestCase):
             [lancer[i + 1] for i, a in enumerate(lancer) if a == '-p'],
             [
                 '127.0.0.1::9222/tcp',
-                '127.0.0.1::9223/tcp',
+                '127.0.0.1::9225/tcp',
                 '127.0.0.1::6080/tcp',
             ],
         )
@@ -101,7 +101,7 @@ class VpnTests(unittest.TestCase):
         ]
         self.assertIn('VPN_SERVICE_PROVIDER=custom', env)
         self.assertIn('VPN_TYPE=openvpn', env)
-        self.assertIn('FIREWALL_INPUT_PORTS=9222,9223,6080', env)
+        self.assertIn('FIREWALL_INPUT_PORTS=9222,9225,6080', env)
         self.assertIn('FIREWALL_OUTBOUND_SUBNETS=172.18.0.0/16', env)
         # Les secrets passent par l'environnement de Docker, jamais sur sa
         # ligne de commande.
@@ -118,6 +118,18 @@ class VpnTests(unittest.TestCase):
         ident = vpn.ensure_vpn(self.conn)
         self.assertEqual(len(self._appels('run')), avant)
         self.assertTrue(ident.startswith('id-'))
+
+    def test_les_ports_changees_refont_le_sidecar(self) -> None:
+        self._lance(**{'telecom-vpn-login': 'a', 'telecom-vpn-password': 'b'})
+        etat = self.dossier / f'docker/containers/{vpn.CONTAINER}/state.json'
+        donnees = json.loads(etat.read_text())
+        donnees['ports'] = {'9222/tcp': '127.0.0.1::9222/tcp'}
+        etat.write_text(json.dumps(donnees))
+        vpn.ensure_vpn(self.conn)
+        self.assertEqual(len(self._appels('rm')), 1)
+        (relance,) = [a for a in self._appels('run')[1:] if vpn.CONTAINER in a]
+        ports = [relance[i + 1] for i, a in enumerate(relance) if a == '-p']
+        self.assertIn('127.0.0.1::9225/tcp', ports)
 
     def test_le_reglage_desactive_le_vpn(self) -> None:
         self.assertEqual(

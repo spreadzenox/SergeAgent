@@ -64,6 +64,7 @@ def _run(args: list[str]) -> int:
         )
     flags: dict[str, str] = {}
     env: list[str] = []
+    publies: dict[str, str] = {}
     i = 0
     while i < len(args) and args[i].startswith('-'):
         if args[i] in ('-d', '--init'):
@@ -75,6 +76,10 @@ def _run(args: list[str]) -> int:
             env.append(
                 nom if '=' in nom else f'{nom}={os.environ.get(nom, "")}'
             )
+        elif args[i] == '-p':
+            valeur = args[i + 1]
+            cport = valeur.rsplit(':', 1)[-1]
+            publies[cport] = f'127.0.0.1:{49222 + len(publies)}'
         else:
             flags[args[i]] = args[i + 1]
         i += 2
@@ -92,6 +97,7 @@ def _run(args: list[str]) -> int:
             'volume': volume,
             'flags': flags,
             'command': command,
+            'ports': publies,
             'networks': [flags['--network']] if '--network' in flags else [],
             'env': env,
         },
@@ -228,6 +234,10 @@ def _port(args: list[str]) -> int:
     if state is None:
         return _refuse(f'No such container: {args[0]}', 1)
     ports = state.get('ports', {})
+    if len(args) < 2:
+        for port, valeur in sorted(ports.items()):
+            print(f'{port} -> {valeur}')
+        return 0
     print(ports.get(args[1], state.get('port', '127.0.0.1:49222')))
     return 0
 

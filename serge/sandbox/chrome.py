@@ -38,13 +38,15 @@ from serge.sandbox.docker import DockerError, docker, ensure_network
 SANS_ECRAN = 'serge-navigateur'
 VRAI = 'serge-vrai-chrome'
 DOSSIER_IMAGE = Path(__file__).with_name('image_chrome')
-# Le port de débogage de chaque conteneur, et l'écran du vrai Chrome.
+# Le port de débogage publié de chaque conteneur, et l'écran du vrai Chrome.
 CDP = {SANS_ECRAN: '9222/tcp', VRAI: '9223/tcp'}
 ECRAN = '6080/tcp'
 # Dans le réseau partagé du VPN, les deux Chrome écoutent leur débogage
-# dans le même espace : le vrai Chrome laisse le 9222 au navigateur sans
-# écran (son socat relaie toujours 9223).
+# dans le même espace. Le navigateur sans écran y prend 9222 et 9223 (son
+# entrée relaie déjà 9222 vers 9223) : le vrai Chrome utilise donc 9224
+# pour son propre Chromium et 9225 pour son relais publié.
 PORT_CHROME_VRAI = '9224'
+CDP_VPN = '9225/tcp'
 
 
 def image_vrai_chrome() -> str:
@@ -75,7 +77,13 @@ def _lancer(nom: str, image: str, memoire_mb: int, ident_vpn: str) -> None:
     volume = (
         ['-v', f'{VRAI}-profil:/home/chrome/profil'] if nom == VRAI else []
     )
-    env = ['-e', f'CHROME_PORT={PORT_CHROME_VRAI}'] if nom == VRAI else []
+    env = []
+    if nom == VRAI:
+        # Son Chromium se décale pour ne pas prendre les ports du navigateur
+        # sans écran quand le réseau est partagé (VPN).
+        env = ['-e', f'CHROME_PORT={PORT_CHROME_VRAI}']
+        if ident_vpn:
+            env += ['-e', f'CDP_RELAY={CDP_VPN.removesuffix("/tcp")}']
     docker(
         [
             'run',
@@ -106,6 +114,14 @@ def _image_construite(image: str) -> None:
     # inspect » serait un refus de Docker, donc une panne (16 novembre 2026).
     if not docker(['image', 'ls', '-q', image], timeout=30).stdout.strip():
         docker(['build', '-t', image, str(DOSSIER_IMAGE)], timeout=1800)
+
+
+def _port_cdp(nom: str, ident_vpn: str) -> str:
+    """Le port de débogage à publier : celui du vrai Chrome se décale dans
+    le réseau partagé du VPN (le navigateur sans écran y prend 9222/9223)."""
+    if nom == VRAI and ident_vpn:
+        return CDP_VPN
+    return CDP[nom]
 
 
 def _au_bon_endroit(nom: str, ident_vpn: str) -> bool:
@@ -150,7 +166,7 @@ def endpoint(conn: sqlite3.Connection, nom: str) -> str:
         _lancer(nom, image, memoire, ident_vpn)
     elif etat != 'running':
         docker(['start', nom], timeout=120)
-    adresse = _port(conn, nom, CDP[nom])
+    adresse = _port(conn, nom, _port_cdp(nom, ident_vpn))
     if not adresse:
         raise DockerError(f'{nom} ne publie pas son port de débogage')
     if nom == VRAI and etat != 'running':
@@ -160,7 +176,12 @@ def endpoint(conn: sqlite3.Connection, nom: str) -> str:
 
 def _attendre_chrome(adresse: str) -> None:
     """Attend que Chromium réponde sur son port de débogage (l'écran et
-    Chromium démarrent en quelques secondes ; 30 au plus)."""
+    Chromium démarrent en quelques secondes ; 30 au plus).
+
+    Raises:
+        DockerError: Chromium ne répond pas ; le lancement échoue au lieu
+            de laisser Playwright se bloquer sur un port muet.
+    """
     for _ in range(60):
         try:
             with urllib.request.urlopen(
@@ -169,6 +190,7 @@ def _attendre_chrome(adresse: str) -> None:
                 return
         except OSError:
             time.sleep(0.5)
+    raise DockerError(f'le vrai Chrome ne répond pas sur {adresse}')
 
 
 def _port(conn: sqlite3.Connection, nom: str, port_conteneur: str) -> str:
