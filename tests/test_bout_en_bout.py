@@ -52,6 +52,7 @@ class BoutEnBoutTests(test_etape2.Etape2Tests):
     test_arreter_le_business_libere_sa_place = None  # type: ignore[assignment]
     test_sans_reponse_sous_48_heures_le_plan_s_applique = None  # type: ignore[assignment]
     test_a_corriger_au_test_relance_la_construction = None  # type: ignore[assignment]
+    test_revoir_le_plan_au_test_renvoie_a_la_conception = None  # type: ignore[assignment]
 
     def _calculatrice(self, modeles: FauxModeles) -> str:
         self.assertIsNotNone(

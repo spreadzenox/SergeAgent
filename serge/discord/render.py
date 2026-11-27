@@ -39,6 +39,9 @@ BUTTONS: dict[str, dict[str, Any]] = {
     'passer': {'label': 'Passer à la suite', 'style': 3, 'emoji': '▶️'},
     'valider': {'label': 'Valider', 'style': 3, 'emoji': '✅'},
     'a_corriger': {'label': 'À corriger', 'style': 1, 'emoji': '✏️'},
+    # Depuis un ticket de test : revenir à la conception, pas seulement à
+    # la construction (décision Q116).
+    'revoir_plan': {'label': 'Revoir le plan', 'style': 1, 'emoji': '🧭'},
     'choisir_autre': {
         'label': 'Choisir un autre',
         'style': 1,

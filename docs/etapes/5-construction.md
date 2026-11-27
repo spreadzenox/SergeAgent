@@ -65,7 +65,10 @@ de son produit » (`PRODUCT_BUILDING`) et lance « Concevoir le produit ».
    qui demande la fin d'un abonnement, il l'annule dans Stripe en mode
    test, comme si le temps avait passé.
 6. **Le ticket « Tester le produit »** (`TEST_PRODUIT`) : un humain essaie
-   le staging, paiement compris. Il n'expire jamais.
+   le staging, paiement compris. Il n'expire jamais. « À corriger »
+   relance la construction (un bug) ; « Revoir le plan » renvoie à la
+   conception, puis au critique et au ticket « Plan » (une fonctionnalité
+   à changer, décision Q116).
 7. **Choisir le domaine** (sans LLM), une fois le produit essayé et
    validé : avec un domaine commun des produits finis (réglage, page
    Policy), rien n'est acheté : Serge fait pointer

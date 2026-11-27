@@ -594,6 +594,71 @@ class ChaineTests(ChaineCase):
             "Une campagne n'a pas pu démarrer",
         )
 
+    def test_un_plan_a_plusieurs_canaux_ouvre_une_campagne_par_canal(
+        self,
+    ) -> None:
+        """Décision Q117 : le plan nomme « email, voice ». La campagne du
+        plan garde l'e-mail, une campagne sœur s'ouvre pour le téléphone,
+        chacune cherche ses prospects, et une même personne n'est
+        contactée que sur un canal."""
+        set_setting(
+            self.conn, 'consent.opt_in_channels', ['sms', 'whatsapp'], 'test'
+        )
+        self._regler('demarrer_campagne', 'voice_test', 1)
+        self.conn.execute(
+            "UPDATE invocations SET enabled=0 WHERE id='premier_appel'"
+        )
+        self.modeles.prospects = []
+        campagne = self._business('v1', canal='email, voice')
+        self._vider()
+        self.assertEqual(
+            sorted(
+                tuple(r)
+                for r in self.conn.execute(
+                    'SELECT channel, state, n_target FROM campaigns'
+                    " WHERE venture_id='v1'"
+                )
+            ),
+            [('email', 'RUNNING', 2), ('voice', 'RUNNING', 1)],
+        )
+        self.assertEqual(
+            self._un('SELECT channel FROM campaigns WHERE id=?', campagne),
+            ('email',),
+        )
+        self.assertEqual(self.modeles.vus.count('trouver'), 2)
+        soeur = self._un(
+            "SELECT id FROM campaigns WHERE venture_id='v1'"
+            " AND channel='voice'"
+        )[0]
+
+        def ajouter(ou: str, nom: str, adresse: str) -> dict[str, Any]:
+            return prospect.add_prospect(
+                self.conn,
+                'ajouter_prospect',
+                {
+                    'campaign_id': ou,
+                    'name': nom,
+                    'address': adresse,
+                    'source_url': 'https://dupont-batiment.fr/equipe',
+                },
+                'trouver_prospects',
+            )
+
+        self.assertTrue(
+            ajouter(
+                campagne, 'Marie Dupont', 'marie.dupont@dupont-batiment.fr'
+            )['ok']
+        )
+        # La même personne, trouvée par son téléphone : refusée.
+        refus = ajouter(soeur, 'Mme DUPONT Marie', '+33612345678')
+        self.assertFalse(refus['ok'])
+        self.assertIn('sur un autre canal', refus['refus'])
+        self.assertTrue(ajouter(soeur, 'Paul Martin', '+33612345679')['ok'])
+        self.assertEqual(
+            prospect.person_key('Maître Élodie DUPONT-Martin'),
+            prospect.person_key('Dupont Martin Elodie'),
+        )
+
     def test_sans_accord_demande_le_telephone_demarre(self) -> None:
         # Le téléphone retiré de « Accord des gens » (page Policy) : la
         # campagne démarre, et Serge cherche des numéros (décision Q100).

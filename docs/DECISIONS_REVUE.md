@@ -2637,3 +2637,70 @@ branchée (une instance sans clé Anthropic ne cherche pas) ; un cycle dont
 toutes les recherches échouent se ferme encore vide, l'échec se lit dans
 le journal de la tâche ; la dépense d'une recherche faite pendant une
 mission n'est pas rattachée à une tâche.
+
+### Q116 — Choisir où revenir depuis un ticket de test, et des critiques plus exigeants (demandé par Clem et Julien, 27 novembre 2026)
+Constat : au premier vrai POC (RelanceFacture, 27 novembre 2026), le
+ticket « Tester le produit » n'offrait qu'un retour, « À corriger », qui
+relance la construction. Une fonctionnalité à changer partait donc chez le
+constructeur sans repasser par la conception ni par le critique. Et le
+critique avait laissé passer un plan jugé trop mince : sa consigne disait
+« ne cherche pas la petite bête : un plan réaliste et clair est bon ».
+Décidé :
+1. **Deux retours depuis un ticket de test** (`TEST_POC`, `TEST_PRODUIT`).
+   « À corriger » : un bug ou un détail, la construction reprend avec les
+   consignes, comme avant. « Revoir le plan » (nouveau) : une
+   fonctionnalité à changer, à ajouter ou à retirer ; les consignes
+   partent à la conception, le nouveau plan passe chez le critique, puis
+   revient au ticket « Plan ». Rien n'est reconstruit avant que ce plan
+   soit validé ; le constructeur reprend alors le produit existant.
+2. **La conception part du plan déjà construit.** Elle reçoit le dernier
+   plan validé du business en plus des consignes : elle le corrige, elle
+   ne repart pas de zéro.
+3. **Les critiques se mettent à la place du client.** Celui du POC joue
+   un prospect qui dirige une entreprise et n'a pas de temps à perdre ;
+   celui du produit fini, un client qui paie chaque mois. Ils suivent le
+   parcours du début à la fin, disent ce qui manque fonction par
+   fonction, et ne rendent « bon » que s'ils se serviraient du produit
+   tel que le plan le décrit. Ils ne demandent que ce que Serge sait
+   construire. Le nombre de tours de critique ne change pas (3 au plus).
+4. **Le ticket de test dit ce que fait chaque bouton**, et où lire les
+   e-mails du staging : ils restent dans la boîte d'essai (Mission
+   Control, fiche du business) et ne partent vraiment qu'en prod.
+5. **Un changement peut modifier un paramètre d'invocation déjà en
+   base** (`invocation_tool_params`) : c'est ainsi que le texte du ticket
+   arrive sur une instance en service.
+
+Limites connues : les consignes des critiques n'ont pas été essayées avec
+un vrai modèle ; le retour à la conception depuis le test du produit fini
+repasse par « Vendre en mode test », non essayé sur un vrai produit fini ;
+un ticket déjà ouvert garde ses anciens boutons, les suivants ont le
+nouveau. Les retours plus lointains (changer de business depuis un ticket,
+renvoyer un POC en conception après son test léger) ne sont pas faits :
+ils changent l'état d'un business et attendent une décision.
+
+### Q117 — Un test sur plusieurs canaux, une personne sur un seul (demandé par Clem, 27 novembre 2026)
+Constat : le premier vrai test (RelanceFacture, 27 novembre 2026) n'a
+prospecté que par e-mail, alors que LinkedIn était branché. Le plan du
+POC ne pouvait nommer qu'un canal, il a pris l'e-mail, et une campagne n'a
+qu'un canal. Le suivi et la mesure savaient déjà mener plusieurs
+campagnes par business ; rien n'en ouvrait plus d'une.
+Décidé :
+1. **Le plan peut nommer plusieurs canaux**, séparés par une virgule
+   (« email, linkedin »). La consigne de la conception dit d'ajouter
+   LinkedIn pour une cible de professionnels, quand il est branché.
+2. **Une campagne par canal.** Au démarrage, la campagne du plan garde le
+   premier canal et une campagne sœur, prête, s'ouvre pour chacun des
+   autres : même business, même phase, son propre volume (les réglages du
+   canal). Chacune cherche ses prospects et se suit seule ; le test est
+   mesuré quand la dernière est close, comme avant.
+3. **Une personne, un canal.** « Ajouter un prospect » refuse une
+   personne du même nom déjà contactée pour ce business, par une autre
+   adresse ou sur un autre canal. Le nom est comparé sans accents, sans
+   titre, les mots triés : « Maître Élodie DUPONT » et « Dupont Elodie »
+   sont la même personne. Un nom d'un seul mot ne suffit pas à refuser.
+
+Limites connues : deux personnes différentes du même nom, pour le même
+business, la seconde est refusée ; une personne connue sous deux noms
+(« Maître Arock » par e-mail, « Xavier Arock » sur LinkedIn) n'est pas
+reconnue ; la prospection lourde (le produit fini) garde ses campagnes
+telles que « Préparer la prospection lourde » les écrit.
