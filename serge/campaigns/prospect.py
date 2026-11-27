@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import re
 import sqlite3
+import unicodedata
 import uuid
 from typing import Any
 
@@ -119,6 +120,37 @@ def _already(
     )
 
 
+# Les titres qu'on enlève d'un nom pour reconnaître une personne.
+_TITLES = frozenset(
+    {'maitre', 'me', 'm', 'mr', 'mme', 'mlle', 'monsieur', 'madame', 'dr'}
+)
+
+
+def person_key(name: str) -> str:
+    """Un nom sous une forme comparable : sans accents, sans titre, les
+    mots triés. « Maître Élodie DUPONT-Martin » et « Dupont Martin
+    Elodie » donnent tous deux « dupont elodie martin »."""
+    plain = unicodedata.normalize('NFKD', name.casefold())
+    plain = ''.join(c for c in plain if not unicodedata.combining(c))
+    words = re.findall(r'[a-z0-9]+', plain)
+    return ' '.join(sorted(w for w in words if w not in _TITLES))
+
+
+def _same_person(conn: sqlite3.Connection, venture: str, name: str) -> bool:
+    """Vrai si une personne du même nom est déjà contactée pour ce
+    business, par une autre adresse ou sur un autre canal (au moins un
+    prénom et un nom : un seul mot ne suffit pas à reconnaître quelqu'un)."""
+    key = person_key(name)
+    if len(key.split()) < 2:
+        return False
+    rows = conn.execute(
+        'SELECT display FROM contacts WHERE venture_id=?', (venture,)
+    )
+    return any(
+        person_key(str(r[0]).split(' (')[0].split(',')[0]) == key for r in rows
+    )
+
+
 def _added_by_task(conn: sqlite3.Connection, campaign_id: str) -> int:
     """Les prospects déjà ajoutés par la tâche en cours."""
     row = conn.execute(
@@ -174,6 +206,11 @@ def add_prospect(
     venture = str(row['venture_id'])
     if _already(conn, venture, kind, address):
         return _refuse('déjà contacté pour ce business')
+    if _same_person(conn, venture, name):
+        return _refuse(
+            'cette personne est déjà contactée pour ce business, par une'
+            ' autre adresse ou sur un autre canal : cherches-en une autre'
+        )
     company = str(args.get('company') or '').strip()
     role = str(args.get('role') or '').strip()
     who = ', '.join(p for p in (name, role) if p)

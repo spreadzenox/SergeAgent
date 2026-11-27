@@ -2677,3 +2677,30 @@ un ticket déjà ouvert garde ses anciens boutons, les suivants ont le
 nouveau. Les retours plus lointains (changer de business depuis un ticket,
 renvoyer un POC en conception après son test léger) ne sont pas faits :
 ils changent l'état d'un business et attendent une décision.
+
+### Q117 — Un test sur plusieurs canaux, une personne sur un seul (demandé par Clem, 27 novembre 2026)
+Constat : le premier vrai test (RelanceFacture, 27 novembre 2026) n'a
+prospecté que par e-mail, alors que LinkedIn était branché. Le plan du
+POC ne pouvait nommer qu'un canal, il a pris l'e-mail, et une campagne n'a
+qu'un canal. Le suivi et la mesure savaient déjà mener plusieurs
+campagnes par business ; rien n'en ouvrait plus d'une.
+Décidé :
+1. **Le plan peut nommer plusieurs canaux**, séparés par une virgule
+   (« email, linkedin »). La consigne de la conception dit d'ajouter
+   LinkedIn pour une cible de professionnels, quand il est branché.
+2. **Une campagne par canal.** Au démarrage, la campagne du plan garde le
+   premier canal et une campagne sœur, prête, s'ouvre pour chacun des
+   autres : même business, même phase, son propre volume (les réglages du
+   canal). Chacune cherche ses prospects et se suit seule ; le test est
+   mesuré quand la dernière est close, comme avant.
+3. **Une personne, un canal.** « Ajouter un prospect » refuse une
+   personne du même nom déjà contactée pour ce business, par une autre
+   adresse ou sur un autre canal. Le nom est comparé sans accents, sans
+   titre, les mots triés : « Maître Élodie DUPONT » et « Dupont Elodie »
+   sont la même personne. Un nom d'un seul mot ne suffit pas à refuser.
+
+Limites connues : deux personnes différentes du même nom, pour le même
+business, la seconde est refusée ; une personne connue sous deux noms
+(« Maître Arock » par e-mail, « Xavier Arock » sur LinkedIn) n'est pas
+reconnue ; la prospection lourde (le produit fini) garde ses campagnes
+telles que « Préparer la prospection lourde » les écrit.

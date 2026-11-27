@@ -4421,6 +4421,10 @@ invocations:
       - cible : les prospects, des professionnels (métier, taille, lieu) ;
       - canal : le canal du test, parmi les canaux branchés (tu en vois la
         liste) : son numéro, tel quel ;
+      - plusieurs canaux sont permis, séparés par une virgule (exemple :
+        « email, linkedin ») : Serge ouvre une campagne par canal, et une
+        même personne n'est contactée que sur un seul. Pour une cible de
+        professionnels, ajoute LinkedIn quand il est branché ;
       - duree_jours : la durée du test, {duree_max_jours} jours au plus ;
       - prix : le prix indicatif du futur produit payant ;
       - livrable : ce que le prospect peut essayer, en deux phrases ;
@@ -4484,7 +4488,7 @@ invocations:
     output:
       - {path: hypothese, type: text, description: Ce qu'on veut vérifier.}
       - {path: cible, type: text, description: Les prospects visés.}
-      - {path: canal, type: text, description: 'Le canal du test : le numéro d''un canal branché.'}
+      - {path: canal, type: text, description: 'Le ou les canaux du test : des numéros de canaux branchés, séparés par une virgule.'}
       - {path: duree_jours, type: number, description: La durée du test en jours.}
       - {path: prix, type: text, description: Le prix indicatif du futur produit.}
       - {path: livrable, type: text, description: Ce que le prospect peut essayer.}
@@ -6644,6 +6648,10 @@ invocations:
       nom d'une activité, avec l'adresse exacte de chaque profil. C'est
       cette adresse que tu donnes à « Ajouter un prospect », avec elle-même
       pour source.
+
+      Une même personne n'est contactée que sur un canal : si elle est déjà
+      dans les contacts du business, même par une autre adresse ou sur un
+      autre réseau, ne la propose pas, l'outil la refuserait.
 
       Méthode :
       - fais au plus {recherches_max} recherches et lis au plus {pages_max}
@@ -11778,6 +11786,50 @@ changes:
       value:
         from: "Le produit est en ligne en staging, avec Stripe en mode test : essaie-le comme un client, jusqu'au paiement avec la carte 4242 4242 4242 4242. Le valider achète son domaine et le met en vente."
         to: *raison_test_produit
+  # Un test peut prospecter sur plusieurs canaux : une campagne par canal,
+  # une personne sur un seul (décision Q117).
+  - id: q117_poc_plusieurs_canaux
+    why: Le plan choisissait un seul canal, donc LinkedIn ne servait pas quand l'e-mail était pris (Q117).
+    table: invocations
+    where: {id: concevoir_poc}
+    set:
+      prompt:
+        replace:
+          - old: |2-
+                liste) : son numéro, tel quel ;
+              - duree_jours : la durée du test, {duree_max_jours} jours au plus ;
+            new: |2-
+                liste) : son numéro, tel quel ;
+              - plusieurs canaux sont permis, séparés par une virgule (exemple :
+                « email, linkedin ») : Serge ouvre une campagne par canal, et une
+                même personne n'est contactée que sur un seul. Pour une cible de
+                professionnels, ajoute LinkedIn quand il est branché ;
+              - duree_jours : la durée du test, {duree_max_jours} jours au plus ;
+  - id: q117_poc_canaux_reponse
+    why: Le champ « canal » du plan peut nommer plusieurs canaux (Q117).
+    table: invocation_output_fields
+    where: {invocation_id: concevoir_poc, path: canal}
+    set:
+      description:
+        from: 'Le canal du test : le numéro d''un canal branché.'
+        to: 'Le ou les canaux du test : des numéros de canaux branchés, séparés par une virgule.'
+  - id: q117_prospects_une_personne_un_canal
+    why: Une même personne n'est contactée que sur un canal (Q117).
+    table: invocations
+    where: {id: trouver_prospects}
+    set:
+      prompt:
+        replace:
+          - old: |-
+              cette adresse que tu donnes à « Ajouter un prospect », avec elle-même
+              pour source.
+            new: |-
+              cette adresse que tu donnes à « Ajouter un prospect », avec elle-même
+              pour source.
+
+              Une même personne n'est contactée que sur un canal : si elle est déjà
+              dans les contacts du business, même par une autre adresse ou sur un
+              autre réseau, ne la propose pas, l'outil la refuserait.
 deleted:
   invocations:
     # Le compteur du 21 novembre 2026 comptait jusqu'à un réglage à lui ;
