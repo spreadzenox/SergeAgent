@@ -67,14 +67,13 @@ def web_search(
     pol = policy_en_vigueur(conn)
     limit = int(args.get('limit') or pol['tools']['search_results'])
     workspace = str(pol['llm_calls'].get('anthropic_workspace') or '').strip()
+    cle = read_secret_file(config_root() / 'secrets/anthropic-api-key')
     result = dict(
         search_public(
             str(args.get('query') or ''),
             limit,
             pol['web'],
-            api_key=read_secret_file(
-                config_root() / 'secrets/anthropic-api-key'
-            ),
+            api_key=cle,
             workspace_id=workspace,
             brief=serge_text(conn, 'recherche_web'),
         )
