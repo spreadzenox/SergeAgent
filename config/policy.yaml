@@ -394,13 +394,43 @@ sections:
         max: 60
         step: 1
       - id: search_timeout_s
-        value: 8
+        value: 30
         title: Attente maximale d’une recherche, en secondes
-        help: Au-delà, la recherche rend une erreur au modèle.
+        help: &aide_attente_recherche >-
+          Au-delà, la recherche rend une erreur au modèle. La recherche se
+          fait chez Anthropic : un petit modèle la lance et écrit l’extrait
+          de chaque résultat, ce qui prend quelques secondes.
         kind: curseur
         min: 1
         max: 60
         step: 1
+      - id: search_model
+        value: anthropic/claude-haiku-5.5
+        title: Recherche web, modèle d’Anthropic qui cherche
+        help: >-
+          Le modèle qui lance la recherche chez Anthropic et écrit l’extrait
+          de chaque résultat, avec la clé de l’instance
+          (secrets/anthropic-api-key). Un petit modèle suffit : il ne
+          choisit rien, il recopie (décision Q115).
+        kind: texte
+      - id: search_country
+        value: FR
+        title: Recherche web, pays des résultats
+        help: >-
+          Le code du pays en deux lettres (FR, BE, CA…) : les résultats de
+          ce pays passent devant. Vide : aucun pays.
+        kind: texte
+      - id: search_cost_usd
+        value: 0.01
+        title: Recherche web, prix d’une recherche
+        help: >-
+          En dollars : ce qu’Anthropic facture pour une recherche, en plus
+          des jetons du modèle qui cherche (10 $ les 1 000 recherches). Il
+          s’ajoute au coût noté de chaque recherche.
+        kind: nombre
+        min: 0
+        max: 0.1
+        step: 0.001
       - id: search_max_results
         value: 10
         title: Résultats d’une recherche, au plus
@@ -1300,6 +1330,17 @@ changes:
         to: >-
           Règle légale en France. Au-delà, les garde-fous et la voix refusent
           de contacter la personne.
+  - id: recherche_par_anthropic_attente
+    why: >-
+      La recherche web passe par Anthropic, où un petit modèle écrit les
+      extraits : elle prend quelques secondes de plus (Q115).
+    table: policy_settings
+    where: {id: web.search_timeout_s}
+    set:
+      value_json: {from: '8', to: '30'}
+      help:
+        from: Au-delà, la recherche rend une erreur au modèle.
+        to: *aide_attente_recherche
 
 # Les réglages retirés de ce fichier, effacés aussi de la base.
 deleted:

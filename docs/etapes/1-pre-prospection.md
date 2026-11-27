@@ -50,9 +50,9 @@ que Serge n'a pas été démarré dans Mission Control.
 
 ### Ce qui manque
 
-- **La recherche web lit la page de résultats de DuckDuckGo** (quelques
-  résultats, un extrait) et peut être bloquée. Un moteur de recherche
-  installé sur le serveur (SearXNG) reste à faire (TODO, « Le web »).
+- **La recherche web a besoin de la clé Anthropic de l'instance** : elle
+  passe par la recherche d'Anthropic (décision Q115). Sans clé, elle rend
+  une erreur avec sa raison.
 - **Une page qui a besoin d'un navigateur** (JavaScript, protection) ne se
   lit pas : seule une simple requête est faite. « Formuler » ne peut donc
   pas relire en entier une discussion rendue par une fouille, si le
@@ -137,8 +137,9 @@ Autres décisions :
   le surplus attend le cycle suivant. Mission Control
   montre, pour chaque flux, les pages ramenées et les pages utiles ; on
   peut le couper à la main.
-- **Recherche web** : DuckDuckGo au lot 7, SearXNG (un moteur open source
-  hébergé sur le serveur) au lot 13.
+- **Recherche web** : celle d'Anthropic, lancée par un petit modèle qui
+  écrit l'extrait de chaque résultat (décision Q115, à la place de la page
+  de résultats de DuckDuckGo, refusée aux robots).
 - **Garde-fous de volume** (réglages des invocations marqués « policy »,
   modifiables sur la page Policy) : 60 pages triées au plus par cycle ;
   une page « bruit » ou jamais triée est supprimée après 30 jours, une

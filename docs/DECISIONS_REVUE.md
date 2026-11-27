@@ -2599,3 +2599,41 @@ avigateur.vpn_off (page Policy).** « non » par
 5. **Les secrets du VPN sont sur le serveur**, jamais dans le dépôt
    (	elecom-vpn-login, 	elecom-vpn-password). Sans eux, le lancement
    échoue clairement plutôt que de naviguer en direct sans le dire.
+
+### Q115 — La recherche web passe par celle d'Anthropic, et plus de flux RSS de Reddit (demandé par Clem, 27 novembre 2026)
+Constat : le premier vrai cycle lancé en B2B, le 27 novembre 2026, s'est
+fermé vide en 20 secondes. Ses 11 recherches web n'ont rien rendu :
+DuckDuckGo répondait au serveur par une page « prouvez que vous êtes
+humain », que le code prenait pour une recherche réussie sans résultat.
+L'essai total du 16 novembre avait déjà rendu zéro page, sans que rien ne
+le signale. Les cinq flux RSS suivis, tous de Reddit, échouaient aussi
+depuis le 17 novembre (210 lectures refusées). Clem ne veut pas payer un
+service de recherche à part : les modèles ont une recherche intégrée.
+Décidé :
+1. **La recherche web est celle d'Anthropic.** L'outil « Chercher sur le
+   web » fait un petit appel à un modèle d'Anthropic (Haiku 5.5, réglage
+   « Recherche web, modèle d'Anthropic qui cherche ») avec l'outil de
+   recherche web d'Anthropic. Les adresses et les titres rendus sont ceux
+   de l'outil ; le modèle n'écrit que l'extrait de chaque résultat. La
+   lecture de la page de DuckDuckGo est retirée. Serge ne passe pas le
+   contrôle « êtes-vous humain » d'un moteur (Q48).
+2. **Elle se paie avec la clé Anthropic de l'instance**, que les modèles
+   soient appelés chez Anthropic ou par OpenRouter : 10 $ les 1 000
+   recherches plus les jetons du petit appel, environ 1 centime par
+   recherche, pris sur le crédit d'API de l'abonnement (Q97). La dépense
+   est notée comme un appel au modèle, au nom de l'invocation qui
+   cherche : les plafonds du jour et du mois la comptent.
+3. **Une recherche qui échoue le dit.** Sans clé, si Anthropic refuse
+   l'appel ou si son outil rend une erreur, l'outil rend « web
+   indisponible » avec la raison, écrite au journal : jamais « aucun
+   résultat ».
+4. **Plus de flux RSS de Reddit.** Les cinq flux ont été coupés sur le
+   serveur, et la consigne d'« Explorer le web » dit de ne plus en
+   ajouter : Reddit les refuse au serveur. Reddit se lit par la fouille,
+   avec un compte.
+
+Limites connues : un autre fournisseur que Anthropic n'a pas de recherche
+branchée (une instance sans clé Anthropic ne cherche pas) ; un cycle dont
+toutes les recherches échouent se ferme encore vide, l'échec se lit dans
+le journal de la tâche ; la dépense d'une recherche faite pendant une
+mission n'est pas rattachée à une tâche.

@@ -111,6 +111,26 @@ serge_texts:
     body: >-
       Ta réponse finale est un seul objet JSON, sans texte autour, de cette
       forme :
+  - id: recherche_web
+    title: Recherche web, consigne du modèle qui cherche
+    help: >-
+      Envoyé au petit modèle d’Anthropic qui fait la recherche web pour les
+      invocations ; {nombre} est remplacé par le nombre de résultats voulus.
+      Les adresses et les titres rendus viennent de l’outil de recherche,
+      le modèle n’écrit que les extraits.
+    body: |
+      Tu es l’outil de recherche web de Serge. Le message que tu reçois est
+      une recherche : lance-la telle quelle avec l’outil de recherche web,
+      une seule fois, sans la reformuler ni y répondre toi-même.
+
+      Ensuite, écris une ligne par résultat, pour les {nombre} premiers au
+      plus, sous cette forme exacte :
+      adresse de la page | extrait
+
+      L’adresse est recopiée telle que l’outil la donne. L’extrait tient en
+      une ou deux phrases tirées de la page, dans sa langue : ce qu’on y
+      trouve. N’écris rien d’autre : ni introduction, ni conclusion, ni
+      avis.
   - id: format_retry
     title: Quand la réponse est mal formée
     help: >-
@@ -2407,6 +2427,8 @@ invocations:
         (des consommateurs, une communauté, un métier), et écris une
         demande précise. Une discussion rendue se retient comme une page :
         son adresse, son titre, et son extrait pour aperçu.
+      - N'ajoute jamais un flux RSS de Reddit : Reddit refuse de les donner
+        au serveur de Serge. Pour Reddit, sers-toi de la fouille.
     tools:
       - tool: current_listen_cycle
         mode: given
@@ -11443,6 +11465,36 @@ changes:
               nom d'une activité, avec l'adresse exacte de chaque profil. C'est
               cette adresse que tu donnes à « Ajouter un prospect », avec elle-même
               pour source.
+  # Reddit refuse ses flux RSS au serveur : « Explorer le web » n'en ajoute
+  # plus (décision Q115). La recherche web, elle, passe par Anthropic : son
+  # code a changé, pas le pipeline.
+  - id: q115_explorer_sans_flux_reddit
+    why: Les flux RSS de Reddit échouaient à chaque lecture, Reddit les refuse au serveur (Q115).
+    table: invocations
+    where: {id: explorer_web}
+    set:
+      prompt:
+        replace:
+          - old: |-
+              - Tu peux aussi fouiller un réseau social (Reddit, Instagram, X), au
+                plus {fouilles_par_reseau} fois par réseau : une autre invocation
+                y navigue avec le compte de Serge et te rend des discussions. C'est
+                plus lent et plus cher qu'une recherche : fais-le seulement quand
+                tes recherches ne montrent pas ce que disent les gens eux-mêmes
+                (des consommateurs, une communauté, un métier), et écris une
+                demande précise. Une discussion rendue se retient comme une page :
+                son adresse, son titre, et son extrait pour aperçu.
+            new: |-
+              - Tu peux aussi fouiller un réseau social (Reddit, Instagram, X), au
+                plus {fouilles_par_reseau} fois par réseau : une autre invocation
+                y navigue avec le compte de Serge et te rend des discussions. C'est
+                plus lent et plus cher qu'une recherche : fais-le seulement quand
+                tes recherches ne montrent pas ce que disent les gens eux-mêmes
+                (des consommateurs, une communauté, un métier), et écris une
+                demande précise. Une discussion rendue se retient comme une page :
+                son adresse, son titre, et son extrait pour aperçu.
+              - N'ajoute jamais un flux RSS de Reddit : Reddit refuse de les donner
+                au serveur de Serge. Pour Reddit, sers-toi de la fouille.
 deleted:
   invocations:
     # Le compteur du 21 novembre 2026 comptait jusqu'à un réglage à lui ;

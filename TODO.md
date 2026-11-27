@@ -318,7 +318,8 @@ discutable, qui peut un jour changer, se règle depuis Mission Control.**
   et leur garde). Il reste trois choses, à faire seulement quand un
   besoin réel les demande ; la règle de ce fichier s'y applique
   entièrement. **Un moteur de recherche gratuit et sans clé** sur le
-  serveur (SearXNG), à la place de la page de résultats de DuckDuckGo.
+  serveur (SearXNG), à la place de la recherche d'Anthropic, payée à la
+  recherche (Q115).
   **« Lire une page » qui monte d'un cran** seulement si nécessaire : une
   simple requête, puis le navigateur sans écran si la page a besoin de
   JavaScript, puis le vrai Chrome si le site bloque (Q97) ; chaque montée
