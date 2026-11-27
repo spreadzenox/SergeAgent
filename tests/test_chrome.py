@@ -54,6 +54,7 @@ class VraiChromeTests(unittest.TestCase):
             mock.patch.dict(os.environ, faux_docker(self.dossier)),
             mock.patch.object(chrome.time, 'sleep'),
             mock.patch.object(vpn.time, 'sleep'),
+            mock.patch.object(chrome, '_attendre_chrome'),
         ):
             patcher.start()
             self.addCleanup(patcher.stop)
@@ -84,7 +85,7 @@ class VraiChromeTests(unittest.TestCase):
     def test_construit_lance_puis_reutilise(self) -> None:
         self.assertEqual(chrome.adresse_ecran(self.conn), '')
         adresse = chrome.endpoint(self.conn, chrome.VRAI)
-        self.assertEqual(adresse, 'http://127.0.0.1:49222')
+        self.assertEqual(adresse, 'http://127.0.0.1:49223')
         image = chrome.image_vrai_chrome()
         (construire,) = self._appels('build')
         self.assertEqual(construire[-1], str(chrome.DOSSIER_IMAGE))
@@ -96,8 +97,11 @@ class VraiChromeTests(unittest.TestCase):
         ident = vpn.ensure_vpn(self.conn)
         self.assertIn(f'container:{ident}', lancer)
         self.assertIn(f'CHROME_PORT={chrome.PORT_CHROME_VRAI}', lancer)
+        self.assertIn(
+            f'CDP_RELAY={chrome.CDP_VPN.removesuffix("/tcp")}', lancer
+        )
         self.assertIn('serge-vrai-chrome-profil:/home/chrome/profil', lancer)
-        self.assertEqual(chrome.adresse_ecran(self.conn), '127.0.0.1:49222')
+        self.assertEqual(chrome.adresse_ecran(self.conn), '127.0.0.1:49224')
         chrome.endpoint(self.conn, chrome.VRAI)
         self.assertEqual(len(self._appels('build')), 1)
         self.assertEqual(len(runs), 2)
@@ -142,6 +146,9 @@ class VraiChromeTests(unittest.TestCase):
         self.assertIn('--network', lancer)
         self.assertEqual(
             lancer[lancer.index('--network') + 1], 'serge-chantiers'
+        )
+        self.assertNotIn(
+            f'CDP_RELAY={chrome.CDP_VPN.removesuffix("/tcp")}', lancer
         )
 
     def test_le_conteneur_au_mauvais_endroit_est_refait(self) -> None:

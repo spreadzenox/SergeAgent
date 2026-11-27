@@ -51,8 +51,9 @@ IMAGE = 'qmcgaw/gluetun@sha256:08f6770a4b157787690dcd2d4ddb3560ec28860102530b5cd
 SOURCE = Path(__file__).resolve().parents[2] / 'config/vpn/telecom-paris.ovpn'
 COPIE = 'telecom-paris.ovpn'
 # Les ports des Chrome publiés par le sidecar : le débogage du navigateur
-# sans écran, le débogage du vrai Chrome, l'écran du vrai Chrome.
-PORTS = ('9222/tcp', '9223/tcp', '6080/tcp')
+# sans écran (9222, son entrée relaie déjà 9223), le débogage du vrai
+# Chrome décalé pour ne pas le heurter (9225), l'écran du vrai Chrome.
+PORTS = ('9222/tcp', '9225/tcp', '6080/tcp')
 # Combien de temps on attend la connexion (l'authentification fait deux
 # essais chez Télécom Paris avant d'abandonner).
 ATTENTE_S = 120.0
@@ -152,6 +153,12 @@ def _sain() -> str:
     ).stdout.strip()
 
 
+def _ports_publies() -> set[str]:
+    """Les ports du conteneur actuellement publiés (``9222/tcp``…)."""
+    sortie = docker(['port', CONTAINER], timeout=30, check=False).stdout
+    return {ligne.split()[0] for ligne in sortie.splitlines() if ligne.strip()}
+
+
 def _raison() -> str:
     """Ce que gluetun a dit en dernier (sans secret dedans)."""
     fait = docker(['logs', '--tail', '8', CONTAINER], timeout=30, check=False)
@@ -172,6 +179,12 @@ def ensure_vpn(conn: sqlite3.Connection) -> str:
             la raison de gluetun est notée au journal.
     """
     etat = _etat()
+    if etat and _ports_publies() != set(PORTS):
+        # La liste des ports a changé depuis la création du sidecar : on le
+        # refait (le tunnel se renoue).
+        journal('les ports du VPN ont changé : le sidecar est refait')
+        docker(['rm', '-f', CONTAINER], timeout=60)
+        etat = ''
     if not etat:
         _lancer()
     elif etat != 'running':
