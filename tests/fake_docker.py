@@ -80,6 +80,7 @@ def _run(args: list[str]) -> int:
             valeur = args[i + 1]
             cport = valeur.rsplit(':', 1)[-1]
             publies[cport] = f'127.0.0.1:{49222 + len(publies)}'
+            flags['-p'] = valeur
         else:
             flags[args[i]] = args[i + 1]
         i += 2
