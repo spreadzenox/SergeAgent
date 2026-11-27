@@ -302,7 +302,11 @@ def _lancer(
         return _rate(
             conn, deployment, args, version, 'secret_absent', str(exc), ''
         )
-    secrets = {**secrets, **cle}
+    # Les clés de ses services externes (``serge/product_services.py``).
+    from serge.product_services import service_keys
+
+    services = service_keys(conn, str(args.get('venture_id') or ''))
+    secrets = {**secrets, **cle, **services}
     docker(['rm', '-f', container], timeout=120, check=False)
     docker(
         [

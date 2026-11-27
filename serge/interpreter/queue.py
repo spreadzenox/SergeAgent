@@ -95,7 +95,7 @@ def process_one(
         _remettre(conn, task_id, 'task.cut', '')
     except TaskFrozen as exc:
         conn.rollback()
-        freeze_task(conn, task_id, exc.ticket_id)
+        freeze_task(conn, task_id, exc.ticket_id, exc.waiting)
         _noter(conn, task_id, 'task.frozen', {'ticket': exc.ticket_id})
     except Exception as exc:  # noqa: BLE001 — une tâche en échec ne tue pas la file
         conn.rollback()

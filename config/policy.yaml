@@ -1225,6 +1225,18 @@ sections:
         min: 1
         max: 180
         step: 1
+      - id: services_per_product
+        value: 2
+        title: Services externes gratuits par produit, au plus
+        help: >-
+          Un produit peut demander un service gratuit d’un autre site (une
+          API qui exige un compte et une clé) : Serge y crée son compte et
+          va chercher la clé. Ce nombre borne les services d’un même
+          produit ; 0 : aucun (décision Q118).
+        kind: curseur
+        min: 0
+        max: 5
+        step: 1
       - id: contact_waits_minutes
         value: [5, 60, 180, 360, 1440, 10080]
         title: Demande de contact, attentes avant chaque rappel, en minutes

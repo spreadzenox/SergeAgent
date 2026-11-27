@@ -14,12 +14,12 @@ capture), pour ce que la lecture ne décrit pas (un dessin, une carte).
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit, urlunsplit
 
 from serge.sandbox.chantier import chantier_id, container_name
+from serge.sandbox.masque import masquer
 
 SNAPSHOT_JS = (Path(__file__).with_name('page.js')).read_text(encoding='utf-8')
 
@@ -41,18 +41,6 @@ def vers_chantier(url: str, args: dict[str, Any]) -> str:
         return url
     port = f':{parts.port}' if parts.port else ''
     return urlunsplit(parts._replace(netloc=f'{chantier(args)}{port}'))
-
-
-def masquer(texte: str, secrets: set[str]) -> str:
-    """Remplace chaque secret par ``••••``, même remis en forme par la
-    page : ``4242 4242 4242 4242`` ou ``12 / 34``."""
-    for secret in secrets:
-        motif = r'[\s/.\-]*'.join(
-            re.escape(c) for c in secret if not c.isspace()
-        )
-        if motif:
-            texte = re.sub(motif, '••••', texte)
-    return texte
 
 
 def attendre(page: Any) -> None:

@@ -57,6 +57,20 @@ types:
     default_detail: La tâche qui demande attend la réponse, sans limite de temps.
     fields: &champs_demande [en_bref, demande, contexte, point_llm]
     buttons: &boutons_demande [reponse_libre, faire_sans, discuter_fil]
+  SERVICE:
+    role: >-
+      Un produit en construction demande un service gratuit d'un autre site
+      que son plan validé ne nomme pas (décision Q118). « Valider » : Serge
+      crée son compte sur ce site et va y chercher une clé d'API gratuite.
+      « Rejeter » : le constructeur fait sans. La tâche de construction
+      attend la réponse.
+    render: {color: 5793266, emoji: "🔌"}
+    urgency: normale
+    expiry_hours: null
+    default: attend
+    default_detail: La construction attend la réponse, sans limite de temps.
+    fields: *champs_demande
+    buttons: [valider, rejeter, discuter]
   CONVERSATION:
     role: >-
       Serge a besoin d'un humain pour répondre à un prospect : un brouillon

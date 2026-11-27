@@ -40,6 +40,11 @@ from serge.interpreter.seen import CHOICES, read_seen_table, row_history
 from serge.interpreter.settings import load_settings
 from serge.missions import mission
 from serge.policy_store import policy_en_vigueur, setting_value
+from serge.product_services import (
+    connect_service,
+    finish_service,
+    open_service_account,
+)
 from serge.sandbox.captures import browser_screenshot, real_browser_screenshot
 from serge.sandbox.chantier import (
     sandbox_command,
@@ -287,6 +292,9 @@ RUNNERS: dict[str, Runner] = {
     'mission': mission,
     'open_web_account': open_account,
     'change_web_password': change_password,
+    'connect_service': connect_service,
+    'open_service_account': open_service_account,
+    'finish_service': finish_service,
     'serge_identity': identity_read,
     'verification_messages': received_since_task,
 }

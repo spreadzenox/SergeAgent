@@ -203,6 +203,7 @@ def _exec(
     timeout: float,
     stdin: str | None = None,
     env: list[str] | None = None,
+    secrets: dict[str, str] | None = None,
 ):
     flags = ['exec', '-i'] if stdin is not None else ['exec']
     return docker(
@@ -210,6 +211,7 @@ def _exec(
         timeout=timeout,
         stdin=stdin,
         check=False,
+        secrets=secrets,
     )
 
 
@@ -297,13 +299,20 @@ def sandbox_command(
         return {'ok': False, 'code': 'commande_vide'}
     chantier, name, profile = ensure_chantier(conn, args)
     limit = int(profile['command_timeout_s'])
+    # Les clés des services externes du produit : chaque commande les
+    # reçoit dans son environnement, et sa sortie ne les montre pas.
+    from serge.product_services import service_keys
+    from serge.sandbox.masque import masquer
+
+    cles = service_keys(conn, str(args.get('venture_id') or ''))
+    env = [*COURRIEL, *env_flags(cles)]
     if _true(args.get('background')):
         log = f'{WORK}/.serge/{uuid.uuid4().hex[:8]}.log'
         docker(
             [
                 'exec',
                 '-d',
-                *COURRIEL,
+                *env,
                 '-w',
                 WORK,
                 name,
@@ -315,6 +324,7 @@ def sandbox_command(
                 log,
             ],
             timeout=60,
+            secrets=cles,
         )
         result: dict[str, Any] = {
             'ok': True,
@@ -327,9 +337,12 @@ def sandbox_command(
             name,
             ['timeout', '-s', 'KILL', str(limit), 'sh', '-lc', command],
             timeout=limit + 30,
-            env=COURRIEL,
+            env=env,
+            secrets=cles,
         )
-        output = (done.stdout or '') + (done.stderr or '')
+        output = masquer(
+            (done.stdout or '') + (done.stderr or ''), set(cles.values())
+        )
         if done.returncode == 137:
             output += f'\n(arrêtée : plus de {limit} s, ou plus de mémoire)'
         max_chars = int(

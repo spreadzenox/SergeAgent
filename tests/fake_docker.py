@@ -128,8 +128,10 @@ def _exec(args: list[str]) -> int:
         elif args[i] == '-w':
             i += 1
         elif args[i] == '-e':
-            nom, _, valeur = args[i + 1].partition('=')
-            env[nom] = valeur
+            # « -e NOM » sans valeur : Docker la prend dans son environnement.
+            nom, egal, valeur = args[i + 1].partition('=')
+            if egal:
+                env[nom] = valeur
             i += 1
         i += 1
     name, argv = args[i], args[i + 1 :]

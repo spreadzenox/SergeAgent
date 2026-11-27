@@ -56,6 +56,12 @@ tickets sont dans `config/pipeline.yaml` et `config/ticket-types.yaml`.
    critique et au ticket « Plan » (une fonctionnalité à changer, décision
    Q116) ; « Arrêter le business » l'arrête.
 
+Un produit peut se brancher à un service gratuit d'un autre site, qui
+demande un compte et une clé (décision Q118) : le plan le nomme, le
+constructeur le demande avec « Brancher un service gratuit », Serge crée
+son compte sur le site et va chercher la clé, que le produit lit dans une
+variable d'environnement.
+
 La fiche du business, dans Mission Control, montre le plan, les
 remarques du critique, les passages avec le verdict du relecteur, les
 captures, les publications et les versions.

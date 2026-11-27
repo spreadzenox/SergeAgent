@@ -2704,3 +2704,58 @@ business, la seconde est refusée ; une personne connue sous deux noms
 (« Maître Arock » par e-mail, « Xavier Arock » sur LinkedIn) n'est pas
 reconnue ; la prospection lourde (le produit fini) garde ses campagnes
 telles que « Préparer la prospection lourde » les écrit.
+
+### Q118 — Un produit peut se brancher à un service gratuit d'un autre site (demandé par Julien et Clem, 27 novembre 2026)
+Constat : un produit a souvent besoin d'un service d'un autre site (une
+API de cartes, de conversion de fichiers, de météo), qui demande un compte
+et une clé. Les consignes l'interdisaient (« pas de compte sur d'autres
+sites »), et rien ne savait aller chercher une clé. Serge sait pourtant
+créer ses comptes (Q104, Q107).
+Décidé, sur proposition validée point par point :
+1. **Gratuit seulement, et autorisé par un humain.** Le plan d'un POC ou
+   d'un produit peut nommer des services, une ligne chacun à la fin du
+   plan : « nom | adresse | pourquoi | ce que donne l'offre gratuite ».
+   Valider le plan autorise ces comptes ; un plan qui s'applique tout
+   seul, faute de réponse sous 48 heures (Q34), n'en autorise aucun, et
+   ses services passent par le ticket « Service ». Le critique vérifie que le
+   service est nécessaire, que son offre gratuite suffit, et qu'il ne
+   demande ni carte bancaire ni connexion « avec Google ».
+2. **Le constructeur demande le service** avec « Brancher un service
+   gratuit » (son nom, son adresse, ce qu'il lui faut). Sa tâche attend.
+   Un service que le plan validé ne nomme pas passe d'abord par un ticket
+   « Service » : « Valider » lance le branchement, « Rejeter » fait
+   repartir le constructeur sans lui.
+3. **Le branchement réutilise les comptes web.** « Ouvrir le compte d'un
+   service » reprend le compte de Serge sur ce site s'il existe (un seul
+   compte par site, quel que soit le produit, jamais un second pour
+   doubler un quota), sinon « Créer le compte d'un service » le crée comme
+   « Créer un compte web » : le vrai Chrome, l'identité de Serge, un
+   humain au captcha. « Obtenir la clé d'un service » va ensuite dans le
+   tableau de bord créer une clé de l'offre gratuite. Ces invocations
+   n'ont pas d'outil pour payer.
+4. **La clé ne se montre pas.** Le modèle ne la recopie pas : le geste
+   `garder_cle` la lit dans la page et la garde chiffrée (la clé du
+   coffre), puis la masque dans ce qu'il lit. Le produit la reçoit dans
+   une variable d'environnement, `SERVICE_<NOM>_KEY`, dans le chantier, en
+   staging et en prod ; la sortie des commandes du chantier la masque.
+   Un service dit branché sans clé gardée ne l'est pas.
+5. **La tâche de construction repart avec le résultat** : le nom de la
+   variable, ou la raison de l'échec (« fais sans lui »). Un ticket
+   d'information prévient Julien et Clem dans les deux cas.
+6. **Des plafonds** : le nombre de services par produit (page Policy,
+   2 au départ, 0 pour tout interdire), et 3 demandes au plus par passage
+   de construction.
+7. **Google Cloud est hors de cette version** : un projet Google (« Se
+   connecter avec Google ») se crée à la main. Envoyer des e-mails depuis
+   le compte Google d'un utilisateur demande une vérification de
+   l'application par Google, hors de portée d'un POC.
+8. **Une tâche peut attendre autre chose qu'un ticket** : le gel d'une
+   tâche porte sa raison (« en attente du service « mapbox » »).
+
+Limites connues : aucun vrai service n'a encore été branché, les
+tableaux de bord varient d'un site à l'autre ; le constructeur peut lire
+la clé dans le chantier (elle n'est que masquée à l'affichage) ; un
+service raté ne se redemande pas (il faut retirer sa ligne) ; une clé
+créée à la main ne s'enregistre pas encore depuis Mission Control ; le
+relecteur ne vérifie pas encore que la page de confidentialité nomme le
+service.

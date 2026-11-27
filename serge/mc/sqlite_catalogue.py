@@ -311,6 +311,13 @@ CATALOGUE: dict[str, tuple[str, str, str, str]] = {
         'Économie (MRR).',
         'period + renews_at + status.',
     ),
+    'product_services': (
+        'Les services externes gratuits des produits : un par business et'
+        ' par site.',
+        '« Brancher un service gratuit », puis les invocations du service.',
+        'Le chantier et la publication : la clé part au produit.',
+        'key_enc : la clé d’API, chiffrée par la clé du coffre.',
+    ),
     'web_accounts': (
         'Les comptes de Serge sur des sites : un par site (reddit…).',
         '« Créer un compte », ou la page Système de Mission Control.',
