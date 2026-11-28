@@ -19,6 +19,7 @@ Scénarios :
 
 from __future__ import annotations
 
+import io
 import json
 import os
 import smtplib
@@ -27,6 +28,7 @@ import sys
 import tempfile
 import time
 import unittest
+from contextlib import redirect_stderr
 from email.message import EmailMessage
 from pathlib import Path
 from typing import Any
@@ -340,6 +342,31 @@ class SmtpTests(_Canal):
         serveur.send_message.side_effect = self.partis.append
         self.addCleanup(smtp.stop)
         super().setUp()
+
+    def test_un_message_illisible_n_arrete_pas_la_releve(self) -> None:
+        """Un message aux en-têtes piégés, que Python ne sait pas lire,
+        est écarté et noté au journal : la réponse du prospect, arrivée
+        après lui, est quand même relevée."""
+        self._envoi('t1', 'pending')
+        piege = (
+            b'From: x@ailleurs.example\r\nTo: ' + b'(' * 1500 + b'\r\n'
+            b'Message-ID: <piege@ailleurs>\r\nSubject: x\r\n\r\nx\r\n'
+        )
+        recu = EmailMessage()
+        recu['From'] = f'Marc <{MARC}>'
+        recu['Subject'] = 'Re: Vos devis'
+        recu['Message-ID'] = '<m1@marc>'
+        recu['In-Reply-To'] = '<serge.t1@exemple.fr>'
+        recu.set_content('Et le prix ?')
+        FauxImap.boites['INBOX'] += [piege, recu.as_bytes()]
+        journal = io.StringIO()
+        with redirect_stderr(journal):
+            self._relever()
+        self.assertIn('illisible, écarté', journal.getvalue())
+        self.assertEqual(
+            self._un('SELECT contact_id, body FROM inbound_events'),
+            ('c1', 'Et le prix ?'),
+        )
 
     def test_le_fil_complet_par_smtp(self) -> None:
         self._envoi('t1', 'pending')

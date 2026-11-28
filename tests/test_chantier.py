@@ -37,11 +37,17 @@ sys.path.insert(0, str(ROOT))
 from serge.coupe_circuit import set_heartbeat  # noqa: E402
 from serge.db.store import default_canon_path, open_db  # noqa: E402
 from serge.interpreter.queue import process_one  # noqa: E402
-from serge.interpreter.tools import run_capability  # noqa: E402
+from serge.interpreter.tools import (  # noqa: E402
+    RUNNERS,
+    run_capability,
+    run_tool,
+    tool_schema,
+)
 from serge.interpreter.triggers import fire_button  # noqa: E402
 from serge.llm.client import ChatResult, ToolCall  # noqa: E402
 from serge.mc.proj_taches import fiche_tache  # noqa: E402
 from serge.policy_store import set_setting  # noqa: E402
+from serge.sandbox.docker import DockerError, secret_env  # noqa: E402
 from tests.boutons_d_essai import poser  # noqa: E402
 
 ESSAI = {
@@ -200,6 +206,73 @@ class ChantierTests(unittest.TestCase):
             'Le programme dit bonsoir.',
             [c['v'] for c in fiche['cadres'][0]['champs']],
         )
+
+    def test_un_modele_ne_choisit_pas_les_secrets_du_chantier(self) -> None:
+        """Les secrets d'un conteneur ne viennent que de la base : un
+        modèle qui en nomme lui-même n'est pas écouté, et son outil ne lui
+        propose pas ce paramètre. Vaut pour chaque outil du chantier de
+        chaque invocation."""
+        recus: list[dict[str, Any]] = []
+
+        def note(_conn: Any, _tool: str, args: dict[str, Any], _inv: str):
+            recus.append(args)
+            return {'ok': True}
+
+        liens = self.conn.execute(
+            'SELECT it.id, it.invocation_id, it.tool_id, t.capability_id'
+            ' FROM invocation_tools it JOIN tools t ON t.id=it.tool_id'
+            " WHERE t.capability_id LIKE 'sandbox_%' ORDER BY it.id"
+        ).fetchall()
+        self.assertTrue(liens)
+        for lien, invocation, outil, capacite in liens:
+            schema = tool_schema(self.conn, str(outil), set())
+            if schema is not None:
+                montres = schema['function']['parameters']['properties']
+                self.assertNotIn('env_secrets', montres, outil)
+            with mock.patch.dict(RUNNERS, {str(capacite): note}):
+                run_tool(
+                    self.conn,
+                    str(invocation),
+                    int(lien),
+                    str(outil),
+                    {'command': 'env', 'env_secrets': 'A=stripe-live.key'},
+                    {'task_id': 't1', 'venture_id': 'ven_t'},
+                )
+            self.assertNotEqual(
+                recus[-1].get('env_secrets'), 'A=stripe-live.key', outil
+            )
+
+    def test_un_secret_de_conteneur_est_un_fichier_des_secrets(self) -> None:
+        """« VARIABLE=fichier » : un fichier du dossier des secrets, jamais
+        un chemin, et un nom de variable qui ne détourne pas la commande
+        docker du serveur. Le refus est au journal."""
+        config = self.dossier / 'config'
+        (config / 'secrets').mkdir(parents=True)
+        (config / 'secrets/stripe-test.key').write_text('sk_test_essai\n')
+        (config / 'hors.txt').write_text('pas un secret de conteneur\n')
+        instance = self.dossier / 'instance.toml'
+        instance.write_text(f'[paths]\nconfig_root = "{config}"\n')
+        patcher = mock.patch.dict(
+            os.environ, {'SERGE_INSTANCE_FILE': str(instance)}
+        )
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.assertEqual(
+            secret_env('STRIPE_SECRET_KEY=stripe-test.key'),
+            {'STRIPE_SECRET_KEY': 'sk_test_essai'},
+        )
+        for refuse in (
+            'A=../hors.txt',
+            'A=sous/stripe-test.key',
+            'DOCKER_HOST=stripe-test.key',
+            'LD_PRELOAD=stripe-test.key',
+            'PATH=stripe-test.key',
+            'a b=stripe-test.key',
+        ):
+            journal = io.StringIO()
+            with redirect_stderr(journal), self.assertRaises(DockerError):
+                secret_env(refuse)
+            self.assertIn('secret refusé', journal.getvalue(), refuse)
 
     def test_un_seul_chantier_tourne(self) -> None:
         self._outil('sandbox_write_file', path='a.txt', content='A')

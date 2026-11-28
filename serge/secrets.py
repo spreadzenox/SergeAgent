@@ -87,7 +87,8 @@ def owner_dashboard_token(system: Path | None = None) -> str:
         system: system_root (défaut : SERGE_SYSTEM_ROOT).
 
     Returns:
-        Le jeton, ou « token-inconnu » si rien n’est lisible.
+        Le jeton, ou ``''`` si rien n’est lisible : Mission Control
+        refuse alors de démarrer.
     """
     from serge.paths import system_root
 
@@ -102,4 +103,4 @@ def owner_dashboard_token(system: Path | None = None) -> str:
         found = read_secret_file(path)
         if found:
             return found
-    return os.environ.get('SERGE_MC_TOKEN', 'token-inconnu')
+    return os.environ.get('SERGE_MC_TOKEN', '')

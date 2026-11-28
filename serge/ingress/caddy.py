@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -138,6 +139,44 @@ def _key(route: dict[str, str]) -> tuple[str, str]:
     return (route['hostname'], route.get('path') or '')
 
 
+# Une route est écrite telle quelle dans le Caddyfile : un nom de domaine,
+# un service du serveur lui-même, un chemin simple, et rien d'autre.
+_HOTE = re.compile(
+    r'(?=.{4,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}'
+)
+_AMONT = re.compile(r'127\.0\.0\.1:[0-9]{2,5}')
+_CHEMIN = re.compile(r'(/[A-Za-z0-9._~-]+)*')
+# Les routes de Serge lui-même (Mission Control, les SMS, Stripe).
+RESERVE = 'serge-'
+
+
+def refus(
+    hostname: str, upstream: str, venture_id: str, path: str = ''
+) -> str:
+    """Pourquoi cette route ne peut pas être publiée ; ``''`` si elle le peut.
+
+    Refusés : un hôte, une cible ou un chemin mal formés (un retour à la
+    ligne écrirait des directives dans le Caddyfile), et tout hôte où Serge
+    a déjà une route à lui : un produit ne prend ni l'adresse de Mission
+    Control ni celle des SMS.
+    """
+    if not _HOTE.fullmatch(hostname):
+        return f'nom d’hôte refusé : {hostname!r}'
+    if not _AMONT.fullmatch(upstream) or not _CHEMIN.fullmatch(path):
+        return f'route refusée pour {hostname} : {upstream!r} {path!r}'
+    routes = _load_inventory(_paths(_root())[0])
+    mc = _mc_route()
+    for route in [*routes, *([mc] if mc else [])]:
+        tenant = route.get('venture_id') or ''
+        if (
+            route['hostname'] == hostname
+            and tenant.startswith(RESERVE)
+            and not venture_id.startswith(RESERVE)
+        ):
+            return f'{hostname} est une adresse de Serge ({tenant})'
+    return ''
+
+
 def upsert(
     hostname: str,
     upstream: str,
@@ -146,7 +185,16 @@ def upsert(
     *,
     noindex: bool = False,
 ) -> dict[str, Any]:
-    """Ajoute ou remplace une route (hôte + chemin), puis réécrit Caddyfile."""
+    """Ajoute ou remplace une route (hôte + chemin), puis réécrit Caddyfile.
+
+    Raises:
+        ValueError: La route est refusée (voir ``refus``) ; la raison est
+            notée au journal du service et rien n'est écrit.
+    """
+    raison = refus(hostname, upstream, venture_id, path) if hostname else ''
+    if raison:
+        print(f'ingress : {raison}', file=sys.stderr, flush=True)
+        raise ValueError(raison)
     inventory, caddy = _paths(_root())
     routes = _load_inventory(inventory)
     seen = {_key(route) for route in routes}

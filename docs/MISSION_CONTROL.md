@@ -17,7 +17,18 @@ fin de ce document).
 - Connexion avec le jeton owner (`owner-dashboard.token` dans les secrets
   de l'instance). Il donne un cookie valable 12 heures. Les sessions sont
   stockées hachées dans `mc_sessions`. 10 essais de connexion par minute
-  au maximum.
+  au maximum par visiteur, que le jeton arrive par le formulaire ou par
+  un en-tête ; derrière Caddy, le visiteur est celui que Caddy transmet.
+- Sans jeton lisible, Mission Control ne démarre pas, et le dit au journal
+  du service. Pour changer le jeton : écrire le nouveau dans le fichier en
+  une fois, redémarrer `serge-public-dashboard`, puis vider `mc_sessions`
+  (les sessions déjà ouvertes survivent sinon jusqu'à leurs 12 heures).
+- Une requête par connexion : Mission Control ferme la connexion après
+  chaque réponse. Une requête qui change quelque chose n'est acceptée que
+  si elle vient d'une page de Mission Control elle-même (en-têtes `Origin`
+  et `Sec-Fetch-Site` du navigateur) ; la page d'un autre hôte, même un
+  produit publié sur un sous-domaine, reçoit 403. Un script sans
+  navigateur n'envoie pas ces en-têtes : son jeton fait foi.
 - La page `/` est publique : elle montre seulement si Serge tourne, sans
   aucune donnée personnelle ni secret.
 - `Ctrl+K` (ou `Cmd+K`) ouvre une palette pour aller vite à une page ou à
@@ -27,7 +38,8 @@ fin de ce document).
   clavier, par exemple pour résoudre un captcha quand un ticket « À toi »
   (`GUICHET`) le demande (décision Q97). Mission Control relaie l'écran du
   conteneur sans le lire ; tant que le vrai Chrome ne tourne pas, la page
-  le dit.
+  le dit. Le flux de l'écran, comme les actions, ne s'ouvre que depuis la
+  page de Mission Control.
 
 La page se met à jour toute seule : le serveur envoie les changements au
 navigateur au fil de l'eau.

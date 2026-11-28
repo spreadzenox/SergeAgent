@@ -323,7 +323,9 @@ class Handler(BaseHTTPRequestHandler):
 
     # Param name `format` matches BaseHTTPRequestHandler (Liskov).
     def log_message(self, format: str, *args: Any) -> None:  # noqa: N802, A002
-        sys.stderr.write('sms-receiver: %s\n' % (format % args))
+        # Sans les paramètres de l'adresse : le jeton peut s'y trouver.
+        ligne = re.sub(r'\?[^\s"]*', '', format % args)
+        sys.stderr.write(f'sms-receiver: {ligne}\n')
 
     def _send(self, code: int, payload: dict[str, Any]) -> None:
         body = json.dumps(payload).encode('utf-8')

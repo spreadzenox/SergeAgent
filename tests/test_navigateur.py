@@ -850,6 +850,49 @@ class NavigateurTests(unittest.TestCase):
         )
         self.assertIn('secret non permis', refus['detail'])
 
+    def test_le_mot_de_passe_ne_se_tape_que_sur_le_site_du_compte(
+        self,
+    ) -> None:
+        """Une page qui imite la connexion d'un site, sur une autre
+        adresse, ne reçoit pas le mot de passe du compte : le refus dit
+        les deux adresses, le champ reste vide, le refus est au journal."""
+        self._coffre()
+        self.conn.execute(
+            'INSERT INTO web_accounts(id, url, login, created_at, updated_at)'
+            " VALUES('forum', 'https://www.reddit.com', 'serge-ia', ?, ?)",
+            (utcnow(), utcnow()),
+        )
+        page = self._avec_le_compte(
+            't1', action='ouvrir', text=f'{self.site}/compte'
+        )['page']
+        champ = re.search(r'\[(e\d+)\] champ password', page)
+        assert champ, page
+        tape = self._avec_le_compte(
+            't1', action='taper_secret', ref=champ[1], text=PASSWORD_NAME
+        )
+        self.assertFalse(tape['ok'], tape)
+        self.assertIn('www.reddit.com', json.dumps(tape, ensure_ascii=False))
+        session = sessions._ETAT_VRAI.sessions['t1@forum']
+        self.assertEqual(session.page.input_value('#mdp'), '')
+        for hote, permis in (
+            ('old.reddit.com', True),
+            ('reddit.com', True),
+            ('reddit.com.connexion.example', False),
+            ('evil-reddit.com', False),
+            ('', False),
+        ):
+            self.assertEqual(
+                web_accounts.meme_site(hote, 'www.reddit.com'), permis, hote
+            )
+        self.assertTrue(
+            web_accounts.meme_site('auth.site.co.uk', 'site.co.uk')
+        )
+        self.assertFalse(web_accounts.meme_site('autre.co.uk', 'site.co.uk'))
+        refus = self._outil(
+            'browser_action', action='ouvrir', text='file:///etc/passwd'
+        )
+        self.assertFalse(refus['ok'], refus)
+
     def test_un_compte_connecte_avec_google_vit_dans_le_profil(self) -> None:
         """Un compte créé par un humain avec « Continuer avec Google »
         (décision Q113) : il s'est connecté à la main dans le vrai Chrome.

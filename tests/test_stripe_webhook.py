@@ -52,8 +52,8 @@ class StripeWebhookTests(unittest.TestCase):
 
     def test_url_uses_instance_hostname(self) -> None:
         self.assertEqual(
-            public_webhook_url('jpesquet.tech'),
-            'https://jpesquet.tech/hooks/stripe',
+            public_webhook_url('serge.exemple.fr'),
+            'https://serge.exemple.fr/hooks/stripe',
         )
         self.assertEqual(
             public_webhook_url('https://Autre.Example.net/'),
