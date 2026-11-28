@@ -35,12 +35,12 @@ from serge.interpreter.rules import table_columns
 from serge.pipeline_seed_flow import seed_deleted, seed_links, seed_triggers
 from serge.seed_base import (
     PipelineSeedError,
-    condition_columns,
     exists,
     insert,
     list_of,
     seed_params,
     seed_tool_link,
+    seed_write,
 )
 
 __all__ = ['PipelineSeedError', 'ensure_pipeline', 'seed_pipeline']
@@ -243,48 +243,8 @@ def _seed_rules(conn: sqlite3.Connection, data: Mapping[str, Any]) -> None:
 def _seed_writes(
     conn: sqlite3.Connection, ident: str, inv: Mapping[str, Any]
 ) -> None:
-    write_ids: list[int] = []
     for position, write in enumerate(list_of(inv, 'writes')):
-        parent = write.get('parent')
-        parent_id = 0
-        if parent is not None:
-            if not isinstance(parent, int) or not 0 <= parent < position:
-                raise PipelineSeedError(
-                    f'{ident}.writes[{position}] : parent doit désigner une'
-                    ' écriture précédente'
-                )
-            parent_id = write_ids[parent]
-        key = write.get('key') or {}
-        cond = condition_columns(
-            write.get('condition'), f'{ident}.writes[{position}]'
-        )
-        write_id = insert(
-            conn,
-            'invocation_writes',
-            invocation_id=ident,
-            position=position,
-            table_name=str(write['table']),
-            operation=str(write['operation']),
-            for_each=str(write.get('for_each', '')),
-            parent_write_id=parent_id,
-            key_column=str(key.get('column', '')),
-            key_source=str(key.get('source', '')),
-            key_value=str(key.get('value', '')),
-            max_rows=str(write.get('max_rows', '')),
-            condition_field=cond[0],
-            condition_op=cond[1],
-            condition_value=cond[2],
-            skip_dedup=int(write.get('dedup', True) is False),
-        )
-        write_ids.append(write_id)
-        seed_params(
-            conn,
-            'invocation_write_values',
-            {'write_id': write_id},
-            write.get('values'),
-            ident,
-            'column_name',
-        )
+        seed_write(conn, ident, position, write)
 
 
 def _seed_invocation(conn: sqlite3.Connection, inv: Mapping[str, Any]) -> None:
@@ -383,6 +343,9 @@ def seed_pipeline(conn: sqlite3.Connection, data: Mapping[str, Any]) -> None:
             # Un réglage nouveau s'ajoute à une invocation existante ; un
             # réglage déjà en base n'est jamais modifié.
             seed_settings(conn, str(inv['id']), inv.get('settings'))
+    # Une écriture ajoutée à une invocation déjà en base arrive avant les
+    # liens : un lien « par ligne écrite » la désigne par son rang.
+    apply_changes(conn, data.get('changes'), only='add_writes')
     seed_links(conn, data)
     seed_triggers(conn, data)
     apply_changes(conn, data.get('changes'))

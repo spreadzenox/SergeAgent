@@ -39,20 +39,31 @@ de son produit » (`PRODUCT_BUILDING`) et lance « Concevoir le produit ».
    le prix définitif, le plan de A à Z (inscription, abonnement Stripe, ce
    que le compte débloque), les scénarios de test (l'un va jusqu'au
    paiement) et un nom de domaine libre (elle le vérifie chez Cloudflare).
-   Elle réécrit la fiche produit et ses questions fréquentes, et marque
-   chaque demande des clients retenue ou refusée, avec sa raison.
+   Elle écrit aussi les offres du produit (`product_offers`, décision
+   Q119) : une par abonnement que le client peut choisir, avec son code,
+   son prix en centimes, sa période (par mois ou par an) et ce qu'elle
+   comprend ; une seule est l'offre principale. Exemple : `standard`,
+   19 € par mois, et `pro`, 49 € par mois. Elle réécrit la fiche produit
+   et ses questions fréquentes, et marque chaque demande des clients
+   retenue ou refusée, avec sa raison.
 2. **Challenger le produit** (niveau intelligent), 3 tours au plus.
-3. **Le ticket « Plan »** (`PLAN_PRODUIT`) montre le plan, son prix, son
-   domaine, la critique, la fiche produit et les demandes des clients. Il
-   n'expire jamais.
-4. **Vendre en mode test** (niveau moyen) : le produit et son prix dans
-   Stripe en mode test. Le prix porte l'identifiant du business
-   (`metadata[venture_id]`) et une clé de recherche (`lookup_key`) égale
-   au numéro du business : le produit retrouve son prix par cette clé, en
-   mode test comme en vrai mode, sans rien changer à son code.
+3. **Le ticket « Plan »** (`PLAN_PRODUIT`) montre le plan, son prix, ses
+   offres, son domaine, la critique, la fiche produit et les demandes des
+   clients. Il n'expire jamais.
+4. **Vendre en mode test** (niveau moyen) : le produit et un prix par
+   offre dans Stripe en mode test. Chaque prix porte l'identifiant du
+   business (`metadata[venture_id]`) et une clé de recherche
+   (`lookup_key`) : le numéro du business pour l'offre principale, et
+   `<numéro du business>_<code>` pour une autre (exemple : `ven_12_pro`).
+   Le produit retrouve ses prix par ces clés, en mode test comme en vrai
+   mode, sans rien changer à son code. La clé d'une autre offre est
+   choisie par le modèle : « Appeler une API » refuse celle qui ne
+   commence pas par le numéro du business, figé en base.
    Avant de créer quoi que ce soit, l'invocation regarde si le business a
-   déjà un prix, par cette clé, puis un produit sans prix, par la
-   recherche de Stripe.
+   déjà un prix, par la clé du business, puis un produit sans prix, par
+   la recherche de Stripe. Elle garde un prix déjà au bon montant, crée
+   ceux qui manquent, et archive ceux qui ne correspondent plus à une
+   offre ; les clients déjà abonnés à un prix archivé le gardent.
 5. **Construire le produit** (niveau « code ») : comptes, e-mails,
    abonnement par une page de paiement Stripe, le service. Son chantier
    reçoit la clé du mode test (`STRIPE_SECRET_KEY`). Le constructeur
@@ -68,9 +79,15 @@ de son produit » (`PRODUCT_BUILDING`) et lance « Concevoir le produit ».
    le staging, paiement compris. Il n'expire jamais. « À corriger »
    relance la construction (un bug) ; « Revoir le plan » renvoie à la
    conception, puis au critique et au ticket « Plan » (une fonctionnalité
-   à changer, décision Q116).
+   à changer, décision Q116). Entre la relecture et ce ticket, un
+   aiguillage sans LLM (« Suite d'une relecture réussie du produit »)
+   regarde si le business reçoit la correction d'un produit déjà en
+   vente : elle part alors en prod sans ce ticket (voir « Une nouvelle
+   version », plus bas).
 7. **Choisir le domaine** (sans LLM), une fois le produit essayé et
-   validé : avec un domaine commun des produits finis (réglage, page
+   validé, pour une première mise en vente (un second aiguillage,
+   « Suite d'un essai validé du produit », envoie ailleurs la nouvelle
+   version d'un produit déjà en vente) : avec un domaine commun des produits finis (réglage, page
    Policy), rien n'est acheté : Serge fait pointer
    `<produit>.<domaine commun>` vers le serveur (un enregistrement DNS chez
    Cloudflare, pour ce seul nom) et passe à l'étape 8. Sinon,
@@ -152,15 +169,45 @@ SMTP, avec les variables `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`,
   L'expéditeur est `<nom court>@<domaine d'envoi>`, toujours un
   sous-domaine de Serge (page Policy, « E-mails des produits »). Sans
   domaine d'envoi, la mise en prod rate et le dit.
-- Pas d'adresse ni de formulaire de contact pour l'instant : les e-mails
-  des clients viendront avec le lot 16. L'éditeur des mentions légales
-  est Julien Pesquet ; le service est tenu par Serge, un agent IA.
+- L'adresse de contact (décision Q119) : un produit fini publié reçoit
+  `CONTACT_EMAIL`, l'adresse de la boîte de Serge avec son nom court
+  après un « + » (exemple : `serge+calcudevis@exemple.fr`), et la montre
+  en pied de page et dans les mentions légales. C'est la publication qui
+  la demande (son paramètre `contact`, réglé sur les invocations du
+  produit fini) : un POC n'en reçoit pas. Un e-mail qu'un inconnu y
+  écrit est rattaché au business (étape 6). Pas de formulaire de contact.
+  L'éditeur des mentions légales est Julien Pesquet ; le service est tenu
+  par Serge, un agent IA.
 
 Mise en place : [`installation/DOMAINES.md`](../installation/DOMAINES.md).
 
-**Pas encore fait** : les versions suivantes, publiées en prod quand la
-relecture est bonne (elles viennent avec l'étape 6, au lot 12), et le
-passage d'une demande des clients à « livrée ».
+**Une nouvelle version** (lot 16, décision Q119). Un produit déjà en
+vente change par ces mêmes invocations, lancées par le point de la
+semaine ou par un bug signalé (étape 6) :
+
+- **une correction** reprend à « Construire le produit », avec ses
+  consignes. Dès que le relecteur la juge bonne, elle part en prod, sans
+  essai d'un humain ;
+- **une évolution** (une fonctionnalité, une offre, un prix) reprend à
+  « Concevoir le produit », qui part du plan déjà construit, puis passe
+  par le critique, le ticket « Plan », Stripe en mode test, la
+  construction, la relecture et le ticket « Tester le produit ».
+
+La fin est plus courte qu'une première mise en vente : pour une
+évolution, « Mettre à jour les offres dans Stripe » (le vrai mode), puis
+« Publier la nouvelle version en prod », à l'adresse où le produit est
+déjà en ligne (`same_address`) ; un produit qui n'est pas en ligne en
+prod est refusé. Rien n'est racheté, il n'y a pas de second
+paiement test de 1 €, et la prospection lourde n'est pas relancée. Les
+clients gardent leur compte et leurs données : le dossier de données du
+produit est gardé d'une version à l'autre, et le constructeur doit le
+faire évoluer sans rien perdre. Puis le point qui a lancé la version
+passe à « en ligne », les demandes des clients retenues passent à
+« livrée » avec le numéro de la version, et un ticket d'information le
+dit. Un humain qui renvoie une correction en conception (« Revoir le
+plan ») en fait une évolution.
+
+**Pas encore fait** : prévenir chaque client que sa demande est livrée.
 
 ---
 

@@ -78,6 +78,16 @@ def _db_read(
     return {'ok': True, 'rows': result['data'], 'total': result['total']}
 
 
+def _read_row(
+    conn: sqlite3.Connection, tool_id: str, args: dict[str, Any], _inv: str
+) -> dict[str, Any]:
+    from serge.db.query_builder import execute_db_read
+
+    rows = execute_db_read(conn, tool_id, args)['data']
+    first = dict(rows[0]) if rows else {}
+    return {**first, 'ok': True, 'trouve': 'oui' if rows else 'non'}
+
+
 def _web_search(
     conn: sqlite3.Connection, tool: str, args: dict[str, Any], inv: str
 ) -> dict[str, Any]:
@@ -260,6 +270,7 @@ RUNNERS: dict[str, Runner] = {
     'pass_link': _pass_link,
     'next_round': _next_round,
     'db_read': _db_read,
+    'read_row': _read_row,
     'web_search': _web_search,
     'memory_search': _memory_search,
     'request_capability': _request_capability,

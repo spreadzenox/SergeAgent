@@ -38,7 +38,9 @@ ses changements. Un paramètre figé d'un outil d'une invocation
 (``set_tool_params``, avec ``tool``) change comme une valeur : seulement
 s'il vaut encore celle d'origine. Un paramètre de plus d'un lien
 (``add_link_params``) ou d'une invocation sans LLM (``add_params``)
-s'ajoute aussi une seule fois (``serge/pipeline_changes_params.py``).
+s'ajoute aussi une seule fois (``serge/pipeline_changes_params.py``), comme
+une règle d'écriture de plus d'une invocation (``add_writes``,
+``serge/pipeline_changes_writes.py``).
 
     changes:
       - id: un_outil_de_plus
@@ -64,6 +66,7 @@ from serge.pipeline_changes_remove import (
     remove_trigger_conditions,
     remove_write_values,
 )
+from serge.pipeline_changes_writes import add_writes
 from serge.seed_base import PipelineSeedError, seed_tool_link
 
 # Les tables du pipeline qu'une modification peut viser.
@@ -376,6 +379,7 @@ _PAR_INVOCATION = {
     'remove_outputs': remove_outputs,
     'remove_tools': remove_tools,
     'add_params': add_params,
+    'add_writes': add_writes,
 }
 _AUTRES = (
     'add_trigger_params',
@@ -388,8 +392,9 @@ _AUTRES = (
 )
 
 
-def apply_changes(conn: sqlite3.Connection, raw: Any) -> None:
-    """Applique les modifications de ``pipeline.yaml`` pas encore passées.
+def apply_changes(conn: sqlite3.Connection, raw: Any, only: str = '') -> None:
+    """Applique les modifications de ``pipeline.yaml`` pas encore passées
+    (``only`` : seulement celles de cette sorte).
 
     Raises:
         PipelineSeedError: Modification mal écrite (table ou colonne
@@ -398,6 +403,8 @@ def apply_changes(conn: sqlite3.Connection, raw: Any) -> None:
     from serge.horloge import iso_utc
 
     for change in raw or []:
+        if only and only not in change:
+            continue
         ident = str(change['id'])
         if conn.execute(
             'SELECT 1 FROM pipeline_changes WHERE id=?', (ident,)

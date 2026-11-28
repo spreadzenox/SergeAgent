@@ -19,9 +19,12 @@ elle n'est jamais modifiée (décision Q40). Publier en staging :
 5. note la publication dans ``deployments``.
 
 Publier en prod reprend telle quelle l'image de la version passée en
-staging : rien n'est reconstruit. Adresses : ``staging-<produit>.<domaine>``,
-``<produit>.<domaine>`` en prod, ou, pour le produit fini, le domaine acheté
-ou un sous-domaine du domaine commun des produits (``base_domain``).
+staging : rien n'est reconstruit. Avec ``same_address``, une nouvelle
+version d'un produit déjà en prod garde son adresse. Adresses :
+``staging-<produit>.<domaine>``, ``<produit>.<domaine>`` en prod, ou, pour
+le produit fini, le domaine acheté ou un sous-domaine du domaine commun
+(``base_domain``). Avec ``contact``, le produit reçoit son adresse de
+contact (``CONTACT_EMAIL``, Q119).
 Une adresse ne sert qu'un produit : publier sur une adresse déjà prise (un
 second essai au même nom) arrête l'ancien produit.
 """
@@ -30,7 +33,6 @@ from __future__ import annotations
 
 import hashlib
 import io
-import re
 import socket
 import sqlite3
 import tarfile
@@ -44,8 +46,18 @@ from serge.db.store import append_event, utcnow
 from serge.ingress import caddy
 from serge.paths import files_root
 from serge.policy_store import policy_en_vigueur
+from serge.sandbox.adresse_produit import (
+    adresse_en_prod,
+    avec_le_nom,
+    product_hostname,
+    slug,
+)
 from serge.sandbox.chantier import chantier_id, ensure_chantier
-from serge.sandbox.courriel import envoi_du_produit
+from serge.sandbox.courriel import (
+    contact_du_produit,
+    envoi_du_produit,
+    noter_contact,
+)
 from serge.sandbox.docker import (
     DockerError,
     docker,
@@ -64,12 +76,7 @@ FIRST_PORT = 18000
 EXCLUS = ('node_modules', '.git', '.serge', '.venv', '__pycache__')
 # Combien de temps on attend qu'un produit réponde après son lancement.
 ATTENTE_S = 60
-
-
-def slug(text: str) -> str:
-    """Un nom court pour une adresse : ``Devis Artisan`` → ``devis-artisan``."""
-    brut = re.sub(r'[^a-z0-9]+', '-', text.lower()).strip('-')
-    return brut[:40].strip('-') or 'produit'
+SANS_PROD = 'ce produit n’est pas en ligne en prod : aucune adresse à garder'
 
 
 def _snapshot(
@@ -174,42 +181,6 @@ def _queue(text: str, limite: int = 3000) -> str:
     return text if len(text) <= limite else '…' + text[-limite:]
 
 
-def avec_le_nom(
-    conn: sqlite3.Connection, args: dict[str, Any]
-) -> dict[str, Any]:
-    """Les paramètres, avec le nom du business quand aucun nom court n'est
-    figé : « Devis Vocal » donne devis-vocal.<domaine>."""
-    if str(args.get('slug') or ''):
-        return args
-    venture_id = str(args.get('venture_id') or '')
-    row = conn.execute(
-        'SELECT name FROM ventures WHERE id=?', (venture_id,)
-    ).fetchone()
-    return {**args, 'nom': str(row[0]) if row else venture_id}
-
-
-def product_hostname(args: dict[str, Any], target: str) -> str:
-    """L'adresse d'un produit publié sur ``target`` (staging ou prod)."""
-    domaine = str(args.get('domain') or '').strip().lower()
-    if domaine and target == 'prod':
-        return domaine
-    # Un domaine commun des produits finis (base_domain) : la prod sur un
-    # sous-domaine, calculatrice.<domaine commun>, sans domaine acheté.
-    commun = str(args.get('base_domain') or '').strip().lower().strip('.')
-    base = commun if commun and target == 'prod' else caddy.public_hostname()
-    if not base:
-        raise DockerError(
-            "pas de domaine pour les produits : l'instance n'a pas de"
-            ' public_hostname'
-        )
-    produit = slug(str(args.get('slug') or args.get('nom') or ''))
-    return (
-        f'staging-{produit}.{base}'
-        if target == 'staging'
-        else (f'{produit}.{base}')
-    )
-
-
 def publish_version(
     conn: sqlite3.Connection,
     _tool: str,
@@ -266,6 +237,15 @@ def publish_version(
                 'detail': 'aucune version en staging à passer en prod',
             }
         version, image, artifact = int(row[0]), str(row[1]), ''
+        if str(args.get('same_address') or '').strip():
+            # Une nouvelle version d'un produit en vente garde son adresse.
+            args = {**args, 'domain': adresse_en_prod(conn, deployment)}
+            if not args['domain']:
+                return {
+                    'ok': False,
+                    'code': 'pas_en_prod',
+                    'detail': SANS_PROD,
+                }
     return _lancer(
         conn, invocation_id, args, target, deployment, version, image, artifact
     )
@@ -291,13 +271,12 @@ def _lancer(
         # restreinte du vrai mode en prod (réglées en base, env_secrets).
         secrets = secret_env(str(args.get('env_secrets') or ''))
         # Ses e-mails : la boîte d'essai en staging, Resend en prod.
+        nom = slug(str(args.get('slug') or args.get('nom') or ''))
+        contact = contact_du_produit(nom) if args.get('contact') else ''
         envoi, cle = envoi_du_produit(
-            conn,
-            target,
-            str(args.get('venture_id') or ''),
-            slug(str(args.get('slug') or args.get('nom') or '')),
-            invocation_id,
+            conn, target, str(args.get('venture_id') or ''), nom, invocation_id
         )
+        envoi += ['-e', f'CONTACT_EMAIL={contact}'] if contact else []
     except DockerError as exc:
         return _rate(
             conn, deployment, args, version, 'secret_absent', str(exc), ''
@@ -368,6 +347,7 @@ def _lancer(
     _noter(
         conn, deployment, args, version, 'running', '', image, port, hostname
     )
+    noter_contact(conn, deployment, contact)
     append_event(
         conn,
         actor=f'invocation:{invocation_id}',

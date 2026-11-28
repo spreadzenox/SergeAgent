@@ -195,6 +195,16 @@ def _plan_produit(domaine: str, demandes: list[str]) -> dict[str, Any]:
         'fiche_delais': 'Tout de suite.',
         'fiche_usage': 'On se connecte et on calcule.',
         'faq': [{'question': 'Puis-je arrêter ?', 'reponse': 'Oui.'}],
+        'offres': [
+            {
+                'code': 'standard',
+                'nom': 'Standard',
+                'principale': 'oui',
+                'prix_centimes': 400,
+                'periode': 'month',
+                'comprend': 'Le compte et l’historique.',
+            }
+        ],
         'demandes': [
             {'numero': numero, 'decision': decision, 'raison': raison}
             for numero, (decision, raison) in zip(

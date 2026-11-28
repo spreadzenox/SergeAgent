@@ -318,6 +318,20 @@ CATALOGUE: dict[str, tuple[str, str, str, str]] = {
         'Le chantier et la publication : la clé part au produit.',
         'key_enc : la clé d’API, chiffrée par la clé du coffre.',
     ),
+    'product_reviews': (
+        'Les points sur les produits en vente : un par semaine et un par'
+        ' bug signalé, avec ce qui est décidé.',
+        '« Faire le point sur un produit » et « Trier un bug signalé ».',
+        'Les mêmes, pour ne pas se répéter, et les aiguillages d’une'
+        ' nouvelle version.',
+        'version_status : open tant qu’une nouvelle version se construit.',
+    ),
+    'product_offers': (
+        'Les offres payantes d’un produit : une par prix dans Stripe.',
+        '« Concevoir le produit », avec son plan.',
+        'Les invocations de Stripe, le constructeur et le ticket « Plan ».',
+        'main : l’offre principale, dont le prix porte la clé du business.',
+    ),
     'web_accounts': (
         'Les comptes de Serge sur des sites : un par site (reddit…).',
         '« Créer un compte », ou la page Système de Mission Control.',

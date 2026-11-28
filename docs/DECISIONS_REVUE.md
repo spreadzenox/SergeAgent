@@ -654,6 +654,11 @@ ticket d'information seulement.
   arrêter : ticket Discord validé par Julien.
 - Remplace plan_scale, options_pivot, judge_allocator.
 - Retours clients / demandes des prospects → nouvelle version : voir Q43.
+  Corrigé le 28 novembre 2026 (Q119) : le point de la semaine porte sur
+  chaque produit fini en vente, et décide deux choses, le produit (rien,
+  corriger, faire évoluer) et la prospection (rien, relancer). Accélérer,
+  pivoter et arrêter restent à faire : sur ces points, cette entrée garde
+  sa valeur.
 
 ### Q43 — Retours clients → nouvelle version (validé)
 1. « Traiter une réponse » rend aussi, s'il y en a une, une demande sur le
@@ -675,6 +680,12 @@ ticket d'information seulement.
 5. Après publication, message aux personnes dont la demande est livrée
    (via le fil du prospect, mêmes règles que les relances).
 Le point hebdomadaire (Q42) lit aussi ces demandes.
+Corrigé le 28 novembre 2026 (Q119) : il n'y a pas d'invocation « Préparer
+la prochaine version » ; le point de la semaine choisit ce qui change, et
+la conception du produit retient ou refuse chaque demande, comme à sa
+première version (point 2). Une évolution passe par les tickets « Plan »
+et « Tester le produit », quelle que soit sa taille (point 4). Le message
+du point 5 reste à faire.
 
 ### Q44–Q45 — Maintenance, fermeture, suivi technique (validé)
 - Fin de la prospection lourde ≠ fin du business. Nouveaux statuts :
@@ -1843,6 +1854,9 @@ Décidé :
    n'expirent jamais : rien ne part vers des prospects sans qu'un humain
    ait essayé le produit. Boutons : « Valider », « À corriger » (les
    consignes repartent au constructeur), « Arrêter le business ».
+   Corrigé le 28 novembre 2026 (Q119) : la correction d'un produit déjà
+   en vente part en ligne sans cet essai, dès que le relecteur la juge
+   bonne ; une première mise en vente et une évolution le gardent.
 10. **Staging et prod séparés**, tous deux sur le VPS, ouverts à tous sans
     mot de passe, le staging invisible des moteurs de recherche. Adresses :
     `staging-<business>.<domaine de Serge>` pour le staging,
@@ -2019,6 +2033,9 @@ Décidé :
    les produits) : les e-mails des clients arriveront dans la boîte de
    Serge. D'ici là, aucun produit n'a d'adresse ni de formulaire de
    contact, et les prompts le disent.
+   Corrigé le 28 novembre 2026 (Q119) : c'est fait pour les produits
+   finis. Chaque produit reçoit son adresse de contact à sa publication
+   (pas de formulaire) ; un POC n'en a toujours pas.
 9. **L'éditeur des mentions légales est Julien Pesquet** : un humain
    répond de chaque produit, une IA ne peut rien porter légalement ; le
    service est tenu par Serge, un agent IA.
@@ -2759,3 +2776,90 @@ service raté ne se redemande pas (il faut retirer sa ligne) ; une clé
 créée à la main ne s'enregistre pas encore depuis Mission Control ; le
 relecteur ne vérifie pas encore que la page de confidentialité nomme le
 service.
+
+### Q119 — Faire vivre un produit en vente : le point de la semaine, les nouvelles versions, les offres, l'adresse de contact (validé par Clem, 28 novembre 2026)
+Constat : Serge venait d'être lancé, et Clem a demandé ce qui lui
+manquait : « une boucle de maintien des produits », appelée à intervalle
+régulier, seulement sur les produits finis, qui lit les chiffres du
+produit, les résultats de la prospection et les e-mails reçus à son
+sujet, puis décide quoi faire (corriger un bug, ajouter une
+fonctionnalité, refaire de la prospection), en repassant par les boucles
+de test et, au besoin, par Stripe. C'est le lot 16 ; Q42 à Q47 et Q96 en
+avaient décidé des morceaux. Claude a proposé un plan et posé cinq
+questions ; Clem a répondu point par point.
+Décidé :
+1. **Le rythme** : chaque lundi matin (l'heure et le jour se règlent sur
+   la page Pipeline), pour chaque vrai business dont le produit fini est
+   en vente, et tout de suite quand un client signale un bug. Un bouton,
+   sur la fiche d'un business, lance le point à la demande : c'est par
+   lui qu'on l'essaie sur le business d'un essai, que le lundi ne visite
+   pas. Il porte une consigne facultative, qui décide alors du point :
+   Clem voulait essayer la boucle sur la calculatrice de l'essai sans que
+   le modèle juge l'idée du business. Clem : « en cas
+   de signalement de bug, on corrige juste le bug, pas de nouvelles
+   features ». Le tri d'un bug ne peut donc décider que « corriger » ou
+   « rien » : il n'a pas d'autre choix dans sa réponse.
+2. **Qui valide une nouvelle version** : une correction part en prod dès
+   que le relecteur la juge bonne, avec un ticket d'information ; une
+   évolution (une fonctionnalité, une offre, un prix) garde les tickets
+   « Plan » et « Tester le produit ». Q43 disait qu'une correction se
+   publie seule, Q91 que rien n'est mis en vente sans essai humain : Q91
+   est corrigée pour ce cas. Une correction qu'un humain renvoie en
+   conception devient une évolution.
+3. **Les e-mails de support** : chaque produit fini a une adresse de
+   contact, qui arrive dans la boîte de Serge : son adresse, avec le nom
+   court du produit après un « + » (`serge+calcudevis@exemple.fr`). Le
+   produit la reçoit à sa publication (`CONTACT_EMAIL`) et la montre ; un
+   e-mail qu'un inconnu y écrit devient le message d'un contact
+   « entrant » de ce business, et « Traiter une réponse » y répond comme
+   aux autres. Pas de formulaire de contact, pas de nouvelle clé.
+4. **Les chiffres d'usage** (visites, inscriptions) : pas dans cette
+   version. Le point lit les ventes, les abonnements, les campagnes, les
+   réponses des prospects et les demandes des clients. Les visites
+   comptées depuis le serveur viendront ensuite.
+5. **Les offres** : Clem : « on doit pouvoir ajouter des offres
+   facilement ». Le plan d'un produit liste ses offres (code, nom, prix
+   en centimes, période, ce qu'elle comprend, une seule principale),
+   rangées en base. Stripe a un prix actif par offre : celui de l'offre
+   principale garde la clé de recherche du business (son numéro), celui
+   d'une autre porte `<numéro du business>_<code>`, et le connecteur
+   refuse une clé qui ne commence pas par ce numéro. Ajouter une offre ou
+   changer un prix est une évolution : le point de la semaine ou un
+   humain la demande, le plan change, et Stripe suit quand il est validé.
+   Les clients déjà abonnés à un prix archivé le gardent.
+6. **Hors de cette version**, comme proposé : arrêter la prospection,
+   mettre un business en maintenance ou le fermer (Q44, Q45), les
+   livraisons, les impayés et les remboursements (Q47), accélérer et
+   pivoter (Q42), prévenir un client que sa demande est livrée (Q43).
+
+Comment c'est fait, pour qui lit le pipeline :
+- **Un point est une ligne** (`product_reviews`) : ce qui est décidé, les
+  consignes, le compte rendu, et l'état de la nouvelle version qu'il a
+  lancée (`open`, puis `online` ou `dropped`). Une règle de doublon en
+  base empêche deux versions `open` pour le même business : un second
+  point qui veut en lancer une n'est pas écrit, et rien ne part. Le
+  bouton « Abandonner la nouvelle version en cours », sur la fiche du
+  business dans Mission Control, libère la place.
+- **Une nouvelle version repasse par les invocations de l'étape 5** (la
+  construction pour une correction, la conception pour une évolution).
+  Deux aiguillages sans LLM choisissent la suite en lisant la base, par
+  une capacité générale, « Lire une ligne pour décider » : après une
+  relecture réussie (une correction part en prod, le reste attend l'essai
+  d'un humain) et après un essai validé (un produit déjà en vente est mis
+  à jour, sinon c'est la première mise en vente, qui commence par le
+  domaine). La fin d'une nouvelle version est courte : Stripe en vrai
+  mode pour une évolution, puis la prod à la même adresse. Ni domaine, ni
+  paiement test de 1 €, ni nouvelle prospection lourde ; les données des
+  clients sont gardées.
+- **Une règle d'écriture s'ajoute à une invocation déjà en base** par une
+  nouvelle sorte de modification (`add_writes`), appliquée avant la pose
+  des liens.
+
+Limites connues : aucun vrai produit fini n'était en vente ce jour-là, la
+boucle n'a tourné que dans les tests ; l'adresse de contact suppose une
+boîte qui accepte les adresses « + » (Gmail, et la plupart des autres) ;
+tout e-mail d'un inconnu à cette adresse fait appeler un modèle, courrier
+indésirable compris ; une nouvelle version dont une tâche échoue reste
+`open` jusqu'à ce qu'un humain relance la tâche ou l'abandonne ;
+abandonner une version n'arrête pas sa tâche en cours ; les paiements
+sont donnés au point du plus ancien au plus récent, 300 au plus.

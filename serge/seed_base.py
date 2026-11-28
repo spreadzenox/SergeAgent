@@ -134,3 +134,58 @@ def condition_columns(raw: Any, where: str) -> tuple[str, str, str]:
     if cond and op not in CONDITION_OPS:
         raise PipelineSeedError(f'{where} : condition {op} inconnue')
     return str(cond.get('field', '')), op, str(cond.get('value', ''))
+
+
+def seed_write(
+    conn: sqlite3.Connection,
+    ident: str,
+    position: int,
+    write: Mapping[str, Any],
+) -> int:
+    """Pose une règle d'écriture d'une invocation, à son rang ; rend son
+    numéro. ``parent`` désigne le rang d'une écriture précédente."""
+    where = f'{ident}.writes[{position}]'
+    parent = write.get('parent')
+    parent_id = 0
+    if parent is not None:
+        row = None
+        if isinstance(parent, int) and 0 <= parent < position:
+            row = conn.execute(
+                'SELECT id FROM invocation_writes WHERE invocation_id=?'
+                ' AND position=?',
+                (ident, parent),
+            ).fetchone()
+        if row is None:
+            raise PipelineSeedError(
+                f'{where} : parent doit désigner une écriture précédente'
+            )
+        parent_id = int(row[0])
+    key = write.get('key') or {}
+    cond = condition_columns(write.get('condition'), where)
+    write_id = insert(
+        conn,
+        'invocation_writes',
+        invocation_id=ident,
+        position=position,
+        table_name=str(write['table']),
+        operation=str(write['operation']),
+        for_each=str(write.get('for_each', '')),
+        parent_write_id=parent_id,
+        key_column=str(key.get('column', '')),
+        key_source=str(key.get('source', '')),
+        key_value=str(key.get('value', '')),
+        max_rows=str(write.get('max_rows', '')),
+        condition_field=cond[0],
+        condition_op=cond[1],
+        condition_value=cond[2],
+        skip_dedup=int(write.get('dedup', True) is False),
+    )
+    seed_params(
+        conn,
+        'invocation_write_values',
+        {'write_id': write_id},
+        write.get('values'),
+        ident,
+        'column_name',
+    )
+    return write_id

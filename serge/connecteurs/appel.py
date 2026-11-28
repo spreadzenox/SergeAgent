@@ -16,7 +16,9 @@ l'invocation : le même outil sert en mode test et en vrai mode. Un point
 d'entrée payant peut porter un verrou de prix (``api_endpoints.guard``) :
 avant de l'appeler, « Appeler une API » vérifie le prix par un autre point
 d'entrée et refuse au-dessus d'un plafond, un réglage de l'invocation qui
-appelle (page Policy) ; un modèle ne peut pas passer outre. Un chemin
+appelle (page Policy) ; un modèle ne peut pas passer outre. Un verrou de
+préfixe (``prefixe``) oblige un paramètre choisi par le modèle à commencer
+par un paramètre figé (voir ``_prefixe``). Un chemin
 peut porter une valeur propre à l'instance, lue sur le serveur et jamais
 écrite dans le dépôt : ``{config:cloudflare-account-id}`` est la première
 ligne du fichier ``config_root/cloudflare-account-id``. Une
@@ -148,6 +150,24 @@ def _verrou(
                 f' ({nom_plafond})'
             )
     return ''
+
+
+def _prefixe(regle: Mapping[str, Any], values: Mapping[str, Any]) -> str:
+    """Pourquoi le verrou de préfixe refuse l'appel, ou ``''``.
+
+    ``{param, de}`` : la valeur de ``param``, choisie par le modèle, doit
+    commencer par celle de ``de``, figée en base, suivie de « _ ». Exemple :
+    la clé de recherche du prix d'une offre commence par le numéro de son
+    business (``ven_12_pro``) : un modèle ne peut pas prendre la clé du
+    prix d'un autre business.
+    """
+    if not regle:
+        return ''
+    debut = str(values.get(str(regle.get('de') or '')) or '')
+    valeur = str(values.get(str(regle.get('param') or '')) or '')
+    if debut and valeur.startswith(f'{debut}_') and valeur != f'{debut}_':
+        return ''
+    return f'{regle.get("param")} doit commencer par « {debut}_ »'
 
 
 def _params(conn: sqlite3.Connection, tool_id: str) -> dict[str, str]:
@@ -287,9 +307,14 @@ def call_api(
         return {'ok': False, 'code': 'config_absente', 'detail': manquant}
     url = base_url.rstrip('/') + path
     if garde:
-        refus = _verrou(conn, json.loads(garde), args, invocation_id)
+        regles = json.loads(garde)
+        refus, sorte = _prefixe(regles.get('prefixe') or {}, values), 'préfixe'
+        if not refus and regles.get('verifier'):
+            refus, sorte = _verrou(conn, regles, args, invocation_id), 'prix'
         if refus:
-            journal(f'{service_id} {method} {path} : verrou de prix, {refus}')
+            journal(
+                f'{service_id} {method} {path} : verrou de {sorte}, {refus}'
+            )
             append_event(
                 conn,
                 actor=f'invocation:{invocation_id}',

@@ -249,8 +249,8 @@ def boutons_du_business(
 def _emails_essai(conn: sqlite3.Connection, venture_id: str) -> dict[str, Any]:
     """Les derniers e-mails envoyés par le staging du business, lus dans la
     boîte d'essai (son expéditeur : son nom court, @, le domaine d'envoi)."""
+    from serge.sandbox.adresse_produit import slug
     from serge.sandbox.courriel import lire_essai
-    from serge.sandbox.publier import slug
 
     row = conn.execute(
         'SELECT name FROM ventures WHERE id=?', (venture_id,)
