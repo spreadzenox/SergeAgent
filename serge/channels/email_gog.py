@@ -16,7 +16,10 @@ Serge peut avoir plusieurs boîtes Gmail (décision Q120) : chacune est un
 compte de ``gog`` (``gog auth add <adresse>``), et chaque commande vise la
 sienne (``-a <adresse>``). Un envoi part de sa boîte (``sender``) ; la
 relève lit chaque boîte de la liste qu'elle reçoit. Sans boîte nommée,
-c'est celle du serveur (``-a auto`` : le compte de ``gog.env``).
+c'est celle du serveur : la commande part sans ``-a``, et gog prend le
+compte de ``GOG_ACCOUNT`` (``gog.env``). Jamais ``-a auto`` : dès que gog a
+plusieurs comptes, ``auto`` ignore ``GOG_ACCOUNT`` et la commande est
+refusée (« missing --account », 28 novembre 2026).
 
 Le binaire est ``SERGE_GOG_BIN``, sinon celui du ``PATH``. Les erreurs sont
 des ``MailError`` (BIN, AUTH, API, NETWORK), avec la boîte en cause ; un
@@ -40,7 +43,6 @@ from serge.channels.auto_reply import AUTO_REPLY, is_auto_reply
 from serge.channels.base import Incoming, Outgoing, recipients
 
 DEFAULT_GOG_BIN = '/usr/local/bin/gog'
-ACCOUNT = 'auto'
 # Ce qu'on lit au plus à chaque relève, et parmi les messages envoyés.
 POLL_MAX = 50
 SENT_MAX = 20
@@ -68,10 +70,10 @@ def _run(
 ) -> dict[str, Any]:
     """Une commande gog sur la boîte ``box`` ('' : celle du serveur)."""
     binary = _gog_bin()
-    account = box or ACCOUNT
+    compte = ['-a', box] if box else []
     try:
         completed = subprocess.run(
-            [binary, *args, '--json', '--no-input', '-a', account],
+            [binary, *args, '--json', '--no-input', *compte],
             check=False,
             capture_output=True,
             text=True,

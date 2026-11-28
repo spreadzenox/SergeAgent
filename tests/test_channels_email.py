@@ -94,8 +94,9 @@ class GogTests(unittest.TestCase):
     def test_chaque_boite_est_un_compte_gog(self) -> None:
         """Plusieurs boîtes (décision Q120) : la relève lit chacune avec son
         compte (``-a``) et note la boîte d'un message ; un envoi part de
-        sa boîte ; sans boîte nommée, c'est le compte du serveur (``auto``).
-        Une boîte refusée est nommée dans l'erreur."""
+        sa boîte ; sans boîte nommée, la commande part sans ``-a`` (gog
+        prend ``GOG_ACCOUNT`` : ``-a auto`` l'ignorait dès que gog avait
+        plusieurs comptes). Une boîte refusée est nommée dans l'erreur."""
         lances: list[list[str]] = []
 
         def gog(args: list[str], **_kw: object) -> subprocess.CompletedProcess:
@@ -113,11 +114,14 @@ class GogTests(unittest.TestCase):
             )
             email_gog.poll('')
         self.assertEqual([m.mailbox for m in recus], ['a@x.fr', 'b@x.fr'])
-        comptes = [args[args.index('-a') + 1] for args in lances]
+        comptes = [
+            args[args.index('-a') + 1] if '-a' in args else ''
+            for args in lances
+        ]
         self.assertEqual(
             comptes,
             ['a@x.fr', 'a@x.fr', 'b@x.fr', 'b@x.fr', 'b@x.fr', 'b@x.fr']
-            + ['auto', 'auto'],
+            + ['', ''],
         )
         with mock.patch(
             'subprocess.run', return_value=_sortie({}, 1, 'auth denied')
