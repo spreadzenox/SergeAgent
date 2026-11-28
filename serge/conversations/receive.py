@@ -36,6 +36,7 @@ from typing import Any
 from serge.channels.auto_reply import AUTO_REPLY
 from serge.channels.base import Incoming
 from serge.channels.web import transport
+from serge.conversations.mailbox import mailboxes
 from serge.conversations.send import silent_states
 from serge.db.store import append_event
 from serge.funnels.contacts import create_contact, normalise_value
@@ -134,6 +135,7 @@ def attach(
         'body': message.body,
         'message_ref': message.message_ref,
         'native_type': message.native_type,
+        'mailbox': message.mailbox,
         'contact_id': str(found[0]) if found else '',
         'venture_id': str(found[1]) if found else '',
         'status': _status(conn, message, found),
@@ -148,6 +150,8 @@ def receive_messages(
     Rend les messages nouveaux (``rows``), rattachés ou non ; les règles
     d'écriture de l'invocation les rangent dans ``inbound_events``, ce qui
     réveille le pipeline. Un message déjà relevé n'est pas rendu deux fois.
+    Un canal qui a plusieurs boîtes (l'e-mail, page Policy, décision Q120)
+    les relève toutes ; chaque message dit la boîte qui l'a reçu.
     """
     channel = str(args.get('channel') or '')
     poll = transport(conn, channel).poll
@@ -159,7 +163,7 @@ def receive_messages(
     rows: dict[str, dict[str, Any]] = {}
     # La relève peut relire les messages de la dernière minute : ceux déjà
     # écrits, ou rendus deux fois, sont écartés.
-    for message in poll(str(row[0]) if row else ''):
+    for message in poll(str(row[0]) if row else '', mailboxes(conn, channel)):
         if (
             message.external_ref in rows
             or conn.execute(

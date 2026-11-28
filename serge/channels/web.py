@@ -175,7 +175,10 @@ def _en_cours(conn: sqlite3.Connection, canal: str) -> bool:
 
 
 def _poll(
-    conn: sqlite3.Connection, canal: dict[str, str], _since: str
+    conn: sqlite3.Connection,
+    canal: dict[str, str],
+    _since: str,
+    _boxes: tuple[str, ...] = (),
 ) -> list[Incoming]:
     if not _en_cours(conn, canal['id']) or _attente(conn, canal['account'])[0]:
         return []

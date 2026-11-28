@@ -30,11 +30,14 @@ les mêmes :
 
 - `send(message)` envoie un message à une adresse et rend sa référence :
   pour l'e-mail, son `Message-ID`, qu'une réponse cite ;
-- `poll(depuis)` rend les messages reçus depuis une date, chacun avec son
-  expéditeur, son texte, et à quel message il répond (pour l'e-mail, les
-  en-têtes `In-Reply-To` et `References`). Un canal qui reçoit en direct
-  (le téléphone) n'en a pas : son programme écrit lui-même chaque appel
-  reçu (partie 4) ;
+- `poll(depuis, boîtes)` rend les messages reçus depuis une date, chacun
+  avec son expéditeur, son texte, et à quel message il répond (pour
+  l'e-mail, les en-têtes `In-Reply-To` et `References`). Un canal qui
+  reçoit en direct (le téléphone) n'en a pas : son programme écrit
+  lui-même chaque appel reçu (partie 4). Les boîtes sont celles du canal,
+  lues en base (page Policy, « E-mail, les boîtes de Serge », décision
+  Q120) : Gmail relève chacune et dit, pour chaque message, la boîte qui
+  l'a reçu ; un envoi dit la boîte d'où il part ;
 - `confirm(message)` dit si un envoi est vraiment parti (sa référence, ou
   rien) : l'e-mail est cherché dans les messages envoyés, l'appel dans son
   journal.

@@ -1975,6 +1975,7 @@ writable_tables:
       - {name: body, description: Le texte.}
       - {name: message_ref, description: 'Sa référence, pour lui répondre dans le même fil.'}
       - {name: external_ref, description: Sa référence chez le canal (jamais écrit deux fois).}
+      - {name: mailbox, description: 'La boîte de Serge qui l''a reçu (vide : celle du serveur).'}
       - {name: status, description: 'Rattaché, non rattaché, ou ignoré (une absence).'}
       - {name: reaction, description: 'Ce que fait le message (question, refus…).'}
       - {name: received_at, description: Quand Serge l'a reçu.}
@@ -3282,6 +3283,7 @@ invocations:
           message_ref: {source: field, value: rows.message_ref}
           external_ref: {source: field, value: rows.external_ref}
           status: {source: field, value: rows.status}
+          mailbox: {source: field, value: rows.mailbox}
           received_at: {source: now}
       - table: canaux
         operation: update
@@ -13946,6 +13948,14 @@ changes:
     table: invocation_tools
     where: {invocation_id: preparer_prospection_lourde, tool_id: plan_valide_du_produit}
     set: {max_rows: {from: 0, to: 1}}
+  # Serge a plusieurs boîtes e-mail (décision Q120) : un message relevé
+  # garde la boîte qui l'a reçu, pour que la réponse parte de celle-là.
+  - id: q120_releve_note_la_boite
+    why: Un message reçu garde la boîte de Serge qui l'a reçu ; la réponse part de cette boîte (Q120).
+    invocation: relever_messages
+    write: 0
+    add_write_values:
+      mailbox: {source: field, value: rows.mailbox}
 
 deleted:
   invocations:

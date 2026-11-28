@@ -1511,7 +1511,7 @@ Julien, sur la règle de branche : l'idéal est une idée par PR, mais en
 pratique c'est une session de travail ; on garde une cohérence et on reste
 souple.
 
-### Q77 — La branche de travail : une session = une branche = une PR, et Clem valide chaque fusion (validé par Clem, 2 octobre 2026)
+### Q77 — La branche de travail : une session = une branche = une PR, et un humain valide chaque fusion (validé par Clem, 2 octobre 2026 ; précisé par Julien et Clem, 28 novembre 2026)
 Constat : Clem avait demandé de toujours travailler sur la branche `Clem`
 et de lui demander avant chaque fusion dans `main`. Julien a corrigé Q64
 (point 5) : en général, une session de travail = une branche = une PR, de
@@ -1522,9 +1522,11 @@ Décidé :
    une PR (`docs/DEV_TOOLING.md`). Exemple : les réglages généraux en base
    (la PR B de Q68) partent sur leur propre branche, `reglages-en-base`,
    avec leur propre PR.
-2. Claude demande toujours à Clem avant de fusionner une PR dans `main` :
-   chaque fusion redéploie Serge sur le serveur de Julien. C'était la
-   proposition de Claude, et Clem l'a acceptée.
+2. Claude demande toujours à un humain, Julien ou Clem, avant de
+   fusionner une PR dans `main` : chaque fusion redéploie Serge sur le
+   serveur de Julien. C'était la proposition de Claude, et Clem l'a
+   acceptée. Le 28 novembre 2026, Julien et Clem ont précisé que l'accord
+   de l'un des deux suffit (l'entrée disait « Clem »).
 
 ### Q78 — Pas de réglage en double, et un réglage inutile est supprimé (validé par Clem, 2 octobre 2026)
 Constat : Q68 (point 6) disait « les chiffres en double sont branchés sur
@@ -2863,3 +2865,34 @@ indésirable compris ; une nouvelle version dont une tâche échoue reste
 `open` jusqu'à ce qu'un humain relance la tâche ou l'abandonne ;
 abandonner une version n'arrête pas sa tâche en cours ; les paiements
 sont donnés au point du plus ancien au plus récent, 300 au plus.
+
+### Q120 — Serge prospecte depuis plusieurs boîtes e-mail (demandé par Julien, 28 novembre 2026)
+
+Serge avait une seule boîte, un compte Gmail. Julien a créé deux adresses
+Google Workspace à son domaine, `serge.chevalier@jpesquet.tech` et
+`serge.casadel@jpesquet.tech`, et le compte Apollo de Serge est à la
+première : le code de connexion qu'Apollo y envoyait n'arrivait jamais,
+puisque Serge ne lisait pas cette boîte. Julien a répondu à trois
+questions :
+
+1. **Les deux adresses servent à prospecter**, pas seulement à recevoir des
+   codes : Serge écrit depuis elles et y lit les réponses.
+2. **Un premier message part de la boîte qui a le moins envoyé dans la
+   journée** (l'alternance), pour répartir le volume sur un domaine neuf.
+   Une conversation reste ensuite sur sa boîte : une réponse part de la
+   boîte qui a reçu le message, une relance de celle du dernier envoi au
+   contact. Une conversation d'avant reste sur la boîte du serveur.
+3. **Les e-mails de toutes les boîtes sont signés par le même Serge**, et
+   **la boîte Gmail du serveur prospecte aussi**, à égalité avec les deux
+   adresses pro.
+
+Julien a aussi demandé que tout ce qui peut l'être soit en base. La liste
+des boîtes est donc un réglage de la page Policy (« E-mail, les boîtes de
+Serge », `channels.email.mailboxes`) ; chaque envoi garde sa boîte
+(`touches.sender`) et chaque message reçu la sienne
+(`inbound_events.mailbox`, écrite par les règles d'écriture de « Relever
+les messages »). Chaque boîte est un compte de `gog` sur le serveur
+(`docs/installation/GMAIL_SETUP.md`, partie 4 bis).
+
+Pas fait : un plafond du jour par boîte (le plafond compte toutes les
+boîtes ensemble) ; une boîte SMTP/IMAP reste seule.

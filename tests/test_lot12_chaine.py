@@ -70,7 +70,7 @@ class FauxCanal:
     def confirm(self, _message: Outgoing) -> str:
         return ''
 
-    def poll(self, _since: str) -> list[Incoming]:
+    def poll(self, _since: str, _boxes: tuple = ()) -> list[Incoming]:
         recus, self.recus = self.recus, []
         return recus
 

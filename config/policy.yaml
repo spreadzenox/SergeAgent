@@ -484,6 +484,18 @@ sections:
         min: 0
         max: 200
         step: 1
+      - id: email.mailboxes
+        value: ''
+        title: E-mail, les boîtes de Serge
+        help: >-
+          Les adresses Gmail de Serge, séparées par des virgules (décision
+          Q120). Serge relève chacune ; un premier message part de celle qui
+          a le moins envoyé dans la journée, et une conversation reste sur
+          sa boîte. Vide : seulement la boîte du serveur (gog.env). Chaque
+          adresse doit être un compte de gog sur le serveur (« gog auth add
+          », docs/installation/GMAIL_SETUP.md), et la boîte du serveur
+          doit y être aussi pour rester relevée.
+        kind: texte
       - id: voice.max_per_day
         value: 50
         title: Appels passés au plus, par jour

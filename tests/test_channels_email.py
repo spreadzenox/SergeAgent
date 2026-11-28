@@ -91,6 +91,42 @@ class GogTests(unittest.TestCase):
             with self.assertRaisesRegex(email_gog.MailError, '^AUTH'):
                 email_gog.poll('')
 
+    def test_chaque_boite_est_un_compte_gog(self) -> None:
+        """Plusieurs boîtes (décision Q120) : la relève lit chacune avec son
+        compte (``-a``) et note la boîte d'un message ; un envoi part de
+        sa boîte ; sans boîte nommée, c'est le compte du serveur (``auto``).
+        Une boîte refusée est nommée dans l'erreur."""
+        lances: list[list[str]] = []
+
+        def gog(args: list[str], **_kw: object) -> subprocess.CompletedProcess:
+            lances.append(args)
+            if args[2] == 'messages':
+                return _sortie({'messages': [{'id': 'g1'}]})
+            if args[2] == 'send':
+                return _sortie({'id': 'g2'})
+            return _sortie({'message': {'payload': {'headers': []}}})
+
+        with mock.patch('subprocess.run', side_effect=gog):
+            recus = email_gog.poll('', ('a@x.fr', 'b@x.fr'))
+            email_gog.send(
+                Outgoing('t1', 'email', 'm@x.io', 'S', 'C', sender='b@x.fr')
+            )
+            email_gog.poll('')
+        self.assertEqual([m.mailbox for m in recus], ['a@x.fr', 'b@x.fr'])
+        comptes = [args[args.index('-a') + 1] for args in lances]
+        self.assertEqual(
+            comptes,
+            ['a@x.fr', 'a@x.fr', 'b@x.fr', 'b@x.fr', 'b@x.fr', 'b@x.fr']
+            + ['auto', 'auto'],
+        )
+        with mock.patch(
+            'subprocess.run', return_value=_sortie({}, 1, 'auth denied')
+        ):
+            with self.assertRaisesRegex(
+                email_gog.MailError, '^AUTH: gog refusé pour b@x.fr'
+            ):
+                email_gog.poll('', ('b@x.fr',))
+
     def test_un_refus_de_gmail_fait_echouer_l_envoi(self) -> None:
         """Une erreur API : le message n'est pas parti (l'envoi passe en
         échec). Une panne d'accès : l'envoi reste « en cours »."""
