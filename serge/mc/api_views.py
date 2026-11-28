@@ -205,7 +205,11 @@ class ApiViewsMixin(_Base):
                 'Aucun fichier rangé sous files/ pour cette fiche.',
             )
             return
-        sortes = {'.jpg': 'image/jpeg', '.png': 'image/png'}
+        sortes = {
+            '.jpg': 'image/jpeg',
+            '.png': 'image/png',
+            '.mp4': 'video/mp4',
+        }
         self._send(
             200,
             chemin.read_bytes(),

@@ -1114,6 +1114,62 @@ sections:
           ne joint rien.
         kind: liste
         choices: [internet, aucun]
+      - id: video.image
+        value: serge-atelier-video
+        title: Atelier vidéo, image
+        help: >-
+          L’image du chantier où Serge monte ses vidéos : HyperFrames, un
+          Chrome sans écran, ffmpeg et l’alignement de la voix. Serge la
+          construit au premier usage depuis serge/sandbox/image_video/
+          (une dizaine de minutes, une seule fois par version).
+        kind: liste
+        choices: [serge-atelier-video]
+      - id: video.cpus
+        value: 3
+        title: Atelier vidéo, processeurs
+        help: >-
+          Ce qu’un rendu de vidéo peut prendre des processeurs du serveur.
+          Une vidéo de 30 secondes se rend en une à deux minutes.
+        kind: nombre
+        min: 1
+        max: 4
+        step: 0.5
+      - id: video.memory_mb
+        value: 6144
+        title: Atelier vidéo, mémoire en Mo
+        help: >-
+          Le Chrome qui dessine les images et le modèle qui aligne la voix
+          tiennent dans 6 Go. Au-delà, le programme qui dépasse est arrêté.
+        kind: curseur
+        min: 2048
+        max: 12288
+        step: 256
+      - id: video.disk_mb
+        value: 20480
+        title: Atelier vidéo, disque en Mo
+        help: >-
+          Les projets vidéo d’un business (un dossier par vidéo). Serge
+          arrête l’atelier qui prend plus que cette place.
+        kind: curseur
+        min: 1024
+        max: 102400
+        step: 1024
+      - id: video.command_timeout_s
+        value: 1200
+        title: Atelier vidéo, durée d’une commande en secondes
+        help: Un contrôle ou un rendu qui dure plus longtemps est arrêté.
+        kind: curseur
+        min: 60
+        max: 3600
+        step: 60
+      - id: video.network
+        value: internet
+        title: Atelier vidéo, réseau
+        help: >-
+          internet : l’atelier télécharge les polices et les émojis, et
+          capture le site du produit ; aucun : il ne joint rien.
+        kind: liste
+        choices: [internet, aucun]
       - id: produit.cpus
         value: 0.5
         title: Produit en ligne, processeurs
@@ -1300,6 +1356,39 @@ sections:
         min: 5
         max: 300
         step: 5
+
+  - id: video
+    title: Vidéo
+    why: >-
+      Les vidéos verticales que Serge monte pour TikTok et Instagram
+      (décision Q121) : la voix qui les dit. Un humain les publie à la
+      main ; Serge ne publie rien lui-même.
+    settings:
+      - id: voix.model
+        value: elevenlabs/eleven-v4
+        title: Voix, modèle
+        help: >-
+          Le modèle de synthèse vocale, chez OpenRouter (la clé de
+          l’instance, secrets/openrouter-api-key). Choisi par Clem le
+          28 novembre 2026 après un essai de trois voix.
+        kind: texte
+      - id: voix.voice
+        value: brian
+        title: Voix, nom
+        help: Le nom de la voix chez ce modèle.
+        kind: texte
+      - id: voix.usd_par_1000_caracteres
+        value: 0.1
+        title: Voix, prix compté pour 1 000 caractères en dollars
+        help: >-
+          OpenRouter ne dit pas le prix d’une voix dans sa réponse : Serge
+          compte ce tarif pour que la dépense entre dans le plafond du
+          jour. Trois essais de 470 caractères ont coûté 0,054 $ en tout
+          le 28 novembre 2026.
+        kind: nombre
+        min: 0
+        max: 5
+        step: 0.01
 
 # « tel réglage ≤ tel autre » (« < » : strictement plus petit).
 relations:

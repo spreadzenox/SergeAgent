@@ -45,6 +45,7 @@ from serge.product_services import (
     finish_service,
     open_service_account,
 )
+from serge.sandbox.atelier import RUNNERS as RUNNERS_ATELIER
 from serge.sandbox.captures import browser_screenshot, real_browser_screenshot
 from serge.sandbox.chantier import (
     sandbox_command,
@@ -282,6 +283,7 @@ RUNNERS: dict[str, Runner] = {
     'sandbox_read_file': sandbox_read_file,
     'sandbox_write_file': sandbox_write_file,
     'sandbox_edit_file': sandbox_edit_file,
+    **RUNNERS_ATELIER,
     'browser_action': browser_action,
     'browser_read': browser_read,
     'browser_screenshot': browser_screenshot,

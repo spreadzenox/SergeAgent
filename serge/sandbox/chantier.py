@@ -37,6 +37,7 @@ from serge.sandbox.docker import (
     journal,
     secret_env,
 )
+from serge.sandbox.images import image_du_profil
 
 WORK = '/work'
 # Ce qu'on lit d'un fichier au plus : au-delà, il est coupé.
@@ -165,7 +166,12 @@ def ensure_chantier(
             flags += ['--network', NETWORK]
         # La première fois, Docker télécharge l'image : ça peut être long.
         docker(
-            [*flags, str(profile['image']), 'sleep', 'infinity'],
+            [
+                *flags,
+                image_du_profil(str(profile['image'])),
+                'sleep',
+                'infinity',
+            ],
             timeout=900,
             secrets=secrets,
         )
