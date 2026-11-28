@@ -2896,3 +2896,92 @@ les messages »). Chaque boîte est un compte de `gog` sur le serveur
 
 Pas fait : un plafond du jour par boîte (le plafond compte toutes les
 boîtes ensemble) ; une boîte SMTP/IMAP reste seule.
+
+### Q121 — L'atelier vidéo : Serge monte des vidéos verticales, un humain les publie (demandé par Clem, 28 novembre 2026)
+
+Clem veut ouvrir une branche B2C : des idées pour des particuliers, et à
+la place de la prospection, des vidéos verticales sur TikTok et Instagram.
+Serge s'y présente comme un entrepreneur IA, arrogant et drôle, qui vend
+pas cher des services d'habitude hors de prix. Cette entrée dit ce qui est
+décidé pour fabriquer les vidéos ; la branche B2C elle-même (ses étapes,
+son test de trois jours) aura la sienne.
+
+**Ce que Clem a décidé**, après un plan et un banc d'essai :
+
+1. **La relecture se fait sur des images et sur le code.** Claude ne lit
+   ni vidéo ni son : le relecteur regarde des images tirées de la vidéo
+   (le début et le milieu de chaque scène, une bande autour de chaque
+   coupe, une planche à la taille d'un téléphone) et lit le code des
+   scènes. Pas de visionnage par un autre modèle.
+2. **Un humain publie à la main**, sur des comptes de particulier, sur les
+   deux applis. Serge ne publie rien et ne pilote pas ces sites : aucune
+   API, aucun navigateur. C'est aussi l'humain qui coche l'étiquette
+   « contenu généré par IA », obligatoire dès qu'une voix de synthèse
+   parle.
+3. **Un ticket par vidéo**, où un humain la regarde, la dit publiée, ou la
+   renvoie au montage avec sa remarque.
+4. **Le moteur est HyperFrames**, figé à la version 0.9.104 (licence
+   Apache 2.0). Une vidéo y est une page HTML animée, rendue image par
+   image par un Chrome sans écran. Il a été préféré à Remotion sur un
+   essai : la même vidéo faite avec les deux donne la même image, mais
+   HyperFrames a un contrôle automatique (textes qui se chevauchent,
+   texte sous les boutons de l'appli, ligne affichée trop peu de temps)
+   qui a trouvé 23 défauts dans le premier jet, et Remotion n'a rien de
+   tel. Clem a jugé la version Remotion moins bonne.
+5. **La voix est « brian »** (ElevenLabs, par OpenRouter, donc avec la clé
+   que Serge a déjà), choisie par Clem sur trois essais.
+6. **Le style de référence est la vidéo d'essai du 28 novembre** (« Serge
+   se présente », 30 secondes), validée par Clem : des scènes denses
+   (objets, émojis, compteur, mouvements secondaires), pas un texte seul
+   sur un aplat. Elle est dans l'image de l'atelier, comme exemple à lire
+   (`serge/sandbox/image_video/exemple/`).
+7. **Une vidéo montre le produit** : l'atelier ouvre le site du produit,
+   y tape et y clique comme un visiteur, et en garde des captures à la
+   taille d'un téléphone.
+
+**Ce que le banc d'essai a appris**, et que l'atelier applique :
+
+- **Les temps des mots ne viennent pas d'une transcription.** Deux
+  modèles de transcription se trompent de 0,05 à 0,25 s sur le début des
+  mots, et Clem l'a vu tout de suite (« les animations sont mal
+  timées »). Le texte étant connu, on aligne le son sur le texte
+  (alignement forcé) : la commande `aligner` rend le début de chaque mot
+  à quelques centièmes près. Son modèle est sous licence Apache 2.0 ;
+  les modèles MMS de Meta, aussi précis, interdisent l'usage commercial.
+- **Tout ce qui se lit tient dans la zone que les applis laissent
+  libre** : de 120 à 780 px en largeur, de 288 à 1 248 px en hauteur, sur
+  une image de 1 080 × 1 920. Le bas de l'image reste vide exprès.
+- **Pas de sous-titres qui répètent un texte déjà à l'écran.**
+- **Rien à payer pour les sons et les dessins** : des bruitages du
+  domaine public (Kenney, CC0, dix-sept sont dans l'image) et les émojis
+  Fluent de Microsoft (licence MIT). La musique des applis est interdite
+  pour un contenu promotionnel : une vidéo de Serge n'a que sa voix et
+  ses bruitages.
+
+**Comment c'est fait.** Fabriquer une vidéo reprend le chantier du lot 10,
+sans rien de propre à la vidéo dans le code de Serge :
+
+- un profil de bac à sable de plus, « video » (page Policy), dont l'image
+  est **une image maison** : Serge la construit au premier usage depuis
+  `serge/sandbox/image_video/` (`serge/sandbox/images.py`). Elle contient
+  le moteur, un Chrome sans écran, ffmpeg et six commandes : `aligner`,
+  `controler` (le contrôle automatique et les planches de relecture),
+  `capturer` (les captures du site d'un produit), `rendre`, `niveau`,
+  `emoji` ;
+- trois capacités générales de plus (`serge/sandbox/atelier.py`) :
+  « Regarder une image du chantier » (elle revient au modèle comme une
+  image), « Garder un fichier du chantier » (la vidéo rendue sort du
+  conteneur, est rangée sous `files/` et a sa fiche ; Mission Control la
+  sert) et « Dire un texte » (la voix réglée sur la page Policy, famille
+  « Vidéo »). La clé d'OpenRouter ne sort pas de Serge : aucun secret
+  n'entre dans le conteneur. OpenRouter ne dit pas le prix d'une voix
+  dans sa réponse : Serge compte un tarif réglé (0,10 $ pour 1 000
+  caractères au départ ; trois essais de 470 caractères ont coûté
+  0,054 $), pour que la dépense entre dans le plafond du jour.
+
+**Pas encore fait** (la suite de ce lot) : la table des vidéos, les
+invocations (écrire le script, monter, relire, compter les passages), le
+ticket « Vidéo » et son lecteur dans Mission Control, le bouton « Faire
+une vidéo pour ce produit ». L'image n'a pas encore été construite sur un
+serveur : ses six commandes ont été essayées une par une sur un poste,
+hors de Docker.
