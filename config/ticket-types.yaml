@@ -158,12 +158,13 @@ types:
     fields: [La proposition de Serge, Les business qui attendent, Les comptes rendus de leurs tests, Pourquoi]
     buttons: [valider, choisir_autre, aucun, discuter]
   PLAN_PRODUIT:
-    role: >-
+    role: &role_plan_produit >-
       Le plan du produit fini, payant, d'un business : son prix définitif,
-      son nom de domaine, sa fiche produit et ce qu'il fait des demandes
-      des clients (lot 10, Q41 et Q91). « Valider » lance la construction ;
-      le domaine sera acheté après ton essai du produit. « À corriger »
-      renvoie le plan à la conception avec tes consignes.
+      ses offres, son nom de domaine, sa fiche produit et ce qu'il fait des
+      demandes des clients (lot 10, Q41 et Q91). « Valider » lance la
+      construction ; le domaine sera acheté après ton essai du produit.
+      « À corriger » renvoie le plan à la conception avec tes consignes. Le
+      même ticket sert quand un produit déjà en vente évolue (Q119).
     render: {color: 3066993, emoji: "🧭"}
     urgency: normale
     expiry_hours: null
@@ -175,10 +176,11 @@ types:
       - {label: En bref, tool: plan_produit_en_bref, params: {plan_id: id}}
       - {label: Le business, tool: fiche_business, params: {venture_id: venture_id}}
       - {label: Le plan, tool: plan_produit_par_numero, params: {plan_id: id}}
+      - {label: Les offres, tool: offres_du_produit, params: {venture_id: venture_id}}
       - {label: La critique, tool: critiques_du_plan, params: {plan_id: id}}
       - {label: La fiche produit, tool: fiche_produit, params: {venture_id: venture_id}}
       - {label: Les demandes des clients, tool: demandes_des_clients, params: {venture_id: venture_id}}
-    fields: &champs_plan_produit [En bref, Le business, Le plan, La critique, La fiche produit, Les demandes des clients, Pourquoi]
+    fields: &champs_plan_produit [En bref, Le business, Le plan, Les offres, La critique, La fiche produit, Les demandes des clients, Pourquoi]
     buttons: [valider, a_corriger, arreter_business, discuter]
   TEST_PRODUIT:
     role: &role_test_produit >-
@@ -189,7 +191,9 @@ types:
       consignes (un bug, un détail) ; « Revoir le plan » renvoie le produit
       à la conception avec tes consignes, puis au critique et au ticket
       « Plan » (une fonctionnalité à changer, à ajouter ou à retirer,
-      décision Q116).
+      décision Q116). Pour la nouvelle version d'un produit déjà en vente,
+      « Valider » la met en ligne à la même adresse, sans rien racheter
+      (Q119).
     render: {color: 15105570, emoji: "🧪"}
     urgency: normale
     expiry_hours: null
@@ -322,6 +326,46 @@ changes:
       buttons:
         from: [valider, a_corriger, arreter_business, discuter]
         to: *boutons_test
+  # Faire vivre un produit en vente (lot 16, décision Q119).
+  - id: plan_produit_offres
+    why: Le ticket du plan montre les offres du produit, une par prix (Q119).
+    type: PLAN_PRODUIT
+    set:
+      role:
+        from: >-
+          Le plan du produit fini, payant, d'un business : son prix définitif,
+          son nom de domaine, sa fiche produit et ce qu'il fait des demandes
+          des clients (lot 10, Q41 et Q91). « Valider » lance la construction ;
+          le domaine sera acheté après ton essai du produit. « À corriger »
+          renvoie le plan à la conception avec tes consignes.
+        to: *role_plan_produit
+      contenu:
+        from:
+          - {label: En bref, tool: plan_produit_en_bref, params: {plan_id: id}}
+          - {label: Le business, tool: fiche_business, params: {venture_id: venture_id}}
+          - {label: Le plan, tool: plan_produit_par_numero, params: {plan_id: id}}
+          - {label: La critique, tool: critiques_du_plan, params: {plan_id: id}}
+          - {label: La fiche produit, tool: fiche_produit, params: {venture_id: venture_id}}
+          - {label: Les demandes des clients, tool: demandes_des_clients, params: {venture_id: venture_id}}
+        to: *contenu_plan_produit
+      fields:
+        from: [En bref, Le business, Le plan, La critique, La fiche produit, Les demandes des clients, Pourquoi]
+        to: *champs_plan_produit
+  - id: test_produit_nouvelle_version
+    why: Le ticket de test sert aussi à la nouvelle version d'un produit en vente (Q119).
+    type: TEST_PRODUIT
+    set:
+      role:
+        from: >-
+          Le produit fini en ligne en staging, avec Stripe en mode test, à
+          essayer comme un client, paiement compris, avant sa mise en vente
+          (lot 10, Q91). « Valider » achète son domaine, le met en vente et le
+          publie en prod ; « À corriger » relance la construction avec tes
+          consignes (un bug, un détail) ; « Revoir le plan » renvoie le produit
+          à la conception avec tes consignes, puis au critique et au ticket
+          « Plan » (une fonctionnalité à changer, à ajouter ou à retirer,
+          décision Q116).
+        to: *role_test_produit
 
 # Les types retirés de ce fichier, effacés aussi de la base (comme la section
 # `deleted` de policy.yaml). Aucune invocation ne les a jamais ouverts

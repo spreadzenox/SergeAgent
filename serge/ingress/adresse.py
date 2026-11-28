@@ -21,8 +21,8 @@ import sys
 from typing import Any
 
 from serge.ingress.caddy import public_hostname
+from serge.sandbox.adresse_produit import avec_le_nom, product_hostname
 from serge.sandbox.docker import DockerError
-from serge.sandbox.publier import avec_le_nom, product_hostname
 
 
 def server_address(

@@ -20,7 +20,9 @@ la boîte du relecteur.
 
 Le produit reçoit ``SMTP_HOST``, ``SMTP_PORT``, ``SMTP_USER``,
 ``SMTP_PASS`` et ``MAIL_FROM`` dans son environnement : le même code
-marche partout.
+marche partout. Un produit fini publié reçoit aussi ``CONTACT_EMAIL``,
+l'adresse de contact qu'il montre à ses clients (``contact_du_produit``,
+Q119) : la publication la demande par son paramètre ``contact``.
 """
 
 from __future__ import annotations
@@ -36,6 +38,7 @@ import urllib.parse
 import urllib.request
 from typing import Any
 
+from serge.identite import IdentiteError, identite_serge
 from serge.paths import config_root
 from serge.policy_store import policy_en_vigueur
 from serge.sandbox.docker import (
@@ -115,6 +118,36 @@ def expediteur(conn: sqlite3.Connection, nom_court: str) -> str:
     """L'adresse d'expédition d'un produit : ``calcudevis@envoi.<domaine>``."""
     domaine = str(_reglages(conn).get('domaine_envoi') or '').strip()
     return f'{nom_court or "produit"}@{domaine or INVALIDE}'
+
+
+def contact_du_produit(nom_court: str) -> str:
+    """L'adresse de contact que montre un produit : la boîte de Serge, avec
+    le nom court du produit après un « + » (``serge+calcudevis@exemple.fr``).
+    Les e-mails qu'un client y écrit arrivent dans la boîte de Serge, et la
+    relève les rattache au business par cette adresse
+    (``serge/conversations/receive.py``). Vide si Serge n'a pas de boîte.
+    """
+    # raccourci : suppose une boîte qui accepte les adresses « + » (Gmail,
+    # et la plupart des autres) ; sinon ces e-mails sont refusés.
+    try:
+        boite = identite_serge()['email'].strip().lower()
+    except IdentiteError:
+        return ''
+    local, arobase, domaine = boite.partition('@')
+    if not (local and arobase and domaine and nom_court):
+        return ''
+    return f'{local.partition("+")[0]}+{nom_court}@{domaine}'
+
+
+def noter_contact(
+    conn: sqlite3.Connection, deployment: str, contact: str
+) -> None:
+    """Note l'adresse de contact d'une publication (``deployments``) ;
+    vide : ce produit n'en montre pas."""
+    conn.execute(
+        'UPDATE deployments SET contact_email=? WHERE id=?',
+        (contact, deployment),
+    )
 
 
 def env_essai(conn: sqlite3.Connection, nom_court: str) -> dict[str, str]:

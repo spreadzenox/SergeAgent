@@ -13,6 +13,8 @@ Scénarios :
   déjà changé ;
 - un outil nouveau s'ajoute une seule fois à une invocation déjà en base,
   à la fin de ses outils, avec ses paramètres ;
+- une règle d'écriture nouvelle s'ajoute une seule fois à une invocation
+  déjà en base, à son rang ; un rang déjà pris est gardé ;
 - une modification mal écrite est refusée ;
 - une instance de la PR 4 du lot 10 perd le rythme des relances dans le
   plan d'un POC (Q37) : le champ de la réponse, sa colonne écrite et lue,
@@ -196,6 +198,84 @@ class ChangesTests(unittest.TestCase):
                     self.conn,
                     [{'id': 'mal2', 'invocation': 'explorer_web', **mauvais}],
                 )
+
+    def test_une_ecriture_nouvelle_s_ajoute_a_son_rang(self) -> None:
+        """Une instance d'avant le lot 16 : « Concevoir le produit » n'écrit
+        pas encore les offres du produit (décision Q119)."""
+
+        def ecritures() -> list[tuple]:
+            return [
+                tuple(r)
+                for r in self.conn.execute(
+                    'SELECT w.position, w.table_name, w.operation, w.for_each,'
+                    ' (SELECT COUNT(*) FROM invocation_write_values v'
+                    ' WHERE v.write_id=w.id) FROM invocation_writes w'
+                    " WHERE w.invocation_id='concevoir_produit'"
+                    ' AND w.position>=7 ORDER BY w.position'
+                )
+            ]
+
+        neuves = [
+            (7, 'product_offers', 'delete', '', 0),
+            (8, 'product_offers', 'insert', 'offres', 7),
+        ]
+        self.assertEqual(ecritures(), neuves)
+        self.assertEqual(
+            self._resultat('q119_concevoir_produit_ecrit_les_offres'),
+            'écriture 7 déjà là ; écriture 8 déjà là',
+        )
+        self.conn.execute(
+            'DELETE FROM invocation_write_values WHERE write_id IN (SELECT id'
+            " FROM invocation_writes WHERE invocation_id='concevoir_produit'"
+            ' AND position>=7)'
+        )
+        self.conn.execute(
+            "DELETE FROM invocation_writes WHERE invocation_id='concevoir_produit'"
+            ' AND position>=7'
+        )
+        self.conn.execute(
+            'DELETE FROM pipeline_changes WHERE'
+            " id='q119_concevoir_produit_ecrit_les_offres'"
+        )
+        ensure_pipeline(self.conn)
+        self.assertEqual(ecritures(), neuves)
+        self.assertEqual(
+            self._resultat('q119_concevoir_produit_ecrit_les_offres'),
+            'écriture 7 ajoutée (product_offers) ;'
+            ' écriture 8 ajoutée (product_offers)',
+        )
+        # Un rang déjà pris est gardé, une invocation inconnue est sautée,
+        # et une règle sans rang est refusée.
+        regle = {'table': 'product_offers', 'operation': 'delete'}
+        apply_changes(
+            self.conn,
+            [
+                {
+                    'id': 'rang_pris',
+                    'invocation': 'concevoir_produit',
+                    'add_writes': [{**regle, 'position': 0}],
+                },
+                {
+                    'id': 'absente',
+                    'invocation': 'inconnue',
+                    'add_writes': [{**regle, 'position': 0}],
+                },
+            ],
+        )
+        self.assertEqual(self._resultat('rang_pris'), 'écriture 0 déjà là')
+        self.assertEqual(self._resultat('absente'), 'objet absent')
+        self.assertEqual(ecritures(), neuves)
+        with self.assertRaises(PipelineSeedError):
+            apply_changes(
+                self.conn,
+                [
+                    {
+                        'id': 'sans_rang',
+                        'invocation': 'concevoir_produit',
+                        'add_writes': [regle],
+                    }
+                ],
+            )
 
     def test_une_modification_mal_ecrite_est_refusee(self) -> None:
         for mauvais in (
@@ -602,14 +682,22 @@ class RegistrarCloudflareTests(unittest.TestCase):
             ).fetchone()[0],
         )
         self.assertEqual(self._secrets(), anciens['to'])
-        # L'essai validé passe d'abord par le choix du domaine, et le
-        # domaine commun va jusqu'à la prod.
+        # L'essai validé passe d'abord par le choix du domaine (depuis le
+        # lot 16, par un aiguillage : une première mise en vente y va, une
+        # nouvelle version d'un produit en vente non), et le domaine commun
+        # va jusqu'à la prod.
         self.assertEqual(
             self.conn.execute(
                 'SELECT to_invocation_id FROM links'
-                " WHERE id='test_produit_valide_vers_domaine'"
+                " WHERE id='premiere_mise_en_vente_vers_domaine'"
             ).fetchone()[0],
             'choisir_domaine',
+        )
+        self.assertIsNone(
+            self.conn.execute(
+                "SELECT 1 FROM links WHERE deleted_at=''"
+                " AND id='test_produit_valide_vers_domaine'"
+            ).fetchone()
         )
         self.assertTrue(
             self.conn.execute(

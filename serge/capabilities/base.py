@@ -19,6 +19,18 @@ BASE: tuple[Capability, ...] = (
         (Param('tool_id', 'text', True, 'L’outil de lecture à utiliser.'),),
     ),
     Capability(
+        'read_row',
+        'Lire une ligne pour décider',
+        'Lit la première ligne que rend un outil de lecture et rend ses'
+        ' colonnes telles quelles, avec « trouve » (oui ou non). Sert aux'
+        ' invocations sans LLM qui aiguillent : leurs liens choisissent la'
+        ' suite selon un fait en base. Exemple : après une relecture réussie,'
+        ' la version en cours du produit dit si elle part en ligne seule ou'
+        ' si un humain l’essaie d’abord.',
+        'serge/interpreter/tools.py',
+        (Param('tool_id', 'text', True, 'L’outil de lecture à utiliser.'),),
+    ),
+    Capability(
         'web_search',
         'Chercher sur le web',
         'Cherche une question sur le web et rend quelques résultats : titre,'

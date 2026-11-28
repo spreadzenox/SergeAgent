@@ -35,6 +35,21 @@ PUBLIER: tuple[Capability, ...] = (
                 'Le domaine commun des produits finis : la prod sur'
                 ' <produit>.<ce domaine>.',
             ),
+            Param(
+                'same_address',
+                'text',
+                False,
+                'oui : la prod garde l’adresse où ce produit est déjà en'
+                ' ligne (une nouvelle version).',
+            ),
+            Param(
+                'contact',
+                'text',
+                False,
+                'oui : le produit reçoit son adresse de contact'
+                ' (CONTACT_EMAIL), et les e-mails écrits à cette adresse'
+                ' sont rattachés à son business.',
+            ),
             Param('task_id', 'text', False, 'La tâche qui publie.'),
             Param(
                 'env_secrets',

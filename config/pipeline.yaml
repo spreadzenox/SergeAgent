@@ -1731,6 +1731,174 @@ tools:
         - {id: vieux, table: ventures, column: smoke_ended_at, operator: '<', days_ago: jours}
       params:
         - {name: jours, type: integer, required: true, description: 'L''âge maximum, en jours.'}
+  # --- Faire vivre un produit en vente (lot 16, décision Q119) ---
+  - id: ventes_du_business
+    title: Les ventes du business
+    doc: >-
+      Les paiements reçus par un business : leur date, leur sorte (canary :
+      le paiement test de 1 € de Serge, pas une vente), leur montant et leur
+      état.
+    capability: db_read
+    read:
+      tables: [transactions]
+      columns:
+        - {table: transactions, name: created_at, as: date}
+        - {table: transactions, name: kind, as: sorte}
+        - {table: transactions, name: amount_eur, as: montant_eur}
+        - {table: transactions, name: status, as: etat}
+      filters:
+        - {id: business, table: transactions, column: venture_id, param: venture_id}
+      params:
+        - {name: venture_id, required: true, description: Le numéro du business.}
+  - id: abonnements_du_business
+    title: Les abonnements du business
+    doc: Les abonnements des clients d'un business, avec leur montant, leur période et leur état.
+    capability: db_read
+    read:
+      tables: [subscriptions]
+      columns:
+        - {table: subscriptions, name: created_at, as: depuis}
+        - {table: subscriptions, name: amount_eur, as: montant_eur}
+        - {table: subscriptions, name: period, as: periode}
+        - {table: subscriptions, name: status, as: etat}
+        - {table: subscriptions, name: renews_at, as: prochain_paiement}
+      filters:
+        - {id: business, table: subscriptions, column: venture_id, param: venture_id}
+      params:
+        - {name: venture_id, required: true, description: Le numéro du business.}
+  - id: points_du_produit
+    title: Les points déjà faits sur le produit
+    doc: >-
+      Les points déjà faits sur le produit d'un business, du plus récent au
+      plus ancien : ce qui a été décidé pour le produit et pour la
+      prospection, et où en est la nouvelle version qu'un point a lancée.
+    capability: db_read
+    read:
+      tables: [product_reviews]
+      columns: &colonnes_point
+        - {table: product_reviews, name: id}
+        - {table: product_reviews, name: created_at, as: date}
+        - {table: product_reviews, name: cause, as: pourquoi}
+        - {table: product_reviews, name: product_action, as: produit}
+        - {table: product_reviews, name: product_notes, as: consignes_produit}
+        - {table: product_reviews, name: prospecting_action, as: prospection}
+        - {table: product_reviews, name: prospecting_notes, as: consignes_prospection}
+        - {table: product_reviews, name: summary, as: compte_rendu}
+        - {table: product_reviews, name: version_status, as: version}
+      filters:
+        - {id: business, table: product_reviews, column: venture_id, param: venture_id}
+      params:
+        - {name: venture_id, required: true, description: Le numéro du business.}
+  - id: version_en_cours
+    title: La nouvelle version en cours
+    doc: >-
+      Le point qui a lancé la nouvelle version qu'un produit en vente est en
+      train de recevoir, s'il y en a une : une correction (corriger) ou une
+      évolution (faire_evoluer), avec ses consignes.
+    capability: db_read
+    read:
+      tables: [product_reviews]
+      columns:
+        - {table: product_reviews, name: id}
+        - {table: product_reviews, name: created_at, as: date}
+        - {table: product_reviews, name: product_action, as: sorte}
+        - {table: product_reviews, name: product_notes, as: consignes}
+      filters:
+        - {id: business, table: product_reviews, column: venture_id, param: venture_id}
+        - {id: en_cours, table: product_reviews, column: version_status, fixed: open}
+      params:
+        - {name: venture_id, required: true, description: Le numéro du business.}
+  - id: offres_du_produit
+    title: Les offres du produit
+    doc: >-
+      Les offres payantes du produit d'un business, telles que son plan les
+      décrit : leur code, leur nom, leur prix en centimes, leur période
+      (month : par mois ; year : par an) et ce qu'elles comprennent. L'offre principale est marquée « oui ».
+    capability: db_read
+    read:
+      tables: [product_offers]
+      columns:
+        - {table: product_offers, name: code}
+        - {table: product_offers, name: name, as: nom}
+        - {table: product_offers, name: main, as: principale}
+        - {table: product_offers, name: amount_cents, as: prix_centimes}
+        - {table: product_offers, name: interval, as: periode}
+        - {table: product_offers, name: includes, as: comprend}
+      filters:
+        - {id: business, table: product_offers, column: venture_id, param: venture_id}
+      params:
+        - {name: venture_id, required: true, description: Le numéro du business.}
+  - id: demande_du_client
+    title: La demande du client
+    doc: Une demande d'un client sur le produit, par son numéro, avec l'étape où en est ce client.
+    capability: db_read
+    read:
+      tables: [customer_requests, contacts]
+      columns:
+        - {table: customer_requests, name: id, as: numero}
+        - {table: customer_requests, name: kind, as: sorte}
+        - {table: customer_requests, name: text, as: demande}
+        - {table: customer_requests, name: created_at, as: date}
+        - {table: contacts, name: funnel_state, as: etape_du_client}
+      joins:
+        - {id: contact, left: customer_requests.contact_id, right: contacts.id}
+      filters:
+        - {id: demande, table: customer_requests, column: id, param: request_id}
+      params:
+        - {name: request_id, required: true, description: Le numéro de la demande.}
+  - id: demandes_retenues
+    title: Les demandes retenues
+    doc: Les demandes des clients d'un business que le plan du produit a retenues, pas encore livrées.
+    capability: db_read
+    read:
+      tables: [customer_requests]
+      columns:
+        - {table: customer_requests, name: id, as: numero}
+      filters:
+        - {id: business, table: customer_requests, column: venture_id, param: venture_id}
+        - {id: retenues, table: customer_requests, column: status, fixed: kept}
+      params:
+        - {name: venture_id, required: true, description: Le numéro du business.}
+  - id: produit_en_vente
+    title: Le produit en vente
+    doc: Le business, si son produit fini est en vente (sinon rien).
+    capability: db_read
+    read:
+      tables: [ventures]
+      columns:
+        - {table: ventures, name: id, as: venture_id}
+        - {table: ventures, name: name, as: nom}
+      filters:
+        - {id: business, table: ventures, column: id, param: venture_id}
+        - {id: en_vente, table: ventures, column: lifecycle, fixed: [PRODUCT_READY, FULL_RUNNING]}
+      params:
+        - {name: venture_id, required: true, description: Le numéro du business.}
+  - id: stripe_creer_prix_d_offre
+    title: Créer le prix d'une autre offre Stripe
+    doc: >-
+      Crée le prix d'une offre qui n'est pas l'offre principale ; rend son
+      identifiant (price_…). Sa clé de recherche (lookup_key) est le numéro
+      du business, un tiret bas, puis le code de l'offre : ven_12_pro. Le
+      numéro du business y est vérifié : une autre clé est refusée. Un
+      nouveau prix reprend la clé de l'ancien.
+    capability: call_api
+    api:
+      service: stripe_test
+      method: POST
+      path: /v1/prices
+      # Le verrou de préfixe : la clé choisie par le modèle doit commencer
+      # par le numéro du business, figé en base (Q76, Q119).
+      garde:
+        prefixe: {param: lookup_key, de: 'metadata[venture_id]'}
+      params:
+        - {name: product, required: true, description: Le produit (prod_…).}
+        - {name: unit_amount, type: number, required: true, description: 'Le prix en centimes : 4900 pour 49 €.'}
+        - {name: currency, required: true, description: 'La monnaie : eur.'}
+        - {name: 'recurring[interval]', required: true, description: 'La période de l''abonnement : month ou year.'}
+        - {name: nickname, description: Le nom de l'offre.}
+        - {name: lookup_key, required: true, description: 'La clé de recherche : <numéro du business>_<code de l''offre>.'}
+        - {name: transfer_lookup_key, type: bool, description: Reprendre la clé d'un ancien prix (figé en base).}
+        - {name: 'metadata[venture_id]', description: Le business (figé en base).}
 writable_tables:
   - table: listen_cycles
     insert: true
@@ -1995,6 +2163,35 @@ writable_tables:
       - {name: intent_id, description: Le paiement chez Stripe (pi_…).}
       - {name: status, description: Son état.}
       - {name: doc_ref, description: Ce que c'est.}
+  - table: product_reviews
+    insert: true
+    update: true
+    description: >-
+      Les points sur les produits en vente, et l'état de la nouvelle version
+      qu'un point a lancée.
+    columns:
+      - {name: venture_id, description: Le business.}
+      - {name: cause, description: 'Pourquoi ce point : semaine, ou bug (un client a signalé un bug).'}
+      - {name: request_id, description: 'La demande du client, pour un bug signalé.'}
+      - {name: product_action, description: 'Pour le produit : rien, corriger ou faire_evoluer.'}
+      - {name: product_notes, description: Les consignes de la nouvelle version.}
+      - {name: prospecting_action, description: 'Pour la prospection : rien ou relancer.'}
+      - {name: prospecting_notes, description: Les consignes de la relance.}
+      - {name: summary, description: Le compte rendu du point.}
+      - {name: version_status, description: 'La nouvelle version : none (aucune), open (en cours), online (en ligne) ou dropped (abandonnée).'}
+      - {name: version, description: Le numéro de la version mise en ligne.}
+  - table: product_offers
+    insert: true
+    delete: true
+    description: Les offres payantes d'un produit, écrites avec son plan.
+    columns:
+      - {name: venture_id, description: Le business.}
+      - {name: code, description: 'Le code de l''offre : un mot en minuscules, sans espace.'}
+      - {name: name, description: Son nom.}
+      - {name: main, description: 'oui pour l''offre principale, non pour les autres.'}
+      - {name: amount_cents, description: Son prix en centimes.}
+      - {name: interval, description: 'Sa période : month (par mois) ou year (par an).'}
+      - {name: includes, description: Ce qu'elle comprend.}
 
 status_transitions:
   - {table: ventures, column: lifecycle, from: '', to: CANDIDATE}
@@ -2122,6 +2319,19 @@ status_transitions:
   - {table: ventures, column: lifecycle, from: CANDIDATE, to: PRODUCT_BUILDING}
   - {table: ventures, column: lifecycle, from: CANDIDATE, to: PRODUCT_READY}
   - {table: product_plans, column: status, from: '', to: challenged}
+  # Une nouvelle version d'un produit en vente (lot 16, Q119) : un point la
+  # lance (open), puis elle est en ligne ou abandonnée. Une demande d'un
+  # client qu'une correction traite est retenue, puis livrée.
+  - {table: product_reviews, column: version_status, from: '', to: none}
+  - {table: product_reviews, column: version_status, from: '', to: open}
+  - {table: product_reviews, column: version_status, from: open, to: online}
+  - {table: product_reviews, column: version_status, from: open, to: dropped}
+  # Une correction qu'un humain renvoie en conception devient une évolution :
+  # un humain l'essaiera avant qu'elle parte en ligne.
+  - {table: product_reviews, column: product_action, from: '', to: rien}
+  - {table: product_reviews, column: product_action, from: '', to: corriger}
+  - {table: product_reviews, column: product_action, from: '', to: faire_evoluer}
+  - {table: product_reviews, column: product_action, from: corriger, to: faire_evoluer}
 
 # Les quotas : le code d'écriture refuse une ligne de trop, quelle que soit
 # l'invocation, et un bouton ne lance rien si son quota est plein. Les
@@ -2188,6 +2398,15 @@ dedup_rules:
     method: exact
     on_duplicate: skip
     columns: [url]
+  # Une seule nouvelle version à la fois par produit : un second point qui
+  # veut en lancer une, pendant que la première est en cours (open), n'est
+  # pas écrit, et rien ne part (Q119). Les points sans version ne passent
+  # pas par cette règle (dedup: false sur leur écriture).
+  - id: une_version_a_la_fois
+    table: product_reviews
+    method: exact
+    on_duplicate: skip
+    columns: [venture_id, version_status]
 
 # Ce qu'une invocation peut voir de chaque table, réglé une fois par
 # table. La version courte (short) est donnée d'office, pour comparer, à
@@ -2385,6 +2604,21 @@ table_views:
       - {name: target, description: Les prospects visés.}
       - {name: angle, description: Ce que les messages mettent en avant.}
       - {name: state, short: true, description: 'DRAFT, READY, RUNNING, puis FINISHED (ou CANCELLED).'}
+  - table: product_reviews
+    title: Les points sur les produits
+    description: Les points faits sur les produits en vente, et la nouvelle version que chacun a lancée.
+    order: created_at
+    columns:
+      - {name: id, description: Le numéro du point.}
+      - {name: venture_id, short: true, description: Le business.}
+      - {name: cause, short: true, description: 'semaine, ou bug.'}
+      - {name: product_action, short: true, description: 'rien, corriger ou faire_evoluer.'}
+      - {name: prospecting_action, short: true, description: 'rien ou relancer.'}
+      - {name: version_status, short: true, description: 'none, open, online ou dropped.'}
+      - {name: product_notes, description: Les consignes de la nouvelle version.}
+      - {name: prospecting_notes, description: Les consignes de la relance.}
+      - {name: summary, description: Le compte rendu.}
+      - {name: created_at, description: Sa date.}
 
 invocations:
   - id: ouvrir_cycle
@@ -5494,11 +5728,13 @@ invocations:
       les consignes d'un humain (« consignes ») : corrige d'abord ce
       qu'elles demandent.
 
-      Si un humain a essayé le produit déjà construit et demande de revoir
-      le plan, tu reçois aussi le plan validé qui a servi à le construire :
-      pars de ce plan, garde ce qui marche et change ce que ses consignes
-      demandent. Le constructeur reprendra le produit existant, il ne
-      repartira pas de zéro.
+      Si le produit est déjà construit (un humain qui l'a essayé demande de
+      revoir le plan, ou le point de la semaine demande de faire évoluer un
+      produit en vente), tu reçois aussi le plan validé qui a servi à le
+      construire, et ses offres actuelles : pars de ce plan, garde ce qui
+      marche et change ce que les consignes demandent. Le constructeur
+      reprendra le produit existant, il ne repartira pas de zéro ; les
+      clients d'un produit en vente gardent leur compte et leurs données.
 
       Pour construire, Serge a un chantier (un conteneur Linux avec Node,
       Python et git, où un modèle code et lance le produit), un navigateur
@@ -5523,6 +5759,14 @@ invocations:
       - prix : le prix définitif, par mois ou par an, en euros (exemple :
         « 19 € par mois ») ; ce que l'on a gratuitement avant de payer, s'il
         y a quelque chose ;
+      - offres : les abonnements que le client peut choisir. Une seule
+        suffit le plus souvent. Pour chacune : son code (un mot en
+        minuscules, sans espace : standard, pro), son nom, son prix en
+        centimes (19 € : 1900), sa période (month ou year), ce qu'elle
+        comprend, et « principale » : oui pour une seule, celle que la
+        plupart des clients prendront, non pour les autres. Ajouter ou
+        retirer une offre, ou changer un prix, se fait ici : Serge met
+        Stripe à jour quand le plan est validé ;
       - livrable : ce que le client obtient, en deux phrases ;
       - plan : ce que le constructeur doit faire, page par page et fonction
         par fonction : l'inscription, la connexion, le paiement de
@@ -5547,8 +5791,10 @@ invocations:
       Ce qui est réglé pour tous les produits, à ne pas redemander :
       l'éditeur des mentions légales est Julien Pesquet, une personne qui
       répond du produit, et le service est construit et tenu par Serge, un
-      agent IA. Pas d'adresse ni de formulaire de contact pour l'instant :
-      n'en prévois pas. Le produit peut envoyer des e-mails à ses clients
+      agent IA. Serge donne au produit son adresse e-mail de contact, et lit
+      lui-même les messages qui lui sont écrits : prévois de la montrer en
+      pied de page et dans les mentions légales ; pas de formulaire de
+      contact. Le produit peut envoyer des e-mails à ses clients
       (valider une inscription, changer un mot de passe oublié, un reçu) :
       Serge règle leur envoi.
 
@@ -5609,6 +5855,12 @@ invocations:
       - tool: plan_valide_du_produit
         mode: given
         label: Le plan validé du produit, déjà construit (vide avant la première construction)
+        max_rows: 1
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: offres_du_produit
+        mode: given
+        label: Les offres actuelles du produit (vide avant le premier plan)
         params:
           venture_id: {source: task, value: venture_id}
     output:
@@ -5631,6 +5883,13 @@ invocations:
       - {path: demandes.numero, type: text, description: Le numéro de la demande.}
       - {path: demandes.decision, type: choice, choices: [retenue, refusee], description: Retenue ou refusée.}
       - {path: demandes.raison, type: text, description: 'Pourquoi, en une phrase.'}
+      - {path: offres, type: list, min_items: 1, description: 'Les offres payantes, une par abonnement que le client peut choisir.'}
+      - {path: offres.code, type: text, description: 'Son code : un mot en minuscules, sans espace (standard, pro).'}
+      - {path: offres.nom, type: text, description: Son nom.}
+      - {path: offres.principale, type: choice, choices: [oui, non], description: 'oui pour une seule offre, la principale.'}
+      - {path: offres.prix_centimes, type: number, description: 'Son prix en centimes : 1900 pour 19 €.'}
+      - {path: offres.periode, type: choice, choices: [month, year], description: 'month : par mois ; year : par an.'}
+      - {path: offres.comprend, type: text, description: Ce qu'elle comprend.}
     writes:
       - table: product_plans
         operation: insert
@@ -5689,6 +5948,22 @@ invocations:
           status: {source: fixed, value: refused}
           reason: {source: field, value: demandes.raison}
           plan_id: {source: parent_row, value: id}
+      - &offres_effacees
+        table: product_offers
+        operation: delete
+        key: {column: venture_id, source: task, value: venture_id}
+      - &offres_ecrites
+        table: product_offers
+        operation: insert
+        for_each: offres
+        values:
+          venture_id: {source: task, value: venture_id}
+          code: {source: field, value: offres.code}
+          name: {source: field, value: offres.nom}
+          main: {source: field, value: offres.principale}
+          amount_cents: {source: field, value: offres.prix_centimes}
+          interval: {source: field, value: offres.periode}
+          includes: {source: field, value: offres.comprend}
 
   - id: challenger_produit
     title: Challenger le produit
@@ -5737,7 +6012,9 @@ invocations:
         de ce genre, et ce qui le ferait rester abonné ;
       - le paiement : l'inscription, le paiement de l'abonnement, ce qu'il
         débloque, ce qui se passe quand il s'arrête ;
-      - le prix : réaliste pour ces clients ?
+      - le prix et les offres : réalistes pour ces clients ? Chaque offre
+        dit-elle clairement ce qu'elle comprend, et une seule est-elle
+        marquée principale ?
       - le nom de domaine : court, facile à dire, en rapport avec le
         produit ;
       - les demandes des clients : ce qui est retenu est-il faisable, et
@@ -5747,8 +6024,9 @@ invocations:
 
       Ce qui est réglé pour tous les produits n'est pas une remarque :
       l'éditeur des mentions légales est Julien Pesquet, une personne, et
-      le service est tenu par Serge, un agent IA ; pas d'adresse ni de
-      formulaire de contact pour l'instant ; le produit peut envoyer des
+      le service est tenu par Serge, un agent IA ; Serge donne au produit
+      son adresse e-mail de contact (pas de formulaire de contact) ; le
+      produit peut envoyer des
       e-mails (valider une inscription, changer un mot de passe), et Serge
       règle leur envoi.
 
@@ -5791,6 +6069,11 @@ invocations:
       - tool: capacites_de_serge
         mode: given
         label: Ce que Serge sait faire
+      - tool: offres_du_produit
+        mode: given
+        label: Les offres du plan
+        params:
+          venture_id: {source: task, value: venture_id}
     output:
       - {path: verdict, type: choice, choices: [bon, a_corriger], description: 'Le plan peut-il être construit et vendu tel quel ?'}
       - {path: avis, type: text, description: 'Ton avis en deux phrases.'}
@@ -5904,11 +6187,13 @@ invocations:
     model_tier: mid
     queue: works
     priority: 30
-    max_tool_turns: 6
+    max_tool_turns: 12
     prompt: &prompt_vendre |
       Tu mets en vente dans Stripe le produit d'un business, pour le mode
-      de Stripe réglé sur tes outils. Tu reçois le plan validé, avec son
-      prix (exemple : « 19 € par mois »), et la fiche du business.
+      de Stripe réglé sur tes outils. Tu reçois le plan validé, ses offres
+      (leur code, leur prix en centimes, leur période) et la fiche du
+      business. À la fin, Stripe a un prix actif par offre, au bon montant,
+      et aucun autre.
 
       1. Cherche d'abord si le produit existe déjà dans Stripe pour ce
          business. « Trouver un prix Stripe par sa clé de recherche » rend
@@ -5919,16 +6204,33 @@ invocations:
          minute environ après sa création. S'il existe, garde-le ; sinon,
          crée-le avec le nom du business et une phrase qui dit ce qu'il
          fait.
-      2. Crée son prix : le montant en centimes (19 € : 1900), eur, et
-         l'intervalle de l'abonnement (month ou year). L'identifiant du
-         business et la clé de recherche sont ajoutés tout seuls.
+      2. L'offre principale : son prix porte la clé de recherche du
+         business, ajoutée toute seule. Si « Trouver un prix Stripe par sa
+         clé de recherche » a rendu un prix au bon montant (unit_amount) et
+         à la bonne période (recurring.interval), garde-le. Sinon crée-le
+         avec « Créer le prix d'un produit Stripe » : le montant en
+         centimes (19 € : 1900), eur, et la période (month ou year) ; il
+         reprend la clé de l'ancien. Sans offre reçue, le plan n'en a
+         qu'une : son prix, à créer de cette façon.
+      3. Les autres offres : « Lister les prix d'un produit Stripe » rend
+         tous les prix du produit, avec leur clé (lookup_key). La clé d'une
+         autre offre est le numéro du business, un tiret bas, puis son
+         code : ven_12_pro. Garde son prix s'il est actif, au bon montant
+         et à la bonne période ; sinon crée-le avec « Créer le prix d'une
+         autre offre Stripe ».
+      4. Archive, avec « Archiver un prix Stripe », tout prix actif du
+         produit qui ne correspond plus à une offre : une offre retirée du
+         plan, ou un ancien montant. Les clients déjà abonnés à un prix
+         archivé le gardent.
 
-      Rends ok « oui » si le produit et son prix existent, avec leurs
-      identifiants ; sinon « non », et la raison donnée par Stripe.
+      Rends ok « oui » si chaque offre a son prix actif et qu'il n'en reste
+      pas d'autre, avec le produit et le prix de l'offre principale ; sinon
+      « non », et la raison donnée par Stripe.
     tools:
       - tool: plan_valide_du_produit
         mode: given
         label: Le plan validé
+        max_rows: 1
         params:
           venture_id: {source: task, value: venture_id}
       - tool: fiche_business
@@ -5963,6 +6265,30 @@ invocations:
           'metadata[venture_id]': {source: task, value: venture_id}
           lookup_key: {source: task, value: venture_id}
           transfer_lookup_key: {source: fixed, value: 'true'}
+          task_id: {source: task, value: task_id}
+      - tool: offres_du_produit
+        mode: given
+        label: Les offres du plan
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: stripe_lister_prix
+        mode: callable
+        params:
+          service: {source: fixed, value: stripe_test}
+          task_id: {source: task, value: task_id}
+      - tool: stripe_creer_prix_d_offre
+        mode: callable
+        max_calls: 5
+        params:
+          service: {source: fixed, value: stripe_test}
+          'metadata[venture_id]': {source: task, value: venture_id}
+          transfer_lookup_key: {source: fixed, value: 'true'}
+          task_id: {source: task, value: task_id}
+      - tool: stripe_archiver_prix
+        mode: callable
+        params:
+          service: {source: fixed, value: stripe_test}
+          active: {source: fixed, value: 'false'}
           task_id: {source: task, value: task_id}
     output: &sortie_vendre
       - {path: ok, type: choice, choices: [oui, non], description: 'Le produit et son prix existent-ils dans Stripe ?'}
@@ -6013,11 +6339,16 @@ invocations:
         STRIPE_SECRET_KEY (en mode test dans le chantier et en staging, en
         vrai mode en prod) ; ne l'écris jamais dans un fichier ni dans une
         page ;
-      - le prix de l'abonnement existe déjà dans Stripe ; retrouve-le par
-        sa clé de recherche, le numéro du business : GET /v1/prices avec
-        lookup_keys[]=<venture_id> et active=true ;
+      - le prix de chaque offre (« Les offres ») existe déjà dans Stripe ;
+        retrouve-le par sa clé de recherche : le numéro du business pour
+        l'offre principale, et <numéro du business>_<code de l'offre> pour
+        une autre (exemple : ven_12_pro). GET /v1/prices avec
+        lookup_keys[]=<clé> et active=true, une fois par clé. Lis le
+        montant et la période dans Stripe, ne les écris pas en dur : un
+        prix peut changer sans nouvelle version du produit ;
       - le client paie sur la page de paiement de Stripe : crée une
-        session Checkout en mode subscription pour ce prix, avec
+        session Checkout en mode subscription pour le prix de l'offre
+        qu'il choisit, avec
         success_url (qui revient sur le produit avec {CHECKOUT_SESSION_ID})
         et cancel_url, et l'identifiant du compte du client dans
         client_reference_id ;
@@ -6046,8 +6377,11 @@ invocations:
         par jour. Au plus quelques e-mails par heure et par adresse, et un
         nombre limité d'inscriptions par heure et par adresse IP, contre
         les robots ;
-      - pas d'adresse ni de formulaire de contact pour l'instant, même si
-        le plan ou la fiche produit en parlent ;
+      - l'adresse e-mail de contact du produit est dans la variable
+        d'environnement CONTACT_EMAIL, lue au démarrage : montre-la en
+        pied de page et dans les mentions légales, et rien si elle est
+        vide. Serge lit lui-même les messages qui lui sont écrits ; pas de
+        formulaire de contact ;
       - les mentions légales nomment l'éditeur, Julien Pesquet, une
         personne qui répond du produit, et disent que le service est
         construit et tenu par Serge, un agent IA.
@@ -6059,6 +6393,10 @@ invocations:
         produit. Le produit écoute sur le port de la variable PORT (8080),
         garde ses données dans le dossier de la variable DATA_DIR (/data),
         et connaît son adresse publique par PUBLIC_URL ;
+      - quand le produit est déjà en ligne, ses clients gardent leur compte
+        et leurs données : DATA_DIR est gardé d'une version à l'autre. Fais
+        évoluer ce qui y est rangé sans rien perdre (ajoute une colonne ou
+        un fichier, ne repars jamais d'une base vide) ;
       - des comptes : inscription par e-mail et mot de passe (gardé haché),
         connexion, déconnexion ;
       - en français, propre et clair sur ordinateur comme sur mobile ;
@@ -6096,6 +6434,7 @@ invocations:
       - tool: plan_valide_du_produit
         mode: given
         label: Le plan validé
+        max_rows: 1
         params:
           venture_id: {source: task, value: venture_id}
       - tool: fiche_produit
@@ -6149,6 +6488,11 @@ invocations:
           venture_id: {source: task, value: venture_id}
           deliverable: {source: fixed, value: produit}
           task_id: {source: task, value: task_id}
+      - tool: offres_du_produit
+        mode: given
+        label: Les offres, avec leur code
+        params:
+          venture_id: {source: task, value: venture_id}
     output:
       - {path: fini, type: choice, choices: [oui, non], description: 'Le produit est-il prêt à être publié ?'}
       - {path: compte_rendu, type: text, description: 'Ce qui a été fait, vérifié, et ce qui reste.'}
@@ -6208,6 +6552,7 @@ invocations:
       deliverable: {source: fixed, value: produit}
       target: {source: fixed, value: staging}
       env_secrets: {source: fixed, value: STRIPE_SECRET_KEY=stripe-test.key}
+      contact: {source: fixed, value: oui}
       task_id: {source: task, value: task_id}
 
   - id: relire_produit
@@ -6259,6 +6604,7 @@ invocations:
       - tool: plan_valide_du_produit
         mode: given
         label: Le plan validé et ses scénarios de test
+        max_rows: 1
         params:
           venture_id: {source: task, value: venture_id}
       - tool: fiche_produit
@@ -6292,6 +6638,11 @@ invocations:
       - tool: stripe_annuler_abonnement
         mode: callable
         params: *stripe_test_de_la_tache
+      - tool: offres_du_produit
+        mode: given
+        label: Les offres
+        params:
+          venture_id: {source: task, value: venture_id}
     output:
       - {path: verdict, type: choice, choices: [bon, a_corriger], description: 'Un client peut-il faire chaque scénario ?'}
       - {path: remarques, type: text, description: 'Les problèmes trouvés, un par ligne ; vide si tout va bien.'}
@@ -6344,7 +6695,9 @@ invocations:
         value: &raison_test_produit >-
           Le produit est en ligne en staging, avec Stripe en mode test :
           essaie-le comme un client, jusqu'au paiement avec la carte 4242
-          4242 4242 4242. Le valider achète son domaine et le met en vente.
+          4242 4242 4242. Le valider achète son domaine et le met en vente ;
+          pour une nouvelle version d'un produit déjà en vente, il la met en
+          ligne à la même adresse, sans rien racheter.
           Ses e-mails ne partent pas : ils restent dans la boîte d'essai, à
           lire dans Mission Control sur la fiche du business (« E-mails
           d'essai »). « À corriger » : un bug ou un détail, la construction
@@ -6357,10 +6710,11 @@ invocations:
     title: Suite du ticket « Tester le produit » du produit
     role: >-
       La réponse au ticket « Tester le produit » du produit fini :
-      « Valider » achète son domaine puis le met en vente, « À corriger »
-      relance la construction avec les consignes, « Revoir le plan »
-      renvoie à la conception avec les consignes, « Arrêter le business »
-      l'arrête. Sans LLM.
+      « Valider » achète son domaine puis le met en vente (ou met en
+      ligne la nouvelle version d'un produit déjà en vente), « À
+      corriger » relance la construction avec les consignes, « Revoir
+      le plan » renvoie à la conception avec les consignes, « Arrêter le
+      business » l'arrête. Sans LLM.
     step: build_venture
     type: capability
     capability: echo
@@ -6618,12 +6972,13 @@ invocations:
     model_tier: mid
     queue: works
     priority: 30
-    max_tool_turns: 6
+    max_tool_turns: 12
     prompt: *prompt_vendre
-    tools:
+    tools: &outils_vente_live
       - tool: plan_valide_du_produit
         mode: given
         label: Le plan validé
+        max_rows: 1
         params:
           venture_id: {source: task, value: venture_id}
       - tool: fiche_business
@@ -6659,6 +7014,30 @@ invocations:
           lookup_key: {source: task, value: venture_id}
           transfer_lookup_key: {source: fixed, value: 'true'}
           task_id: {source: task, value: task_id}
+      - tool: offres_du_produit
+        mode: given
+        label: Les offres du plan
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: stripe_lister_prix
+        mode: callable
+        params:
+          service: {source: fixed, value: stripe_live}
+          task_id: {source: task, value: task_id}
+      - tool: stripe_creer_prix_d_offre
+        mode: callable
+        max_calls: 5
+        params:
+          service: {source: fixed, value: stripe_live}
+          'metadata[venture_id]': {source: task, value: venture_id}
+          transfer_lookup_key: {source: fixed, value: 'true'}
+          task_id: {source: task, value: task_id}
+      - tool: stripe_archiver_prix
+        mode: callable
+        params:
+          service: {source: fixed, value: stripe_live}
+          active: {source: fixed, value: 'false'}
+          task_id: {source: task, value: task_id}
     output: *sortie_vendre
 
   - id: publier_prod_produit
@@ -6679,6 +7058,7 @@ invocations:
       domain: {source: task, value: domaine}
       base_domain: {source: task, value: domaine_commun}
       env_secrets: {source: fixed, value: STRIPE_SECRET_KEY=stripe-produits-live.key}
+      contact: {source: fixed, value: oui}
       task_id: {source: task, value: task_id}
 
   - id: paiement_test
@@ -7757,6 +8137,7 @@ invocations:
       - tool: plan_valide_du_produit
         mode: given
         label: Le plan du produit
+        max_rows: 1
         params:
           venture_id: {source: task, value: venture_id}
       - tool: compte_rendu_du_test
@@ -8242,6 +8623,543 @@ invocations:
           address: {source: field, value: rows.address}
           kind: {source: fixed, value: first}
           status: {source: fixed, value: to_write}
+  # --- Faire vivre un produit en vente (lot 16, décision Q119) ---
+  # Chaque semaine, et quand un client signale un bug, Serge fait le point
+  # sur un produit fini en vente, et décide : rien, corriger, faire
+  # évoluer, relancer la prospection. Une nouvelle version repasse par les
+  # invocations de l'étape 5 ; sa fin est plus courte qu'une première mise
+  # en vente : Stripe, puis la prod à la même adresse.
+  - id: faire_le_point_produit
+    title: Faire le point sur un produit
+    role: >-
+      Chaque semaine, pour un produit fini en vente : lit ses ventes, ses
+      abonnements, ses campagnes, les réponses des prospects et les
+      demandes des clients, puis décide ce qu'on fait du produit (rien,
+      corriger, faire évoluer) et de la prospection (rien, relancer). Une
+      seule nouvelle version à la fois par produit.
+    step: prospection_lourde
+    type: llm
+    model_tier: smart
+    queue: works
+    priority: 30
+    gets_serge_intro: true
+    max_tool_turns: 2
+    compare:
+      product_reviews: false
+    prompt: |
+      Tu fais le point sur le produit fini d'un business, qui est en
+      vente. Ce point revient chaque semaine. Tu décides deux choses : ce
+      qu'on fait du produit, et ce qu'on fait de la prospection.
+
+      Tu reçois la fiche du business, la fiche produit, son plan validé,
+      ses offres, où il est en ligne, ses ventes et ses abonnements, ses
+      campagnes (leur canal, leur état, la raison de leur fin), ce qu'ont
+      répondu les prospects, les demandes des clients (bugs,
+      insatisfactions, idées, avec ce qui en a été fait), la nouvelle
+      version en cours s'il y en a une, et tes points précédents.
+
+      Un humain peut avoir demandé ce point, avec une consigne
+      (« consigne », dans les paramètres de la tâche). C'est alors elle
+      qui décide : choisis ce qu'elle demande, parmi les choix permis, et
+      reprends-la dans tes consignes, même si les chiffres ne le
+      justifient pas (un humain peut vouloir essayer la boucle, ou
+      demander lui-même un changement du produit).
+
+      Pour le produit, choisis :
+      - rien : le produit convient tel qu'il est, ou il n'y a pas assez de
+        retours pour décider. C'est aussi la réponse quand une nouvelle
+        version est déjà en cours : une seule à la fois ;
+      - corriger : quelque chose ne marche pas comme le plan le prévoit
+        (un bug signalé, un parcours cassé). La construction reprend avec
+        tes consignes, et la correction part en ligne dès que le relecteur
+        la juge bonne. Une correction n'ajoute rien : ni fonctionnalité,
+        ni offre, ni changement de prix ;
+      - faire_evoluer : le produit doit changer : une fonctionnalité que
+        des clients demandent ou dont l'absence bloque des ventes, une
+        offre de plus, un prix à changer. Le plan repart en conception
+        avec tes consignes, passe chez le critique, puis Julien et Clem le
+        valident et essaient la nouvelle version avant qu'elle parte en
+        ligne.
+      Tes consignes disent précisément quoi faire et pourquoi, avec le
+      numéro des demandes des clients concernées. N'invente pas un
+      besoin : appuie-toi sur ce que disent les clients, les prospects et
+      les chiffres.
+
+      Pour la prospection, choisis :
+      - rien : des campagnes tournent encore, ou rien ne dit qu'une
+        relance rapporterait ;
+      - relancer : les campagnes sont finies et le produit mérite d'autres
+        prospects (des ventes, de l'intérêt, une cible ou un canal pas
+        encore essayé). Tes consignes disent la cible, l'angle et les
+        canaux à essayer, d'après ce qui a marché et ce qui a bloqué.
+
+      Ton compte rendu, pour Julien et Clem : les chiffres qui comptent
+      (ventes, abonnements, réponses, demandes), ce que tu décides et
+      pourquoi, en quelques phrases.
+    tools:
+      - tool: fiche_business
+        mode: given
+        label: La fiche du business
+        params: &du_business
+          venture_id: {source: task, value: venture_id}
+      - tool: fiche_produit
+        mode: given
+        label: La fiche produit
+        params: *du_business
+      - tool: plan_valide_du_produit
+        mode: given
+        label: Le plan validé du produit
+        max_rows: 1
+        params: *du_business
+      - tool: offres_du_produit
+        mode: given
+        label: Les offres
+        params: *du_business
+      - tool: en_ligne_du_business
+        mode: given
+        label: Où il est en ligne
+        params: *du_business
+      # raccourci : sans vue de table, les paiements arrivent du plus ancien
+      # au plus récent ; au-delà de 300, les derniers manquent.
+      - tool: ventes_du_business
+        mode: given
+        label: Les ventes
+        max_rows: 300
+        params: *du_business
+      - tool: abonnements_du_business
+        mode: given
+        label: Les abonnements
+        max_rows: 300
+        params: *du_business
+      - tool: campagnes_du_business
+        mode: given
+        label: Les campagnes
+        params: *du_business
+      - tool: reponses_des_prospects
+        mode: given
+        label: Ce qu'ont répondu les prospects
+        max_rows: 60
+        params: *du_business
+      - tool: demandes_des_clients
+        mode: given
+        label: Les demandes des clients
+        max_rows: 60
+        params: *du_business
+      - tool: version_en_cours
+        mode: given
+        label: La nouvelle version en cours (vide s'il n'y en a pas)
+        params: *du_business
+      - tool: points_du_produit
+        mode: given
+        label: Tes points précédents
+        max_rows: 8
+        params: *du_business
+    output:
+      - {path: produit, type: choice, choices: [rien, corriger, faire_evoluer], description: Ce qu'on fait du produit.}
+      - {path: consignes_produit, type: text, required: false, description: 'Pour corriger ou faire évoluer : quoi faire, précisément, et pourquoi.'}
+      - {path: prospection, type: choice, choices: [rien, relancer], description: Ce qu'on fait de la prospection.}
+      - {path: consignes_prospection, type: text, required: false, description: 'Pour relancer : la cible, l''angle et les canaux à essayer.'}
+      - {path: compte_rendu, type: text, description: 'Les chiffres qui comptent, ce que tu décides et pourquoi.'}
+    writes:
+      # Un point qui lance une nouvelle version : s'il y en a déjà une en
+      # cours, la règle de doublon l'écarte, et rien ne part.
+      - table: product_reviews
+        operation: insert
+        condition: {field: produit, op: '!=', value: rien}
+        values:
+          venture_id: {source: task, value: venture_id}
+          cause: {source: fixed, value: semaine}
+          product_action: {source: field, value: produit}
+          product_notes: {source: field, value: consignes_produit}
+          prospecting_action: {source: field, value: prospection}
+          prospecting_notes: {source: field, value: consignes_prospection}
+          summary: {source: field, value: compte_rendu}
+          version_status: {source: fixed, value: open}
+      - table: product_reviews
+        operation: insert
+        dedup: false
+        condition: {field: produit, op: '=', value: rien}
+        values:
+          venture_id: {source: task, value: venture_id}
+          cause: {source: fixed, value: semaine}
+          product_action: {source: fixed, value: rien}
+          prospecting_action: {source: field, value: prospection}
+          prospecting_notes: {source: field, value: consignes_prospection}
+          summary: {source: field, value: compte_rendu}
+          version_status: {source: fixed, value: none}
+
+  - id: relancer_prospection
+    title: Relancer la prospection d'un produit
+    role: >-
+      Le point de la semaine a décidé de relancer la prospection d'un
+      produit en vente : écrit de nouvelles campagnes lourdes, une par
+      canal utile, avec la cible et l'angle que demandent ses consignes.
+    step: prospection_lourde
+    type: llm
+    model_tier: smart
+    queue: works
+    priority: 30
+    gets_serge_intro: true
+    max_tool_turns: 2
+    compare:
+      campaigns: false
+    prompt: |
+      Le produit fini d'un business est en vente, et le point de la
+      semaine a décidé de relancer sa prospection. Tu écris ses nouvelles
+      campagnes : Serge va le proposer à de nouveaux prospects.
+
+      Tu reçois les consignes du point (« consignes », dans les
+      paramètres de la tâche), la fiche du business, la fiche produit
+      (avec son prix), le plan du produit, les campagnes déjà faites
+      (leur canal, leur état, la raison de leur fin), ce qu'ont répondu
+      les prospects, et les canaux branchés sur ce serveur.
+
+      Écris une campagne par canal utile, parmi les canaux branchés.
+      N'en écris pas sur un canal qui a déjà une campagne « full » prête
+      ou en cours (READY ou RUNNING) : elle tourne encore. Pour chacune :
+      - canal : le numéro du canal, tel qu'il est dans la liste ;
+      - cible : les prospects visés, précisément (métiers, tailles
+        d'entreprise, régions), comme le demandent les consignes ; une
+        autre cible que celles déjà prospectées quand elles n'ont rien
+        donné ;
+      - angle : ce que les messages doivent mettre en avant, d'après ce
+        qui a plu et ce qui a bloqué.
+      Tu ne fixes ni le nombre de prospects ni le prix : ils sont réglés
+      ailleurs. Sans canal libre, ne rends aucune campagne. Ton compte
+      rendu dit, en deux phrases, ce que tu as décidé et pourquoi.
+    tools:
+      - tool: fiche_business
+        mode: given
+        label: La fiche du business
+        params: *du_business
+      - tool: fiche_produit
+        mode: given
+        label: La fiche produit
+        params: *du_business
+      - tool: plan_valide_du_produit
+        mode: given
+        label: Le plan du produit
+        max_rows: 1
+        params: *du_business
+      - tool: campagnes_du_business
+        mode: given
+        label: Les campagnes déjà faites
+        params: *du_business
+      - tool: reponses_des_prospects
+        mode: given
+        label: Ce qu'ont répondu les prospects
+        max_rows: 60
+        params: *du_business
+      - tool: canaux_branches
+        mode: given
+        label: Les canaux branchés
+    output:
+      - {path: campagnes, type: list, required: false, description: 'Les nouvelles campagnes lourdes, une par canal.'}
+      - {path: campagnes.canal, type: text, description: Le numéro du canal.}
+      - {path: campagnes.cible, type: text, description: 'Les prospects visés, précisément.'}
+      - {path: campagnes.angle, type: text, description: Ce que les messages mettent en avant.}
+      - {path: compte_rendu, type: text, description: 'Ce que tu as décidé et pourquoi, en deux phrases.'}
+    writes:
+      - table: campaigns
+        operation: insert
+        for_each: campagnes
+        values:
+          venture_id: {source: task, value: venture_id}
+          phase: {source: fixed, value: full}
+          channel: {source: field, value: campagnes.canal}
+          target: {source: field, value: campagnes.cible}
+          angle: {source: field, value: campagnes.angle}
+          state: {source: fixed, value: READY}
+
+  - id: signalement_de_bug
+    title: Un bug est signalé
+    role: >-
+      Un client a signalé un bug : regarde si le produit de son business
+      est en vente. Si oui, le bug part au tri ; sinon rien (pendant un
+      test léger, les retours servent au bilan du test). Sans LLM.
+    step: prospection_lourde
+    type: capability
+    capability: read_row
+    queue: conversations
+    priority: 60
+    params:
+      tool_id: {source: fixed, value: produit_en_vente}
+      venture_id: {source: task, value: venture_id}
+
+  - id: point_a_la_demande
+    title: Un point demandé par un humain
+    role: >-
+      Un humain demande le point sur un business, depuis sa fiche, avec
+      ou sans consigne : il n'est fait que si son produit fini est en
+      vente. Sans LLM.
+    step: prospection_lourde
+    type: capability
+    capability: read_row
+    queue: conversations
+    priority: 60
+    params:
+      tool_id: {source: fixed, value: produit_en_vente}
+      venture_id: {source: task, value: venture_id}
+
+  - id: trier_bug
+    title: Trier un bug signalé
+    role: >-
+      Un client signale un bug sur un produit en vente : décide s'il faut
+      le corriger tout de suite. Si oui, la construction reprend avec ses
+      consignes, pour corriger ce bug et rien d'autre.
+    step: prospection_lourde
+    type: llm
+    model_tier: smart
+    queue: works
+    priority: 40
+    max_tool_turns: 2
+    compare:
+      product_reviews: false
+      customer_requests: false
+    prompt: |
+      Un client signale un bug sur le produit fini d'un business, qui est
+      en vente. Tu décides s'il faut le corriger tout de suite.
+
+      Tu reçois sa demande (avec l'étape où en est ce client), la fiche
+      produit, le plan validé du produit, les demandes des autres
+      clients, les derniers passages de construction, et la nouvelle
+      version en cours s'il y en a une.
+
+      Choisis :
+      - corriger : c'est bien un défaut du produit (il ne fait pas ce que
+        son plan prévoit), et on sait quoi corriger. Tes consignes
+        décrivent le bug (ce que le client a fait, ce qu'il a vu, ce qu'il
+        aurait dû voir) et demandent de corriger seulement ça : aucune
+        fonctionnalité nouvelle, aucun changement d'offre ni de prix,
+        même si le client en demande aussi. La correction part en ligne
+        dès que le relecteur la juge bonne ;
+      - rien : ce n'est pas un bug (une erreur d'usage, une demande de
+        nouveauté, une question), le message n'en dit pas assez pour
+        agir, ou une nouvelle version est déjà en cours. Le point de la
+        semaine reverra cette demande.
+
+      Ta raison, pour Julien et Clem : ce que le client signale et ce que
+      tu décides, en deux phrases.
+    tools:
+      - tool: demande_du_client
+        mode: given
+        label: La demande du client
+        params:
+          request_id: {source: task, value: request_id}
+      - tool: fiche_produit
+        mode: given
+        label: La fiche produit
+        params: *du_business
+      - tool: plan_valide_du_produit
+        mode: given
+        label: Le plan validé du produit
+        max_rows: 1
+        params: *du_business
+      - tool: demandes_des_clients
+        mode: given
+        label: Les demandes des autres clients
+        max_rows: 40
+        params: *du_business
+      - tool: passages_du_livrable
+        mode: given
+        label: Les derniers passages de construction
+        max_rows: 3
+        params:
+          venture_id: {source: task, value: venture_id}
+          deliverable: {source: fixed, value: produit}
+      - tool: version_en_cours
+        mode: given
+        label: La nouvelle version en cours (vide s'il n'y en a pas)
+        params: *du_business
+    output:
+      - {path: decision, type: choice, choices: [corriger, rien], description: 'Corriger ce bug tout de suite, ou non.'}
+      - {path: consignes, type: text, required: false, description: 'Pour corriger : le bug, précisément, et rien d''autre.'}
+      - {path: raison, type: text, description: 'Ce que le client signale et ce que tu décides, en deux phrases.'}
+    writes:
+      - table: product_reviews
+        operation: insert
+        condition: {field: decision, op: '=', value: corriger}
+        values:
+          venture_id: {source: task, value: venture_id}
+          cause: {source: fixed, value: bug}
+          request_id: {source: task, value: request_id}
+          product_action: {source: fixed, value: corriger}
+          product_notes: {source: field, value: consignes}
+          summary: {source: field, value: raison}
+          version_status: {source: fixed, value: open}
+      - table: product_reviews
+        operation: insert
+        dedup: false
+        condition: {field: decision, op: '!=', value: corriger}
+        values:
+          venture_id: {source: task, value: venture_id}
+          cause: {source: fixed, value: bug}
+          request_id: {source: task, value: request_id}
+          product_action: {source: fixed, value: rien}
+          summary: {source: field, value: raison}
+          version_status: {source: fixed, value: none}
+      # La demande n'est retenue que si la correction part vraiment (la
+      # première écriture n'a pas été écartée).
+      - table: customer_requests
+        operation: update
+        parent: 0
+        key: {column: id, source: task, value: request_id}
+        values:
+          status: {source: fixed, value: kept}
+          reason: {source: field, value: raison}
+
+  - id: suite_relecture_produit
+    title: Suite d'une relecture réussie du produit
+    role: >-
+      Le relecteur juge le produit bon : la correction d'un produit en
+      vente part en ligne toute seule ; sinon (une première mise en vente,
+      ou une évolution), un humain l'essaie d'abord. Sans LLM.
+    step: build_venture
+    type: capability
+    capability: read_row
+    queue: conversations
+    priority: 80
+    params: &lire_la_version_en_cours
+      tool_id: {source: fixed, value: version_en_cours}
+      venture_id: {source: task, value: venture_id}
+
+  - id: suite_validation_produit
+    title: Suite d'un essai validé du produit
+    role: >-
+      Un humain a essayé et validé le produit : s'il est déjà en vente,
+      c'est une nouvelle version, qui part en prod à la même adresse ;
+      sinon c'est la première mise en vente, qui commence par le domaine.
+      Sans LLM.
+    step: build_venture
+    type: capability
+    capability: read_row
+    queue: conversations
+    priority: 80
+    params:
+      tool_id: {source: fixed, value: produit_en_vente}
+      venture_id: {source: task, value: venture_id}
+
+  - id: version_revue_par_un_humain
+    title: Une correction renvoyée en conception
+    role: >-
+      Un humain renvoie en conception la correction d'un produit en vente :
+      elle devient une évolution, qu'un humain essaiera avant qu'elle parte
+      en ligne. Sans LLM.
+    step: build_venture
+    type: capability
+    capability: read_row
+    queue: conversations
+    priority: 80
+    params: *lire_la_version_en_cours
+    writes:
+      - table: product_reviews
+        operation: update
+        key: {column: id, source: field, value: id}
+        condition: {field: sorte, op: '=', value: corriger}
+        values:
+          product_action: {source: fixed, value: faire_evoluer}
+
+  - id: mettre_a_jour_vente
+    title: Mettre à jour les offres dans Stripe
+    role: >-
+      La nouvelle version d'un produit en vente est validée : met Stripe,
+      en vrai mode, à jour avec les offres du plan (un prix actif par
+      offre, les anciens archivés). Rien ne change si les offres n'ont pas
+      changé.
+    step: build_venture
+    type: llm
+    model_tier: mid
+    queue: works
+    priority: 30
+    max_tool_turns: 12
+    prompt: *prompt_vendre
+    tools: *outils_vente_live
+    output: *sortie_vendre
+
+  - id: publier_prod_version
+    title: Publier la nouvelle version en prod
+    role: >-
+      Passe en prod la version du staging d'un produit déjà en vente, à la
+      même adresse : ses clients gardent leur compte et leurs données.
+      Sans LLM.
+    step: build_venture
+    type: capability
+    capability: publish_version
+    queue: works
+    priority: 30
+    params:
+      venture_id: {source: task, value: venture_id}
+      deliverable: {source: fixed, value: produit}
+      target: {source: fixed, value: prod}
+      same_address: {source: fixed, value: oui}
+      env_secrets: {source: fixed, value: STRIPE_SECRET_KEY=stripe-produits-live.key}
+      contact: {source: fixed, value: oui}
+      task_id: {source: task, value: task_id}
+
+  - id: version_en_ligne
+    title: Nouvelle version en ligne
+    role: >-
+      La nouvelle version d'un produit est en prod : le point qui l'a
+      lancée passe à « en ligne », avec son numéro, et un ticket
+      d'information prévient Julien et Clem. Sans LLM.
+    step: build_venture
+    type: capability
+    capability: read_row
+    queue: conversations
+    priority: 80
+    params: *lire_la_version_en_cours
+    writes:
+      - table: product_reviews
+        operation: update
+        key: {column: id, source: field, value: id}
+        condition: {field: trouve, op: '=', value: oui}
+        values:
+          version_status: {source: fixed, value: online}
+          version: {source: task, value: version}
+
+  - id: livrer_les_demandes
+    title: Noter les demandes livrées
+    role: >-
+      Une nouvelle version est en ligne : les demandes des clients qu'elle
+      traite (celles qui étaient retenues) passent à « livrée », avec le
+      numéro de la version. Sans LLM.
+    step: build_venture
+    type: capability
+    capability: db_read
+    queue: conversations
+    priority: 80
+    params:
+      tool_id: {source: fixed, value: demandes_retenues}
+      venture_id: {source: task, value: venture_id}
+    writes:
+      - table: customer_requests
+        operation: update
+        for_each: rows
+        key: {column: id, source: field, value: rows.numero}
+        values:
+          status: {source: fixed, value: delivered}
+          delivered_version: {source: task, value: version}
+
+  - id: abandonner_version
+    title: Abandonner la nouvelle version en cours
+    role: >-
+      Un humain abandonne la nouvelle version qu'un produit en vente est en
+      train de recevoir (une construction qui n'aboutit pas, une idée
+      qu'on ne veut plus) : le produit en ligne ne change pas, et un autre
+      point pourra en lancer une. Sans LLM.
+    step: build_venture
+    type: capability
+    capability: read_row
+    queue: conversations
+    priority: 80
+    params: *lire_la_version_en_cours
+    writes:
+      - table: product_reviews
+        operation: update
+        key: {column: id, source: field, value: id}
+        condition: {field: trouve, op: '=', value: oui}
+        values:
+          version_status: {source: fixed, value: dropped}
 links:
   - id: cycle_ouvert_vers_exploration
     title: Le cycle ouvert part en exploration
@@ -8704,13 +9622,6 @@ links:
       reprise: {source: task, value: reprise}
       probleme: {source: field, value: detail}
       journal: {source: field, value: log}
-  - id: relecture_produit_bonne_vers_test
-    title: Le relecteur trouve le produit bon
-    from: relire_produit
-    to: demander_test_produit
-    condition: {field: verdict, op: '=', value: bon}
-    params:
-      build_id: {source: task, value: build_id}
   - id: relecture_produit_a_corriger_vers_compte
     title: Le relecteur trouve à corriger dans le produit
     from: relire_produit
@@ -8735,14 +9646,6 @@ links:
     to: demander_test_produit
     condition: {field: suite, op: '=', value: fini}
     params:
-      build_id: {source: task, value: build_id}
-  - id: test_produit_valide_vers_domaine
-    title: Le produit essayé et validé ; Serge choisit son domaine
-    from: suite_test_produit
-    to: choisir_domaine
-    condition: {field: acte, op: '=', value: valider}
-    params:
-      venture_id: {source: task, value: venture_id}
       build_id: {source: task, value: build_id}
   - id: domaine_a_acheter
     lane: real
@@ -9317,6 +10220,179 @@ links:
       <<: *message_d_essai
       rappel: {source: field, value: tour_suivant}
 
+  # --- Faire vivre un produit en vente (lot 16, décision Q119) ---
+  - id: point_vers_correction
+    title: Le point lance une correction du produit
+    from: faire_le_point_produit
+    to: construire_produit
+    mode: per_row
+    write: 0
+    condition: {field: product_action, op: '=', value: corriger}
+    params: &consignes_de_correction
+      venture_id: {source: row, value: venture_id}
+      passage: {source: fixed, value: '1'}
+      reprise: {source: fixed, value: '1'}
+      consignes: {source: row, value: product_notes}
+  - id: point_vers_evolution
+    title: Le point renvoie le produit en conception
+    from: faire_le_point_produit
+    to: concevoir_produit
+    mode: per_row
+    write: 0
+    condition: {field: product_action, op: '=', value: faire_evoluer}
+    params:
+      venture_id: {source: row, value: venture_id}
+      tour: {source: fixed, value: '1'}
+      consignes: {source: row, value: product_notes}
+  - id: point_vers_relance
+    title: Le point relance la prospection
+    from: faire_le_point_produit
+    to: relancer_prospection
+    condition: {field: prospection, op: '=', value: relancer}
+    params:
+      venture_id: {source: task, value: venture_id}
+      consignes: {source: field, value: consignes_prospection}
+  - id: point_vers_ticket
+    title: Julien et Clem reçoivent le point de la semaine
+    from: faire_le_point_produit
+    to: prevenir_prospection
+    params:
+      titre: {source: fixed, value: Le point de la semaine sur un produit en vente}
+      raison: {source: field, value: compte_rendu}
+  - id: point_demande_vers_point
+    title: Le point demandé par un humain est fait
+    from: point_a_la_demande
+    to: faire_le_point_produit
+    condition: {field: trouve, op: '=', value: oui}
+    params:
+      venture_id: {source: task, value: venture_id}
+      consigne: {source: task, value: consigne}
+  - id: relance_vers_ticket
+    title: Julien et Clem apprennent la relance de la prospection
+    from: relancer_prospection
+    to: prevenir_prospection
+    params:
+      titre: {source: fixed, value: La prospection d'un produit en vente est relancée}
+      raison: {source: field, value: compte_rendu}
+  - id: bug_d_un_produit_en_vente
+    title: Le bug d'un produit en vente part au tri
+    from: signalement_de_bug
+    to: trier_bug
+    condition: {field: trouve, op: '=', value: oui}
+    params:
+      request_id: {source: task, value: request_id}
+      venture_id: {source: task, value: venture_id}
+  - id: bug_vers_correction
+    title: Le bug part en correction
+    from: trier_bug
+    to: construire_produit
+    mode: per_row
+    write: 0
+    params: *consignes_de_correction
+  - id: bug_vers_ticket
+    title: Julien et Clem apprennent le bug signalé
+    from: trier_bug
+    to: prevenir_produit
+    params:
+      titre: {source: fixed, value: Un client a signalé un bug sur un produit en vente}
+      raison: {source: field, value: raison}
+  - id: relecture_produit_bonne_vers_suite
+    title: Le produit relu et jugé bon passe à l'aiguillage
+    from: relire_produit
+    to: suite_relecture_produit
+    condition: {field: verdict, op: '=', value: bon}
+    params:
+      venture_id: {source: task, value: venture_id}
+      build_id: {source: task, value: build_id}
+  - id: correction_relue_vers_prod
+    title: La correction jugée bonne part en prod
+    from: suite_relecture_produit
+    to: publier_prod_version
+    condition: {field: sorte, op: '=', value: corriger}
+    params:
+      venture_id: {source: task, value: venture_id}
+  - id: relecture_vers_essai_humain
+    title: Le produit jugé bon attend l'essai d'un humain
+    from: suite_relecture_produit
+    to: demander_test_produit
+    condition: {field: sorte, op: '!=', value: corriger}
+    params:
+      build_id: {source: task, value: build_id}
+  - id: test_produit_valide_vers_suite
+    title: Le produit validé par un humain passe à l'aiguillage
+    from: suite_test_produit
+    to: suite_validation_produit
+    condition: {field: acte, op: '=', value: valider}
+    params:
+      venture_id: {source: task, value: venture_id}
+      build_id: {source: task, value: build_id}
+  - id: premiere_mise_en_vente_vers_domaine
+    title: Une première mise en vente commence par le domaine
+    from: suite_validation_produit
+    to: choisir_domaine
+    condition: {field: trouve, op: '=', value: non}
+    params:
+      venture_id: {source: task, value: venture_id}
+      build_id: {source: task, value: build_id}
+  - id: version_validee_vers_stripe
+    title: La nouvelle version validée met Stripe à jour
+    from: suite_validation_produit
+    to: mettre_a_jour_vente
+    condition: {field: trouve, op: '=', value: oui}
+    params:
+      venture_id: {source: task, value: venture_id}
+  - id: test_a_revoir_note_l_evolution
+    title: Une correction renvoyée en conception devient une évolution
+    from: suite_test_produit
+    to: version_revue_par_un_humain
+    condition: {field: acte, op: '=', value: revoir_plan}
+    params:
+      venture_id: {source: task, value: venture_id}
+  - id: vente_a_jour_vers_prod
+    title: Stripe à jour, la nouvelle version part en prod
+    from: mettre_a_jour_vente
+    to: publier_prod_version
+    condition: {field: ok, op: '=', value: oui}
+    params:
+      venture_id: {source: task, value: venture_id}
+  - id: vente_pas_a_jour_vers_ticket
+    title: Stripe n'a pas pu être mis à jour
+    from: mettre_a_jour_vente
+    to: prevenir_produit
+    condition: {field: ok, op: '!=', value: oui}
+    params:
+      titre: {source: fixed, value: Stripe (vrai mode) n'a pas pu mettre à jour les offres d'un produit}
+      raison: {source: field, value: raison}
+  - id: version_en_prod_vers_fin
+    title: La nouvelle version est en prod
+    from: publier_prod_version
+    to: version_en_ligne
+    condition: {field: ok, op: '=', value: 'True'}
+    params:
+      venture_id: {source: task, value: venture_id}
+      version: {source: field, value: version}
+  - id: version_pas_en_prod_vers_ticket
+    title: La nouvelle version n'a pas pu passer en prod
+    from: publier_prod_version
+    to: prevenir_produit
+    condition: {field: ok, op: '!=', value: 'True'}
+    params:
+      titre: {source: fixed, value: La nouvelle version d'un produit n'a pas pu passer en prod}
+      raison: {source: field, value: detail}
+  - id: version_en_ligne_vers_demandes
+    title: Les demandes traitées par la nouvelle version sont livrées
+    from: version_en_ligne
+    to: livrer_les_demandes
+    params:
+      venture_id: {source: task, value: venture_id}
+      version: {source: task, value: version}
+  - id: version_en_ligne_vers_ticket
+    title: Julien et Clem apprennent la nouvelle version en ligne
+    from: version_en_ligne
+    to: prevenir_produit
+    params:
+      titre: {source: fixed, value: Une nouvelle version d'un produit est en ligne}
+      raison: {source: field, value: consignes}
 triggers:
   - id: lancer_cycle
     title: Lancer un cycle d'écoute
@@ -9808,6 +10884,69 @@ triggers:
 # valeur changée dans Mission Control est gardée. Résultat : table
 # pipeline_changes.
 
+  # --- Faire vivre un produit en vente (lot 16, décision Q119) ---
+  # Le point de la semaine, pour chaque produit fini en vente : en
+  # prospection lourde (FULL_RUNNING), ou en vente sans campagne lancée
+  # (PRODUCT_READY). L'heure et le jour se règlent sur la page Pipeline.
+  # Seulement les vrais business : celui d'un essai resterait visité chaque
+  # lundi. Le bouton « Faire le point sur ce produit » le lance à la
+  # demande, un essai compris.
+  - id: point_de_la_semaine
+    title: Le point de la semaine sur un produit en vente
+    invocation: faire_le_point_produit
+    event: at
+    lane: real
+    at_time: '08:30'
+    at_days: lun
+    table: ventures
+    filter_column: lifecycle
+    filter_value: FULL_RUNNING
+    params:
+      venture_id: {source: row, value: id}
+  - id: point_de_la_semaine_sans_campagne
+    title: Le point de la semaine sur un produit en vente, sans campagne lancée
+    invocation: faire_le_point_produit
+    event: at
+    lane: real
+    at_time: '08:30'
+    at_days: lun
+    table: ventures
+    filter_column: lifecycle
+    filter_value: PRODUCT_READY
+    params:
+      venture_id: {source: row, value: id}
+  - id: bug_signale
+    title: Un client signale un bug
+    invocation: signalement_de_bug
+    event: row_written
+    table: customer_requests
+    filter_column: kind
+    filter_value: bug
+    params:
+      request_id: {source: row, value: id}
+      venture_id: {source: row, value: venture_id}
+  - id: bouton_faire_le_point
+    title: Faire le point sur ce produit maintenant
+    invocation: point_a_la_demande
+    event: button
+    confirm: >-
+      Serge fait tout de suite le point sur le produit en vente de ce
+      business, comme chaque lundi : il peut décider de le corriger, de le
+      faire évoluer ou de relancer sa prospection. Avec une consigne, il
+      décide ce qu'elle demande. Sans produit en vente, rien ne se passe.
+    params:
+      venture_id: {source: form, value: venture_id}
+      consigne: {source: form, value: 'consigne pour ce point, facultative : ce que tu veux qu''il décide (corriger ceci, ajouter cette offre…)'}
+  - id: bouton_abandonner_version
+    title: Abandonner la nouvelle version en cours d'un produit
+    invocation: abandonner_version
+    event: button
+    confirm: >-
+      La nouvelle version que ce produit en vente est en train de recevoir
+      est abandonnée : le produit en ligne ne change pas, et un autre point
+      pourra en lancer une. Une tâche déjà en cours finit.
+    params:
+      venture_id: {source: form, value: venture_id}
 changes:
   - id: titre_qui_est_serge
     why: Les textes envoyés au modèle ont un titre et une aide (page Pipeline).
@@ -10805,8 +11944,11 @@ changes:
                 par jour. Au plus quelques e-mails par heure et par adresse, et un
                 nombre limité d'inscriptions par heure et par adresse IP, contre
                 les robots ;
-              - pas d'adresse ni de formulaire de contact pour l'instant, même si
-                le plan ou la fiche produit en parlent ;
+              - l'adresse e-mail de contact du produit est dans la variable
+                d'environnement CONTACT_EMAIL, lue au démarrage : montre-la en
+                pied de page et dans les mentions légales, et rien si elle est
+                vide. Serge lit lui-même les messages qui lui sont écrits ; pas de
+                formulaire de contact ;
               - les mentions légales nomment l'éditeur, Julien Pesquet, une
                 personne qui répond du produit, et disent que le service est
                 construit et tenu par Serge, un agent IA.
@@ -10848,8 +11990,10 @@ changes:
               Ce qui est réglé pour tous les produits, à ne pas redemander :
               l'éditeur des mentions légales est Julien Pesquet, une personne qui
               répond du produit, et le service est construit et tenu par Serge, un
-              agent IA. Pas d'adresse ni de formulaire de contact pour l'instant :
-              n'en prévois pas. Le produit peut envoyer des e-mails à ses clients
+              agent IA. Serge donne au produit son adresse e-mail de contact, et lit
+              lui-même les messages qui lui sont écrits : prévois de la montrer en
+              pied de page et dans les mentions légales ; pas de formulaire de
+              contact. Le produit peut envoyer des e-mails à ses clients
               (valider une inscription, changer un mot de passe oublié, un reçu) :
               Serge règle leur envoi.
 
@@ -10888,8 +12032,9 @@ changes:
             new: |-
               Ce qui est réglé pour tous les produits n'est pas une remarque :
               l'éditeur des mentions légales est Julien Pesquet, une personne, et
-              le service est tenu par Serge, un agent IA ; pas d'adresse ni de
-              formulaire de contact pour l'instant ; le produit peut envoyer des
+              le service est tenu par Serge, un agent IA ; Serge donne au produit
+              son adresse e-mail de contact (pas de formulaire de contact) ; le
+              produit peut envoyer des
               e-mails (valider une inscription, changer un mot de passe), et Serge
               règle leur envoi.
 
@@ -12055,11 +13200,13 @@ changes:
               les consignes d'un humain (« consignes ») : corrige d'abord ce
               qu'elles demandent.
 
-              Si un humain a essayé le produit déjà construit et demande de revoir
-              le plan, tu reçois aussi le plan validé qui a servi à le construire :
-              pars de ce plan, garde ce qui marche et change ce que ses consignes
-              demandent. Le constructeur reprendra le produit existant, il ne
-              repartira pas de zéro.
+              Si le produit est déjà construit (un humain qui l'a essayé demande de
+              revoir le plan, ou le point de la semaine demande de faire évoluer un
+              produit en vente), tu reçois aussi le plan validé qui a servi à le
+              construire, et ses offres actuelles : pars de ce plan, garde ce qui
+              marche et change ce que les consignes demandent. Le constructeur
+              reprendra le produit existant, il ne repartira pas de zéro ; les
+              clients d'un produit en vente gardent leur compte et leurs données.
   - id: q116_challenger_poc_exigeant
     why: Le critique était trop indulgent, il se met à la place du prospect et exige un produit complet (Q116).
     table: invocations
@@ -12412,6 +13559,394 @@ changes:
     add_tools:
       - {tool: services_du_business, mode: given, label: Les services externes déjà demandés, params: {venture_id: {source: task, value: venture_id}}}
       - {tool: brancher_service, mode: callable, max_calls: 3, params: {venture_id: {source: task, value: venture_id}, deliverable: {source: fixed, value: produit}, task_id: {source: task, value: task_id}}}
+  # Faire vivre un produit en vente (lot 16, décision Q119) : les
+  # offres, l'adresse de contact, la nouvelle version d'un produit.
+  - id: q119_concevoir_produit_deja_en_vente
+    why: "La conception sert aussi à faire évoluer un produit en vente (Q119)."
+    table: invocations
+    where: {id: concevoir_produit}
+    set:
+      prompt:
+        replace:
+          - old: |2-
+              Si un humain a essayé le produit déjà construit et demande de revoir
+              le plan, tu reçois aussi le plan validé qui a servi à le construire :
+              pars de ce plan, garde ce qui marche et change ce que ses consignes
+              demandent. Le constructeur reprendra le produit existant, il ne
+              repartira pas de zéro.
+            new: |2-
+              Si le produit est déjà construit (un humain qui l'a essayé demande de
+              revoir le plan, ou le point de la semaine demande de faire évoluer un
+              produit en vente), tu reçois aussi le plan validé qui a servi à le
+              construire, et ses offres actuelles : pars de ce plan, garde ce qui
+              marche et change ce que les consignes demandent. Le constructeur
+              reprendra le produit existant, il ne repartira pas de zéro ; les
+              clients d'un produit en vente gardent leur compte et leurs données.
+  - id: q119_concevoir_produit_offres
+    why: "Le plan liste les offres payantes du produit, une par prix (Q119)."
+    table: invocations
+    where: {id: concevoir_produit}
+    set:
+      prompt:
+        replace:
+          - old: |2-
+              - prix : le prix définitif, par mois ou par an, en euros (exemple :
+                « 19 € par mois ») ; ce que l'on a gratuitement avant de payer, s'il
+                y a quelque chose ;
+            new: |2-
+              - prix : le prix définitif, par mois ou par an, en euros (exemple :
+                « 19 € par mois ») ; ce que l'on a gratuitement avant de payer, s'il
+                y a quelque chose ;
+              - offres : les abonnements que le client peut choisir. Une seule
+                suffit le plus souvent. Pour chacune : son code (un mot en
+                minuscules, sans espace : standard, pro), son nom, son prix en
+                centimes (19 € : 1900), sa période (month ou year), ce qu'elle
+                comprend, et « principale » : oui pour une seule, celle que la
+                plupart des clients prendront, non pour les autres. Ajouter ou
+                retirer une offre, ou changer un prix, se fait ici : Serge met
+                Stripe à jour quand le plan est validé ;
+  - id: q119_concevoir_produit_contact
+    why: "Chaque produit a une adresse de contact, que Serge relève (Q119)."
+    table: invocations
+    where: {id: concevoir_produit}
+    set:
+      prompt:
+        replace:
+          - old: |2-
+              agent IA. Pas d'adresse ni de formulaire de contact pour l'instant :
+              n'en prévois pas. Le produit peut envoyer des e-mails à ses clients
+            new: |2-
+              agent IA. Serge donne au produit son adresse e-mail de contact, et lit
+              lui-même les messages qui lui sont écrits : prévois de la montrer en
+              pied de page et dans les mentions légales ; pas de formulaire de
+              contact. Le produit peut envoyer des e-mails à ses clients
+  - id: q119_concevoir_produit_outil_offres
+    why: "Les offres du produit sont en base (Q119)."
+    invocation: concevoir_produit
+    add_tools:
+      - {tool: offres_du_produit, mode: given, label: "Les offres actuelles du produit (vide avant le premier plan)", params: {venture_id: {source: task, value: venture_id}}}
+  - id: q119_concevoir_produit_reponse_offres
+    why: "Le plan rend les offres du produit, une par prix (Q119)."
+    invocation: concevoir_produit
+    add_outputs:
+      - {path: offres, type: list, min_items: 1, description: 'Les offres payantes, une par abonnement que le client peut choisir.'}
+      - {path: offres.code, type: text, description: 'Son code : un mot en minuscules, sans espace (standard, pro).'}
+      - {path: offres.nom, type: text, description: Son nom.}
+      - {path: offres.principale, type: choice, choices: [oui, non], description: 'oui pour une seule offre, la principale.'}
+      - {path: offres.prix_centimes, type: number, description: 'Son prix en centimes : 1900 pour 19 €.'}
+      - {path: offres.periode, type: choice, choices: [month, year], description: 'month : par mois ; year : par an.'}
+      - {path: offres.comprend, type: text, description: Ce qu'elle comprend.}
+  - id: q119_concevoir_produit_ecrit_les_offres
+    why: "Les offres du plan sont rangées en base, à la place des précédentes (Q119)."
+    invocation: concevoir_produit
+    add_writes:
+      - {<<: *offres_effacees, position: 7}
+      - {<<: *offres_ecrites, position: 8}
+  - id: q119_challenger_produit_offres
+    why: "Le critique relit aussi les offres du plan (Q119)."
+    table: invocations
+    where: {id: challenger_produit}
+    set:
+      prompt:
+        replace:
+          - old: |2-
+              - le prix : réaliste pour ces clients ?
+            new: |2-
+              - le prix et les offres : réalistes pour ces clients ? Chaque offre
+                dit-elle clairement ce qu'elle comprend, et une seule est-elle
+                marquée principale ?
+  - id: q119_challenger_produit_contact
+    why: "Chaque produit a une adresse de contact, que Serge relève (Q119)."
+    table: invocations
+    where: {id: challenger_produit}
+    set:
+      prompt:
+        replace:
+          - old: |2-
+              le service est tenu par Serge, un agent IA ; pas d'adresse ni de
+              formulaire de contact pour l'instant ; le produit peut envoyer des
+            new: |2-
+              le service est tenu par Serge, un agent IA ; Serge donne au produit
+              son adresse e-mail de contact (pas de formulaire de contact) ; le
+              produit peut envoyer des
+  - id: q119_challenger_produit_outil_offres
+    why: "Les offres du produit sont en base (Q119)."
+    invocation: challenger_produit
+    add_tools:
+      - {tool: offres_du_produit, mode: given, label: "Les offres du plan", params: {venture_id: {source: task, value: venture_id}}}
+  - id: q119_construire_produit_offres
+    why: "Chaque offre du produit a son prix dans Stripe, retrouvé par sa clé (Q119)."
+    table: invocations
+    where: {id: construire_produit}
+    set:
+      prompt:
+        replace:
+          - old: |2-
+              - le prix de l'abonnement existe déjà dans Stripe ; retrouve-le par
+                sa clé de recherche, le numéro du business : GET /v1/prices avec
+                lookup_keys[]=<venture_id> et active=true ;
+              - le client paie sur la page de paiement de Stripe : crée une
+                session Checkout en mode subscription pour ce prix, avec
+            new: |2-
+              - le prix de chaque offre (« Les offres ») existe déjà dans Stripe ;
+                retrouve-le par sa clé de recherche : le numéro du business pour
+                l'offre principale, et <numéro du business>_<code de l'offre> pour
+                une autre (exemple : ven_12_pro). GET /v1/prices avec
+                lookup_keys[]=<clé> et active=true, une fois par clé. Lis le
+                montant et la période dans Stripe, ne les écris pas en dur : un
+                prix peut changer sans nouvelle version du produit ;
+              - le client paie sur la page de paiement de Stripe : crée une
+                session Checkout en mode subscription pour le prix de l'offre
+                qu'il choisit, avec
+  - id: q119_construire_produit_contact
+    why: "Le produit montre son adresse de contact, que Serge relève (Q119)."
+    table: invocations
+    where: {id: construire_produit}
+    set:
+      prompt:
+        replace:
+          - old: |2-
+              - pas d'adresse ni de formulaire de contact pour l'instant, même si
+                le plan ou la fiche produit en parlent ;
+            new: |2-
+              - l'adresse e-mail de contact du produit est dans la variable
+                d'environnement CONTACT_EMAIL, lue au démarrage : montre-la en
+                pied de page et dans les mentions légales, et rien si elle est
+                vide. Serge lit lui-même les messages qui lui sont écrits ; pas de
+                formulaire de contact ;
+  - id: q119_construire_produit_donnees_gardees
+    why: "Une nouvelle version garde les comptes et les données des clients (Q119)."
+    table: invocations
+    where: {id: construire_produit}
+    set:
+      prompt:
+        replace:
+          - old: |2-
+              - à la racine de /work, un Dockerfile qui construit et lance le
+                produit. Le produit écoute sur le port de la variable PORT (8080),
+                garde ses données dans le dossier de la variable DATA_DIR (/data),
+                et connaît son adresse publique par PUBLIC_URL ;
+            new: |2-
+              - à la racine de /work, un Dockerfile qui construit et lance le
+                produit. Le produit écoute sur le port de la variable PORT (8080),
+                garde ses données dans le dossier de la variable DATA_DIR (/data),
+                et connaît son adresse publique par PUBLIC_URL ;
+              - quand le produit est déjà en ligne, ses clients gardent leur compte
+                et leurs données : DATA_DIR est gardé d'une version à l'autre. Fais
+                évoluer ce qui y est rangé sans rien perdre (ajoute une colonne ou
+                un fichier, ne repars jamais d'une base vide) ;
+  - id: q119_construire_produit_outil_offres
+    why: "Les offres du produit sont en base (Q119)."
+    invocation: construire_produit
+    add_tools:
+      - {tool: offres_du_produit, mode: given, label: "Les offres, avec leur code", params: {venture_id: {source: task, value: venture_id}}}
+  - id: q119_relire_produit_outil_offres
+    why: "Les offres du produit sont en base (Q119)."
+    invocation: relire_produit
+    add_tools:
+      - {tool: offres_du_produit, mode: given, label: "Les offres", params: {venture_id: {source: task, value: venture_id}}}
+  - id: q119_vendre_en_mode_test_offres
+    why: "Stripe a un prix actif par offre du plan, et aucun autre (Q119)."
+    table: invocations
+    where: {id: vendre_en_mode_test}
+    set:
+      prompt:
+        replace:
+          - old: |2-
+              Tu mets en vente dans Stripe le produit d'un business, pour le mode
+              de Stripe réglé sur tes outils. Tu reçois le plan validé, avec son
+              prix (exemple : « 19 € par mois »), et la fiche du business.
+            new: |2-
+              Tu mets en vente dans Stripe le produit d'un business, pour le mode
+              de Stripe réglé sur tes outils. Tu reçois le plan validé, ses offres
+              (leur code, leur prix en centimes, leur période) et la fiche du
+              business. À la fin, Stripe a un prix actif par offre, au bon montant,
+              et aucun autre.
+  - id: q119_mettre_en_vente_offres
+    why: "Stripe a un prix actif par offre du plan, et aucun autre (Q119)."
+    table: invocations
+    where: {id: mettre_en_vente}
+    set:
+      prompt:
+        replace:
+          - old: |2-
+              Tu mets en vente dans Stripe le produit d'un business, pour le mode
+              de Stripe réglé sur tes outils. Tu reçois le plan validé, avec son
+              prix (exemple : « 19 € par mois »), et la fiche du business.
+            new: |2-
+              Tu mets en vente dans Stripe le produit d'un business, pour le mode
+              de Stripe réglé sur tes outils. Tu reçois le plan validé, ses offres
+              (leur code, leur prix en centimes, leur période) et la fiche du
+              business. À la fin, Stripe a un prix actif par offre, au bon montant,
+              et aucun autre.
+  - id: q119_vendre_en_mode_test_un_prix_par_offre
+    why: "Stripe a un prix actif par offre du plan, et aucun autre (Q119)."
+    table: invocations
+    where: {id: vendre_en_mode_test}
+    set:
+      prompt:
+        replace:
+          - old: |2-
+              2. Crée son prix : le montant en centimes (19 € : 1900), eur, et
+                 l'intervalle de l'abonnement (month ou year). L'identifiant du
+                 business et la clé de recherche sont ajoutés tout seuls.
+
+              Rends ok « oui » si le produit et son prix existent, avec leurs
+              identifiants ; sinon « non », et la raison donnée par Stripe.
+            new: |2-
+              2. L'offre principale : son prix porte la clé de recherche du
+                 business, ajoutée toute seule. Si « Trouver un prix Stripe par sa
+                 clé de recherche » a rendu un prix au bon montant (unit_amount) et
+                 à la bonne période (recurring.interval), garde-le. Sinon crée-le
+                 avec « Créer le prix d'un produit Stripe » : le montant en
+                 centimes (19 € : 1900), eur, et la période (month ou year) ; il
+                 reprend la clé de l'ancien. Sans offre reçue, le plan n'en a
+                 qu'une : son prix, à créer de cette façon.
+              3. Les autres offres : « Lister les prix d'un produit Stripe » rend
+                 tous les prix du produit, avec leur clé (lookup_key). La clé d'une
+                 autre offre est le numéro du business, un tiret bas, puis son
+                 code : ven_12_pro. Garde son prix s'il est actif, au bon montant
+                 et à la bonne période ; sinon crée-le avec « Créer le prix d'une
+                 autre offre Stripe ».
+              4. Archive, avec « Archiver un prix Stripe », tout prix actif du
+                 produit qui ne correspond plus à une offre : une offre retirée du
+                 plan, ou un ancien montant. Les clients déjà abonnés à un prix
+                 archivé le gardent.
+
+              Rends ok « oui » si chaque offre a son prix actif et qu'il n'en reste
+              pas d'autre, avec le produit et le prix de l'offre principale ; sinon
+              « non », et la raison donnée par Stripe.
+  - id: q119_mettre_en_vente_un_prix_par_offre
+    why: "Stripe a un prix actif par offre du plan, et aucun autre (Q119)."
+    table: invocations
+    where: {id: mettre_en_vente}
+    set:
+      prompt:
+        replace:
+          - old: |2-
+              2. Crée son prix : le montant en centimes (19 € : 1900), eur, et
+                 l'intervalle de l'abonnement (month ou year). L'identifiant du
+                 business et la clé de recherche sont ajoutés tout seuls.
+
+              Rends ok « oui » si le produit et son prix existent, avec leurs
+              identifiants ; sinon « non », et la raison donnée par Stripe.
+            new: |2-
+              2. L'offre principale : son prix porte la clé de recherche du
+                 business, ajoutée toute seule. Si « Trouver un prix Stripe par sa
+                 clé de recherche » a rendu un prix au bon montant (unit_amount) et
+                 à la bonne période (recurring.interval), garde-le. Sinon crée-le
+                 avec « Créer le prix d'un produit Stripe » : le montant en
+                 centimes (19 € : 1900), eur, et la période (month ou year) ; il
+                 reprend la clé de l'ancien. Sans offre reçue, le plan n'en a
+                 qu'une : son prix, à créer de cette façon.
+              3. Les autres offres : « Lister les prix d'un produit Stripe » rend
+                 tous les prix du produit, avec leur clé (lookup_key). La clé d'une
+                 autre offre est le numéro du business, un tiret bas, puis son
+                 code : ven_12_pro. Garde son prix s'il est actif, au bon montant
+                 et à la bonne période ; sinon crée-le avec « Créer le prix d'une
+                 autre offre Stripe ».
+              4. Archive, avec « Archiver un prix Stripe », tout prix actif du
+                 produit qui ne correspond plus à une offre : une offre retirée du
+                 plan, ou un ancien montant. Les clients déjà abonnés à un prix
+                 archivé le gardent.
+
+              Rends ok « oui » si chaque offre a son prix actif et qu'il n'en reste
+              pas d'autre, avec le produit et le prix de l'offre principale ; sinon
+              « non », et la raison donnée par Stripe.
+  - id: q119_vendre_en_mode_test_outils_offres
+    why: "Un prix par offre : lister les prix du produit, créer celui d'une autre offre, archiver ceux qui ne servent plus (Q119)."
+    invocation: vendre_en_mode_test
+    add_tools:
+      - {tool: offres_du_produit, mode: given, label: Les offres du plan, params: {venture_id: {source: task, value: venture_id}}}
+      - {tool: stripe_lister_prix, mode: callable, params: {service: {source: fixed, value: stripe_test}, task_id: {source: task, value: task_id}}}
+      - {tool: stripe_creer_prix_d_offre, mode: callable, max_calls: 5, params: {service: {source: fixed, value: stripe_test}, 'metadata[venture_id]': {source: task, value: venture_id}, transfer_lookup_key: {source: fixed, value: 'true'}, task_id: {source: task, value: task_id}}}
+      - {tool: stripe_archiver_prix, mode: callable, params: {service: {source: fixed, value: stripe_test}, active: {source: fixed, value: 'false'}, task_id: {source: task, value: task_id}}}
+  - id: q119_vendre_en_mode_test_tours
+    why: "Plusieurs offres demandent plus de tours d'outils (Q119)."
+    table: invocations
+    where: {id: vendre_en_mode_test}
+    set: {max_tool_turns: {from: 6, to: 12}}
+  - id: q119_mettre_en_vente_outils_offres
+    why: "Un prix par offre : lister les prix du produit, créer celui d'une autre offre, archiver ceux qui ne servent plus (Q119)."
+    invocation: mettre_en_vente
+    add_tools:
+      - {tool: offres_du_produit, mode: given, label: Les offres du plan, params: {venture_id: {source: task, value: venture_id}}}
+      - {tool: stripe_lister_prix, mode: callable, params: {service: {source: fixed, value: stripe_live}, task_id: {source: task, value: task_id}}}
+      - {tool: stripe_creer_prix_d_offre, mode: callable, max_calls: 5, params: {service: {source: fixed, value: stripe_live}, 'metadata[venture_id]': {source: task, value: venture_id}, transfer_lookup_key: {source: fixed, value: 'true'}, task_id: {source: task, value: task_id}}}
+      - {tool: stripe_archiver_prix, mode: callable, params: {service: {source: fixed, value: stripe_live}, active: {source: fixed, value: 'false'}, task_id: {source: task, value: task_id}}}
+  - id: q119_mettre_en_vente_tours
+    why: "Plusieurs offres demandent plus de tours d'outils (Q119)."
+    table: invocations
+    where: {id: mettre_en_vente}
+    set: {max_tool_turns: {from: 6, to: 12}}
+  - id: q119_publier_staging_produit_contact
+    why: Un produit fini publié reçoit son adresse de contact (Q119).
+    invocation: publier_staging_produit
+    add_params:
+      contact: {source: fixed, value: oui}
+  - id: q119_publier_prod_produit_contact
+    why: Un produit fini publié reçoit son adresse de contact (Q119).
+    invocation: publier_prod_produit
+    add_params:
+      contact: {source: fixed, value: oui}
+  - id: q119_ticket_test_produit_pourquoi
+    why: "Le ticket de test sert aussi à la nouvelle version d'un produit en vente (Q119)."
+    table: invocation_tool_params
+    where: {invocation_id: demander_test_produit, invocation_tool_id: 0, param_name: raison}
+    set:
+      value:
+        from: "Le produit est en ligne en staging, avec Stripe en mode test : essaie-le comme un client, jusqu'au paiement avec la carte 4242 4242 4242 4242. Le valider achète son domaine et le met en vente. Ses e-mails ne partent pas : ils restent dans la boîte d'essai, à lire dans Mission Control sur la fiche du business (« E-mails d'essai »). « À corriger » : un bug ou un détail, la construction reprend avec tes consignes. « Revoir le plan » : une fonctionnalité à changer, le plan repart en conception, passe chez le critique et revient au ticket « Plan »."
+        to: *raison_test_produit
+  - id: q119_suite_test_produit_role
+    why: "« Valider » met aussi en ligne la nouvelle version d'un produit en vente (Q119)."
+    table: invocations
+    where: {id: suite_test_produit}
+    set:
+      role:
+        from: >-
+          La réponse au ticket « Tester le produit » du produit fini :
+          « Valider » achète son domaine puis le met en vente, « À corriger »
+          relance la construction avec les consignes, « Revoir le plan »
+          renvoie à la conception avec les consignes, « Arrêter le business »
+          l'arrête. Sans LLM.
+        to: >-
+          La réponse au ticket « Tester le produit » du produit fini :
+          « Valider » achète son domaine puis le met en vente (ou met en
+          ligne la nouvelle version d'un produit déjà en vente), « À
+          corriger » relance la construction avec les consignes, « Revoir
+          le plan » renvoie à la conception avec les consignes, « Arrêter le
+          business » l'arrête. Sans LLM.
+  - id: q119_concevoir_produit_dernier_plan
+    why: "Un produit qui évolue a plusieurs plans validés ; seul le dernier compte (Q119)."
+    table: invocation_tools
+    where: {invocation_id: concevoir_produit, tool_id: plan_valide_du_produit}
+    set: {max_rows: {from: 0, to: 1}}
+  - id: q119_construire_produit_dernier_plan
+    why: "Un produit qui évolue a plusieurs plans validés ; seul le dernier compte (Q119)."
+    table: invocation_tools
+    where: {invocation_id: construire_produit, tool_id: plan_valide_du_produit}
+    set: {max_rows: {from: 0, to: 1}}
+  - id: q119_relire_produit_dernier_plan
+    why: "Un produit qui évolue a plusieurs plans validés ; seul le dernier compte (Q119)."
+    table: invocation_tools
+    where: {invocation_id: relire_produit, tool_id: plan_valide_du_produit}
+    set: {max_rows: {from: 0, to: 1}}
+  - id: q119_vendre_en_mode_test_dernier_plan
+    why: "Un produit qui évolue a plusieurs plans validés ; seul le dernier compte (Q119)."
+    table: invocation_tools
+    where: {invocation_id: vendre_en_mode_test, tool_id: plan_valide_du_produit}
+    set: {max_rows: {from: 0, to: 1}}
+  - id: q119_mettre_en_vente_dernier_plan
+    why: "Un produit qui évolue a plusieurs plans validés ; seul le dernier compte (Q119)."
+    table: invocation_tools
+    where: {invocation_id: mettre_en_vente, tool_id: plan_valide_du_produit}
+    set: {max_rows: {from: 0, to: 1}}
+  - id: q119_preparer_prospection_lourde_dernier_plan
+    why: "Un produit qui évolue a plusieurs plans validés ; seul le dernier compte (Q119)."
+    table: invocation_tools
+    where: {invocation_id: preparer_prospection_lourde, tool_id: plan_valide_du_produit}
+    set: {max_rows: {from: 0, to: 1}}
+
 deleted:
   invocations:
     # Le compteur du 21 novembre 2026 comptait jusqu'à un réglage à lui ;
@@ -12443,6 +13978,11 @@ deleted:
   # Le début d'un appel dépend de son sens : deux textes le remplacent.
   serge_texts: [voice_opening]
   links:
+    # Remplacés par un aiguillage : la nouvelle version d'un produit déjà
+    # en vente ne repasse pas par l'essai d'un humain quand c'est une
+    # correction, ni par l'achat du domaine (Q119).
+    - relecture_produit_bonne_vers_test
+    - test_produit_valide_vers_domaine
     # Les deux liens du compteur du 21 novembre 2026 (Q110).
     - essai_attend_le_contact
     - essai_rappele_apres_attente

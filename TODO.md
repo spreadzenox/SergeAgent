@@ -159,8 +159,8 @@ Ce que chaque lot a vraiment livré :
   et mise en vente ; son paiement test de 1 € payé dans le vrai Chrome,
   vérifié dans Stripe et remboursé (12 appels au modèle, 0,08 $) ; le
   produit a ensuite été essayé à la main, inscription et paiement
-  compris. Il reste, du lot 10, les versions suivantes d'un produit :
-  elles sont au lot 16.
+  compris. Les versions suivantes d'un produit sont faites au lot 16
+  (décision Q119).
 
 - [ ] **Avant le lot 8 : les réglages en base.** Toute grandeur
   discutable se règle depuis Mission Control, sans réglage en double
@@ -222,14 +222,14 @@ Ce que chaque lot a vraiment livré :
   dedans, comme l'interface web du lot 10 le fait pour une page (Q91).
 - [ ] **Lot 16 « Faire vivre les produits ».** Un produit qui a des
   clients s'entretient : ce n'est plus un pipeline avec un début et une
-  fin. Ce lot clarifie puis imagine le système complet d'entretien des
-  produits qui existent : le point de la semaine et ce que fait chacune de
-  ses décisions, les retours des clients et les nouvelles versions, un
-  service sur mesure (ajouter à un produit existant les fonctionnalités
-  qu'un client demande, en rappelant le constructeur), les livraisons,
-  les impayés et les remboursements, la maintenance et la fermeture d'un
-  business. Ses tâches sont dans la partie « Lot 16 » plus bas ; les
-  décisions qu'elles citent sont à revoir (Q92, Q93).
+  fin. **Une première partie est faite** (28 novembre 2026, décision
+  Q119) : le point de la semaine sur chaque produit en vente, les
+  corrections et les évolutions (les nouvelles versions), la relance de
+  la prospection, le tri d'un bug signalé, les offres d'un produit et son
+  adresse de contact. **Restent** : accélérer, pivoter et arrêter, un
+  service sur mesure, les livraisons, les impayés et les remboursements,
+  la maintenance et la fermeture d'un business. Les tâches sont dans la
+  partie « Lot 16 » plus bas.
 
 ---
 
@@ -439,7 +439,7 @@ Faite aux lots 10 et 11 : concevoir le produit et sa fiche, le
 construire dans un chantier, le relire, le mettre en ligne sur son
 domaine, le mettre en vente et faire le paiement test de 1 € (voir
 [`docs/etapes/5-construction.md`](docs/etapes/5-construction.md)). Les
-versions suivantes d'un produit sont au lot 16.
+versions suivantes d'un produit sont faites au lot 16 (décision Q119).
 
 ---
 
@@ -447,7 +447,8 @@ versions suivantes d'un produit sont au lot 16.
 
 La vente en masse du produit fini est au lot 12 (voir
 [`docs/LOT12_CONCEPTION.md`](docs/LOT12_CONCEPTION.md), partie 7) ; le
-suivi pendant la vente est au lot 16.
+suivi pendant la vente (le point de la semaine, les nouvelles versions,
+la relance de la prospection) est fait au lot 16 (décision Q119).
 
 ---
 
@@ -471,22 +472,34 @@ suivi pendant la vente est au lot 16.
 ## Lot 16 — Faire vivre les produits
 
 Ces tâches viennent des étapes 5, 6 et 8. Elles décrivent ce qui avait été
-décidé (Q43 à Q47) ; le lot 16 commence par les clarifier, puis imagine le
-système complet (Q92, Q93).
+décidé (Q43 à Q47). Une première partie est faite (décision Q119) ; le
+détail est dans [`docs/etapes/6-prospection-lourde.md`](docs/etapes/6-prospection-lourde.md).
 
-- [ ] **Faire le point chaque semaine sur le business principal.** Une
-  seule question compte : on continue, et à quelle vitesse ? Une fois par
-  semaine, une invocation propose de continuer, d'accélérer (50 % de
-  prospects en plus ou un canal de plus), de pivoter ou d'arrêter. Pivoter
-  et arrêter passent par Julien. Cette invocation remplace trois
-  invocations qui existent aujourd'hui sans être appelées (plan de passage
-  à l'échelle, options de pivot, arbitre du budget).
+- [x] **Faire le point chaque semaine sur chaque produit en vente.**
+  « Faire le point sur un produit » lit les ventes, les abonnements, les
+  campagnes, les réponses et les demandes des clients, puis décide du
+  produit (rien, corriger, faire évoluer) et de la prospection (rien,
+  relancer). Une correction part en prod dès que le relecteur la juge
+  bonne ; une évolution garde les tickets « Plan » et « Tester le
+  produit ». Une seule nouvelle version à la fois par produit (Q119).
 
-- [ ] **L'adresse de contact des produits.** Un client écrit au produit
-  (une question, un mot de passe, la suppression de son compte) : ses
-  e-mails arrivent dans la boîte de Serge, rattachés au produit et au
-  client, et Serge y répond. D'ici là, aucun produit n'a d'adresse ni de
-  formulaire de contact, et les prompts le disent (Q96).
+- [ ] **Accélérer, pivoter, arrêter.** Le point de la semaine ne sait pas
+  encore accélérer (50 % de prospects en plus ou un canal de plus),
+  pivoter (changer un seul élément : cible, prix, offre ou canal) ni
+  arrêter ; pivoter et arrêter passeront par Julien (Q42).
+
+- [ ] **Les chiffres d'usage d'un produit.** Le point de la semaine ne
+  voit pas ce qui se passe dans le produit (visites, inscriptions) :
+  compter les visites depuis le serveur (Q119).
+
+- [x] **L'adresse de contact des produits.** Chaque produit fini montre
+  une adresse qui arrive dans la boîte de Serge ; un e-mail qu'un inconnu
+  y écrit est rattaché au business, et Serge y répond (Q119). Un POC n'en
+  a pas.
+
+- [x] **Plusieurs offres pour un produit.** Le plan liste les offres, une
+  par prix dans Stripe ; en ajouter une ou changer un prix est une
+  évolution (Q119).
 
 - [ ] **Un service sur mesure.** Proposer à un client d'ajouter à un
   produit existant les fonctionnalités qu'il demande, en rappelant le
@@ -509,12 +522,16 @@ système complet (Q92, Q93).
   dans telle version, refusée avec sa raison (Q91). Sans ces deux tables,
   on ne peut pas savoir quand un business peut être fermé.
 
-- [ ] **Améliorer le produit avec les retours des clients.** Serge repère
+- [x] **Améliorer le produit avec les retours des clients.** Serge repère
   dans les messages des clients ce qui concerne le produit : un bug, une
-  insatisfaction, une idée. Il corrige tout de suite ce qui est urgent,
-  prépare une nouvelle version par semaine pour le reste, et prévient les
-  clients concernés quand leur demande est traitée. Cette tâche a besoin
-  de la table des demandes clients et de la construction.
+  insatisfaction, une idée. Un bug signalé sur un produit en vente est
+  trié tout de suite, et corrigé s'il y a lieu, sans rien ajouter ; le
+  point de la semaine décide du reste (Q119).
+
+- [ ] **Prévenir les clients dont la demande est livrée.** Quand une
+  nouvelle version est en ligne, les demandes qu'elle traite passent à
+  « livrée », mais personne n'est prévenu : envoyer un message à chaque
+  client concerné, par son fil (Q43).
 
 - [ ] **Maintenance et fermeture d'un business.** Arrêter de prospecter
   n'est pas fermer le business : il y a encore des clients à livrer, des

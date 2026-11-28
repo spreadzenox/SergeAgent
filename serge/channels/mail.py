@@ -88,6 +88,7 @@ def poll(since: str) -> list[Incoming]:
             message_ref=m.message_ref,
             refs=m.refs,
             native_type=m.native_type,
+            to=m.to,
         )
         for m in _box().poll(since)
     ]

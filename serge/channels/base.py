@@ -20,8 +20,9 @@ Ajouter un canal, c'est écrire son adaptateur et l'ajouter à ``ADAPTERS``
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from email.utils import getaddresses
 
 
 def _always() -> bool:
@@ -55,6 +56,8 @@ class Incoming:
     # Les références des messages auxquels il répond (pour le rattacher).
     refs: tuple[str, ...] = ()
     native_type: str = ''
+    # Les adresses à qui il est écrit (un e-mail), en minuscules.
+    to: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -89,3 +92,14 @@ class ChannelLater(ChannelError):
     def __init__(self, reason: str, until: str) -> None:
         super().__init__(reason)
         self.until = until
+
+
+def recipients(headers: Mapping[str, str]) -> tuple[str, ...]:
+    """Les adresses à qui un e-mail est écrit, en minuscules, d'après ses
+    en-têtes (noms en minuscules) : ``To``, ``Cc`` et ``Delivered-To``.
+    Exemple : « Serge <Serge+Calcu@exemple.fr> » → ``serge+calcu@exemple.fr``.
+    """
+    found = getaddresses(
+        [headers.get(name, '') for name in ('to', 'cc', 'delivered-to')]
+    )
+    return tuple(dict.fromkeys(a.lower() for _n, a in found if '@' in a))

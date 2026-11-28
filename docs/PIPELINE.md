@@ -92,8 +92,8 @@ PRODUCT_BUILDING → PRODUCT_READY     construction (étape 5)
 FULL_RUNNING     prospection lourde et ventes (étape 6)
    ↓
 MAINTENANCE      plus de nouveaux prospects, mais on livre, on répond,
-   ↓             on corrige et on encaisse (lot 16)
-CLOSED           plus rien à faire : fermé et archivé (lot 16)
+   ↓             on corrige et on encaisse (pas encore fait)
+CLOSED           plus rien à faire : fermé et archivé (pas encore fait)
 ```
 
 Un business mis de côté (`PARKED`) a été testé mais pas choisi. Il libère
@@ -101,8 +101,12 @@ sa place, et il peut être repris si le business principal s'arrête, tant
 que son test date de moins de 60 jours. Un business arrêté (`KILLED`)
 n'avait aucun client, ou un test sous les seuils (Q92). Chaque changement
 de statut est écrit au journal, avec qui l'a décidé, quand et pourquoi.
-La vie d'un business qui a des clients (`MAINTENANCE`, `CLOSED`) sera
-imaginée au lot 16.
+Un produit fini en vente (`PRODUCT_READY`, `FULL_RUNNING`) ne change
+plus de statut pour évoluer : chaque semaine, et quand un client signale
+un bug, Serge fait le point sur lui, et peut le corriger, le faire
+évoluer ou relancer sa prospection (lot 16, décision Q119 ;
+[`etapes/6-prospection-lourde.md`](etapes/6-prospection-lourde.md)).
+`MAINTENANCE` et `CLOSED` ne sont pas encore faits.
 
 ### Les places de test
 
@@ -290,7 +294,11 @@ pas du code écrit par Serge, mais la description du service en base
 points d'entrée et leurs paramètres permis), utilisée par une seule
 capacité « Appeler une API ». Exemple : l'outil « Créer un prix Stripe »
 est le point d'entrée `POST /v1/prices` du service `stripe_test` ou
-`stripe_live`, et l'identifiant du business y est un paramètre figé.
+`stripe_live`, et l'identifiant du business y est un paramètre figé. Un
+point d'entrée peut porter un verrou : un prix maximum, vérifié avant un
+achat (un domaine), ou un préfixe, qui oblige un paramètre choisi par le
+modèle à commencer par un paramètre figé (la clé de recherche du prix
+d'une offre commence par le numéro de son business, décision Q119).
 
 Depuis le lot 13 (décision Q104), Serge a **des comptes web**, un par
 site (`web_accounts`) : une invocation à qui la base donne un compte sur
@@ -313,6 +321,15 @@ sur un canal, ouvrir un ticket. Chaque capacité est générale et réglée par
 des paramètres lus en base. Il n'y a **jamais de code propre à une
 invocation** : le nom d'une invocation n'apparaît dans le code que dans le
 fichier qui remplit une nouvelle instance.
+
+Quand la suite dépend d'un fait en base, une invocation sans LLM
+**aiguille** : la capacité « Lire une ligne pour décider » lit la première
+ligne que rend un outil de lecture et rend ses colonnes, avec « trouve »
+(oui ou non), et les liens de l'invocation choisissent d'après elles.
+Exemple : après une relecture réussie du produit, « Suite d'une relecture
+réussie du produit » lit la nouvelle version en cours du business ; si
+c'est une correction, elle part en prod, sinon un humain l'essaie d'abord
+(décision Q119).
 
 Même l'écriture en base est générale. Pour chaque invocation, la base dit
 dans quelle table elle écrit, si elle ajoute ou modifie des lignes, et

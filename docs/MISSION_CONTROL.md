@@ -103,7 +103,12 @@ minutes d'appel) et ses points par euro, et ses prospects avec leurs
 points ; son dernier plan et les remarques du critique, ses passages de construction avec le verdict du relecteur, les dernières captures, ses publications (staging et prod : version, adresse, état) et ses versions (lot 10) ; son bouton « Valider chaque brouillon » fait attendre chaque
 brouillon de ce business jusqu'à ce qu'un humain le valide (Q85) ;
 ses boutons « Supprimer de Stripe (mode test) » et « Supprimer de Stripe
-(vrai mode) », qui archivent ses prix et ses produits, après confirmation
+(vrai mode) », qui archivent ses prix et ses produits, après confirmation,
+« Faire le point sur ce produit maintenant », qui lance sans attendre
+lundi le point d'un produit en vente, avec une consigne si on veut
+décider soi-même de ce qu'il fait, et « Abandonner la nouvelle
+version en cours d'un produit », qui libère la place pour une autre
+version sans toucher au produit en ligne (Q119)
 (un bouton déclaré en base qui attend un business est sur sa fiche, pas
 sur la page Système ; sur un business d'essai, sa tâche est du couloir
 d'essai) ; le compte rendu de son test léger (ses chiffres, son verdict,

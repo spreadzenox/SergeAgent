@@ -32,7 +32,7 @@ from typing import Any
 
 from kit.mailbox_config import MailboxError, resolve_mailbox
 from serge.channels.auto_reply import AUTO_REPLY, is_auto_reply
-from serge.channels.base import Incoming, Outgoing
+from serge.channels.base import Incoming, Outgoing, recipients
 from serge.channels.email_gog import POLL_MAX, MailError
 from serge.paths import config_root
 from serge.secrets import read_secret_file
@@ -252,6 +252,7 @@ def poll(since: str, config: dict[str, Any] | None = None) -> list[Incoming]:
                 parsed = BytesParser(policy=email.policy.default).parsebytes(
                     raw
                 )
+                entetes = {k.lower(): str(v) for k, v in parsed.items()}
                 own = str(parsed.get('Message-ID') or '').strip()
                 refs = _REF.findall(
                     f'{parsed.get("In-Reply-To") or ""}'
@@ -266,10 +267,9 @@ def poll(since: str, config: dict[str, Any] | None = None) -> list[Incoming]:
                         message_ref=own,
                         refs=tuple(refs),
                         native_type=AUTO_REPLY
-                        if is_auto_reply(
-                            {k.lower(): str(v) for k, v in parsed.items()}
-                        )
+                        if is_auto_reply(entetes)
                         else 'email',
+                        to=recipients(entetes),
                     )
                 )
     except imaplib.IMAP4.error as exc:

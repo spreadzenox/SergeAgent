@@ -36,8 +36,63 @@ n'est pas encore essayée sur le serveur : c'est le rôle de l'essai total
    de relance ; la première vente d'un business ouvre un ticket
    d'information.
 
-Ce qui suit (le point de la semaine, les retours des clients, les
-livraisons, la maintenance) est au lot 16. Le pont vers Asterisk et
+**Faire vivre le produit en vente est en base depuis le lot 16**
+(28 novembre 2026, décision Q119). Aucun vrai produit fini n'était en
+vente ce jour-là : la boucle n'a tourné que dans ses tests.
+
+5. **Faire le point sur un produit** (niveau intelligent), chaque lundi à
+   8 h 30 (un déclencheur à heure fixe, réglable sur la page Pipeline),
+   pour chaque vrai business dont le produit fini est en vente
+   (`PRODUCT_READY` ou `FULL_RUNNING`). Le business d'un essai n'est pas
+   visité chaque lundi : le bouton « Faire le point sur ce produit
+   maintenant », sur la fiche d'un business, le lance à la demande, pour
+   un essai comme pour un vrai business. Ce bouton a un champ
+   « consigne », facultatif : ce qu'un humain y écrit décide du point
+   (exemple : « ajoute une offre Pro à 9 € par mois »). Elle reçoit la fiche du business, la fiche produit,
+   le plan validé, les offres, ce qui est en ligne, les ventes et les
+   abonnements, les campagnes, ce qu'ont répondu les prospects, les
+   demandes des clients, la nouvelle version en cours et ses 8 derniers
+   points. Elle rend deux choix, dans des listes fermées, avec leurs
+   consignes :
+   - pour le produit : `rien`, `corriger` (quelque chose ne marche pas
+     comme le plan le prévoit) ou `faire_evoluer` (une fonctionnalité,
+     une offre de plus, un prix à changer) ;
+   - pour la prospection : `rien` ou `relancer`.
+   Chaque point est gardé (`product_reviews`), et un ticket d'information
+   donne son compte rendu à Julien et Clem.
+6. **Une nouvelle version** repasse par les invocations de l'étape 5 :
+   une correction reprend à la construction et part en prod dès que le
+   relecteur la juge bonne ; une évolution reprend à la conception et
+   garde les tickets « Plan » et « Tester le produit ». Le détail est
+   dans [`5-construction.md`](5-construction.md), « Une nouvelle
+   version ». **Une seule à la fois par produit** : le point qui en lance
+   une porte son état (`open`, puis `online` ou `dropped`), et une règle
+   de doublon en base écarte un second point qui voudrait en lancer une
+   autre ; rien ne part alors. Le bouton « Abandonner la nouvelle version
+   en cours d'un produit », sur la fiche du business, libère la place
+   (une construction qui n'aboutit pas, une idée qu'on ne veut plus).
+7. **Relancer la prospection d'un produit** (niveau intelligent), quand
+   le point le décide : de nouvelles campagnes lourdes, une par canal
+   branché qui n'en a pas déjà une en cours, avec la cible et l'angle que
+   demandent les consignes du point. Elles démarrent comme les autres.
+8. **Un bug signalé** : quand « Traiter une réponse » note une demande
+   de sorte « bug » pour un business dont le produit est en vente,
+   **« Trier un bug signalé »** (niveau intelligent) décide tout de
+   suite : `corriger` ou `rien`. Elle n'a pas d'autre choix : un bug
+   signalé ne lance jamais une fonctionnalité nouvelle. « Corriger »
+   retient la demande et lance la construction avec ses consignes ; le
+   bug d'un business en test léger ne lance rien. Un ticket d'information
+   dit ce qui est décidé.
+9. **L'adresse de contact d'un produit** : un e-mail écrit à l'adresse
+   que montre un produit en ligne (`serge+<nom court>@…`, notée dans
+   `deployments.contact_email`) par quelqu'un que Serge ne connaît pas
+   devient le message d'un contact « entrant » de ce business ; « Traiter
+   une réponse » y répond avec la fiche produit, et note ses demandes.
+   Une réponse automatique ne crée pas de contact.
+
+Ce qui reste (accélérer, pivoter, arrêter, les livraisons, les impayés,
+la maintenance et la fermeture) est décrit plus bas, et n'est pas fait.
+Le pont vers Asterisk et
 l'agent vocal (`serge/voice/`) ne décrochent et n'appellent que si Serge a
 été démarré dans Mission Control ; Serge est arrêté par défaut.
 
@@ -120,6 +175,10 @@ sait rien de celui qui appelle et n'a aucun tool.
 
 ### Le point hebdomadaire
 
+Le point de la semaine existe (« Aujourd'hui », point 5) : il décide du
+produit et de la prospection (décision Q119). Ce qui suit avait été
+décidé avant (Q42), et n'est pas fait : accélérer, pivoter et arrêter.
+
 Une fois par semaine, **« Faire le point sur le business principal »** lit
 les chiffres de la semaine (points, points par euro, argent encaissé,
 réponses, demandes des clients) et propose :
@@ -137,25 +196,27 @@ Discord validé par Julien. Cette invocation remplace « Comment grandir »,
 La prospection lourde vend en masse le produit fini, tel qu'il sort de la
 construction : elle est détaillée dans
 [`LOT12_CONCEPTION.md`](../LOT12_CONCEPTION.md), partie 7 (décisions Q92
-et Q93). Le point hebdomadaire ci-dessus, les retours des clients, les
-nouvelles versions, la maintenance et la fermeture, ci-dessous, sont à
-revoir au lot 16, « Faire vivre les produits ».
+et Q93). La maintenance et la fermeture, ci-dessous, restent à faire.
 
 ### Les retours des clients
 
-1. « Traiter une réponse » repère aussi les **demandes sur le produit** :
-   bug, insatisfaction, demande (exemple : « est-ce que vous pouvez
-   ajouter l'export Excel ? »). Chaque demande devient une ligne dans une
-   nouvelle table `product_requests`.
-2. **Urgent** (un bug qui touche un client qui a payé) : correction lancée
-   tout de suite. **Le reste** : l'invocation hebdomadaire « Préparer la
-   prochaine version » regroupe les doublons, choisit ce qui entre dans la
-   version et refuse le reste avec une raison.
-3. Construction avec le couple builder / reviewer de l'étape 5.
-4. Corrections et petites améliorations : publication automatique.
-   Nouvelle fonctionnalité importante, changement de prix ou nouvelle
-   capacité nécessaire : ticket Discord.
-5. Chaque personne dont la demande est livrée reçoit un message.
+C'est fait (« Aujourd'hui », points 5 à 9, décision Q119), sauf le
+dernier point :
+
+1. « Traiter une réponse » repère les **demandes sur le produit** : bug,
+   insatisfaction, idée (exemple : « est-ce que vous pouvez ajouter
+   l'export Excel ? »). Chaque demande devient une ligne de
+   `customer_requests`.
+2. **Un bug signalé** sur un produit en vente : trié tout de suite, et
+   corrigé s'il y a lieu. **Le reste** : le point de la semaine choisit
+   ce qui change, et la conception retient ou refuse chaque demande, avec
+   sa raison.
+3. Construction avec le constructeur et le relecteur de l'étape 5.
+4. Une correction part en ligne dès que le relecteur la juge bonne, avec
+   un ticket d'information. Une évolution (une fonctionnalité, une offre,
+   un prix) passe par les tickets « Plan » et « Tester le produit ».
+5. Pas encore fait : chaque personne dont la demande est livrée reçoit un
+   message.
 
 ### La fin de la prospection lourde
 

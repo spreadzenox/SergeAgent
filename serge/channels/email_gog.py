@@ -29,7 +29,7 @@ from email.utils import parseaddr
 from typing import Any
 
 from serge.channels.auto_reply import AUTO_REPLY, is_auto_reply
-from serge.channels.base import Incoming, Outgoing
+from serge.channels.base import Incoming, Outgoing, recipients
 
 DEFAULT_GOG_BIN = '/usr/local/bin/gog'
 ACCOUNT = 'auto'
@@ -215,6 +215,7 @@ def poll(since: str) -> list[Incoming]:
                 message_ref=headers.get('message-id', ''),
                 refs=tuple(refs),
                 native_type=AUTO_REPLY if is_auto_reply(headers) else 'email',
+                to=recipients(headers),
             )
         )
     return received

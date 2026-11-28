@@ -9,6 +9,12 @@ Un message reçu est rattaché, dans cet ordre (décision Q37) :
    plusieurs fiches la portent (une personne contactée pour deux
    business), c'est celle à qui Serge a écrit le plus récemment.
 
+3. par l'adresse de contact d'un produit (décision Q119) : il est écrit à
+   l'adresse que montre un produit en ligne (``deployments.contact_email``,
+   exemple ``serge+calcudevis@exemple.fr``). Son expéditeur, inconnu
+   jusque-là, devient un contact « entrant » de ce business : Serge lui
+   répond comme à un prospect, avec la fiche du produit.
+
 Sinon il est ``unattached`` : il n'est pas traité et apparaît dans Mission
 Control, dans les messages non rattachés.
 
@@ -31,7 +37,8 @@ from serge.channels.auto_reply import AUTO_REPLY
 from serge.channels.base import Incoming
 from serge.channels.web import transport
 from serge.conversations.send import silent_states
-from serge.funnels.contacts import normalise_value
+from serge.db.store import append_event
+from serge.funnels.contacts import create_contact, normalise_value
 
 
 def _by_thread(conn: sqlite3.Connection, refs: tuple[str, ...]) -> Any:
@@ -63,6 +70,38 @@ def _by_address(
     ).fetchone()
 
 
+def _by_product(conn: sqlite3.Connection, message: Incoming) -> Any:
+    """Le business dont le produit en ligne montre une des adresses à qui
+    le message est écrit ; son expéditeur y devient un contact entrant.
+    Une réponse automatique ne crée pas de contact."""
+    sender = normalise_value('email', message.address)
+    if not sender or message.native_type == AUTO_REPLY:
+        return None
+    for address in message.to:
+        row = conn.execute(
+            'SELECT venture_id FROM deployments WHERE contact_email=?'
+            " AND status='running' ORDER BY updated_at DESC LIMIT 1",
+            (address,),
+        ).fetchone()
+        if row is None:
+            continue
+        venture = str(row[0])
+        contact = create_contact(conn, venture, sender, email=sender)
+        conn.execute(
+            "UPDATE contacts SET regime='INBOUND' WHERE id=?", (contact,)
+        )
+        append_event(
+            conn,
+            actor='conversations',
+            type='contact.inbound',
+            venture_id=venture,
+            payload={'par': 'adresse de contact du produit', 'a': address},
+            rows=[('contacts', contact)],
+        )
+        return contact, venture
+    return None
+
+
 def _status(conn: sqlite3.Connection, message: Incoming, found: Any) -> str:
     if found is None:
         return 'unattached'
@@ -86,6 +125,8 @@ def attach(
             'SELECT address_channel FROM canaux WHERE id=?', (channel,)
         ).fetchone()
         found = _by_address(conn, str(row[0]) if row else '', message.address)
+    if found is None:
+        found = _by_product(conn, message)
     return {
         'external_ref': message.external_ref,
         'address': message.address,
