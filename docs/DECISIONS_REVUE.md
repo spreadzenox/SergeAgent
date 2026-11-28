@@ -2863,3 +2863,34 @@ indésirable compris ; une nouvelle version dont une tâche échoue reste
 `open` jusqu'à ce qu'un humain relance la tâche ou l'abandonne ;
 abandonner une version n'arrête pas sa tâche en cours ; les paiements
 sont donnés au point du plus ancien au plus récent, 300 au plus.
+
+### Q121 — Pousser en SSH avec un message toutes les 30 secondes (validé par Julien, 28 novembre 2026)
+
+Le hook pre-push (`scripts/pre-push-check.py`) dure environ 15 minutes.
+Git ouvre la connexion à GitHub avant de le lancer et la garde ouverte,
+sans rien y envoyer, jusqu'à la fin. En SSH, GitHub ferme une connexion
+inactive au bout de 6 minutes : le hook finissait vert, puis le push
+échouait avec « Connection to github.com closed by remote host » et le
+code 141. Mesuré le 28 novembre 2026 : une connexion de push vers
+GitHub, ouverte sans rien envoyer, est coupée au bout de 362 secondes ;
+avec `ServerAliveInterval 30`, elle est encore ouverte au bout de
+25 minutes.
+
+Julien a choisi, parmi trois solutions, d'ajouter une fois par machine
+à `~/.ssh/config` :
+
+```
+Host github.com
+    ServerAliveInterval 30
+```
+
+Les arguments : c'est la seule solution qui corrige la cause sans rien
+toucher d'autre. Le hook reste complet (toute la suite, puis un appel
+OpenRouter réel avant chaque push), le remote et les identifiants ne
+changent pas, et la durée du hook n'a plus d'importance. Écartés :
+pousser en HTTPS (ça marche aussi, mais chaque machine doit avoir `gh`
+connecté et un remote de push à part ; reste la voie de quiconque ne
+pousse pas en SSH) et raccourcir le hook (un hook de plus de 6 minutes
+échouerait encore, et il faudrait retirer des contrôles que la charte
+demande). Repousser avec `--no-verify` reste exclu : ça contourne le
+contrôle. Détail : `docs/DEV_TOOLING.md`, partie « Push ».

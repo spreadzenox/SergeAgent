@@ -71,6 +71,26 @@ le ferait dépasser 500 lignes. Le hook formate le diff.
    L’overlay `policy.test.yaml` (plafonds 2 €) ne s’applique qu’ici :
    sinon les tests policy voient 2.0 au lieu de 5.0.
 
+Le hook dure environ 15 minutes. Git ouvre la connexion à GitHub avant
+de le lancer, et la garde ouverte sans rien y envoyer jusqu'à la fin.
+En SSH (`git@github.com:...`), GitHub ferme une connexion inactive au
+bout de 6 minutes : le hook finit vert, puis le push échoue avec
+« Connection to github.com closed by remote host » et le code 141. Une
+fois par machine, on ajoute donc à `~/.ssh/config` (sous Windows,
+`C:\Users\<nom>\.ssh\config`) :
+
+```
+Host github.com
+    ServerAliveInterval 30
+```
+
+ssh envoie alors un petit message toutes les 30 secondes, et la
+connexion tient toute la durée du hook (mesuré le 28 novembre 2026 :
+coupée au bout de 362 secondes sans ce réglage, encore ouverte au bout
+de 25 minutes avec ; Q121). Ne jamais repousser avec `--no-verify` : ça
+contourne le contrôle. Un push en HTTPS ne garde pas de connexion
+ouverte pendant le hook et n'a pas besoin de ce réglage.
+
 **CI** (`.github/workflows/ci.yml` → `scripts/ci.sh`) :
 
 - `uv sync --frozen`, Chromium + deps, puis `scripts/ci.sh`
@@ -105,6 +125,10 @@ uv run playwright install chromium
 
 `pre-commit install` pose les deux hooks (commit + push). Sans ça, un
 push part sans la suite.
+
+Pour pousser en SSH, il faut aussi le réglage `ServerAliveInterval` de
+la partie « Push » plus haut, une fois par machine. Sans lui, le push
+échoue après les 15 minutes du hook.
 
 > Worktree git (ex. `/home/serge/serge-kit`) : `.git/hooks` est partagé
 > avec le repo principal — ne jamais y installer les hooks kit.
