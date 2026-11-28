@@ -99,6 +99,10 @@ n'est pas réparée, aucune relance ne part.
 - `BIN: gog introuvable` → binaire absent (`PATH` ? `SERGE_GOG_BIN` ?).
 - `AUTH: gog refusé` → keyring verrouillé : `gog.env` présent ? store migré ?
   `gog auth doctor` pour trancher.
+- `AUTH: gog refusé (missing --account …)` → gog a plusieurs comptes et ne
+  sait pas lequel est la boîte du serveur : `GOG_ACCOUNT` doit être dans
+  `gog.env`. Serge n'envoie jamais `-a auto`, qui ignore `GOG_ACCOUNT` dès
+  qu'il y a plusieurs comptes (28 novembre 2026).
 - `API: gog a échoué` → sortie brute tronquée dans le message, relire.
 
 ## 6. Sécurité
