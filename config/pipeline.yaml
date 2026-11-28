@@ -751,6 +751,51 @@ tools:
         - {id: compte, table: web_accounts, column: id, param: account}
       params:
         - {name: account, required: true, description: Le nom du compte.}
+  - id: brancher_service
+    title: Brancher un service gratuit
+    doc: >-
+      Quand le produit a besoin d'un service gratuit d'un autre site, qui
+      demande un compte et une clé d'API : donne son nom (un mot, celui du
+      site), son adresse et ce qu'il te faut. Ta tâche attend que Serge
+      ait créé son compte et trouvé une clé, puis repart avec le nom de la
+      variable d'environnement où le produit lira sa clé, ou avec la
+      raison de l'échec. Tu ne vois jamais la clé.
+    capability: connect_service
+  - id: services_du_business
+    title: Les services externes du business
+    doc: >-
+      Les services externes demandés pour un business : leur nom, leur
+      adresse, la variable d'environnement de leur clé et leur état.
+      Jamais leur clé.
+    capability: db_read
+    read:
+      tables: [product_services]
+      columns: &colonnes_service
+        - {table: product_services, name: name, as: nom}
+        - {table: product_services, name: url, as: adresse}
+        - {table: product_services, name: purpose, as: besoin}
+        - {table: product_services, name: env_name, as: variable}
+        - {table: product_services, name: status, as: etat}
+        - {table: product_services, name: free_plan, as: offre_gratuite}
+        - {table: product_services, name: reason, as: raison}
+      filters:
+        - {id: business, table: product_services, column: venture_id, param: venture_id}
+      params:
+        - {name: venture_id, required: true, description: Le numéro du business.}
+  - id: service_a_brancher
+    title: Le service à brancher
+    doc: >-
+      Un service externe, par son numéro : son nom, son adresse, ce que le
+      produit en attend, et la variable d'environnement de sa clé. Jamais
+      sa clé.
+    capability: db_read
+    read:
+      tables: [product_services]
+      columns: *colonnes_service
+      filters:
+        - {id: service, table: product_services, column: id, param: service_id}
+      params:
+        - {name: service_id, required: true, description: Le numéro du service.}
   - id: changer_mot_de_passe_du_compte
     title: Changer le mot de passe du compte
     doc: >-
@@ -1765,6 +1810,13 @@ writable_tables:
       - {name: status, description: 'Rattaché, non rattaché, ou ignoré (une absence).'}
       - {name: reaction, description: 'Ce que fait le message (question, refus…).'}
       - {name: received_at, description: Quand Serge l'a reçu.}
+  - table: product_services
+    update: true
+    description: Les services externes des produits. Leur clé ne s'écrit pas par ici.
+    columns:
+      - {name: status, description: 'Demandé, en cours, branché, raté ou refusé.'}
+      - {name: reason, description: La raison d'un échec ou d'un refus.}
+      - {name: free_plan, description: Ce que donne l'offre gratuite.}
   - table: web_accounts
     update: true
     description: Les comptes web de Serge. Son mot de passe et sa session ne s'écrivent pas par ici.
@@ -3768,7 +3820,7 @@ invocations:
     queue: works
     priority: 30
     max_tool_turns: 80
-    prompt: |
+    prompt: &consigne_creer_compte |
       Tu crées le compte de Serge sur un site. Le nom du compte et l'adresse
       du site sont dans les paramètres de la tâche (« compte », « url »),
       avec le pseudo voulu sur ce site (« pseudo » ; vide : celui de
@@ -3854,7 +3906,7 @@ invocations:
       d'utilisateur) ; le nom public du compte ; et un compte rendu de
       trois phrases : ce qui a été fait, ce qui a bloqué, ce qu'il reste à
       un humain à faire.
-    tools:
+    tools: &outils_creer_compte
       - tool: compte_web
         mode: given
         label: Le compte
@@ -3889,12 +3941,12 @@ invocations:
         max_calls: 3
         params:
           account: {source: task, value: compte}
-    output:
+    output: &reponse_creer_compte
       - {path: cree, type: choice, choices: [oui, non], description: 'Es-tu connecté au compte, à la fin ?'}
       - {path: identifiant, type: text, required: false, description: "Ce qui sert à se connecter : l'e-mail ou le nom d'utilisateur."}
       - {path: nom_public, type: text, required: false, description: Le nom public du compte sur le site.}
       - {path: compte_rendu, type: text, description: 'Ce qui a été fait, ce qui a bloqué, ce qu''il reste à faire.'}
-    writes:
+    writes: &ecritures_creer_compte
       - table: web_accounts
         operation: update
         key: {column: id, source: task, value: compte}
@@ -4358,6 +4410,200 @@ invocations:
       title: {source: task, value: titre}
       text: {source: task, value: raison}
 
+  # --- Les services externes gratuits d'un produit (décision Q118) ---
+  # Le constructeur demande un service (« Brancher un service gratuit ») :
+  # sa tâche attend. Serge ouvre son compte sur le site (un seul par site),
+  # le crée s'il le faut, va chercher une clé d'API, puis la tâche repart
+  # avec le résultat. Un service que le plan validé ne nomme pas passe
+  # d'abord par un ticket « Service ».
+  - id: ouvrir_compte_service
+    title: Ouvrir le compte d'un service
+    role: >-
+      Un produit demande un service gratuit d'un autre site : prépare le
+      compte de Serge sur ce site, ou reprend celui qu'il y a déjà (un seul
+      compte par site, quel que soit le produit). Sans LLM.
+    type: capability
+    capability: open_service_account
+    queue: works
+    priority: 30
+    params:
+      account: {source: task, value: compte}
+      url: {source: task, value: url}
+
+  - id: creer_compte_service
+    title: Créer le compte d'un service
+    role: >-
+      Crée sur le site d'un service gratuit le compte de Serge, comme
+      « Créer un compte web » : le vrai Chrome, son identité, le mot de
+      passe tapé par Serge, un humain devant un captcha. Ensuite, la clé
+      d'API reste à aller chercher.
+    type: llm
+    model_tier: web
+    queue: works
+    priority: 30
+    max_tool_turns: 80
+    prompt: *consigne_creer_compte
+    tools: *outils_creer_compte
+    output: *reponse_creer_compte
+    writes: *ecritures_creer_compte
+
+  - id: obtenir_cle_service
+    title: Obtenir la clé d'un service
+    role: >-
+      Connecté au compte de Serge sur le site d'un service gratuit, va dans
+      son tableau de bord créer une clé d'API de l'offre gratuite, et la
+      fait garder par Serge sans la recopier. Ne paie rien et ne donne
+      aucune carte.
+    type: llm
+    model_tier: web
+    queue: works
+    priority: 30
+    max_tool_turns: 60
+    prompt: |
+      Tu vas chercher une clé d'API pour un produit de Serge, sur le site
+      d'un service où Serge a un compte. Tu reçois le service (son nom, son
+      adresse, ce que le produit en attend) et le compte.
+
+      Ce compte est celui de Serge, un agent IA. Quatre règles, sans
+      exception :
+
+      - **Gratuit seulement.** Tu restes sur l'offre gratuite. Tu ne donnes
+        jamais de carte bancaire, tu ne commences aucun essai payant, tu
+        n'acceptes aucun abonnement. Si le site exige une carte ou un
+        paiement, même pour l'offre gratuite, arrête-toi et rends obtenue
+        « non », en le disant.
+      - **Tu ne mens pas.** Si le site demande à quoi servira la clé, tu
+        dis la vérité : un petit service web, tenu par Serge, un agent IA,
+        pour la personne dont le compte porte l'identité.
+      - **Un captcha n'est pas pour toi.** Tu n'y touches pas et tu
+        n'essaies pas de le contourner : appelle « Appeler un humain ».
+      - **Tu ne recopies pas la clé.** Quand la page l'affiche, fais
+        l'action garder_cle sur l'élément qui la contient (son repère,
+        ref) : Serge la lit et la garde, chiffrée. Ne l'écris jamais dans
+        ta réponse ni dans ton compte rendu.
+
+      Comment faire :
+
+      1. Ouvre le site. Si tu n'es pas connecté, connecte-toi : l'identifiant
+         du compte, le mot de passe tapé par Serge (action taper_secret,
+         text « mot_de_passe_du_compte »), le code reçu par e-mail ou par
+         SMS (« Mes messages de vérification »).
+      2. Trouve où se créent les clés d'API (« API keys », « Tokens »,
+         « Développeurs », « Dashboard »). Si le site demande d'abord de
+         créer un projet ou une application, crée-le avec le nom du
+         service et une description honnête.
+      3. Crée une clé pour ce que le produit en attend, avec les droits
+         les plus étroits qui suffisent. Nomme-la d'après le produit.
+      4. Fais garder la clé (garder_cle). Si l'outil dit que ce n'est pas
+         une clé, vise mieux : le champ ou le texte qui contient la clé,
+         et elle seule. Si la clé ne s'affiche qu'une fois et que tu l'as
+         manquée, crée-en une autre.
+      5. Lis ce que donne l'offre gratuite (le nombre de requêtes par jour
+         ou par mois) : note-le dans « offre ».
+
+      Rends obtenue « oui » seulement si garder_cle a réussi ; sinon
+      « non », avec dans ton compte rendu ce qui a bloqué.
+    tools:
+      - tool: service_a_brancher
+        mode: given
+        label: Le service
+        params:
+          service_id: {source: task, value: service_id}
+      - tool: compte_web
+        mode: given
+        label: Le compte de Serge sur ce site
+        params:
+          account: {source: task, value: compte}
+      - tool: vrai_chrome_agir
+        mode: callable
+        params:
+          venture_id: {source: fixed, value: comptes}
+          deliverable: {source: task, value: compte}
+          task_id: {source: task, value: task_id}
+          account: {source: task, value: compte}
+          service: {source: task, value: service_id}
+      - tool: vrai_chrome_lire
+        mode: callable
+        params: *vrai_chrome_du_compte
+      - tool: vrai_chrome_capture
+        mode: callable
+        params: *vrai_chrome_du_compte
+      - tool: messages_de_verification
+        mode: callable
+        params: *tache_de_verification
+      - tool: appeler_un_humain
+        mode: callable
+        params:
+          task_id: {source: task, value: task_id}
+    output:
+      - {path: obtenue, type: choice, choices: [oui, non], description: 'La clé est-elle gardée ?'}
+      - {path: offre, type: text, required: false, description: "Ce que donne l'offre gratuite : requêtes par jour ou par mois."}
+      - {path: compte_rendu, type: text, description: 'Ce qui a été fait, ce qui a bloqué. Jamais la clé.'}
+    writes:
+      - table: product_services
+        operation: update
+        key: {column: id, source: task, value: service_id}
+        values:
+          free_plan: {source: field, value: offre}
+
+  - id: service_fini
+    title: Finir le branchement d'un service
+    role: >-
+      Note si le service est branché (sa clé est gardée) ou non, et fait
+      repartir la tâche de construction qui attendait, avec le résultat :
+      la variable d'environnement de la clé, ou la raison de l'échec. Sans
+      LLM.
+    type: capability
+    capability: finish_service
+    queue: works
+    priority: 30
+    params:
+      service_id: {source: task, value: service_id}
+      ok: {source: task, value: ok}
+      raison: {source: task, value: raison}
+
+  - id: suite_service
+    title: Suite du ticket « Service »
+    role: >-
+      La réponse au ticket « Service » : « Valider » lance le branchement
+      du service (le compte, puis la clé), « Rejeter » le refuse et le
+      constructeur fait sans. Sans LLM.
+    type: capability
+    capability: echo
+    queue: conversations
+    priority: 80
+    params:
+      acte: {source: task, value: acte}
+      texte: {source: task, value: texte}
+      service_id: {source: task, value: service_id}
+    writes:
+      - table: product_services
+        operation: update
+        key: {column: id, source: task, value: service_id}
+        condition: {field: acte, op: '=', value: valider}
+        values:
+          status: {source: fixed, value: connecting}
+      - table: product_services
+        operation: update
+        key: {column: id, source: task, value: service_id}
+        condition: {field: acte, op: '=', value: rejeter}
+        values:
+          status: {source: fixed, value: refused}
+          reason: {source: task, value: texte}
+
+  - id: prevenir_service
+    title: Prévenir pour un service
+    role: >-
+      Un ticket d'information à Julien et Clem : un service externe est
+      branché à un produit, ou n'a pas pu l'être, avec la raison. Sans LLM.
+    type: capability
+    capability: inform_owners
+    queue: conversations
+    priority: 80
+    params:
+      title: {source: task, value: titre}
+      text: {source: task, value: raison}
+
   # --- L'étape 2 : concevoir, critiquer, construire, relire (lot 10, Q91) ---
   # Un business choisi pour un POC est conçu, critiqué (3 tours au plus),
   # validé par un humain (ticket « Plan », 48 heures), construit dans son
@@ -4411,10 +4657,19 @@ invocations:
       Python et git, où un modèle code et lance le produit), un navigateur
       pour l'essayer, et la mise en ligne d'un site web sur un sous-domaine
       de Serge ; le produit garde ses données dans un dossier à lui. Il n'y
-      a pas d'humain pour faire le travail, pas de compte à créer sur
-      d'autres sites, pas d'API payante, pas de connexion au logiciel des
-      prospects : un plan qui en a besoin est irréaliste, trouve autre
-      chose.
+      a pas d'humain pour faire le travail, pas d'API payante, pas de
+      connexion au logiciel des prospects : un plan qui en a besoin est
+      irréaliste, trouve autre chose.
+
+      Un service gratuit d'un autre site (une API qui demande un compte et
+      une clé) est permis quand le produit en a vraiment besoin : Serge y
+      crée son compte, et le constructeur reçoit la clé. Écris alors, à la
+      fin du champ « plan », une ligne par service : « nom | adresse |
+      pourquoi | ce que donne l'offre gratuite ». Exemple :
+      « openrouteservice | https://openrouteservice.org | calculer un
+      trajet | 2 000 requêtes par jour ». Valider le plan autorise ces
+      comptes. Jamais un service qui demande une carte bancaire, ni une
+      connexion « avec Google ».
 
       Écris un plan de A à Z, réalisable avec ça :
       - hypothese : ce qu'on veut vérifier, en une phrase ;
@@ -4585,8 +4840,12 @@ invocations:
       Cherche ce qui empêcherait le POC de marcher :
       - la faisabilité technique : Serge code dans un conteneur Linux avec
         Node, Python et git, essaie dans un navigateur et publie un site
-        web ; pas d'humain, pas de compte sur d'autres sites, pas d'API
-        payante, pas de connexion au logiciel des prospects ;
+        web ; pas d'humain, pas d'API payante, pas de connexion au logiciel
+        des prospects. Un service gratuit d'un autre site est permis s'il
+        est nommé à la fin du plan (« nom | adresse | pourquoi | offre
+        gratuite ») : vérifie qu'il est vraiment nécessaire, que son offre
+        gratuite suffit à l'usage prévu, et qu'il ne demande ni carte
+        bancaire ni connexion « avec Google » ;
       - le produit est-il complet ? Suis le parcours du prospect du début à
         la fin : arrive-t-il à un résultat qui lui sert, sans rien avoir à
         finir à la main ailleurs ? Dis ce qui manque, fonction par
@@ -4818,6 +5077,20 @@ invocations:
       - s'il te manque un outil ou un accès, appelle « Demander une
         nouvelle capacité ».
 
+      Un service gratuit d'un autre site (une API qui demande un compte et
+      une clé) : seulement s'il est gratuit et vraiment nécessaire, et de
+      préférence nommé dans le plan. Appelle « Brancher un service
+      gratuit » avec son nom, son adresse et ce qu'il te faut : ta tâche
+      attend que Serge ait créé son compte et trouvé une clé, puis repart
+      avec le nom de la variable d'environnement où la lire
+      (SERVICE_<NOM>_KEY), la même dans le chantier, en staging et en
+      prod. Lis la clé dans cette variable au démarrage : ne l'écris
+      jamais dans un fichier, dans le journal ni dans une page. Prévois ce
+      que fait le produit quand le service ne répond pas ou que son quota
+      gratuit est atteint, et nomme le service dans la page de
+      confidentialité si des données d'utilisateurs lui sont envoyées. Si
+      le service n'a pas pu être branché, fais sans lui.
+
       Rends fini « oui » si le produit est prêt à être publié, sinon
       « non » ; ton compte rendu : ce que tu as fait, comment tu l'as
       vérifié, ce qui reste.
@@ -4859,6 +5132,18 @@ invocations:
       - tool: chantier_modifier
         mode: callable
         params: *chantier_poc
+      - tool: services_du_business
+        mode: given
+        label: Les services externes déjà demandés
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: brancher_service
+        mode: callable
+        max_calls: 3
+        params:
+          venture_id: {source: task, value: venture_id}
+          deliverable: {source: fixed, value: poc}
+          task_id: {source: task, value: task_id}
     output:
       - {path: fini, type: choice, choices: [oui, non], description: 'Le produit est-il prêt à être publié ?'}
       - {path: compte_rendu, type: text, description: 'Ce qui a été fait, vérifié, et ce qui reste.'}
@@ -5220,8 +5505,17 @@ invocations:
       pour l'essayer, la mise en ligne d'un site web, et Stripe pour les
       paiements (une page de paiement Stripe, des abonnements). Le produit
       garde ses données dans un dossier à lui. Pas d'humain pour faire le
-      travail, pas de compte sur d'autres sites, pas d'API payante, pas de
-      connexion au logiciel des clients.
+      travail, pas d'API payante, pas de connexion au logiciel des clients.
+
+      Un service gratuit d'un autre site (une API qui demande un compte et
+      une clé) est permis quand le produit en a vraiment besoin : Serge y
+      crée son compte, et le constructeur reçoit la clé. Écris alors, à la
+      fin du champ « plan », une ligne par service : « nom | adresse |
+      pourquoi | ce que donne l'offre gratuite ». Exemple :
+      « openrouteservice | https://openrouteservice.org | calculer un
+      trajet | 2 000 requêtes par jour ». Valider le plan autorise ces
+      comptes. Jamais un service qui demande une carte bancaire, ni une
+      connexion « avec Google ».
 
       Écris un plan de A à Z, réalisable avec ça :
       - hypothese : ce que le produit doit prouver, en une phrase ;
@@ -5430,8 +5724,12 @@ invocations:
       Cherche ce qui empêcherait le produit de marcher ou de se vendre :
       - la faisabilité technique : Serge code dans un conteneur Linux avec
         Node, Python et git, essaie dans un navigateur, publie un site web
-        et encaisse par Stripe ; pas d'humain, pas de compte sur d'autres
-        sites, pas d'API payante ;
+        et encaisse par Stripe ; pas d'humain, pas d'API payante. Un
+        service gratuit d'un autre site est permis s'il est nommé à la fin
+        du plan (« nom | adresse | pourquoi | offre gratuite ») : vérifie
+        qu'il est vraiment nécessaire, que son offre gratuite suffit à
+        l'usage prévu, et qu'il ne demande ni carte bancaire ni connexion
+        « avec Google » ;
       - le produit est-il complet ? Suis le parcours du client du début à
         la fin : arrive-t-il à un résultat qui lui sert, sans rien avoir à
         finir à la main ailleurs ? Dis ce qui manque, fonction par
@@ -5777,6 +6075,20 @@ invocations:
       - s'il te manque un outil ou un accès, appelle « Demander une
         nouvelle capacité ».
 
+      Un service gratuit d'un autre site (une API qui demande un compte et
+      une clé) : seulement s'il est gratuit et vraiment nécessaire, et de
+      préférence nommé dans le plan. Appelle « Brancher un service
+      gratuit » avec son nom, son adresse et ce qu'il te faut : ta tâche
+      attend que Serge ait créé son compte et trouvé une clé, puis repart
+      avec le nom de la variable d'environnement où la lire
+      (SERVICE_<NOM>_KEY), la même dans le chantier, en staging et en
+      prod. Lis la clé dans cette variable au démarrage : ne l'écris
+      jamais dans un fichier, dans le journal ni dans une page. Prévois ce
+      que fait le produit quand le service ne répond pas ou que son quota
+      gratuit est atteint, et nomme le service dans la page de
+      confidentialité si des données d'utilisateurs lui sont envoyées. Si
+      le service n'a pas pu être branché, fais sans lui.
+
       Rends fini « oui » si le produit est prêt à être publié, sinon
       « non » ; ton compte rendu : ce que tu as fait, comment tu l'as
       vérifié, ce qui reste.
@@ -5825,6 +6137,18 @@ invocations:
       - tool: chantier_modifier
         mode: callable
         params: *chantier_produit
+      - tool: services_du_business
+        mode: given
+        label: Les services externes déjà demandés
+        params:
+          venture_id: {source: task, value: venture_id}
+      - tool: brancher_service
+        mode: callable
+        max_calls: 3
+        params:
+          venture_id: {source: task, value: venture_id}
+          deliverable: {source: fixed, value: produit}
+          task_id: {source: task, value: task_id}
     output:
       - {path: fini, type: choice, choices: [oui, non], description: 'Le produit est-il prêt à être publié ?'}
       - {path: compte_rendu, type: text, description: 'Ce qui a été fait, vérifié, et ce qui reste.'}
@@ -8871,6 +9195,74 @@ links:
       url: {source: field, value: url}
       naissance: {source: task, value: naissance}
       pseudo: {source: task, value: pseudo}
+  - id: service_vers_creation_du_compte
+    title: Serge n'a pas encore de compte sur le site du service
+    from: ouvrir_compte_service
+    to: creer_compte_service
+    condition: {field: etat, op: '=', value: a_creer}
+    params:
+      compte: {source: field, value: compte}
+      url: {source: task, value: url}
+      service_id: {source: task, value: service_id}
+  - id: service_vers_la_cle
+    title: Serge a déjà son compte sur le site du service
+    from: ouvrir_compte_service
+    to: obtenir_cle_service
+    condition: {field: etat, op: '=', value: actif}
+    params:
+      compte: {source: field, value: compte}
+      service_id: {source: task, value: service_id}
+  - id: service_sans_compte_vers_fin
+    title: Le compte du service ne peut pas être ouvert
+    from: ouvrir_compte_service
+    to: service_fini
+    condition: {field: etat, op: '=', value: refuse}
+    params:
+      service_id: {source: task, value: service_id}
+      ok: {source: fixed, value: non}
+      raison: {source: field, value: raison}
+  - id: compte_du_service_cree_vers_la_cle
+    title: Le compte du service est créé ; chercher la clé
+    from: creer_compte_service
+    to: obtenir_cle_service
+    condition: {field: cree, op: '=', value: oui}
+    params:
+      compte: {source: task, value: compte}
+      service_id: {source: task, value: service_id}
+  - id: compte_du_service_pas_cree_vers_fin
+    title: Le compte du service n'a pas pu être créé
+    from: creer_compte_service
+    to: service_fini
+    condition: {field: cree, op: '!=', value: oui}
+    params:
+      service_id: {source: task, value: service_id}
+      ok: {source: fixed, value: non}
+      raison: {source: field, value: compte_rendu}
+  - id: cle_du_service_vers_fin
+    title: La recherche de la clé est finie
+    from: obtenir_cle_service
+    to: service_fini
+    params:
+      service_id: {source: task, value: service_id}
+      ok: {source: field, value: obtenue}
+      raison: {source: field, value: compte_rendu}
+  - id: service_refuse_vers_fin
+    title: Un humain refuse le service
+    from: suite_service
+    to: service_fini
+    condition: {field: acte, op: '=', value: rejeter}
+    params:
+      service_id: {source: task, value: service_id}
+      ok: {source: fixed, value: non}
+      raison: {source: fixed, value: un humain a refusé ce service}
+  - id: service_fini_vers_ticket
+    title: Prévenir qu'un service est branché, ou pas
+    from: service_fini
+    to: prevenir_service
+    condition: {field: ok, op: '=', value: 'True'}
+    params:
+      titre: {source: field, value: titre}
+      raison: {source: field, value: raison}
   - id: compte_refuse_vers_ticket
     title: Un compte web qui ne peut pas être ouvert
     from: ouvrir_compte_web
@@ -9096,6 +9488,28 @@ triggers:
       texte: {source: row, value: text}
       plan_id: {source: row, value: ref_id}
       venture_id: {source: row, value: venture_id}
+  - id: service_demande_a_brancher
+    title: Un service externe est à brancher
+    invocation: ouvrir_compte_service
+    event: row_written
+    table: product_services
+    filter_column: status
+    filter_value: connecting
+    params:
+      service_id: {source: row, value: id}
+      compte: {source: row, value: name}
+      url: {source: row, value: url}
+  - id: reponse_au_ticket_service
+    title: Une réponse au ticket « Service »
+    invocation: suite_service
+    event: row_written
+    table: ticket_answers
+    filter_column: ticket_type
+    filter_value: SERVICE
+    params:
+      acte: {source: row, value: acte}
+      texte: {source: row, value: text}
+      service_id: {source: row, value: ref_id}
   - id: reponse_au_ticket_test_poc
     title: Une réponse au ticket « Tester le produit » d'un POC
     invocation: suite_test_poc
@@ -11813,6 +12227,16 @@ changes:
       description:
         from: 'Le canal du test : le numéro d''un canal branché.'
         to: 'Le ou les canaux du test : des numéros de canaux branchés, séparés par une virgule.'
+  # Sur une instance plus ancienne, ce champ disait « Le canal du test. » :
+  # le changement précédent ne l'a pas reconnu (27 novembre 2026).
+  - id: q117_poc_canaux_reponse_ancien_texte
+    why: Le champ « canal » du plan peut nommer plusieurs canaux, aussi là où son ancien texte était resté (Q117).
+    table: invocation_output_fields
+    where: {invocation_id: concevoir_poc, path: canal}
+    set:
+      description:
+        from: Le canal du test.
+        to: 'Le ou les canaux du test : des numéros de canaux branchés, séparés par une virgule.'
   - id: q117_prospects_une_personne_un_canal
     why: Une même personne n'est contactée que sur un canal (Q117).
     table: invocations
@@ -11830,6 +12254,164 @@ changes:
               Une même personne n'est contactée que sur un canal : si elle est déjà
               dans les contacts du business, même par une autre adresse ou sur un
               autre réseau, ne la propose pas, l'outil la refuserait.
+  # Les services externes gratuits d'un produit (décision Q118) : les
+  # invocations, les liens et les déclencheurs neufs s'ajoutent tout seuls.
+  - id: q118_concevoir_poc_consigne
+    why: Le plan peut nommer un service gratuit d'un autre site (Q118).
+    table: invocations
+    where: {id: concevoir_poc}
+    set:
+      prompt:
+        replace:
+          - old: |2-
+              de Serge ; le produit garde ses données dans un dossier à lui. Il n'y
+              a pas d'humain pour faire le travail, pas de compte à créer sur
+              d'autres sites, pas d'API payante, pas de connexion au logiciel des
+              prospects : un plan qui en a besoin est irréaliste, trouve autre
+              chose.
+            new: |2-
+              de Serge ; le produit garde ses données dans un dossier à lui. Il n'y
+              a pas d'humain pour faire le travail, pas d'API payante, pas de
+              connexion au logiciel des prospects : un plan qui en a besoin est
+              irréaliste, trouve autre chose.
+
+              Un service gratuit d'un autre site (une API qui demande un compte et
+              une clé) est permis quand le produit en a vraiment besoin : Serge y
+              crée son compte, et le constructeur reçoit la clé. Écris alors, à la
+              fin du champ « plan », une ligne par service : « nom | adresse |
+              pourquoi | ce que donne l'offre gratuite ». Exemple :
+              « openrouteservice | https://openrouteservice.org | calculer un
+              trajet | 2 000 requêtes par jour ». Valider le plan autorise ces
+              comptes. Jamais un service qui demande une carte bancaire, ni une
+              connexion « avec Google ».
+  - id: q118_concevoir_produit_consigne
+    why: Le plan du produit peut nommer un service gratuit d'un autre site (Q118).
+    table: invocations
+    where: {id: concevoir_produit}
+    set:
+      prompt:
+        replace:
+          - old: |2-
+              garde ses données dans un dossier à lui. Pas d'humain pour faire le
+              travail, pas de compte sur d'autres sites, pas d'API payante, pas de
+              connexion au logiciel des clients.
+            new: |2-
+              garde ses données dans un dossier à lui. Pas d'humain pour faire le
+              travail, pas d'API payante, pas de connexion au logiciel des clients.
+
+              Un service gratuit d'un autre site (une API qui demande un compte et
+              une clé) est permis quand le produit en a vraiment besoin : Serge y
+              crée son compte, et le constructeur reçoit la clé. Écris alors, à la
+              fin du champ « plan », une ligne par service : « nom | adresse |
+              pourquoi | ce que donne l'offre gratuite ». Exemple :
+              « openrouteservice | https://openrouteservice.org | calculer un
+              trajet | 2 000 requêtes par jour ». Valider le plan autorise ces
+              comptes. Jamais un service qui demande une carte bancaire, ni une
+              connexion « avec Google ».
+  - id: q118_challenger_poc_consigne
+    why: Le critique vérifie les services gratuits que nomme le plan (Q118).
+    table: invocations
+    where: {id: challenger_poc}
+    set:
+      prompt:
+        replace:
+          - old: |2-
+                web ; pas d'humain, pas de compte sur d'autres sites, pas d'API
+                payante, pas de connexion au logiciel des prospects ;
+            new: |2-
+                web ; pas d'humain, pas d'API payante, pas de connexion au logiciel
+                des prospects. Un service gratuit d'un autre site est permis s'il
+                est nommé à la fin du plan (« nom | adresse | pourquoi | offre
+                gratuite ») : vérifie qu'il est vraiment nécessaire, que son offre
+                gratuite suffit à l'usage prévu, et qu'il ne demande ni carte
+                bancaire ni connexion « avec Google » ;
+  - id: q118_challenger_produit_consigne
+    why: Le critique du produit vérifie les services gratuits que nomme le plan (Q118).
+    table: invocations
+    where: {id: challenger_produit}
+    set:
+      prompt:
+        replace:
+          - old: |2-
+                et encaisse par Stripe ; pas d'humain, pas de compte sur d'autres
+                sites, pas d'API payante ;
+            new: |2-
+                et encaisse par Stripe ; pas d'humain, pas d'API payante. Un
+                service gratuit d'un autre site est permis s'il est nommé à la fin
+                du plan (« nom | adresse | pourquoi | offre gratuite ») : vérifie
+                qu'il est vraiment nécessaire, que son offre gratuite suffit à
+                l'usage prévu, et qu'il ne demande ni carte bancaire ni connexion
+                « avec Google » ;
+  - id: q118_construire_poc_consigne
+    why: Le constructeur sait demander un service gratuit et lire sa clé (Q118).
+    table: invocations
+    where: {id: construire_poc}
+    set:
+      prompt:
+        replace:
+          - old: |2-
+              Rends fini « oui » si le produit est prêt à être publié, sinon
+              « non » ; ton compte rendu : ce que tu as fait, comment tu l'as
+              vérifié, ce qui reste.
+            new: |2-
+              Un service gratuit d'un autre site (une API qui demande un compte et
+              une clé) : seulement s'il est gratuit et vraiment nécessaire, et de
+              préférence nommé dans le plan. Appelle « Brancher un service
+              gratuit » avec son nom, son adresse et ce qu'il te faut : ta tâche
+              attend que Serge ait créé son compte et trouvé une clé, puis repart
+              avec le nom de la variable d'environnement où la lire
+              (SERVICE_<NOM>_KEY), la même dans le chantier, en staging et en
+              prod. Lis la clé dans cette variable au démarrage : ne l'écris
+              jamais dans un fichier, dans le journal ni dans une page. Prévois ce
+              que fait le produit quand le service ne répond pas ou que son quota
+              gratuit est atteint, et nomme le service dans la page de
+              confidentialité si des données d'utilisateurs lui sont envoyées. Si
+              le service n'a pas pu être branché, fais sans lui.
+
+              Rends fini « oui » si le produit est prêt à être publié, sinon
+              « non » ; ton compte rendu : ce que tu as fait, comment tu l'as
+              vérifié, ce qui reste.
+  - id: q118_construire_produit_consigne
+    why: Le constructeur du produit sait demander un service gratuit et lire sa clé (Q118).
+    table: invocations
+    where: {id: construire_produit}
+    set:
+      prompt:
+        replace:
+          - old: |2-
+              Rends fini « oui » si le produit est prêt à être publié, sinon
+              « non » ; ton compte rendu : ce que tu as fait, comment tu l'as
+              vérifié, ce qui reste.
+            new: |2-
+              Un service gratuit d'un autre site (une API qui demande un compte et
+              une clé) : seulement s'il est gratuit et vraiment nécessaire, et de
+              préférence nommé dans le plan. Appelle « Brancher un service
+              gratuit » avec son nom, son adresse et ce qu'il te faut : ta tâche
+              attend que Serge ait créé son compte et trouvé une clé, puis repart
+              avec le nom de la variable d'environnement où la lire
+              (SERVICE_<NOM>_KEY), la même dans le chantier, en staging et en
+              prod. Lis la clé dans cette variable au démarrage : ne l'écris
+              jamais dans un fichier, dans le journal ni dans une page. Prévois ce
+              que fait le produit quand le service ne répond pas ou que son quota
+              gratuit est atteint, et nomme le service dans la page de
+              confidentialité si des données d'utilisateurs lui sont envoyées. Si
+              le service n'a pas pu être branché, fais sans lui.
+
+              Rends fini « oui » si le produit est prêt à être publié, sinon
+              « non » ; ton compte rendu : ce que tu as fait, comment tu l'as
+              vérifié, ce qui reste.
+  - id: q118_construire_poc_outils
+    why: Le constructeur voit les services déjà demandés et peut en demander un (Q118).
+    invocation: construire_poc
+    add_tools:
+      - {tool: services_du_business, mode: given, label: Les services externes déjà demandés, params: {venture_id: {source: task, value: venture_id}}}
+      - {tool: brancher_service, mode: callable, max_calls: 3, params: {venture_id: {source: task, value: venture_id}, deliverable: {source: fixed, value: poc}, task_id: {source: task, value: task_id}}}
+  - id: q118_construire_produit_outils
+    why: Le constructeur voit les services déjà demandés et peut en demander un (Q118).
+    invocation: construire_produit
+    add_tools:
+      - {tool: services_du_business, mode: given, label: Les services externes déjà demandés, params: {venture_id: {source: task, value: venture_id}}}
+      - {tool: brancher_service, mode: callable, max_calls: 3, params: {venture_id: {source: task, value: venture_id}, deliverable: {source: fixed, value: produit}, task_id: {source: task, value: task_id}}}
 deleted:
   invocations:
     # Le compteur du 21 novembre 2026 comptait jusqu'à un réglage à lui ;

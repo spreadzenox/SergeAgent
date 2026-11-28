@@ -40,11 +40,15 @@ class TaskOverBudget(RuntimeError):
 
 
 class TaskFrozen(RuntimeError):
-    """La tâche attend la réponse de Julien à une demande (un ticket)."""
+    """La tâche attend : la réponse de Julien à une demande (un ticket),
+    ou ce que dit ``waiting`` (un service qu'on branche, par exemple)."""
 
-    def __init__(self, ticket_id: str) -> None:
-        super().__init__(f'en attente de Julien : ticket {ticket_id}')
+    def __init__(self, ticket_id: str, waiting: str = '') -> None:
+        super().__init__(
+            waiting or f'en attente de Julien : ticket {ticket_id}'
+        )
         self.ticket_id = ticket_id
+        self.waiting = waiting
 
 
 def task_spend_eur(conn: sqlite3.Connection, task_id: str) -> float:

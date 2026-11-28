@@ -34,8 +34,10 @@ _ACTION = (
         'ouvrir, cliquer, double_cliquer, clic_droit, survoler, glisser,'
         ' taper, taper_secret, choisir, touche, defiler, revenir,'
         ' recharger, attendre, ecran, deposer_fichier, lire_telechargement,'
-        ' fermer_onglet, accepter_dialogue, refuser_dialogue ou'
-        ' passer_au_vrai_chrome.',
+        ' fermer_onglet, accepter_dialogue, refuser_dialogue,'
+        ' passer_au_vrai_chrome ou garder_cle (garde la clé d’API'
+        ' affichée dans l’élément visé par ref, sans la recopier : pour'
+        ' une tâche qui branche un service).',
     ),
     Param(
         'ref',
@@ -86,6 +88,14 @@ _ACTION = (
         'La première ligne à lire (lire_telechargement).',
     ),
     Param('submit', 'bool', False, 'Taper puis valider avec Entrée.'),
+    Param(
+        'service',
+        'text',
+        False,
+        'Le service externe que la tâche branche : garder_cle range sa clé'
+        ' pour lui. Figé en base.',
+        frozen=True,
+    ),
     Param(
         'secrets',
         'text',

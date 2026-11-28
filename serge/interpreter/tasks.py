@@ -237,17 +237,21 @@ REPONSES = 'reponses_de_julien'
 
 
 def freeze_task(
-    conn: sqlite3.Connection, task_id: str, ticket_id: str
+    conn: sqlite3.Connection, task_id: str, ticket_id: str, waiting: str = ''
 ) -> None:
-    """Gèle une tâche : elle attend la réponse de Julien au ticket.
+    """Gèle une tâche : elle attend la réponse de Julien au ticket, ou ce
+    que dit ``waiting`` (« en attente du service « mapbox » »).
 
     Elle n'a rien écrit (ses écritures ne partent qu'à la fin) ; elle
     repartira du début, avec la réponse (``thaw_task``).
     """
+    raison = (
+        waiting or f'en attente de la réponse de Julien (ticket {ticket_id})'
+    )
     conn.execute(
         "UPDATE tasks SET status='blocked', started_at='', last_error=?"
         ' WHERE id=?',
-        (f'en attente de la réponse de Julien (ticket {ticket_id})', task_id),
+        (raison, task_id),
     )
 
 

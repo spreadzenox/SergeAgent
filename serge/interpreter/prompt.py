@@ -347,14 +347,17 @@ def converse(
             }
         )
         images: list[str] = []
-        gel = ''
+        gel: tuple[str, str] | None = None
         for call in result.tool_calls:
             check_halt(conn, task_id)
             outcome = limited_call(
                 conn, inv.id, links, limits, calls, call, task
             )
             if outcome.get('gel') and task_id:
-                gel = str(outcome.get('ticket_id') or '')
+                gel = (
+                    str(outcome.get('ticket_id') or ''),
+                    str(outcome.get('attente') or ''),
+                )
             image = outcome.pop('image', None)
             if isinstance(image, str) and image.startswith('data:image/'):
                 outcome['image'] = 'montrée dans le message suivant'
@@ -388,5 +391,5 @@ def converse(
         # avant de rappeler le modèle, pour ne pas bloquer la base pendant
         # l'appel.
         conn.commit()
-        if gel:
-            raise TaskFrozen(gel)
+        if gel is not None and any(gel):
+            raise TaskFrozen(*gel)

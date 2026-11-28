@@ -120,6 +120,8 @@ def browser_action(
         fichier = session.telechargements.lire(
             str(args.get('text') or ''), ligne
         )
+    elif action == 'garder_cle':
+        refus = _garder_cle(conn, session, args)
     elif action != 'passer_au_vrai_chrome':
         if account and action not in SANS_LE_SITE:
             refus = web_accounts.count_action(conn, account)
@@ -149,6 +151,30 @@ def browser_action(
     if fichier is not None:
         result['fichier'] = fichier
     return result
+
+
+def _garder_cle(conn: sqlite3.Connection, session: Any, args: dict) -> str:
+    """Lit la clé d'API affichée dans ce qui est visé (un champ, un texte)
+    et la garde pour le service de la tâche, chiffrée. Le modèle ne la
+    recopie pas : elle est masquée dans ce qu'il lit ensuite. Rend ``''``,
+    ou la raison du refus."""
+    from serge.product_services import keep_key
+    from serge.sandbox.lecture import element
+
+    service = str(args.get('service') or '')
+    if not service:
+        return 'cette tâche n’a pas de service à brancher'
+    try:
+        champ = element(session.page, args.get('ref'))
+        valeur = str(
+            champ.evaluate('e => e.value ?? e.textContent ?? ""') or ''
+        ).strip()
+    except Exception as exc:  # noqa: BLE001 — l'échec est rendu au modèle
+        return str(exc).splitlines()[0][:300]
+    refus = keep_key(conn, service, valeur)
+    if not refus:
+        session.masques.add(valeur)
+    return refus
 
 
 def browser_read(
