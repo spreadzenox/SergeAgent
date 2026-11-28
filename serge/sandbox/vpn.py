@@ -37,6 +37,7 @@ from serge.paths import config_root
 from serge.policy_store import policy_en_vigueur
 from serge.sandbox.chantier import ensure_network
 from serge.sandbox.docker import (
+    NETWORK,
     DockerError,
     docker,
     env_flags,
@@ -153,6 +154,33 @@ def _sain() -> str:
     ).stdout.strip()
 
 
+def _fermer_aux_voisins() -> None:
+    """Seul le serveur ouvre une connexion vers les Chrome.
+
+    Les ports publiés sur ``127.0.0.1`` arrivent au sidecar par la
+    passerelle du réseau des chantiers. Un chantier ou un produit en
+    staging, voisins sur ce réseau, n'atteignent donc ni le débogage des
+    Chrome ni l'écran ; les Chrome, eux, continuent d'ouvrir leurs pages.
+    La règle se perd quand le sidecar redémarre : elle est reposée à
+    chaque lancement d'un Chrome.
+    """
+    passerelle = docker(
+        [
+            'network',
+            'inspect',
+            '-f',
+            '{{range .IPAM.Config}}{{.Gateway}}{{end}}',
+            NETWORK,
+        ],
+        timeout=30,
+    ).stdout.strip()
+    regle = ['INPUT', '-i', 'eth0', '!', '-s', passerelle]
+    regle += ['-m', 'conntrack', '--ctstate', 'NEW', '-j', 'DROP']
+    pare_feu = ['exec', CONTAINER, 'iptables']
+    if docker([*pare_feu, '-C', *regle], timeout=30, check=False).returncode:
+        docker([*pare_feu, '-I', *regle], timeout=30)
+
+
 def _ports_publies() -> set[str]:
     """Les ports du conteneur actuellement publiés (``9222/tcp``…)."""
     sortie = docker(['port', CONTAINER], timeout=30, check=False).stdout
@@ -192,6 +220,7 @@ def ensure_vpn(conn: sqlite3.Connection) -> str:
     fin = time.monotonic() + ATTENTE_S
     while time.monotonic() < fin:
         if _sain() == 'healthy':
+            _fermer_aux_voisins()
             identifiant = docker(
                 ['inspect', '-f', '{{.Id}}', CONTAINER], timeout=30
             ).stdout

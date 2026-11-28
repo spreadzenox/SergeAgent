@@ -93,7 +93,7 @@ Détails : [`docs/installation/INSTALL.md`](docs/installation/INSTALL.md).
 Développer :
 
 ```sh
-curl -LsSf astral.sh/uv/install.sh | sh
+curl -LsSf https://astral.sh/uv/install.sh | sh
 uv sync --group dev
 uv run pre-commit install
 scripts/ci.sh

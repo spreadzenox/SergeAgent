@@ -10,6 +10,7 @@ import sqlite3
 import time
 from collections.abc import Callable, Mapping
 from datetime import UTC, datetime, timedelta
+from urllib.parse import urlsplit
 
 from serge.db.store import utcnow
 
@@ -104,6 +105,12 @@ def revoke_session(conn: sqlite3.Connection, token: str) -> None:
         )
 
 
+def _egaux(recu: str, attendu: str) -> bool:
+    # En octets : un jeton reçu avec un caractère non ASCII est refusé
+    # comme un autre, il ne lève pas d'exception.
+    return hmac.compare_digest(recu.encode(), attendu.encode())
+
+
 def check_owner(
     headers: Mapping[str, str],
     cookies: Mapping[str, str],
@@ -127,14 +134,56 @@ def check_owner(
     if auth.lower().startswith('bearer '):
         candidate = auth[7:].strip()
         if candidate and expected_token:
-            if hmac.compare_digest(candidate, expected_token):
+            if _egaux(candidate, expected_token):
                 return True
     header_token = str(headers.get('x-serge-owner-token') or '').strip()
     if header_token and expected_token:
-        if hmac.compare_digest(header_token, expected_token):
+        if _egaux(header_token, expected_token):
             return True
     cookie_token = str(cookies.get(COOKIE_NAME) or '').strip()
     return bool(cookie_token) and verify_session(conn, cookie_token, now_iso)
+
+
+def client_ip(peer: str, headers: Mapping[str, str]) -> str:
+    """L'adresse du visiteur, pour la limite d'essais.
+
+    Derrière Caddy, toute requête arrive de 127.0.0.1 : la vraie adresse
+    est la dernière de ``X-Forwarded-For``, que Caddy écrit lui-même.
+
+    Args:
+        peer: Adresse de la connexion reçue.
+        headers: En-têtes HTTP (clés en minuscules).
+
+    Returns:
+        L'adresse à compter.
+    """
+    relayee = str(headers.get('x-forwarded-for') or '').split(',')[-1]
+    if peer.startswith('127.') and relayee.strip():
+        return relayee.strip()
+    return peer
+
+
+def origine_permise(headers: Mapping[str, str]) -> bool:
+    """La requête vient-elle d'une page de Mission Control elle-même ?
+
+    Un navigateur dit d'où part une requête (``Origin``, ``Sec-Fetch-Site``).
+    Une page servie par un autre hôte, même un sous-domaine du même site,
+    est refusée : son script enverrait sinon le cookie de la session. Un
+    client sans navigateur n'envoie ni l'un ni l'autre : il passe, et son
+    jeton fait foi.
+
+    Args:
+        headers: En-têtes HTTP (clés en minuscules).
+
+    Returns:
+        False si la requête vient d'une autre origine.
+    """
+    origine = str(headers.get('origin') or '').strip().lower()
+    if origine:
+        hote = str(headers.get('host') or '').strip().lower()
+        return urlsplit(origine).netloc == hote
+    site = str(headers.get('sec-fetch-site') or 'none').strip().lower()
+    return site in ('same-origin', 'none')
 
 
 class RateLimiter:
@@ -179,3 +228,18 @@ class RateLimiter:
         recent.append(now)
         self._hits[key] = recent
         return True
+
+    def bloque(self, key: str) -> bool:
+        """Le plafond est-il atteint ? Ne consomme rien.
+
+        Args:
+            key: Clé de comptage.
+
+        Returns:
+            True si la clé a épuisé ses coups dans la fenêtre.
+        """
+        now = self._now()
+        recents = [
+            t for t in self._hits.get(key, []) if now - t < self.window_s
+        ]
+        return len(recents) >= self.max_hits

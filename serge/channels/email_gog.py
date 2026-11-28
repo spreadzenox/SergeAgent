@@ -24,6 +24,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 from datetime import datetime
 from email.utils import parseaddr
 from typing import Any
@@ -202,20 +203,36 @@ def poll(since: str) -> list[Incoming]:
     received = []
     for gmail_id in _search(query, POLL_MAX):
         message = _get(gmail_id)
-        headers = _headers(message)
-        refs = _REF.findall(
-            f'{headers.get("in-reply-to", "")} {headers.get("references", "")}'
-        )
-        received.append(
-            Incoming(
-                external_ref=gmail_id,
-                address=parseaddr(headers.get('from', ''))[1],
-                subject=headers.get('subject', ''),
-                body=_text(message),
-                message_ref=headers.get('message-id', ''),
-                refs=tuple(refs),
-                native_type=AUTO_REPLY if is_auto_reply(headers) else 'email',
-                to=recipients(headers),
-            )
-        )
+        try:
+            received.append(_recu(gmail_id, message))
+        except Exception as exc:  # noqa: BLE001 — voir illisible()
+            illisible(gmail_id, exc)
     return received
+
+
+def illisible(ref: str, exc: Exception) -> None:
+    """Un message que Python ne sait pas lire (des en-têtes piégés, par
+    exemple) est écarté et noté au journal : il n'arrête pas la relève
+    des autres."""
+    print(
+        f'courriel : message {ref} illisible, écarté ({type(exc).__name__})',
+        file=sys.stderr,
+        flush=True,
+    )
+
+
+def _recu(gmail_id: str, message: dict[str, Any]) -> Incoming:
+    headers = _headers(message)
+    refs = _REF.findall(
+        f'{headers.get("in-reply-to", "")} {headers.get("references", "")}'
+    )
+    return Incoming(
+        external_ref=gmail_id,
+        address=parseaddr(headers.get('from', ''))[1],
+        subject=headers.get('subject', ''),
+        body=_text(message),
+        message_ref=headers.get('message-id', ''),
+        refs=tuple(refs),
+        native_type=AUTO_REPLY if is_auto_reply(headers) else 'email',
+        to=recipients(headers),
+    )

@@ -180,7 +180,11 @@ class Bot:
                 interaction_followup(
                     str(interaction.get('application_id') or ''),
                     str(interaction.get('token') or ''),
-                    {'content': texte[:2000]},
+                    # Le texte vient d'un tiers : aucune mention ne part.
+                    {
+                        'content': texte[:2000],
+                        'allowed_mentions': {'parse': []},
+                    },
                 )
             except DiscordError as exc:
                 journal(f'« Voir en entier » refusé par Discord : {exc}')

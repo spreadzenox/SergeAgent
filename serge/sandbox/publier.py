@@ -266,6 +266,15 @@ def _lancer(
     url = f'https://{hostname}'
     port = _port(conn, deployment)
     container = f'serge-{deployment}'
+    # L'adresse vient du plan : refusée avant tout si ce n'est pas un nom
+    # de domaine, ou si c'est une adresse de Serge (Mission Control, SMS).
+    refus = caddy.refus(
+        hostname, f'127.0.0.1:{port}', str(args.get('venture_id') or '')
+    )
+    if refus:
+        return _rate(
+            conn, deployment, args, version, 'adresse_refusee', refus, ''
+        )
     try:
         # La clé Stripe du produit : celle du mode test en staging, une clé
         # restreinte du vrai mode en prod (réglées en base, env_secrets).

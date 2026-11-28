@@ -92,9 +92,14 @@ Rien de tout ça dans Settings → Secrets du dépôt.
 Le VPS est déjà sur Tailscale. Pas besoin d’ouvrir GitHub vers le net
 public : le runner **sort** vers `github.com`.
 
-Dépôt public + runner self-hosted : un workflow `pull_request` pourrait
-faire tourner le code d’un fork **sur le VPS**. C’est pour ça que
-`deploy.yml` n’écoute que `main`.
+Dépôt public + runner self-hosted : le runner exécute **tout** job du
+dépôt qui porte ses étiquettes, quel que soit le fichier de workflow ou
+la branche. Que `deploy.yml` n’écoute que `main` ne suffit donc pas. Deux
+réglages GitHub sont obligatoires tant que ce runner existe (Settings →
+Actions → General) : « Require approval for all external contributors »
+pour les PR venues de forks, et seuls des comptes de confiance en
+écriture sur le dépôt. Les actions sont épinglées par l’empreinte de leur
+commit, pas par une étiquette : `actions/checkout` s’exécute sur le VPS.
 
 ## Couple live (pas le couple WSL)
 
@@ -138,7 +143,8 @@ couple. Après le merge, on le fait à deux :
       premier usage, quelques minutes, depuis `serge/sandbox/image_chrome/`.
       Son débogage et son écran ne sont publiés que sur `127.0.0.1` ;
       Mission Control montre l'écran à `/owner/vrai-chrome`, après sa
-      connexion. Il ne touche à aucun autre conteneur du serveur.
+      connexion. Derrière le VPN, aucun autre conteneur du serveur ne
+      l'atteint ([VPN.md](VPN.md), « Les ports »).
 - [ ] Clé d'API d'Anthropic, facultative, pour le réglage « appeler
       Anthropic directement » (page Pipeline). La poser sur le VPS, en
       tapant la clé (rien ne s'affiche) puis Entrée :

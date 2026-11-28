@@ -38,7 +38,7 @@ Les deux secrets sont sur le serveur, jamais dans le dépôt :
 ```sh
 install -m 600 /dev/null ~/.config/serge/secrets/telecom-vpn-login
 install -m 600 /dev/null ~/.config/serge/secrets/telecom-vpn-password
-printf 'cpesquet-25\n' > ~/.config/serge/secrets/telecom-vpn-login
+printf 'VOTRE_IDENTIFIANT\n' > ~/.config/serge/secrets/telecom-vpn-login
 printf 'LE_MOT_DE_PASSE\n' > ~/.config/serge/secrets/telecom-vpn-password
 ```
 
@@ -55,8 +55,14 @@ Health).
 ## Les ports
 
 Le sidecar publie sur `127.0.0.1` seulement : le débogage du navigateur
-sans écran (`9222`), le débogage du vrai Chrome (`9223`), l'écran du vrai
-Chrome (`6080`). Dans le réseau partagé, le vrai Chrome écoute son propre
+sans écran (`9222`), le débogage du vrai Chrome (`9225`), l'écran du vrai
+Chrome (`6080`). Seul le serveur ouvre une connexion vers ces ports : à
+chaque lancement d'un Chrome, Serge pose dans le sidecar une règle de
+pare-feu qui refuse toute connexion entrante ne venant pas de la
+passerelle du réseau des chantiers. Un chantier ou un produit en staging,
+voisins sur ce réseau, n'atteignent donc ni le débogage ni l'écran. Sans
+VPN (`navigateur.vpn_off`), cette règle n'existe pas : les Chrome sont
+alors joignables depuis les conteneurs voisins. Dans le réseau partagé, le vrai Chrome écoute son propre
 débogage sur `9224` pour laisser `9222` au navigateur sans écran (son
 `demarrer.sh` lit `CHROME_PORT`).
 

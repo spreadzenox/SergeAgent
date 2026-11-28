@@ -2594,7 +2594,7 @@ collègue vers qui un prospect renvoie.
 
 LinkedIn et Reddit refusent l'adresse IP du VPS. Clem a fourni un accès
 VPN Télécom Paris (config/vpn/telecom-paris.ovpn) et le compte
-cpesquet-25. Ce qui est décidé :
+l’identifiant du compte. Ce qui est décidé :
 
 1. **Le trafic web des deux Chrome de Serge sort par ce VPN, et lui
    seul.** Un sidecar serge-vpn (gluetun) porte le tunnel ; les deux

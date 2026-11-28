@@ -21,6 +21,7 @@ import imaplib
 import os
 import re
 import smtplib
+import ssl
 import time
 from collections.abc import Mapping
 from datetime import datetime, timedelta
@@ -33,7 +34,7 @@ from typing import Any
 from kit.mailbox_config import MailboxError, resolve_mailbox
 from serge.channels.auto_reply import AUTO_REPLY, is_auto_reply
 from serge.channels.base import Incoming, Outgoing, recipients
-from serge.channels.email_gog import POLL_MAX, MailError
+from serge.channels.email_gog import POLL_MAX, MailError, illisible
 from serge.paths import config_root
 from serge.secrets import read_secret_file
 
@@ -93,17 +94,26 @@ def _imap_error(exc: Exception) -> str:
     return f'NETWORK: imap ({exc})'
 
 
+def _tls() -> ssl.SSLContext:
+    # imaplib et smtplib, sans contexte, ne vérifient pas le certificat du
+    # serveur : celui-ci le vérifie, et le nom avec.
+    return ssl.create_default_context()
+
+
 def _open_imap(cfg: Mapping[str, Any], timeout: float = 60.0) -> imaplib.IMAP4:
     try:
         if cfg['imap_ssl']:
             box: imaplib.IMAP4 = imaplib.IMAP4_SSL(
-                str(cfg['imap_host']), int(cfg['imap_port']), timeout=timeout
+                str(cfg['imap_host']),
+                int(cfg['imap_port']),
+                ssl_context=_tls(),
+                timeout=timeout,
             )
         else:
             box = imaplib.IMAP4(
                 str(cfg['imap_host']), int(cfg['imap_port']), timeout=timeout
             )
-            box.starttls()
+            box.starttls(ssl_context=_tls())
         box.login(str(cfg['login']), str(cfg['password']))
     except imaplib.IMAP4.error as exc:
         raise MailError(_imap_error(exc)) from exc
@@ -132,13 +142,16 @@ def _smtp_send(cfg: Mapping[str, Any], msg: EmailMessage) -> None:
     try:
         if cfg['smtp_ssl']:
             server = smtplib.SMTP_SSL(
-                str(cfg['smtp_host']), int(cfg['smtp_port']), timeout=60
+                str(cfg['smtp_host']),
+                int(cfg['smtp_port']),
+                timeout=60,
+                context=_tls(),
             )
         else:
             server = smtplib.SMTP(
                 str(cfg['smtp_host']), int(cfg['smtp_port']), timeout=60
             )
-            server.starttls()
+            server.starttls(context=_tls())
         with server:
             server.login(str(cfg['login']), str(cfg['password']))
             server.send_message(msg)
@@ -217,6 +230,25 @@ def _since(since: str) -> str:
     return f'{start.day:02d}-{_IMAP_MONTHS[start.month - 1]}-{start.year}'
 
 
+def _recu(uid: str, raw: bytes) -> Incoming:
+    parsed = BytesParser(policy=email.policy.default).parsebytes(raw)
+    entetes = {k.lower(): str(v) for k, v in parsed.items()}
+    own = str(parsed.get('Message-ID') or '').strip()
+    refs = _REF.findall(
+        f'{parsed.get("In-Reply-To") or ""} {parsed.get("References") or ""}'
+    )
+    return Incoming(
+        external_ref=own or f'uid:{uid}',
+        address=parseaddr(str(parsed.get('From') or ''))[1],
+        subject=str(parsed.get('Subject') or ''),
+        body=_text(parsed),
+        message_ref=own,
+        refs=tuple(refs),
+        native_type=AUTO_REPLY if is_auto_reply(entetes) else 'email',
+        to=recipients(entetes),
+    )
+
+
 def poll(since: str, config: dict[str, Any] | None = None) -> list[Incoming]:
     """Les messages reçus depuis ``since`` (ISO), ou depuis un jour.
 
@@ -249,29 +281,10 @@ def poll(since: str, config: dict[str, Any] | None = None) -> list[Incoming]:
                 )
                 if not raw:
                     continue
-                parsed = BytesParser(policy=email.policy.default).parsebytes(
-                    raw
-                )
-                entetes = {k.lower(): str(v) for k, v in parsed.items()}
-                own = str(parsed.get('Message-ID') or '').strip()
-                refs = _REF.findall(
-                    f'{parsed.get("In-Reply-To") or ""}'
-                    f' {parsed.get("References") or ""}'
-                )
-                received.append(
-                    Incoming(
-                        external_ref=own or f'uid:{uid}',
-                        address=parseaddr(str(parsed.get('From') or ''))[1],
-                        subject=str(parsed.get('Subject') or ''),
-                        body=_text(parsed),
-                        message_ref=own,
-                        refs=tuple(refs),
-                        native_type=AUTO_REPLY
-                        if is_auto_reply(entetes)
-                        else 'email',
-                        to=recipients(entetes),
-                    )
-                )
+                try:
+                    received.append(_recu(uid, raw))
+                except Exception as exc:  # noqa: BLE001 — voir illisible()
+                    illisible(f'uid:{uid}', exc)
     except imaplib.IMAP4.error as exc:
         raise MailError(_imap_error(exc)) from exc
     except OSError as exc:

@@ -27,6 +27,7 @@ import threading
 import urllib.parse
 from typing import TYPE_CHECKING, Any, Protocol
 
+from serge.mc.auth import origine_permise
 from serge.sandbox.chrome import adresse_ecran
 from serge.sandbox.docker import journal
 
@@ -52,6 +53,7 @@ class _Handler(Protocol):
     close_connection: bool
 
     def _is_owner(self) -> bool: ...
+    def _headers_lower(self) -> dict[str, str]: ...
     def _db(self) -> Any: ...
     def _send(self, code: int, body: bytes, content_type: str) -> None: ...
     def send_response(self, code: int, message: str | None = None) -> None: ...
@@ -94,6 +96,11 @@ class EcranMixin(_Base):
             return
         cible = reste + (f'?{parts.query}' if parts.query else '')
         if (self.headers.get('Upgrade') or '').lower() == 'websocket':
+            # Le flux pilote le vrai Chrome : seule la page de Mission
+            # Control l'ouvre, jamais celle d'un autre hôte.
+            if not origine_permise(self._headers_lower()):
+                self._texte(403, 'Écran demandé depuis une autre adresse.')
+                return
             self._flux(adresse, cible)
         else:
             self._fichier(adresse, cible)
