@@ -164,20 +164,16 @@ class CeQueVoitUneInvocationTests(unittest.TestCase):
             self.assertIn(texte, system)
 
     def test_ses_lecons_les_plus_fiables_d_abord(self) -> None:
-        add_lesson(self.conn, 'Pour tout Serge', confidence=0.9)
-        add_lesson(
-            self.conn,
-            'Pour l’étape',
-            confidence=0.4,
-            scope='etape:pre_prospection',
-        )
-        add_lesson(
-            self.conn,
-            'Pour moi',
-            confidence=0.3,
-            scope='invocation:formuler_a',
-        )
-        add_lesson(self.conn, 'Pour une autre', scope='invocation:formuler_b')
+        def gardee(enonce: str, **champs: Any) -> None:
+            # Seule une leçon gardée par un humain est donnée (Q121).
+            ident = add_lesson(self.conn, enonce, **champs)
+            set_lesson_status(self.conn, ident, 'active')
+
+        gardee('Pour tout Serge', confidence=0.9)
+        gardee('Pour l’étape', confidence=0.4, scope='etape:pre_prospection')
+        gardee('Pour moi', confidence=0.3, scope='invocation:formuler_a')
+        gardee('Pour une autre', scope='invocation:formuler_b')
+        add_lesson(self.conn, 'Proposée', confidence=1.0)
         depassee = add_lesson(self.conn, 'Dépassée', confidence=1.0)
         set_lesson_status(self.conn, depassee, 'deprecated')
         modele = Modele()
@@ -193,6 +189,7 @@ class CeQueVoitUneInvocationTests(unittest.TestCase):
             ],
         )
         self.assertNotIn('Pour une autre', user)
+        self.assertNotIn('Proposée', user)
         self.assertNotIn('Dépassée', user)
         self.assertIn(('lessons', 3, 0), self._vu('formuler_a'))
 

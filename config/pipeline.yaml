@@ -1718,6 +1718,18 @@ tools:
         - {id: choix, table: principal_choices, column: id, param: choice_id}
       params:
         - {name: choice_id, required: true, description: Le numéro de la proposition.}
+  - id: lecon_par_numero
+    title: Une leçon
+    doc: L'énoncé d'une leçon de Serge, par son numéro.
+    capability: db_read
+    read:
+      tables: [lessons]
+      columns:
+        - {table: lessons, name: statement, as: lecon}
+      filters:
+        - {id: lecon, table: lessons, column: id, param: lesson_id}
+      params:
+        - {name: lesson_id, required: true, description: Le numéro de la leçon.}
   - id: business_mis_de_cote_anciens
     title: Les vieux tests mis de côté
     doc: Les business mis de côté dont le test a fini il y a plus d'un certain nombre de jours.
@@ -2145,12 +2157,14 @@ writable_tables:
       - {name: chosen_venture_id, description: Le business choisi.}
   - table: lessons
     insert: true
+    update: true
     description: Les leçons de Serge.
     columns:
       - {name: statement, description: La leçon.}
       - {name: scope, description: Sa portée.}
       - {name: status, description: Son statut.}
       - {name: created_by, description: Qui l'a écrite.}
+      - {name: venture_id, description: Le business d'où elle vient.}
 # Les changements d'étiquette et de statut permis. Un business naît
 # candidat, et seul un candidat peut être choisi : un business déjà en test
 # est refusé par le code d'écriture.
@@ -2333,6 +2347,12 @@ status_transitions:
   - {table: product_reviews, column: product_action, from: '', to: corriger}
   - {table: product_reviews, column: product_action, from: '', to: faire_evoluer}
   - {table: product_reviews, column: product_action, from: corriger, to: faire_evoluer}
+  # Une leçon naît proposée. Seule la réponse d'un humain au ticket « Leçon »
+  # la garde (active) ou la jette (deprecated) : aucune invocation n'écrit
+  # une leçon déjà gardée (décision Q121).
+  - {table: lessons, column: status, from: '', to: candidate}
+  - {table: lessons, column: status, from: candidate, to: active}
+  - {table: lessons, column: status, from: candidate, to: deprecated}
 
 # Les quotas : le code d'écriture refuse une ligne de trop, quelle que soit
 # l'invocation, et un bouton ne lance rien si son quota est plein. Les
@@ -4645,6 +4665,23 @@ invocations:
     params:
       title: {source: task, value: titre}
       text: {source: task, value: raison}
+
+  # Le mot de passe d'un compte ne se tape que sur son site, ou sur une
+  # adresse de connexion qu'un humain a validée (décision Q122). Le refus
+  # ouvre le ticket « Adresse de connexion » (serge/login_hosts.py) ; sa
+  # réponse arrive ici. Le compte et l'adresse sont lus dans le ticket.
+  - id: suite_adresse_de_connexion
+    title: Suite du ticket « Adresse de connexion »
+    role: >-
+      La réponse au ticket « Adresse de connexion » d'un compte web : « Oui,
+      c'est sa connexion » garde l'adresse pour ce compte, « Non » ne garde
+      rien ; la tâche qui attendait repart avec la réponse (Q122). Sans LLM.
+    type: capability
+    capability: login_host_answer
+    queue: conversations
+    priority: 80
+    params:
+      answer: {source: task, value: reponse}
 
   # --- Les services externes gratuits d'un produit (décision Q118) ---
   # Le constructeur demande un service (« Brancher un service gratuit ») :
@@ -7088,9 +7125,10 @@ invocations:
          (la clé, le numéro du business, est ajoutée toute seule) ; son
          produit est le champ product (prod_…). Si aucun prix n'est
          rendu, arrête-toi : paye « non ».
-      2. Crée un prix de 1 € (100 centimes, eur, un paiement unique, sans
-         intervalle) pour ce produit, avec le nom court « paiement test »,
-         puis un lien de paiement pour ce prix, quantité 1.
+      2. Crée un prix de 1 € pour ce produit (un paiement unique, sans
+         intervalle ; son montant, 100 centimes, et sa monnaie, l'euro,
+         sont déjà réglés), avec le nom court « paiement test », puis un
+         lien de paiement pour ce prix, quantité 1.
       3. Ouvre le lien dans le vrai Chrome et paie comme une personne :
          l'adresse e-mail que te donne « Ma boîte e-mail » (appelle-la
       avec wait à faux),
@@ -7131,6 +7169,10 @@ invocations:
           service: {source: fixed, value: stripe_live}
           'metadata[venture_id]': {source: task, value: venture_id}
           task_id: {source: task, value: task_id}
+          # Le paiement test est de 1 € : le modèle ne choisit ni le
+          # montant ni la monnaie.
+          unit_amount: &montant_du_paiement_test {source: fixed, value: '100'}
+          currency: &monnaie_du_paiement_test {source: fixed, value: eur}
       - tool: stripe_creer_lien_paiement
         mode: callable
         max_calls: 1
@@ -7169,6 +7211,9 @@ invocations:
           deliverable: {source: fixed, value: produit}
           task_id: {source: task, value: task_id}
           secrets: {source: fixed, value: 'payment-card.enc#pan,payment-card.enc#expiration,payment-card.enc#cvc,payment-card.enc#cardholder_name'}
+          # La carte ne se tape que sur les pages de paiement de Stripe
+          # (buy.stripe.com, checkout.stripe.com, js.stripe.com).
+          secret_sites: &sites_de_paiement {source: fixed, value: stripe.com}
       - tool: vrai_chrome_lire
         mode: callable
         params: *navigateur_produit
@@ -7876,9 +7921,10 @@ invocations:
 
   - id: tirer_lecon
     title: Tirer la leçon d'un business arrêté
-    role: >-
+    role: &role_tirer_lecon >-
       Un business vient d'être arrêté : écrit une ou deux leçons, au statut
-      « proposée », que Julien garde ou jette sur la page Mémoire (Q46).
+      « proposée ». Chacune ouvre un ticket « Leçon » : un humain la garde
+      ou la jette, et d'ici là aucune invocation ne la reçoit (Q46, Q121).
     step: prospection_light
     type: llm
     model_tier: mid
@@ -7933,6 +7979,57 @@ invocations:
           scope: {source: fixed, value: global}
           status: {source: fixed, value: candidate}
           created_by: {source: fixed, value: tirer_lecon}
+          venture_id: &business_de_la_lecon {source: task, value: venture_id}
+
+  # Une leçon proposée n'est donnée à aucune invocation tant qu'un humain
+  # ne l'a pas gardée (décision Q121). Toute leçon écrite au statut
+  # « proposée », par quelque invocation que ce soit, ouvre son ticket.
+  - id: demander_validation_lecon
+    title: Faire valider une leçon
+    role: >-
+      Ouvre le ticket « Leçon » : la leçon proposée et le business d'où
+      elle vient. « Garder » la donne aux invocations qu'elle concerne ;
+      « Jeter » l'écarte. Sans réponse, elle attend et n'est donnée à
+      personne (Q121). Sans LLM.
+    step: collect_feedback
+    type: capability
+    capability: ask_owners
+    queue: conversations
+    priority: 80
+    params:
+      ticket_type: {source: fixed, value: LECON}
+      ref_table: {source: fixed, value: lessons}
+      ref_id: {source: task, value: lesson_id}
+      raison: {source: fixed, value: 'Serge propose cette leçon. « Garder » : elle sera donnée aux invocations. « Jeter » : elle ne le sera jamais. Sans réponse, elle attend et personne ne la reçoit.'}
+      title: {source: fixed, value: Une leçon attend ton avis}
+
+  - id: suite_lecon
+    title: Suite du ticket « Leçon »
+    role: >-
+      La réponse au ticket « Leçon » : « Garder » passe la leçon à
+      « gardée » (active), et les invocations qu'elle concerne la reçoivent ;
+      « Jeter » la passe à « dépassée » (deprecated). Sans LLM.
+    step: collect_feedback
+    type: capability
+    capability: echo
+    queue: conversations
+    priority: 80
+    params:
+      acte: {source: task, value: acte}
+      lesson_id: {source: task, value: lesson_id}
+    writes:
+      - table: lessons
+        operation: update
+        key: {column: id, source: task, value: lesson_id}
+        condition: {field: acte, op: '=', value: garder}
+        values:
+          status: {source: fixed, value: active}
+      - table: lessons
+        operation: update
+        key: {column: id, source: task, value: lesson_id}
+        condition: {field: acte, op: '=', value: jeter}
+        values:
+          status: {source: fixed, value: deprecated}
 
   - id: prevenir_prospection
     title: Prévenir d'une étape de la prospection
@@ -10588,6 +10685,15 @@ triggers:
       acte: {source: row, value: acte}
       texte: {source: row, value: text}
       service_id: {source: row, value: ref_id}
+  - id: reponse_au_ticket_adresse_de_connexion
+    title: Une réponse au ticket « Adresse de connexion »
+    invocation: suite_adresse_de_connexion
+    event: row_written
+    table: ticket_answers
+    filter_column: ticket_type
+    filter_value: CONNEXION_COMPTE
+    params:
+      reponse: {source: row, value: id}
   - id: reponse_au_ticket_test_poc
     title: Une réponse au ticket « Tester le produit » d'un POC
     invocation: suite_test_poc
@@ -10734,6 +10840,25 @@ triggers:
     lane: real
     params:
       venture_id: {source: row, value: id}
+  - id: lecon_proposee_a_valider
+    title: Une leçon proposée demande l'avis d'un humain
+    invocation: demander_validation_lecon
+    event: row_written
+    table: lessons
+    filter_column: status
+    filter_value: candidate
+    params:
+      lesson_id: {source: row, value: id}
+  - id: reponse_au_ticket_lecon
+    title: Une réponse au ticket « Leçon »
+    invocation: suite_lecon
+    event: row_written
+    table: ticket_answers
+    filter_column: ticket_type
+    filter_value: LECON
+    params:
+      acte: {source: row, value: acte}
+      lesson_id: {source: row, value: ref_id}
   - id: oubli_des_vieux_tests
     title: Oublier les vieux tests, chaque jour
     invocation: oublier_vieux_tests
@@ -13956,6 +14081,55 @@ changes:
     write: 0
     add_write_values:
       mailbox: {source: field, value: rows.mailbox}
+  # Une leçon proposée attend qu'un humain la garde, par un ticket « Leçon »
+  # (décision Q121). Son ticket montre le business d'où elle vient.
+  - id: q121_tirer_lecon_role
+    why: Une leçon proposée passe par un ticket « Leçon », plus par la page Mémoire (Q121).
+    table: invocations
+    where: {id: tirer_lecon}
+    set:
+      role:
+        from: >-
+          Un business vient d'être arrêté : écrit une ou deux leçons, au statut
+          « proposée », que Julien garde ou jette sur la page Mémoire (Q46).
+        to: *role_tirer_lecon
+  - id: q121_tirer_lecon_business
+    why: Le ticket « Leçon » montre le business d'où vient la leçon (Q121).
+    invocation: tirer_lecon
+    write: 0
+    add_write_values:
+      venture_id: *business_de_la_lecon
+  # Le paiement test (revue du 28 novembre 2026) : la carte de Serge ne se
+  # tape que sur les pages de paiement de Stripe.
+  - id: durcissement_paiement_test_carte_chez_stripe
+    why: La carte de Serge ne se tape que sur une page de paiement de Stripe.
+    invocation: paiement_test
+    tool: vrai_chrome_agir
+    add_tool_params:
+      secret_sites: *sites_de_paiement
+  - id: durcissement_paiement_test_montant_fige
+    why: Le paiement test est de 1 € ; le modèle ne choisit ni le montant ni la monnaie.
+    invocation: paiement_test
+    tool: stripe_creer_prix
+    add_tool_params:
+      unit_amount: *montant_du_paiement_test
+      currency: *monnaie_du_paiement_test
+  - id: durcissement_paiement_test_consigne_du_montant
+    why: Le montant et la monnaie du prix de 1 € sont réglés en base, plus par le modèle.
+    table: invocations
+    where: {id: paiement_test}
+    set:
+      prompt:
+        replace:
+          - old: |-
+              2. Crée un prix de 1 € (100 centimes, eur, un paiement unique, sans
+                 intervalle) pour ce produit, avec le nom court « paiement test »,
+                 puis un lien de paiement pour ce prix, quantité 1.
+            new: |-
+              2. Crée un prix de 1 € pour ce produit (un paiement unique, sans
+                 intervalle ; son montant, 100 centimes, et sa monnaie, l'euro,
+                 sont déjà réglés), avec le nom court « paiement test », puis un
+                 lien de paiement pour ce prix, quantité 1.
 
 deleted:
   invocations:

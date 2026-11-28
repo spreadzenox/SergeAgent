@@ -55,8 +55,9 @@ En direct) : une étape coupée ne lance plus rien.
    paiement.
 6. **La prospection lourde.** Serge prospecte à plus grande échelle, vend,
    livre, et améliore le produit avec les retours des clients.
-7. **La mémoire.** Serge tire des leçons de ce qui s'est passé, et Julien
-   garde ou jette chaque leçon.
+7. **La mémoire.** Serge tire des leçons de ce qui s'est passé, et un
+   humain garde ou jette chaque leçon ; d'ici là, aucune invocation ne la
+   reçoit.
 8. **La caisse.** Serge encaisse par Stripe, relance les impayés et
    rembourse.
 
@@ -444,8 +445,12 @@ décisions suivantes :
 - chaque message et chaque publication sur LinkedIn ;
 - un connecteur vers un nouveau service, écrit par Serge ;
 - un remboursement au-dessus du seuil, à l'étape 8 ;
-- les leçons proposées par la consolidation, à l'étape 7 ; sans réponse
-  sous 48 heures, elles sont acceptées.
+- chaque leçon proposée (étape 7) : « Garder » la donne aux invocations,
+  « Jeter » l'écarte ; ce ticket n'expire jamais, et sans réponse la
+  leçon n'est donnée à personne (Q121) ;
+- l'adresse de connexion d'un compte web, quand elle n'est pas sur le
+  site du compte : sans un « oui », Serge n'y tape pas le mot de passe ;
+  ce ticket n'expire jamais (Q122).
 
 Un lien réglé à la main dans Mission Control ouvre aussi un ticket
 « Passage » pour chaque passage qui attend : son feu vert fait passer,

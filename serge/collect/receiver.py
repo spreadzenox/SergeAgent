@@ -15,6 +15,7 @@ from serge.collect.rails import RailError, stripe_keys  # noqa: E402
 from serge.collect.webhook import (  # noqa: E402
     STRIPE_WEBHOOK_PATH,
     apply_event,
+    compte_pour_de_vrai,
     verify_event,
 )
 from serge.db.store import default_canon_path, open_db  # noqa: E402
@@ -88,6 +89,15 @@ class Handler(BaseHTTPRequestHandler):
             message = str(exc)
             code = 400 if message.startswith('STALE') else 401
             self._send(code, {'error': 'unauthorized'})
+            return
+        if not compte_pour_de_vrai(mode, self.secrets):
+            # Dit au journal : un paiement d'essai qu'on attendait de voir
+            # remonter ne disparaît pas sans trace.
+            sys.stderr.write(
+                'stripe-receiver: événement du mode test ignoré'
+                f' ({str(event.get("type"))[:60]})\n'
+            )
+            self._send(200, {'status': 'ignored', 'mode': mode})
             return
         conn = open_db(self.db_path)
         try:

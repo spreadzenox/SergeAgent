@@ -38,6 +38,7 @@ from serge.identite import identity_read
 from serge.ingress.adresse import product_address, server_address
 from serge.interpreter.seen import CHOICES, read_seen_table, row_history
 from serge.interpreter.settings import load_settings
+from serge.login_hosts import answer as login_host_answer
 from serge.missions import mission
 from serge.policy_store import policy_en_vigueur, setting_value
 from serge.product_services import (
@@ -303,6 +304,7 @@ RUNNERS: dict[str, Runner] = {
     'mission': mission,
     'open_web_account': open_account,
     'change_web_password': change_password,
+    'login_host_answer': login_host_answer,
     'connect_service': connect_service,
     'open_service_account': open_service_account,
     'finish_service': finish_service,

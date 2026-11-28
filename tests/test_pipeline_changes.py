@@ -35,7 +35,11 @@ Scénarios :
   pseudo ; un libellé changé dans Mission Control est gardé ;
 - le serveur du 21 novembre 2026 apprend que le téléphone est exigé quand
   l'inscription n'offre que lui, et qu'un champ de connexion ne sert pas à
-  s'inscrire.
+  s'inscrire ;
+- le serveur du 28 novembre 2026 : le paiement test reçoit, figés en base,
+  les sites où la carte se tape, le montant et la monnaie de son prix de
+  1 €, et sa consigne le dit ; un paramètre déjà réglé dans Mission
+  Control est gardé.
 """
 
 from __future__ import annotations
@@ -2496,3 +2500,144 @@ class SansXEtAvecInstagramTests(unittest.TestCase):
         # Une seconde fois ne change rien.
         seed_pipeline(conn, data)
         self.assertEqual(self._etat(conn), neuf)
+
+
+class PaiementTestDurciTests(unittest.TestCase):
+    """Le serveur du 28 novembre 2026 : au démarrage, des paramètres de
+    plus sont figés sur les outils du paiement test (``add_tool_params``),
+    et le modèle ne les choisit plus : les sites où la carte se tape, le
+    montant et la monnaie du prix de 1 €. Sa consigne le dit."""
+
+    IDS = (
+        'durcissement_paiement_test_carte_chez_stripe',
+        'durcissement_paiement_test_montant_fige',
+        'durcissement_paiement_test_consigne_du_montant',
+    )
+    FIGES = (
+        ('vrai_chrome_agir', 'secret_sites', 'stripe.com'),
+        ('stripe_creer_prix', 'unit_amount', '100'),
+        ('stripe_creer_prix', 'currency', 'eur'),
+    )
+
+    def setUp(self) -> None:
+        self.conn = sqlite3.connect(':memory:')
+        self.addCleanup(self.conn.close)
+        init_schema(self.conn)
+        self.data = read_yaml_file(config_dir() / 'pipeline.yaml')
+
+    def _figes(self) -> dict[tuple[str, str], str]:
+        return {
+            (str(r[0]), str(r[1])): str(r[2])
+            for r in self.conn.execute(
+                'SELECT t.tool_id, p.param_name, p.value'
+                ' FROM invocation_tool_params p JOIN invocation_tools t'
+                ' ON t.id=p.invocation_tool_id'
+                " WHERE t.invocation_id='paiement_test'"
+            )
+        }
+
+    def _consigne(self) -> str:
+        return str(
+            self.conn.execute(
+                "SELECT prompt FROM invocations WHERE id='paiement_test'"
+            ).fetchone()[0]
+        )
+
+    def _serveur_d_avant(self) -> None:
+        passage = {c['id']: c for c in self.data['changes']}[self.IDS[2]][
+            'set'
+        ]['prompt']['replace'][0]
+        self.assertEqual(self._consigne().count(passage['new'].strip()), 1)
+        self.conn.execute(
+            "UPDATE invocations SET prompt=? WHERE id='paiement_test'",
+            (
+                self._consigne().replace(
+                    passage['new'].strip(), passage['old'].strip()
+                ),
+            ),
+        )
+        for outil, nom, _ in self.FIGES:
+            self.conn.execute(
+                'DELETE FROM invocation_tool_params WHERE param_name=?'
+                ' AND invocation_tool_id IN (SELECT id FROM invocation_tools'
+                " WHERE invocation_id='paiement_test' AND tool_id=?)",
+                (nom, outil),
+            )
+        self.conn.executemany(
+            'DELETE FROM pipeline_changes WHERE id=?', [(i,) for i in self.IDS]
+        )
+
+    def test_il_recoit_les_parametres_figes(self) -> None:
+        neuf, consigne = self._figes(), self._consigne()
+        for outil, nom, valeur in self.FIGES:
+            self.assertEqual(neuf[outil, nom], valeur)
+        self.assertIn('sont déjà réglés', consigne)
+        self._serveur_d_avant()
+        for outil, nom, _ in self.FIGES:
+            self.assertNotIn((outil, nom), self._figes())
+        self.assertIn(
+            '(100 centimes, eur, un paiement unique', self._consigne()
+        )
+        seed_pipeline(self.conn, self.data)
+        self.assertEqual(self._figes(), neuf)
+        self.assertEqual(self._consigne(), consigne)
+        # Une seconde fois ne change rien : un paramètre retiré ensuite
+        # dans Mission Control ne revient pas.
+        self.conn.execute(
+            "DELETE FROM invocation_tool_params WHERE param_name='secret_sites'"
+        )
+        seed_pipeline(self.conn, self.data)
+        self.assertNotIn(('vrai_chrome_agir', 'secret_sites'), self._figes())
+
+    def test_un_parametre_deja_regle_est_garde(self) -> None:
+        self.conn.execute(
+            "UPDATE invocation_tool_params SET value='stripe.com,exemple.fr'"
+            " WHERE param_name='secret_sites'"
+        )
+        self.conn.executemany(
+            'DELETE FROM pipeline_changes WHERE id=?', [(i,) for i in self.IDS]
+        )
+        seed_pipeline(self.conn, self.data)
+        self.assertEqual(
+            self._figes()['vrai_chrome_agir', 'secret_sites'],
+            'stripe.com,exemple.fr',
+        )
+        self.assertEqual(
+            self.conn.execute(
+                'SELECT result FROM pipeline_changes WHERE id=?',
+                (self.IDS[0],),
+            ).fetchone()[0],
+            'secret_sites déjà là',
+        )
+
+    def test_un_outil_absent_ou_une_modification_mal_ecrite(self) -> None:
+        fige = {'secret_sites': {'source': 'fixed', 'value': 'stripe.com'}}
+        apply_changes(
+            self.conn,
+            [
+                {
+                    'id': 'sans_outil',
+                    'invocation': 'paiement_test',
+                    'tool': 'navigateur_agir',
+                    'add_tool_params': fige,
+                }
+            ],
+        )
+        self.assertEqual(
+            self.conn.execute(
+                "SELECT result FROM pipeline_changes WHERE id='sans_outil'"
+            ).fetchone()[0],
+            'objet absent',
+        )
+        with self.assertRaises(PipelineSeedError):
+            apply_changes(
+                self.conn,
+                [
+                    {
+                        'id': 'mal_ecrite',
+                        'invocation': 'paiement_test',
+                        'tool': 'vrai_chrome_agir',
+                        'add_tool_params': {'secret_sites': 'stripe.com'},
+                    }
+                ],
+            )

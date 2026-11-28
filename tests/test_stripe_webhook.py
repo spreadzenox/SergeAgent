@@ -5,10 +5,17 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import io
 import json
 import sqlite3
 import sys
+import tempfile
+import threading
+import time
 import unittest
+import urllib.request
+from contextlib import redirect_stderr
+from http.server import ThreadingHTTPServer
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -16,8 +23,11 @@ sys.path.insert(0, str(ROOT))
 
 from serge.collect import create_intent, to_issued  # noqa: E402
 from serge.collect.rails import RailError  # noqa: E402
+from serge.collect.receiver import Handler  # noqa: E402
 from serge.collect.webhook import (  # noqa: E402
+    STRIPE_WEBHOOK_PATH,
     apply_event,
+    compte_pour_de_vrai,
     installer_hint,
     public_webhook_url,
     verify_event,
@@ -38,6 +48,8 @@ def _signed(
 
 class StripeWebhookTests(unittest.TestCase):
     def setUp(self) -> None:
+        self.dossier = tempfile.TemporaryDirectory()
+        self.addCleanup(self.dossier.cleanup)
         self.conn = sqlite3.connect(':memory:')
         self.conn.row_factory = sqlite3.Row
         init_schema(self.conn)
@@ -104,6 +116,80 @@ class StripeWebhookTests(unittest.TestCase):
             'SELECT status FROM transactions WHERE id=?', (tx,)
         ).fetchone()[0]
         self.assertEqual(status, 'paid')
+
+    def test_un_paiement_du_mode_test_n_est_pas_une_vente(self) -> None:
+        """Sur une instance qui encaisse en vrai mode, un paiement fait
+        avec une carte factice (le staging d'un produit) est reçu, dit au
+        journal, et ne passe rien en « payé ». Le même paiement en vrai
+        mode est compté ; une instance sans vrai mode garde le mode test."""
+        chemin = Path(self.dossier.name) / 'serge.db'
+        base = sqlite3.connect(chemin)
+        base.row_factory = sqlite3.Row
+        init_schema(base)
+        base.execute(
+            'INSERT INTO ventures(id, created_at, updated_at)'
+            " VALUES('v1','t','t')"
+        )
+        tx = create_intent(base, 'v1', 'invoice', 12.0, intent_key='pi_essai')
+        to_issued(base, tx, 'F-1')
+        base.commit()
+        base.close()
+        corps = json.dumps(
+            {
+                'id': 'evt_essai',
+                'type': 'payment_intent.succeeded',
+                'data': {'object': {'id': 'pi_essai'}},
+            }
+        ).encode()
+
+        def envoyer(secret: str, secrets: dict[str, str]) -> dict:
+            recepteur = type(
+                'Recepteur',
+                (Handler,),
+                {'secrets': secrets, 'db_path': chemin},
+            )
+            serveur = ThreadingHTTPServer(('127.0.0.1', 0), recepteur)
+            fil = threading.Thread(target=serveur.serve_forever, daemon=True)
+            fil.start()
+            try:
+                requete = urllib.request.Request(
+                    f'http://127.0.0.1:{serveur.server_address[1]}'
+                    f'{STRIPE_WEBHOOK_PATH}',
+                    data=corps,
+                    headers={
+                        'Stripe-Signature': _signed(
+                            corps, secret, int(time.time())
+                        )
+                    },
+                )
+                with urllib.request.urlopen(requete, timeout=10) as reponse:
+                    return json.loads(reponse.read())
+            finally:
+                serveur.shutdown()
+                serveur.server_close()
+
+        def statut() -> str:
+            lu = sqlite3.connect(chemin)
+            try:
+                return lu.execute(
+                    'SELECT status FROM transactions WHERE id=?', (tx,)
+                ).fetchone()[0]
+            finally:
+                lu.close()
+
+        les_deux = {'live': 'whsec_du_vrai_mode', 'test': WHSEC}
+        journal = io.StringIO()
+        with redirect_stderr(journal):
+            recu = envoyer(WHSEC, les_deux)
+        self.assertEqual(recu, {'status': 'ignored', 'mode': 'test'})
+        self.assertIn('mode test ignoré', journal.getvalue())
+        self.assertNotEqual(statut(), 'paid')
+        with redirect_stderr(io.StringIO()):
+            recu = envoyer('whsec_du_vrai_mode', les_deux)
+        self.assertEqual((recu['status'], recu['mode']), ('ok', 'live'))
+        self.assertEqual(statut(), 'paid')
+        self.assertTrue(compte_pour_de_vrai('test', {'test': WHSEC}))
+        self.assertFalse(compte_pour_de_vrai('test', les_deux))
 
     def test_unmatched_and_ignored(self) -> None:
         event = {

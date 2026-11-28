@@ -9,8 +9,9 @@ toujours à jour, sans rien d'écrit pour une invocation en particulier.
 
 Les leçons sont celles rattachées à l'invocation (portée
 ``invocation:<id>``), puis à son étape (``etape:<id>``), puis à tout Serge
-(``global``), les plus fiables d'abord. Une leçon dépassée ou expirée
-n'est jamais donnée.
+(``global``), les plus fiables d'abord. Seule une leçon gardée par un
+humain (statut ``active``) est donnée : une leçon proposée attend son
+ticket « Leçon », et une leçon dépassée ou expirée n'est jamais donnée.
 """
 
 from __future__ import annotations
@@ -110,7 +111,8 @@ PORTEES = {
 def lessons_for(
     conn: sqlite3.Connection, invocation_id: str, step_id: str, limit: int
 ) -> tuple[list[tuple[str, float, str]], int]:
-    """Ses leçons, les plus fiables d'abord, et leur nombre total.
+    """Ses leçons gardées par un humain, les plus fiables d'abord, et leur
+    nombre total.
 
     Returns:
         ``([(énoncé, fiabilité, portée)], total)`` ; la portée vaut
@@ -118,7 +120,7 @@ def lessons_for(
     """
     scopes = (f'invocation:{invocation_id}', f'etape:{step_id}', 'global')
     where = (
-        " FROM lessons WHERE status<>'deprecated'"
+        " FROM lessons WHERE status='active'"
         " AND (expires_at='' OR expires_at>?) AND scope IN (?,?,?)"
     )
     args = (iso_utc(), *scopes)

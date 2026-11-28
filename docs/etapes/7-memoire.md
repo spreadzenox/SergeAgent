@@ -8,7 +8,7 @@ pas deux fois la même erreur.
 **Entrée.** Le journal (`events`) depuis la dernière consolidation.
 
 **Sortie.** Des leçons, des procédures qui marchent et des pièges à éviter,
-validés par Julien.
+validés par un humain.
 
 Le fonctionnement général de la mémoire est dans
 [`MEMOIRE.md`](../MEMOIRE.md).
@@ -17,14 +17,22 @@ Le fonctionnement général de la mémoire est dans
 
 ## Aujourd'hui
 
+- **Une leçon proposée attend un humain** (décision Q121). Chaque leçon
+  écrite au statut « proposée » ouvre un ticket « Leçon » (« Faire valider
+  une leçon »), sur Discord et dans Mission Control : la leçon, le
+  business d'où elle vient, et deux boutons. « Garder » la passe à
+  « gardée » : les invocations qu'elle concerne la reçoivent. « Jeter » la
+  passe à « dépassée ». Le ticket n'expire jamais : sans réponse, la leçon
+  n'est donnée à personne. Aujourd'hui, ces leçons viennent de « Tirer la
+  leçon d'un business arrêté » (étape 3).
 - **La consolidation est débranchée** depuis le lot 6. Son code
   (l'invocation « Consolider la mémoire », qui lisait le journal tous les
   3 jours et proposait des leçons, des procédures et des pièges dans un
   ticket « Mémoire ») est rangé dans `pas_encore_branche/`. Elle reviendra
   décrite en base : un déclencheur régulier, une invocation qui lit le
   journal, et une règle d'écriture qui ajoute des leçons « proposées »,
-  que Julien garde ou jette (voir « Plus tard » dans le
-  [`TODO.md`](../../TODO.md)).
+  qu'un humain garde ou jette par le même ticket « Leçon » (voir « Plus
+  tard » dans le [`TODO.md`](../../TODO.md)).
 - La page Mémoire de Mission Control montre toujours les leçons existantes
   et les derniers événements de consolidation.
 - `SERGE.md` (un résumé de Serge réécrit à chaque consolidation) a été

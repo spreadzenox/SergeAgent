@@ -741,8 +741,9 @@ tables à comparer.
 - « Lire l'historique » vaut pour les tables à comparer et pour celles de
   ses lectures d'office (ce qu'elle doit traiter).
 - La portée d'une leçon s'écrit `invocation:<id>` ou `etape:<id>`, comme
-  les portées qui existaient déjà (`global`, `venture:<id>`). Une leçon
-  dépassée ou expirée n'est jamais donnée.
+  les portées qui existaient déjà (`global`, `venture:<id>`). Seule une
+  leçon gardée par un humain est donnée (décision Q121) : une leçon
+  proposée, dépassée ou expirée ne l'est jamais.
 - Le bloc « Ta place » cite aussi les déclencheurs qui la lancent.
 - Les lectures d'office suivent la même règle : les plus récentes
   d'abord (par la colonne d'ordre de la table lue) et le compte exact des

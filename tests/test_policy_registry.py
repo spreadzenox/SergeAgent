@@ -23,11 +23,13 @@ class RegistryTests(unittest.TestCase):
             sorted(types),
             [
                 'CHOIX_PRINCIPAL',
+                'CONNEXION_COMPTE',
                 'CONVERSATION',
                 'DOMAINE_PRODUIT',
                 'FYI',
                 'GUICHET',
                 'GUICHET_PRET',
+                'LECON',
                 'PASSAGE',
                 'PLAN_POC',
                 'PLAN_PRODUIT',
@@ -41,6 +43,10 @@ class RegistryTests(unittest.TestCase):
             types['GUICHET']['default'], 'pause_propre_reproposee'
         )
         self.assertEqual(types['PLAN_POC']['default'], 'valider')
+        # Ni une leçon ni une adresse de connexion ne se valident seules.
+        for attend in ('LECON', 'CONNEXION_COMPTE'):
+            self.assertEqual(types[attend]['default'], 'attend')
+            self.assertIsNone(types[attend]['expiry_hours'])
 
     def test_les_types_retires_sont_listes_sans_etre_declares(self) -> None:
         """La section ``deleted`` : les types retirés. Un type à la fois
