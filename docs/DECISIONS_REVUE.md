@@ -1511,7 +1511,7 @@ Julien, sur la règle de branche : l'idéal est une idée par PR, mais en
 pratique c'est une session de travail ; on garde une cohérence et on reste
 souple.
 
-### Q77 — La branche de travail : une session = une branche = une PR, et Clem valide chaque fusion (validé par Clem, 2 octobre 2026)
+### Q77 — La branche de travail : une session = une branche = une PR, et un humain valide chaque fusion (validé par Clem, 2 octobre 2026 ; précisé par Julien et Clem, 28 novembre 2026)
 Constat : Clem avait demandé de toujours travailler sur la branche `Clem`
 et de lui demander avant chaque fusion dans `main`. Julien a corrigé Q64
 (point 5) : en général, une session de travail = une branche = une PR, de
@@ -1522,9 +1522,11 @@ Décidé :
    une PR (`docs/DEV_TOOLING.md`). Exemple : les réglages généraux en base
    (la PR B de Q68) partent sur leur propre branche, `reglages-en-base`,
    avec leur propre PR.
-2. Claude demande toujours à Clem avant de fusionner une PR dans `main` :
-   chaque fusion redéploie Serge sur le serveur de Julien. C'était la
-   proposition de Claude, et Clem l'a acceptée.
+2. Claude demande toujours à un humain, Julien ou Clem, avant de
+   fusionner une PR dans `main` : chaque fusion redéploie Serge sur le
+   serveur de Julien. C'était la proposition de Claude, et Clem l'a
+   acceptée. Le 28 novembre 2026, Julien et Clem ont précisé que l'accord
+   de l'un des deux suffit (l'entrée disait « Clem »).
 
 ### Q78 — Pas de réglage en double, et un réglage inutile est supprimé (validé par Clem, 2 octobre 2026)
 Constat : Q68 (point 6) disait « les chiffres en double sont branchés sur
