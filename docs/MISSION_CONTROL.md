@@ -106,7 +106,8 @@ ses boutons « Supprimer de Stripe (mode test) » et « Supprimer de Stripe
 (vrai mode) », qui archivent ses prix et ses produits, après confirmation,
 « Faire le point sur ce produit maintenant », qui lance sans attendre
 lundi le point d'un produit en vente, avec une consigne si on veut
-décider soi-même de ce qu'il fait, et « Abandonner la nouvelle
+décider soi-même de ce qu'il fait (un bouton qui attend d'autres champs
+que le business les demande au clic, dans sa fenêtre de confirmation), et « Abandonner la nouvelle
 version en cours d'un produit », qui libère la place pour une autre
 version sans toucher au produit en ligne (Q119)
 (un bouton déclaré en base qui attend un business est sur sa fiche, pas

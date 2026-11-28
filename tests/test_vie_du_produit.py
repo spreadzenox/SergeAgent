@@ -33,6 +33,9 @@ Scénarios :
   évolution, qu'un humain essaiera avant la prod ;
 - une nouvelle version garde l'adresse du produit ; sans produit en prod,
   elle est refusée ;
+- dans Mission Control, le bouton « Faire le point sur ce produit
+  maintenant » de la fiche d'un business demande sa consigne, et elle
+  part avec lui ;
 - l'adresse de contact d'un produit : il la reçoit à sa publication, et
   un e-mail écrit à cette adresse par un inconnu devient le message d'un
   contact « entrant » de son business ; une réponse automatique non.
@@ -71,8 +74,10 @@ from serge.interpreter.triggers import (  # noqa: E402
     notify_rows_written,
 )
 from serge.llm.client import ChatResult  # noqa: E402
+from serge.mc.proj_faits import project_fait_pipe  # noqa: E402
 from serge.sandbox import courriel, publier  # noqa: E402
 from tests import test_etape5  # noqa: E402
+from tests.mc_server_case import McBrowserCase  # noqa: E402
 from tests.test_etape5 import (  # noqa: E402
     FauxModeles,
     _plan_produit,
@@ -806,6 +811,58 @@ class AdresseDeContactTests(unittest.TestCase):
             courriel, 'identite_serge', return_value={'email': ''}
         ):
             self.assertEqual(courriel.contact_du_produit('calcudevis'), '')
+
+
+class BoutonDuPointTests(McBrowserCase):
+    """Sur la fiche d'un business, dans Mission Control, le bouton « Faire
+    le point sur ce produit maintenant » demande sa consigne."""
+
+    def _base(self, sql: str, *args: Any) -> list[tuple]:
+        conn = sqlite3.connect(self.db_path)
+        try:
+            rows = conn.execute(sql, args).fetchall()
+            conn.commit()
+            return rows
+        finally:
+            conn.close()
+
+    def test_la_consigne_part_avec_le_bouton(self) -> None:
+        from playwright.sync_api import expect
+
+        maintenant = utcnow()
+        self._base(
+            'INSERT INTO ventures(id, name, lifecycle, created_at, updated_at)'
+            " VALUES('ven_calcu', 'CalcuDevis', 'FULL_RUNNING', ?, ?)",
+            maintenant,
+            maintenant,
+        )
+        bouton = 'Faire le point sur ce produit maintenant'
+        consigne = 'Ajoute une offre Pro à 9 € par mois.'
+        page = self._auth_context().new_page()
+        self._watch_errors(page)
+        page.goto(f'{self.base}/owner#/objet/venture/ven_calcu')
+        page.get_by_role('button', name=bouton).click()
+        modale = page.locator('.modale')
+        expect(modale).to_contain_text('Avec une consigne', timeout=10000)
+        modale.locator('textarea').fill(consigne)
+        modale.get_by_role('button', name=bouton).click()
+        expect(page.locator('body')).to_contain_text('fait.', timeout=10000)
+        self.assertEqual(
+            self._base(
+                'SELECT p.name, p.value FROM tasks t JOIN task_params p'
+                " ON p.task_id=t.id WHERE t.invocation_id='point_a_la_demande'"
+                ' ORDER BY p.name'
+            ),
+            [('consigne', consigne), ('venture_id', 'ven_calcu')],
+        )
+        # Un bouton sans autre champ garde sa simple confirmation.
+        fiche = project_fait_pipe(
+            sqlite3.connect(self.db_path), 'venture', 'ven_calcu'
+        )
+        assert fiche is not None
+        champs = {a['libelle']: a.get('champs') for a in fiche['actions']}
+        self.assertEqual(len(champs[bouton]), 1)
+        self.assertEqual(champs['Supprimer de Stripe (mode test)'], [])
 
 
 if __name__ == '__main__':
