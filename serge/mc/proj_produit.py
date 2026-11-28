@@ -223,8 +223,22 @@ def boutons_du_business(
     """Les boutons déclarés en base dont le formulaire attend un business.
 
     Ils s'affichent sur la fiche de chaque business, son numéro déjà
-    rempli. Exemple : « Supprimer de Stripe (mode test) ».
+    rempli. Exemple : « Supprimer de Stripe (mode test) ». Les autres
+    champs du formulaire (``champs``, leurs libellés) sont demandés au
+    clic : la consigne de « Faire le point sur ce produit maintenant ».
     """
+
+    def champs(trigger: str) -> list[str]:
+        return [
+            str(r[0])
+            for r in conn.execute(
+                'SELECT value FROM trigger_params WHERE trigger_id=?'
+                " AND source='form' AND value<>'venture_id'"
+                ' ORDER BY param_name',
+                (trigger,),
+            )
+        ]
+
     return [
         {
             'libelle': str(titre),
@@ -234,6 +248,7 @@ def boutons_du_business(
                 'form': {'venture_id': venture_id},
             },
             'confirmer': str(confirmer or ''),
+            'champs': champs(str(ident)),
         }
         for ident, titre, confirmer in conn.execute(
             'SELECT t.id, t.title, t.confirm_text FROM triggers t'

@@ -217,7 +217,26 @@ async function agir(action) {
     }
     charge[saisie.nom] = valeurs[saisie.nom];
   }
-  if (action.confirmer) {
+  if (action.champs && action.champs.length) {
+    // Un bouton du pipeline qui attend d’autres champs que le business
+    // (la consigne d’un point) : sa question les demande, et ils partent
+    // dans son formulaire, sous leur libellé.
+    const valeurs = await promptModal(document.body, {
+      title: `${action.libelle} ?`,
+      message: action.confirmer || '',
+      fields: action.champs.map((label) => ({
+        nom: label,
+        label,
+        multiligne: true,
+        lignes: 4,
+      })),
+      confirm: action.libelle,
+    });
+    if (!valeurs) {
+      return false;
+    }
+    charge.form = {...(charge.form || {}), ...valeurs};
+  } else if (action.confirmer) {
     const ok = await confirmModal(document.body, {
       title: `${action.libelle} ?`,
       message: action.confirmer,
