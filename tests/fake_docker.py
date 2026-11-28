@@ -140,6 +140,15 @@ def _exec(args: list[str]) -> int:
         return _refuse(f'No such container: {name}', 1)
     if state['state'] != 'running':
         return _refuse(f'container {name} is not running', 1)
+    if argv[:1] == ['iptables']:
+        # Le pare-feu du conteneur : « -C » dit si la règle y est (0) ou
+        # non (1), « -I » la pose.
+        regles = state.setdefault('iptables', [])
+        if argv[1] == '-C':
+            return 0 if argv[2:] in regles else 1
+        regles.append(argv[2:])
+        _save(name, state)
+        return 0
     work = str(ROOT / 'volumes' / _dossier_volume(state['volume']))
     argv = [a.replace('/work', work) for a in argv]
     if argv[:2] == ['du', '-sm'] and os.environ.get('FAKE_DOCKER_DU_MB'):
@@ -162,7 +171,7 @@ def _exec(args: list[str]) -> int:
 
 
 def _network(args: list[str]) -> int:
-    """``network ls/create/connect`` : un fichier par réseau."""
+    """``network ls/create/connect/inspect`` : un fichier par réseau."""
     folder = ROOT / 'networks'
     folder.mkdir(parents=True, exist_ok=True)
     if args[0] == 'ls':
@@ -180,6 +189,10 @@ def _network(args: list[str]) -> int:
             return _refuse(f'No such container: {args[2]}', 1)
         state.setdefault('networks', []).append(args[1])
         _save(args[2], state)
+        return 0
+    if args[0] == 'inspect':
+        # La passerelle du réseau (le seul format que Serge demande).
+        print('172.18.0.1')
         return 0
     return _refuse(f'network {args[0]} inconnu du faux docker')
 

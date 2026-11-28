@@ -25,6 +25,7 @@ from collections.abc import Callable
 from typing import Any
 
 from serge.paths import config_root
+from serge.sandbox.docker import journal
 from serge.sandbox.lecture import (
     attendre,
     element,
@@ -33,7 +34,7 @@ from serge.sandbox.lecture import (
     viser,
 )
 from serge.secrets import read_secret_value
-from serge.web_accounts import PASSWORD_NAME, AccountError
+from serge.web_accounts import PASSWORD_NAME, AccountError, meme_site
 
 ECRANS = {'ordinateur': (1280, 800), 'mobile': (390, 844)}
 OUI = (True, 'true', '1', 'oui')
@@ -139,6 +140,7 @@ def _taper_secret(session: Any, args: dict[str, Any]) -> str:
     permis = {n.strip() for n in str(args.get('secrets') or '').split(',')} - {
         ''
     }
+    champ = element(session.page, args.get('ref'))
     if nom == PASSWORD_NAME and session.mot_de_passe is not None:
         try:
             valeur = session.mot_de_passe()
@@ -146,6 +148,21 @@ def _taper_secret(session: Any, args: dict[str, Any]) -> str:
             # Un compte connecté avec Google n'a pas de mot de passe : le
             # refus dit au modèle comment se connecter.
             return str(exc)
+        # Le mot de passe d'un compte ne se tape que sur son site : une
+        # page qui imite sa connexion, ailleurs, ne le reçoit pas. L'hôte
+        # est celui du cadre où est le champ.
+        hote = str(champ.evaluate('() => location.hostname', timeout=5000))
+        if not meme_site(hote, session.site):
+            journal(
+                f'mot de passe du compte {session.account} non tapé :'
+                f' la page est sur {hote}, le compte sur {session.site}'
+            )
+            return (
+                f'mot de passe non tapé : cette page est sur {hote}, et le'
+                f' compte « {session.account} » sur {session.site}. Reviens'
+                ' sur le site du compte ; si sa connexion passe vraiment'
+                ' par cette adresse, appelle un humain'
+            )
     elif nom not in permis:
         return f'secret non permis : {nom}'
     else:
@@ -153,7 +170,6 @@ def _taper_secret(session: Any, args: dict[str, Any]) -> str:
     if not valeur:
         return f'secret absent sur ce serveur : {nom}'
     session.masques.add(valeur)
-    champ = element(session.page, args.get('ref'))
     champ.fill(valeur, timeout=10000)
     session.champs_secrets.append(champ)
     return ''
@@ -274,6 +290,10 @@ def agir(session: Any, args: dict[str, Any]) -> str:
     action = str(args.get('action') or '')
     texte = str(args.get('text') or '')
     if action == 'ouvrir':
+        # Une page du web seulement : ni fichier du conteneur (file://),
+        # ni page interne du navigateur (chrome://).
+        if not re.match(r'https?://', texte.strip(), re.IGNORECASE):
+            return f'adresse refusée : {texte} (http ou https seulement)'
         page.goto(
             vers_chantier(texte, args),
             wait_until='domcontentloaded',

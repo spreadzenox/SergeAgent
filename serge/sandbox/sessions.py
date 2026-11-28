@@ -68,6 +68,8 @@ class _Session:
     account: str = ''
     task_id: str = ''
     mot_de_passe: Callable[[], str] | None = None
+    # L'hôte du site du compte : son mot de passe ne se tape que là.
+    site: str = ''
 
 
 @dataclass
@@ -220,6 +222,7 @@ def _session(
     )
     if account:
         session.mot_de_passe = lambda: web_accounts.password(conn, account)
+        session.site = web_accounts.site(conn, account)
     _ecouter(session, session.page)
     etat.sessions[_cle(task_id, account)] = session
     return session

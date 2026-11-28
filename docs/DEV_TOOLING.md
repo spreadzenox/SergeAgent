@@ -97,7 +97,7 @@ machine sans `~/.config/serge` (Actions) reste verte.
 ## Setup (une fois par clone)
 
 ```sh
-curl -LsSf astral.sh/uv/install.sh | sh
+curl -LsSf https://astral.sh/uv/install.sh | sh
 uv sync --group dev
 uv run pre-commit install
 uv run playwright install chromium

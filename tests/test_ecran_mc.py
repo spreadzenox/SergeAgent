@@ -151,6 +151,25 @@ class EcranTests(McServerCase):
             s.sendall(b'clic en 120,340')
             self.assertEqual(s.recv(4096), b'clic en 120,340')
 
+    def test_le_flux_ne_s_ouvre_pas_depuis_une_autre_adresse(self) -> None:
+        """Le flux pilote le vrai Chrome : la page d'un autre hôte, même
+        avec la session du propriétaire, ne l'ouvre pas."""
+        cookie = self._auth_cookie()
+        with socket.create_connection(('127.0.0.1', self.port), 5) as s:
+            s.sendall(
+                (
+                    'GET /owner/vrai-chrome/websockify HTTP/1.1\r\n'
+                    f'Host: 127.0.0.1:{self.port}\r\nCookie: {cookie}\r\n'
+                    'Origin: https://staging-produit.exemple.fr\r\n'
+                    'Upgrade: websocket\r\nConnection: Upgrade\r\n'
+                    'Sec-WebSocket-Key: dGVzdA==\r\n\r\n'
+                ).encode()
+            )
+            reponse = b''
+            while b'\r\n\r\n' not in reponse:
+                reponse += s.recv(4096)
+        self.assertTrue(reponse.startswith(b'HTTP/1.1 403'), reponse[:40])
+
     def test_vrai_chrome_eteint(self) -> None:
         cookie = self._auth_cookie()
         self.adresse.return_value = ''

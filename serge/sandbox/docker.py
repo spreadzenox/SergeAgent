@@ -12,6 +12,7 @@ une panne.
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -46,15 +47,27 @@ def secret_env(spec: str) -> dict[str, str]:
     """
     values: dict[str, str] = {}
     for pair in spec.split(','):
-        name, _, fichier = pair.strip().partition('=')
+        name, _, fichier = (bout.strip() for bout in pair.partition('='))
         if not name:
             continue
-        valeur = read_secret_file(config_root() / 'secrets' / fichier.strip())
-        if not valeur:
-            message = f'secret absent sur ce serveur : {fichier.strip()}'
+        # Le nom entre dans l'environnement de la commande ``docker`` et le
+        # fichier est lu sur le serveur : un nom de variable ordinaire, et
+        # un fichier du dossier des secrets, jamais un chemin.
+        if (
+            not re.fullmatch(r'[A-Z][A-Z0-9_]*', name)
+            or name.startswith(('DOCKER_', 'LD_'))
+            or name in ('PATH', 'HOME')
+            or Path(fichier).name != fichier
+        ):
+            message = f'secret refusé : {name}={fichier}'
             journal(message)
             raise DockerError(message)
-        values[name.strip()] = valeur
+        valeur = read_secret_file(config_root() / 'secrets' / fichier)
+        if not valeur:
+            message = f'secret absent sur ce serveur : {fichier}'
+            journal(message)
+            raise DockerError(message)
+        values[name] = valeur
     return values
 
 

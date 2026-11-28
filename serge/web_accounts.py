@@ -45,6 +45,7 @@ import sqlite3
 import string
 from datetime import UTC, datetime, timedelta
 from typing import Any
+from urllib.parse import urlsplit
 
 from serge.db.store import utcnow
 from serge.paths import config_root
@@ -135,6 +136,42 @@ def new_password(longueur: int = LONGUEUR, signes: bool = True) -> str:
         value = ''.join(secrets.choice(alphabet) for _ in range(longueur))
         if all(any(c in kind for c in value) for kind in kinds):
             return value
+
+
+# Les seconds niveaux courants des pays (« co.uk », « com.au ») : le domaine
+# enregistré y prend trois noms.
+_SECONDS = frozenset({'co', 'com', 'org', 'net', 'gov', 'gouv', 'ac', 'edu'})
+
+
+def _domaine(hote: str) -> str:
+    # raccourci : sans la liste publique des suffixes, le domaine enregistré
+    # est pris pour les deux derniers noms de l'hôte (trois pour « co.uk »).
+    # Un site logé sur un domaine partagé (« x.pages.dev ») est donc
+    # confondu avec ses voisins ; passer à la liste si Serge y a un compte.
+    noms = hote.lower().rstrip('.').split('.')
+    pays = len(noms) >= 3 and len(noms[-1]) == 2 and noms[-2] in _SECONDS
+    return '.'.join(noms[-3 if pays else -2 :])
+
+
+def site(conn: sqlite3.Connection, name: str) -> str:
+    """L'hôte du site d'un compte (``www.reddit.com``), ou ``''``."""
+    row = conn.execute(
+        'SELECT url FROM web_accounts WHERE id=?', (name,)
+    ).fetchone()
+    return (urlsplit(str(row[0])).hostname or '') if row else ''
+
+
+def meme_site(hote: str, du_compte: str) -> bool:
+    """Une page de cet hôte est-elle sur le site du compte ?
+
+    Oui pour le même hôte ou le même domaine enregistré
+    (``old.reddit.com`` et ``www.reddit.com``) ; non pour un autre domaine,
+    même s'il commence pareil (``reddit.com.exemple.net``).
+    """
+    hote, du_compte = hote.lower(), du_compte.lower()
+    if not hote or not du_compte:
+        return False
+    return hote == du_compte or _domaine(hote) == _domaine(du_compte)
 
 
 def set_password(conn: sqlite3.Connection, name: str, value: str) -> None:

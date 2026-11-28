@@ -57,6 +57,7 @@ PUBLIER: tuple[Capability, ...] = (
                 False,
                 'Les secrets du produit, figés en base :'
                 ' STRIPE_SECRET_KEY=stripe-test.key.',
+                frozen=True,
             ),
         ),
     ),

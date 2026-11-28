@@ -261,7 +261,10 @@ class PublierTests(unittest.TestCase):
 
     def test_les_routes_deja_la_gardent_le_meme_caddyfile(self) -> None:
         avant = caddy.upsert(
-            'serge.exemple.fr', '127.0.0.1:8788', 'stripe', '/hooks/stripe'
+            'serge.exemple.fr',
+            '127.0.0.1:8788',
+            'serge-collect-stripe',
+            '/hooks/stripe',
         )
         self.assertEqual(avant['status'], 'ok')
         self.assertEqual(

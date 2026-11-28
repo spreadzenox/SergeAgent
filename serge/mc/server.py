@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import hmac
 import json
 import sys
 import urllib.parse
@@ -16,15 +15,13 @@ from pathlib import Path
 from sqlite3 import Connection
 
 from serge.db.store import open_db
-from serge.mc.actions import MAX_FORM_BYTES, ActionsMixin
+from serge.mc.actions import ActionsMixin
 from serge.mc.api_views import ApiViewsMixin
 from serge.mc.auth import (
-    COOKIE_NAME,
-    SESSION_TTL_S,
     RateLimiter,
     check_owner,
-    create_session,
-    revoke_session,
+    client_ip,
+    origine_permise,
 )
 from serge.mc.coupe_actions import CoupeActionsMixin
 from serge.mc.discord_actions import DiscordActionsMixin
@@ -36,6 +33,7 @@ from serge.mc.pipeline_actions import PipelineActionsMixin
 from serge.mc.policy_actions import PolicyActionsMixin
 from serge.mc.proj_public import project_public_statut
 from serge.mc.projectors import PAGE_SECTIONS, SnapshotCache
+from serge.mc.session_actions import SessionMixin
 from serge.mc.sse import state_payload, stream_page
 from serge.policy import PolicyError
 from serge.policy_store import policy_en_vigueur
@@ -90,6 +88,7 @@ class McHandler(
     EtapeActionsMixin,
     PipelineActionsMixin,
     LlmActionsMixin,
+    SessionMixin,
     ActionsMixin,
     BaseHTTPRequestHandler,
 ):
@@ -107,6 +106,9 @@ class McHandler(
         for name, value in SECURITY_HEADERS.items():
             self.send_header(name, value)
         self.send_header('Cache-Control', 'no-store')
+        # Une requête par connexion : le corps non lu d'une requête ne
+        # devient jamais la suivante (Caddy réutilise ses connexions).
+        self.send_header('Connection', 'close')
         super().end_headers()
 
     @contextmanager
@@ -122,8 +124,6 @@ class McHandler(
         self.send_response(code)
         self.send_header('Content-Type', content_type)
         self.send_header('Content-Length', str(len(body)))
-        if self.close_connection:
-            self.send_header('Connection', 'close')
         self.end_headers()
         self.wfile.write(body)
 
@@ -167,13 +167,21 @@ class McHandler(
         return {key.lower(): value for key, value in self.headers.items()}
 
     def _is_owner(self) -> bool:
+        entetes = self._headers_lower()
+        limite, cle = self.app_config.limiter, ''
+        # Un jeton envoyé par en-tête puis refusé compte comme un essai de
+        # connexion : la limite du formulaire ne se contourne pas par là.
+        if entetes.get('authorization') or entetes.get('x-serge-owner-token'):
+            cle = f'entete:{client_ip(self.client_address[0], entetes)}'
+            if limite.bloque(cle):
+                return False
         with self._db() as conn:
-            return check_owner(
-                self._headers_lower(),
-                self._cookies(),
-                conn,
-                self.app_config.owner_token,
+            ok = check_owner(
+                entetes, self._cookies(), conn, self.app_config.owner_token
             )
+        if cle and not ok:
+            limite.allow(cle)
+        return ok
 
     def _serve_static(self, rel: str) -> None:
         base = self.app_config.static_dir.resolve()
@@ -343,6 +351,18 @@ class McHandler(
         path = urllib.parse.unquote(
             urllib.parse.urlsplit(self.path).path or '/'
         )
+        if not origine_permise(self._headers_lower()):
+            # Une page d'un autre hôte (un produit publié, par exemple) ne
+            # fait rien faire à Mission Control avec la session ouverte.
+            origine = repr(self.headers.get('Origin'))[:120]
+            print(f'mc : requête refusée, origine {origine}', file=sys.stderr)
+            self._refus(
+                403,
+                'Requête venue d’une autre adresse.',
+                'origine',
+                'Ouvre Mission Control à son adresse.',
+            )
+            return
         if path == '/owner/login':
             self._login()
             return
@@ -384,68 +404,6 @@ class McHandler(
             return
         acte()
 
-    def _form(self) -> dict[str, str] | None:
-        try:
-            length = int(self.headers.get('Content-Length') or 0)
-        except (TypeError, ValueError):
-            return None
-        if length < 0 or length > MAX_FORM_BYTES:
-            return None
-        raw = self.rfile.read(length) if length else b''
-        parsed = urllib.parse.parse_qs(
-            raw.decode('utf-8', 'replace'), keep_blank_values=True
-        )
-        return {key: values[0] for key, values in parsed.items() if values}
-
-    def _login(self) -> None:
-        ip = self.client_address[0]
-        if not self.app_config.limiter.allow(ip):
-            html = self._template('login.html').replace(
-                'data-error="rate" hidden', 'data-error="rate"'
-            )
-            self._send_html(429, html)
-            return
-        form = self._form()
-        if form is None:
-            self._error(413)
-            return
-        token = form.get('token') or ''
-        expected = self.app_config.owner_token
-        if (
-            not token
-            or not expected
-            or not hmac.compare_digest(token, expected)
-        ):
-            html = self._template('login.html').replace(
-                'data-error="auth" hidden', 'data-error="auth"'
-            )
-            self._send_html(401, html)
-            return
-        with self._db() as conn:
-            session, _ = create_session(conn)
-        self.send_response(302)
-        self.send_header('Location', '/owner')
-        self.send_header('Content-Length', '0')
-        self.send_header(
-            'Set-Cookie',
-            f'{COOKIE_NAME}={session}; HttpOnly; Path=/owner;'
-            f' SameSite=Lax; Max-Age={SESSION_TTL_S}',
-        )
-        self.end_headers()
-
-    def _logout(self) -> None:
-        token = self._cookies().get(COOKIE_NAME, '')
-        with self._db() as conn:
-            revoke_session(conn, token)
-        self.send_response(302)
-        self.send_header('Location', '/owner/login')
-        self.send_header('Content-Length', '0')
-        self.send_header(
-            'Set-Cookie',
-            f'{COOKIE_NAME}=; HttpOnly; Path=/owner; SameSite=Lax; Max-Age=0',
-        )
-        self.end_headers()
-
 
 def create_server(
     config: McConfig, host: str = '127.0.0.1', port: int = 0
@@ -485,9 +443,16 @@ def main() -> None:
     args = p.parse_args()
     root = system_root()
     d = Path(__file__).resolve().parent
+    jeton = owner_dashboard_token(root)
+    if not jeton:
+        raise SystemExit(
+            'mc : jeton du propriétaire absent ou vide'
+            ' (secrets/owner-dashboard.token) : Mission Control ne démarre'
+            ' pas sans lui'
+        )
     cfg = McConfig(
         default_canon_path(root),
-        owner_dashboard_token(root),
+        jeton,
         d / 'static',
         d / 'templates',
         RateLimiter(),

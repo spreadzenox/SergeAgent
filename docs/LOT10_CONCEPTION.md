@@ -797,9 +797,13 @@ atteindre Serge.
   rootless, jamais en root.
 - Aucun secret de Serge n'entre dans un conteneur, ni aucune clé de
   modèle : c'est Serge qui appelle le modèle. La seule clé qu'un produit
-  reçoit est sa clé Stripe restreinte (partie 5).
+  reçoit est sa clé Stripe restreinte (partie 5). Les secrets d'un
+  conteneur sont figés en base (`env_secrets`) : un modèle ne les nomme
+  jamais, et ce sont des fichiers du dossier des secrets, pas des chemins.
 - Un conteneur ne voit ni `serge.db`, ni Mission Control, ni les
-  récepteurs de Serge sur le VPS : il ne joint qu'Internet.
+  récepteurs de Serge sur le VPS : il joint Internet et ses voisins du
+  réseau des chantiers (la boîte d'essai, un produit en staging), mais
+  pas les deux Chrome, qui n'acceptent de connexion que du serveur.
 - Le numéro de la carte de Serge est tapé par Serge, jamais montré au
   modèle (partie 2).
 - Toute erreur de Docker, du navigateur, de Stripe ou du bureau

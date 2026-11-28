@@ -19,8 +19,9 @@ _OU = (
         'env_secrets',
         'text',
         False,
-        'Les secrets du conteneur, à sa création :'
+        'Les secrets du conteneur, à sa création, figés en base :'
         ' STRIPE_SECRET_KEY=stripe-test.key.',
+        frozen=True,
     ),
 )
 

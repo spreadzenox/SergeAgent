@@ -105,6 +105,31 @@ class AsteriskRenderTests(unittest.TestCase):
         self.assertIn('qualify_frequency = 0', pjsip)
         self.assertNotIn('bind = 127.0.0.1', pjsip)
 
+    def test_le_numero_presente_passe_par_le_filtre(self) -> None:
+        """Le numéro de l'appelant est choisi par celui qui appelle : il
+        n'entre dans le nom d'un enregistrement ou dans l'appel du script
+        qu'après le filtre (chiffres et « + »), jamais tel quel."""
+        rendered = render_asterisk(
+            _loaded(),
+            {'user': 'owner', 'uid': '1000'},
+            {'sip_trunk_password': 's3cret'},
+        )
+        extensions = rendered['extensions.conf'][0]
+        lignes = [
+            ligne
+            for ligne in extensions.splitlines()
+            if 'MixMonitor(' in ligne or 'AGI(' in ligne
+        ]
+        self.assertEqual(len(lignes), 5)
+        for ligne in lignes:
+            for brut in ('${CALLERID(num)}', '${ARG1}', '${EXTEN}'):
+                filtre = '${FILTER(0-9+,' + brut + ')}'
+                self.assertNotIn(brut, ligne.replace(filtre, ''), ligne)
+        self.assertIn(
+            'Set(SERGE_NUM=${FILTER(0-9+,${CALLERID(num)})})', extensions
+        )
+        self.assertIn('AGI(turn.py,inbound,${SERGE_NUM},', extensions)
+
     def test_udp_trunk_uses_5060_without_tls_knobs(self) -> None:
         rendered = render_asterisk(
             _loaded(

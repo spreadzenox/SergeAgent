@@ -74,7 +74,7 @@ class VpnTests(unittest.TestCase):
 
     def test_le_sidecar_se_lance_au_premier_usage(self) -> None:
         ident, lancer = self._lance(
-            **{'telecom-vpn-login': 'cpesquet-25', 'telecom-vpn-password': 'x'}
+            **{'telecom-vpn-login': 'eleve-00', 'telecom-vpn-password': 'x'}
         )
         self.assertTrue(ident.startswith('id-'))
         self.assertIn(vpn.IMAGE, lancer)
@@ -106,9 +106,32 @@ class VpnTests(unittest.TestCase):
         # Les secrets passent par l'environnement de Docker, jamais sur sa
         # ligne de commande.
         self.assertIn('OPENVPN_USER', lancer)
-        self.assertNotIn('cpesquet-25', lancer)
+        self.assertNotIn('eleve-00', lancer)
         copie = self.dossier / 'config/vpn/telecom-paris.ovpn'
         self.assertTrue(copie.is_file())
+
+    def test_seul_le_serveur_ouvre_une_connexion_vers_les_chrome(self) -> None:
+        """Un chantier ou un produit en staging, voisins sur le réseau,
+        n'atteignent ni le débogage des Chrome ni l'écran : le sidecar
+        refuse toute connexion qui ne vient pas de la passerelle (les ports
+        publiés sur le serveur). La règle n'est posée qu'une fois."""
+        secrets = {'telecom-vpn-login': 'a', 'telecom-vpn-password': 'b'}
+        self._lance(**secrets)
+        vpn.ensure_vpn(self.conn)
+        poses = [
+            appel
+            for appel in self._appels('exec')
+            if appel[1:4] == [vpn.CONTAINER, 'iptables', '-I']
+        ]
+        self.assertEqual(len(poses), 1)
+        regle = poses[0][4:]
+        self.assertEqual(regle[:3], ['INPUT', '-i', 'eth0'])
+        self.assertEqual(
+            regle[regle.index('!') : regle.index('!') + 3],
+            ['!', '-s', '172.18.0.1'],
+        )
+        self.assertIn('NEW', regle)
+        self.assertEqual(regle[-2:], ['-j', 'DROP'])
 
     def test_deja_lance_rien_ne_se_refait(self) -> None:
         _ident, _lancer = self._lance(
