@@ -1,0 +1,84 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--color-accent); overflow: hidden; }
+    #fn-points { position: absolute; inset: 0; background-image: radial-gradient(circle, rgba(17, 17, 17, 0.13) 0 5px, transparent 6px); background-size: 54px 54px; }
+    #fn-monde { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; }
+    #fn-abonne { position: absolute; left: 120px; top: 312px; font: 400 216px "League Gothic", sans-serif; line-height: 216px; color: var(--color-paper); white-space: nowrap; }
+    #fn-acte { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; }
+    #fn-bouton { position: absolute; left: 120px; top: 556px; width: 430px; height: 120px; border-radius: 60px; background: var(--color-paper); border: 8px solid var(--color-ink); box-shadow: 9px 9px 0 var(--color-ink); }
+    #fn-bouton div { position: absolute; left: 0; top: 0; width: 414px; height: 104px; border-radius: 52px; text-align: center; font: 400 52px "Archivo Black", sans-serif; line-height: 104px; letter-spacing: 2px; white-space: nowrap; }
+    #fn-b1 { color: var(--color-ink); }
+    #fn-b2 { color: var(--color-ground); background: var(--color-ink); }
+    #fn-doigt { position: absolute; left: 0; top: 0; width: 170px; height: 170px; filter: drop-shadow(7px 7px 0 var(--color-ink)); }
+    #fn-cloche { position: absolute; left: 0; top: 0; width: 130px; height: 130px; filter: drop-shadow(7px 7px 0 var(--color-ink)); }
+    #fn-promesse { position: absolute; left: 120px; top: 724px; font: 400 112px "League Gothic", sans-serif; line-height: 116px; color: var(--color-ground); }
+    #fn-chute { position: absolute; left: 120px; top: 566px; font: 400 142px "League Gothic", sans-serif; line-height: 146px; color: var(--color-ground); }
+    #fn-promesse div, #fn-chute div { white-space: nowrap; }
+    #fn-c0 { color: var(--color-paper); }
+    #fn-kebab { position: absolute; left: 0; top: 0; width: 200px; height: 200px; filter: drop-shadow(8px 8px 0 var(--color-ink)); }
+    #fn-signature { position: absolute; left: 0; top: 0; }
+    #fn-sig-corps { background: var(--color-paper); padding: 14px 32px 16px; box-shadow: 9px 9px 0 var(--color-ink); }
+    #fn-sig-nom { font: 400 88px "Archivo Black", sans-serif; line-height: 92px; color: var(--color-ink); letter-spacing: 3px; }
+    #fn-sig-role { font: 700 38px "Inter", sans-serif; line-height: 44px; color: var(--color-ink); }
+    #fn-robot { position: absolute; left: 0; top: 0; width: 170px; height: 170px; filter: drop-shadow(8px 8px 0 var(--color-ink)); }
+  </style>
+  <div id="root" data-composition-id="fin" data-width="1080" data-height="1920">
+    <div id="fn-points" data-layout-ignore></div>
+    <div id="fn-monde">
+      <div id="fn-abonne">ABONNE-TOI</div>
+      <div id="fn-acte">
+        <div id="fn-bouton"><div id="fn-b1">+ SUIVRE</div><div id="fn-b2" data-layout-allow-occlusion data-layout-allow-overlap>ABONNÉ ✓</div></div>
+        <img id="fn-cloche" src="assets/emoji/bell.svg" alt="" data-layout-ignore />
+        <div id="fn-promesse"><div id="fn-p1">Un nouveau</div><div id="fn-p2">service</div><div id="fn-p3">chaque semaine.</div></div>
+        <img id="fn-doigt" src="assets/emoji/backhand_index_pointing_up.svg" alt="" data-layout-ignore />
+      </div>
+      <div id="fn-chute"><div id="fn-c0">Et celui-là,</div><div id="fn-c1">tu pourras</div><div id="fn-c2">te le payer.</div></div>
+      <img id="fn-kebab" src="assets/emoji/stuffed_flatbread.svg" alt="" data-layout-ignore />
+      <div id="fn-signature"><div id="fn-sig-corps"><div id="fn-sig-nom">SERGE</div><div id="fn-sig-role">entrepreneur IA</div></div></div>
+      <img id="fn-robot" src="assets/emoji/robot.svg" alt="" data-layout-ignore />
+    </div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    const D = 23.0; // début de la scène dans le film : les repères ci-dessous sont les temps de la voix
+    const a = (t) => +(t - D).toFixed(3);
+    const secousse = (quand, dx) =>
+      tl.to("#fn-monde", { keyframes: [{ x: dx, duration: 0.033 }, { x: 0, duration: 0.033 }], ease: "none" }, quand);
+    tl.fromTo("#fn-points", { opacity: 0 }, { opacity: 1, duration: 0.3, ease: "none" }, 0);
+    tl.fromTo("#fn-points", { backgroundPosition: "0px 0px" }, { backgroundPosition: "202px 202px", duration: 7.5, ease: "none" }, 0);
+    // « Abonne-toi » : le mot claque sur la voix, puis le bouton se fait appuyer.
+    tl.fromTo("#fn-abonne", { opacity: 0, scale: 1.5, transformOrigin: "0% 50%" }, { opacity: 1, scale: 1, duration: 0.12, ease: "power4.in" }, a(23.02));
+    secousse(a(23.14), 10);
+    tl.fromTo("#fn-bouton", { opacity: 0, scale: 0.5 }, { opacity: 1, scale: 1, duration: 0.26, ease: "back.out(1.8)" }, a(23.4));
+    tl.set("#fn-b2", { opacity: 0 }, 0);
+    tl.set("#fn-doigt", { x: 330, y: 640, rotation: -18 }, 0);
+    tl.fromTo("#fn-doigt", { opacity: 0, x: 470, y: 900 }, { opacity: 1, x: 330, y: 640, duration: 0.34, ease: "power3.out" }, a(23.56));
+    tl.to("#fn-doigt", { keyframes: [{ scale: 0.84, duration: 0.066 }, { scale: 1, duration: 0.1 }], ease: "power2.out" }, a(23.92));
+    tl.to("#fn-bouton", { keyframes: [{ scale: 0.93, duration: 0.066 }, { scale: 1, duration: 0.2, ease: "back.out(2.5)" }] }, a(23.92));
+    tl.set("#fn-b2", { opacity: 1 }, a(23.98));
+    tl.set("#fn-cloche", { x: 584, y: 548 }, 0);
+    tl.fromTo("#fn-cloche", { opacity: 0, scale: 0.2 }, { opacity: 1, scale: 1, duration: 0.24, ease: "back.out(2.2)" }, a(24.0));
+    tl.to("#fn-cloche", { keyframes: { rotation: [0, 18, -14, 9, -5, 0] }, duration: 0.6, ease: "none" }, a(24.22));
+    tl.to("#fn-doigt", { x: 520, y: 980, opacity: 0, duration: 0.24, ease: "power2.in" }, a(24.16));
+    // « Je sors un nouveau service chaque semaine. »
+    const flou = (id, quand) =>
+      tl.fromTo(id, { opacity: 0, filter: "blur(6px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.14, ease: "power2.out" }, a(quand));
+    flou("#fn-p1", 24.38);
+    flou("#fn-p2", 24.66);
+    flou("#fn-p3", 25.06);
+    tl.to("#fn-acte", { x: -90, opacity: 0, duration: 0.14, ease: "power3.in" }, a(26.2));
+    // « Et celui-là, tu pourras te le payer. » : le kebab du début revient.
+    tl.fromTo("#fn-c0", { opacity: 0, x: 80 }, { opacity: 1, x: 0, duration: 0.3, ease: "expo.out" }, a(26.4));
+    tl.fromTo("#fn-c1", { opacity: 0, scale: 1.4, transformOrigin: "0% 50%" }, { opacity: 1, scale: 1, duration: 0.12, ease: "power4.in" }, a(27.24));
+    tl.fromTo("#fn-c2", { opacity: 0, scale: 1.4, transformOrigin: "0% 50%" }, { opacity: 1, scale: 1, duration: 0.12, ease: "power4.in" }, a(27.71));
+    secousse(a(27.83), -10);
+    tl.set("#fn-kebab", { x: 566, y: 836 }, 0);
+    tl.fromTo("#fn-kebab", { opacity: 0, scale: 0.2, rotation: -40 }, { opacity: 1, scale: 1, rotation: 10, duration: 0.3, ease: "back.out(2.4)" }, a(27.98));
+    // La signature arrive une seule fois, avec du poids, et tient deux secondes.
+    tl.set("#fn-signature", { x: 120, y: 1046, rotation: -3 }, 0);
+    tl.fromTo("#fn-sig-corps", { opacity: 0, scale: 1.6 }, { opacity: 1, scale: 1, duration: 0.12, ease: "power4.in" }, a(28.36));
+    tl.set("#fn-robot", { x: 506, y: 1034 }, 0);
+    tl.fromTo("#fn-robot", { opacity: 0, scale: 0.2, rotation: -30 }, { opacity: 1, scale: 1, rotation: 8, duration: 0.3, ease: "back.out(2.2)" }, a(28.56));
+    window.__timelines["fin"] = tl;
+  </script>
+</template>

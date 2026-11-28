@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="fr" data-resolution="portrait"
+  data-composition-variables='[
+    {"id":"color-ground","type":"color","label":"Fond","default":"#FFD60A"},
+    {"id":"color-ink","type":"color","label":"Encre","default":"#111111"},
+    {"id":"color-accent","type":"color","label":"Accent","default":"#E10600"},
+    {"id":"color-paper","type":"color","label":"Papier","default":"#FFFFFF"}
+  ]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "Permanent Marker"; src: url("assets/fonts/PermanentMarker-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; }
+      :root { --color-ground: #FFD60A; --color-ink: #111111; --color-accent: #E10600; --color-paper: #FFFFFF; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { margin: 0; width: 1080px; height: 1920px; overflow: hidden; background: var(--color-ground); }
+      #root { position: relative; width: 1080px; height: 1920px; overflow: hidden; }
+      #badge { z-index: 2; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="30.5" data-width="1080" data-height="1920">
+      <div id="ticket" data-composition-id="ticket" data-composition-src="compositions/ticket.html" data-track-kind="graphics"
+        data-start="0" data-duration="13.1" data-track-index="1" data-width="1080" data-height="1920"></div>
+      <div id="ratures" data-composition-id="ratures" data-composition-src="compositions/ratures.html" data-track-kind="graphics"
+        data-start="16.7" data-duration="6.3" data-track-index="1" data-width="1080" data-height="1920"></div>
+      <div id="fin" data-composition-id="fin" data-composition-src="compositions/fin.html" data-track-kind="graphics"
+        data-start="23" data-duration="7.5" data-track-index="1" data-width="1080" data-height="1920"></div>
+      <div id="badge" data-composition-id="badge" data-composition-src="compositions/badge.html" data-track-kind="graphics"
+        data-start="13.1" data-duration="4" data-track-index="2" data-width="1080" data-height="1920"></div>
+      <audio id="voix" class="clip" src="assets/voix-norm.wav" data-start="0" data-duration="28.5" data-track-index="4" data-volume="1"></audio>
+      <audio id="fx-01" class="clip" src="assets/sfx/impactSoft_medium_000.wav" data-start="1.848" data-duration="0.13" data-track-index="5" data-volume="0.28"></audio>
+      <audio id="fx-02" class="clip" src="assets/sfx/impactSoft_medium_002.wav" data-start="4.788" data-duration="0.14" data-track-index="5" data-volume="0.28"></audio>
+      <audio id="fx-03" class="clip" src="assets/sfx/impactSoft_medium_003.wav" data-start="7.708" data-duration="0.15" data-track-index="5" data-volume="0.28"></audio>
+      <audio id="fx-04" class="clip" src="assets/sfx/impactSoft_heavy_000.wav" data-start="8.447" data-duration="0.54" data-track-index="5" data-volume="0.3"></audio>
+      <audio id="fx-05" class="clip" src="assets/sfx/impactPunch_medium_001.wav" data-start="8.743" data-duration="0.41" data-track-index="6" data-volume="0.32"></audio>
+      <audio id="fx-06" class="clip" src="assets/sfx/impactWood_heavy_000.wav" data-start="9.749" data-duration="0.32" data-track-index="5" data-volume="0.36"></audio>
+      <audio id="fx-07" class="clip" src="assets/sfx/impactWood_heavy_002.wav" data-start="10.618" data-duration="0.32" data-track-index="5" data-volume="0.36"></audio>
+      <audio id="fx-08" class="clip" src="assets/sfx/scratch_001.wav" data-start="11.433" data-duration="0.15" data-track-index="5" data-volume="0.12"></audio>
+      <audio id="fx-09" class="clip" src="assets/sfx/impactSoft_medium_001.wav" data-start="11.688" data-duration="0.19" data-track-index="5" data-volume="0.28"></audio>
+      <audio id="fx-10" class="clip" src="assets/sfx/impactSoft_heavy_001.wav" data-start="12.047" data-duration="0.58" data-track-index="5" data-volume="0.3"></audio>
+      <audio id="fx-11" class="clip" src="assets/sfx/impactWood_heavy_003.wav" data-start="14.85" data-duration="0.32" data-track-index="5" data-volume="0.36"></audio>
+      <audio id="fx-12" class="clip" src="assets/sfx/scratch_002.wav" data-start="17.741" data-duration="0.15" data-track-index="5" data-volume="0.12"></audio>
+      <audio id="fx-13" class="clip" src="assets/sfx/scratch_003.wav" data-start="18.985" data-duration="0.13" data-track-index="5" data-volume="0.12"></audio>
+      <audio id="fx-14" class="clip" src="assets/sfx/scratch_001.wav" data-start="21.053" data-duration="0.15" data-track-index="5" data-volume="0.12"></audio>
+      <audio id="fx-15" class="clip" src="assets/sfx/impactSoft_heavy_003.wav" data-start="21.726" data-duration="0.55" data-track-index="5" data-volume="0.3"></audio>
+      <audio id="fx-16" class="clip" src="assets/sfx/impactSoft_heavy_002.wav" data-start="22.137" data-duration="0.58" data-track-index="6" data-volume="0.3"></audio>
+      <audio id="fx-17" class="clip" src="assets/sfx/impactPunch_heavy_003.wav" data-start="23.155" data-duration="0.48" data-track-index="5" data-volume="0.32"></audio>
+      <audio id="fx-18" class="clip" src="assets/sfx/impactGeneric_light_001.wav" data-start="24.011" data-duration="0.12" data-track-index="5" data-volume="0.28"></audio>
+      <audio id="fx-19" class="clip" src="assets/sfx/impactSoft_heavy_000.wav" data-start="27.857" data-duration="0.54" data-track-index="5" data-volume="0.3"></audio>
+      <audio id="fx-20" class="clip" src="assets/sfx/impactWood_heavy_000.wav" data-start="28.509" data-duration="0.32" data-track-index="5" data-volume="0.36"></audio>
+    </div>
+    <script>
+      window.__timelines["main"] = gsap.timeline({ paused: true });
+    </script>
+  </body>
+</html>

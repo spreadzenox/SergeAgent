@@ -1,0 +1,24 @@
+#!/bin/sh
+# Rend le projet vidéo du dossier courant en MP4 et mesure son niveau sonore.
+#
+# Usage, depuis le dossier du projet :
+#   rendre                 écrit sortie/video.mp4 et dit sa durée et son niveau
+#
+# Le niveau visé sur les réseaux : entre -16 et -14 LUFS, crête à -1 dB au plus.
+set -eu
+mkdir -p sortie
+if ! hyperframes render -o sortie/video.mp4 > sortie/rendu.log 2>&1; then
+  echo '{"ok": false, "raison": "le rendu a échoué, voir sortie/rendu.log"}'
+  tail -n 15 sortie/rendu.log
+  exit 1
+fi
+hyperframes audio sortie/video.mp4 --only loudness --json 2>/dev/null | python3 -c '
+import json, sys
+try:
+    d = json.load(sys.stdin)["items"][0]
+    son = d.get("loudness") or {}
+    print(json.dumps({"ok": True, "fichier": "sortie/video.mp4", "duree": d.get("duration"),
+                      "lufs": son.get("lufsIntegrated"), "crete_db": son.get("truePeakDb")}, ensure_ascii=False))
+except Exception as erreur:
+    print(json.dumps({"ok": True, "fichier": "sortie/video.mp4", "son": "pas mesuré : %s" % erreur}, ensure_ascii=False))
+'

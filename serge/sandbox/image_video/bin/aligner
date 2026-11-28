@@ -1,0 +1,115 @@
+#!/opt/atelier/venv/bin/python
+"""Dit à quelle seconde chaque mot de la voix est prononcé.
+
+Le texte est connu (c'est celui qu'on a fait dire) : on ne le devine pas,
+on cherche seulement où tombe chaque mot dans le son (alignement forcé).
+Une transcription automatique se trompe de 0,05 à 0,25 s sur ces temps,
+ce qui se voit à l'écran (mesuré le 28 novembre 2026, décision Q121).
+
+Usage :
+    aligner assets/voix.wav texte.txt            écrit assets/mots.json et assets/mots.js
+    aligner --prechauffe                         télécharge le modèle (construction de l'image)
+
+Le texte s'écrit comme il est dit : les nombres en lettres (« cent
+cinquante »), pas en chiffres.
+"""
+
+from __future__ import annotations
+
+import json
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+# Sous licence Apache 2.0 (les modèles MMS de Meta, eux, interdisent
+# l'usage commercial).
+MODELES = {'fr': 'jonatasgrosman/wav2vec2-large-xlsr-53-french'}
+CADENCE = 16000
+
+
+def _charger(langue: str):
+    from transformers import Wav2Vec2ForCTC, Wav2Vec2Processor
+
+    nom = MODELES[langue]
+    return Wav2Vec2Processor.from_pretrained(nom), Wav2Vec2ForCTC.from_pretrained(nom).eval()
+
+
+def _son(chemin: str):
+    import numpy as np
+
+    brut = subprocess.run(
+        ['ffmpeg', '-v', 'error', '-i', chemin, '-ac', '1', '-ar', str(CADENCE), '-f', 's16le', '-'],
+        capture_output=True,
+        check=False,
+    )
+    if brut.returncode != 0 or not brut.stdout:
+        raise SystemExit(f'aligner : son illisible ({chemin}) : {brut.stderr.decode()[:200]}')
+    return np.frombuffer(brut.stdout, dtype=np.int16).astype(np.float32) / 32768.0
+
+
+def aligner(son_chemin: str, texte: str, langue: str = 'fr') -> list[dict]:
+    import torch
+    import torchaudio.functional as F
+
+    proc, modele = _charger(langue)
+    vocab = proc.tokenizer.get_vocab()
+    barre = proc.tokenizer.word_delimiter_token
+
+    def lettres(mot: str) -> list[str]:
+        propre = mot.lower().replace('’', "'").replace('œ', 'oe').replace('æ', 'ae')
+        return [c for c in propre if c in vocab and c != barre]
+
+    mots = [m for m in re.split(r'\s+', texte.strip()) if m]
+    chiffres = [m for m in mots if re.search(r'\d', m)]
+    if chiffres:
+        raise SystemExit(
+            'aligner : écris les nombres en lettres, comme la voix les dit : ' + ', '.join(chiffres[:8])
+        )
+    mots = [m for m in mots if lettres(m)]
+    if not mots:
+        raise SystemExit('aligner : le texte est vide')
+    onde = _son(son_chemin)
+    entree = proc(onde, sampling_rate=CADENCE, return_tensors='pt')
+    with torch.inference_mode():
+        emission = torch.log_softmax(modele(entree.input_values).logits, dim=-1)
+    cibles: list[int] = []
+    bornes: list[tuple[int, int]] = []
+    for i, mot in enumerate(mots):
+        if i:
+            cibles.append(vocab[barre])
+        debut = len(cibles)
+        cibles += [vocab[c] for c in lettres(mot)]
+        bornes.append((debut, len(cibles)))
+    chemin, scores = F.forced_align(emission, torch.tensor([cibles]), blank=proc.tokenizer.pad_token_id)
+    plages = F.merge_tokens(chemin[0], scores[0].exp())
+    pas = len(onde) / emission.size(1) / CADENCE
+    sortie = []
+    for i, ((a, b), mot) in enumerate(zip(bornes, mots, strict=True)):
+        bout = plages[a:b]
+        sortie.append({'i': i, 'mot': mot, 'debut': round(bout[0].start * pas, 3), 'fin': round(bout[-1].end * pas, 3)})
+    return sortie
+
+
+def main(argv: list[str]) -> int:
+    if argv == ['--prechauffe']:
+        for langue in MODELES:
+            _charger(langue)
+        print('aligner : modèle prêt')
+        return 0
+    if len(argv) < 2 or argv[0].startswith('-'):
+        print(__doc__)
+        return 2
+    son, texte = argv[0], Path(argv[1]).read_text(encoding='utf-8')
+    mots = aligner(son, texte)
+    dossier = Path(son).parent
+    (dossier / 'mots.json').write_text(json.dumps(mots, ensure_ascii=False, indent=0), encoding='utf-8')
+    # Le même tableau, lisible par les scènes : window.MOTS[i].debut.
+    (dossier / 'mots.js').write_text('window.MOTS = ' + json.dumps(mots, ensure_ascii=False) + ';\n', encoding='utf-8')
+    print(f'{len(mots)} mots alignés, écrits dans {dossier}/mots.json et {dossier}/mots.js')
+    print(' '.join(f'{m["i"]}:{m["mot"]}@{m["debut"]}' for m in mots))
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main(sys.argv[1:]))

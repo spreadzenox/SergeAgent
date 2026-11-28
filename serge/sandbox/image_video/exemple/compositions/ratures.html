@@ -1,0 +1,68 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--color-ground); overflow: hidden; }
+    #rt-points { position: absolute; inset: 0; background-image: radial-gradient(circle, rgba(17, 17, 17, 0.09) 0 5px, transparent 6px); background-size: 54px 54px; }
+    .rt-rang { position: absolute; left: 120px; height: 160px; white-space: nowrap; }
+    .rt-rang img { position: absolute; left: 0; top: 12px; width: 136px; height: 136px; filter: drop-shadow(7px 7px 0 var(--color-ink)); }
+    .rt-mot { position: absolute; left: 160px; top: 0; font: 400 160px "League Gothic", sans-serif; line-height: 160px; color: var(--color-ink); }
+    .rt-barre { position: absolute; left: 144px; top: 68px; height: 24px; background: var(--color-accent); }
+    #rt-r1 { top: 340px; } #rt-r2 { top: 530px; } #rt-r3 { top: 720px; }
+    #rt-b1 { width: 380px; } #rt-b2 { width: 622px; } #rt-b3 { width: 448px; }
+    #rt-petit { position: absolute; left: 126px; top: 892px; font: 700 46px "Inter", sans-serif; line-height: 56px; color: var(--color-ink); white-space: nowrap; }
+    #rt-mail { position: absolute; left: 0; top: 0; width: 76px; height: 76px; }
+    #rt-juste { position: absolute; left: 126px; top: 356px; font: 700 52px "Inter", sans-serif; line-height: 60px; color: var(--color-ink); }
+    .rt-fort { position: absolute; left: 120px; font: 400 176px "League Gothic", sans-serif; line-height: 176px; color: var(--color-ink); white-space: nowrap; }
+    #rt-o1 { top: 430px; } #rt-o2 { top: 606px; }
+    #rt-outil { position: absolute; left: 0; top: 0; width: 200px; height: 200px; filter: drop-shadow(8px 8px 0 var(--color-ink)); }
+    #rt-soul, #rt-flot { position: absolute; left: 120px; top: 800px; width: 744px; height: 30px; background: var(--color-accent); }
+  </style>
+  <div id="root" data-composition-id="ratures" data-width="1080" data-height="1920">
+    <div id="rt-points" data-layout-ignore></div>
+    <div id="rt-flot" data-layout-ignore></div>
+    <div id="rt-r1" class="rt-rang"><img id="rt-e1" src="assets/emoji/office_building.svg" alt="" data-layout-ignore /><div id="rt-t1" class="rt-mot">BUREAU</div><div id="rt-b1" class="rt-barre" data-layout-allow-occlusion></div></div>
+    <div id="rt-r2" class="rt-rang"><img id="rt-e2" src="assets/emoji/hot_beverage.svg" alt="" data-layout-ignore /><div id="rt-t2" class="rt-mot">PAUSE CAFÉ</div><div id="rt-b2" class="rt-barre" data-layout-allow-occlusion></div></div>
+    <div id="rt-r3" class="rt-rang"><img id="rt-e3" src="assets/emoji/spiral_calendar.svg" alt="" data-layout-ignore /><div id="rt-t3" class="rt-mot">RÉUNION</div><div id="rt-b3" class="rt-barre" data-layout-allow-occlusion></div></div>
+    <div id="rt-petit">qui aurait pu être un mail</div>
+    <img id="rt-mail" src="assets/emoji/envelope.svg" alt="" data-layout-ignore />
+    <div id="rt-juste">Juste</div>
+    <div id="rt-o1" class="rt-fort">DES OUTILS</div>
+    <div id="rt-o2" class="rt-fort">QUI MARCHENT.</div>
+    <img id="rt-outil" src="assets/emoji/hammer_and_wrench.svg" alt="" data-layout-ignore />
+    <div id="rt-soul"></div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    const D = 16.7; // début de la scène dans le film : les repères ci-dessous sont les temps de la voix
+    const a = (t) => +(t - D).toFixed(3);
+    tl.fromTo("#rt-points", { backgroundPosition: "0px 0px" }, { backgroundPosition: "170px 170px", duration: 6.3, ease: "none" }, 0);
+    // Chaque rang arrive sur son mot, est raturé à la fin de la phrase, puis son émoji tombe.
+    const rangs = [
+      ["#rt-e1", "#rt-t1", "#rt-b1", 17.27, 17.74],
+      ["#rt-e2", "#rt-t2", "#rt-b2", 18.24, 18.94],
+      ["#rt-e3", "#rt-t3", "#rt-b3", 19.42, 21.02],
+    ];
+    for (const [emoji, mot, barre, entree, rature] of rangs) {
+      tl.fromTo(emoji, { opacity: 0, scale: 0.2, rotation: -25 }, { opacity: 1, scale: 1, rotation: 0, duration: 0.28, ease: "back.out(2.2)" }, a(entree - 0.06));
+      tl.fromTo(mot, { opacity: 0, x: -60 }, { opacity: 1, x: 0, duration: 0.3, ease: "expo.out" }, a(entree));
+      tl.fromTo(barre, { scaleX: 0, transformOrigin: "0% 50%" }, { scaleX: 1, duration: 0.18, ease: "power3.out" }, a(rature));
+      tl.to(emoji, { y: 1900, rotation: 70, duration: 0.6, ease: "power2.in" }, a(rature + 0.08));
+    }
+    tl.fromTo("#rt-petit", { opacity: 0, filter: "blur(6px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.14, ease: "power2.out" }, a(19.9));
+    tl.set("#rt-mail", { x: 716, y: 882 }, 0);
+    tl.fromTo("#rt-mail", { opacity: 0, scale: 0.2, rotation: -30 }, { opacity: 1, scale: 1, rotation: 8, duration: 0.26, ease: "back.out(2.2)" }, a(20.66));
+    // « Juste des outils qui marchent. » : les trois rangs raturés laissent toute la place.
+    tl.to(["#rt-t1", "#rt-t2", "#rt-t3", "#rt-b1", "#rt-b2", "#rt-b3", "#rt-petit", "#rt-mail"], { opacity: 0, filter: "blur(10px)", duration: 0.13, ease: "power2.in" }, a(21.17));
+    tl.fromTo("#rt-juste", { opacity: 0 }, { opacity: 1, duration: 0.1, ease: "power2.out" }, a(21.28));
+    tl.fromTo("#rt-o1", { opacity: 0, scale: 1.3, transformOrigin: "0% 50%" }, { opacity: 1, scale: 1, duration: 0.14, ease: "power4.in" }, a(21.56));
+    tl.set("#rt-outil", { x: 684, y: 380 }, 0);
+    tl.fromTo("#rt-outil", { opacity: 0, scale: 0.2, rotation: -40 }, { opacity: 1, scale: 1, rotation: 10, duration: 0.3, ease: "back.out(2.2)" }, a(21.8));
+    tl.fromTo("#rt-o2", { opacity: 0, scale: 1.3, transformOrigin: "0% 50%" }, { opacity: 1, scale: 1, duration: 0.14, ease: "power4.in" }, a(21.97));
+    tl.fromTo("#rt-soul", { scaleX: 0, transformOrigin: "0% 50%" }, { scaleX: 1, duration: 0.2, ease: "power3.out" }, a(22.4));
+    // Le trait rouge grandit et devient le fond de la scène suivante ; le texte tient dessus puis part.
+    tl.set("#rt-flot", { opacity: 0 }, 0);
+    tl.set("#rt-flot", { opacity: 1 }, a(22.66));
+    tl.fromTo("#rt-flot", { scaleX: 1, scaleY: 1 }, { scaleX: 1.8, scaleY: 80, duration: 0.34, ease: "power3.in", immediateRender: false }, a(22.66));
+    tl.to(["#rt-juste", "#rt-o1", "#rt-o2", "#rt-soul", "#rt-outil"], { opacity: 0, duration: 0.1, ease: "power2.in" }, a(22.88));
+    window.__timelines["ratures"] = tl;
+  </script>
+</template>

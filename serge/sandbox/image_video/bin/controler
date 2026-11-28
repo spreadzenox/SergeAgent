@@ -1,0 +1,94 @@
+#!/usr/bin/env python3
+"""Contrôle un projet vidéo et prépare les planches de relecture.
+
+Usage, depuis le dossier du projet :
+    controler            contrôle automatique, puis planches dans revue/
+    controler --sans-planches
+
+Rend un résumé court (les erreurs, puis les avertissements) : ce que le
+contrôle du moteur mesure (textes qui se chevauchent, texte sous les
+boutons de l'appli, ligne affichée trop peu de temps, son absent). Le
+rapport complet reste dans .hyperframes/artifacts/checks/.
+"""
+
+from __future__ import annotations
+
+import glob
+import json
+import os
+import subprocess
+import sys
+
+MOTEUR = ['hyperframes']
+# Ces avertissements-là ne disent rien d'utile sur une vidéo de Serge.
+SANS_INTERET = {'timeline_track_too_dense'}
+MAX_LIGNES = 60
+
+
+def _dernier_rapport() -> dict:
+    rapports = sorted(glob.glob('.hyperframes/artifacts/checks/*.json'), key=os.path.getmtime)
+    if not rapports:
+        return {}
+    with open(rapports[-1], encoding='utf-8') as fichier:
+        return json.load(fichier)
+
+
+def _ligne(section: str, trouve: dict) -> str:
+    rect = trouve.get('rect') or {}
+    ou = (
+        f' [{int(rect.get("left", 0))},{int(rect.get("top", 0))} → {int(rect.get("right", 0))},{int(rect.get("bottom", 0))}]'
+        if rect
+        else ''
+    )
+    texte = (trouve.get('text') or '')[:28]
+    return (
+        f'{section} · {trouve.get("code") or trouve.get("rule") or ""} · t={trouve.get("time")}'
+        f' · {trouve.get("selector") or ""}{ou}{" · « " + texte + " »" if texte else ""}'
+        f' · {(trouve.get("message") or "")[:220]}'
+    )
+
+
+def controle() -> dict:
+    subprocess.run([*MOTEUR, 'check', '--json'], capture_output=True, text=True, check=False, timeout=900)
+    rapport = _dernier_rapport()
+    if not rapport:
+        return {'ok': False, 'erreurs': ['le contrôle n’a rendu aucun rapport (le projet se charge-t-il ?)'], 'avertissements': []}
+    erreurs, avertissements = [], []
+    for section in ('lint', 'runtime', 'layout', 'motion', 'contrast', 'craft', 'audio'):
+        for trouve in (rapport.get(section) or {}).get('findings') or []:
+            gravite = trouve.get('severity') or trouve.get('level') or ''
+            code = trouve.get('code') or trouve.get('rule') or ''
+            if code in SANS_INTERET or gravite == 'info':
+                continue
+            (erreurs if gravite == 'error' else avertissements).append(_ligne(section, trouve))
+    return {
+        'ok': not erreurs,
+        'erreurs': erreurs[:MAX_LIGNES],
+        'avertissements': avertissements[:MAX_LIGNES],
+        'erreurs_en_tout': len(erreurs),
+        'avertissements_en_tout': len(avertissements),
+    }
+
+
+def planches() -> list[str]:
+    fait = subprocess.run(
+        [*MOTEUR, 'snapshot', '--review', '-o', 'revue'], capture_output=True, text=True, check=False, timeout=900
+    )
+    if fait.returncode != 0:
+        return [f'planches pas faites : {(fait.stderr or fait.stdout)[-300:]}']
+    return sorted(glob.glob('revue/review-*.jpg'))
+
+
+def main(argv: list[str]) -> int:
+    if '--aide' in argv or '-h' in argv:
+        print(__doc__)
+        return 0
+    resume = controle()
+    if '--sans-planches' not in argv:
+        resume['planches'] = planches()
+    print(json.dumps(resume, ensure_ascii=False, indent=1))
+    return 0 if resume['ok'] else 1
+
+
+if __name__ == '__main__':
+    sys.exit(main(sys.argv[1:]))

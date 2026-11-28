@@ -1,0 +1,9 @@
+#!/bin/sh
+# Met une voix au niveau sonore des réseaux (-15 LUFS, crête -1,5 dB).
+#
+# Usage :
+#   niveau assets/voix.mp3 assets/voix.wav
+set -eu
+[ $# -eq 2 ] || { sed -n '2,5p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
+ffmpeg -hide_banner -loglevel error -y -i "$1" -af "loudnorm=I=-15:TP=-1.5:LRA=11" -ar 48000 -ac 2 "$2"
+ffprobe -v error -show_entries format=duration -of csv=p=0 "$2" | awk '{printf "{\"ok\": true, \"fichier\": \"%s\", \"duree\": %.2f}\n", f, $1}' f="$2"

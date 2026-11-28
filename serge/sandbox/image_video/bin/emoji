@@ -1,0 +1,24 @@
+#!/bin/sh
+# Télécharge des émojis Fluent (Microsoft, licence MIT) en dessin vectoriel plat.
+#
+# Usage :
+#   emoji "stuffed flatbread" rocket "hot beverage"      écrit assets/emoji/<nom>.svg
+#
+# Le nom est le nom anglais de l'émoji (https://unicode.org/emoji/charts/emoji-list.html).
+set -eu
+[ $# -ge 1 ] || { sed -n '2,7p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
+base="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets"
+mkdir -p assets/emoji
+for nom in "$@"; do
+  dossier=$(printf '%s' "$nom" | awk '{print toupper(substr($0,1,1)) tolower(substr($0,2))}' | sed 's/ /%20/g')
+  fichier=$(printf '%s' "$nom" | tr 'A-Z -' 'a-z__')
+  cible="assets/emoji/$fichier.svg"
+  # Un émoji de personne ou de main a un dossier par couleur de peau : on prend le jaune.
+  if curl -fsSL --max-time 25 -o "$cible" "$base/$dossier/Flat/${fichier}_flat.svg" \
+    || curl -fsSL --max-time 25 -o "$cible" "$base/$dossier/Default/Flat/${fichier}_flat_default.svg"; then
+    echo "ok : $cible"
+  else
+    rm -f "$cible"
+    echo "introuvable : « $nom » (vérifie le nom anglais exact de l'émoji)"
+  fi
+done

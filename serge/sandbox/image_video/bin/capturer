@@ -1,0 +1,104 @@
+#!/usr/bin/env node
+// Prend des captures d'un site, comme le voit un visiteur, pour les montrer
+// dans une vidéo.
+//
+// Usage :
+//   capturer <adresse> -o assets/captures [--ordinateur] [--pleine-page] [--etapes etapes.json]
+//
+// Par défaut l'écran est celui d'un téléphone (390 x 844, images de
+// 1170 x 2532 px) : c'est le cadrage d'une vidéo verticale. Sans étapes,
+// une seule capture : « accueil.png ».
+//
+// etapes.json est une liste, suivie dans l'ordre :
+//   {"capture": "accueil"}                       une capture, nommée
+//   {"clic": "Essayer"}                          clique le texte visible (ou un sélecteur CSS)
+//   {"tape": {"dans": "Ton métier", "texte": "plombier"}}   écrit dans un champ (libellé, texte d'exemple ou sélecteur)
+//   {"touche": "Enter"}
+//   {"defile": 600}                              descend de 600 px
+//   {"attends": 800}                             attend 800 ms ; {"attends": "Résultat"} attend ce texte
+//   {"ouvre": "https://…/tarifs"}                change de page
+import { execFileSync } from "node:child_process";
+import { mkdirSync, readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import path from "node:path";
+
+const requiert = createRequire(import.meta.url);
+const puppeteer = requiert("puppeteer-core");
+
+const args = process.argv.slice(2);
+if (!args.length || args.includes("--aide") || args.includes("-h")) {
+  console.log(readFileSync(new URL(import.meta.url), "utf8").split("\n").slice(1, 19).map((l) => l.replace(/^\/\/ ?/, "")).join("\n"));
+  process.exit(args.length ? 0 : 2);
+}
+const option = (nom) => {
+  const i = args.indexOf(nom);
+  return i >= 0 ? args[i + 1] : "";
+};
+const adresse = args.find((a) => /^https?:\/\//.test(a));
+const sortie = option("-o") || "assets/captures";
+const ordinateur = args.includes("--ordinateur");
+const pleinePage = args.includes("--pleine-page");
+const fichierEtapes = option("--etapes");
+if (!adresse) {
+  console.error("capturer : donne l'adresse du site (https://…)");
+  process.exit(2);
+}
+const etapes = fichierEtapes ? JSON.parse(readFileSync(fichierEtapes, "utf8")) : [{ capture: "accueil" }];
+mkdirSync(sortie, { recursive: true });
+
+const chrome = process.env.CHROME_ATELIER || execFileSync("hyperframes", ["browser", "path"], { encoding: "utf8" }).trim().split("\n").pop();
+const navigateur = await puppeteer.launch({ executablePath: chrome, headless: true, args: ["--no-sandbox", "--hide-scrollbars"] });
+const page = await navigateur.newPage();
+await page.setViewport(ordinateur ? { width: 1280, height: 800, deviceScaleFactor: 2 } : { width: 390, height: 844, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
+const faites = [];
+const pause = (ms) => new Promise((ok) => setTimeout(ok, ms));
+
+// Un élément désigné par son texte visible, son libellé, son texte d'exemple, ou un sélecteur CSS.
+const trouve = async (repere) => {
+  for (const selecteur of [`::-p-text(${repere})`, `::-p-aria(${repere})`, `[placeholder*="${repere}" i]`, repere]) {
+    try {
+      const element = await page.$(selecteur);
+      if (element) return element;
+    } catch {
+      // ce repère n'est pas un sélecteur valide : on essaie le suivant
+    }
+  }
+  throw new Error(`rien ne correspond à « ${repere} » dans la page`);
+};
+
+try {
+  await page.goto(adresse, { waitUntil: "networkidle2", timeout: 45000 });
+  for (const etape of etapes) {
+    if (etape.capture) {
+      const fichier = path.join(sortie, `${String(etape.capture).replace(/[^a-z0-9_-]+/gi, "-")}.png`);
+      await page.screenshot({ path: fichier, fullPage: pleinePage || etape.pleine_page === true });
+      faites.push(fichier);
+    } else if (etape.clic) {
+      await (await trouve(etape.clic)).click();
+      await pause(600);
+    } else if (etape.tape) {
+      const champ = await trouve(etape.tape.dans);
+      await champ.click({ clickCount: 3 });
+      await champ.type(String(etape.tape.texte), { delay: 20 });
+    } else if (etape.touche) {
+      await page.keyboard.press(etape.touche);
+      await pause(600);
+    } else if (etape.defile) {
+      await page.evaluate((y) => window.scrollBy(0, y), Number(etape.defile));
+      await pause(300);
+    } else if (etape.attends) {
+      if (typeof etape.attends === "number") await pause(etape.attends);
+      else await page.waitForSelector(`::-p-text(${etape.attends})`, { timeout: 20000 });
+    } else if (etape.ouvre) {
+      await page.goto(etape.ouvre, { waitUntil: "networkidle2", timeout: 45000 });
+    } else {
+      throw new Error(`étape inconnue : ${JSON.stringify(etape)}`);
+    }
+  }
+  console.log(JSON.stringify({ ok: true, captures: faites, titre: await page.title(), adresse: page.url() }, null, 1));
+} catch (erreur) {
+  console.log(JSON.stringify({ ok: false, raison: String(erreur.message || erreur).slice(0, 400), captures: faites }, null, 1));
+  process.exitCode = 1;
+} finally {
+  await navigateur.close();
+}

@@ -1,0 +1,167 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: var(--color-ground); overflow: hidden; }
+    #tk-points { position: absolute; inset: 0; background-image: radial-gradient(circle, rgba(17, 17, 17, 0.09) 0 5px, transparent 6px); background-size: 54px 54px; }
+    #tk-monde, #tk-cam, #tk-ombre { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; }
+    #tk-ombre { filter: drop-shadow(12px 12px 0 var(--color-ink)); }
+    #tk-papier { position: absolute; left: 120px; top: 300px; width: 660px; height: 1400px; background: var(--color-paper); }
+    #tk-titre { position: absolute; left: 48px; top: 30px; font: 400 136px "League Gothic", sans-serif; line-height: 136px; color: var(--color-ink); letter-spacing: 2px; }
+    #tk-sous { position: absolute; left: 50px; top: 172px; font: 700 30px "IBM Plex Mono", monospace; line-height: 40px; color: var(--color-ink); letter-spacing: 1px; white-space: nowrap; }
+    .tk-trait { position: absolute; left: 48px; right: 48px; height: 0; border-top: 5px dashed var(--color-ink); }
+    .tk-ligne { position: absolute; left: 48px; right: 48px; height: 70px; font: 700 38px "IBM Plex Mono", monospace; line-height: 70px; color: var(--color-ink); }
+    .tk-ligne span { position: absolute; top: 0; white-space: nowrap; }
+    .tk-ico { position: absolute; left: 0; top: 7px; width: 56px; height: 56px; }
+    .tk-nom { left: 72px; }
+    .tk-prix { right: 0; }
+    #tk-total { position: absolute; left: 48px; right: 48px; top: 556px; height: 180px; }
+    #tk-total-nom { position: absolute; left: 0; top: 62px; font: 700 46px "IBM Plex Mono", monospace; line-height: 60px; color: var(--color-ink); }
+    #tk-total-prix { position: absolute; right: 0; top: 0; font: 400 170px "League Gothic", sans-serif; line-height: 180px; color: var(--color-ink); white-space: nowrap; }
+    #tk-rature { position: absolute; right: -14px; top: 78px; width: 392px; height: 26px; background: var(--color-accent); }
+    #tk-rouleau { position: absolute; left: 96px; top: 276px; width: 708px; height: 48px; border-radius: 24px; background: var(--color-paper); border: 7px solid var(--color-ink); }
+    #tk-rouleau i { position: absolute; left: 20px; right: 20px; top: 14px; height: 0; border-top: 5px solid var(--color-ink); }
+    #tk-moi { position: absolute; left: 166px; top: 566px; font: 400 240px "League Gothic", sans-serif; line-height: 240px; color: var(--color-ink); white-space: nowrap; }
+    #tk-robot { position: absolute; left: 0; top: 0; width: 220px; height: 220px; filter: drop-shadow(8px 8px 0 var(--color-ink)); }
+    .tk-tampon { position: absolute; left: 0; top: 0; }
+    .tk-tampon-corps { border: 12px solid var(--color-accent); outline: 4px solid var(--color-accent); outline-offset: -24px; color: var(--color-accent); font: 400 96px "Archivo Black", sans-serif; line-height: 96px; padding: 26px 30px 22px; white-space: nowrap; letter-spacing: 2px; }
+    .tk-eclat { position: absolute; left: 0; top: 0; width: 0; height: 0; }
+    .tk-eclat i { position: absolute; left: -5px; top: -19px; width: 10px; height: 38px; background: var(--color-ink); }
+    .tk-eclat.rouge i { background: var(--color-accent); }
+    #tk-etiquette { position: absolute; left: 0; top: 0; }
+    #tk-etiquette-corps { position: relative; background: var(--color-ink); height: 160px; padding: 0 34px 0 158px; }
+    #tk-etiquette-trou { position: absolute; left: 62px; top: 62px; width: 36px; height: 36px; border-radius: 50%; background: var(--color-paper); }
+    #tk-kebab { position: absolute; left: 20px; top: 20px; width: 120px; height: 120px; }
+    #tk-etiquette-texte { font: 400 80px "League Gothic", sans-serif; line-height: 160px; color: var(--color-ground); white-space: nowrap; letter-spacing: 1px; }
+    #tk-etiquette-texte span { display: inline-block; }
+  </style>
+  <div id="root" data-composition-id="ticket" data-width="1080" data-height="1920">
+    <div id="tk-points" data-layout-ignore></div>
+    <div id="tk-monde">
+      <div id="tk-cam">
+        <div id="tk-ombre">
+          <div id="tk-papier">
+            <div id="tk-titre" data-layout-allow-safe-zone>FACTURE</div>
+            <div id="tk-sous" data-layout-allow-safe-zone>prestations d’experts</div>
+            <div class="tk-trait" style="top: 228px"></div>
+            <div class="tk-ligne" style="top: 258px" data-layout-allow-safe-zone><img id="tk-i1" class="tk-ico" src="assets/emoji/page_facing_up.svg" alt="" /><span id="tk-n1" class="tk-nom">Coach CV</span><span id="tk-p1" class="tk-prix">150 €</span></div>
+            <div class="tk-ligne" style="top: 348px" data-layout-allow-safe-zone><img id="tk-i2" class="tk-ico" src="assets/emoji/artist_palette.svg" alt="" /><span id="tk-n2" class="tk-nom">Logo</span><span id="tk-p2" class="tk-prix">500 €</span></div>
+            <div class="tk-ligne" style="top: 438px" data-layout-allow-safe-zone><img id="tk-i3" class="tk-ico" src="assets/emoji/bar_chart.svg" alt="" /><span id="tk-n3" class="tk-nom">Business plan</span><span id="tk-p3" class="tk-prix">2 000 €</span></div>
+            <div class="tk-trait" style="top: 534px"></div>
+            <div id="tk-total">
+              <div id="tk-total-nom">TOTAL</div>
+              <div id="tk-total-prix">2 650 €</div>
+              <div id="tk-rature" data-layout-allow-occlusion></div>
+            </div>
+          </div>
+        </div>
+        <div id="tk-rouleau" data-layout-ignore><i></i></div>
+      </div>
+      <div id="tk-moi">MOI ?</div>
+      <img id="tk-robot" src="assets/emoji/robot.svg" alt="" data-layout-ignore />
+      <div id="tk-e0" class="tk-eclat" data-layout-ignore></div>
+      <div id="tk-t1" class="tk-tampon"><div id="tk-t1c" class="tk-tampon-corps" data-layout-allow-overlap>PAREIL.</div></div>
+      <div id="tk-e1" class="tk-eclat rouge" data-layout-ignore></div>
+      <div id="tk-t2" class="tk-tampon"><div id="tk-t2c" class="tk-tampon-corps" data-layout-allow-overlap>EN MIEUX.</div></div>
+      <div id="tk-e2" class="tk-eclat rouge" data-layout-ignore></div>
+    </div>
+    <div id="tk-etiquette">
+      <div id="tk-etiquette-corps">
+        <div id="tk-etiquette-trou"></div>
+        <img id="tk-kebab" src="assets/emoji/stuffed_flatbread.svg" alt="" />
+        <div id="tk-etiquette-texte"><span id="tk-etq-a">LE PRIX D’UN&nbsp;</span><span id="tk-etq-b">KEBAB</span></div>
+      </div>
+    </div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    // Les éclats : huit traits autour d'un point d'impact.
+    for (const eclat of document.querySelectorAll(".tk-eclat")) {
+      for (let k = 0; k < 8; k++) {
+        const trait = document.createElement("i");
+        trait.style.transform = `rotate(${k * 45 + 12}deg) translateY(-112px)`;
+        eclat.appendChild(trait);
+      }
+    }
+    const eclate = (id, x, y, quand) => {
+      tl.set(id, { x, y }, 0);
+      tl.fromTo(id, { opacity: 0, scale: 0.45 }, { opacity: 1, scale: 1, duration: 0.07, ease: "power2.out" }, quand);
+      tl.to(id, { opacity: 0, scale: 1.45, duration: 0.2, ease: "power2.out" }, quand + 0.07);
+    };
+    tl.fromTo("#tk-points", { backgroundPosition: "0px 0px" }, { backgroundPosition: "351px 351px", duration: 13.1, ease: "none" }, 0);
+    // Le papier se déroule : la longueur sortie (en px) pilote le masque et le rouleau ensemble.
+    const HAUT = 1400;
+    const deroule = (de, vers, quand, duree, courbe) => {
+      tl.fromTo("#tk-papier", { clipPath: `inset(0px 0px ${HAUT - de}px 0px)` }, { clipPath: `inset(0px 0px ${HAUT - vers}px 0px)`, duration: duree, ease: courbe, immediateRender: false }, quand);
+      tl.fromTo("#tk-rouleau", { y: de }, { y: vers, duration: duree, ease: courbe, immediateRender: false }, quand);
+    };
+    tl.set("#tk-papier", { clipPath: `inset(0px 0px ${HAUT - 244}px 0px)` }, 0);
+    tl.set("#tk-rouleau", { y: 244 }, 0);
+    // Un nom tapé en deux temps, calé sur les deux mots dits par la voix.
+    const tape = (nom, total, premier, quand1, duree1, quand2, duree2) => {
+      const reste = 100 - (premier / total) * 100;
+      tl.fromTo(nom, { clipPath: "inset(0% 100% 0% 0%)" }, { clipPath: `inset(0% ${reste}% 0% 0%)`, duration: duree1, ease: `steps(${premier})` }, quand1);
+      if (premier < total) tl.to(nom, { clipPath: "inset(0% 0% 0% 0%)", duration: duree2, ease: `steps(${total - premier})` }, quand2);
+    };
+    const pose = (id, quand) => tl.fromTo(id, { opacity: 0, scale: 0.3, rotation: -20 }, { opacity: 1, scale: 1, rotation: 0, duration: 0.26, ease: "back.out(2.2)" }, quand);
+    const prix = (id, quand) =>
+      tl.fromTo(id, { opacity: 0, scale: 1.6, transformOrigin: "100% 50%" }, { opacity: 1, scale: 1, duration: 0.22, ease: "back.out(1.6)" }, quand);
+    const secousse = (quand, dx) =>
+      tl.to("#tk-monde", { keyframes: [{ x: dx, duration: 0.033 }, { x: 0, duration: 0.033 }], ease: "none" }, quand);
+
+    // « Un coach pour refaire ton CV : cent cinquante euros. »
+    deroule(244, 340, 0, 0.3, "power2.out");
+    pose("#tk-i1", 0.04);
+    tape("#tk-n1", 8, 5, 0.2, 0.3, 1.0, 0.16);
+    prix("#tk-p1", 1.8);
+    // « Un graphiste pour ton logo : cinq cents. »
+    deroule(340, 430, 2.86, 0.3, "power2.out");
+    pose("#tk-i2", 3.3);
+    tape("#tk-n2", 4, 4, 3.98, 0.16);
+    prix("#tk-p2", 4.74);
+    // « Un consultant pour ton business plan : deux mille. »
+    deroule(430, 522, 5.5, 0.3, "power2.out");
+    pose("#tk-i3", 5.96);
+    tape("#tk-n3", 13, 8, 6.66, 0.24, 6.93, 0.15);
+    prix("#tk-p3", 7.66);
+    // Le total se compte sous les yeux du spectateur, puis claque.
+    deroule(522, 760, 7.94, 0.24, "power3.out");
+    const total = document.getElementById("tk-total-prix");
+    const compteur = { v: 0 };
+    const ecrit = () => {
+      const n = String(Math.round(compteur.v));
+      total.textContent = (n.length > 3 ? n.slice(0, -3) + " " + n.slice(-3) : n) + " €";
+    };
+    tl.fromTo("#tk-total-prix", { opacity: 0 }, { opacity: 1, duration: 0.08, ease: "none" }, 8.0);
+    tl.fromTo(compteur, { v: 0 }, { v: 2650, duration: 0.42, ease: "power2.out", onUpdate: ecrit }, 8.0);
+    tl.fromTo("#tk-total-prix", { scale: 1.22, transformOrigin: "100% 50%" }, { scale: 1, duration: 0.18, ease: "back.out(2)", immediateRender: false }, 8.42);
+    secousse(8.42, -8);
+    // « Moi ? » : la caméra descend le long du papier, le total monte en tête, la suite reste blanche.
+    tl.fromTo("#tk-cam", { y: 0 }, { y: -540, duration: 0.44, ease: "power2.inOut" }, 8.26);
+    deroule(760, 1390, 8.26, 0.44, "power2.inOut");
+    tl.fromTo("#tk-moi", { opacity: 0, scale: 1.5, transformOrigin: "0% 50%" }, { opacity: 1, scale: 1, duration: 0.14, ease: "power4.in" }, 8.6);
+    secousse(8.74, 9);
+    eclate("#tk-e0", 500, 600, 8.74);
+    tl.set("#tk-robot", { x: 548, y: 590 }, 0);
+    tl.fromTo("#tk-robot", { opacity: 0, scale: 0.2, rotation: -30 }, { opacity: 1, scale: 1, rotation: 8, duration: 0.3, ease: "back.out(2)" }, 8.8);
+    tl.to(["#tk-moi", "#tk-robot"], { opacity: 0, filter: "blur(8px)", duration: 0.13, ease: "power2.in" }, 9.44);
+    // « Je fais pareil. En mieux. » : deux coups de tampon posés sur les deux mots.
+    tl.set("#tk-t1", { x: 150, y: 536, rotation: -7 }, 0);
+    tl.set("#tk-t2", { x: 112, y: 712, rotation: 5 }, 0);
+    tl.fromTo("#tk-t1c", { opacity: 0, scale: 1.7 }, { opacity: 1, scale: 1, duration: 0.1, ease: "power4.in" }, 9.62);
+    secousse(9.72, 10);
+    eclate("#tk-e1", 640, 560, 9.72);
+    tl.fromTo("#tk-t2c", { opacity: 0, scale: 1.7 }, { opacity: 1, scale: 1, duration: 0.1, ease: "power4.in" }, 10.49);
+    secousse(10.59, -10);
+    eclate("#tk-e2", 730, 730, 10.59);
+    // « Pour le prix… » : le total est raturé, l'étiquette tombe ; « …d'un kebab » : le mot et le kebab arrivent ensemble.
+    tl.fromTo("#tk-rature", { scaleX: 0, transformOrigin: "0% 50%" }, { scaleX: 1, duration: 0.18, ease: "power3.out" }, 11.4);
+    tl.set("#tk-etiquette", { x: 120, y: 944, rotation: -3 }, 0);
+    tl.fromTo("#tk-etiquette-corps", { opacity: 0, scale: 0.6 }, { opacity: 1, scale: 1, duration: 0.3, ease: "back.out(1.8)" }, 11.6);
+    tl.fromTo("#tk-etq-b", { opacity: 0, scale: 1.8 }, { opacity: 1, scale: 1, duration: 0.1, ease: "power4.in" }, 11.92);
+    tl.fromTo("#tk-kebab", { opacity: 0, scale: 0.2, rotation: -40 }, { opacity: 1, scale: 1.25, rotation: -8, duration: 0.3, ease: "back.out(2.4)" }, 11.98);
+    secousse(12.02, 8);
+    // L'étiquette noire grandit jusqu'à devenir le fond de la scène suivante.
+    tl.to(["#tk-etiquette-texte", "#tk-etiquette-trou", "#tk-kebab"], { opacity: 0, duration: 0.1, ease: "power2.in" }, 12.76);
+    tl.to("#tk-etiquette-corps", { scale: 16, duration: 0.3, ease: "power3.in" }, 12.8);
+    window.__timelines["ticket"] = tl;
+  </script>
+</template>
