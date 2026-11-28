@@ -459,9 +459,9 @@ la relance de la prospection) est fait au lot 16 (décision Q119).
   rattachée à une invocation (portée `invocation:<id>`) ou à une étape
   (`etape:<id>`) est donnée d'office à qui la concerne, avant celles de
   tout Serge. Il reste à ce que la consolidation propose ce rattachement.
-  Une leçon encore candidate (pas encore gardée par Julien) est déjà
-  donnée comme les autres ; seules les leçons dépassées ou expirées ne le
-  sont pas.
+  Une leçon encore proposée (pas encore gardée par un humain, par son
+  ticket « Leçon ») n'est donnée à personne, comme une leçon dépassée ou
+  expirée (décision Q121).
   Et chaque business arrêté ou fermé doit obligatoirement produire au
   moins une leçon, pour ne pas refaire les mêmes erreurs. Pour un business
   arrêté, c'est au lot 12 (« Tirer la leçon d'un business arrêté ») ; pour
@@ -597,7 +597,8 @@ détail est dans [`docs/etapes/6-prospection-lourde.md`](docs/etapes/6-prospecti
   rangé dans le dossier « pas encore branché ». Il faudra la décrire en
   base comme le reste : un déclencheur quotidien, une invocation qui lit
   le journal, et une règle d'écriture qui ajoute des leçons au statut
-  « proposée », que Julien garde ou jette.
+  « proposée », qu'un humain garde ou jette par le ticket « Leçon »
+  (décision Q121).
 
 - [ ] **La conversation avec Julien sur Discord, dans le pipeline.**
   Quand Julien écrit à Serge sur Discord, trois invocations écrites en dur

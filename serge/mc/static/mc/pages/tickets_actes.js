@@ -98,7 +98,7 @@ export async function agirTicket(main, store, ticketId, acte, message = {}) {
       title: `${libelleActe(acte)} ?`,
       message: `Ticket ${ticketId} — acte irréversible côté état.`,
       confirm: libelleActe(acte),
-      danger: ['rejeter','abandonner','ne_rien_envoyer','arreter_business','aucun'].includes(acte),
+      danger: ['rejeter','abandonner','ne_rien_envoyer','arreter_business','aucun','jeter','non'].includes(acte),
     });
     if (!confirmer) {
       return;
@@ -137,6 +137,8 @@ export function libelleActe(acte) {
       valider: 'Valider', a_corriger: 'À corriger', revoir_plan: 'Revoir le plan',
       arreter_business: 'Arrêter le business', faire_sans: 'Faire sans', pret: 'Je suis prêt',
       choisir_autre: 'Choisir un autre', aucun: 'Aucun',
+      garder: 'Garder', jeter: 'Jeter',
+      cest_sa_connexion: 'Oui, c’est sa connexion', non: 'Non',
     }[acte] || acte
   );
 }

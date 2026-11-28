@@ -345,8 +345,9 @@ aussi à la prospection lourde sont marquées *(3 et 6)*.
     Déclencheur : un business passe à `KILLED`, quelle que soit l'étape
     (Q46 : chaque business arrêté produit une leçon). Elle écrit une ou
     deux leçons au statut « proposée », rattachées à l'étape ou à
-    l'invocation qu'elles concernent. Julien les garde ou les jette dans
-    Mission Control (page Mémoire).
+    l'invocation qu'elles concernent. Chacune ouvre un ticket « Leçon » :
+    un humain la garde ou la jette, et d'ici là aucune invocation ne la
+    reçoit (décision Q121).
 
 ---
 

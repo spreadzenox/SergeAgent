@@ -103,6 +103,15 @@ _ACTION = (
         'Les secrets permis pour taper_secret (figé en base).',
         frozen=True,
     ),
+    Param(
+        'secret_sites',
+        'text',
+        False,
+        'Les sites où taper_secret peut taper ces secrets, séparés par des'
+        ' virgules : stripe.com vaut aussi pour checkout.stripe.com. Vide :'
+        ' partout. Figé en base.',
+        frozen=True,
+    ),
 )
 _CAPTURE = (
     *_OU,

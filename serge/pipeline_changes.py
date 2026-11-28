@@ -37,10 +37,11 @@ passages d'un texte : un prompt changé ailleurs dans Mission Control garde
 ses changements. Un paramètre figé d'un outil d'une invocation
 (``set_tool_params``, avec ``tool``) change comme une valeur : seulement
 s'il vaut encore celle d'origine. Un paramètre de plus d'un lien
-(``add_link_params``) ou d'une invocation sans LLM (``add_params``)
-s'ajoute aussi une seule fois (``serge/pipeline_changes_params.py``), comme
-une règle d'écriture de plus d'une invocation (``add_writes``,
-``serge/pipeline_changes_writes.py``).
+(``add_link_params``), d'une invocation sans LLM (``add_params``) ou d'un
+outil d'une invocation (``add_tool_params``, avec ``tool`` : un paramètre
+que le modèle ne choisit plus) s'ajoute aussi une seule fois
+(``serge/pipeline_changes_params.py``), comme une règle d'écriture de plus
+d'une invocation (``add_writes``, ``serge/pipeline_changes_writes.py``).
 
     changes:
       - id: un_outil_de_plus
@@ -57,7 +58,11 @@ from collections.abc import Mapping
 from typing import Any
 
 from serge.interpreter.rules import safe_name, table_columns
-from serge.pipeline_changes_params import add_link_params, add_params
+from serge.pipeline_changes_params import (
+    add_link_params,
+    add_params,
+    add_tool_params,
+)
 from serge.pipeline_changes_remove import (
     invocation_absente,
     remove_outputs,
@@ -388,6 +393,7 @@ _AUTRES = (
     'remove_write_values',
     'add_link_params',
     'set_tool_params',
+    'add_tool_params',
     'remove_tool_columns',
 )
 
@@ -437,8 +443,13 @@ def apply_changes(conn: sqlite3.Connection, raw: Any, only: str = '') -> None:
             result = add_link_params(
                 conn, str(change.get('link') or ''), change[kind]
             )
-        elif kind == 'set_tool_params':
-            result = _set_tool_params(
+        elif kind in ('set_tool_params', 'add_tool_params'):
+            fonction = (
+                _set_tool_params
+                if kind == 'set_tool_params'
+                else add_tool_params
+            )
+            result = fonction(
                 conn, invocation, str(change.get('tool') or ''), change[kind]
             )
         elif kind == 'remove_tool_columns':

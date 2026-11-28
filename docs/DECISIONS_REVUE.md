@@ -721,9 +721,11 @@ du point 5 reste à faire.
      product_requests, ici et pour MAINTENANCE.
 
 ### Q46 — Étape 7 : consolidation, leçons, contexte Serge (validé)
-- Consolidation gardée telle quelle (tous les 3 jours, ticket Mémoire,
-  acceptée après 48 h sans réponse) + leçon obligatoire à chaque KILLED
-  ou CLOSED.
+- Consolidation gardée telle quelle (tous les 3 jours, ticket Mémoire)
+  + leçon obligatoire à chaque KILLED ou CLOSED.
+  Corrigé le 28 novembre 2026 (Q121) : cette entrée disait qu'une leçon
+  était acceptée après 48 h sans réponse. Une leçon sans réponse reste en
+  attente et n'est donnée à personne.
 - Chaque leçon est rattachée au niveau le plus précis : une invocation
   (grâce au journal qui sait quelle invocation a produit quoi), sinon une
   étape, sinon tout Serge.
@@ -2896,3 +2898,89 @@ les messages »). Chaque boîte est un compte de `gog` sur le serveur
 
 Pas fait : un plafond du jour par boîte (le plafond compte toutes les
 boîtes ensemble) ; une boîte SMTP/IMAP reste seule.
+
+### Q121 — Une leçon n'est donnée aux invocations que si un humain l'a gardée (décidé par Clem, 28 novembre 2026)
+Constat, à la revue du 28 novembre 2026 : « Tirer la leçon d'un business
+arrêté » écrivait des leçons au statut « proposée », pour tout Serge, et
+toute invocation les recevait aussitôt dans son prompt, sans qu'un humain
+les ait lues. Aucun ticket n'était ouvert, alors que la doc disait qu'un
+humain garde ou jette chaque leçon. Claude a posé la question ; Clem a
+répondu.
+Décidé :
+1. **Une leçon n'est donnée que si son statut est « gardée »** (`active`).
+   Une leçon proposée, jetée ou expirée n'est donnée à personne.
+2. **Chaque leçon proposée ouvre un ticket « Leçon »**, sur Discord et
+   dans Mission Control comme les autres : la leçon, le business d'où
+   elle vient, et deux boutons. « Garder » la passe à « gardée » ;
+   « Jeter » la passe à « dépassée ».
+3. **Pas d'acceptation d'office.** Le ticket n'expire jamais : sans
+   réponse, la leçon reste en attente. Q46 disait « acceptée après 48 h
+   sans réponse » : ce point de Q46 est corrigé. Ce troisième point est
+   proposé par Claude et reste à confirmer par Clem, qui n'a répondu que
+   sur la validation par Discord : avec une acceptation d'office, un texte
+   écrit par un inconnu deviendrait une consigne sans qu'un humain l'ait lu.
+
+Comment c'est fait, pour qui lit le pipeline : tout est en base. Un
+déclencheur ouvre le ticket pour toute leçon écrite au statut
+« proposée », quelle que soit l'invocation qui l'écrit ; la réponse au
+ticket réveille une invocation sans LLM qui change le statut. Les
+changements de statut permis d'une leçon sont réglés sur la table : elle
+naît proposée, et ne devient gardée ou dépassée que depuis « proposée ».
+Une invocation réglée pour écrire une leçon déjà gardée est donc refusée.
+Une leçon garde le business d'où elle vient (`lessons.venture_id`,
+migration 62).
+
+Limites connues : une leçon déjà proposée avant ce changement n'a pas de
+ticket, et n'est plus donnée ; la page Mémoire permet de modifier ou de
+supprimer une leçon, pas de la garder.
+
+### Q122 — Le mot de passe d'un compte web : son site, ou une adresse de connexion validée par un humain (décidé par Clem, 28 novembre 2026)
+Constat : depuis le durcissement du 28 novembre 2026, Serge ne tape le
+mot de passe d'un compte web que sur le site du compte. Quelques sites
+font pourtant leur connexion sur un autre domaine (un compte sur
+`outlook.com` se connecte sur `login.live.com`) : la tâche était alors
+bloquée, et l'humain appelé à l'aide n'a pas le mot de passe, que
+personne ne voit. Claude a posé la question ; Clem a répondu.
+Décidé :
+1. **Un compte peut avoir des adresses de connexion validées**, en plus
+   de son site. Son mot de passe se tape sur son site ou sur l'une
+   d'elles, nulle part ailleurs.
+2. **Un humain valide chaque adresse.** Quand le mot de passe est refusé
+   sur un autre domaine, un ticket demande : « Le compte « X » se
+   connecte sur `<hôte>`. Est-ce bien sa page de connexion ? », avec
+   « Oui, c'est sa connexion » et « Non ». La tâche attend. Après un
+   « oui », l'adresse est gardée pour ce compte, la tâche repart du
+   début et Serge tape lui-même. Le ticket n'expire jamais.
+3. **Le mot de passe n'apparaît jamais**, ni dans le ticket ni ailleurs.
+4. **Un modèle ne choisit pas l'adresse** : c'est l'hôte du cadre où est
+   le champ, lu par le code dans le navigateur. Aucune invocation n'écrit
+   la liste des adresses validées.
+
+Choix de réalisation, à confirmer par Julien ou Clem :
+- une adresse validée est un hôte exact (`login.live.com` ne vaut pas
+  pour `account.live.com`), alors que le site du compte vaut pour tout
+  son domaine ;
+- un « Non » vaut pour ce compte et cette adresse jusqu'à nouvel ordre :
+  la question n'est plus posée, et rien dans Mission Control ne permet
+  encore de revenir dessus ;
+- tant qu'un ticket est ouvert pour un compte et une adresse, une autre
+  tâche qui bute sur la même adresse est refusée sans ouvrir un second
+  ticket, et n'attend pas ;
+- un compte dont l'adresse du site change perd ses adresses validées.
+
+Limite connue : dans une mission confiée à une autre invocation (la
+fouille d'un réseau), le ticket s'ouvre mais la tâche n'attend pas : elle
+continue sans ce réseau, et la tâche suivante profitera du « oui ».
+
+### Q123 — Un paiement Stripe du mode test n'est pas une vente sur l'instance réelle (décidé par Clem, 28 novembre 2026)
+Constat, à la revue du 28 novembre 2026 : le récepteur Stripe accepte les
+événements du vrai mode et du mode test, et les traitait pareil. Le
+staging d'un produit est public et encaisse en mode test : un paiement
+fait avec une carte factice y était noté comme une vente (une transaction
+payée, « Enregistrer une vente », le contact devenu client). Claude a posé
+la question ; Clem a répondu : « Oui on ignore ».
+Décidé : sur une instance qui encaisse en vrai mode (elle a le secret de
+webhook du vrai mode), un événement du mode test est reçu, noté au journal
+du récepteur (« événement du mode test ignoré ») et ignoré. Une instance
+sans vrai mode, un poste de développement par exemple, traite le mode
+test comme avant.

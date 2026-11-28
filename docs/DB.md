@@ -17,9 +17,9 @@ recrée jamais ensuite.
 1. **Les migrations** (`serge/db/migrate.py`). Chaque changement de
    structure est une fonction `apply_v0NN` (fichiers `serge/db/v0NN.py`).
    Serge applique celles qui manquent, dans l'ordre. Version actuelle :
-   **58**.
+   **63**.
    - Une base neuve saute directement à la version 7 (le socle,
-     `serge/db/schema.py`), puis applique 8, 9, … 34.
+     `serge/db/schema.py`), puis applique 8, 9, … 63.
    - Une base **plus récente** que le code refuse de démarrer
      (`MigrateError`). Revenir à un ancien commit ne défait pas une
      migration.
@@ -75,7 +75,11 @@ Trois exceptions, toutes décrites dans `config/pipeline.yaml` :
   des relances, sorti du plan d'un POC (Q37, corrigée par Q92). Un
   paramètre figé d'un outil d'une invocation (`set_tool_params`) change
   comme une valeur, seulement s'il vaut encore celle d'origine : exemple,
-  les secrets que tape le paiement test. Une règle d'écriture de plus
+  les secrets que tape le paiement test. Un paramètre figé de plus sur un
+  outil d'une invocation (`add_tool_params`) s'ajoute une seule fois, et
+  le modèle ne le choisit plus ; déjà là, il est gardé : exemple, les
+  sites où le paiement test tape la carte, le montant et la monnaie de
+  son prix de 1 €. Une règle d'écriture de plus
   d'une invocation existante (`add_writes`) s'ajoute à son rang, le même
   que dans `pipeline.yaml`, avant la pose des liens ; un rang déjà pris
   est gardé : exemple, « Concevoir le produit » écrit aussi les offres du
@@ -114,7 +118,7 @@ catalogue et la mécanique.
 | `customer_requests` | Les demandes des contacts sur le produit : `bug`, `insatisfaction` ou `idée`, avec le contact et le message d'où elles viennent (version 35). Leur état (`status`) : `new`, `kept` (retenue par le plan du produit fini), `refused` (avec sa raison, `reason`) ou `delivered` ; le plan qui en a décidé (`plan_id`) et la version qui l'a livrée (`delivered_version`) (version 49, lot 10). |
 | `product_reviews` | Les points sur les produits finis en vente (version 60, lot 16, décision Q119) : un par semaine (`cause` : `semaine`) et un par bug signalé (`bug`, avec la demande du client, `request_id`). Ce qui est décidé pour le produit (`product_action` : `rien`, `corriger`, `faire_evoluer`, avec ses consignes, `product_notes`) et pour la prospection (`prospecting_action` : `rien`, `relancer`, `prospecting_notes`), et le compte rendu (`summary`). Un point qui lance une nouvelle version du produit en porte l'état (`version_status`) : `open` tant qu'elle se construit, `online` quand elle est en prod (avec son numéro, `version`), `dropped` si elle est abandonnée ; `none` : il n'a rien lancé. Un business n'a qu'une version `open` à la fois : la règle de doublon `une_version_a_la_fois` écarte l'écriture d'un second point qui voudrait en lancer une. |
 | `product_offers` | Les offres payantes d'un produit, écrites avec son plan, à la place des précédentes (version 60, décision Q119) : son code (`code` : `standard`, `pro`), son nom, son prix en centimes (`amount_cents`), sa période (`interval` : `month` ou `year`), ce qu'elle comprend (`includes`), et si c'est l'offre principale (`main` : `oui` pour une seule). Chacune a son prix dans Stripe : celui de l'offre principale porte la clé de recherche du business (son numéro), celui d'une autre `<numéro du business>_<code>`. |
-| `web_accounts` | Les comptes de Serge sur des sites (version 55, lot 13, décision Q104) : un par site, nommé d'un mot (`id` : `reddit`). L'adresse du site (`url`), l'identifiant de connexion (`login`), le nom public (`handle`), l'état (`status` : `creating`, `active`, `blocked` : fermé par le site), le dernier compte rendu (`note`). Deux secrets chiffrés par la clé du coffre de l'instance (`secrets/credential-vault.key`), que ni un modèle ni Mission Control ne lisent : le mot de passe (`password_enc`) et la session du navigateur (`session_enc` : ses cookies, gardés le `session_saved_at`). `used_by`, `used_since` : la tâche qui s'en sert ; un compte ne sert qu'à une tâche à la fois. Remplace `accounts_standing`, qui gardait le mot de passe en clair et n'a jamais été remplie. Comment on s'y connecte (`sign_in_with`, version 58, décision Q113) : vide, par son identifiant et son mot de passe ; `google`, avec Google : le compte n'a pas de mot de passe, ses tâches s'ouvrent dans le profil du vrai Chrome, où un humain a connecté Google, et sa session n'est pas gardée en base. |
+| `web_accounts` | Les comptes de Serge sur des sites (version 55, lot 13, décision Q104) : un par site, nommé d'un mot (`id` : `reddit`). L'adresse du site (`url`), l'identifiant de connexion (`login`), le nom public (`handle`), l'état (`status` : `creating`, `active`, `blocked` : fermé par le site), le dernier compte rendu (`note`). Deux secrets chiffrés par la clé du coffre de l'instance (`secrets/credential-vault.key`), que ni un modèle ni Mission Control ne lisent : le mot de passe (`password_enc`) et la session du navigateur (`session_enc` : ses cookies, gardés le `session_saved_at`). `used_by`, `used_since` : la tâche qui s'en sert ; un compte ne sert qu'à une tâche à la fois. Remplace `accounts_standing`, qui gardait le mot de passe en clair et n'a jamais été remplie. Comment on s'y connecte (`sign_in_with`, version 58, décision Q113) : vide, par son identifiant et son mot de passe ; `google`, avec Google : le compte n'a pas de mot de passe, ses tâches s'ouvrent dans le profil du vrai Chrome, où un humain a connecté Google, et sa session n'est pas gardée en base. Ses adresses de connexion validées (`login_hosts`, version 62, décision Q122) : des hôtes séparés par des virgules, par exemple `login.live.com` pour un compte sur `outlook.com`. Le mot de passe se tape sur le site du compte ou sur l'une d'elles, nulle part ailleurs. Seule la réponse d'un humain au ticket « Adresse de connexion » y ajoute un hôte (`serge/login_hosts.py`) : la colonne n'est pas dans le catalogue d'écriture des invocations, et elle est vidée si l'adresse du site change. |
 | `web_account_days` | Les actions faites avec un compte web, jour par jour (UTC) : la garde des comptes refuse au-delà du plafond du jour (page Policy, « Comptes web »). |
 | `consents`, `blocklist` | Consentements et personnes à ne plus contacter. Un accord a une sorte (`basis`) : `contract`, `consent`, ou `test` (un membre de l'équipe qui essaie Serge : l'appel part à toute heure et hors du plafond par personne, Q79). |
 | `transactions` | Les paiements. Le paiement test de 1 € d'un produit fini (étape 5, lot 10) y est noté par l'invocation qui le fait : `kind` = `canary`, son paiement chez Stripe (`intent_id`), `status` = `succeeded`. |
@@ -150,7 +154,7 @@ catalogue et la mécanique.
 
 | Table | Contenu |
 |---|---|
-| `lessons` | Les leçons, avec leur fiabilité et leurs sources. |
+| `lessons` | Les leçons, avec leur fiabilité et leurs sources. Leur statut (`status`) : `candidate` (proposée : son ticket « Leçon » attend un humain, et aucune invocation ne la reçoit), `active` (gardée par un humain : donnée aux invocations qu'elle concerne), `deprecated` (jetée ou dépassée). Une invocation n'écrit une leçon qu'au statut `candidate` ; seule la réponse au ticket la fait passer à `active` ou à `deprecated` (décision Q121). `venture_id` (version 62) : le business d'où elle vient, que montre son ticket ; vide si elle ne vient pas d'un business. |
 | `playbooks` | Les procédures qui marchent. |
 | `pitfalls` | Les pièges à éviter. |
 | `summaries` | Des résumés versionnés (la version précédente est gardée). |

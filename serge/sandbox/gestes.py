@@ -132,14 +132,23 @@ def _taper(session: Any, args: dict[str, Any]) -> str:
     return ''
 
 
+def _liste(texte: Any) -> set[str]:
+    """Une liste figée en base, séparée par des virgules."""
+    return {nom.strip() for nom in str(texte or '').split(',')} - {''}
+
+
+def _hote(champ: Any) -> str:
+    """L'hôte du cadre où est le champ, lu dans le navigateur : le modèle
+    ne le choisit pas."""
+    return str(champ.evaluate('() => location.hostname', timeout=5000))
+
+
 def _taper_secret(session: Any, args: dict[str, Any]) -> str:
     # Le modèle nomme le secret ; Serge tape sa valeur, que le modèle ne
     # voit jamais. Seuls les secrets figés en base sont permis, et, dans
     # la session d'un compte web, le mot de passe de ce compte.
     nom = str(args.get('text') or '')
-    permis = {n.strip() for n in str(args.get('secrets') or '').split(',')} - {
-        ''
-    }
+    permis = _liste(args.get('secrets'))
     champ = element(session.page, args.get('ref'))
     if nom == PASSWORD_NAME and session.mot_de_passe is not None:
         try:
@@ -148,24 +157,31 @@ def _taper_secret(session: Any, args: dict[str, Any]) -> str:
             # Un compte connecté avec Google n'a pas de mot de passe : le
             # refus dit au modèle comment se connecter.
             return str(exc)
-        # Le mot de passe d'un compte ne se tape que sur son site : une
-        # page qui imite sa connexion, ailleurs, ne le reçoit pas. L'hôte
-        # est celui du cadre où est le champ.
-        hote = str(champ.evaluate('() => location.hostname', timeout=5000))
-        if not meme_site(hote, session.site):
+        # Le mot de passe d'un compte ne se tape que sur son site, ou sur
+        # une adresse de connexion qu'un humain a validée pour ce compte :
+        # une page qui imite sa connexion, ailleurs, ne le reçoit pas.
+        hote = _hote(champ)
+        refus, session.attend = session.connexion(hote)
+        if refus:
             journal(
                 f'mot de passe du compte {session.account} non tapé :'
-                f' la page est sur {hote}, le compte sur {session.site}'
+                f' la page est sur {hote}'
             )
-            return (
-                f'mot de passe non tapé : cette page est sur {hote}, et le'
-                f' compte « {session.account} » sur {session.site}. Reviens'
-                ' sur le site du compte ; si sa connexion passe vraiment'
-                ' par cette adresse, appelle un humain'
-            )
+            return refus
     elif nom not in permis:
         return f'secret non permis : {nom}'
     else:
+        # Quand la base dit sur quels sites ces secrets se tapent (la carte
+        # de Serge, sur les pages de paiement de Stripe), une page d'un
+        # autre site ne les reçoit pas.
+        sites = _liste(args.get('secret_sites'))
+        hote = _hote(champ) if sites else ''
+        if sites and not any(meme_site(hote, site) for site in sites):
+            journal(f'secret {nom} non tapé : la page est sur {hote}')
+            return (
+                f'secret non tapé : cette page est sur {hote or "?"}, et'
+                f' {nom} ne se tape que sur {", ".join(sorted(sites))}'
+            )
         valeur = read_secret_value(config_root() / 'secrets', nom)
     if not valeur:
         return f'secret absent sur ce serveur : {nom}'

@@ -17,6 +17,9 @@ Scénarios :
   son contact devient client ;
 - un test sous les seuils : le business est arrêté, donne une leçon, et
   sa place relance un cycle d'écoute ;
+- une leçon proposée ouvre un ticket « Leçon » et n'est donnée à personne
+  tant qu'un humain ne l'a pas gardée ; jetée, elle ne l'est jamais ; une
+  invocation ne peut pas écrire une leçon déjà gardée ;
 - un canal de plus se branche sans toucher au reste : son adaptateur, son
   réglage de volume, son invocation de premier message et son lien ;
 - une campagne par téléphone ne démarre pas pour des inconnus : le canal
@@ -44,6 +47,7 @@ from serge.channels.adapters import ADAPTERS  # noqa: E402
 from serge.channels.base import Adapter, Incoming, Outgoing  # noqa: E402
 from serge.coupe_circuit import set_heartbeat  # noqa: E402
 from serge.db.boot import init_schema  # noqa: E402
+from serge.interpreter.intro import lessons_for  # noqa: E402
 from serge.interpreter.queue import process_one  # noqa: E402
 from serge.interpreter.tasks import enqueue_task  # noqa: E402
 from serge.interpreter.triggers import notify_rows_written  # noqa: E402
@@ -131,6 +135,7 @@ class FauxModeles:
         self.vus: list[str] = []
         self.refus: list[str] = []
         self.propose = 'v1'
+        self.lecons = [{'lecon': 'Deux prospects ne disent rien.'}]
 
     def __call__(self, _key, model, messages, tools=None, **_kw):
         system = messages[0]['content']
@@ -176,7 +181,7 @@ class FauxModeles:
             (
                 "vient d'être arrêté",
                 'lecon',
-                {'lecons': [{'lecon': 'Deux prospects ne disent rien.'}]},
+                {'lecons': self.lecons},
             ),
         ):
             if marque in system:
@@ -579,6 +584,118 @@ class ChaineTests(ChaineCase):
         # Sa place libérée relance l'écoute ; aucun principal à choisir.
         self.assertEqual(self._taches('ouvrir_cycle'), ['ready'])
         self.assertEqual(self._taches('choisir_principal'), [])
+
+    def test_une_lecon_attend_qu_un_humain_la_garde(self) -> None:
+        """Décision Q121 : un business arrêté donne deux leçons proposées.
+        Chacune ouvre un ticket « Leçon », sans délai, avec le business
+        d'où elle vient ; tant que personne n'a répondu, aucune invocation
+        ne la reçoit. « Garder » la donne aux invocations, « Jeter »
+        l'écarte. Une invocation ne peut pas écrire une leçon déjà gardée."""
+        from serge.discord.render import BUTTONS
+        from serge.mc.actions import ACTES_TICKET
+
+        self.modeles.lecons = [
+            {'lecon': 'Les artisans ne répondent pas le lundi.'},
+            {'lecon': 'Un test sans relance ne dit rien.'},
+        ]
+        campagne = self._business('v1')
+        self._vider()
+        self._suivre(campagne, 9)
+        self.assertEqual(self._statut('v1'), 'KILLED')
+
+        def lecons() -> list[tuple]:
+            return [
+                tuple(r)
+                for r in self.conn.execute(
+                    'SELECT statement, status, venture_id FROM lessons'
+                    ' ORDER BY rowid'
+                )
+            ]
+
+        def donnees() -> list[str]:
+            # Ce que reçoit une invocation, de n'importe quelle étape.
+            return [
+                enonce
+                for enonce, _, _ in lessons_for(
+                    self.conn, 'formuler_a', 'pre_prospection', 50
+                )[0]
+            ]
+
+        self.assertEqual(
+            lecons(),
+            [
+                ('Les artisans ne répondent pas le lundi.', 'candidate', 'v1'),
+                ('Un test sans relance ne dit rien.', 'candidate', 'v1'),
+            ],
+        )
+        tickets = [
+            tuple(r)
+            for r in self.conn.execute(
+                'SELECT id, state, expiry_at, venture_id, payload_json'
+                " FROM tickets WHERE type='LECON' ORDER BY created_at, rowid"
+            )
+        ]
+        self.assertEqual(
+            [t[1:4] for t in tickets], [('OPEN', '', 'v1'), ('OPEN', '', 'v1')]
+        )
+        cartes = [json.loads(t[4]) for t in tickets]
+        self.assertEqual(
+            sorted(c['La leçon'] for c in cartes),
+            sorted(e[0] for e in lecons()),
+        )
+        self.assertIn('Devis v1', cartes[0]["Le business d'où elle vient"])
+        self.assertEqual(
+            (BUTTONS['garder']['label'], BUTTONS['jeter']['label']),
+            ('Garder', 'Jeter'),
+        )
+        self.assertEqual(
+            (ACTES_TICKET['garder'], ACTES_TICKET['jeter']),
+            ('APPROVED', 'REJECTED'),
+        )
+        # Sans réponse : les deux attendent, et personne ne les reçoit.
+        self.assertEqual(donnees(), [])
+
+        def repondre(lecon: str, acte: str) -> None:
+            ticket = next(
+                t[0]
+                for t, carte in zip(tickets, cartes, strict=True)
+                if carte['La leçon'] == lecon
+            )
+            decide(self.conn, ticket, ACTES_TICKET[acte], actor='owner')
+            noter_reponse(self.conn, ticket, acte, '', 'owner')
+            self._vider()
+
+        repondre('Les artisans ne répondent pas le lundi.', 'garder')
+        self.assertEqual([e[1] for e in lecons()], ['active', 'candidate'])
+        self.assertEqual(
+            donnees(), ['Les artisans ne répondent pas le lundi.']
+        )
+        repondre('Un test sans relance ne dit rien.', 'jeter')
+        self.assertEqual([e[1] for e in lecons()], ['active', 'deprecated'])
+        self.assertEqual(
+            donnees(), ['Les artisans ne répondent pas le lundi.']
+        )
+        # Le cas refusé : une invocation réglée pour écrire une leçon déjà
+        # gardée n'écrit rien, et le refus est au journal.
+        self.conn.execute(
+            "UPDATE invocation_write_values SET value='active'"
+            " WHERE column_name='status' AND write_id IN (SELECT id FROM"
+            " invocation_writes WHERE invocation_id='tirer_lecon')"
+        )
+        enqueue_task(self.conn, 'tirer_lecon', {'venture_id': 'v1'})
+        self._vider()
+        self.assertEqual(len(lecons()), 2)
+        refus = self._un(
+            "SELECT payload_json FROM events WHERE type='write.refused'"
+            ' ORDER BY id DESC'
+        )[0]
+        self.assertIn('passage de (création) à active non permis', refus)
+        self.assertEqual(
+            self.conn.execute(
+                "SELECT COUNT(*) FROM tickets WHERE type='LECON'"
+            ).fetchone()[0],
+            2,
+        )
 
     def test_le_telephone_ne_demarre_pas_pour_des_inconnus(self) -> None:
         campagne = self._business('v1', canal='voice')

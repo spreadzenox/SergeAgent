@@ -118,6 +118,25 @@ def verify_event(
     raise last
 
 
+def compte_pour_de_vrai(mode: str, secrets: dict[str, str]) -> bool:
+    """Cet événement vérifié est-il à compter ?
+
+    Une instance qui encaisse en vrai mode (elle a le secret du vrai mode)
+    ne compte pas un événement du mode test : un paiement fait avec une
+    carte factice sur le staging d'un produit n'est pas une vente. Une
+    instance sans secret du vrai mode (un poste de développement) traite
+    le mode test comme avant.
+
+    Args:
+        mode: `live` ou `test`, rendu par ``verify_event``.
+        secrets: `whsec` indexés par `live` / `test`.
+
+    Returns:
+        False pour un événement du mode test sur une instance réelle.
+    """
+    return mode == 'live' or not str(secrets.get('live') or '').strip()
+
+
 def apply_event(
     conn: sqlite3.Connection, event: dict[str, Any]
 ) -> dict[str, Any]:

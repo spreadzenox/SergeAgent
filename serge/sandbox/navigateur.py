@@ -39,9 +39,13 @@ constructeur essaie ainsi le serveur qu'il vient de lancer. L'action
 « taper un secret » tape la valeur d'un secret de l'instance dans un champ :
 un fichier de secret, ou un champ de la carte chiffrée de Serge
 (``payment-card.enc#pan``). Le modèle ne nomme que le secret, parmi ceux
-figés en base, et la page relue cache la valeur. Dans la session d'un
-compte web, le secret ``mot_de_passe_du_compte`` est le mot de passe de
-ce compte.
+figés en base, et la page relue cache la valeur. La base peut aussi dire
+sur quels sites ces secrets se tapent (``secret_sites`` : la carte, sur
+les pages de paiement de Stripe) ; ailleurs, rien n'est tapé. Dans la
+session d'un compte web, le secret ``mot_de_passe_du_compte`` est le mot
+de passe de ce compte : il ne se tape que sur le site du compte, ou sur
+une adresse de connexion qu'un humain a validée pour lui
+(``serge/login_hosts.py``).
 """
 
 from __future__ import annotations
@@ -137,6 +141,11 @@ def browser_action(
     }
     if refus:
         result['detail'] = masquer(refus, session.masques)
+    if session.attend:
+        # Un ticket demande à un humain si le mot de passe du compte peut se
+        # taper sur cette adresse : la tâche s'arrête jusqu'à sa réponse.
+        result['gel'], result['ticket_id'] = True, session.attend
+        session.attend = ''
     nouvelles = session.errors[erreurs:]
     if nouvelles:
         result['nouvelles_erreurs'] = nouvelles[:10]

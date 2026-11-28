@@ -68,6 +68,11 @@ LONGUEUR_MAX = 64
 # de passe (vide), ou avec Google, dans le profil du vrai Chrome.
 GOOGLE = 'google'
 CONNEXIONS = ('', GOOGLE)
+# Un compte dont l'adresse du site change perd ses adresses de connexion
+# validées (``serge/login_hosts.py``) : elles valaient pour l'ancien site.
+_AUTRE_SITE = (
+    "login_hosts=CASE WHEN url=excluded.url THEN login_hosts ELSE '' END"
+)
 
 
 class AccountError(RuntimeError):
@@ -298,7 +303,7 @@ def register(
         ' ON CONFLICT(id) DO UPDATE SET url=excluded.url,'
         ' login=excluded.login, password_enc=excluded.password_enc,'
         " sign_in_with=excluded.sign_in_with, status='active',"
-        ' updated_at=excluded.updated_at',
+        f' updated_at=excluded.updated_at, {_AUTRE_SITE}',
         (
             name,
             url,
@@ -368,11 +373,20 @@ def open_account(
             'detail': f'le compte « {name} » existe déjà et sert : donne un'
             ' autre nom pour un second compte sur ce site',
         }
+    ancien = site(conn, name)
+    if ancien and not meme_site(urlsplit(url).hostname or '', ancien):
+        # Une création ratée reprise sur un autre site : le mot de passe et
+        # la session choisis pour l'ancien site n'y sont jamais tapés.
+        conn.execute(
+            "UPDATE web_accounts SET password_enc='', session_enc=''"
+            ' WHERE id=?',
+            (name,),
+        )
     now = utcnow()
     conn.execute(
         'INSERT INTO web_accounts(id, url, created_at, updated_at)'
         ' VALUES(?,?,?,?) ON CONFLICT(id) DO UPDATE SET url=excluded.url,'
-        " status='creating', updated_at=excluded.updated_at",
+        f" status='creating', updated_at=excluded.updated_at, {_AUTRE_SITE}",
         (name, url, now, now),
     )
     return {'ok': True, 'compte': name, 'url': url}

@@ -198,6 +198,11 @@ sans la lui montrer. La page relue cache la valeur, même
 remise en forme par la page (`4242 4242 4242 4242`), comme les erreurs
 de la page ; le temps d'une capture, le champ qui l'a reçue montre des
 points, comme un mot de passe. Il sert au paiement test de l'étape 5.
+La base peut aussi dire sur quels sites ces secrets se tapent (paramètre
+`secret_sites`, réservé à la base lui aussi) : pour le paiement test,
+`stripe.com`, qui vaut pour `buy.stripe.com` et `checkout.stripe.com`. Sur
+une page d'un autre site, rien n'est tapé, et le refus est noté au
+journal. La page est celle du cadre où est le champ.
 
 **Ce qui arrive hors de la page** est dit dans le résultat de l'action
 (demandé par le relecteur d'un produit le 17 novembre 2026, Q103) : sans
@@ -279,6 +284,17 @@ qui la base donne ce nom sur ses outils de navigateur (le paramètre
   demande d'un compte qui n'en a pas (une inscription), Serge le choisit
   (20 caractères au hasard ; un autre, à la mesure du site, quand le
   site le refuse, décision Q112) et le garde aussitôt ;
+- le mot de passe ne se tape que **sur le site du compte**, ou sur une
+  **adresse de connexion validée par un humain** pour ce compte (décision
+  Q122). Exemple : un compte sur `outlook.com` se connecte sur
+  `login.live.com`. Sur une autre adresse, rien n'est tapé : un ticket
+  « Adresse de connexion » demande « Le compte « outlook » se connecte sur
+  login.live.com. Est-ce bien sa page de connexion ? », et la tâche
+  attend. « Oui, c'est sa connexion » : l'adresse est gardée pour ce
+  compte (`web_accounts.login_hosts`), la tâche repart du début et Serge
+  tape. « Non » : rien n'y sera tapé, et la question n'est plus posée
+  pour cette adresse. L'adresse est lue par le code dans le navigateur :
+  un modèle ne la choisit pas, et aucune invocation n'écrit la liste ;
 - **la garde** : chaque action qui touche le site est comptée (ouvrir,
   cliquer, taper, défiler ; lire la page et prendre une capture ne
   comptent pas). Au-delà du plafond du jour (page Policy, « Comptes
@@ -286,7 +302,8 @@ qui la base donne ce nom sur ses outils de navigateur (le paramètre
   s'arrêter. Un compte ne sert qu'à une tâche à la fois ; un compte
   marqué fermé par le site ne s'ouvre plus.
 
-Le compte et les secrets permis (`secrets`) sont des paramètres
+Le compte, les secrets permis (`secrets`) et les sites où ils se tapent
+(`secret_sites`) sont des paramètres
 **réservés à la base** : un modèle ne les voit pas dans son outil, et s'il
 les donne lui-même, ils sont ignorés. Le mot de passe et la session sont
 chiffrés par la clé du coffre de l'instance

@@ -237,12 +237,14 @@ class FauxModeles:
     def __init__(self, domaines: list[str]) -> None:
         self.domaines = list(domaines)
         self.par_role: dict[str, list[list[dict]]] = {}
+        self.outils: dict[str, list[dict]] = {}
 
     def __call__(self, _key, model, messages, tools=None, **_kw):
         system = messages[0]['content']
         role = next((r for m, r in self.MARQUES if m in system), None)
         assert role, f'prompt inattendu : {system[:80]}'
         self.par_role.setdefault(role, []).append(messages)
+        self.outils[role] = list(tools or [])
         outils = sum(1 for m in messages if m.get('role') == 'tool')
         return getattr(self, f'_{role}')(messages, outils)
 
@@ -363,12 +365,14 @@ class FauxModeles:
     def _payer(self, _messages, outils) -> ChatResult:
         if outils == 0:
             return self._outils(
+                # Un modèle qui désobéit : il demande 50 dollars.
                 appel(
                     'p',
                     'stripe_creer_prix',
                     product='prod_1',
-                    unit_amount=100,
-                    currency='eur',
+                    unit_amount=5000,
+                    currency='usd',
+                    nickname='paiement test',
                 ),
                 appel(
                     'l',
@@ -656,6 +660,26 @@ class Etape5Tests(unittest.TestCase):
         )
         self.assertNotIn(
             're_produit_faux', json.dumps(modeles.par_role, ensure_ascii=False)
+        )
+        # Le prix du paiement test : son montant et sa monnaie sont figés
+        # en base. Le modèle a demandé 50 dollars, le prix créé est de 1 € ;
+        # son outil ne lui propose ni l'un ni l'autre.
+        (prix,) = (
+            r['corps']
+            for r in self._requetes('/v1/prices')
+            if r['corps'].get('nickname') == 'paiement test'
+        )
+        self.assertEqual(
+            (prix['unit_amount'], prix['currency']), ('100', 'eur')
+        )
+        creer_prix = next(
+            o['function']['parameters']
+            for o in modeles.outils['payer']
+            if o['function']['name'] == 'stripe_creer_prix'
+        )
+        self.assertEqual(creer_prix['required'], ['product'])
+        self.assertFalse(
+            {'unit_amount', 'currency'} & set(creer_prix['properties'])
         )
         rembourse = self._requetes('/v1/refunds')[0]
         self.assertEqual(

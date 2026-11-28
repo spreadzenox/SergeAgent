@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Les capacités des comptes web (lot 13) : ouvrir un compte, changer
-son mot de passe tant qu'il n'est pas créé, donner l'identité de Serge,
-rendre ses messages de vérification.
+son mot de passe tant qu'il n'est pas créé, appliquer la réponse d'un
+humain sur une adresse de connexion, donner l'identité de Serge, rendre
+ses messages de vérification.
 
 Avec les outils du navigateur et « Appeler un humain », elles suffisent à
 une invocation pour créer un compte sur un site, du formulaire au lien de
@@ -52,6 +53,26 @@ WEB_ACCOUNTS: tuple[Capability, ...] = (
                 False,
                 'Avec des signes (! # % + - = ? @) : oui par défaut ; non'
                 ' si le site les refuse.',
+            ),
+        ),
+    ),
+    Capability(
+        'login_host_answer',
+        'Appliquer la réponse sur une adresse de connexion',
+        'Applique la réponse d’un humain au ticket « Adresse de connexion »'
+        ' d’un compte web. « Oui, c’est sa connexion » : l’adresse est'
+        ' gardée pour ce compte, et son mot de passe peut s’y taper.'
+        ' « Non » : rien n’y sera tapé. Dans les deux cas, la tâche qui'
+        ' attendait repart. Le compte et l’adresse sont lus dans le ticket,'
+        ' jamais donnés par un modèle.',
+        'serge/login_hosts.py',
+        (
+            Param(
+                'answer',
+                'text',
+                True,
+                'La réponse au ticket (une ligne de ticket_answers).',
+                frozen=True,
             ),
         ),
     ),

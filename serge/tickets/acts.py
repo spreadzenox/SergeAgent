@@ -10,6 +10,8 @@ APPROVE = frozenset(
         'valider',
         'faire_sans',
         'pret',
+        'garder',
+        'cest_sa_connexion',
     }
 )
 REJECT = frozenset(
@@ -20,6 +22,8 @@ REJECT = frozenset(
         'ne_pas_passer',
         'arreter_business',
         'aucun',
+        'jeter',
+        'non',
     }
 )
 # Les boutons qui demandent un texte, et ce qu'ils font du ticket : le

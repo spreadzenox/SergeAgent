@@ -18,6 +18,8 @@ Scénarios :
 - l'adresse http://chantier:3000 mène au conteneur du chantier de la tâche ;
 - taper un secret : seuls les secrets figés en base sont permis ; la page
   relue, même remise en forme, et une capture ne montrent jamais sa valeur ;
+  quand la base dit sur quels sites un secret se tape (la carte, sur les
+  pages de paiement), il n'est pas tapé ailleurs ;
 - une boîte de dialogue du navigateur (saisie, question, message) : sans
   réponse préparée, elle est refermée et le résultat dit comment y
   répondre ; une réponse préparée sert une fois, à la boîte suivante ;
@@ -1003,9 +1005,9 @@ class NavigateurTests(unittest.TestCase):
         self.assertIn('pas de compte « ailleurs »', inconnu['detail'])
 
     def test_un_modele_ne_se_donne_ni_compte_ni_secrets(self) -> None:
-        """Le compte et les secrets permis ne viennent que de la base :
-        un modèle qui les donne lui-même n'est pas écouté, et son outil ne
-        les lui propose pas."""
+        """Le compte, les secrets permis et les sites où ils se tapent ne
+        viennent que de la base : un modèle qui les donne lui-même n'est
+        pas écouté, et son outil ne les lui propose pas."""
         recus: list[dict[str, Any]] = []
 
         def note(_conn: Any, _tool: str, args: dict[str, Any], _inv: str):
@@ -1026,18 +1028,21 @@ class NavigateurTests(unittest.TestCase):
                     'action': 'taper_secret',
                     'account': 'forum',
                     'secrets': 'stripe-live.key',
+                    'secret_sites': 'ailleurs.example',
                 },
                 {'task_id': 't1', 'venture_id': 'ven_t'},
             )
         self.assertEqual(recus[0]['action'], 'taper_secret')
         self.assertNotIn('account', recus[0])
         self.assertNotIn('secrets', recus[0])
+        self.assertNotIn('secret_sites', recus[0])
         schema = tool_schema(self.conn, 'navigateur_agir', set())
         assert schema is not None
         montres = schema['function']['parameters']['properties']
         self.assertIn('action', montres)
         self.assertNotIn('account', montres)
         self.assertNotIn('secrets', montres)
+        self.assertNotIn('secret_sites', montres)
 
     def test_taper_un_secret_sans_le_montrer(self) -> None:
         config = self.dossier / 'config'
@@ -1139,6 +1144,36 @@ class NavigateurTests(unittest.TestCase):
             secrets=permis,
         )
         self.assertIn('secret non permis', refus['detail'])
+        # La base dit sur quels sites la carte se tape : ailleurs, rien
+        # n'est tapé, et le refus dit la page et les sites permis. Cette
+        # page est sur 127.0.0.1.
+        self._outil('browser_action', action='taper', ref=champ[1], text='')
+        ailleurs = self._outil(
+            'browser_action',
+            action='taper_secret',
+            ref=champ[1],
+            text='payment-card.enc#pan',
+            secrets=permis,
+            secret_sites='stripe.com',
+        )
+        self.assertFalse(ailleurs['ok'], ailleurs)
+        self.assertEqual(
+            ailleurs['detail'],
+            'secret non tapé : cette page est sur 127.0.0.1, et'
+            ' payment-card.enc#pan ne se tape que sur stripe.com',
+        )
+        self.assertEqual(onglet.input_value('#email'), '')
+        # Sur un des sites permis, la carte se tape.
+        chez_lui = self._outil(
+            'browser_action',
+            action='taper_secret',
+            ref=champ[1],
+            text='payment-card.enc#pan',
+            secrets=permis,
+            secret_sites='stripe.com, 127.0.0.1',
+        )
+        self.assertTrue(chez_lui['ok'], chez_lui)
+        self.assertEqual(onglet.input_value('#email'), '4000002500003155')
 
     def test_une_capture_ne_montre_pas_un_secret(self) -> None:
         config = self.dossier / 'config'

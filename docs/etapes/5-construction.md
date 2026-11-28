@@ -107,13 +107,16 @@ de son produit » (`PRODUCT_BUILDING`) et lance « Concevoir le produit ».
    par la clé de recherche de son prix, à jour tout de suite (la
    recherche de Stripe ne voit un produit qu'une minute environ après sa
    création : le 19 novembre 2026, 9 secondes après la mise en vente,
-   elle ne le trouvait pas). Puis un prix de 1 € et un
+   elle ne le trouvait pas). Puis un prix de 1 € (100 centimes, en
+   euros : le montant et la monnaie sont figés en base, le modèle ne les
+   choisit pas) et un
    lien de paiement, payé dans le **vrai Chrome** (un Chromium normal, sur
    un écran virtuel : le captcha de Stripe ne se chargeait pas dans le
    navigateur sans écran, décision Q97) avec la carte de Serge et
    l'adresse de la boîte du relecteur,
    déchiffrée de `payment-card.enc` au moment de taper (« taper un
-   secret » : le modèle ne voit jamais ses numéros), vérifié
+   secret » : le modèle ne voit jamais ses numéros, et la carte ne se
+   tape que sur une page de paiement de Stripe), vérifié
    dans Stripe (la session du lien est payée), remboursé ; le lien est
    désactivé et le prix archivé. Le paiement est noté dans `transactions`
    (`kind` = `canary`). Si un captcha bloque, le modèle appelle « Appeler

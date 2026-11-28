@@ -63,6 +63,7 @@ fausse : 401. Webhook trop vieux : 400.
 | 401 unauthorized | `whsec` test collé sur l’endpoint live (ou l’inverse) |
 | `unmatched` | `intent_id` ledger ≠ `pi_` Stripe |
 | Payé dans Stripe, draft chez Serge | webhook jamais reçu (mauvaise URL) |
+| Payé en mode test, rien chez Serge, réponse `ignored` | voulu sur une instance qui a le `whsec` du vrai mode : un paiement du mode test (une carte factice sur un staging) n'est pas une vente. Il est noté au journal de `serge-stripe-receiver` (« événement du mode test ignoré »). Une instance sans vrai mode, un poste de développement par exemple, traite le mode test comme avant. |
 
 ## Les mêmes clés pour « Appeler une API » (lot 10)
 
@@ -99,7 +100,9 @@ complète de Serge :
 Le produit retrouve son prix par sa clé de recherche (`lookup_key`), le
 numéro du business, en mode test comme en vrai mode.
 
-**Le paiement test de 1 €** se fait avec la carte de Serge, tapée dans la
+**Le paiement test de 1 €** crée un prix de 100 centimes, en euros : ce
+montant et cette monnaie sont figés en base sur l'outil qui crée le prix,
+le modèle ne les choisit pas. Il se fait avec la carte de Serge, tapée dans la
 page de paiement par l'action « taper un secret » du navigateur : le
 modèle ne voit jamais ses numéros, ni dans la page relue ni sur une
 capture. La carte reste chiffrée sur le serveur, dans
@@ -113,6 +116,10 @@ taper chaque champ, et rien n'est jamais écrit en clair :
 | `payment-card.enc#expiration` | la date d'expiration, `MM/AA`, tirée de `exp_month` et `exp_year` |
 | `payment-card.enc#cvc` | le code à 3 chiffres |
 | `payment-card.enc#cardholder_name` | le nom sur la carte |
+
+La carte ne se tape que sur une page de paiement de Stripe (`stripe.com`
+et ses sous-domaines, comme `checkout.stripe.com`) : ces sites sont figés
+en base sur l'outil du paiement test. Sur une autre page, rien n'est tapé.
 
 Si la banque demande une confirmation (3-D Secure) que Serge ne peut pas
 donner, le paiement test s'arrête et un ticket le dit : le faire à la main

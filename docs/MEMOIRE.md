@@ -42,7 +42,8 @@ ressemblait à la fiche *Y* » est une ligne du journal.
 les leçons, les procédures qui marchent, les pièges à éviter et des
 résumés. Elles sont proposées par la consolidation (l'étape 7 de la
 chaîne), qui relit le journal, et par « Tirer la leçon d'un business
-arrêté » (lot 12), et Julien garde ou jette chaque leçon.
+arrêté » (lot 12), et un humain garde ou jette chaque leçon : tant qu'il
+n'a pas répondu, aucune invocation ne la reçoit (décision Q121).
 Exemple : « les artisans répondent surtout entre 7 h et 8 h » est une
 leçon.
 
@@ -68,7 +69,8 @@ affiché sur sa fiche dans Mission Control :
    (`table_views`, `table_view_columns`), quelles colonnes forment sa
    version courte. Sur la fiche de l'invocation, un bouton retire une de
    ces tables ou en ajoute une autre (`invocation_compare_tables`).
-3. **Ses leçons**, les plus fiables d'abord.
+3. **Ses leçons**, les plus fiables d'abord : seulement celles qu'un
+   humain a gardées.
 4. **Le bloc « Qui est Serge »**, si la case est cochée sur sa fiche.
 
 Chaque information donnée d'office a un nombre maximum de lignes (le
@@ -191,7 +193,10 @@ informations quand il reconnaît le numéro de celui qui appelle.
 **Chaque invocation reçoit ses propres leçons.** Une leçon est rattachée
 à l'invocation qu'elle concerne, sinon à une étape de la chaîne, sinon à
 tout Serge. Une invocation reçoit d'office les leçons qui la concernent
-directement, les plus fiables en premier.
+directement, les plus fiables en premier. Elle ne reçoit que les leçons
+gardées par un humain (statut `active`) : une leçon proposée
+(`candidate`), dépassée (`deprecated`) ou expirée ne lui est jamais
+donnée.
 
 **Les invocations qui réfléchissent reçoivent un court texte qui leur
 explique où elles sont.** Les invocations qui utilisent un modèle moyen
@@ -218,10 +223,26 @@ l'activer ou non.
 
 ## Tirer des leçons
 
-La consolidation relit régulièrement le journal et propose des leçons,
-des procédures et des pièges. Julien garde ou jette chacune ; sans
-réponse de sa part sous 48 heures, elles sont acceptées. Le détail est
-dans [`etapes/7-memoire.md`](etapes/7-memoire.md).
+Une leçon est d'abord proposée (statut `candidate`). Chaque leçon
+proposée ouvre un ticket « Leçon », sur Discord et dans Mission Control,
+qui montre la leçon et le business d'où elle vient, avec deux boutons :
+« Garder » (elle passe à `active`, et les invocations qu'elle concerne la
+reçoivent) et « Jeter » (elle passe à `deprecated`). Ce ticket n'expire
+jamais : sans réponse, la leçon reste en attente et n'est donnée à
+personne (décision Q121). Aucune invocation ne peut écrire une leçon déjà
+gardée : la base n'accepte que le passage de « proposée » à « gardée » ou
+à « dépassée », fait par la réponse au ticket.
+
+Exemple : le business « Devis artisan » est arrêté après son test. « Tirer
+la leçon d'un business arrêté » propose « Les artisans ne répondent pas
+aux e-mails le lundi ». Clem reçoit le ticket sur Discord et clique
+« Garder » : à partir de là, chaque invocation lit cette leçon dans son
+prompt.
+
+Aujourd'hui, seule « Tirer la leçon d'un business arrêté » propose des
+leçons. La consolidation, qui relira le journal pour en proposer d'autres,
+n'est pas encore branchée ; ses leçons passeront par le même ticket. Le
+détail est dans [`etapes/7-memoire.md`](etapes/7-memoire.md).
 
 ---
 

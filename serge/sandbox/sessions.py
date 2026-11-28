@@ -32,7 +32,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
-from serge import web_accounts
+from serge import login_hosts, web_accounts
 from serge.sandbox import chrome
 from serge.sandbox.dialogues import Dialogues
 from serge.sandbox.docker import journal
@@ -68,8 +68,12 @@ class _Session:
     account: str = ''
     task_id: str = ''
     mot_de_passe: Callable[[], str] | None = None
-    # L'hôte du site du compte : son mot de passe ne se tape que là.
-    site: str = ''
+    # Le mot de passe du compte peut-il se taper sur une page de cet hôte ?
+    # Rend le refus, et le ticket qui demande à un humain de valider cette
+    # adresse de connexion (``serge/login_hosts.py``). ``attend`` garde ce
+    # ticket : l'outil arrête la tâche jusqu'à la réponse.
+    connexion: Callable[[str], tuple[str, str]] | None = None
+    attend: str = ''
 
 
 @dataclass
@@ -222,7 +226,9 @@ def _session(
     )
     if account:
         session.mot_de_passe = lambda: web_accounts.password(conn, account)
-        session.site = web_accounts.site(conn, account)
+        session.connexion = lambda hote: login_hosts.check(
+            conn, account, hote, task_id
+        )
     _ecouter(session, session.page)
     etat.sessions[_cle(task_id, account)] = session
     return session

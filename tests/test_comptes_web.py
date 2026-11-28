@@ -15,6 +15,11 @@ Scénarios :
   d'emblée ;
 - un nom de compte mal écrit est refusé avant toute navigation, et un
   ticket le dit ;
+- un compte dont la page de connexion est sur un autre domaine que son
+  site : le mot de passe est refusé, un ticket « Adresse de connexion » le
+  demande à un humain et la tâche attend ; après « Oui, c'est sa
+  connexion », elle repart et Serge tape ; l'adresse ne vaut pas pour un
+  autre compte, et un « Non » n'est pas redemandé ;
 - le pseudo voulu, tapé dans le bouton, arrive à l'invocation qui crée le
   compte ;
 - une ligne ouverte par erreur se retire, pas un compte en service ni un
@@ -42,15 +47,19 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from serge import web_accounts  # noqa: E402
+from serge import login_hosts, web_accounts  # noqa: E402
 from serge.coupe_circuit import set_heartbeat  # noqa: E402
 from serge.db.store import default_canon_path, open_db, utcnow  # noqa: E402
 from serge.interpreter.queue import process_one  # noqa: E402
 from serge.interpreter.tasks import enqueue_task  # noqa: E402
+from serge.interpreter.tools import run_capability  # noqa: E402
 from serge.interpreter.triggers import fire_button  # noqa: E402
 from serge.llm.client import ChatResult  # noqa: E402
+from serge.mc.proj_compte import project_compte  # noqa: E402
 from serge.sandbox import sessions  # noqa: E402
 from serge.sms import SmsInbox  # noqa: E402
+from serge.tickets import decide  # noqa: E402
+from serge.tickets.reponses import noter_reponse  # noqa: E402
 from serge.verification import received_since_task  # noqa: E402
 from tests.mc_server_case import browser_ok  # noqa: E402
 from tests.test_navigateur import _chrome, _site, appel  # noqa: E402
@@ -333,6 +342,185 @@ class ComptesWebTests(unittest.TestCase):
             ('active', 'Le site montre le compte connecté.'),
         )
 
+    def _repondre(self, ticket: str, acte: str) -> None:
+        """Comme le bouton du ticket, sur Discord ou dans Mission Control."""
+        issue = 'APPROVED' if acte == login_hosts.OUI else 'REJECTED'
+        decide(self.conn, ticket, issue, actor='owner')
+        noter_reponse(self.conn, ticket, acte, '', 'owner')
+        self.conn.commit()
+
+    def _taper_le_mot_de_passe(self, compte: str, page: str) -> dict:
+        """Une tâche à part ouvre la page avec ce compte et y fait taper
+        son mot de passe ; rend le résultat de l'outil."""
+        lieu = {
+            'venture_id': 'ven_t',
+            'deliverable': 'poc',
+            'task_id': 't9',
+            'account': compte,
+        }
+        vue = run_capability(
+            self.conn,
+            'real_browser_action',
+            '',
+            {**lieu, 'action': 'ouvrir', 'text': page},
+            'x',
+        )['page']
+        champ = re.search(r'\[(e\d+)\] champ password', vue)
+        assert champ, vue
+        tape = run_capability(
+            self.conn,
+            'real_browser_action',
+            '',
+            {
+                **lieu,
+                'action': 'taper_secret',
+                'ref': champ[1],
+                'text': web_accounts.PASSWORD_NAME,
+            },
+            'x',
+        )
+        sessions.close_sessions(self.conn)
+        return tape
+
+    def test_une_adresse_de_connexion_validee_par_un_humain(self) -> None:
+        """Décision Q122 : le compte « forum » est sur www.forum.example,
+        mais sa page de connexion est sur une autre adresse (ici le petit
+        site local, 127.0.0.1). Le mot de passe y est refusé : un ticket
+        le demande à un humain, sans jamais montrer le mot de passe, et la
+        tâche attend. « Oui, c'est sa connexion » : l'adresse est gardée
+        pour ce compte, la tâche repart du début et Serge tape. L'adresse
+        ne vaut pas pour un autre compte ; après un « Non », rien n'est
+        tapé et la question n'est plus posée."""
+        page = f'{self.site}/compte'
+        self.assertIsNotNone(
+            fire_button(
+                self.conn,
+                'bouton_creer_compte_web',
+                {
+                    **CREER,
+                    'adresse du site (https://www.reddit.com)': 'https://www.forum.example',
+                },
+            )
+        )
+        self.conn.commit()
+        inscrit = FauxInscrit(self.conn, page)
+        process_one(self.conn, 'works', caller=inscrit)
+        tache = process_one(self.conn, 'works', caller=inscrit)
+        # Le cas refusé : rien n'est tapé, la tâche attend le ticket.
+        ticket, etat, compte, de_la_tache, carte = self.conn.execute(
+            'SELECT id, state, ref_id, task_id, payload_json FROM tickets'
+            " WHERE type='CONNEXION_COMPTE'"
+        ).fetchone()
+        self.assertEqual((etat, compte, de_la_tache), ('OPEN', 'forum', tache))
+        self.assertEqual(
+            json.loads(carte)['La question'],
+            'Le compte « forum » se connecte sur 127.0.0.1. Est-ce bien sa'
+            ' page de connexion ?',
+        )
+        statut, attente = self.conn.execute(
+            'SELECT status, last_error FROM tasks WHERE id=?', (tache,)
+        ).fetchone()
+        self.assertEqual(statut, 'blocked')
+        self.assertIn(ticket, attente)
+        # Le refus est au journal de la tâche, avec sa raison.
+        self.assertIn(
+            'mot de passe non tapé : cette page est sur 127.0.0.1',
+            self.conn.execute(
+                "SELECT payload_json FROM events WHERE type='tool.call'"
+                ' ORDER BY id DESC LIMIT 1'
+            ).fetchone()[0],
+        )
+        mot_de_passe = web_accounts.password(self.conn, 'forum')
+        self.assertNotIn(mot_de_passe, carte)
+        self.assertNotIn(mot_de_passe, json.dumps(inscrit.messages))
+        self.assertEqual(login_hosts.validated(self.conn, 'forum'), [])
+        # Un humain valide : l'adresse est gardée, la tâche repart.
+        self._repondre(ticket, login_hosts.OUI)
+        self.assertEqual(
+            self._vider('conversations'), ['suite_adresse_de_connexion']
+        )
+        self.assertEqual(
+            login_hosts.validated(self.conn, 'forum'), ['127.0.0.1']
+        )
+        fiche = project_compte(self.conn, 'forum')
+        assert fiche is not None
+        self.assertIn(
+            {'k': 'Adresses de connexion validées', 'v': '127.0.0.1'},
+            fiche['champs'],
+        )
+        # Le cas accepté : repartie du début, la tâche lit la réponse, et
+        # cette fois Serge tape le mot de passe.
+        inscrit = FauxInscrit(self.conn, page)
+        self.assertEqual(self._vider('works', inscrit), ['creer_compte_web'])
+        self.assertIn(
+            'Un humain a validé 127.0.0.1',
+            json.dumps(inscrit.messages[0], ensure_ascii=False),
+        )
+        tape = next(
+            json.loads(m['content'])
+            for m in inscrit.messages[-1]
+            if m['role'] == 'tool' and m['tool_call_id'].endswith('b')
+        )
+        self.assertTrue(tape['ok'], tape)
+        self.assertNotIn(mot_de_passe, json.dumps(inscrit.messages))
+        self.assertEqual(
+            self.conn.execute(
+                "SELECT status FROM web_accounts WHERE id='forum'"
+            ).fetchone()[0],
+            'active',
+        )
+        self._vider('conversations')
+        # Une adresse validée pour un compte ne vaut pas pour un autre.
+        web_accounts.register(
+            self.conn,
+            'autre',
+            'https://www.autre.example',
+            'serge',
+            'secret-1',
+        )
+        refus = self._taper_le_mot_de_passe('autre', page)
+        self.assertFalse(refus['ok'], refus)
+        self.assertTrue(refus['gel'])
+        self.assertIn('www.autre.example', refus['detail'])
+        self.assertNotIn('secret-1', json.dumps(refus))
+        # « Non » : rien n'est gardé, et la question n'est plus posée.
+        self._repondre(refus['ticket_id'], login_hosts.NON)
+        self.assertEqual(
+            self._vider('conversations'), ['suite_adresse_de_connexion']
+        )
+        self.assertEqual(login_hosts.validated(self.conn, 'autre'), [])
+        encore = self._taper_le_mot_de_passe('autre', page)
+        self.assertFalse(encore['ok'], encore)
+        self.assertNotIn('gel', encore)
+        self.assertIn('Un humain a répondu', encore['detail'])
+        self.assertEqual(
+            self.conn.execute(
+                "SELECT COUNT(*) FROM tickets WHERE type='CONNEXION_COMPTE'"
+            ).fetchone()[0],
+            2,
+        )
+        # Un ticket expiré sans réponse (la décision par défaut, notée par
+        # Serge) ne valide rien, même si elle portait le nom du bouton.
+        web_accounts.register(
+            self.conn,
+            'tiers',
+            'https://www.tiers.example',
+            'serge',
+            'secret-2',
+        )
+        sans_reponse = self._taper_le_mot_de_passe('tiers', page)['ticket_id']
+        noter_reponse(self.conn, sans_reponse, login_hosts.OUI, '', 'serge')
+        self.conn.commit()
+        self.assertEqual(
+            self._vider('conversations'), ['suite_adresse_de_connexion']
+        )
+        self.assertEqual(login_hosts.validated(self.conn, 'tiers'), [])
+        # Un compte dont le site change perd ses adresses validées.
+        web_accounts.register(
+            self.conn, 'forum', 'https://www.ailleurs.example', 'serge', 'x'
+        )
+        self.assertEqual(login_hosts.validated(self.conn, 'forum'), [])
+
     def test_un_nom_mal_ecrit_est_refuse(self) -> None:
         self.assertIsNotNone(
             fire_button(
@@ -448,6 +636,31 @@ class MotDePasseDuSiteTests(unittest.TestCase):
             )['ok']
         )
         self.assertEqual(web_accounts.password(self.conn, 'tiktok'), garde)
+
+    def test_un_compte_repris_sur_un_autre_site_perd_son_mot_de_passe(
+        self,
+    ) -> None:
+        """Une création ratée reprise sur le même site garde son mot de
+        passe ; reprise sur un autre site, elle ne garde rien : le mot de
+        passe choisi pour le premier n'est jamais tapé sur le second."""
+        self._compte('creating')
+        garde = web_accounts.password(self.conn, 'tiktok')
+
+        def rouvrir(adresse: str) -> dict[str, Any]:
+            return web_accounts.open_account(
+                self.conn, '', {'account': 'tiktok', 'url': adresse}, ''
+            )
+
+        self.assertTrue(rouvrir('https://m.tiktok.com/signup')['ok'])
+        self.assertEqual(web_accounts.password(self.conn, 'tiktok'), garde)
+        self.assertTrue(rouvrir('https://tiktok.com.connexion.example')['ok'])
+        self.assertEqual(
+            self.conn.execute(
+                'SELECT password_enc, session_enc FROM web_accounts'
+            ).fetchone(),
+            ('', ''),
+        )
+        self.assertNotEqual(web_accounts.password(self.conn, 'tiktok'), garde)
 
     def test_un_compte_en_service_garde_le_sien(self) -> None:
         """Le site a l'ancien mot de passe : le changer ici couperait

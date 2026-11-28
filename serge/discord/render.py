@@ -56,6 +56,16 @@ BUTTONS: dict[str, dict[str, Any]] = {
     'ne_pas_passer': {'label': 'Ne pas passer', 'style': 4, 'emoji': '⏹️'},
     'faire_sans': {'label': 'Faire sans', 'style': 2, 'emoji': '⏭️'},
     'pret': {'label': 'Je suis prêt', 'style': 3, 'emoji': '🙋'},
+    # Une leçon proposée : la garder la donne aux invocations.
+    'garder': {'label': 'Garder', 'style': 3, 'emoji': '✅'},
+    'jeter': {'label': 'Jeter', 'style': 4, 'emoji': '🗑️'},
+    # L'adresse de connexion d'un compte web, à valider par un humain.
+    'cest_sa_connexion': {
+        'label': 'Oui, c’est sa connexion',
+        'style': 3,
+        'emoji': '✅',
+    },
+    'non': {'label': 'Non', 'style': 4, 'emoji': '❌'},
     # Ajouté de lui-même quand un champ de la carte est coupé : poste tout
     # le ticket dans son fil (``serge/discord/interactions.py``).
     'voir_en_entier': {'label': 'Voir en entier', 'style': 2, 'emoji': '📄'},

@@ -100,7 +100,11 @@ FICHES: dict[str, dict[str, str]] = {
         ),
         'argent': 'Les leçons évitent de payer deux fois la même erreur.',
         'dependance': 'Sans échanges, rien à consolider.',
-        'comment': 'La consolidation des leçons (pas encore branchée).',
+        'comment': (
+            'Chaque leçon proposée ouvre un ticket « Leçon » : un humain la'
+            ' garde ou la jette. La consolidation des leçons n’est pas'
+            ' encore branchée.'
+        ),
         'doc_md': '',
     },
     'caisse': {

@@ -2,9 +2,10 @@
 """La fiche d'un compte web de Serge dans Mission Control (``web_accounts``).
 
 Elle dit où en est le compte : son site, son identifiant, s'il a un mot de
-passe et une session gardés, les actions faites aujourd'hui sur son
-plafond. Le mot de passe et la session ne sont jamais montrés : ils sont
-chiffrés en base, et Serge les utilise à la place du modèle.
+passe et une session gardés, les adresses de connexion qu'un humain a
+validées, les actions faites aujourd'hui sur son plafond. Le mot de passe
+et la session ne sont jamais montrés : ils sont chiffrés en base, et Serge
+les utilise à la place du modèle.
 """
 
 from __future__ import annotations
@@ -12,6 +13,7 @@ from __future__ import annotations
 import sqlite3
 from typing import Any
 
+from serge.login_hosts import validated
 from serge.web_accounts import actions_today, daily_cap
 
 ETATS = {
@@ -29,6 +31,11 @@ def champs_compte(conn: sqlite3.Connection, row: Any) -> list[dict[str, str]]:
         ('Nom public', row['handle'] or '—'),
         ('État', ETATS.get(str(row['status']), str(row['status']))),
         ('Mot de passe', 'gardé, chiffré' if row['password_enc'] else 'aucun'),
+        (
+            'Adresses de connexion validées',
+            ', '.join(validated(conn, str(row['id'])))
+            or 'aucune : le mot de passe ne se tape que sur le site',
+        ),
         (
             'Session',
             'dans le profil du vrai Chrome, connecté avec Google : rien'

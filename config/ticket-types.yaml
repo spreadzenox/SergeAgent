@@ -237,6 +237,42 @@ types:
     default_detail: Le passage attend un feu vert, sans limite de temps.
     fields: [Le lien, Ce qui passe]
     buttons: [passer, ne_pas_passer]
+  LECON:
+    role: >-
+      Une leçon que Serge propose, par exemple après l'arrêt d'un business,
+      à valider par un humain (décision Q121). « Garder » : elle est donnée
+      aux invocations qu'elle concerne. « Jeter » : elle ne l'est jamais.
+      Tant que personne n'a répondu, aucune invocation ne la reçoit.
+    render: {color: 10181046, emoji: "🎓"}
+    urgency: normale
+    expiry_hours: null
+    default: attend
+    default_detail: >-
+      La leçon attend un humain, sans limite de temps : d'ici là, aucune
+      invocation ne la reçoit.
+    contenu:
+      - {label: La leçon, tool: lecon_par_numero, params: {lesson_id: id}}
+      - {label: Le business d'où elle vient, tool: fiche_business, params: {venture_id: venture_id}}
+    fields: [La leçon, Le business d'où elle vient, Pourquoi]
+    buttons: [garder, jeter]
+  CONNEXION_COMPTE:
+    role: >-
+      Le mot de passe d'un compte web ne se tape que sur le site du compte.
+      Quand sa page de connexion est sur un autre domaine (un compte sur
+      outlook.com qui se connecte sur login.live.com), ce ticket demande si
+      c'est bien elle (décision Q122). « Oui, c'est sa connexion » :
+      l'adresse est gardée pour ce compte, la tâche repart et Serge tape
+      lui-même. « Non » : rien n'y sera tapé. Le mot de passe n'est montré
+      à personne.
+    render: {color: 15105570, emoji: "🔑"}
+    urgency: normale
+    expiry_hours: null
+    default: attend
+    default_detail: >-
+      La tâche attend la réponse, sans limite de temps : d'ici là, le mot
+      de passe n'est pas tapé sur cette adresse.
+    fields: [La question, Le compte, Pourquoi]
+    buttons: [cest_sa_connexion, non]
 
 # Changer un type déjà en base (serge/tickets/types.py) : une seule fois par
 # instance, et seulement si la valeur en base est encore « from ».
