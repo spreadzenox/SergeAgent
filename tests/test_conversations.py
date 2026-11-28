@@ -25,7 +25,12 @@ Scénarios :
   dans le fil ; pas de relance si Marc a écrit, ni si la boîte n'a pas été
   relevée récemment ; une réponse d'absence ne les arrête pas ; pas de
   relance à un contact qui a refusé, tant que « refus » est coché dans
-  les étapes où Serge n'écrit plus (page Policy).
+  les étapes où Serge n'écrit plus (page Policy) ;
+- plusieurs boîtes (décision Q120) : la relève lit chaque boîte de la
+  page Policy et note celle qui a reçu un message ; la réponse part de
+  cette boîte ; les premiers messages alternent entre les boîtes, la
+  moins utilisée du jour d'abord ; une relance reste sur la boîte de la
+  conversation, même la boîte du serveur pour une conversation d'avant.
 """
 
 from __future__ import annotations
@@ -68,6 +73,7 @@ class FauxCanal:
         self.recus: list[Incoming] = []
         self.envoyes: list[Outgoing] = []
         self.deja_partis: dict[str, str] = {}
+        self.boites: list[tuple[str, ...]] = []
 
     def send(self, message: Outgoing) -> str:
         self.envoyes.append(message)
@@ -76,7 +82,8 @@ class FauxCanal:
     def confirm(self, message: Outgoing) -> str:
         return self.deja_partis.get(message.touch_id, '')
 
-    def poll(self, _since: str) -> list[Incoming]:
+    def poll(self, _since: str, boxes: tuple[str, ...] = ()) -> list[Incoming]:
+        self.boites.append(boxes)
         return list(self.recus)
 
 
@@ -196,6 +203,7 @@ class ConversationsTests(unittest.TestCase):
         texte: str,
         address: str = 'Marc@exemple.fr',
         refs: tuple[str, ...] = ('<t1@serge>',),
+        mailbox: str = '',
     ) -> None:
         self.canal.recus.append(
             Incoming(
@@ -205,6 +213,7 @@ class ConversationsTests(unittest.TestCase):
                 body=texte,
                 message_ref=f'<{ref}@marc>',
                 refs=refs,
+                mailbox=mailbox,
             )
         )
 
@@ -502,6 +511,76 @@ class ConversationsTests(unittest.TestCase):
         self.conn.commit()
         self._relever()
         self.assertEqual(len(self.canal.envoyes), 1)
+
+    def test_plusieurs_boites(self) -> None:
+        set_setting(
+            self.conn,
+            'channels.email.mailboxes',
+            'Chevalier@jpesquet.tech, casadel@jpesquet.tech',
+            'test',
+        )
+        chevalier, casadel = 'chevalier@jpesquet.tech', 'casadel@jpesquet.tech'
+        # Marc répond au premier message, arrivé dans la boîte casadel@.
+        self.modele.reponse = {'reaction': 'question', 'reply': 'Oui.'}
+        self._recu('m1', 'Ça marche avec Excel ?', mailbox=casadel)
+        self._relever()
+        self.assertEqual(self.canal.boites[-1], (chevalier, casadel))
+        self.assertEqual(
+            self._tous('SELECT mailbox FROM inbound_events'), [(casadel,)]
+        )
+        self.assertEqual(
+            self._un("SELECT sender FROM touches WHERE kind='reply'"),
+            (casadel,),
+        )
+        # Trois premiers messages à trois personnes : casadel@ a déjà
+        # envoyé la réponse aujourd'hui, chevalier@ rien.
+        for n in (3, 4, 5):
+            self.conn.execute(
+                'INSERT INTO contacts(id, venture_id, display, funnel_state,'
+                " created_at, updated_at) VALUES(?, 'v1', ?, 'CONTACTING',"
+                " 't', 't')",
+                (f'c{n}', f'Personne {n}'),
+            )
+            self._envoi(f'p{n}', 'first', 'pending', contact=f'c{n}')
+            self.conn.execute(
+                'UPDATE touches SET address=? WHERE id=?',
+                (f'personne{n}@exemple.fr', f'p{n}'),
+            )
+            self._envoyer(f'p{n}')
+        self.assertEqual(
+            self._tous(
+                "SELECT sender FROM touches WHERE id IN ('p3', 'p4', 'p5')"
+                ' ORDER BY id'
+            ),
+            [(chevalier,), (chevalier,), (casadel,)],
+        )
+        self.assertEqual(self.canal.envoyes[-1].sender, casadel)
+        # La relance de la personne 3 reste sur sa boîte ; celle d'une
+        # conversation d'avant la liste, sur la boîte du serveur.
+        self.conn.execute(
+            'INSERT INTO contacts(id, venture_id, display, funnel_state,'
+            " created_at, updated_at) VALUES('c6', 'v1', 'Ancien',"
+            " 'CONTACTING', 't', 't')"
+        )
+        self._envoi(
+            'a6', 'first', 'sent', contact='c6', sent_at=_il_y_a(days=4)
+        )
+        for envoi, contact, adresse in (
+            ('r3', 'c3', 'personne3@exemple.fr'),
+            ('r6', 'c6', MARC),
+        ):
+            self._envoi(envoi, 'followup', 'pending', contact=contact)
+            self.conn.execute(
+                'UPDATE touches SET address=? WHERE id=?', (adresse, envoi)
+            )
+            self._envoyer(envoi)
+        self.assertEqual(
+            self._tous(
+                "SELECT id, status, sender FROM touches WHERE id IN ('r3', 'r6')"
+                ' ORDER BY id'
+            ),
+            [('r3', 'sent', chevalier), ('r6', 'sent', '')],
+        )
 
 
 if __name__ == '__main__':

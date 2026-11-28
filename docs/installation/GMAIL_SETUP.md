@@ -62,6 +62,38 @@ messages (`messages`). `gog gmail search`, elle, rend des fils
 Puis, dans Mission Control, la fiche du canal E-mail doit dire « branché »
 (page Pipeline) : Serge relève alors la boîte toutes les 2 minutes.
 
+## 4 bis. Plusieurs boîtes (décision Q120)
+
+Serge peut écrire et lire depuis plusieurs adresses Gmail, par exemple sa
+boîte du serveur et deux adresses Google Workspace de son domaine. Chaque
+boîte est un compte de `gog`, et leur liste est en base :
+
+1. Sur le serveur, connecter chaque nouvelle boîte à `gog` (même client
+   OAuth que la première, `gog.env` chargé pour déverrouiller le
+   trousseau) :
+
+   ```sh
+   gog auth add serge.chevalier@jpesquet.tech --services gmail --manual
+   gog gmail messages search 'newer_than:1d' --max 3 --json -a serge.chevalier@jpesquet.tech
+   ```
+
+   Une adresse Google Workspace doit pouvoir autoriser le client OAuth : si
+   l'écran de consentement du projet Google Cloud est en mode « Test »,
+   ajouter l'adresse aux utilisateurs de test.
+2. Dans Mission Control, page Policy, famille « Canaux », **« E-mail, les
+   boîtes de Serge »** : toutes les adresses, séparées par des virgules,
+   **boîte du serveur comprise** (sinon elle n'est plus relevée). Exemple :
+   `sergechevalierfr382@gmail.com, serge.chevalier@jpesquet.tech,
+   serge.casadel@jpesquet.tech`.
+
+Serge relève alors chaque boîte. Un premier message part de la boîte qui a
+le moins envoyé dans la journée ; une réponse part de la boîte qui a reçu
+le message, une relance de celle de la conversation. Le plafond du jour
+(« E-mails envoyés au plus, par jour ») compte toutes les boîtes ensemble.
+Une boîte refusée arrête la relève de toutes, avec la boîte nommée dans le
+journal (`AUTH: gog refusé pour <adresse>`, page Health) : tant qu'elle
+n'est pas réparée, aucune relance ne part.
+
 ## 5. Dépannage
 
 - `BIN: gog introuvable` → binaire absent (`PATH` ? `SERGE_GOG_BIN` ?).

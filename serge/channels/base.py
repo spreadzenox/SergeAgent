@@ -12,6 +12,12 @@ d'un business. Il a trois fonctions :
 - ``poll``, pour un canal qui se relève (l'e-mail), rend les messages reçus
   depuis une date. Un canal qui reçoit en direct (le téléphone) n'en a pas.
 
+Un canal peut avoir plusieurs boîtes (l'e-mail, décision Q120) : leur
+liste est en base (page Policy, ``channels.<canal>.mailboxes``). ``poll``
+reçoit cette liste et relève chaque boîte ; un message reçu dit la boîte
+qui l'a reçu (``mailbox``), un envoi celle d'où il part (``sender``). Vide :
+la boîte du serveur.
+
 Ajouter un canal, c'est écrire son adaptateur et l'ajouter à ``ADAPTERS``
 (``serge/channels/adapters.py``), avec ses réglages dans
 ``config/policy.yaml`` : le pipeline ne change pas. Conception :
@@ -41,6 +47,8 @@ class Outgoing:
     # La référence du message reçu auquel il répond, ou ''.
     in_reply_to: str = ''
     kind: str = ''
+    # La boîte d'où il part (``touches.sender``) ; '' : celle du serveur.
+    sender: str = ''
 
 
 @dataclass(frozen=True)
@@ -58,6 +66,8 @@ class Incoming:
     native_type: str = ''
     # Les adresses à qui il est écrit (un e-mail), en minuscules.
     to: tuple[str, ...] = ()
+    # La boîte de Serge qui l'a reçu ; '' : celle du serveur.
+    mailbox: str = ''
 
 
 @dataclass(frozen=True)
@@ -72,7 +82,8 @@ class Adapter:
     code_path: str
     send: Callable[[Outgoing], str]
     confirm: Callable[[Outgoing], str]
-    poll: Callable[[str], list[Incoming]] | None = None
+    # ``poll(depuis, boîtes)`` : les boîtes à relever, lues en base.
+    poll: Callable[[str, tuple[str, ...]], list[Incoming]] | None = None
     # Le canal est configuré sur ce serveur (pour l'e-mail : une boîte
     # Gmail ou SMTP/IMAP dans le fichier d'instance).
     ready: Callable[[], bool] = _always

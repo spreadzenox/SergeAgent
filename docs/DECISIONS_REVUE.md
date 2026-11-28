@@ -2863,3 +2863,34 @@ indésirable compris ; une nouvelle version dont une tâche échoue reste
 `open` jusqu'à ce qu'un humain relance la tâche ou l'abandonne ;
 abandonner une version n'arrête pas sa tâche en cours ; les paiements
 sont donnés au point du plus ancien au plus récent, 300 au plus.
+
+### Q120 — Serge prospecte depuis plusieurs boîtes e-mail (demandé par Julien, 28 novembre 2026)
+
+Serge avait une seule boîte, un compte Gmail. Julien a créé deux adresses
+Google Workspace à son domaine, `serge.chevalier@jpesquet.tech` et
+`serge.casadel@jpesquet.tech`, et le compte Apollo de Serge est à la
+première : le code de connexion qu'Apollo y envoyait n'arrivait jamais,
+puisque Serge ne lisait pas cette boîte. Julien a répondu à trois
+questions :
+
+1. **Les deux adresses servent à prospecter**, pas seulement à recevoir des
+   codes : Serge écrit depuis elles et y lit les réponses.
+2. **Un premier message part de la boîte qui a le moins envoyé dans la
+   journée** (l'alternance), pour répartir le volume sur un domaine neuf.
+   Une conversation reste ensuite sur sa boîte : une réponse part de la
+   boîte qui a reçu le message, une relance de celle du dernier envoi au
+   contact. Une conversation d'avant reste sur la boîte du serveur.
+3. **Les e-mails de toutes les boîtes sont signés par le même Serge**, et
+   **la boîte Gmail du serveur prospecte aussi**, à égalité avec les deux
+   adresses pro.
+
+Julien a aussi demandé que tout ce qui peut l'être soit en base. La liste
+des boîtes est donc un réglage de la page Policy (« E-mail, les boîtes de
+Serge », `channels.email.mailboxes`) ; chaque envoi garde sa boîte
+(`touches.sender`) et chaque message reçu la sienne
+(`inbound_events.mailbox`, écrite par les règles d'écriture de « Relever
+les messages »). Chaque boîte est un compte de `gog` sur le serveur
+(`docs/installation/GMAIL_SETUP.md`, partie 4 bis).
+
+Pas fait : un plafond du jour par boîte (le plafond compte toutes les
+boîtes ensemble) ; une boîte SMTP/IMAP reste seule.

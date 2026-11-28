@@ -21,6 +21,7 @@ from __future__ import annotations
 import os
 import re
 import tomllib
+from dataclasses import replace
 from pathlib import Path
 from types import ModuleType
 
@@ -78,20 +79,16 @@ def confirm(message: Outgoing) -> str:
     return _box().confirm(message)
 
 
-def poll(since: str) -> list[Incoming]:
-    return [
-        Incoming(
-            external_ref=m.external_ref,
-            address=m.address,
-            subject=m.subject,
-            body=without_quote(m.body),
-            message_ref=m.message_ref,
-            refs=m.refs,
-            native_type=m.native_type,
-            to=m.to,
-        )
-        for m in _box().poll(since)
-    ]
+def poll(since: str, boxes: tuple[str, ...] = ()) -> list[Incoming]:
+    """Les messages reçus. Gmail relève chaque boîte de ``boxes`` (page
+    Policy, décision Q120) ; une boîte SMTP/IMAP est seule, la liste ne
+    la concerne pas."""
+    found = (
+        email_smtp.poll(since)
+        if backend() == 'smtp'
+        else email_gog.poll(since, boxes)
+    )
+    return [replace(m, body=without_quote(m.body)) for m in found]
 
 
 ADAPTER = Adapter(

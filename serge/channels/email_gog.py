@@ -12,8 +12,15 @@ Trois fonctions, celles de tout canal (``serge/channels/base.py``) :
   avant de l'avoir envoyé ;
 - ``poll`` lit la boîte de réception depuis la dernière relève.
 
+Serge peut avoir plusieurs boîtes Gmail (décision Q120) : chacune est un
+compte de ``gog`` (``gog auth add <adresse>``), et chaque commande vise la
+sienne (``-a <adresse>``). Un envoi part de sa boîte (``sender``) ; la
+relève lit chaque boîte de la liste qu'elle reçoit. Sans boîte nommée,
+c'est celle du serveur (``-a auto`` : le compte de ``gog.env``).
+
 Le binaire est ``SERGE_GOG_BIN``, sinon celui du ``PATH``. Les erreurs sont
-des ``MailError`` (BIN, AUTH, API, NETWORK) ; un secret n'est jamais écrit.
+des ``MailError`` (BIN, AUTH, API, NETWORK), avec la boîte en cause ; un
+secret n'est jamais écrit.
 """
 
 from __future__ import annotations
@@ -55,11 +62,15 @@ def _gog_bin() -> str:
     return shutil.which('gog') or DEFAULT_GOG_BIN
 
 
-def _run(args: list[str], timeout: float = 60.0) -> dict[str, Any]:
+def _run(
+    args: list[str], box: str = '', timeout: float = 60.0
+) -> dict[str, Any]:
+    """Une commande gog sur la boîte ``box`` ('' : celle du serveur)."""
     binary = _gog_bin()
+    account = box or ACCOUNT
     try:
         completed = subprocess.run(
-            [binary, *args, '--json', '--no-input', '-a', ACCOUNT],
+            [binary, *args, '--json', '--no-input', '-a', account],
             check=False,
             capture_output=True,
             text=True,
@@ -72,9 +83,10 @@ def _run(args: list[str], timeout: float = 60.0) -> dict[str, Any]:
     if completed.returncode != 0:
         detail = (completed.stderr or completed.stdout)[-300:]
         lowered = detail.lower()
+        boite = f' pour {box}' if box else ''
         if 'auth' in lowered or 'permission' in lowered or '401' in lowered:
-            raise MailError(f'AUTH: gog refusé ({detail.strip()})')
-        raise MailError(f'API: gog a échoué ({detail.strip()})')
+            raise MailError(f'AUTH: gog refusé{boite} ({detail.strip()})')
+        raise MailError(f'API: gog a échoué{boite} ({detail.strip()})')
     try:
         payload = json.loads(completed.stdout or '{}')
     except json.JSONDecodeError as exc:
@@ -84,14 +96,16 @@ def _run(args: list[str], timeout: float = 60.0) -> dict[str, Any]:
     return payload
 
 
-def _search(query: str, limit: int) -> list[str]:
+def _search(query: str, limit: int, box: str = '') -> list[str]:
     """Les identifiants Gmail des messages trouvés (syntaxe Gmail).
 
     ``gog gmail search`` cherche des fils (``threads``) ; seule ``gog gmail
     messages search`` rend des messages. Une réponse sans liste
     ``messages`` est une erreur : elle ne passe jamais pour une boîte vide.
     """
-    payload = _run(['gmail', 'messages', 'search', query, '--max', str(limit)])
+    payload = _run(
+        ['gmail', 'messages', 'search', query, '--max', str(limit)], box
+    )
     items = payload.get('messages')
     if not isinstance(items, list):
         raise MailError(
@@ -105,8 +119,8 @@ def _search(query: str, limit: int) -> list[str]:
     ]
 
 
-def _get(gmail_id: str) -> dict[str, Any]:
-    payload = _run(['gmail', 'get', gmail_id])
+def _get(gmail_id: str, box: str = '') -> dict[str, Any]:
+    payload = _run(['gmail', 'get', gmail_id], box)
     nested = payload.get('message')
     return nested if isinstance(nested, dict) else payload
 
@@ -144,9 +158,9 @@ def _text(message: dict[str, Any]) -> str:
     return text.strip() or str(message.get('snippet') or '').strip()
 
 
-def _gmail_id(message_ref: str) -> str:
-    """L'identifiant Gmail d'un message, par son ``Message-ID``."""
-    found = _search(f'rfc822msgid:{message_ref.strip("<>")}', 1)
+def _gmail_id(message_ref: str, box: str) -> str:
+    """L'identifiant Gmail d'un message de la boîte, par son ``Message-ID``."""
+    found = _search(f'rfc822msgid:{message_ref.strip("<>")}', 1, box)
     return found[0] if found else ''
 
 
@@ -169,53 +183,67 @@ def send(message: Outgoing) -> str:
         '--body',
         message.body,
     ]
-    parent = _gmail_id(message.in_reply_to) if message.in_reply_to else ''
+    box = message.sender
+    parent = _gmail_id(message.in_reply_to, box) if message.in_reply_to else ''
     if parent:
         args += ['--reply-to-message-id', parent]
-    payload = _run(args)
+    payload = _run(args, box)
     nested = payload.get('result')
     result: dict[str, Any] = nested if isinstance(nested, dict) else payload
     gmail_id = str(result.get('id') or result.get('messageId') or '')
     if not gmail_id:
         raise MailError('API: gog n’a pas rendu de message envoyé')
-    return _headers(_get(gmail_id)).get('message-id') or gmail_id
+    return _headers(_get(gmail_id, box)).get('message-id') or gmail_id
 
 
 def confirm(message: Outgoing) -> str:
     """Le ``Message-ID`` de l'envoi s'il est parti, sinon ``''``."""
+    box = message.sender
     for gmail_id in _search(
-        f'in:sent to:{message.address} newer_than:2d', SENT_MAX
+        f'in:sent to:{message.address} newer_than:2d', SENT_MAX, box
     ):
-        found = _get(gmail_id)
+        found = _get(gmail_id, box)
         if _same_text(_text(found), message.body):
             return _headers(found).get('message-id') or gmail_id
     return ''
 
 
-def poll(since: str) -> list[Incoming]:
-    """Les messages reçus depuis ``since`` (ISO), ou depuis un jour."""
+def poll(since: str, boxes: tuple[str, ...] = ()) -> list[Incoming]:
+    """Les messages reçus depuis ``since`` (ISO), ou depuis un jour, dans
+    chaque boîte de ``boxes`` (vide : celle du serveur).
+
+    Une boîte en panne arrête toute la relève, avec la boîte et sa raison
+    au journal : la relève n'est pas notée faite, donc Serge ne relance
+    personne qui a peut-être répondu dans cette boîte. Les messages des
+    autres boîtes sont relus à la relève suivante.
+    """
     if since:
         start = int(datetime.fromisoformat(since).timestamp()) - OVERLAP_S
         query = f'in:inbox after:{start}'
     else:
         query = 'in:inbox newer_than:1d'
     received = []
-    for gmail_id in _search(query, POLL_MAX):
-        message = _get(gmail_id)
-        headers = _headers(message)
-        refs = _REF.findall(
-            f'{headers.get("in-reply-to", "")} {headers.get("references", "")}'
-        )
-        received.append(
-            Incoming(
-                external_ref=gmail_id,
-                address=parseaddr(headers.get('from', ''))[1],
-                subject=headers.get('subject', ''),
-                body=_text(message),
-                message_ref=headers.get('message-id', ''),
-                refs=tuple(refs),
-                native_type=AUTO_REPLY if is_auto_reply(headers) else 'email',
-                to=recipients(headers),
+    for box in boxes or ('',):
+        for gmail_id in _search(query, POLL_MAX, box):
+            message = _get(gmail_id, box)
+            headers = _headers(message)
+            refs = _REF.findall(
+                f'{headers.get("in-reply-to", "")}'
+                f' {headers.get("references", "")}'
             )
-        )
+            received.append(
+                Incoming(
+                    external_ref=gmail_id,
+                    address=parseaddr(headers.get('from', ''))[1],
+                    subject=headers.get('subject', ''),
+                    body=_text(message),
+                    message_ref=headers.get('message-id', ''),
+                    refs=tuple(refs),
+                    native_type=AUTO_REPLY
+                    if is_auto_reply(headers)
+                    else 'email',
+                    to=recipients(headers),
+                    mailbox=box,
+                )
+            )
     return received

@@ -45,8 +45,10 @@ partir, dans cet ordre :
    maintenant (``ChannelLater``) fait attendre aussi : un réseau où la
    personne doit d'abord accepter le contact, par exemple
    (``serge/channels/web.py``) ;
-6. ``sending`` enregistré en base, l'envoi, puis ``sent`` et la référence
-   du canal enregistrés. Le texte part avec la phrase de fin du canal
+6. ``sending`` enregistré en base avec la boîte d'où il part (``sender``,
+   décision Q120 : ``serge/conversations/mailbox.py``), l'envoi, puis
+   ``sent`` et la référence du canal enregistrés. Le texte part avec la
+   phrase de fin du canal
    (``footer_<canal>``, page Pipeline : « Répondez STOP… » pour
    l'e-mail).
 
@@ -64,6 +66,7 @@ from typing import Any
 from serge.channels.adapters import ADAPTERS
 from serge.channels.base import ChannelError, ChannelLater, Outgoing
 from serge.channels.web import transport
+from serge.conversations.mailbox import sender_for
 from serge.conversations.stop import stop
 from serge.db.store import append_event, utcnow
 from serge.funnels.contacts import normalise_value
@@ -256,6 +259,7 @@ def _outgoing(conn: sqlite3.Connection, touch: dict[str, Any]) -> Outgoing:
         body=f'{body}\n\n{footer}' if footer else body,
         in_reply_to=str(touch['reply_ref']),
         kind=str(touch['kind']),
+        sender=str(touch['sender']),
     )
 
 
@@ -390,6 +394,8 @@ def _send(
             _set(conn, touch, 'cancelled', last_error=reason)
             return {'ok': True, 'status': 'cancelled', 'reason': reason}
         touch = _reply_route(conn, touch)
+        # La boîte d'où il part (décision Q120), notée avec « sending ».
+        touch = {**touch, 'sender': sender_for(conn, touch)}
     elif status != 'sending':
         return {'ok': False, 'code': f'statut_{status}'}
     channel = transport(conn, str(touch['channel']))
@@ -425,7 +431,7 @@ def _send(
         later = _day_full(conn, str(touch['channel']), str(touch['id']))
         if later:
             return _wait(conn, inv, touch, later, 'plafond du jour')
-        _set(conn, touch, 'sending')
+        _set(conn, touch, 'sending', sender=str(touch['sender']))
     try:
         ref = channel.send(message)
     except ChannelLater as exc:

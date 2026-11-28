@@ -60,6 +60,7 @@ from serge.db.v057 import apply_v057
 from serge.db.v058 import apply_v058
 from serge.db.v059 import apply_v059
 from serge.db.v060 import apply_v060
+from serge.db.v061 import apply_v061
 
 ApplyFn = Callable[[sqlite3.Connection], None]
 Migration = tuple[int, ApplyFn]
@@ -119,6 +120,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     (58, apply_v058),
     (59, apply_v059),
     (60, apply_v060),
+    (61, apply_v061),
 )
 
 
